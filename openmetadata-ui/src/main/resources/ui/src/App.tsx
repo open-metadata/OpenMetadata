@@ -23,6 +23,7 @@ import { EntityExportModalProvider } from './components/Entity/EntityExportModal
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
+import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
@@ -83,9 +84,11 @@ const App: FC = () => {
                         <PermissionProvider>
                           <WebSocketProvider>
                             <ApplicationsProvider>
-                              <EntityExportModalProvider>
-                                <AppRouter />
-                              </EntityExportModalProvider>
+                              <AsyncDeleteProvider>
+                                <EntityExportModalProvider>
+                                  <AppRouter />
+                                </EntityExportModalProvider>
+                              </AsyncDeleteProvider>
                             </ApplicationsProvider>
                           </WebSocketProvider>
                         </PermissionProvider>

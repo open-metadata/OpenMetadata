@@ -41,7 +41,7 @@ import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
 import {
   formatDate,
-  formatDateTime,
+  formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getColumnNameFromEntityLink,
@@ -254,7 +254,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 150,
         sorter: true,
         render: (result: TestCaseResult) =>
-          result?.timestamp ? formatDateTime(result.timestamp) : '--',
+          result?.timestamp ? formatDateTimeLong(result.timestamp) : '--',
       },
       {
         title: t('label.incident'),
