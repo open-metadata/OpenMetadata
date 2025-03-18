@@ -199,7 +199,7 @@ const GlossaryTermTab = ({
         undefined,
         ThreadTaskStatus.Open,
         undefined,
-        20
+        API_RES_MAX_SIZE
       );
 
       // Organize tasks by glossary term FQN
@@ -591,22 +591,6 @@ const GlossaryTermTab = ({
   const extraTableFilters = useMemo(() => {
     return (
       <>
-        <Button
-          className="text-primary"
-          data-testid="expand-collapse-all-button"
-          size="small"
-          type="text"
-          onClick={toggleExpandAll}>
-          <Space align="center" size={4}>
-            {isAllExpanded ? (
-              <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            ) : (
-              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            )}
-
-            {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
-          </Space>
-        </Button>
         <Dropdown
           className="custom-glossary-dropdown-menu status-dropdown"
           getPopupContainer={(trigger) => {
@@ -629,6 +613,22 @@ const GlossaryTermTab = ({
             </Space>
           </Button>
         </Dropdown>
+        <Button
+          className="text-primary"
+          data-testid="expand-collapse-all-button"
+          size="small"
+          type="text"
+          onClick={toggleExpandAll}>
+          <Space align="center" size={4}>
+            {isAllExpanded ? (
+              <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+            ) : (
+              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+            )}
+
+            {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
+          </Space>
+        </Button>
       </>
     );
   }, [isAllExpanded, isStatusDropdownVisible, statusDropdownMenu]);
