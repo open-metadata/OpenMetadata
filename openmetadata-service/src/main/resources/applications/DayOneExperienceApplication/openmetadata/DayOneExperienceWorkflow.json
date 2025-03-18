@@ -8,7 +8,10 @@
     "storeStageStatus": true
   },
   "trigger": {
-    "type": "noOp"
+    "type": "noOp",
+    "output": [
+      "relatedEntity"
+    ]
   },
   "nodes": [
     {

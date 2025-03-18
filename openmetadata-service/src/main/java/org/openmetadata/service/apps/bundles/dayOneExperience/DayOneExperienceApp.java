@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.dayOneExperience;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
 import java.io.InputStream;
 import java.util.HashMap;
@@ -81,7 +82,8 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
           runtimeConfig.getEntityLink());
 
       WorkflowHandler.getInstance()
-          .triggerByKey(WORKFLOW_NAME, UUID.randomUUID().toString(), variables);
+          .triggerByKey(
+              getTriggerWorkflowId(WORKFLOW_NAME), UUID.randomUUID().toString(), variables);
     } else {
       LOG.info(
           String.format(
