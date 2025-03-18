@@ -19,6 +19,7 @@ import { ReactComponent as ArrowUp } from '../../../assets/svg/up-full-arrow.svg
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { PLATFORM_INSIGHTS_CHART } from '../../../constants/ServiceInsightsTab.constants';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
+import { getReadableCountString } from '../../../utils/ServiceUtils';
 import TotalDataAssetsWidget from '../TotalDataAssetsWidget/TotalDataAssetsWidget';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
@@ -39,7 +40,7 @@ function PlatformInsightsWidget({
         {t('message.platform-insight-description')}
       </Typography.Text>
 
-      <Row className="m-t-sm" gutter={16}>
+      <Row className="m-t-lg" gutter={16}>
         <Col span={12}>
           <TotalDataAssetsWidget serviceName={serviceName} />
         </Col>
@@ -68,28 +69,35 @@ function PlatformInsightsWidget({
                       className="flex flex-col justify-between h-full"
                       span={14}>
                       <Typography.Title level={3}>
-                        {chart.currentCount}
+                        {`${getReadableCountString(chart.currentPercentage)}%`}
                       </Typography.Title>
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {chart.isIncreased ? (
-                          <ArrowUp color={GREEN_1} height={11} width={11} />
-                        ) : (
-                          <ArrowDown color={RED_1} height={11} width={11} />
-                        )}
-                        <Typography.Text
-                          className="font-medium text-sm"
-                          style={{
-                            color: chart.isIncreased ? GREEN_1 : RED_1,
-                          }}>
-                          {`${chart.percentageChange}%`}
-                        </Typography.Text>
-                        <Typography.Text className="font-medium text-grey-muted text-sm">
-                          {t('label.vs-last-month')}
-                        </Typography.Text>
-                      </div>
+                      {chart.percentageChange && (
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {chart.isIncreased ? (
+                            <ArrowUp color={GREEN_1} height={11} width={11} />
+                          ) : (
+                            <ArrowDown color={RED_1} height={11} width={11} />
+                          )}
+                          <Typography.Text
+                            className="font-medium text-sm"
+                            style={{
+                              color: chart.isIncreased ? GREEN_1 : RED_1,
+                            }}>
+                            {`${getReadableCountString(
+                              chart.percentageChange
+                            )}%`}
+                          </Typography.Text>
+                          <Typography.Text className="font-medium text-grey-muted text-sm">
+                            {t('label.vs-last-week-lowercase')}
+                          </Typography.Text>
+                        </div>
+                      )}
                     </Col>
                     <Col className="flex items-end h-full" span={10}>
-                      <ResponsiveContainer height={70} width="100%">
+                      <ResponsiveContainer
+                        height="90%"
+                        minHeight={90}
+                        width="100%">
                         <AreaChart data={chart.data}>
                           <defs>
                             {[GREEN_1, RED_1].map((color) => (
