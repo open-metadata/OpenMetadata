@@ -103,12 +103,14 @@ public class SystemResource {
     if (defaultSearchSettingsCache != null) {
       try {
         List<String> jsonDataFiles =
-            EntityUtil.getJsonDataResources(".*/json/data/searchSettings/searchSettings.json");
+            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
         if (!jsonDataFiles.isEmpty()) {
           String json =
               CommonUtil.getResourceAsStream(
                   EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
           defaultSearchSettingsCache = JsonUtils.readValue(json, SearchSettings.class);
+        } else {
+          throw new IllegalArgumentException("Default search settings file not found.");
         }
       } catch (IOException e) {
         LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
