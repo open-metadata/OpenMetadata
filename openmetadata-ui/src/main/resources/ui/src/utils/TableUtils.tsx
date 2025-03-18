@@ -1077,7 +1077,8 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
 
 export const ExtraTableDropdownOptions = (
   fqn: string,
-  permission: OperationPermission
+  permission: OperationPermission,
+  deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const history = useHistory();
@@ -1085,7 +1086,7 @@ export const ExtraTableDropdownOptions = (
   const { ViewAll, EditAll } = permission;
 
   return [
-    ...(EditAll
+    ...(EditAll && !deleted
       ? [
           {
             label: (
@@ -1107,7 +1108,7 @@ export const ExtraTableDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll
+    ...(ViewAll && !deleted
       ? [
           {
             label: (

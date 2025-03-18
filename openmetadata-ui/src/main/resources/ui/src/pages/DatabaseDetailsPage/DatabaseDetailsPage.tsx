@@ -130,9 +130,10 @@ const DatabaseDetails: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.DATABASE,
         decodedDatabaseFQN,
-        databasePermission
+        databasePermission,
+        database?.deleted ?? false
       ),
-    [decodedDatabaseFQN, databasePermission]
+    [decodedDatabaseFQN, databasePermission, database?.deleted]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
