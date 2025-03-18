@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
-import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import es.org.elasticsearch.action.search.SearchResponse;
@@ -30,8 +29,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -42,15 +43,14 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @Path("/v1/search")
@@ -192,24 +192,73 @@ public class SearchResource {
     }
 
     SearchRequest request =
-        new SearchRequest.ElasticSearchRequestBuilder(
-                query, size, Entity.getSearchRepository().getIndexOrAliasName(index))
-            .from(from)
-            .queryFilter(queryFilter)
-            .postFilter(postFilter)
-            .fetchSource(fetchSource)
-            .trackTotalHits(trackTotalHits)
-            .sortFieldParam(sortFieldParam)
-            .deleted(deleted)
-            .sortOrder(sortOrder)
-            .includeSourceFields(includeSourceFields)
-            .getHierarchy(getHierarchy)
-            .domains(domains)
-            .applyDomainFilter(
+        new SearchRequest()
+            .withQuery(query)
+            .withSize(size)
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withFrom(from)
+            .withQueryFilter(queryFilter)
+            .withPostFilter(postFilter)
+            .withFetchSource(fetchSource)
+            .withTrackTotalHits(trackTotalHits)
+            .withSortFieldParam(sortFieldParam)
+            .withDeleted(deleted)
+            .withSortOrder(sortOrder)
+            .withIncludeSourceFields(includeSourceFields)
+            .withIsHierarchy(getHierarchy)
+            .withDomains(domains)
+            .withApplyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
-            .searchAfter(searchAfter)
-            .explain(explain)
-            .build();
+            .withSearchAfter(SearchUtils.searchAfter(searchAfter))
+            .withExplain(explain);
+    return searchRepository.search(request, subjectContext);
+  }
+
+  @POST
+  @Path("/query")
+  @Operation(
+      operationId = "searchEntitiesWithQueryPost",
+      summary = "Search entities",
+      description =
+          "Search entities using query test. Use query params `from` and `size` for pagination. Use "
+              + "`sort_field` to sort the results in `sort_order`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchPost(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SearchRequest searchRequest)
+      throws IOException {
+
+    if (nullOrEmpty(searchRequest.getQuery())) {
+      searchRequest.setQuery("*");
+    }
+
+    // Add Domain Filter
+    List<EntityReference> domains = new ArrayList<>();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    SearchRequest request =
+        searchRequest
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(searchRequest.getIndex()))
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+    LOG.info("Domains: {}", domains);
+    LOG.info(
+        "Apply Domain Filter: {}",
+        !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+
     return searchRepository.search(request, subjectContext);
   }
 
@@ -346,12 +395,14 @@ public class SearchResource {
     }
 
     SearchRequest request =
-        new SearchRequest.ElasticSearchRequestBuilder(query, size, index)
-            .fieldName(fieldName)
-            .deleted(deleted)
-            .fetchSource(fetchSource)
-            .includeSourceFields(includeSourceFields)
-            .build();
+        new SearchRequest()
+            .withQuery(query)
+            .withSize(size)
+            .withIndex(index)
+            .withFieldName(fieldName)
+            .withDeleted(deleted)
+            .withFetchSource(fetchSource)
+            .withIncludeSourceFields(includeSourceFields);
     return searchRepository.suggest(request);
   }
 
@@ -407,31 +458,30 @@ public class SearchResource {
     return searchRepository.aggregate(index, fieldName, value, query);
   }
 
-  @GET
-  @Path("/reindex/stream/status")
+  @POST
+  @Path("/aggregate")
   @Operation(
-      operationId = "getStreamJobStatus",
-      summary = "Get Stream Job Latest Status",
-      description = "Stream Job Status",
+      operationId = "aggregateSearchRequest",
+      summary = "Get aggregated Search Request",
+      description = "Get aggregated fields from entities.",
       responses = {
-        @ApiResponse(responseCode = "200", description = "Success"),
-        @ApiResponse(responseCode = "404", description = "Status not found")
+        @ApiResponse(
+            responseCode = "200",
+            description = "Table Aggregate API",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
-  public Response reindexAllJobLastStatus(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    // Only admins  can issue a reindex request
-    authorizer.authorizeAdmin(securityContext);
-    // Check if there is a running job for reindex for requested entity
-    String jobRecord;
-    jobRecord =
-        Entity.getCollectionDAO()
-            .entityExtensionTimeSeriesDao()
-            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
-    if (jobRecord != null) {
-      return Response.status(Response.Status.OK)
-          .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))
-          .build();
-    }
-    return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
+  public Response aggregateSearchRequest(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SearchRequest searchRequest)
+      throws IOException {
+    return searchRepository.aggregate(
+        searchRequest.getIndex(),
+        searchRequest.getFieldName(),
+        searchRequest.getFieldValue(),
+        searchRequest.getQuery());
   }
 }

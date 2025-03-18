@@ -82,6 +82,7 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -101,7 +102,6 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
@@ -400,7 +400,7 @@ public class OpenSearchClient implements SearchClient {
     }
 
     if (!nullOrEmpty(request.getSearchAfter())) {
-      searchSourceBuilder.searchAfter(request.getSearchAfter());
+      searchSourceBuilder.searchAfter(request.getSearchAfter().toArray());
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
@@ -415,7 +415,7 @@ public class OpenSearchClient implements SearchClient {
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
+              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
@@ -456,10 +456,10 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
+              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
+    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
       FieldSortBuilder fieldSortBuilder =
           new FieldSortBuilder(request.getSortFieldParam())
               .order(SortOrder.fromString(request.getSortOrder()));
@@ -488,18 +488,18 @@ public class OpenSearchClient implements SearchClient {
     https://github.com/Open/Opensearch/issues/33028 */
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
-            request.isFetchSource(),
+            request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
             new String[] {}));
 
-    if (request.isTrackTotalHits()) {
+    if (request.getTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    if (request.isExplain()) {
+    if (request.getExplain()) {
       searchSourceBuilder.explain(true);
     }
     try {
@@ -508,7 +508,7 @@ public class OpenSearchClient implements SearchClient {
               new os.org.opensearch.action.search.SearchRequest(request.getIndex())
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
-      if (!request.isGetHierarchy()) {
+      if (!request.getIsHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
         // Build the nested hierarchy from elastic search response
@@ -547,7 +547,7 @@ public class OpenSearchClient implements SearchClient {
       SearchRequest request, SearchSourceBuilder searchSourceBuilder, RestHighLevelClient client)
       throws IOException {
 
-    if (!request.isGetHierarchy()) {
+    if (!request.getIsHierarchy()) {
       return;
     }
 
@@ -1458,7 +1458,7 @@ public class OpenSearchClient implements SearchClient {
               "deleted",
               Collections.singletonList(
                   CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.isDeleted()))
+                      .setCategory(String.valueOf(request.getDeleted()))
                       .build())));
     }
     SuggestBuilder suggestBuilder = new SuggestBuilder();
@@ -1468,7 +1468,7 @@ public class OpenSearchClient implements SearchClient {
         .timeout(new TimeValue(30, TimeUnit.SECONDS))
         .fetchSource(
             new FetchSourceContext(
-                request.isFetchSource(),
+                request.getFetchSource(),
                 request.getIncludeSourceFields().toArray(String[]::new),
                 new String[] {}));
     os.org.opensearch.action.search.SearchRequest searchRequest =

@@ -73,6 +73,7 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
@@ -1163,17 +1164,18 @@ public class SearchRepository {
               ReindexingUtil.escapeDoubleQuotes(entityFQN));
 
       SearchRequest searchRequest =
-          new SearchRequest.ElasticSearchRequestBuilder(
-                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
-              .from(0)
-              .queryFilter(queryFilter)
-              .fetchSource(true)
-              .trackTotalHits(false)
-              .sortFieldParam("_score")
-              .deleted(false)
-              .sortOrder("desc")
-              .includeSourceFields(new ArrayList<>())
-              .build();
+          new SearchRequest()
+              .withQuery("*")
+              .withSize(size)
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+              .withFrom(0)
+              .withQueryFilter(queryFilter)
+              .withFetchSource(true)
+              .withTrackTotalHits(false)
+              .withSortFieldParam("_score")
+              .withDeleted(false)
+              .withSortOrder("desc")
+              .withIncludeSourceFields(new ArrayList<>());
 
       // Execute the search and parse the response
       Response response = search(searchRequest, null);
