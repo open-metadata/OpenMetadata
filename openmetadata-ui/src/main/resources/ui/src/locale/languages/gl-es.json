@@ -1654,6 +1654,7 @@
     "entity-transfer-message": "Fai clic en Confirmar se desexas mover <0>{{from}}</0> {{entity}} baixo <0>{{to}}</0> {{entity}}.",
     "enum-property-update-message": "Iniciouse a actualización dos valores enum. Notificaráselle cando remate.",
     "enum-with-description-update-note": "Non está permitido actualizar as claves de valores existentes; só se pode editar a descrición. Con todo, está permitido engadir novos valores.",
+    "error-generating-pdf": "Erro ao xerar o PDF",
     "error-self-signup-disabled": "A inscrición automática está desactivada actualmente. Para continuar, contacta co teu administrador para obter asistencia ou solicitar acceso.",
     "error-team-transfer-message": "Non podes mover a este equipo xa que o Tipo de Equipo {{dragTeam}} non pode ser fillo de {{dropTeam}}",
     "error-while-fetching-access-token": "Erro ao obter o token de acceso.",

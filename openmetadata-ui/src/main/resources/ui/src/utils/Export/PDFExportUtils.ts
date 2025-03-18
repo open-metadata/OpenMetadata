@@ -74,3 +74,37 @@ export const exportAsPDF = async (elmId: string, fileName: string) => {
     showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
   }
 };
+
+export const convertPngToPDFExport = (
+  base64Image: string,
+  fileName: string
+) => {
+  const pdf = new jsPDF();
+
+  // PDF dimensions (A4 size)
+  const pdfWidth = pdf.internal.pageSize.width;
+  const pdfHeight = pdf.internal.pageSize.height;
+
+  // Create an Image object to load the base64 image
+  const img = new Image();
+  img.src = base64Image;
+
+  // Once the image has loaded, calculate dimensions and add it to the PDF
+  img.onload = function () {
+    const aspectRatio = img.width / img.height;
+
+    // Calculate width and height to fit the PDF
+    let imgWidth = pdfWidth;
+    let imgHeight = pdfWidth / aspectRatio;
+
+    // If the image height exceeds the PDF page height, scale it down
+    if (imgHeight > pdfHeight) {
+      imgHeight = pdfHeight;
+      imgWidth = pdfHeight * aspectRatio;
+    }
+
+    // Add the image to the PDF
+    pdf.addImage(base64Image, 'PNG', 0, 0, imgWidth, imgHeight);
+    pdf.save(`${fileName}.pdf`);
+  };
+};

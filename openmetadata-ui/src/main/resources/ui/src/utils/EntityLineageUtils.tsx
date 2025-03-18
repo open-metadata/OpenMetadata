@@ -15,6 +15,7 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
+import { toPng } from 'html-to-image';
 import { t } from 'i18next';
 import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
@@ -84,7 +85,9 @@ import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
+import { convertPngToPDFExport } from './Export/PDFExportUtils';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -1665,4 +1668,78 @@ export const removeUnconnectedNodes = (
   }
 
   return updatedNodes;
+};
+
+// Helper function to calculate bounds for all nodes
+export const getNodesBoundsReactFlow = (nodes: Node[]) => {
+  const bounds = {
+    xMin: Infinity,
+    yMin: Infinity,
+    xMax: -Infinity,
+    yMax: -Infinity,
+  };
+
+  nodes.forEach((node) => {
+    const { x, y } = node.position;
+    bounds.xMin = Math.min(bounds.xMin, x);
+    bounds.yMin = Math.min(bounds.yMin, y);
+    bounds.xMax = Math.max(bounds.xMax, x + (node.width ?? 0));
+    bounds.yMax = Math.max(bounds.yMax, y + (node.height ?? 0));
+  });
+
+  return bounds;
+};
+
+// Helper function to calculate the viewport for the full React Flow Graph
+export const getViewportForBoundsReactFlow = (
+  bounds: { xMin: number; yMin: number; xMax: number; yMax: number },
+  imageWidth: number,
+  imageHeight: number,
+  scaleFactor = 1
+) => {
+  const width = bounds.xMax - bounds.xMin;
+  const height = bounds.yMax - bounds.yMin;
+
+  // Scale the image to fit the container
+  const scale =
+    Math.min(imageWidth / width, imageHeight / height) * scaleFactor;
+
+  // Calculate translation to center the flow
+  const translateX = (imageWidth - width * scale) / 2 - bounds.xMin * scale;
+  const translateY = (imageHeight - height * scale) / 2 - bounds.yMin * scale;
+
+  return { x: translateX, y: translateY, zoom: scale };
+};
+
+export const handleExportPDFLineage = (nodes: Node[], fileName: string) => {
+  try {
+    const exportElement = document.querySelector(
+      '.react-flow__viewport'
+    ) as HTMLElement;
+
+    const imageWidth = exportElement.scrollWidth;
+    const imageHeight = exportElement.scrollHeight;
+
+    const nodesBounds = getNodesBoundsReactFlow(nodes);
+
+    // Calculate the viewport to fit all nodes
+    const viewport = getViewportForBoundsReactFlow(
+      nodesBounds,
+      imageWidth,
+      imageHeight
+    );
+
+    toPng(exportElement, {
+      backgroundColor: '#ffffff',
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: imageWidth.toString(),
+        height: imageHeight.toString(),
+        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+      },
+    }).then((base64Image) => convertPngToPDFExport(base64Image, fileName));
+  } catch (error) {
+    showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
+  }
 };
