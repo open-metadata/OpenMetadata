@@ -1221,13 +1221,13 @@ export const softDeleteEntity = async (
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
-    `/api/v1/${endPoint}/*?hardDelete=false&recursive=true`
+    `/api/v1/${endPoint}/async/*?hardDelete=false&recursive=true`
   );
   await page.click('[data-testid="confirm-button"]');
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(page, /Delete operation initiated for/);
 
   await page.reload();
 
@@ -1287,12 +1287,12 @@ export const hardDeleteEntity = async (
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
-    `/api/v1/${endPoint}/*?hardDelete=true&recursive=true`
+    `/api/v1/${endPoint}/async/*?hardDelete=true&recursive=true`
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(page, /Delete operation initiated for/);
 };
 
 export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
