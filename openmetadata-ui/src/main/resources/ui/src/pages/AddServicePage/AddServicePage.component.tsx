@@ -42,6 +42,7 @@ import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
@@ -129,18 +130,13 @@ const AddServicePage = () => {
   // Service connection
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = (newConfigData: ConfigData) => {
-    const data = {
+    const data = serviceUtilClassBase.getServiceConfigData({
+      serviceName: serviceConfig.name,
       serviceType: serviceConfig.serviceType,
-      owners: [
-        {
-          id: currentUser?.id ?? '',
-          type: 'user',
-        },
-      ],
-      connection: {
-        config: newConfigData,
-      },
-    };
+      description: serviceConfig.description,
+      userId: currentUser?.id ?? '',
+      configData: newConfigData,
+    });
 
     setServiceConfig((prev) => ({
       ...prev,

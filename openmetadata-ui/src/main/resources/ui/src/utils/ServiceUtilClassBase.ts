@@ -784,13 +784,28 @@ class ServiceUtilClassBase {
     return widgets;
   }
 
-  public getEditConfigData(serviceData: ServicesType, data: ConfigData) {
-    return {
-      ...serviceData,
-      connection: {
-        config: data,
-      },
-    };
+  public getEditConfigData(
+    serviceData?: ServicesType,
+    data?: ConfigData
+  ): ServicesType {
+    if (!serviceData || !data) {
+      return serviceData as ServicesType;
+    }
+    const updatedData = { ...serviceData };
+    if (updatedData.connection) {
+      const connection = updatedData.connection as {
+        config: Record<string, unknown>;
+      };
+      updatedData.connection = {
+        ...connection,
+        config: {
+          ...connection.config,
+          ...data,
+        },
+      } as typeof updatedData.connection;
+    }
+
+    return updatedData;
   }
 
   /**

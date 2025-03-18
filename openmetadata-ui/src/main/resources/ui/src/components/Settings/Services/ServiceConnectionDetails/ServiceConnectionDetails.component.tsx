@@ -139,46 +139,53 @@ const ServiceConnectionDetails = ({
   }, [schema]);
 
   return (
-    <div
-      className="service-connection-details"
-      data-testid="service-connection-details">
-      <Row className="w-full" gutter={[8, 8]}>
-        {data}
-      </Row>
+    <>
+      <div
+        className="service-connection-details"
+        data-testid="service-connection-details">
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
+      </div>
+
       {extraInfo && (
-        <>
-          <Col span={12}>
-            <Row>
-              <Col className="d-flex items-center" span={8}>
-                <Space size={0}>
-                  <p className="text-grey-muted m-0">{extraInfo.type}</p>
-                  {extraInfo.description && (
-                    <Tooltip
-                      placement="bottom"
-                      title={extraInfo.description}
-                      trigger="hover">
-                      <InfoCircleOutlined
-                        className="m-x-xss"
-                        style={{ color: '#C4C4C4' }}
-                      />
-                    </Tooltip>
-                  )}
-                </Space>
-              </Col>
-              <Col span={16}>
-                <Input
-                  readOnly
-                  className="w-full border-none"
-                  data-testid="input-field"
-                  type="text"
-                  value={extraInfo.name}
-                />
-              </Col>
-            </Row>
-          </Col>
-        </>
+        <div className="service-connection-details m-t-md">
+          <Row className="w-full" gutter={[8, 8]}>
+            <Col span={12}>
+              <Row>
+                <Col className="d-flex items-center" span={8}>
+                  <Space size={0}>
+                    <p className="text-grey-muted m-0">
+                      {t('label.extra-info-key')}
+                    </p>
+                    {extraInfo.description && (
+                      <Tooltip
+                        placement="bottom"
+                        title={extraInfo.description}
+                        trigger="hover">
+                        <InfoCircleOutlined
+                          className="m-x-xss"
+                          style={{ color: '#C4C4C4' }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Space>
+                </Col>
+                <Col span={16}>
+                  <Input
+                    readOnly
+                    className="w-full border-none"
+                    data-testid="input-field"
+                    type="text"
+                    value={extraInfo.name}
+                  />
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </div>
       )}
-    </div>
+    </>
   );
 };
 

@@ -73,15 +73,10 @@ function EditConnectionFormPage() {
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
 
   const handleConfigSave = (updatedData: ConfigData) => {
-    const configData: ServicesUpdateRequest = {
-      ...serviceDetails,
-      connection: {
-        config: {
-          ...serviceDetails?.connection?.config,
-          ...updatedData,
-        },
-      },
-    };
+    const configData = serviceUtilClassBase.getEditConfigData(
+      serviceDetails,
+      updatedData
+    );
 
     setServiceConfig(configData);
     setActiveServiceStep(2);
@@ -92,8 +87,17 @@ function EditConnectionFormPage() {
       return;
     }
 
-    const configData: ServicesUpdateRequest =
-      serviceUtilClassBase.getEditConfigData(serviceDetails, updatedData);
+    const configData: ServicesUpdateRequest = {
+      ...serviceDetails,
+      ...serviceConfig,
+      connection: {
+        config: {
+          ...serviceDetails?.connection?.config,
+          ...serviceConfig?.connection?.config,
+          ...updatedData,
+        },
+      },
+    };
 
     const jsonPatch = compare(serviceDetails, configData);
 
