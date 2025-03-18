@@ -286,7 +286,8 @@ function ServiceMainTabContent({
 
                               {entityType === EntityType.DATABASE_SERVICE &&
                                 getBulkEditButton(
-                                  servicePermission.EditAll,
+                                  servicePermission.EditAll &&
+                                    !serviceDetails.deleted,
                                   handleEditTable
                                 )}
                             </>

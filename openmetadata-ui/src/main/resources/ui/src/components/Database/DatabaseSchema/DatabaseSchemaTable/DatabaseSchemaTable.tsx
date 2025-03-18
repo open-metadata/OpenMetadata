@@ -334,7 +334,7 @@ export const DatabaseSchemaTable = ({
           dataSource={schemas}
           defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
           extraTableFilters={getBulkEditButton(
-            permissions.databaseSchema.EditAll,
+            permissions.databaseSchema.EditAll && !isDatabaseDeleted,
             handleEditTable
           )}
           loading={isLoading}

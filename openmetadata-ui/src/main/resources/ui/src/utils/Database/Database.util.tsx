@@ -222,7 +222,8 @@ export const getDatabaseWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
 export const ExtraDatabaseDropdownOptions = (
   fqn: string,
-  permission: OperationPermission
+  permission: OperationPermission,
+  deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const history = useHistory();
@@ -230,7 +231,7 @@ export const ExtraDatabaseDropdownOptions = (
   const { ViewAll, EditAll } = permission;
 
   return [
-    ...(EditAll
+    ...(EditAll && !deleted
       ? [
           {
             label: (
@@ -252,7 +253,7 @@ export const ExtraDatabaseDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll
+    ...(ViewAll && !deleted
       ? [
           {
             label: (

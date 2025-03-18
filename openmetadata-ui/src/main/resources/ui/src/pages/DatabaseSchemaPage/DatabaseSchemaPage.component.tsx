@@ -113,9 +113,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN,
-        databaseSchemaPermission
+        databaseSchemaPermission,
+        databaseSchema?.deleted ?? false
       ),
-    [databaseSchemaPermission, decodedDatabaseSchemaFQN]
+    [
+      databaseSchemaPermission,
+      decodedDatabaseSchemaFQN,
+      databaseSchema?.deleted,
+    ]
   );
 
   const { version: currentVersion, id: databaseSchemaId = '' } = useMemo(

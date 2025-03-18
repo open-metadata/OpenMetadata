@@ -307,7 +307,8 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
 export const ExtraDatabaseServiceDropdownOptions = (
   fqn: string,
-  permission: OperationPermission
+  permission: OperationPermission,
+  deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const history = useHistory();
@@ -315,7 +316,7 @@ export const ExtraDatabaseServiceDropdownOptions = (
   const { ViewAll, EditAll } = permission;
 
   return [
-    ...(EditAll
+    ...(EditAll && !deleted
       ? [
           {
             label: (
@@ -339,7 +340,7 @@ export const ExtraDatabaseServiceDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll
+    ...(ViewAll && !deleted
       ? [
           {
             label: (

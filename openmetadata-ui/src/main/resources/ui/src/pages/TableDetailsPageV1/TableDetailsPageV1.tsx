@@ -157,9 +157,10 @@ const TableDetailsPageV1: React.FC = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.TABLE,
         tableFqn,
-        tablePermissions
+        tablePermissions,
+        tableDetails?.deleted ?? false
       ),
-    [tablePermissions, tableFqn]
+    [tablePermissions, tableFqn, tableDetails?.deleted]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
