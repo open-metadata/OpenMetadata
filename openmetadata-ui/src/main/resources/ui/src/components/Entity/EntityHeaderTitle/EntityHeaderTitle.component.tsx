@@ -127,7 +127,7 @@ const EntityHeaderTitle = ({
               onClick={handleShareButtonClick}
             />
           </Tooltip>
-          {!excludeEntityService && !isCustomizedView && (
+          {!excludeEntityService && !isCustomizedView && handleFollowingClick && (
             <Tooltip
               title={t('label.field-entity', {
                 field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
