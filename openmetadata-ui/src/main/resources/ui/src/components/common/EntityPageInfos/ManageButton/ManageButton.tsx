@@ -47,6 +47,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   entityType,
   canDelete,
   entityId,
+  isAsyncDelete = false,
   isRecursiveDelete,
   extraDropdownContent,
   onAnnouncementClick,
@@ -278,6 +279,7 @@ const ManageButton: FC<ManageButtonProps> = ({
           entityName={displayName ?? entityName}
           entityType={entityType}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
+          isAsyncDelete={isAsyncDelete}
           isRecursiveDelete={isRecursiveDelete}
           prepareType={prepareType}
           softDeleteMessagePostFix={softDeleteMessagePostFix}
