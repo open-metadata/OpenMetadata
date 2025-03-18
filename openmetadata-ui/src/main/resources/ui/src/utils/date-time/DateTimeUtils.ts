@@ -300,3 +300,9 @@ export const getStartOfDayInMillis = (timestamp: number) =>
 
 export const getEndOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().endOf('day').toMillis();
+
+export const getCurrentDayStartGMTinMillis = () =>
+  DateTime.now().setZone('GMT').startOf('day').toMillis();
+
+export const getDayAgoStartGMTinMillis = (days: number) =>
+  DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();
