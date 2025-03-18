@@ -123,7 +123,7 @@
     "auto-tag-pii-uppercase": "Auto Tag PII",
     "automatically-generate": "Automatically Generate",
     "average-daily-active-users-on-the-platform": "Average Daily Active Users on the Platform",
-    "average-entity": "Average {{entity}}",
+    "average-entity": "Avg. {{entity}}",
     "average-session": "Avg. Session Time",
     "awaiting-status": "Awaiting status",
     "aws-access-key-id": "AWS Access Key ID",
