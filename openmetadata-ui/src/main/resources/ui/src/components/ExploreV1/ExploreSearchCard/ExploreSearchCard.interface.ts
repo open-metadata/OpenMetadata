@@ -34,4 +34,5 @@ export interface ExploreSearchCardProps {
   actionPopoverContent?: React.ReactNode;
   onCheckboxChange?: (checked: boolean) => void;
   searchValue?: string;
+  score?: number;
 }

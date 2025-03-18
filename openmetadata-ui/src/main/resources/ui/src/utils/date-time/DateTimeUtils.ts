@@ -306,3 +306,12 @@ export const getCurrentDayStartGMTinMillis = () =>
 
 export const getDayAgoStartGMTinMillis = (days: number) =>
   DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();
+
+export const getSevenDaysStartGMTArrayInMillis = () => {
+  const sevenDaysStartGMTArrayInMillis = [];
+  for (let i = 6; i >= 0; i--) {
+    sevenDaysStartGMTArrayInMillis.push(getDayAgoStartGMTinMillis(i));
+  }
+
+  return sevenDaysStartGMTArrayInMillis;
+};
