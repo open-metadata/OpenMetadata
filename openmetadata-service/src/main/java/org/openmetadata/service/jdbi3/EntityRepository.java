@@ -1310,6 +1310,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entity != null) {
       DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
       postDelete(response.entity());
+      deleteFromSearch(response.entity(), hardDelete);
       return response;
     } else {
       return new DeleteResponse<>(null, ENTITY_DELETED);
@@ -3998,7 +3999,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public static void validateColumn(Table table, String columnName) {
     boolean validColumn =
         table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
-    if (!validColumn) {
+    if (!validColumn && !columnName.equalsIgnoreCase("all")) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
     }
   }
