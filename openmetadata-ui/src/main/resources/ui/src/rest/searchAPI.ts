@@ -24,7 +24,7 @@ import {
 } from '../interface/search.interface';
 import { omitDeep } from '../utils/APIUtils';
 import { getQueryWithSlash } from '../utils/SearchUtils';
-import { default as APIClient, default as axiosClient } from './index';
+import APIClient from './index';
 
 const getSearchIndexParam: (
   si: SearchIndex | SearchIndex[] | undefined
@@ -236,7 +236,7 @@ export const searchQuery = async <
 };
 
 export const searchPreview = async (payload: PreviewSearchRequest) => {
-  const response = await axiosClient.post<SearchResponse<SearchIndex>>(
+  const response = await APIClient.post<SearchResponse<SearchIndex>>(
     '/search/preview',
     payload
   );
