@@ -54,11 +54,15 @@ export const TabItem = ({
   });
 
   const tabMenuItems: MenuProps['items'] = [
-    {
-      label: 'Edit Widgets',
-      key: 'edit',
-      icon: <CheckCircleOutlined />,
-    },
+    ...(item.editable
+      ? [
+          {
+            label: 'Edit Widgets',
+            key: 'edit',
+            icon: <CheckCircleOutlined />,
+          },
+        ]
+      : []),
     {
       label: 'Rename',
       key: 'rename',
@@ -110,6 +114,7 @@ export const TabItem = ({
         trigger={['click']}>
         <Button
           className="draggable-tab-item"
+          data-testid={`tab-${item.name}`}
           onClick={() => onItemClick?.(item.id)}>
           <Space>
             {getEntityName(item)}

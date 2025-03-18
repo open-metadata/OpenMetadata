@@ -286,6 +286,7 @@ export const CustomizeTabWidget = () => {
         <Card
           bordered={false}
           className="m-x-lg"
+          data-testid="customize-tab-card"
           extra={
             <Button icon={<PlusOutlined />} type="primary" onClick={add}>
               {t('label.add-entity', {
@@ -293,7 +294,7 @@ export const CustomizeTabWidget = () => {
               })}
             </Button>
           }
-          title="Customize Tabs">
+          title={t('label.customize-tab-plural')}>
           <DndProvider backend={HTML5Backend}>
             <Space wrap size={16}>
               {items.map((item, index) => (
@@ -302,7 +303,7 @@ export const CustomizeTabWidget = () => {
                   item={item}
                   key={item.id}
                   moveTab={moveTab}
-                  onEdit={setActiveKey}
+                  onEdit={onChange}
                   onRemove={remove}
                   onRename={handleTabEditClick}
                 />

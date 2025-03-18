@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
@@ -171,16 +171,20 @@ test.describe('Customize Detail Page', async () => {
 
                 const expectedTabs = getCustomizeDetailsDefaultTabs(type);
 
-                const tabs = adminPage.getByRole('tab');
+                const tabs = adminPage
+                  .getByTestId('customize-tab-card')
+                  .getByRole('button')
+                  .filter({ hasNotText: 'Add Tab' });
 
                 await expect(tabs).toHaveCount(expectedTabs.length);
 
                 for (const tabName of expectedTabs) {
                   await expect(
-                    adminPage.getByRole('tab', {
-                      name: tabName,
-                      exact: true,
-                    })
+                    adminPage
+                      .getByTestId('customize-tab-card')
+                      .getByRole('button', {
+                        name: tabName,
+                      })
                   ).toBeVisible();
                 }
               }
@@ -265,16 +269,20 @@ test.describe('Customize Detail Page', async () => {
 
               const expectedTabs = getCustomizeDetailsDefaultTabs(type);
 
-              const tabs = adminPage.getByRole('tab');
+              const tabs = adminPage
+                .getByTestId('customize-tab-card')
+                .getByRole('button')
+                .filter({ hasNotText: 'Add Tab' });
 
               await expect(tabs).toHaveCount(expectedTabs.length);
 
               for (const tabName of expectedTabs) {
                 await expect(
-                  adminPage.getByRole('tab', {
-                    name: tabName,
-                    exact: true,
-                  })
+                  adminPage
+                    .getByTestId('customize-tab-card')
+                    .getByRole('button', {
+                      name: tabName,
+                    })
                 ).toBeVisible();
               }
             }
