@@ -36,7 +36,8 @@ class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
          hrly_rate  NUMBER(7,2) GENERATED ALWAYS AS (sal/2080),
          comm       NUMBER(7,2),
          comments   VARCHAR2(3277),
-         status     VARCHAR2(10))
+         status     VARCHAR2(10),
+         "col_with_quotes" VARCHAR2(10)),
    TABLESPACE USERS
    STORAGE ( INITIAL 50K)
     """
@@ -46,16 +47,16 @@ class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         """
-        INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo) WITH names AS (
-SELECT 1, 'John Doe', 12356789, 'Manager', 121, 5200.0, 5000.0, 'Amazing', 'Active', EMPTY_BLOB() FROM dual UNION ALL
-SELECT 2, 'Jane Doe', 123467189, 'Clerk', 131, 503.0, 5000.0, 'Wow', 'Active', EMPTY_BLOB() FROM dual UNION ALL
-SELECT 3, 'Jon Doe', 123562789, 'Assistant', 141, 5000.0, 5000.0, 'Nice', 'Active', EMPTY_BLOB() FROM dual
+        INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo, "col_with_quotes") WITH names AS (
+SELECT 1, 'John Doe', 12356789, 'Manager', 121, 5200.0, 5000.0, 'Amazing', 'Active', EMPTY_BLOB(), 'test' FROM dual UNION ALL
+SELECT 2, 'Jane Doe', 123467189, 'Clerk', 131, 503.0, 5000.0, 'Wow', 'Active', EMPTY_BLOB(), 'test'  FROM dual UNION ALL
+SELECT 3, 'Jon Doe', 123562789, 'Assistant', 141, 5000.0, 5000.0, 'Nice', 'Active', EMPTY_BLOB(), 'test' FROM dual
 )
 SELECT * from names
 """,
         """
-INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo) WITH names AS (
-SELECT 4, 'Jon Doe', 13456789, 'Manager', 151, 5050.0, 5000.0, 'Excellent', 'Active',  UTL_RAW.CAST_TO_RAW('your_binary_data') FROM dual
+INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo, "col_with_quotes") WITH names AS (
+SELECT 4, 'Jon Doe', 13456789, 'Manager', 151, 5050.0, 5000.0, 'Excellent', 'Active',  UTL_RAW.CAST_TO_RAW('your_binary_data'), 'test' FROM dual
 )
 SELECT * from names
 """,
@@ -97,7 +98,7 @@ SELECT * from names
         """view was created from `CREATE VIEW xyz AS (SELECT * FROM abc)`
         which does not propagate column lineage
         """
-        return 12
+        return 13
 
     @staticmethod
     def fqn_created_table() -> str:
