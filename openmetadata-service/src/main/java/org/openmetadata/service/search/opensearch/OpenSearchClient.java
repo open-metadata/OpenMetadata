@@ -104,6 +104,7 @@ import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsCountAggregator;
@@ -250,6 +251,13 @@ public class OpenSearchClient implements SearchClient {
     builder.addHeader("Accept", "application/json");
     builder.setWarningsHandler(WarningsHandler.PERMISSIVE);
     OPENSEARCH_REQUEST_OPTIONS = builder.build();
+  }
+
+  private NLQService nlqService;
+
+  public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
+    this(config);
+    this.nlqService = nlqService;
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
@@ -536,12 +544,60 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
-    Request nlqRequest = new Request("POST", "/_nlq");
-    nlqRequest.setJsonEntity(buildNLQRequest(request));
-    os.org.opensearch.client.Response nlqResponse =
-        client.getLowLevelClient().performRequest(nlqRequest);
-    String responseBody = EntityUtils.toString(nlqResponse.getEntity());
-    return Response.status(Response.Status.OK).entity(responseBody).build();
+    LOG.info("Searching with NLQ: {}", request.getQuery());
+
+    if (nlqService != null) {
+      try {
+        String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
+        if (transformedQuery == null) {
+          LOG.info("Failed to  get Transformed NLQ query ");
+          return fallbackToBasicSearch(request, subjectContext);
+        } else {
+          LOG.debug("Transformed NLQ query: {}", transformedQuery);
+          XContentParser parser = createXContentParser(transformedQuery);
+          SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+          OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+          sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
+          os.org.opensearch.action.search.SearchRequest searchRequest =
+              new os.org.opensearch.action.search.SearchRequest(request.getIndex());
+          searchRequest.source(searchSourceBuilder);
+          os.org.opensearch.action.search.SearchResponse response =
+              client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
+          return Response.status(Response.Status.OK).entity(response.toString()).build();
+        }
+      } catch (Exception e) {
+        LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
+
+        // Try using the built-in OpenSearch NLQ feature as a first fallback
+        try {
+          LOG.debug("Trying OpenSearch native NLQ as fallback");
+          Request nlqRequest = new Request("POST", "/_nlq");
+          nlqRequest.setJsonEntity(buildNLQRequest(request));
+          os.org.opensearch.client.Response nlqResponse =
+              client.getLowLevelClient().performRequest(nlqRequest);
+          String responseBody = EntityUtils.toString(nlqResponse.getEntity());
+          return Response.status(Response.Status.OK).entity(responseBody).build();
+        } catch (Exception ex) {
+          LOG.error(
+              "OpenSearch native NLQ failed, falling back to basic search: {}", ex.getMessage());
+          return fallbackToBasicSearch(request, subjectContext);
+        }
+      }
+    } else {
+      // NLQ service not available, try using OpenSearch's built-in NLQ feature
+      try {
+        LOG.info("NLQ service not available, trying OpenSearch native NLQ");
+        Request nlqRequest = new Request("POST", "/_nlq");
+        nlqRequest.setJsonEntity(buildNLQRequest(request));
+        os.org.opensearch.client.Response nlqResponse =
+            client.getLowLevelClient().performRequest(nlqRequest);
+        String responseBody = EntityUtils.toString(nlqResponse.getEntity());
+        return Response.status(Response.Status.OK).entity(responseBody).build();
+      } catch (Exception e) {
+        LOG.warn("OpenSearch native NLQ failed, falling back to basic search: {}", e.getMessage());
+        return fallbackToBasicSearch(request, subjectContext);
+      }
+    }
   }
 
   private String buildNLQRequest(SearchRequest request) throws IOException {
@@ -552,6 +608,32 @@ public class OpenSearchClient implements SearchClient {
     queryJson.put("size", request.getSize());
     queryJson.put("from", request.getFrom());
     return queryJson.toString();
+  }
+
+  private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    try {
+      LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
+
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      QueryStringQueryBuilder queryBuilder = new QueryStringQueryBuilder(request.getQuery());
+      searchSourceBuilder.query(queryBuilder);
+      searchSourceBuilder.from(request.getFrom());
+      searchSourceBuilder.size(request.getSize());
+      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
+      os.org.opensearch.action.search.SearchRequest osRequest =
+          new os.org.opensearch.action.search.SearchRequest(request.getIndex());
+      osRequest.source(searchSourceBuilder);
+
+      SearchResponse searchResponse = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
+      return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+    } catch (Exception e) {
+      LOG.error("Error in fallback search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute natural language search: %s", e.getMessage()))
+          .build();
+    }
   }
 
   @Override

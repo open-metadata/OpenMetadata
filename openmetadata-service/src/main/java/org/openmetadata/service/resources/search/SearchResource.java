@@ -79,7 +79,7 @@ public class SearchResource {
       operationId = "searchEntitiesWithQuery",
       summary = "Search entities",
       description =
-          "Search entities using query test. Use query params `from` and `size` for pagination. Use "
+          "Search entities using query text. Use query params `from` and `size` for pagination. Use "
               + "`sort_field` to sort the results in `sort_order`.",
       responses = {
         @ApiResponse(
@@ -275,7 +275,7 @@ public class SearchResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SearchResponse.class))),
+                    schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response searchWithNLQ(
       @Context SecurityContext securityContext,

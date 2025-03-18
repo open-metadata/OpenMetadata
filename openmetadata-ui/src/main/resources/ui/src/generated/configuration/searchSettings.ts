@@ -24,6 +24,10 @@ export interface SearchSettings {
      */
     defaultConfiguration?: AssetTypeConfiguration;
     globalSettings?:       GlobalSettings;
+    /**
+     * Configuration for Natural Language Query capabilities
+     */
+    nlqConfiguration?: NlqConfiguration;
 }
 
 export interface AllowedSearchFields {
@@ -250,4 +254,60 @@ export interface GlobalSettings {
      * List of field=value term-boost rules that apply only to this asset.
      */
     termBoosts?: TermBoost[];
+}
+
+/**
+ * Configuration for Natural Language Query capabilities
+ */
+export interface NlqConfiguration {
+    entitySpecificInstructions?: EntitySpecificInstruction[];
+    examples?:                   Example[];
+    globalInstructions?:         PromptSection[];
+    /**
+     * Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific
+     * instructions should appear.
+     */
+    promptTemplate?: string;
+    [property: string]: any;
+}
+
+export interface EntitySpecificInstruction {
+    /**
+     * Entity type this instruction applies to (e.g., 'table', 'dashboard')
+     */
+    entityType?: string;
+    sections?:   PromptSection[];
+    [property: string]: any;
+}
+
+export interface PromptSection {
+    /**
+     * The content for this section of the prompt
+     */
+    content: string;
+    /**
+     * Display order for this section (lower numbers appear first)
+     */
+    order?: number;
+    /**
+     * Section name (e.g., 'CRITICAL FIELD CORRECTIONS', 'QUERY PATTERNS')
+     */
+    section: string;
+    [property: string]: any;
+}
+
+export interface Example {
+    /**
+     * Entity types this example applies to (empty array = all types)
+     */
+    entityTypes?: string[];
+    /**
+     * The corresponding Elasticsearch query
+     */
+    esQuery: string;
+    /**
+     * Natural language query example
+     */
+    query: string;
+    [property: string]: any;
 }
