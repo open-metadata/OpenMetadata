@@ -82,14 +82,10 @@ export const formatContent = (
   htmlString: string,
   formatFor: FormatContentFor
 ) => {
-  const processedString = htmlString.replace(
-    /\*\*(.*?)\*\*/g,
-    '<strong>$1</strong>'
-  );
   // Create a new DOMParser
   const parser = new DOMParser();
   const doc = parser.parseFromString(
-    _convertMarkdownFormatToHtmlString(processedString),
+    _convertMarkdownFormatToHtmlString(htmlString),
     'text/html'
   );
 
@@ -152,6 +148,7 @@ export const isHTMLString = (content: string) => {
       /^\s*>{1,}\s/, // Blockquotes
       /^---|\*\*\*|___/, // Horizontal rules
       /`{1,3}[^`]+`{1,3}/, // Code blocks
+      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
     ];
 
     const hasMarkdownSyntax = markdownPatterns.some((pattern) =>

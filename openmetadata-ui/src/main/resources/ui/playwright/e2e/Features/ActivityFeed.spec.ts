@@ -631,7 +631,7 @@ base.describe('Activity feed with Data Consumer User', () => {
     await afterAction();
   });
 
-  base.fixme('Create and Assign Task with Suggestions', async ({ browser }) => {
+  base('Create and Assign Task with Suggestions', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const { page: page2, afterAction: afterActionUser2 } =
@@ -726,8 +726,10 @@ base.describe('Activity feed with Data Consumer User', () => {
         page2.locator('[data-testid="edit-accept-task-dropdown"]')
       ).toBeVisible();
 
+      const resolveTask = page2.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      await page2.getByText('Accept Suggestion').scrollIntoViewIfNeeded();
       await page2.getByText('Accept Suggestion').click();
-
+      await resolveTask;
       await toastNotification(page2, /Task resolved successfully/);
 
       checkTaskCountInActivityFeed(page2, 0, 2);
