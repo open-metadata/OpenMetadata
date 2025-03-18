@@ -68,6 +68,8 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('Enter', { delay: 100 });
 
+  await page.waitForLoadState('networkidle');
+
   const userListResponse = page.waitForResponse(
     '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
   );

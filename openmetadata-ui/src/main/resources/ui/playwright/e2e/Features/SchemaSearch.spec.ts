@@ -64,6 +64,7 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     await databasesResponse;
 
     const schemaResponse = page.waitForResponse('/api/v1/databaseSchemas?**');
+    await page.click('[data-testid="databases"]');
     await page.click(
       `[data-testid="table-container"] >> text=${table.database.name}`
     );

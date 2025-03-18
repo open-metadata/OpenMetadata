@@ -166,6 +166,10 @@ test.describe('Bulk Edit Entity', () => {
 
       await toastNotification(page, /details updated successfully/);
 
+      await page.click('[data-testid="databases"]');
+
+      await page.waitForLoadState('networkidle');
+
       // Verify Details updated
       await expect(page.getByTestId('column-name')).toHaveText(
         `${table.database.name}${databaseDetails.displayName}`
@@ -453,12 +457,17 @@ test.describe('Bulk Edit Entity', () => {
       );
 
       // Verify Owners
-      await expect(page.getByTestId('owner-label')).toContainText(
-        EntityDataClass.user1.responseData?.['displayName']
-      );
-      await expect(page.getByTestId('owner-label')).toContainText(
-        EntityDataClass.user2.responseData?.['displayName']
-      );
+      await expect(
+        page
+          .getByTestId('owner-label')
+          .getByTestId(`${EntityDataClass.user1.responseData?.['displayName']}`)
+      ).toBeVisible();
+
+      await expect(
+        page
+          .getByTestId('owner-label')
+          .getByTestId(`${EntityDataClass.user2.responseData?.['displayName']}`)
+      ).toBeVisible();
 
       // Verify Tags
       await expect(
