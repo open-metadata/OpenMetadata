@@ -20,6 +20,9 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAu
 from metadata.generated.schema.entity.services.connections.pipeline.nifi.clientCertificateAuth import (
     NifiClientCertificateAuth,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
+    NifiConnection,
+)
 from metadata.ingestion.ometa.client import REST, ClientConfig, HTTPError
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
@@ -42,7 +45,6 @@ class NifiClient:
 
     client: REST
 
-    # pylint: disable=too-many-arguments
     def __init__(self, connection: NifiConnection):
         self.connection = connection
         self._token, self._resources, self.data = None, None, None
