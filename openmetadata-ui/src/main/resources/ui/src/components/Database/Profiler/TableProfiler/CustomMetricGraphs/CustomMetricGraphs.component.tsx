@@ -52,7 +52,7 @@ import {
   CustomTooltip,
   getRandomHexColor,
 } from '../../../../../utils/DataInsightUtils';
-import { formatDateTime } from '../../../../../utils/date-time/DateTimeUtils';
+import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -268,7 +268,7 @@ const CustomMetricGraphs = ({
                         <Tooltip
                           content={
                             <CustomTooltip
-                              dateTimeFormatter={formatDateTime}
+                              dateTimeFormatter={formatDateTimeLong}
                               timeStampKey="timestamp"
                               valueFormatter={(value) =>
                                 tooltipFormatter(value)

@@ -50,7 +50,9 @@ describe('DateTimeUtils tests', () => {
   });
 
   it(`formatDateShort should formate date and time both`, () => {
-    expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970, 12:00 AM`);
+    expect(formatDateTimeLong(0)).toBe(
+      `January 01, 1970, 12:00 AM (UTC+00:00)`
+    );
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {

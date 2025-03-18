@@ -20,7 +20,7 @@ import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import {
   convertMillisecondsToHumanReadableFormat,
-  formatDateTime,
+  formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -95,7 +95,7 @@ const TestSummaryCustomTooltip = (
     <Card
       title={
         <Typography.Title level={5}>
-          {formatDateTime(payload[0].payload.name)}
+          {formatDateTimeLong(payload[0].payload.name)}
         </Typography.Title>
       }>
       <ul data-testid="test-summary-tooltip-container">
