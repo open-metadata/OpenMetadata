@@ -149,7 +149,8 @@ export const CustomizeTabWidget = () => {
       tabs: newPanes,
     } as Page);
 
-    newActiveKey !== activeKey && onChange(newActiveKey ?? EntityTabs.OVERVIEW);
+    newActiveKey !== activeKey &&
+      onChange(newActiveKey ?? EntityTabs.OVERVIEW, false);
   };
 
   const handleTabEditClick = (key: string) => {
@@ -327,9 +328,11 @@ export const CustomizeTabWidget = () => {
               })}
             </Button>
           }
-          title={`Customize ${getEntityName(
-            items.find((item) => item.id === activeKey) as Tab
-          )} Tabs`}>
+          title={t('label.customize-entity-widget-plural', {
+            entity: getEntityName(
+              items.find((item) => item.id === activeKey) as Tab
+            ),
+          })}>
           <ReactGridLayout
             className="grid-container"
             cols={TAB_GRID_MAX_COLUMNS}

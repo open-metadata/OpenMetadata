@@ -58,6 +58,7 @@ export class Domain extends EntityClass {
 
   async visitEntityPage(page: Page) {
     await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
     await selectDomain(page, this.responseData);
   }
 

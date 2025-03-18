@@ -114,7 +114,7 @@ export const TabItem = ({
         trigger={['click']}>
         <Button
           className="draggable-tab-item"
-          data-testid={`tab-${item.name}`}
+          data-testid={`tab-${item.displayName}`}
           onClick={() => onItemClick?.(item.id)}>
           <Space>
             {getEntityName(item)}

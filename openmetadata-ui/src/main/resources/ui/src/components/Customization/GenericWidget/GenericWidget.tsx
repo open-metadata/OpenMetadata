@@ -12,16 +12,20 @@
  */
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { Button, Card, Space } from 'antd';
-import { startCase } from 'lodash';
+import { noop, startCase } from 'lodash';
 import React, { useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import customizeGlossaryTermPageClassBase from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import { useGlossaryStore } from '../../Glossary/useGlossary.store';
+import { GenericProvider } from '../GenericProvider/GenericProvider';
 import './generic-widget.less';
 
 export const GenericWidget = (props: WidgetCommonProps) => {
@@ -58,7 +62,15 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     if (matchingWidget) {
       const [, Component] = matchingWidget;
 
-      return Component(data);
+      return (
+        <GenericProvider
+          data={data as EntityUnion & { id: string }}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.TABLE}
+          onUpdate={async () => noop()}>
+          {Component(data)}
+        </GenericProvider>
+      );
     }
 
     return widgetName;

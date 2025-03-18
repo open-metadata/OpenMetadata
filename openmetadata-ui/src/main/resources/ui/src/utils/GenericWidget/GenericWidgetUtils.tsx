@@ -18,7 +18,6 @@ import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.compon
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagButton from '../../components/common/TagButton/TagButton.component';
 import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
-import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTable/DashboardChartTable';
 import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
@@ -37,20 +36,14 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { Container } from '../../generated/entity/data/container';
-import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
-import { Table } from '../../generated/entity/data/table';
-import { Topic } from '../../generated/entity/data/topic';
 import { EntityReference, TagSource } from '../../generated/tests/testCase';
+import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
 import { FrequentlyJoinedTables } from '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import TableConstraints from '../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
-import containerDetailsClassBase from '../ContainerDetailsClassBase';
-import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../PermissionsUtils';
 import tableClassBase from '../TableClassBase';
-import topicClassBase from '../TopicClassBase';
 
 export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.GLOSSARY_TERMS]: () => (
@@ -119,23 +112,9 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.DESCRIPTION]: (data?: EntityUnion) => (
     <RichTextEditorPreviewerV1 markdown={data?.description ?? ''} />
   ),
-  [DetailPageWidgetKeys.TABLE_SCHEMA]: () => (
-    <GenericProvider<Table>
-      data={tableClassBase.getDummyData()}
-      permissions={DEFAULT_ENTITY_PERMISSION}
-      type={EntityType.TABLE}
-      onUpdate={async () => noop()}>
-      <SchemaTable />
-    </GenericProvider>
-  ),
+  [DetailPageWidgetKeys.TABLE_SCHEMA]: () => <SchemaTable />,
   [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: () => (
-    <GenericProvider<Table>
-      data={tableClassBase.getDummyData()}
-      permissions={DEFAULT_ENTITY_PERMISSION}
-      type={EntityType.TABLE}
-      onUpdate={async () => noop()}>
-      <FrequentlyJoinedTables />
-    </GenericProvider>
+    <FrequentlyJoinedTables />
   ),
   [DetailPageWidgetKeys.DATA_PRODUCTS]: () => (
     <DataProductsContainer
@@ -154,41 +133,11 @@ export const WIDGET_COMPONENTS = {
       onEditGlossaryTerm={noop}
     />
   ),
-  [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: () => (
-    <GenericProvider<Table>
-      data={tableClassBase.getDummyData()}
-      permissions={DEFAULT_ENTITY_PERMISSION}
-      type={EntityType.TABLE}
-      onUpdate={async () => noop()}>
-      <TableConstraints />
-    </GenericProvider>
-  ),
-  [DetailPageWidgetKeys.TOPIC_SCHEMA]: () => (
-    <GenericProvider<Topic>
-      data={topicClassBase.getDummyData()}
-      permissions={DEFAULT_ENTITY_PERMISSION}
-      type={EntityType.TOPIC}
-      onUpdate={async () => noop()}>
-      <TopicSchemaFields />
-    </GenericProvider>
-  ),
-  [DetailPageWidgetKeys.DATA_MODEL]: () => (
-    <GenericProvider<DashboardDataModel>
-      data={dashboardDataModelClassBase.getDummyData()}
-      permissions={DEFAULT_ENTITY_PERMISSION}
-      type={EntityType.DASHBOARD_DATA_MODEL}
-      onUpdate={async () => noop()}>
-      <ModelTab />
-    </GenericProvider>
-  ),
+  [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: () => <TableConstraints />,
+  [DetailPageWidgetKeys.TOPIC_SCHEMA]: () => <TopicSchemaFields />,
+  [DetailPageWidgetKeys.DATA_MODEL]: () => <ModelTab />,
   [DetailPageWidgetKeys.CONTAINER_CHILDREN]: () => (
-    <GenericProvider<Container>
-      data={containerDetailsClassBase.getDummyData()}
-      permissions={DEFAULT_ENTITY_PERMISSION}
-      type={EntityType.CONTAINER}
-      onUpdate={async () => noop()}>
-      <ContainerChildren isReadOnly />
-    </GenericProvider>
+    <ContainerChildren isReadOnly />
   ),
   [DetailPageWidgetKeys.CHARTS_TABLE]: () => <DashboardChartTable />,
   [DetailPageWidgetKeys.EXPERTS]: () => (
@@ -196,5 +145,8 @@ export const WIDGET_COMPONENTS = {
       hasPermission={false}
       owners={domainClassBase.getDummyData().experts ?? []}
     />
+  ),
+  [DetailPageWidgetKeys.API_ENDPOINTS]: () => (
+    <APIEndpointsTab isCustomizationPage />
   ),
 } as const;

@@ -85,7 +85,7 @@ export const DASHBOARD_DATAMODEL_DEFAULT_TABS = [
 ];
 
 export const API_COLLECTION_DEFAULT_TABS = [
-  'Collections',
+  'Endpoints',
   'Activity Feeds & Tasks',
   'Custom Properties',
 ];
@@ -154,6 +154,7 @@ export const DOMAIN_DEFAULT_TABS = [
   'Sub Domains',
   'Data Products',
   'Assets',
+  'Custom Properties',
 ];
 
 export const GLOSSARY_DEFAULT_TABS = ['Terms', 'Activity Feeds & Tasks'];

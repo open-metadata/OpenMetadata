@@ -274,6 +274,8 @@
     "custom-theme": "Custom Theme",
     "customise": "Customise",
     "customize-entity": "Customize {{entity}}",
+    "customize-entity-widget-plural": "Customize {{entity}} Widgets",
+    "customize-tab-plural": "Customize Tabs",
     "customize-ui": "Customize UI",
     "dag": "Dag",
     "dag-view": "DAG view",

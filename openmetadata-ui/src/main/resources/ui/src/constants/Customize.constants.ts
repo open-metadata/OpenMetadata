@@ -49,7 +49,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.STORED_PROCEDURE]: 'label.stored-procedure',
   [EntityTabs.CODE]: 'label.code',
   [EntityTabs.API_COLLECTION]: 'label.api-collection',
-  [EntityTabs.API_ENDPOINT]: 'label.api-endpoint',
+  [EntityTabs.API_ENDPOINT]: 'label.endpoint-plural',
   [EntityTabs.SCHEMA_DEFINITION]: 'label.schema-definition',
   [EntityTabs.EXPRESSION]: 'label.expression',
   [EntityTabs.DASHBOARD]: 'label.dashboard',
