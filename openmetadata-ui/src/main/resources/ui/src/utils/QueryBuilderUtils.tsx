@@ -336,6 +336,15 @@ export const getJsonTreePropertyFromQueryFilter = (
               ?.value
           ),
         };
+      } else if (!isUndefined((curr.bool as EsBoolQuery)?.must)) {
+        return {
+          ...acc,
+          ...getJsonTreePropertyFromQueryFilter(
+            parentPath,
+            (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
+            fields
+          ),
+        };
       }
 
       return acc;

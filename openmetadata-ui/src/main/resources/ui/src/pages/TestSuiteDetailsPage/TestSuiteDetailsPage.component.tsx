@@ -28,6 +28,7 @@ import {
   PagingHandlerParams,
 } from '../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
@@ -49,12 +50,14 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../generated/tests/testCase';
 import { EntityReference, TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
+import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCaseToLogicalTestSuite,
   getListTestCaseBySearch,
@@ -101,6 +104,8 @@ const TestSuiteDetailsPage = () => {
     useState<boolean>(false);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const [ingestionPipelineCount, setIngestionPipelineCount] =
+    useState<number>(0);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -176,7 +181,13 @@ const TestSuiteDetailsPage = () => {
         ...param,
         limit: pageSize,
       });
-
+      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
+        arrQueryFields: [],
+        testSuite: testSuiteFQN,
+        pipelineType: [PipelineType.TestSuite],
+        limit: 0,
+      });
+      setIngestionPipelineCount(ingestionPipelinePaging.total);
       setTestCaseResult(response.data);
       handlePagingChange(response.paging);
     } catch {
@@ -363,7 +374,13 @@ const TestSuiteDetailsPage = () => {
   const tabs = useMemo(
     () => [
       {
-        label: t('label.test-case-plural'),
+        label: (
+          <TabsLabel
+            count={pagingData.paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
+          />
+        ),
         key: EntityTabs.TEST_CASES,
         children: (
           <DataQualityTab
@@ -381,7 +398,13 @@ const TestSuiteDetailsPage = () => {
         ),
       },
       {
-        label: t('label.pipeline-plural'),
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
         key: EntityTabs.PIPELINE,
         children: (
           <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
@@ -399,6 +422,7 @@ const TestSuiteDetailsPage = () => {
       handleTestSuiteUpdate,
       handleSortTestCase,
       fetchTestCases,
+      ingestionPipelineCount,
     ]
   );
 

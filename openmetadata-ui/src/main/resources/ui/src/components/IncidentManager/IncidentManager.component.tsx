@@ -21,11 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-} from '../../constants/constants';
+import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -61,7 +57,7 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
-  formatDateTime,
+  formatDateTimeLong,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
@@ -69,7 +65,10 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../utils/EntityUtils';
-import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getIncidentManagerDetailPagePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
@@ -469,8 +468,8 @@ const IncidentManager = ({
         title: t('label.execution-time'),
         dataIndex: 'timestamp',
         key: 'timestamp',
-        width: 150,
-        render: (value: number) => (value ? formatDateTime(value) : '--'),
+        width: 200,
+        render: (value: number) => (value ? formatDateTimeLong(value) : '--'),
       },
       {
         title: t('label.status'),
@@ -501,7 +500,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 150,
+        width: 100,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;

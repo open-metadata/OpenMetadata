@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
@@ -49,7 +50,7 @@ public class AppMarketPlaceResourceTest
           .withAppType(AppType.Internal)
           .withScheduleType(ScheduleType.Scheduled)
           .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-          .withAppConfiguration(Map.of("test", "20"))
+          .withAppConfiguration(new AppConfiguration().withAdditionalProperty("test", "20"))
           .withPermission(NativeAppPermission.All)
           .withAppLogoUrl(new URI("https://test.com"))
           .withAppScreenshots(new HashSet<>(List.of("AppLogo")))

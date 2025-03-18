@@ -57,9 +57,14 @@ export const checkDescriptionInEditModal = async (
   // click on the Current tab
   await page.getByRole('tab', { name: 'current' }).click();
 
-  await expect(page.getByTestId('markdown-parser')).toContainText(
-    taskValue.oldDescription ?? ''
-  );
+  const taskDescriptionTabs = page.getByTestId('task-description-tabs');
+
+  await expect(
+    taskDescriptionTabs
+      .locator('.ant-tabs-content-holder')
+      .getByTestId('markdown-parser')
+      .first()
+  ).toContainText(taskValue.oldDescription ?? '');
 };
 
 export const deleteFeedComments = async (page: Page, feed: Locator) => {
@@ -155,7 +160,7 @@ export const addMentionCommentInFeed = async (
     .fill(`Can you resolve this thread for me? @${user}`);
   await userSuggestionsResponse;
 
-  await page.locator(`[data-value="@${user}"]`).click();
+  await page.locator(`[data-value="@${user}"]`).first().click();
 
   // Send reply
   await expect(page.locator('[data-testid="send-button"]')).toBeVisible();

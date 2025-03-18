@@ -149,6 +149,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.stored-procedure-plural'),
     }),
   },
+  DOMAIN_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.domain-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.domain-plural'),
+    }),
+  },
   SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.search-index-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
@@ -202,6 +208,10 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
   SEARCH_RBAC: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search-setting'),
+  },
+  SEARCH_SETTINGS: {
     header: i18n.t('label.search'),
     subHeader: i18n.t('message.page-sub-header-for-search-setting'),
   },

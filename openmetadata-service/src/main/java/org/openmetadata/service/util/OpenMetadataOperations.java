@@ -783,7 +783,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     App app = appRepository.getByName(null, appName, appRepository.getFields("id"));
 
     EventPublisherJob config =
-        ((EventPublisherJob) app.getAppConfiguration())
+        (JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class))
             .withEntities(entities)
             .withBatchSize(batchSize)
             .withPayLoadSize(payloadSize)
@@ -869,7 +869,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         appRepository.getByName(null, "DataInsightsApplication", appRepository.getFields("id"));
 
     DataInsightsAppConfig config =
-        ((DataInsightsAppConfig) app.getAppConfiguration())
+        JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class)
             .withBatchSize(batchSize)
             .withRecreateDataAssetsIndex(recreateIndexes)
             .withBackfillConfiguration(backfillConfiguration);
@@ -1130,6 +1130,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setSearchRepository(searchRepository);
+    Entity.setJdbi(jdbi);
     Entity.setCollectionDAO(collectionDAO);
     Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);

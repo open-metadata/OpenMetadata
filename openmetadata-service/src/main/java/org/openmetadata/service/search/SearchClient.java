@@ -14,9 +14,11 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -106,9 +108,9 @@ public interface SearchClient {
   String PROPAGATE_TEST_SUITES_SCRIPT = "ctx._source.testSuites = params.testSuites";
 
   String REMOVE_OWNERS_SCRIPT =
-      "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
-          + "ctx._source.owners.removeIf(owner -> "
-          + "params.deletedOwners.stream().anyMatch(deletedOwner -> deletedOwner.id == owner.id) && owner.inherited == true); "
+      "if (ctx._source.owners != null) { "
+          + "ctx._source.owners.removeIf(owner -> owner.inherited == true); "
+          + "ctx._source.owners.addAll(params.deletedOwners); "
           + "}";
 
   String UPDATE_TAGS_FIELD_SCRIPT =
@@ -173,7 +175,13 @@ public interface SearchClient {
 
   void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
+  Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException;
+
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
+
+  Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
 
@@ -187,7 +195,8 @@ public interface SearchClient {
       int offset,
       String index,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException;
 
   SearchResultListMapper listWithDeepPagination(
@@ -347,4 +356,6 @@ public interface SearchClient {
   Object getClient();
 
   SearchHealthStatus getSearchHealthStatus() throws IOException;
+
+  QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 }

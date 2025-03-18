@@ -64,6 +64,10 @@
       "description": "This schema defines the type of application.",
       "$ref": "../app.json#/definitions/appType"
     },
+    "agentType": {
+      "description": "This schema defines the type of the agent.",
+      "$ref": "../app.json#/definitions/agentType"
+    },
     "scheduleType": {
       "description": "This schema defines the Schedule Type of Application.",
       "$ref": "../app.json#/definitions/scheduleType"
