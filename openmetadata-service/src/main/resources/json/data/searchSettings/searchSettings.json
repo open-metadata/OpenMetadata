@@ -56,14 +56,14 @@
         "field": "databaseSchema.name.keyword"
       },
       {
-        "name": "database.displayName",
+        "name": "database.displayName.keyword",
         "type": "terms",
-        "field": "database.displayName"
+        "field": "database.displayName.keyword"
       },
       {
-        "name": "databaseSchema.displayName",
+        "name": "databaseSchema.displayName.keyword",
         "type": "terms",
-        "field": "databaseSchema.displayName"
+        "field": "databaseSchema.displayName.keyword"
       }
     ],
     "highlightFields": [
