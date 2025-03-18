@@ -558,6 +558,13 @@ export const getActiveFieldNameForAppDocs = (activeField?: string) => {
     .join('.');
 };
 
+export const getReadableCountString = (count: number, maxDigits = 2) => {
+  return new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: maxDigits,
+  }).format(count);
+};
+
 export const getAddServiceEntityBreadcrumb = (
   serviceCategory: ServiceCategory
 ) => {

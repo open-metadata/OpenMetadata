@@ -21,8 +21,6 @@
       },
       "default": [],
       "additionalItems": false,
-      "minItems": 0,
-      "maxItems": 0,
       "uniqueItems": true
     }
   },

@@ -155,6 +155,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJsonContains;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
@@ -3879,9 +3880,9 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT te.id "
             + "FROM team_entity te "
-            + "WHERE te.id NOT IN (SELECT :teamId) UNION "
+            + "WHERE te.id NOT IN ((SELECT :teamId) UNION "
             + "(SELECT toId FROM entity_relationship "
-            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team')")
+            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team'))")
     List<String> listTeamsUnderOrganization(
         @BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
   }
@@ -5057,32 +5058,54 @@ public interface CollectionDAO {
     void delete(@Bind("appId") String appId, @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension")
-    int listAppExtensionCount(@Bind("appId") String appId, @Bind("extension") String extension);
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND <service_filter>")
+    int listAppExtensionCount(
+        @Bind("appId") String appId,
+        @Bind("extension") String extension,
+        @BindJsonContains(value = "service_filter", path = "$.services", property = "id")
+            UUID service);
 
     @SqlQuery(
-        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime")
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime AND <service_filter>")
     int listAppExtensionCountAfterTime(
         @Bind("appId") String appId,
         @Bind("startTime") long startTime,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND <service_filter> ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppExtension(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime AND <service_filter> ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppExtensionAfterTime(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
         @Bind("startTime") long startTime,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     // Prepare methods to get extension by name instead of ID
     // For example, for limits we need to fetch by app name to ensure if we reinstall the app,
@@ -5115,6 +5138,19 @@ public interface CollectionDAO {
         @Bind("offset") int offset,
         @Bind("startTime") long startTime,
         @Bind("extension") String extension);
+
+    default List<String> listAppExtensionAfterTime(
+        String appId, int limit, int offset, long startTime, String extension) {
+      return listAppExtensionAfterTime(appId, limit, offset, startTime, extension, null);
+    }
+
+    default int listAppExtensionCountAfterTime(String appName, long startTime, String extension) {
+      return listAppExtensionCountAfterTime(appName, startTime, extension, null);
+    }
+
+    default List<String> listAppExtension(String appName, int limit, int offset, String extension) {
+      return listAppExtension(appName, limit, offset, extension, null);
+    }
   }
 
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {

@@ -230,7 +230,7 @@ class MetricFilter:
             (
                 include_columns.metrics
                 for include_columns in columns_config or []
-                if include_columns.columnName == column.name
+                if include_columns.columnName in {column.name, "all"}
             ),
             None,
         )
