@@ -210,7 +210,7 @@ const Ingestion: React.FC<IngestionProps> = ({
       </Col>
       <Col span={24}>
         {isCollateSubTabSelected ? (
-          <CollateAIAgentsWidget />
+          <CollateAIAgentsWidget serviceDetails={serviceDetails} />
         ) : (
           <MetadataAgentsWidget
             airflowInformation={airflowInformation}

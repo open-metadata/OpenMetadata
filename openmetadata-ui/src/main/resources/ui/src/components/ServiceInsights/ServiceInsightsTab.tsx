@@ -54,7 +54,7 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
     try {
       setIsLoading(true);
       const currentTimestampInMs = getCurrentDayStartGMTinMillis();
-      const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(7);
+      const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(6);
 
       const chartsList = [
         ...PLATFORM_INSIGHTS_CHART,

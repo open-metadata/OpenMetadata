@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Skeleton, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
@@ -57,87 +58,95 @@ function PlatformInsightsWidget({
                   />
                 </Card>
               ))
-            : chartsData.map((chart) => (
-                <Card
-                  className="widget-info-card other-charts-card"
-                  key={chart.chartType}>
-                  <Typography.Text className="font-semibold text-md">
-                    {getTitleByChartType(chart.chartType)}
-                  </Typography.Text>
-                  <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
-                    <Col
-                      className="flex flex-col justify-between h-full"
-                      span={14}>
-                      <Typography.Title level={3}>
-                        {`${getReadableCountString(chart.currentPercentage)}%`}
-                      </Typography.Title>
-                      {chart.percentageChange && (
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {chart.isIncreased ? (
-                            <ArrowUp color={GREEN_1} height={11} width={11} />
-                          ) : (
-                            <ArrowDown color={RED_1} height={11} width={11} />
-                          )}
-                          <Typography.Text
-                            className="font-medium text-sm"
-                            style={{
-                              color: chart.isIncreased ? GREEN_1 : RED_1,
-                            }}>
-                            {`${getReadableCountString(
-                              chart.percentageChange
-                            )}%`}
-                          </Typography.Text>
-                          <Typography.Text className="font-medium text-grey-muted text-sm">
-                            {t('label.vs-last-week-lowercase')}
-                          </Typography.Text>
-                        </div>
-                      )}
-                    </Col>
-                    <Col className="flex items-end h-full" span={10}>
-                      <ResponsiveContainer
-                        height="90%"
-                        minHeight={90}
-                        width="100%">
-                        <AreaChart data={chart.data}>
-                          <defs>
-                            {[GREEN_1, RED_1].map((color) => (
-                              <linearGradient
-                                id={`color${color}`}
-                                key={color}
-                                x1="0"
-                                x2="0"
-                                y1="0"
-                                y2="1">
-                                <stop
-                                  offset="1%"
-                                  stopColor={color}
-                                  stopOpacity={0.3}
-                                />
-                                <stop
-                                  offset="100%"
-                                  stopColor={color}
-                                  stopOpacity={0.05}
-                                />
-                              </linearGradient>
-                            ))}
-                          </defs>
-                          <Area
-                            dataKey="count"
-                            fill={
-                              chart.isIncreased
-                                ? `url(#color${GREEN_1})`
-                                : `url(#color${RED_1})`
-                            }
-                            stroke={chart.isIncreased ? GREEN_1 : RED_1}
-                            strokeWidth={2}
-                            type="monotone"
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </Col>
-                  </Row>
-                </Card>
-              ))}
+            : chartsData.map((chart) => {
+                const icon = chart.isIncreased ? (
+                  <ArrowUp color={GREEN_1} height={11} width={11} />
+                ) : (
+                  <ArrowDown color={RED_1} height={11} width={11} />
+                );
+
+                const showIcon = chart.percentageChange !== 0;
+
+                return (
+                  <Card
+                    className="widget-info-card other-charts-card"
+                    key={chart.chartType}>
+                    <Typography.Text className="font-semibold text-md">
+                      {getTitleByChartType(chart.chartType)}
+                    </Typography.Text>
+                    <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
+                      <Col
+                        className="flex flex-col justify-between h-full"
+                        span={14}>
+                        <Typography.Title level={3}>
+                          {`${getReadableCountString(
+                            chart.currentPercentage
+                          )}%`}
+                        </Typography.Title>
+                        {!isUndefined(chart.percentageChange) && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {showIcon && icon}
+                            <Typography.Text
+                              className="font-medium text-sm"
+                              style={{
+                                color: chart.isIncreased ? GREEN_1 : RED_1,
+                              }}>
+                              {`${getReadableCountString(
+                                chart.percentageChange
+                              )}%`}
+                            </Typography.Text>
+                            <Typography.Text className="font-medium text-grey-muted text-sm">
+                              {t('label.vs-last-week-lowercase')}
+                            </Typography.Text>
+                          </div>
+                        )}
+                      </Col>
+                      <Col className="flex items-end h-full" span={10}>
+                        <ResponsiveContainer
+                          height="90%"
+                          minHeight={90}
+                          width="100%">
+                          <AreaChart data={chart.data}>
+                            <defs>
+                              {[GREEN_1, RED_1].map((color) => (
+                                <linearGradient
+                                  id={`color${color}`}
+                                  key={color}
+                                  x1="0"
+                                  x2="0"
+                                  y1="0"
+                                  y2="1">
+                                  <stop
+                                    offset="1%"
+                                    stopColor={color}
+                                    stopOpacity={0.3}
+                                  />
+                                  <stop
+                                    offset="100%"
+                                    stopColor={color}
+                                    stopOpacity={0.05}
+                                  />
+                                </linearGradient>
+                              ))}
+                            </defs>
+                            <Area
+                              dataKey="count"
+                              fill={
+                                chart.isIncreased
+                                  ? `url(#color${GREEN_1})`
+                                  : `url(#color${RED_1})`
+                              }
+                              stroke={chart.isIncreased ? GREEN_1 : RED_1}
+                              strokeWidth={2}
+                              type="monotone"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </Col>
+                    </Row>
+                  </Card>
+                );
+              })}
         </Col>
       </Row>
     </div>
