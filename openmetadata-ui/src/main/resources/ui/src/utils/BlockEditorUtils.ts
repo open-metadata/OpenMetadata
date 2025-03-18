@@ -148,6 +148,7 @@ export const isHTMLString = (content: string) => {
       /^\s*>{1,}\s/, // Blockquotes
       /^---|\*\*\*|___/, // Horizontal rules
       /`{1,3}[^`]+`{1,3}/, // Code blocks
+      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
     ];
 
     const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
