@@ -555,7 +555,7 @@ export const approveGlossaryTermTask = async (
 ) => {
   await validateGlossaryTermTask(page, term);
   const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-  await page.getByRole('button', { name: 'Approve' }).click();
+  await page.getByTestId('approve-button').click();
   await taskResolve;
 
   // Display toast notification

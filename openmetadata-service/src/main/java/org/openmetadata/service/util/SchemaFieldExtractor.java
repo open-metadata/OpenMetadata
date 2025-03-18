@@ -598,7 +598,8 @@ public class SchemaFieldExtractor {
             "table", "data",
             "pipeline", "data",
             "votes", "data",
-            "dataProduct", "domains");
+            "dataProduct", "domains",
+            "domain", "domains");
     return entityTypeToSubdirectory.getOrDefault(entityType, "data");
   }
 

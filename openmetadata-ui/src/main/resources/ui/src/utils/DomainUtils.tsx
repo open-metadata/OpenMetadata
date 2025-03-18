@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Typography } from 'antd';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
@@ -18,6 +18,7 @@ import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
@@ -213,16 +214,20 @@ export const renderDomainLink = (
   showDomainHeading: boolean,
   textClassName?: string
 ) => (
-  <Link
-    className={classNames(
-      'no-underline',
-      { 'text-xs': !showDomainHeading },
-      textClassName
-    )}
-    data-testid="domain-link"
-    to={getDomainPath(domain?.fullyQualifiedName)}>
-    {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
-  </Link>
+  <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
+    <Link
+      className={classNames(
+        'no-underline domain-link domain-link-text font-medium',
+        { 'text-sm': !showDomainHeading },
+        textClassName
+      )}
+      data-testid="domain-link"
+      to={getDomainPath(domain?.fullyQualifiedName)}>
+      {isUndefined(domainDisplayName)
+        ? getEntityName(domain)
+        : domainDisplayName}
+    </Link>
+  </Tooltip>
 );
 
 export const initializeDomainEntityRef = (
@@ -442,6 +447,27 @@ export const getDomainDetailTabs = ({
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}
               />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.CUSTOM_PROPERTIES}
+                name={i18n.t('label.custom-property-plural')}
+              />
+            ),
+            key: EntityTabs.CUSTOM_PROPERTIES,
+            children: (
+              <div className="m-sm">
+                <CustomPropertyTable<EntityType.DOMAIN>
+                  entityType={EntityType.DOMAIN}
+                  hasEditAccess={
+                    domainPermission.EditAll ||
+                    domainPermission.EditCustomFields
+                  }
+                  hasPermission={domainPermission.ViewAll}
+                />
+              </div>
             ),
           },
         ]
