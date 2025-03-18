@@ -1482,7 +1482,7 @@ public class TableRepository extends EntityRepository<Table> {
       Table originalEntity = JsonUtils.deepCopy(table, Table.class);
       while (recordIndex < csvRecords.size()) {
         CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-        if (csvRecord != null) {
+        if (csvRecord != null && csvRecord.get(11).equals("column")) {
           updateColumnsFromCsv(printer, csvRecord);
           String violations = ValidatorUtil.validate(table);
           if (violations != null) {
@@ -1503,6 +1503,7 @@ public class TableRepository extends EntityRepository<Table> {
         throws IOException {
       EntityRepository<Table> repository =
           (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
+      validateTableColumns(entity.getColumns());
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
@@ -1693,6 +1694,22 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
       return null;
+    }
+  }
+
+  private static void validateTableColumns(List<Column> columns) {
+    if (columns == null) return;
+
+    for (Column column : columns) {
+      if (column.getDataType() == ColumnDataType.VARCHAR) {
+        if (column.getDataLength() == null || column.getDataLength() <= 0) {
+          throw new IllegalArgumentException(
+              "Data length is mandatory for VARCHAR columns: " + column.getName());
+        }
+      }
+      if (column.getChildren() != null) {
+        validateTableColumns(column.getChildren());
+      }
     }
   }
 }
