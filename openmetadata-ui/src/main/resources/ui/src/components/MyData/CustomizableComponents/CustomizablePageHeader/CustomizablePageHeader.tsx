@@ -12,7 +12,7 @@
  */
 import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
 import { Button, Card, Modal, Space, Typography } from 'antd';
-import { camelCase } from 'lodash';
+import { kebabCase } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -67,7 +67,7 @@ export const CustomizablePageHeader = ({
       entity:
         currentPageType === PageType.LandingPage
           ? t('label.landing-page')
-          : t(`label.${camelCase(currentPageType as string)}`),
+          : t(`label.${kebabCase(currentPageType as string)}`),
     }),
     [personaName]
   );
@@ -82,7 +82,9 @@ export const CustomizablePageHeader = ({
             className="m-0"
             data-testid="customize-page-title"
             level={5}>
-            {t('label.customize-entity', { entity: t('label.table') })}
+            {t('label.customize-entity', {
+              entity: t(`label.${kebabCase(currentPageType as string)}`),
+            })}
           </Typography.Title>
           <Typography.Paragraph className="m-0">
             <Transi18next
