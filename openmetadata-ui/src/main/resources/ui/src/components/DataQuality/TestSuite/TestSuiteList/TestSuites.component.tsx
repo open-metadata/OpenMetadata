@@ -173,6 +173,7 @@ export const TestSuites = () => {
       {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
+        width: 200,
         key: 'success',
         render: (value: TestSuite['summary']) => {
           const percent =
