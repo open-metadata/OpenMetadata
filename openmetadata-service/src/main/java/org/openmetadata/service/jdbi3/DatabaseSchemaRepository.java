@@ -44,6 +44,8 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -55,6 +57,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -366,6 +369,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         createTableEntity(printer, csvRecord, entityFQN);
       } else if (STORED_PROCEDURE.equals(entityType)) {
         createStoredProcedureEntity(printer, csvRecord, entityFQN);
+      } else if ("column".equals(entityType)) {
+        createColumnEntity(printer, csvRecord, entityFQN);
       } else {
         LOG.warn("Unsupported entity type in schema CSV: {}", entityType);
       }
@@ -382,10 +387,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       Table table;
       try {
         table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
+      } catch (EntityNotFoundException ex) {
+        // Table not found, create a new one
         LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
         table =
             new Table()
+                .withId(UUID.randomUUID())
+                .withFullyQualifiedName(tableFqn)
                 .withService(schema.getService())
                 .withDatabase(schema.getDatabase())
                 .withDatabaseSchema(schema.getEntityReference());
@@ -411,7 +419,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withSourceUrl(csvRecord.get(8))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
           .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
+          .withExtension(getExtension(printer, csvRecord, 10))
+          .withUpdatedAt(System.currentTimeMillis())
+          .withUpdatedBy(importedBy);
 
       if (processRecord) {
         createEntity(printer, csvRecord, table);
@@ -462,6 +472,41 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       if (processRecord) {
         // Use the SP repository to create/update the stored procedure
         spRepository.createOrUpdate(null, sp);
+      }
+    }
+
+    private void createColumnEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+        throws IOException {
+      if (entityFQN == null) {
+        LOG.error("Column entry is missing table reference in fullyQualifiedName");
+        return;
+      }
+
+      // Extract table name from FQN
+      String tableFQN = FullyQualifiedName.getParentFQN(entityFQN);
+      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+      Table table;
+      try {
+        table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        LOG.warn("Table not found for column: {}, skipping column creation.", entityFQN);
+        return;
+      }
+      List<Column> columns = table.getColumns() == null ? new ArrayList<>() : table.getColumns();
+      Column column =
+          new Column()
+              .withName(csvRecord.get(0))
+              .withFullyQualifiedName(entityFQN)
+              .withDisplayName(csvRecord.get(1))
+              .withDescription(csvRecord.get(2))
+              .withDataType(ColumnDataType.fromValue(csvRecord.get(14)))
+              .withDataLength(
+                  nullOrEmpty(csvRecord.get(16)) ? null : Integer.parseInt(csvRecord.get(16)));
+      columns.add(column);
+      table.withColumns(columns);
+
+      if (processRecord && !importResult.getDryRun()) {
+        tableRepository.createOrUpdate(null, table);
       }
     }
 

@@ -670,12 +670,81 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   private List<CSVRecord> parse(String csv) {
     Reader in = new StringReader(csv);
+    List<String> correctedCsvLines = new ArrayList<>();
+    int rowNumber = 1;
+
     try {
-      return CSVFormat.DEFAULT.parse(in).stream().toList();
+      Iterable<CSVRecord> records = CSVFormat.DEFAULT.withIgnoreSurroundingSpaces().parse(in);
+
+      for (CSVRecord record : records) {
+        List<String> fixedRow = fixMisplacedCommas(record.toList());
+
+        // Ensure correct column count
+        fixedRow = padOrTrimColumns(fixedRow);
+
+        // Log corrected row before adding
+        LOG.info("Processed Row {}: {}", rowNumber, fixedRow);
+        correctedCsvLines.add(String.join(",", fixedRow));
+        rowNumber++;
+      }
+
+      String correctedCsv = String.join("\n", correctedCsvLines);
+      Reader correctedReader = new StringReader(correctedCsv);
+      return CSVFormat.DEFAULT.parse(correctedReader).stream().toList();
     } catch (IOException e) {
+      LOG.error("CSV parsing error: {}", e.getMessage());
       documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
     }
-    return null;
+    return new ArrayList<>();
+  }
+
+  private List<String> fixMisplacedCommas(List<String> row) {
+    List<String> fixedRow = new ArrayList<>();
+    StringBuilder mergedField = new StringBuilder();
+    boolean merging = false;
+
+    for (String value : row) {
+      // Case 1: If field starts without quotes but has commas, start merging
+      if (value.contains(",") && !value.startsWith("\"") && !value.endsWith("\"")) {
+        merging = true;
+        mergedField.append(value);
+      }
+      // Case 2: If merging is active, append additional parts of the broken description
+      else if (merging) {
+        mergedField.append(" ").append(value);
+
+        // Stop merging if sentence seems to be complete (ends with "." or has closing quote)
+        if (value.endsWith(".") || value.endsWith("\"")) {
+          fixedRow.add("\"" + mergedField.toString().trim() + "\"");
+          mergedField.setLength(0);
+          merging = false;
+        }
+      }
+      // Case 3: Normal field, just add it
+      else {
+        fixedRow.add(value);
+      }
+    }
+    // If merging was still active, close the last merged field
+    if (merging) {
+      fixedRow.add("\"" + mergedField.toString().trim() + "\"");
+    }
+    return fixedRow;
+  }
+
+  private List<String> padOrTrimColumns(List<String> row) {
+    List<String> fixedRow = new ArrayList<>(row);
+
+    // If row has fewer columns than expected, add empty columns
+    while (fixedRow.size() < csvHeaders.size()) {
+      fixedRow.add("");
+    }
+
+    // If row has more columns than expected, trim extra ones
+    while (fixedRow.size() > csvHeaders.size()) {
+      fixedRow.remove(fixedRow.size() - 1);
+    }
+    return fixedRow;
   }
 
   private boolean validateHeaders(CSVRecord csvRecord) {

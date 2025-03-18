@@ -21,12 +21,12 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.csv.CsvUtil.formatCsv;
 import static org.openmetadata.service.Entity.DATABASE;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -91,7 +91,7 @@ public class DatabaseServiceRepository
   }
 
   public static class DatabaseServiceCsv extends EntityCsv<Database> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(DATABASE_SERVICE);
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(DATABASE);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final DatabaseService service;
 
@@ -145,6 +145,10 @@ public class DatabaseServiceRepository
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
+      Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
+      Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
+      addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
+      addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
 
       // Handle optional fields that may not exist in all entity types
       Object domain = EntityUtil.getEntityField(entity, "domain");
@@ -185,8 +189,8 @@ public class DatabaseServiceRepository
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       // Get entityType and fullyQualifiedName if provided
-      String entityType = csvRecord.size() > 9 ? csvRecord.get(9) : DATABASE;
-      String entityFQN = csvRecord.size() > 10 ? csvRecord.get(10) : null;
+      String entityType = csvRecord.size() > 11 ? csvRecord.get(11) : DATABASE;
+      String entityFQN = csvRecord.size() > 12 ? csvRecord.get(12) : null;
 
       if (DATABASE.equals(entityType)) {
         createDatabaseEntity(printer, csvRecord, entityFQN);
@@ -210,7 +214,12 @@ public class DatabaseServiceRepository
 
             // Build a small CSV with just this one record
             String entityCsv =
-                String.join(",", HEADERS.stream().map(CsvHeader::getName).toList())
+                HEADERS.stream()
+                        .map(
+                            header ->
+                                header.getName()
+                                    + (Boolean.TRUE.equals(header.getRequired()) ? "*" : ""))
+                        .collect(Collectors.joining(","))
                     + System.lineSeparator()
                     + recordBuilder.toString();
 

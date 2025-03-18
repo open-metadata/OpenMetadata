@@ -95,6 +95,23 @@
       ]
     },
     {
+      "name": "entityType",
+      "required": true,
+      "description": "Type of entity being imported or exported. Used to determine how to process the record during import/export operations.",
+      "examples": [
+        "`table`", "`column`"
+      ]
+    },
+    {
+      "name": "fullyQualifiedName",
+      "required": false,
+      "description": "The fully qualified name of the entity. If not provided, it will be constructed based on the hierarchy.",
+      "examples": [
+        "`service_name.database_name.schema_name.table_name`",
+        "`service_name.database_name.schema_name.table_name.column_name`"
+      ]
+    },
+    {
       "name": "column.dataTypeDisplay",
       "required": false,
       "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
@@ -124,23 +141,6 @@
       "description": "Data Length of Column in case of CHAR, VARCHAR, BINARY etc.",
       "examples": [
         "36"
-      ]
-    },
-    {
-      "name": "entityType",
-      "required": true,
-      "description": "Type of entity being imported or exported. Used to determine how to process the record during import/export operations.",
-      "examples": [
-        "`table`", "`column`"
-      ]
-    },
-    {
-      "name": "fullyQualifiedName",
-      "required": false,
-      "description": "The fully qualified name of the entity. If not provided, it will be constructed based on the hierarchy.",
-      "examples": [
-        "`service_name.database_name.schema_name.table_name`",
-        "`service_name.database_name.schema_name.table_name.column_name`"
       ]
     }
   ]
