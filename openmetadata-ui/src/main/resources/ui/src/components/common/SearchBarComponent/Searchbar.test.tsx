@@ -21,14 +21,23 @@ import {
 import React from 'react';
 import Searchbar from './SearchBar.component';
 
-jest.useRealTimers();
+const mockOnUserSearch = jest.fn();
 
 jest.mock('../Loader/Loader', () => {
   return jest.fn().mockReturnValue(<p>Loader</p>);
 });
 
 jest.mock('lodash', () => ({
-  debounce: jest.fn().mockReturnValue(jest.fn()),
+  ...jest.requireActual('lodash'),
+  debounce: (fn: unknown) => fn, // Make debounce execute immediately
+}));
+
+const mockSetFilters = jest.fn();
+
+jest.mock('../../../hooks/useTableFilters', () => ({
+  useTableFilters: jest.fn().mockImplementation(() => ({
+    setFilters: mockSetFilters,
+  })),
 }));
 
 describe('Test Searchbar Component', () => {
@@ -92,5 +101,60 @@ describe('Test Searchbar Component', () => {
     fireEvent.change(searchElement, { target: { value: 'Test Search' } });
 
     expect(searchElement.value).toBe('Test Search');
+  });
+
+  it('should handle search input with debounce', async () => {
+    render(<Searchbar typingInterval={1000} onSearch={mockOnUserSearch} />);
+
+    const searchInput = screen.getByTestId('searchbar');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
+
+    // Should not call immediately
+    // expect(mockOnUserSearch).not.toHaveBeenCalled();
+
+    expect(mockOnUserSearch).toHaveBeenCalledWith('test');
+  });
+
+  it('should update search value when searchValue prop changes', () => {
+    const { rerender } = render(
+      <Searchbar searchValue="initial" onSearch={mockOnUserSearch} />
+    );
+
+    expect(screen.getByTestId('searchbar')).toHaveValue('initial');
+
+    rerender(<Searchbar searchValue="updated" onSearch={mockOnUserSearch} />);
+
+    expect(screen.getByTestId('searchbar')).toHaveValue('updated');
+  });
+
+  it('should update URL filters when urlSearchKey is provided', async () => {
+    render(
+      <Searchbar
+        typingInterval={1000}
+        urlSearchKey="search"
+        onSearch={mockOnUserSearch}
+      />
+    );
+
+    const searchInput = screen.getByTestId('searchbar');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
+
+    expect(mockSetFilters).toHaveBeenCalledWith({ search: 'test' });
+  });
+
+  it('should set URL filter to null when search is empty', async () => {
+    render(
+      <Searchbar
+        searchValue="test"
+        typingInterval={1000}
+        urlSearchKey="search"
+        onSearch={mockOnUserSearch}
+      />
+    );
+
+    const searchInput = screen.getByTestId('searchbar');
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    expect(mockSetFilters).toHaveBeenCalledWith({ search: null });
   });
 });

@@ -18,13 +18,13 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
-import { getServiceDetailsPath } from '../../../../constants/constants';
 import {
   ServiceAgentSubTabs,
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
@@ -75,6 +75,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     () => !isUndefined(CollateAIAgentsWidget),
     [CollateAIAgentsWidget]
   );
+
+  const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
 
   const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
@@ -169,43 +171,45 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             )}
           </Col>
-          <Col className="flex items-center gap-2">
-            <SearchDropdown
-              hideCounts
-              label={t('label.status')}
-              options={statusFilters}
-              searchKey="status"
-              selectedKeys={statusFilter ?? []}
-              triggerButtonSize="large"
-              onChange={handleStatusFilterChange}
-              onSearch={handleStatusFilterSearch}
-            />
-            <SearchDropdown
-              hideCounts
-              label={t('label.type')}
-              options={typeFilters}
-              searchKey="status"
-              selectedKeys={typeFilter ?? []}
-              triggerButtonSize="large"
-              onChange={handleTypeFilterChange}
-              onSearch={handleTypeFilterSearch}
-            />
-
-            <div className="search-bar-container">
-              <Searchbar
-                removeMargin
-                inputClassName="p-x-sm p-y-xs border-radius-xs"
-                placeholder={t('label.search')}
-                searchValue={searchText}
-                typingInterval={500}
-                onSearch={handleSearchChange}
+          {!isCollateSubTabSelected && (
+            <Col className="flex items-center gap-2">
+              <SearchDropdown
+                hideCounts
+                label={t('label.status')}
+                options={statusFilters}
+                searchKey="status"
+                selectedKeys={statusFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleStatusFilterChange}
+                onSearch={handleStatusFilterSearch}
               />
-            </div>
-          </Col>
+              <SearchDropdown
+                hideCounts
+                label={t('label.type')}
+                options={typeFilters}
+                searchKey="status"
+                selectedKeys={typeFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleTypeFilterChange}
+                onSearch={handleTypeFilterSearch}
+              />
+
+              <div className="search-bar-container">
+                <Searchbar
+                  removeMargin
+                  inputClassName="p-x-sm p-y-xs border-radius-xs"
+                  placeholder={t('label.search')}
+                  searchValue={searchText}
+                  typingInterval={500}
+                  onSearch={handleSearchChange}
+                />
+              </div>
+            </Col>
+          )}
         </Row>
       </Col>
       <Col span={24}>
-        {subTab === ServiceAgentSubTabs.COLLATE_AI ? (
+        {isCollateSubTabSelected ? (
           <CollateAIAgentsWidget />
         ) : (
           <MetadataAgentsWidget

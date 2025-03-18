@@ -31,7 +31,7 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
-import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   ES_EXCEPTION_SHARDS_FAILED,
@@ -56,6 +56,7 @@ import {
   extractTermKeys,
   findActiveSearchIndex,
 } from '../../utils/ExploreUtils';
+import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

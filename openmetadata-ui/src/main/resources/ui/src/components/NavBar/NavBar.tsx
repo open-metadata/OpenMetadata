@@ -332,14 +332,23 @@ const NavBar: React.FC = () => {
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL, (deleteResponse) => {
+        if (deleteResponse) {
+          const deleteResponseData = JSON.parse(
+            deleteResponse
+          ) as AsyncDeleteWebsocketResponse;
+          handleDeleteEntityWebsocketResponse(deleteResponseData);
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
     };
   }, [socket, onUpdateCSVExportJob]);
 

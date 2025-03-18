@@ -25,8 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
   LIGHT_GREEN_COLOR,
   NO_DATA_PLACEHOLDER,
   TERM_ADMIN,
@@ -40,6 +38,10 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../../utils/ProfilerUtils';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../../utils/RouterUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 

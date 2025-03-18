@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import React, { useEffect } from 'react';
+import { isString } from 'lodash';
+import Qs from 'qs';
+import React, { useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
+import { TOUR_SEARCH_TERM } from '../../constants/constants';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import TokenService from '../../utils/Auth/TokenService/TokenServiceUtil';
