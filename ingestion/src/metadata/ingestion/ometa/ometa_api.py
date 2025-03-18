@@ -146,7 +146,7 @@ class OpenMetadata(
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
-        extra_headers: dict[str, str] | None = None
+        extra_headers: Optional[dict[str, str]] = None
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
         client_config: ClientConfig = ClientConfig(
