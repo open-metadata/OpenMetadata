@@ -398,7 +398,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const showDrawer = useCallback((thread: Thread) => {
     setIsDrawerOpen(true);
-    setSelectedThread(thread);
+    setActiveThread(thread);
   }, []);
 
   const hideDrawer = useCallback(() => {

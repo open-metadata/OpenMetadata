@@ -316,7 +316,9 @@ const ActivityFeedCardNew = ({
               className={classNames(
                 'm-t-md feed-editor activity-feed-editor-container-new',
                 {
-                  'm-b-md': showActivityFeedEditor && feed?.posts?.length === 0,
+                  'm-b-md':
+                    (showActivityFeedEditor && feed?.posts?.length === 0) ||
+                    isOpenInDrawer,
                 }
               )}
               onSave={onSave}

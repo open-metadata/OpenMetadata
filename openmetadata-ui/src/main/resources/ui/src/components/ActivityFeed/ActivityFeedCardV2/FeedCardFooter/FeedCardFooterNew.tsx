@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Avatar, Col, Row } from 'antd';
+import { Avatar, Button, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
@@ -76,18 +76,21 @@ function FeedCardFooterNew({
                   backgroundColor: '#fde3cf',
                 }}>
                 {repliedUniqueUsersList.map((user, index) => (
-                  <div
+                  <Button
+                    className="p-0"
                     key={user}
                     style={{
                       marginLeft: index === 0 ? '0px' : '-8px',
                       zIndex: repliedUniqueUsersList.length - index,
-                    }}>
-                    <ProfilePicture
+                    }}
+                    type="text"
+                    onClick={isForFeedTab ? showReplies : undefined}>
+                    <ProfilePictureNew
                       avatarType="outlined"
                       name={user}
                       size={20}
                     />
-                  </div>
+                  </Button>
                 ))}
               </Avatar.Group>
             )}

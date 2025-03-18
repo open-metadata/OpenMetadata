@@ -1055,7 +1055,9 @@ export const TaskTabNew = ({
                 className={classNames(
                   'm-t-md feed-editor activity-feed-editor-container-new',
                   {
-                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                    'm-b-md':
+                      (showFeedEditor && taskThread?.posts?.length === 0) ||
+                      rest.isOpenInDrawer,
                   }
                 )}
                 onSave={onSave}

@@ -151,7 +151,7 @@ const TaskFeedCard = ({
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss text-sm">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss text-sm entity-type">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -338,14 +338,18 @@ const TaskFeedCard = ({
                     onClick={isForFeedTab ? showReplies : undefined}
                   />
                   {feed.posts && feed.posts?.length > 0 && (
-                    <span className="posts-length m-r-xss">
+                    <Button
+                      className="posts-length m-r-xss p-0 remove-button-default-styling"
+                      data-testid="replies-count"
+                      type="link"
+                      onClick={isForFeedTab ? showReplies : undefined}>
                       {t(
                         feed.posts.length === 1
                           ? 'label.one-reply'
                           : 'label.number-reply-plural',
                         { number: feed.posts.length }
                       )}
-                    </span>
+                    </Button>
                   )}
                 </Col>
 
