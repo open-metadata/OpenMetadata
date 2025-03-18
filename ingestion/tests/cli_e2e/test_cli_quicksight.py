@@ -54,7 +54,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 2
 
     def expected_filtered_sink_mix(self) -> int:
-        return 4
+        return 3
 
     # Quicksight do not ingest tags
     def expected_tags(self) -> int:
