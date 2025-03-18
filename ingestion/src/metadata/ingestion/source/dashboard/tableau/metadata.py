@@ -128,6 +128,13 @@ class TableauSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
+    def prepare(self):
+        """
+        Prepare the source before ingestion
+        we will fetch the custom sql tables from the tableau server
+        """
+        self.client.cache_custom_sql_tables()
+
     def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
         return self.client.get_workbooks()
 

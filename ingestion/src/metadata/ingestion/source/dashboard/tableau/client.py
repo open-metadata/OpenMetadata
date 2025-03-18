@@ -340,27 +340,9 @@ class TableauClient:
             logger.debug(f"Found cached queries for dashboard {dashboard_id}")
             return self.custom_sql_table_queries[dashboard_id]
 
-        try:
-            logger.debug("No cached queries found, fetching custom SQL tables")
-            self._get_custom_sql_tables()
-
-            if dashboard_id in self.custom_sql_table_queries:
-                logger.debug(
-                    f"Found queries after fetching for dashboard {dashboard_id}"
-                )
-                return self.custom_sql_table_queries[dashboard_id]
-
-            logger.debug(f"No queries found for dashboard {dashboard_id}")
-
-        except Exception:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to fetch Custom SQL Tables for dashboard {dashboard_id}"
-            )
-
         return None
 
-    def _get_custom_sql_tables(self) -> None:
+    def cache_custom_sql_tables(self) -> None:
         """
         Fetch all custom SQL tables and cache their queries by workbook ID
         """

@@ -189,9 +189,9 @@ class TableauDashboard(TableauBaseModel):
     tags: Optional[List[TableauTag]] = []
     _extract_tags = validator("tags", pre=True, allow_reuse=True)(transform_tags)
     webpageUrl: Optional[str] = None
-    custom_sql_queries: Optional[List[str]] = None
     charts: Optional[List[TableauChart]] = None
     dataModels: List[DataSource] = []
+    custom_sql_queries: Optional[List[str]] = None
 
 
 class TableAndQuery(BaseModel):
