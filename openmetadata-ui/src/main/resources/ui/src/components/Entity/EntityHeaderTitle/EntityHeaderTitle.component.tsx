@@ -97,7 +97,7 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Tooltip placement="bottom" title={stringToHTML(name)}>
+          <Tooltip placement="bottom" title={stringToHTML(displayName || name)}>
             <Typography.Text
               className={classNames(
                 'entity-header-display-name',
