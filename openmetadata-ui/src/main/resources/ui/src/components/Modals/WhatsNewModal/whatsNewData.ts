@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_6_3'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_6_6'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1584,6 +1584,107 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 - **Improvement**: Support rename for custom dashboard and charts. ${CollateIconWithLinkMD}
 - **Improvement**: Improve Onboarding Application. ${CollateIconWithLinkMD}
 `,
+    },
+  },
+  {
+    id: 60,
+    version: 'v1.6.4',
+    description: 'Released on 19th February 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Improvement**: Trino Add missing import.
+-   **Improvement**: Optimise Pipeline Lineage Extraction.
+-   **Improvement**: Powerbi fetch workspaces failure handle.
+-   **Fix**: Powerbi test connection sucess with bad credentials.
+-   **Fix**: Remove description check for columnDescriptionStatus.
+-   **Fix**: Markdown editor fix.
+-   **Fix**: Postgres usage not terminating with bad connection.
+-   **Fix**: Fix followers for Data Insights index.
+-   **Fix**: Add support for temp table lineage.
+-   **Fix**: Exclude deleted Stored Procedure Snowflake.
+-   **Fix**: Fix databricks schema not found.
+-   **Fix**: API service schema fields of object type not listed.
+-   **Fix**: Multiple Tier selection not resulting correct DQ dashboard view.
+-   **Fix**: Not able to edit sql query from test case details page.
+-   **Fix**: Implement the right SQA Sampler for UnityCatalog.
+-   **Fix**: Fix dbt Test case Timestamp issue.
+-   **Fix**: Delete pipelines from logical suites at deletion.
+-   **Fix**: Table Update Sys Metric shows wrong value.
+-   **Fix**: Fix unity catalog lineage - handle errors.
+-   **Improvement**: Validate basic suites do have basicEntityRef.
+-   **Improvement**: Add support for cluster key information - bigquery.
+-   **Improvement**: Automator - Remove tags by label type.
+-   **Improvement**: Show sub domain assets to top level.
+-   **Improvement**: Sort Enum type Custom Property Values.
+-   **Improvement**: Modify the appeariance of self connecting edge lineage.
+-   **Improvement**: Global search should persist quick filter in explore.
+-   **Improvement**: Show sourceUrl if present.
+-   **Improvement**: Modify the lineage alignment algorithm to tree view.
+
+
+`,
+    },
+  },
+  {
+    id: 61,
+    version: 'v1.6.5',
+    description: 'Released on 27th February 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Fix hyperlink encoding for alerts and notifications
+-   Fix failed tests sample data exception management
+-   Fix MySQL and MariaDB window function computation when no database is added in the connection
+-   Add support for tags and glossary terms in Domains and Data Products
+-   Fix consolidation issues on incremental changes
+-   Fix snowflake lineage Key Error
+-   Fix iframe SSO setup
+-   Support pagination for container children`,
+    },
+  },
+  {
+    id: 62,
+    version: 'v1.6.6',
+    description: 'Released on 14th March 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Added loggedInAPI to show more specific error messages instead of generic ones
+-   Added support for \`/logout\` path to perform logout from API redirect
+-   Added displayName field in the \`createCustomProperty\` schema
+-   Improved search relevancy for plural/singular words and partial matches
+-   Introduced "clear sample" option in entity config to support explicit null
+-   Made domain a required field for Data Product creation
+-   Enabled showdown rendering options`,
+
+      Fixes: `-   Fixed Snowflake ARRAY column ingestion issues
+-   Fixed Sigma workbook ingestion
+-   Fixed tomcat-jdbc dependency
+-   Fixed schema URL construction
+-   Fixed Redshift view logging for no schema binding
+-   Fixed OpenMetadata Operations
+-   Added support for datatype=array without type consistency
+-   Added result_maker check for query share URL in Looker
+-   Supported request schema field for OpenAPI lineage when response field is absent
+-   Fixed tour page clicking issues
+-   Fixed duplicate activity feed providers
+-   Fixed search query for non-admin pages
+-   Fixed other columns visibility when testSuite name is large
+-   Fixed task description viewer for diff creation
+-   Fixed inherited owner not updating in Data Product list
+-   Fixed user update roles
+-   Fixed table constraint error
+-   Fixed manual constraints deletion
+-   Fixed deletion of entities
+-   Fixed entity relation live indexing
+-   Fixed service creation error display
+-   Improved memory handling in temp table lineage
+-   Enhanced Column Name Scanner
+-   Improved pipeline service client exception handling
+-   Updated Tableau documentation in Connectors
+-   Optimized pipeline service client initialization
+-   Implemented Incremental Lineage Processing
+-   Don't overwrite query to execute
+-   Fixed external app logs
+-   Fixed incremental lineage processing when processedLineage is null`,
     },
   },
 ];

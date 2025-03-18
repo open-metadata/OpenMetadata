@@ -27,4 +27,12 @@ export interface EntityHeaderTitleProps {
   isDisabled?: boolean;
   showName?: boolean;
   certification?: AssetCertification;
+  excludeEntityService?: boolean;
+  isFollowing?: boolean;
+  isFollowingLoading?: boolean;
+  handleFollowingClick?: () => void;
+  followers?: number;
+  entityType?: any;
+  nameClassName?: string;
+  displayNameClassName?: string;
 }

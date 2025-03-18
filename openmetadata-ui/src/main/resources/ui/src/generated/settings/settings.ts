@@ -596,6 +596,10 @@ export interface ExecutorConfiguration {
      */
     corePoolSize?: number;
     /**
+     * The amount of time a Job gets locked before being retried.
+     */
+    jobLockTimeInMillis?: number;
+    /**
      * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
      */
     maxPoolSize?: number;
@@ -872,6 +876,8 @@ export enum DataType {
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",

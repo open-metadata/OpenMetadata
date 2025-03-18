@@ -36,7 +36,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
-import { getExplorePath } from '../../constants/constants';
 import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
@@ -46,13 +45,13 @@ import {
   NO_OWNER_ADVANCE_SEARCH_FILTER,
 } from '../../constants/explore.constants';
 
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
-  SystemChartType,
 } from '../../rest/DataInsightAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { entityChartColor } from '../../utils/CommonUtils';
@@ -61,6 +60,7 @@ import {
   isPercentageSystemGraph,
   renderDataInsightLineChart,
 } from '../../utils/DataInsightUtils';
+import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';

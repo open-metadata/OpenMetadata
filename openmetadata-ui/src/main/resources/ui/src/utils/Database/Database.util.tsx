@@ -15,13 +15,23 @@ import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import { isUndefined, toLower } from 'lodash';
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import {
-  getEntityDetailsPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../constants/constants';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
+import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
   EntityTabs,
@@ -30,9 +40,16 @@ import {
 } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
+import { PageType } from '../../generated/system/ui/page';
 import { UsageDetails } from '../../generated/type/entityUsage';
-import { getEntityName } from '../EntityUtils';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
+import { getEntityImportPath, getEntityName } from '../EntityUtils';
+import i18n from '../i18next/LocalUtil';
+import { getEntityDetailsPath } from '../RouterUtils';
 import { getUsagePercentile } from '../TableUtils';
+import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 
 export const getQueryFilterForDatabase = (
   serviceType: string,
@@ -121,69 +138,143 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   },
 ];
 
-export const getDatabaseDetailsPageDefaultLayout = (tab: EntityTabs) => {
-  switch (tab) {
-    case EntityTabs.SCHEMA:
-      return [
-        {
-          h: 2,
-          i: DetailPageWidgetKeys.DESCRIPTION,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 8,
-          i: DetailPageWidgetKeys.TABLE_SCHEMA,
-          w: 6,
-          x: 0,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-          w: 2,
-          x: 6,
-          y: 0,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.DATA_PRODUCTS,
-          w: 2,
-          x: 6,
-          y: 1,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.TAGS,
-          w: 2,
-          x: 6,
-          y: 2,
-          static: false,
-        },
-        {
-          h: 1,
-          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-          w: 2,
-          x: 6,
-          y: 3,
-          static: false,
-        },
-        {
-          h: 3,
-          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-          w: 2,
-          x: 6,
-          y: 4,
-          static: false,
-        },
-      ];
+export const getDatabasePageBaseTabs = ({
+  activeTab,
+  database,
+  viewAllPermission,
+  schemaInstanceCount,
+  feedCount,
+  handleFeedCount,
+  getEntityFeedCount,
+  editCustomAttributePermission,
+  getDetailsByFQN,
+}: DatabaseDetailPageTabProps): TabProps[] => {
+  return [
+    {
+      label: (
+        <TabsLabel
+          count={schemaInstanceCount}
+          id={EntityTabs.SCHEMA}
+          isActive={activeTab === EntityTabs.SCHEMA}
+          name={t('label.schema-plural')}
+        />
+      ),
+      key: EntityTabs.SCHEMA,
+      children: <GenericTab type={PageType.Database} />,
+    },
+    {
+      label: (
+        <TabsLabel
+          count={feedCount.totalCount}
+          id={EntityTabs.ACTIVITY_FEED}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          name={t('label.activity-feed-plural')}
+        />
+      ),
+      key: EntityTabs.ACTIVITY_FEED,
+      children: (
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.DATABASE}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={getDetailsByFQN}
+          onUpdateFeedCount={handleFeedCount}
+        />
+      ),
+    },
 
-    default:
-      return [];
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CUSTOM_PROPERTIES}
+          name={t('label.custom-property-plural')}
+        />
+      ),
+      key: EntityTabs.CUSTOM_PROPERTIES,
+      children: database && (
+        <div className="m-sm">
+          <CustomPropertyTable<EntityType.DATABASE>
+            entityType={EntityType.DATABASE}
+            hasEditAccess={editCustomAttributePermission}
+            hasPermission={viewAllPermission}
+            isVersionView={false}
+          />
+        </div>
+      ),
+    },
+  ];
+};
+
+export const getDatabaseWidgetsFromKey = (widgetConfig: WidgetConfig) => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATABASE_SCHEMA)) {
+    return <DatabaseSchemaTable />;
   }
+
+  return (
+    <CommonWidgets
+      entityType={EntityType.DATABASE}
+      widgetConfig={widgetConfig}
+    />
+  );
+};
+
+export const ExtraDatabaseDropdownOptions = (
+  fqn: string,
+  permission: OperationPermission,
+  deleted: boolean
+) => {
+  const { showModal } = useEntityExportModalProvider();
+  const history = useHistory();
+
+  const { ViewAll, EditAll } = permission;
+
+  return [
+    ...(EditAll && !deleted
+      ? [
+          {
+            label: (
+              <LimitWrapper resource="database">
+                <ManageButtonItemLabel
+                  description={i18n.t('message.import-entity-help', {
+                    entity: i18n.t('label.database'),
+                  })}
+                  icon={ImportIcon}
+                  id="import-button"
+                  name={i18n.t('label.import')}
+                  onClick={() =>
+                    history.push(getEntityImportPath(EntityType.DATABASE, fqn))
+                  }
+                />
+              </LimitWrapper>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
+    ...(ViewAll && !deleted
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={i18n.t('message.export-entity-help', {
+                  entity: i18n.t('label.database'),
+                })}
+                icon={ExportIcon}
+                id="export-button"
+                name={i18n.t('label.export')}
+                onClick={() =>
+                  showModal({
+                    name: fqn,
+                    onExport: exportDatabaseDetailsInCSV,
+                  })
+                }
+              />
+            ),
+            key: 'export-button',
+          },
+        ]
+      : []),
+  ];
 };

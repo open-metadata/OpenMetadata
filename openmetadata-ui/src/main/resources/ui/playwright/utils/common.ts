@@ -47,6 +47,8 @@ export const getToken = async (page: Page) => {
 
 export const getAuthContext = async (token: string) => {
   return await request.newContext({
+    // Default timeout is 30s making it to 1m for AUTs
+    timeout: 60000,
     extraHTTPHeaders: {
       Authorization: `Bearer ${token}`,
     },

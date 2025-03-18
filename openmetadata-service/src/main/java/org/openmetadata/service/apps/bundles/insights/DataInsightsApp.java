@@ -1,8 +1,8 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
@@ -19,8 +19,12 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
+import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
@@ -53,6 +57,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private int batchSize;
 
   public record Backfill(String startDate, String endDate) {}
+
+  private CostAnalysisConfig costAnalysisConfig;
+  private DataAssetsConfig dataAssetsConfig;
+  private DataQualityConfig dataQualityConfig;
+  private AppAnalyticsConfig webAnalyticsConfig;
 
   private Optional<Boolean> recreateDataAssetsIndex;
 
@@ -93,18 +102,25 @@ public class DataInsightsApp extends AbstractNativeApplication {
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
       searchInterface =
           new ElasticSearchDataInsightsClient(
-              (RestClient) searchRepository.getSearchClient().getLowLevelClient());
+              (RestClient) searchRepository.getSearchClient().getLowLevelClient(),
+              searchRepository.getClusterAlias());
     } else {
       searchInterface =
           new OpenSearchDataInsightsClient(
               (os.org.opensearch.client.RestClient)
-                  searchRepository.getSearchClient().getLowLevelClient());
+                  searchRepository.getSearchClient().getLowLevelClient(),
+              searchRepository.getClusterAlias());
     }
     return searchInterface;
   }
 
-  public static String getDataStreamName(String dataAssetType) {
-    return String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+  public static String getDataStreamName(String prefix, String dataAssetType) {
+    String dataStreamName =
+        String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+    if (!(prefix == null || prefix.isEmpty())) {
+      dataStreamName = String.format("%s-%s", prefix, dataStreamName);
+    }
+    return dataStreamName;
   }
 
   private void createIndexInternal(String entityType) throws IOException {
@@ -113,10 +129,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
       searchRepository.createIndex(resultIndexType);
     }
     DataInsightsSearchInterface searchInterface = getSearchInterface();
-    if (!searchInterface.dataAssetDataStreamExists(getDataStreamName(entityType))) {
+    if (!searchInterface.dataAssetDataStreamExists(
+        getDataStreamName(searchRepository.getClusterAlias(), entityType))) {
       searchRepository
           .getSearchClient()
-          .addIndexAlias(resultIndexType, getDataStreamName(entityType));
+          .addIndexAlias(
+              resultIndexType, getDataStreamName(searchRepository.getClusterAlias(), entityType));
     }
   }
 
@@ -143,7 +161,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  private void createDataAssetsDataStream() {
+  private void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
@@ -155,10 +173,17 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       for (String dataAssetType : dataAssetTypes) {
         IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
-        String dataStreamName = getDataStreamName(dataAssetType);
+        String dataStreamName =
+            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
-              dataStreamName, dataAssetType, dataAssetIndex, language);
+              dataStreamName,
+              dataAssetType,
+              dataAssetIndex,
+              language,
+              dataAssetsConfig.getRetention());
+        } else {
+          searchInterface.updateLifecyclePolicy(dataAssetsConfig.getRetention());
         }
       }
     } catch (IOException ex) {
@@ -171,7 +196,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     try {
       for (String dataAssetType : dataAssetTypes) {
-        String dataStreamName = getDataStreamName(dataAssetType);
+        String dataStreamName =
+            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
         if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.deleteDataAssetDataStream(dataStreamName);
         }
@@ -184,10 +210,14 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    createDataAssetsDataStream();
-    createDataQualityDataIndex();
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
+
+    // Get the configuration for the different modules
+    costAnalysisConfig = config.getModuleConfiguration().getCostAnalysis();
+    dataAssetsConfig = parseDataAssetsConfig(config.getModuleConfiguration().getDataAssets());
+    dataQualityConfig = config.getModuleConfiguration().getDataQuality();
+    webAnalyticsConfig = config.getModuleConfiguration().getAppAnalytics();
 
     // Configure batchSize
     batchSize = config.getBatchSize();
@@ -207,7 +237,19 @@ public class DataInsightsApp extends AbstractNativeApplication {
               new Backfill(backfillConfig.get().getStartDate(), backfillConfig.get().getEndDate()));
     }
 
+    createOrUpdateDataAssetsDataStream();
+    createDataQualityDataIndex();
+
     jobData = new EventPublisherJob().withStats(new Stats());
+  }
+
+  private DataAssetsConfig parseDataAssetsConfig(DataAssetsConfig config) {
+    if (config.getServiceFilter() != null
+        && (config.getServiceFilter().getServiceName() == null
+            || config.getServiceFilter().getServiceType() == null)) {
+      return config.withServiceFilter(null);
+    }
+    return config;
   }
 
   @Override
@@ -228,7 +270,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
       if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
         deleteDataAssetsDataStream();
-        createDataAssetsDataStream();
+        createOrUpdateDataAssetsDataStream();
         deleteDataQualityDataIndex();
         createDataQualityDataIndex();
       }
@@ -290,7 +332,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processWebAnalytics() {
-    WebAnalyticsWorkflow workflow = new WebAnalyticsWorkflow(timestamp, batchSize, backfill);
+    WebAnalyticsWorkflow workflow =
+        new WebAnalyticsWorkflow(webAnalyticsConfig, timestamp, batchSize, backfill);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
@@ -304,7 +347,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private WorkflowStats processCostAnalysis() {
-    CostAnalysisWorkflow workflow = new CostAnalysisWorkflow(timestamp, batchSize, backfill);
+    CostAnalysisWorkflow workflow =
+        new CostAnalysisWorkflow(costAnalysisConfig, timestamp, batchSize, backfill);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
@@ -320,6 +364,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
         new DataAssetsWorkflow(
+            dataAssetsConfig,
             timestamp,
             batchSize,
             backfill,
@@ -343,7 +388,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
     for (String entityType : dataQualityEntities) {
       DataQualityWorkflow workflow =
           new DataQualityWorkflow(
-              timestamp, batchSize, backfill, entityType, collectionDAO, searchRepository);
+              dataQualityConfig,
+              timestamp,
+              batchSize,
+              backfill,
+              entityType,
+              collectionDAO,
+              searchRepository);
 
       try {
         workflow.process();

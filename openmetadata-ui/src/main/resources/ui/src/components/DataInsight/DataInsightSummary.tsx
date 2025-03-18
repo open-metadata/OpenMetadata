@@ -17,6 +17,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { WEB_CHARTS } from '../../constants/DataInsight.constants';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -32,7 +33,6 @@ import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightP
 import {
   getAggregateChartData,
   getMultiChartsPreviewByName,
-  SystemChartType,
 } from '../../rest/DataInsightAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
 import {

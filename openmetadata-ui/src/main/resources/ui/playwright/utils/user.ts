@@ -13,10 +13,6 @@
 
 import { Browser, expect, Page, Response } from '@playwright/test';
 import {
-  customFormatDateTime,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
-import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
 } from '../constant/permission';
@@ -37,6 +33,7 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
+import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -105,7 +102,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     }
   );
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
   );
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
@@ -211,18 +208,17 @@ export const hardDeleteUserProfilePage = async (
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
-  await page.click('[data-testid="edit-displayName"]');
+  await page.click('[data-testid="user-profile-manage-btn"]');
+  await page.click('[data-testid="edit-displayname"]');
   await page.fill('[data-testid="displayName"]', '');
-  await page.type('[data-testid="displayName"]', editedUserName);
+  await page.getByTestId('displayName').fill(editedUserName);
 
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.click('[data-testid="inline-save-btn"]');
+  await page.click('[data-testid="save-display-name"]');
   await saveResponse;
 
   // Verify the updated display name
-  const userName = await page.textContent(
-    '[data-testid="user-profile-details"] [data-testid="user-name"]'
-  );
+  const userName = await page.textContent('[data-testid="user-display-name"]');
 
   expect(userName).toContain(editedUserName);
 };
@@ -232,7 +228,7 @@ export const editTeams = async (page: Page, teamName: string) => {
   await page.click('.ant-select-selection-item-remove > .anticon');
 
   await page.click('[data-testid="team-select"]');
-  await page.type('[data-testid="team-select"]', teamName);
+  await page.getByTestId('team-select').fill(teamName);
 
   // Click the team from the dropdown
   await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
@@ -270,10 +266,7 @@ export const editDescription = async (
 
 export const handleAdminUpdateDetails = async (
   page: Page,
-  editedUserName: string,
-  updatedDescription: string,
-  teamName: string,
-  role?: string
+  editedUserName: string
 ) => {
   const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
   await visitOwnProfilePage(page);
@@ -281,22 +274,6 @@ export const handleAdminUpdateDetails = async (
 
   // edit displayName
   await editDisplayName(page, editedUserName);
-
-  // edit teams
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-  await editTeams(page, teamName);
-
-  // edit description
-  await editDescription(page, updatedDescription);
-
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-
-  // verify role for the user
-  const chipContainer = page.locator(
-    '[data-testid="user-profile-roles"] [data-testid="chip-container"]'
-  );
-
-  await expect(chipContainer).toContainText(role ?? '');
 };
 
 export const handleUserUpdateDetails = async (
@@ -324,8 +301,6 @@ export const updateUserDetails = async (
     updatedDisplayName,
     updatedDescription,
     isAdmin,
-    teamName,
-    role,
   }: {
     updatedDisplayName: string;
     updatedDescription: string;
@@ -335,13 +310,7 @@ export const updateUserDetails = async (
   }
 ) => {
   if (isAdmin) {
-    await handleAdminUpdateDetails(
-      page,
-      updatedDisplayName,
-      updatedDescription,
-      teamName,
-      role
-    );
+    await handleAdminUpdateDetails(page, updatedDisplayName);
   } else {
     await handleUserUpdateDetails(page, updatedDisplayName, updatedDescription);
   }
@@ -567,37 +536,27 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
-  if (process.env.PLAYWRIGHT_IS_OSS) {
-    await expect(
-      page.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
-  } else {
-    await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
+  await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
 
-    await page.click('[data-testid="manage-button"]');
+  await page.click('[data-testid="manage-button"]');
 
-    await expect(page.locator('[data-testid="export-button"]')).toBeVisible();
-    await expect(
-      page.locator('[data-testid="import-button"]')
-    ).not.toBeVisible();
-    await expect(
-      page.locator('[data-testid="announcement-button"]')
-    ).not.toBeVisible();
-    await expect(
-      page.locator('[data-testid="delete-button"]')
-    ).not.toBeVisible();
-  }
+  await expect(page.locator('[data-testid="export-button"]')).toBeVisible();
+  await expect(page.locator('[data-testid="import-button"]')).not.toBeVisible();
+  await expect(
+    page.locator('[data-testid="announcement-button"]')
+  ).not.toBeVisible();
+  await expect(page.locator('[data-testid="delete-button"]')).not.toBeVisible();
 
   await page.click('[data-testid="lineage"]');
 
@@ -633,9 +592,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await getSearchResultResponse;
 
   // Click on the entity link in the drawer title
-  await page.click(
-    '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
-  );
+  await page.click('.summary-panel-container [data-testid="entity-link"]');
 
   // Check if the edit tier button is visible
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
@@ -663,14 +620,14 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check right panel add tags button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.Tags"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
   // Check right panel add glossary term button
   await expect(
     page.locator(
-      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
+      '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
@@ -711,10 +668,7 @@ export const addUser = async (
   await page.fill('#confirmPassword', password);
 
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page.type(
-    '[data-testid="roles-dropdown"] > .ant-select-selector',
-    role
-  );
+  await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
   await page.click('.ant-select-item-option-content');
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
 
@@ -760,6 +714,7 @@ export const resetPassword = async (
 ) => {
   await visitOwnProfilePage(page);
 
+  await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="change-password-button"]');
 
   await expect(page.locator('.ant-modal-wrap')).toBeVisible();

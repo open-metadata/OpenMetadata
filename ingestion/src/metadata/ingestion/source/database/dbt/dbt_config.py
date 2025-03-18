@@ -48,6 +48,7 @@ from metadata.ingestion.source.database.dbt.constants import (
 from metadata.ingestion.source.database.dbt.models import DbtFiles
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
 from metadata.utils.s3_utils import list_s3_objects
 
@@ -163,7 +164,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
         client_config = ClientConfig(
-            base_url=str(config.dbtCloudUrl),
+            base_url=clean_uri(config.dbtCloudUrl),
             api_version="api/v2",
             auth_token=lambda: auth_token,
             auth_header="Authorization",
@@ -254,6 +255,7 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
             DBT_MANIFEST_FILE_NAME == blob_file_name.lower()
             or DBT_CATALOG_FILE_NAME == blob_file_name.lower()
             or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower()
+            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory

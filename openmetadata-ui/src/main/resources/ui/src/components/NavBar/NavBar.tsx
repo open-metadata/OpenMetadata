@@ -55,15 +55,18 @@ import {
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
+import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
+import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/entity/type';
 import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
-import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import {
   hasNotificationPermission,
   shouldRequestPermission,
@@ -94,6 +97,7 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
+import DomainSelectableList from '../common/DomainSelectableList/DomainSelectableList.component';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
@@ -117,19 +121,16 @@ const NavBar = ({
   handleClear,
 }: NavBarProps) => {
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
+  const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
+  const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
   const history = useHistory();
-  const {
-    domainOptions,
-    activeDomain,
-    activeDomainEntityRef,
-    updateActiveDomain,
-  } = useDomainStore();
+  const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
+    useDomainStore();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -142,6 +143,8 @@ const NavBar = ({
   const [activeTab, setActiveTab] = useState<string>('Task');
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>();
+  const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
+  const domainContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchOMVersion = async () => {
     try {
@@ -405,20 +408,53 @@ const NavBar = ({
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL, (deleteResponse) => {
+        if (deleteResponse) {
+          const deleteResponseData = JSON.parse(
+            deleteResponse
+          ) as AsyncDeleteWebsocketResponse;
+          handleDeleteEntityWebsocketResponse(deleteResponseData);
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
     };
-  }, [socket]);
+  }, [socket, onUpdateCSVExportJob]);
 
   useEffect(() => {
     fetchOMVersion();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Check if click is inside the domain-select-popover
+      const isClickInPopover = (event.target as Element)?.closest(
+        '.domain-select-popover'
+      );
+
+      if (
+        domainContainerRef.current &&
+        !domainContainerRef.current.contains(event.target as Node) &&
+        !isClickInPopover &&
+        isDomainDropdownOpen
+      ) {
+        setIsDomainDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDomainDropdownOpen]);
 
   useEffect(() => {
     const targetNode = document.body;
@@ -427,10 +463,14 @@ const NavBar = ({
     return () => targetNode.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
-  const handleDomainChange = useCallback(({ key }) => {
-    updateActiveDomain(key);
-    refreshPage();
-  }, []);
+  const handleDomainChange = useCallback(
+    async (domain: EntityReference | EntityReference[]) => {
+      updateActiveDomain(domain as EntityReference);
+      setIsDomainDropdownOpen(false);
+      refreshPage();
+    },
+    []
+  );
 
   const handleLanguageChange = useCallback(({ key }) => {
     i18next.changeLanguage(key);
@@ -552,37 +592,38 @@ const NavBar = ({
         </div>
 
         <Space align="center" size={24}>
-          <Dropdown
-            className="cursor-pointer"
-            menu={{
-              items: domainOptions,
-              onClick: handleDomainChange,
-              className: 'domain-dropdown-menu',
-              defaultSelectedKeys: [activeDomain],
-            }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Row data-testid="domain-dropdown" gutter={6}>
-              <Col className="flex-center">
-                <DomainIcon
-                  className="d-flex text-base-color"
-                  height={24}
-                  name="domain"
-                  width={24}
-                />
-              </Col>
-              <Col className="flex-center">
-                <Typography.Text>
-                  {activeDomainEntityRef
-                    ? getEntityName(activeDomainEntityRef)
-                    : activeDomain}
-                </Typography.Text>
-              </Col>
-              <Col className="flex-center">
-                <DropDownIcon height={14} width={14} />
-              </Col>
-            </Row>
-          </Dropdown>
+          <div className="d-flex" ref={domainContainerRef}>
+            <DomainSelectableList
+              hasPermission
+              popoverProps={{ open: isDomainDropdownOpen }}
+              selectedDomain={activeDomainEntityRef}
+              onCancel={() => setIsDomainDropdownOpen(false)}
+              onUpdate={handleDomainChange}>
+              <Row
+                data-testid="domain-dropdown"
+                gutter={6}
+                onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
+                <Col className="flex-center">
+                  <DomainIcon
+                    className="d-flex text-base-color"
+                    height={24}
+                    name="domain"
+                    width={24}
+                  />
+                </Col>
+                <Col className="flex-center">
+                  <Typography.Text>
+                    {activeDomainEntityRef
+                      ? getEntityName(activeDomainEntityRef)
+                      : activeDomain}
+                  </Typography.Text>
+                </Col>
+                <Col className="flex-center">
+                  <DropDownIcon height={14} width={14} />
+                </Col>
+              </Row>
+            </DomainSelectableList>
+          </div>
 
           <Dropdown
             className="cursor-pointer"
@@ -603,7 +644,6 @@ const NavBar = ({
               </Col>
             </Row>
           </Dropdown>
-
           <Dropdown
             destroyPopupOnHide
             className="cursor-pointer"
@@ -634,7 +674,6 @@ const NavBar = ({
               </Badge>
             </Tooltip>
           </Dropdown>
-
           <Dropdown
             menu={{
               items: getHelpDropdownItems(version),
@@ -652,7 +691,6 @@ const NavBar = ({
               />
             </Tooltip>
           </Dropdown>
-
           <UserProfileIcon />
         </Space>
       </div>

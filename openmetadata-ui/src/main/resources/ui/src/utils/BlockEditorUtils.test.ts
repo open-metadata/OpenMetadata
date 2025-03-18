@@ -14,6 +14,7 @@ import {
   formatValueBasedOnContent,
   getHtmlStringFromMarkdownString,
   getTextFromHtmlString,
+  isHTMLString,
 } from './BlockEditorUtils';
 
 describe('getTextFromHtmlString', () => {
@@ -61,15 +62,15 @@ describe('getTextFromHtmlString', () => {
 
   it('should handle complex nested structure', () => {
     const input = `
-      <div class="container">
-        <h1>Title</h1>
-        <p>First <strong>paragraph</strong> with <em>emphasis</em></p>
-        <ul>
-          <li>Item 1</li>
-          <li>Item 2</li>
-        </ul>
-      </div>
-    `;
+        <div class="container">
+          <h1>Title</h1>
+          <p>First <strong>paragraph</strong> with <em>emphasis</em></p>
+          <ul>
+            <li>Item 1</li>
+            <li>Item 2</li>
+          </ul>
+        </div>
+      `;
 
     const output = getTextFromHtmlString(input);
 
@@ -130,5 +131,61 @@ describe('formatValueBasedOnContent', () => {
     const input = '<p></p>';
 
     expect(formatValueBasedOnContent(input)).toBe('');
+  });
+});
+
+describe('isHTMLString', () => {
+  it('should return true for simple HTML content', () => {
+    const htmlContent = '<p>This is a paragraph</p>';
+
+    expect(isHTMLString(htmlContent)).toBe(true);
+  });
+
+  it('should return true for complex HTML content', () => {
+    const htmlContent = `
+      <div class="container">
+        <h1>Title</h1>
+        <p>This is a <strong>bold</strong> paragraph with <a href="#">link</a></p>
+        <ul>
+          <li>Item 1</li>
+          <li>Item 2</li>
+        </ul>
+      </div>
+    `;
+
+    expect(isHTMLString(htmlContent)).toBe(true);
+  });
+
+  it('should return false for markdown content', () => {
+    const markdownContent = `
+      ***
+### Data Sharing Policies
+If there is any question or concern regarding the data sharing policies, 
+please contact the support team <test@test.com>.
+***
+    `;
+
+    expect(isHTMLString(markdownContent)).toBe(false);
+  });
+
+  it('should return false for plain text', () => {
+    const plainText = 'This is just plain text without any formatting';
+
+    expect(isHTMLString(plainText)).toBe(false);
+  });
+
+  it('should return false for empty string', () => {
+    expect(isHTMLString('')).toBe(false);
+  });
+
+  it('should return false when content has both HTML and markdown', () => {
+    const mixedContent = `
+      <div>
+        # Markdown Header
+        * List item
+      </div>
+    `;
+
+    expect(isHTMLString(mixedContent)).toBe(true);
   });
 });

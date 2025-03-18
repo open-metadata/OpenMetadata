@@ -28,11 +28,9 @@ import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
-  header?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
-  headerClassName?: string;
   mainContainerClassName?: string;
   pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
@@ -54,11 +52,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   rightPanel,
   className,
   pageTitle,
-  header,
   center = false,
   leftPanelWidth = 230,
   rightPanelWidth = 284,
-  headerClassName = '',
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
@@ -79,20 +75,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      {header && (
-        <div
-          className={classNames(
-            {
-              'header-center': center,
-              'm-t-md p-x-md': !center,
-            },
-            headerClassName
-          )}>
-          {header}
-        </div>
-      )}
       <Row
-        className={classNames(className, 'bg-white')}
+        className={classNames('bg-white', className)}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}>
         {leftPanel && (
@@ -122,6 +106,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
+
             <Col className={`${alert && 'p-t-sm'}`} span={24}>
               {children}
             </Col>

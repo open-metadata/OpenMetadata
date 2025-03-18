@@ -22,6 +22,7 @@ import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.compon
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
@@ -34,24 +35,24 @@ const TableDescription = ({
   onClick,
   entityType,
   hasEditPermission,
-  onThreadLinkSelect,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
-  const { selectedUserSuggestions = [] } = useSuggestionsContext();
+  const { selectedUserSuggestions } = useSuggestionsContext();
+  const { onThreadLinkSelect } = useGenericContext();
 
   const entityLink = useMemo(
     () =>
       entityType === EntityType.TABLE
         ? EntityLink.getTableEntityLink(
             entityFqn,
-            columnData.record?.name ?? ''
+            EntityLink.getTableColumnNameFromColumnFqn(columnData.fqn)
           )
         : getEntityFeedLink(entityType, columnData.fqn),
     [entityType, entityFqn]
   );
 
   const suggestionData = useMemo(() => {
-    const activeSuggestion = selectedUserSuggestions.find(
+    const activeSuggestion = selectedUserSuggestions?.description.find(
       (suggestion) => suggestion.entityLink === entityLink
     );
 

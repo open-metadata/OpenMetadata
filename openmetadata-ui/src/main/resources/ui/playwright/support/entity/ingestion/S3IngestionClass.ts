@@ -55,8 +55,8 @@ class S3IngestionClass extends ServiceBaseClass {
     await checkServiceFieldSectionHighlighting(page, 'awsRegion');
 
     // to reduce ingestion time
-    await page.click('[data-testid="add-item-Bucket Names"]');
-    await page.fill('#root\\/bucketNames\\/0', this.entityName);
+    await page.fill('#root\\/bucketNames', this.entityName);
+    await page.locator('#root\\/bucketNames').press('Enter');
   }
 
   async fillIngestionDetails(page: Page) {

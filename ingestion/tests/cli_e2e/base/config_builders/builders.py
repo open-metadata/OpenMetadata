@@ -67,6 +67,7 @@ class ProfilerConfigBuilder(BaseBuilder):
             self.config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
                 "includes": self.config_args.get("includes")
             }
+            self.config["source"]["sourceConfig"]["config"]["includeViews"] = True
 
         self.config["processor"] = {"type": "orm-profiler", "config": {}}
         return self.config
@@ -90,8 +91,8 @@ class LineageConfigBuilder(BaseBuilder):
                 "type": "DatabaseLineage",
                 "queryLogDuration": 1,
                 "resultLimit": 10000,
-                "processQueryLineage": True,
-                "processStoredProcedureLineage": True,
+                "processQueryLineage": False,
+                "processStoredProcedureLineage": False,
             }
         }
         return self.config

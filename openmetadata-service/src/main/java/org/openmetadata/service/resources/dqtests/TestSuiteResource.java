@@ -81,6 +81,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
   public static final String NON_BASIC_TEST_SUITE_DELETION_ERROR =
       "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/basic/<...>";
+  public static final String BASIC_TEST_SUITE_WITHOUT_REF_ERROR =
+      "Cannot create a basic test suite without the BasicEntityReference field informed.";
 
   static final String FIELDS = "owners,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
@@ -272,7 +274,12 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
-          String q)
+          String q,
+      @Parameter(
+              description = "raw elasticsearch query to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("queryString")
+          String queryString)
       throws IOException {
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
@@ -298,7 +305,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     List<AuthRequest> authRequests = getAuthRequestsForListOps();
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     return repository.listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q);
+        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q, queryString);
   }
 
   @GET
@@ -566,6 +573,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Valid CreateTestSuite create) {
     TestSuite testSuite =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    if (testSuite.getBasicEntityReference() == null) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
+    }
     testSuite.setBasic(true);
     // Set the deprecation header based on draft specification from IETF
     // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
@@ -598,6 +608,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Valid CreateTestSuite create) {
     TestSuite testSuite =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    if (testSuite.getBasicEntityReference() == null) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_WITHOUT_REF_ERROR);
+    }
     testSuite.setBasic(true);
     List<AuthRequest> authRequests = getAuthRequestsForPost(testSuite);
     return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, testSuite);
@@ -768,6 +781,38 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     repository.deleteFromSearch(response.entity(), hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteLogicalTestSuiteAsync",
+      summary = "Delete a logical test suite asynchronously",
+      description = "Delete a logical test suite by `id` asynchronously.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logical test suite for instance {id} is not found")
+      })
+  public Response deleteAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the logical entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the logical test suite", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
+    }
+    return repository.deleteLogicalTestSuiteAsync(securityContext, testSuite, hardDelete);
   }
 
   @DELETE

@@ -164,7 +164,9 @@
         "BITMAP",
         "UINT",
         "BIT",
-        "MONEY"
+        "MONEY",
+        "MEASURE HIDDEN",
+        "MEASURE VISIBLE"
       ]
     },
     "constraint": {
@@ -193,7 +195,8 @@
             "PRIMARY_KEY",
             "FOREIGN_KEY",
             "SORT_KEY",
-            "DIST_KEY"
+            "DIST_KEY",
+            "CLUSTER_KEY"
           ]
         },
         "columns": {
@@ -1096,6 +1099,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -1141,6 +1148,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the table",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

@@ -42,6 +42,10 @@ jest.mock('../../../rest/pipelineAPI', () => ({
   ),
 }));
 
+jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>Searchbar</div>)
+);
+
 const mockProps = {
   pipelineFQN: 'pipelineFQN',
   tasks: [],

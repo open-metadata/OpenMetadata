@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Workflow Definition entity request
  */
 export interface CreateWorkflowDefinition {
@@ -51,7 +49,7 @@ export interface EdgeDefinition {
     /**
      * Defines if the edge will follow a path depending on the source node result.
      */
-    condition?: boolean;
+    condition?: string;
     /**
      * Element from which the edge will start.
      */
@@ -76,7 +74,8 @@ export interface EdgeDefinition {
  * Defines a Task for a given User to approve.
  */
 export interface Definition {
-    config?: CertificationConfiguration;
+    branches?: string[];
+    config?:   NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -84,22 +83,34 @@ export interface Definition {
     /**
      * Display Name that identifies this Node.
      */
-    displayName?: string;
-    input?:       string[];
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
     /**
      * Name that identifies this Node.
      */
     name?:    string;
-    output?:  string[];
     subType?: string;
     type?:    string;
+    output?:  string[];
     [property: string]: any;
 }
 
-export interface CertificationConfiguration {
-    rules?:              string;
+export interface NodeConfiguration {
+    /**
+     * Define certain set of rules that you would like to check. If all the rules apply, this
+     * will be set as 'True' and will continue through the positive flow. Otherwise it will be
+     * set to 'False' and continue through the negative flow.
+     */
+    rules?: string;
+    /**
+     * Choose which Status to apply to the Glossary Term
+     */
     glossaryTermStatus?: Status;
-    certification?:      CertificationEnum;
+    /**
+     * Choose which Certification to apply to the Data Asset
+     */
+    certification?: CertificationEnum;
     /**
      * People/Teams assigned to the Task.
      */
@@ -117,6 +128,9 @@ export interface Assignees {
     [property: string]: any;
 }
 
+/**
+ * Choose which Certification to apply to the Data Asset
+ */
 export enum CertificationEnum {
     CertificationBronze = "Certification.Bronze",
     CertificationGold = "Certification.Gold",
@@ -124,12 +138,20 @@ export enum CertificationEnum {
     Empty = "",
 }
 
+/**
+ * Choose which Status to apply to the Glossary Term
+ */
 export enum Status {
     Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
+    updatedBy?:    string;
 }
 
 /**
@@ -194,7 +216,7 @@ export interface EntityReference {
  * Periodic Batch Entity Trigger.
  */
 export interface EntityTriggerDefinition {
-    config?: Config;
+    config?: TriggerConfiguration;
     output?: string[];
     type?:   string;
 }
@@ -202,14 +224,14 @@ export interface EntityTriggerDefinition {
 /**
  * Entity Event Trigger Configuration.
  */
-export interface Config {
+export interface TriggerConfiguration {
     /**
      * Entity Type for which it should be triggered.
      */
     entityType: string;
     events?:    Event[];
     /**
-     * Exclude events that only modify given attributes.
+     * Select fields that should not trigger the workflow if only them are modified.
      */
     exclude?: string[];
     /**
@@ -217,7 +239,7 @@ export interface Config {
      */
     batchSize?: number;
     /**
-     * Search Filters to filter down the entities fetched.
+     * Select the Search Filters to filter down the entities fetched.
      */
     filters?: string;
     /**
@@ -255,6 +277,7 @@ export enum ScheduleTimeline {
 }
 
 export enum Type {
-    EventBasedEntityWorkflow = "eventBasedEntityWorkflow",
-    PeriodicBatchEntityWorkflow = "periodicBatchEntityWorkflow",
+    EventBasedEntity = "eventBasedEntity",
+    NoOp = "noOp",
+    PeriodicBatchEntity = "periodicBatchEntity",
 }

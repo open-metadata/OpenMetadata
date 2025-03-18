@@ -18,6 +18,7 @@ export interface WorkflowDefinition {
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
+    config?:            WorkflowConfiguration;
     /**
      * When `true` indicates the entity has been soft deleted.
      */
@@ -50,6 +51,10 @@ export interface WorkflowDefinition {
      * Unique identifier of this workflow definition.
      */
     id?: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Name that identifies this workflow definition.
      */
@@ -87,6 +92,7 @@ export interface WorkflowDefinition {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -103,6 +109,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -122,6 +151,13 @@ export interface FieldChange {
     oldValue?: any;
 }
 
+export interface WorkflowConfiguration {
+    /**
+     * If True, all the stage status will be stored in the database.
+     */
+    storeStageStatus: boolean;
+}
+
 /**
  * Governance Workflow Edge.
  */
@@ -129,7 +165,7 @@ export interface EdgeDefinition {
     /**
      * Defines if the edge will follow a path depending on the source node result.
      */
-    condition?: boolean;
+    condition?: string;
     /**
      * Element from which the edge will start.
      */
@@ -202,7 +238,7 @@ export interface TriggerObject {
 }
 
 export enum Type {
-    CustomSignal = "customSignal",
     EventBasedEntity = "eventBasedEntity",
+    NoOp = "noOp",
     PeriodicBatchEntity = "periodicBatchEntity",
 }
