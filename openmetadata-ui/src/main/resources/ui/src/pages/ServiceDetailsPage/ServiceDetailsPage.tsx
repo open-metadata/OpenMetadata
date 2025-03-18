@@ -264,9 +264,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
           ? EntityType.DATABASE_SERVICE
           : EntityType.ALL,
         decodedServiceFQN,
-        servicePermission
+        servicePermission,
+        serviceDetails?.deleted ?? false
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory]
+    [
+      servicePermission,
+      decodedServiceFQN,
+      serviceCategory,
+      serviceDetails?.deleted,
+    ]
   );
 
   const handleShowDeleted = useCallback(

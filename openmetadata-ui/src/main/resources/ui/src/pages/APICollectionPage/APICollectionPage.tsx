@@ -106,9 +106,10 @@ const APICollectionPage: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.API_COLLECTION,
         decodedAPICollectionFQN,
-        apiCollectionPermission
+        apiCollectionPermission,
+        apiCollection?.deleted ?? false
       ),
-    [apiCollectionPermission, decodedAPICollectionFQN]
+    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection?.deleted]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
