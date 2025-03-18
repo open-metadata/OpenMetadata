@@ -11,26 +11,12 @@
  *  limitations under the License.
  */
 
-import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  EditOutlined,
-  MoreOutlined,
-  PlusOutlined,
-} from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Input,
-  MenuProps,
-  Modal,
-  Space,
-} from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Input, Modal, Space } from 'antd';
 import { isEmpty, isNil, isUndefined, toString, uniqueId } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useMemo, useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import {
@@ -59,6 +45,7 @@ import {
   getDefaultWidgetForTab,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
@@ -279,124 +266,49 @@ export const CustomizeTabWidget = () => {
     []
   );
 
-  const onTabPositionChange = (newOrder: React.Key[]) => {
-    const newItems = newOrder.map(
-      (key) => items.find((item) => item.id === key) as Tab
-    );
-    updateCurrentPage({
-      ...currentPage,
-      tabs: newItems,
-    } as Page);
-
-    updateCurrentPage({
-      ...currentPage,
-      tabs: newItems,
-    } as Page);
-  };
-
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
-  const handleMenuClick = (menuInfo: MenuInfo, itemId: string) => {
-    switch (menuInfo.key) {
-      case 'edit':
-        setActiveKey(itemId);
+  const moveTab = (fromIndex: number, toIndex: number) => {
+    const newItems = [...items];
+    const [movedItem] = newItems.splice(fromIndex, 1);
+    newItems.splice(toIndex, 0, movedItem);
 
-        break;
-      case 'rename':
-        handleTabEditClick(itemId);
-
-        break;
-      case 'delete':
-        remove(itemId);
-
-        break;
-    }
+    updateCurrentPage({
+      ...currentPage,
+      tabs: newItems,
+    } as Page);
   };
-
-  const tabMenuItems: MenuProps['items'] = [
-    {
-      label: 'Edit Widgets',
-      key: 'edit',
-      icon: <CheckCircleOutlined />,
-    },
-    {
-      label: 'Rename',
-      key: 'rename',
-      icon: <EditOutlined />,
-    },
-    {
-      label: 'Delete',
-      key: 'delete',
-      icon: <CloseCircleOutlined />,
-    },
-  ];
 
   return (
     <>
       <Col span={24}>
-        <Card bordered={false} className="m-x-lg" title="Customize Tabs">
-          <Space wrap size={16}>
-            {items.map((item) => (
-              <Dropdown
-                key={item.id}
-                menu={{
-                  items: tabMenuItems,
-                  onClick: (menuInfo) => handleMenuClick(menuInfo, item.id),
-                }}>
-                <Button onClick={() => onChange(item.id)}>
-                  <Space>
-                    {getEntityName(item)}
-                    <MoreOutlined />
-                  </Space>
-                </Button>
-              </Dropdown>
-            ))}
+        <Card
+          bordered={false}
+          className="m-x-lg"
+          extra={
             <Button icon={<PlusOutlined />} type="primary" onClick={add}>
               {t('label.add-entity', {
                 entity: t('label.tab'),
               })}
             </Button>
-          </Space>
-
-          {/* <DraggableTabs
-            activeKey={activeKey ?? undefined}
-            items={items.map((item) => ({
-              key: item.id,
-              label: (
-                <Button
-                  type="text"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    item.editable && onChange(item.id);
-                  }}>
-                  <Tooltip
-                    title={
-                      item.editable
-                        ? ''
-                        : t('message.no-customization-available')
-                    }>
-                    {getEntityName(item)}
-                    <Icon
-                      className="m-l-xs "
-                      component={EditIcon}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleTabEditClick(item.id);
-                      }}
-                    />
-                  </Tooltip>
-                </Button>
-              ),
-              closable: true,
-            }))}
-            size="small"
-            tabBarGutter={2}
-            type="editable-card"
-            onChange={onChange}
-            onEdit={onEdit}
-            onTabChange={onTabPositionChange}
-          /> */}
+          }
+          title="Customize Tabs">
+          <DndProvider backend={HTML5Backend}>
+            <Space wrap size={16}>
+              {items.map((item, index) => (
+                <TabItem
+                  index={index}
+                  item={item}
+                  key={item.id}
+                  moveTab={moveTab}
+                  onEdit={setActiveKey}
+                  onRemove={remove}
+                  onRename={handleTabEditClick}
+                />
+              ))}
+            </Space>
+          </DndProvider>
         </Card>
       </Col>
       <Col span={24}>
