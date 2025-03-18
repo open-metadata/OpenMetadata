@@ -118,7 +118,6 @@ import {
   MlModelServiceTypeSmallCaseType,
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
-  ServiceAgentSubTabs,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -816,10 +815,6 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
-  }
-
-  public getServiceAgentSupportedSubTabs() {
-    return [ServiceAgentSubTabs.COLLATE_AI, ServiceAgentSubTabs.METADATA];
   }
 
   /**

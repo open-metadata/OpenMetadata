@@ -14,7 +14,8 @@ import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
-
+export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
+export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
@@ -49,10 +50,15 @@ export const formatDate = (date?: number, supportUTC = false) => {
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDateTimeLong = (timestamp: number, format?: string) =>
-  DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || "ccc d'th' MMMM, yyyy, hh:mm a"
+export const formatDateTimeLong = (timestamp?: number, format?: string) => {
+  if (isNil(timestamp)) {
+    return '';
+  }
+
+  return DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
+    format || DATE_TIME_WITH_OFFSET_FORMAT
   );
+};
 
 /**
  *
@@ -294,3 +300,9 @@ export const getStartOfDayInMillis = (timestamp: number) =>
 
 export const getEndOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().endOf('day').toMillis();
+
+export const getCurrentDayStartGMTinMillis = () =>
+  DateTime.now().setZone('GMT').startOf('day').toMillis();
+
+export const getDayAgoStartGMTinMillis = (days: number) =>
+  DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();

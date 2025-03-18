@@ -19,9 +19,3 @@ export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
   SystemChartType.TierCoverage,
   SystemChartType.OwnersCoverage,
 ];
-
-export const SERVICE_INSIGHTS_CHART: SystemChartType[] = [
-  ...PLATFORM_INSIGHTS_CHART,
-  SystemChartType.PIIDistribution,
-  SystemChartType.TierDistribution,
-];

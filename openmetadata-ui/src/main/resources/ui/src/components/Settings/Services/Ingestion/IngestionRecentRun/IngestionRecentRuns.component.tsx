@@ -20,7 +20,7 @@ import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { PipelineStatus } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import {
-  formatDateTime,
+  formatDateTimeLong,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../../utils/date-time/DateTimeUtils';
@@ -128,18 +128,19 @@ export const IngestionRecentRuns = ({
                   {r.timestamp && (
                     <p>
                       {`${t('label.execution-date')}:`}{' '}
-                      {formatDateTime(r.timestamp)}
+                      {formatDateTimeLong(r.timestamp)}
                     </p>
                   )}
                   {r.startDate && (
                     <p>
                       {t('label.start-entity', { entity: t('label.date') })}:{' '}
-                      {formatDateTime(r.startDate)}
+                      {formatDateTimeLong(r.startDate)}
                     </p>
                   )}
                   {r.endDate && (
                     <p>
-                      {`${t('label.end-date')}:`} {formatDateTime(r.endDate)}
+                      {`${t('label.end-date')}:`}{' '}
+                      {formatDateTimeLong(r.endDate)}
                     </p>
                   )}
                 </div>
