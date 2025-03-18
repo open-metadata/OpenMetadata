@@ -37,7 +37,6 @@ Note that the **Backend Connection** is only used to extract metadata from a DAG
 
 $$
 
----
 
 ## MySQL Connection
 
@@ -64,7 +63,6 @@ Provide the path to SSL client certificate file (`ssl_cert`)
 ### SSL Key $(id="sslKey")
 Provide the path to SSL key file (`ssl_key`)
 
----
 
 ## Postgres Connection
 
@@ -88,7 +86,6 @@ SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca` etc.
 
 You can ignore the rest of the properties, since we won't ingest any database not policy tags.
 
----
 
 ## MSSQL Connection
 
@@ -312,7 +309,6 @@ $$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
 
----
 
 ## Postgres Connection
 
@@ -320,8 +316,6 @@ Additional connection arguments such as security or protocol configs that can be
 ### Username $(id="username")
 
 Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
-
-
 
 
 ### Auth Config $(id="authType")
@@ -537,8 +531,6 @@ Additional connection arguments such as security or protocol configs that can be
 
 Additional connection options to build the URL that can be sent to service during the connection.
 
-
----
 
 ## SQLite Connection
 
