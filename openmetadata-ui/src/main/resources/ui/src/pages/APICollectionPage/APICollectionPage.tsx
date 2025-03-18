@@ -77,7 +77,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { customizedPage } = useCustomPages(PageType.APICollection);
+  const { customizedPage, isLoading } = useCustomPages(PageType.APICollection);
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
@@ -415,7 +415,18 @@ const APICollectionPage: FunctionComponent = () => {
       customizedPage?.tabs,
       EntityTabs.API_ENDPOINT
     );
-  }, [activeTab]);
+  }, [
+    activeTab,
+    customizedPage,
+    feedCount,
+    apiCollection,
+    fetchAPICollectionDetails,
+    getEntityFeedCount,
+    handleFeedCount,
+    editCustomAttributePermission,
+    viewAllPermission,
+    apiEndpointCount,
+  ]);
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
@@ -430,7 +441,7 @@ const APICollectionPage: FunctionComponent = () => {
     }
   };
 
-  if (isPermissionsLoading) {
+  if (isPermissionsLoading || isLoading) {
     return <Loader />;
   }
 

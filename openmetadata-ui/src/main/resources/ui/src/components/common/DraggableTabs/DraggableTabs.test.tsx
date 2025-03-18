@@ -25,6 +25,7 @@ describe('TabItem', () => {
   const mockTab = {
     id: 'test-tab-1',
     name: 'Test Tab',
+    editable: true,
     layout: [],
   };
 
@@ -75,6 +76,12 @@ describe('TabItem', () => {
       fireEvent.click(screen.getByText('Edit Widgets'));
 
       expect(defaultProps.onEdit).toHaveBeenCalledWith(mockTab.id);
+    });
+
+    it('does not render dropdown menu when tab is not editable', () => {
+      renderComponent({ item: { ...mockTab, editable: false } });
+
+      expect(screen.queryByText('Edit Widgets')).not.toBeInTheDocument();
     });
 
     it('calls onRename when Rename is clicked', () => {
