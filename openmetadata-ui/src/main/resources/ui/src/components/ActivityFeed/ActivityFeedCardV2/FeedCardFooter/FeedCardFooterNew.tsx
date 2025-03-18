@@ -94,7 +94,7 @@ function FeedCardFooterNew({
 
             {!isPost && (
               <ThreadIcon
-                data-testid="thread-count"
+                data-testid="reply-count"
                 height={18}
                 width={18}
                 onClick={isForFeedTab ? showReplies : undefined}

@@ -57,12 +57,12 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     const checkOverflow = () => {
       if (contentRef.current) {
         const el = contentRef.current;
-        el.style.webkitLineClamp = '2';
+        el.style.setProperty('-webkit-line-clamp', '2');
         const { scrollHeight, clientHeight } = el;
         const isOverflow = scrollHeight > clientHeight + 1;
         setIsOverflowing(isOverflow);
         setIsContentLoaded(true);
-        el.style.webkitLineClamp = readMore ? 'unset' : '2';
+        el.style.setProperty('-webkit-line-clamp', readMore ? 'unset' : '2');
       }
     };
 

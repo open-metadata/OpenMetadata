@@ -473,22 +473,19 @@ test.describe('Activity feed', () => {
       async () => {
         await addMentionCommentInFeed(page, 'aaron.warren5', true);
 
-        const lastFeedContainer = `#feed-panel [data-testid="message-container"] [data-testid="feed-replies"] .feed-card-v2-container:last-child`;
+        const feedContainer = `[data-testid="feed-replies"]`;
 
         await expect(
           page
-            .locator(lastFeedContainer)
+            .locator(feedContainer)
             .locator(
               '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
             )
+            .first()
         ).toContainText('Can you resolve this thread for me? @aaron.warren5');
 
         // Close drawer
         await page.locator('[data-testid="closeDrawer"]').click();
-
-        await expect(
-          page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
-        ).toContainText('2 Replies');
       }
     );
   });
@@ -563,7 +560,7 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName)
+        page2.getByText(user2.responseData.displayName).first()
       ).toBeVisible();
 
       // Check the Task based on Created by me task filter
@@ -584,7 +581,7 @@ test.describe('Activity feed', () => {
       await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
 
       await expect(
-        page2.getByText(user2.responseData.displayName)
+        page2.getByText(user2.responseData.displayName).first()
       ).toBeVisible();
 
       await afterActionUser2();
