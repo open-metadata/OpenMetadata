@@ -115,12 +115,7 @@ export const formatContent = (
   }
   const modifiedHtmlString = doc.body.innerHTML;
 
-  const boldTextToHtml = modifiedHtmlString.replace(
-    /\*\*(.+?)\*\*/g,
-    '<strong>$1</strong>'
-  );
-
-  return boldTextToHtml;
+  return modifiedHtmlString;
 };
 
 export const formatValueBasedOnContent = (value: string) =>
@@ -153,6 +148,7 @@ export const isHTMLString = (content: string) => {
       /^\s*>{1,}\s/, // Blockquotes
       /^---|\*\*\*|___/, // Horizontal rules
       /`{1,3}[^`]+`{1,3}/, // Code blocks
+      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
     ];
 
     const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
