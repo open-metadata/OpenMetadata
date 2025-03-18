@@ -304,7 +304,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     throw new IllegalArgumentException("App does not have a scheduled deployment");
   }
 
-  private static AppRunRecord convertPipelineStatus(App app, PipelineStatus pipelineStatus) {
+  protected static AppRunRecord convertPipelineStatus(App app, PipelineStatus pipelineStatus) {
     return new AppRunRecord()
         .withAppId(app.getId())
         .withAppName(app.getName())
