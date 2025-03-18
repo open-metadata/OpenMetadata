@@ -77,7 +77,6 @@ public class HierarchyCSVImporter {
     return orderedRecord;
   }
 
-
   public static List<String> createBaseRecord(String entityType, String fullyQualifiedName) {
     List<String> record = new ArrayList<>();
     record.add(entityType); // entityType field

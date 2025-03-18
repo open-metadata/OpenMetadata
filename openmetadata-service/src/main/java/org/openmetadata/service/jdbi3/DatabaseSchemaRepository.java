@@ -486,23 +486,52 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       String tableFQN = FullyQualifiedName.getParentFQN(entityFQN);
       TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
       Table table;
+
       try {
         table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         LOG.warn("Table not found for column: {}, skipping column creation.", entityFQN);
         return;
       }
+
+      // Ensure column list is initialized
       List<Column> columns = table.getColumns() == null ? new ArrayList<>() : table.getColumns();
-      Column column =
+
+      // Parse the data type
+      ColumnDataType dataType = ColumnDataType.fromValue(csvRecord.get(14));
+
+      // Handle dataLength validation
+      Integer dataLength = null;
+      if (dataType == ColumnDataType.VARCHAR) {
+        if (nullOrEmpty(csvRecord.get(16))) {
+          LOG.error("Data length is required for VARCHAR columns: {}", csvRecord.get(0));
+          throw new IllegalArgumentException(
+              "Data length is mandatory for VARCHAR columns: " + csvRecord.get(0));
+        }
+        try {
+          dataLength = Integer.parseInt(csvRecord.get(16));
+        } catch (NumberFormatException e) {
+          LOG.error(
+              "Invalid data length for VARCHAR column {}: {}", csvRecord.get(0), csvRecord.get(16));
+          throw new IllegalArgumentException(
+              "Invalid data length for VARCHAR column: " + csvRecord.get(0));
+        }
+      } else {
+        dataLength = nullOrEmpty(csvRecord.get(16)) ? null : Integer.parseInt(csvRecord.get(16));
+      }
+
+      // Create or update column using utility method
+      Column newColumn =
           new Column()
               .withName(csvRecord.get(0))
               .withFullyQualifiedName(entityFQN)
               .withDisplayName(csvRecord.get(1))
               .withDescription(csvRecord.get(2))
-              .withDataType(ColumnDataType.fromValue(csvRecord.get(14)))
-              .withDataLength(
-                  nullOrEmpty(csvRecord.get(16)) ? null : Integer.parseInt(csvRecord.get(16)));
-      columns.add(column);
+              .withDataType(dataType)
+              .withDataLength(dataLength);
+
+      // Use common utility to update/add column
+      ColumnUtil.addOrUpdateColumn(columns, newColumn);
       table.withColumns(columns);
 
       if (processRecord && !importResult.getDryRun()) {
