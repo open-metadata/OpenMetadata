@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -23,6 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
   APICollectionSource,
@@ -66,12 +68,14 @@ type SuggestionProp = {
   searchCriteria?: SearchIndex;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
+  isNLPActive?: boolean;
 };
 
 const Suggestions = ({
   searchText,
   setIsOpen,
   searchCriteria,
+  isNLPActive = false,
 }: SuggestionProp) => {
   const { t } = useTranslation();
   const { isTourOpen } = useTourProvider();
@@ -318,8 +322,42 @@ const Suggestions = ({
     isMounting.current = false;
   }, []);
 
+  // Add a function to render AI query suggestions
+  const renderAIQuerySuggestions = () => {
+    const aiQueries = [
+      'Create todays sales summary',
+      "Create action items based on today's forecast",
+      'Annual report summary',
+      'Date set report',
+    ];
+
+    return (
+      <div data-testid="ai-query-suggestions">
+        <Typography.Text strong className="m-b-sm d-block">
+          {t('label.ai-queries')}
+        </Typography.Text>
+        {aiQueries.map((query) => (
+          <div className="m-b-md" key={query}>
+            <Button
+              className="nlp-button w-6 h-6 active m-r-md"
+              data-testid="nlp-suggestions-button"
+              icon={<Icon component={IconSuggestionsBlue} />}
+              type="text"
+            />
+            {query}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <Loader />;
+  }
+
+  // Add a condition to show AI query suggestions when searchText is empty and isNLPActive is true
+  if (isEmpty(searchText) && isNLPActive) {
+    return renderAIQuerySuggestions();
   }
 
   if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {

@@ -38,6 +38,8 @@ import {
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
+import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
+import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -85,6 +87,7 @@ const cookieStorage = new CookieStorage();
 const NavBar: React.FC = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
+  const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
   const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);

@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
+import { MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
@@ -86,6 +87,7 @@ const LeftSidebar = () => {
     () =>
       [SETTING_ITEM, LOGOUT_ITEM].map((item) => ({
         key: item.key,
+        icon: <Icon component={item.icon} />,
         label: (
           <LeftSidebarItem
             data={{
@@ -131,11 +133,15 @@ const LeftSidebar = () => {
           children: item.children?.map((item: LeftSidebarItemType) => {
             return {
               key: item.key,
+              icon: <Icon component={item.icon} />,
               label: <LeftSidebarItem data={item} />,
             };
           }),
         };
       }),
+      {
+        type: 'divider',
+      },
       ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
     ];
   }, [sideBarItems]);
@@ -174,8 +180,8 @@ const LeftSidebar = () => {
       </div>
 
       <Menu
-        inlineIndent={0}
-        items={menuItems}
+        inlineIndent={16}
+        items={menuItems as MenuItemType[]}
         mode="inline"
         rootClassName="left-sidebar-menu"
         selectedKeys={selectedKeys}

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Input, Popover, Select } from 'antd';
+import { Button, Divider, Input, Popover, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce, isString } from 'lodash';
 import Qs from 'qs';
@@ -19,15 +19,16 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
+import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
-import { getExplorePath, TOUR_SEARCH_TERM } from '../../constants/constants';
+import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { isTourRoute } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import {
+  getExplorePath,
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
@@ -48,6 +49,8 @@ export const GlobalSearchBar = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const history = useHistory();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
+  const isNLPEnabled = searchClassBase.isNLPEnabled();
+  const [isNLPActive, setIsNLPActive] = useState<boolean>(false);
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
@@ -154,13 +157,28 @@ export const GlobalSearchBar = () => {
 
   return (
     <div
-      className="flex-center search-container"
+      className="flex-center search-container relative"
       data-testid="navbar-search-container"
       ref={searchContainerRef}>
+      {isNLPEnabled && (
+        <>
+          <Button
+            className={classNames('nlp-button', 'w-6', 'h-6', {
+              active: isNLPActive,
+            })}
+            data-testid="nlp-suggestions-button"
+            icon={<Icon component={IconSuggestionsBlue} />}
+            type="text"
+            onClick={() => setIsNLPActive(!isNLPActive)}
+          />
+          <Divider className="h-full m-r-0 m-l-md" type="vertical" />
+        </>
+      )}
       <Popover
+        align={{ offset: [0, 12] }}
         content={
-          !isTourRoute &&
-          searchValue &&
+          !isTourOpen &&
+          (searchValue || isNLPActive) &&
           (isInPageSearchAllowed(pathname) ? (
             <SearchOptions
               isOpen={isSearchBoxOpen}
@@ -171,6 +189,7 @@ export const GlobalSearchBar = () => {
             />
           ) : (
             <Suggestions
+              isNLPActive={isNLPActive}
               isOpen={isSearchBoxOpen}
               searchCriteria={
                 searchCriteria === '' ? undefined : searchCriteria
@@ -183,8 +202,8 @@ export const GlobalSearchBar = () => {
         getPopupContainer={() => searchContainerRef.current || document.body}
         open={isSearchBoxOpen}
         overlayClassName="global-search-overlay"
-        overlayStyle={{ width: '100%', paddingTop: 0 }}
-        placement="bottomRight"
+        overlayStyle={{ paddingTop: 0, width: '100%' }}
+        placement="bottom"
         showArrow={false}
         trigger={['click']}
         onOpenChange={setIsSearchBoxOpen}>

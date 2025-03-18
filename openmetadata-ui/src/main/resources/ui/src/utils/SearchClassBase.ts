@@ -630,6 +630,10 @@ class SearchClassBase {
   public staticKeysHavingCounts(): string[] {
     return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
   }
+
+  public isNLPEnabled() {
+    return true;
+  }
 }
 
 const searchClassBase = new SearchClassBase();

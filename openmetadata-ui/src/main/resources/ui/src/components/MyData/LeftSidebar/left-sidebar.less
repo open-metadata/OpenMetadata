@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
+//
 
 .logo-container {
   height: 40px;
@@ -19,65 +19,17 @@
 }
 
 .left-sidebar-menu {
-  &.ant-menu-inline-collapsed {
-    margin: 0 12px;
-    border: none;
-    .ant-menu-item,
-    .ant-menu-submenu.ant-menu-submenu-vertical {
-      width: 83px;
-      height: auto;
-      padding: 16px !important;
-      margin: 0 !important;
-      .ant-menu-submenu-title {
-        margin: 0;
-        height: auto;
-        padding: 0 !important;
-      }
+  .anticon {
+    line-height: 0 !important;
+    font-size: 40px !important;
 
-      .anticon {
-        font-size: 40px !important;
-        color: @text-color;
-        line-height: 0px;
-        svg {
-          fill: transparent;
-        }
-      }
-
-      &::after {
-        content: '';
-        border: none;
-      }
+    svg {
+      fill: transparent;
     }
   }
 
-  &.ant-menu.ant-menu-inline {
-    margin: 0 12px;
-
-    .ant-menu-item,
-    .ant-menu-submenu.ant-menu-submenu-inline {
-      width: 204px;
-      padding: 16px !important;
-      margin: 0;
-      height: auto;
-
-      .ant-menu-submenu-title {
-        margin: 0;
-        height: auto;
-      }
-
-      .anticon {
-        font-size: 40px;
-        color: @text-color;
-        line-height: 0px;
-        svg {
-          fill: transparent;
-        }
-      }
-
-      &::after {
-        content: '';
-        border: none;
-      }
-    }
+  .ant-menu-item,
+  .ant-menu-submenu > .ant-menu-submenu-title {
+    padding: 0 20px !important;
   }
 }
