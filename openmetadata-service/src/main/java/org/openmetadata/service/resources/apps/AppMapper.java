@@ -43,6 +43,7 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withSupportEmail(marketPlaceDefinition.getSupportEmail())
             .withClassName(marketPlaceDefinition.getClassName())
             .withAppType(marketPlaceDefinition.getAppType())
+            .withAgentType(marketPlaceDefinition.getAgentType())
             .withScheduleType(marketPlaceDefinition.getScheduleType())
             .withAppConfiguration(createAppRequest.getAppConfiguration())
             .withRuntime(marketPlaceDefinition.getRuntime())

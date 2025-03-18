@@ -14,7 +14,7 @@
 import { Button, Col, Row, Space, Tabs, TabsProps, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty, isUndefined, toString } from 'lodash';
+import { isEmpty, isUndefined, startCase, toString } from 'lodash';
 import {
   PagingWithoutTotal,
   ServicesUpdateRequest,
@@ -43,7 +43,6 @@ import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsights
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
-  getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
@@ -64,7 +63,7 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { Container } from '../../generated/entity/data/container';
@@ -111,6 +110,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
+  getServiceDetailsPath,
   getServiceVersionPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
@@ -205,13 +205,38 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [searchText, setSearchText] = useState('');
+  const [typeFilter, setTypeFilter] = useState<
+    Array<{ key: string; label: string }>
+  >([]);
+  const [statusFilter, setStatusFilter] = useState<
+    Array<{ key: string; label: string }>
+  >([]);
+
+  const serviceAgentSupportedWidgets = useMemo(
+    () => serviceUtilClassBase.getAgentsTabWidgets(),
+    [serviceCategory]
+  );
+
+  const handleTypeFilterChange = useCallback(
+    (type: Array<{ key: string; label: string }>) => {
+      setTypeFilter(type);
+    },
+    []
+  );
+
+  const handleStatusFilterChange = useCallback(
+    (status: Array<{ key: string; label: string }>) => {
+      setStatusFilter(status);
+    },
+    []
+  );
 
   const activeTab = useMemo(() => {
     if (tab) {
       return tab;
     }
     if (isMetadataService) {
-      return EntityTabs.INGESTIONS;
+      return EntityTabs.AGENTS;
     }
 
     return getCountLabel(serviceCategory).toLowerCase();
@@ -230,13 +255,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setIngestionPipelines(ingestionList);
     },
     []
-  );
-
-  const handleIngestionPagingUpdate = useCallback(
-    (ingestionPaging: React.SetStateAction<Paging>) => {
-      handleIngestionPagingChange(ingestionPaging);
-    },
-    [handleIngestionPagingChange]
   );
 
   const extraDropdownContent = useMemo(
@@ -290,11 +308,23 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (key: string) => {
       if (key !== activeTab) {
+        let subTab = undefined;
+        const isAgentTab = key === EntityTabs.AGENTS;
+
+        if (isAgentTab) {
+          if (isUndefined(serviceAgentSupportedWidgets.CollateAIAgentsWidget)) {
+            subTab = ServiceAgentSubTabs.METADATA;
+          } else {
+            subTab = ServiceAgentSubTabs.COLLATE_AI;
+          }
+        }
+
         history.push({
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
             serviceCategory,
-            key
+            key,
+            subTab
           ),
         });
       }
@@ -335,6 +365,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (searchText: string, page?: number) => {
       try {
         setIsIngestionPipelineLoading(true);
+        const typeFilterArray = isEmpty(typeFilter)
+          ? SERVICE_INGESTION_PIPELINE_TYPES.map((type) => ({
+              key: type,
+              label: startCase(type),
+            }))
+          : typeFilter;
         const res = await searchQuery({
           pageNumber: page,
           pageSize: ingestionPageSize,
@@ -342,12 +378,25 @@ const ServiceDetailsPage: FunctionComponent = () => {
           query: `*${getEncodedFqn(
             escapeESReservedCharacters(searchText ?? '')
           )}*`,
-          filters: `(${SERVICE_INGESTION_PIPELINE_TYPES.map(
-            (type, index) =>
-              `pipelineType:${type} ${
-                index < SERVICE_INGESTION_PIPELINE_TYPES.length - 1 ? 'OR' : ''
-              }`
-          ).join(' ')})`,
+          filters: `(${typeFilterArray
+            .map(
+              (type, index) =>
+                `pipelineType:${type.key} ${
+                  index < typeFilterArray.length - 1 ? 'OR' : ''
+                }`
+            )
+            .join(' ')}) ${
+            isEmpty(statusFilter)
+              ? ''
+              : `AND (${statusFilter
+                  .map(
+                    (type, index) =>
+                      `pipelineStatuses.pipelineState:${type.key} ${
+                        index < statusFilter.length - 1 ? 'OR' : ''
+                      }`
+                  )
+                  .join(' ')})`
+          }`,
           queryFilter: getServiceDisplayNameQueryFilter(
             getEntityName(serviceDetails)
           ),
@@ -361,7 +410,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [ingestionPageSize, handleIngestionPagingChange, serviceDetails]
+    [
+      ingestionPageSize,
+      handleIngestionPagingChange,
+      serviceDetails,
+      typeFilter,
+      statusFilter,
+    ]
   );
 
   const include = useMemo(
@@ -886,35 +941,39 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
-      isEmpty(searchText)
+      isEmpty(searchText) && isEmpty(statusFilter) && isEmpty(typeFilter)
         ? getAllIngestionWorkflows(
             {},
             ingestionPagingCursor?.pageSize ?? ingestionPageSize
           )
         : searchPipelines(searchText, currentIngestionPage);
     }
-  }, [isAirflowAvailable, searchText, ingestionPageSize]);
+  }, [
+    isAirflowAvailable,
+    searchText,
+    ingestionPageSize,
+    statusFilter,
+    typeFilter,
+  ]);
 
   const ingestionTab = useMemo(
     () => (
-      <Row>
-        <Col className="p-x-lg" span={24}>
-          <Ingestion
-            airflowInformation={airflowInformation}
-            handleIngestionListUpdate={handleIngestionListUpdate}
-            handleSearchChange={handleSearchChange}
-            ingestionPagingInfo={ingestionPagingInfo}
-            ingestionPipelineList={ingestionPipelines}
-            isLoading={isIngestionPipelineLoading}
-            searchText={searchText}
-            serviceCategory={serviceCategory as ServiceCategory}
-            serviceDetails={serviceDetails}
-            serviceName={decodedServiceFQN}
-            onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
-            onPageChange={onPageChange}
-          />
-        </Col>
-      </Row>
+      <Ingestion
+        airflowInformation={airflowInformation}
+        handleIngestionListUpdate={handleIngestionListUpdate}
+        handleSearchChange={handleSearchChange}
+        handleStatusFilterChange={handleStatusFilterChange}
+        handleTypeFilterChange={handleTypeFilterChange}
+        ingestionPagingInfo={ingestionPagingInfo}
+        ingestionPipelineList={ingestionPipelines}
+        isLoading={isIngestionPipelineLoading}
+        searchText={searchText}
+        serviceDetails={serviceDetails}
+        statusFilter={statusFilter}
+        typeFilter={typeFilter}
+        onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
+        onPageChange={onPageChange}
+      />
     ),
     [
       airflowInformation,
@@ -922,12 +981,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
       serviceDetails,
       ingestionPipelines,
       ingestionPaging,
-      servicePermission,
-      serviceCategory,
-      decodedServiceFQN,
       getAllIngestionWorkflows,
       handleIngestionListUpdate,
-      handleIngestionPagingUpdate,
       searchText,
       handleSearchChange,
       onPageChange,
@@ -1008,6 +1063,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
     connectionDetails,
     isTestingDisabled,
     serviceCategory,
+    statusFilter,
+    typeFilter,
   ]);
 
   const tabs: TabsProps['items'] = useMemo(() => {
@@ -1063,8 +1120,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
     tabs.push(
       {
-        name: t('label.ingestion-plural'),
-        key: EntityTabs.INGESTIONS,
+        name: t('label.agent-plural'),
+        key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
         count: ingestionPaging.total,
         children: ingestionTab,
