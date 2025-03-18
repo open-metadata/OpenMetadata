@@ -405,4 +405,11 @@ public class OpenSearchSourceBuilderFactory
     addAggregation(searchSourceBuilder);
     return searchSourceBuilder;
   }
+
+  public SearchSourceBuilder addAggregationsToNLQQuery(
+      SearchSourceBuilder searchSourceBuilder, String indexName) {
+    AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
+    addConfiguredAggregations(searchSourceBuilder, assetConfig);
+    return searchSourceBuilder;
+  }
 }

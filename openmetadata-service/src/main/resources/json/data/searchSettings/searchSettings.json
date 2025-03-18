@@ -2215,5 +2215,82 @@
         }
       ]
     }
-  ]
+  ],
+  "nlqConfiguration": {
+    "promptTemplate": "You are an assistant that translates natural language queries into Elasticsearch queries.\n\n{{INSTRUCTIONS}}\n\nUSER QUERY: {{QUERY}}\n\nGenerate a valid Elasticsearch JSON query object. Return ONLY the JSON query with no explanations.",
+
+    "globalInstructions": [
+      {
+        "section": "CRITICAL FIELD CORRECTIONS",
+        "content": "1. Use 'owners.name' (plural) NOT 'owner.name' (singular)\n2. Use 'tags.tagFQN' NOT just 'tags' for regular tags\n3. Use 'tier.tagFQN' NOT 'tags.tagFQN' for tier-related queries\n4. Top-level fields like 'owners', 'tags', 'tier' do NOT need nested queries\n5. Only use nested queries for 'columns', 'charts', 'tasks', etc.",
+        "order": 10
+      },
+      {
+        "section": "TIER TAG FORMATTING",
+        "content": "When querying by tier, ALWAYS follow these formats:\n- For Tier 1: \"tier.tagFQN\": \"Tier.Tier1\" (not \"tier1\" or \"Tier1\")\n- For Tier 2: \"tier.tagFQN\": \"Tier.Tier2\" (not \"tier2\" or \"Tier2\")\n- For Tier 3: \"tier.tagFQN\": \"Tier.Tier3\" (not \"tier3\" or \"Tier3\")",
+        "order": 15
+      },
+      {
+        "section": "QUERY PATTERNS",
+        "content": "1. For text fields: {\"match\": {\"description\": \"customer data\"}}\n2. For keyword fields: {\"term\": {\"owners.name\": \"marketing\"}}\n3. For nested fields: {\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"address\"}}}}\n\nIMPORTANT: Return a valid JSON query object. Do NOT wrap it in a 'query' object - this will be done automatically.",
+        "order": 20
+      }
+    ],
+
+    "entitySpecificInstructions": [
+      {
+        "entityType": "table",
+        "sections": [
+          {
+            "section": "TABLE FIELDS",
+            "content": "- name (text): Use match query for fuzzy text search\n  Example: {\"match\": {\"name\": \"customer\"}}\n\n- name.keyword (exact): Use term query for exact matching\n  Example: {\"term\": {\"name.keyword\": \"customer_orders\"}}\n\n- description (text): Use match query for content search\n  Example: {\"match\": {\"description\": \"sales data\"}}\n\n- owners.name (keyword): Use term query for exact matching\n  Example: {\"term\": {\"owners.name\": \"marketing\"}}\n\n- tier.tagFQN (keyword): Use term query for tier classification\n  Example: {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}\n\n- tags.tagFQN (keyword): Use term query for tags\n  Example: {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}\n\n- columns (nested): Use nested query for searching columns\n  Example: {\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"address\"}}}}\n\n- service.name, database.name, databaseSchema.name (keywords): Use term queries\n  Example: {\"term\": {\"service.name\": \"snowflake\"}}",
+            "order": 10
+          }
+        ]
+      },
+      {
+        "entityType": "dashboard",
+        "sections": [
+          {
+            "section": "DASHBOARD FIELDS",
+            "content": "- charts.name (nested): Use nested query for searching charts\n  Example: {\"nested\": {\"path\": \"charts\", \"query\": {\"match\": {\"charts.name\": \"revenue\"}}}}\n\n- service.name: Use term query for the dashboard service\n  Example: {\"term\": {\"service.name\": \"looker\"}}\n\n- owners.name: Use term query for ownership\n  Example: {\"term\": {\"owners.name\": \"marketing\"}}",
+            "order": 10
+          }
+        ]
+      }
+    ],
+
+    "examples": [
+      {
+        "query": "tables owned by marketing",
+        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"owners.name\": \"marketing\"}}]}}",
+        "entityTypes": ["table"]
+      },
+      {
+        "query": "tables with customer data",
+        "esQuery": "{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"customer\"}}}}]}}",
+        "entityTypes": ["table"]
+      },
+      {
+        "query": "tables with Tier1 classification",
+        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}]}}",
+        "entityTypes": ["table"]
+      },
+      {
+        "query": "tables tagged with tier1 or tier2",
+        "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier2\"}}]}}",
+        "entityTypes": ["table"]
+      },
+      {
+        "query": "find all tier1 and tier2 tables",
+        "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier2\"}}]}}",
+        "entityTypes": ["table"]
+      },
+      {
+        "query": "tables with PII.Sensitive tag",
+        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}",
+        "entityTypes": ["table"]
+      }
+    ]
+  }
 }

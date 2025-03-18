@@ -34,17 +34,23 @@
         },
         "highlightFields": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Which fields to highlight by default."
         },
         "termBoosts": {
           "type": "array",
-          "items": { "$ref": "#/definitions/termBoost" },
+          "items": {
+            "$ref": "#/definitions/termBoost"
+          },
           "description": "List of field=value term-boost rules that apply only to this asset."
         },
         "fieldValueBoosts": {
           "type": "array",
-          "items": { "$ref": "#/definitions/fieldValueBoost" },
+          "items": {
+            "$ref": "#/definitions/fieldValueBoost"
+          },
           "description": "Optional list of numeric field-based boosts applied globally."
         }
       },
@@ -66,6 +72,72 @@
       "description": "Configurations of allowed searchable fields for each entity type",
       "items": {
         "$ref": "#/definitions/allowedSearchFields"
+      }
+    },
+    "nlqConfiguration": {
+      "description": "Configuration for Natural Language Query capabilities",
+      "javaType": "org.openmetadata.schema.api.search.NLQConfiguration",
+      "type": "object",
+      "properties": {
+        "promptTemplate": {
+          "type": "string",
+          "description": "Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific instructions should appear."
+        },
+        "globalInstructions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/promptSection"
+          }
+        },
+        "entitySpecificInstructions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entityType": {
+                "type": "string",
+                "description": "Entity type this instruction applies to (e.g., 'table', 'dashboard')"
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/promptSection"
+                }
+              }
+            }
+          },
+          "required": [
+            "entityType",
+            "sections"
+          ]
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Natural language query example"
+              },
+              "esQuery": {
+                "type": "string",
+                "description": "The corresponding Elasticsearch query"
+              },
+              "entityTypes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Entity types this example applies to (empty array = all types)"
+              }
+            },
+            "required": [
+              "query",
+              "esQuery"
+            ]
+          }
+        }
       }
     }
   },
@@ -281,6 +353,26 @@
       },
       "required": ["entityType", "fields"],
       "additionalProperties": false
+    },
+    "promptSection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.PromptSection",
+      "properties": {
+        "section": {
+          "type": "string",
+          "description": "Section name (e.g., 'CRITICAL FIELD CORRECTIONS', 'QUERY PATTERNS')"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content for this section of the prompt"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Display order for this section (lower numbers appear first)",
+          "default": 100
+        }
+      },
+      "required": ["section", "content"]
     }
   },
   "additionalProperties": false

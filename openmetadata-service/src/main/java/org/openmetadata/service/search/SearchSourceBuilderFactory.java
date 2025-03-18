@@ -205,4 +205,6 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    * @return a search source builder
    */
   S searchBuilder(Q queryBuilder, H highlightBuilder, int from, int size);
+
+  S addAggregationsToNLQQuery(S searchSourceBuilder, String indexName);
 }

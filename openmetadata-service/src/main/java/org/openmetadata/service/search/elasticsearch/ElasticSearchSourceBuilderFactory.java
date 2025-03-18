@@ -423,4 +423,16 @@ public class ElasticSearchSourceBuilderFactory
 
     return searchSourceBuilder;
   }
+
+  // Add this new method for applying aggregations to NLQ queries
+  public SearchSourceBuilder addAggregationsToNLQQuery(
+      SearchSourceBuilder searchSourceBuilder, String indexName) {
+    // Find the appropriate asset type configuration
+    AssetTypeConfiguration assetConfig = findAssetTypeConfig(indexName, searchSettings);
+
+    // Apply aggregations based on asset type and global settings
+    addConfiguredAggregations(searchSourceBuilder, assetConfig);
+
+    return searchSourceBuilder;
+  }
 }
