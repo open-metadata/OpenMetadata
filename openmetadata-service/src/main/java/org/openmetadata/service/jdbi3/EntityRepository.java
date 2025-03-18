@@ -1310,6 +1310,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entity != null) {
       DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
       postDelete(response.entity());
+      deleteFromSearch(response.entity(), hardDelete);
       return response;
     } else {
       return new DeleteResponse<>(null, ENTITY_DELETED);
