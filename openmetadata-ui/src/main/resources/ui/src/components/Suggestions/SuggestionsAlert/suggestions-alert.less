@@ -12,10 +12,17 @@
  */
 @import url('../../../styles/variables.less');
 
-.suggested-description-card {
+.suggested-card {
   border-color: @primary-color !important;
   border-radius: 10px !important;
   overflow: hidden;
+}
+
+.suggested-card.card-inline-flex {
+  .ant-card-body {
+    display: flex;
+    align-items: center;
+  }
 }
 
 .ant-btn.suggestion-pending-btn {

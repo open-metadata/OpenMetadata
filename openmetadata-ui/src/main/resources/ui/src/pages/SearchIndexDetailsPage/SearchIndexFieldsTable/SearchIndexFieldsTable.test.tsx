@@ -12,14 +12,19 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTable from './SearchIndexFieldsTable';
 
 const mockOnUpdate = jest.fn();
+const toggleExpandAll = jest.fn();
 const mockOnThreadLinkSelect = jest.fn();
 
 const mockProps = {
+  fieldAllRowKeys: [],
+  expandedRowKeys: [],
+  toggleExpandAll: toggleExpandAll,
   searchIndexFields: MOCK_SEARCH_INDEX_FIELDS,
   searchedFields: MOCK_SEARCH_INDEX_FIELDS,
   onUpdate: mockOnUpdate,
@@ -59,10 +64,21 @@ jest.mock('../../../components/Database/TableTags/TableTags.component', () =>
   jest.fn().mockImplementation(() => <div>testTableTags</div>)
 );
 
+jest.mock(
+  '../../../components/common/ToggleExpandButton/ToggleExpandButton',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ toggleExpandAll }) => (
+        <div onClick={toggleExpandAll}>testToggleExpandButton</div>
+      ))
+);
+
 describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should render a table with proper data', async () => {
     render(<SearchIndexFieldsTable {...mockProps} />);
 
+    expect(screen.getByText('testToggleExpandButton')).toBeInTheDocument();
     expect(screen.getByTestId('search-index-fields-table')).toBeInTheDocument();
     expect(screen.getByText('name')).toBeInTheDocument();
     expect(screen.getByText('columns')).toBeInTheDocument();
@@ -106,5 +122,19 @@ describe('SearchIndexFieldsTable component', () => {
     const dataTypeFieldForColumnName = screen.getByTestId('name-data-type');
 
     expect(dataTypeFieldForColumnName).toHaveTextContent('text');
+  });
+
+  it('should call toggleExpandAll when toggle button is clicked', () => {
+    render(
+      <SearchIndexFieldsTable
+        {...mockProps}
+        searchedFields={mockSearchedFields}
+      />
+    );
+    const toggleExpandButton = screen.getByText('testToggleExpandButton');
+
+    userEvent.click(toggleExpandButton);
+
+    expect(toggleExpandAll).toHaveBeenCalled();
   });
 });

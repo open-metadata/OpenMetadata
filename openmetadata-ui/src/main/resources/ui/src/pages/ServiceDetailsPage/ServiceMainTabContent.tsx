@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Switch, Table, Typography } from 'antd';
+import { Col, Row, Space, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -19,23 +19,30 @@ import { isUndefined } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import Table from '../../components/common/Table/Table';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
+} from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { ServicesType } from '../../interface/service.interface';
+import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getEntityBulkEditPath } from '../../utils/EntityUtils';
 import {
   callServicePatchAPI,
   getServiceMainTabColumns,
@@ -84,6 +91,7 @@ function ServiceMainTabContent({
     serviceCategory: ServiceTypes;
   }>();
   const { permissions } = usePermissionProvider();
+  const history = useHistory();
   const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
@@ -195,6 +203,15 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(
+        EntityType.DATABASE_SERVICE,
+        serviceDetails.fullyQualifiedName ?? ''
+      ),
+    });
+  };
+
   const {
     editTagsPermission,
     editGlossaryTermsPermission,
@@ -238,20 +255,6 @@ function ServiceMainTabContent({
                       onDescriptionUpdate={handleDescriptionUpdate}
                     />
                   </Col>
-                  <Col span={24}>
-                    <Row justify="end">
-                      <Col>
-                        <Switch
-                          checked={showDeleted}
-                          data-testid="show-deleted"
-                          onClick={onShowDeletedChange}
-                        />
-                        <Typography.Text className="m-l-xs">
-                          {t('label.deleted')}
-                        </Typography.Text>{' '}
-                      </Col>
-                    </Row>
-                  </Col>
                   <Col data-testid="table-container" span={24}>
                     <Space
                       className="w-full m-b-md"
@@ -265,12 +268,38 @@ function ServiceMainTabContent({
                           columns={tableColumn}
                           data-testid="service-children-table"
                           dataSource={pageData}
+                          defaultVisibleColumns={
+                            DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
+                          }
+                          extraTableFilters={
+                            <>
+                              <span>
+                                <Switch
+                                  checked={showDeleted}
+                                  data-testid="show-deleted"
+                                  onClick={onShowDeletedChange}
+                                />
+                                <Typography.Text className="m-l-xs">
+                                  {t('label.deleted')}
+                                </Typography.Text>
+                              </span>
+
+                              {entityType === EntityType.DATABASE_SERVICE &&
+                                getBulkEditButton(
+                                  servicePermission.EditAll,
+                                  handleEditTable
+                                )}
+                            </>
+                          }
                           locale={{
                             emptyText: <ErrorPlaceHolder className="m-y-md" />,
                           }}
                           pagination={false}
                           rowKey="id"
                           size="small"
+                          staticVisibleColumns={
+                            COMMON_STATIC_TABLE_VISIBLE_COLUMNS
+                          }
                         />
                       )}
                       {!isUndefined(pagingInfo) &&

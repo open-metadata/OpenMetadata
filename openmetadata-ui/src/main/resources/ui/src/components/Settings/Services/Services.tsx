@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import {
   DISABLED,
-  getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
@@ -32,6 +31,7 @@ import {
   OPEN_METADATA,
   servicesDisplayName,
 } from '../../../constants/Services.constant';
+import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -48,7 +48,10 @@ import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
 import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getAddServicePath } from '../../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServiceDetailsPath,
+} from '../../../utils/RouterUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
@@ -303,8 +306,8 @@ const Services = ({ serviceName }: ServicesProps) => {
   const columns: ColumnsType<ServicesType> = [
     {
       title: t('label.name'),
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: TABLE_COLUMNS_KEYS.NAME,
+      key: TABLE_COLUMNS_KEYS.NAME,
       width: 200,
       render: (name, record) => (
         <div className="d-flex gap-2 items-center">
@@ -325,14 +328,13 @@ const Services = ({ serviceName }: ServicesProps) => {
     },
     {
       title: t('label.description'),
-      dataIndex: 'description',
-      key: 'description',
+      dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+      key: TABLE_COLUMNS_KEYS.DESCRIPTION,
       width: 200,
       render: (description) =>
         description ? (
           <RichTextEditorPreviewerV1
             className="max-two-lines"
-            enableSeeMoreVariant={false}
             markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (
@@ -341,8 +343,8 @@ const Services = ({ serviceName }: ServicesProps) => {
     },
     {
       title: t('label.type'),
-      dataIndex: 'serviceType',
-      key: 'serviceType',
+      dataIndex: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
+      key: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
       width: 200,
       filterDropdown: ColumnFilter,
       filterIcon: columnFilterIcon,
@@ -357,8 +359,8 @@ const Services = ({ serviceName }: ServicesProps) => {
     },
     {
       title: t('label.owner-plural'),
-      dataIndex: 'owners',
-      key: 'owners',
+      dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
+      key: TABLE_COLUMNS_KEYS.OWNERS,
       width: 200,
       render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
     },

@@ -164,7 +164,9 @@
         "BITMAP",
         "UINT",
         "BIT",
-        "MONEY"
+        "MONEY",
+        "MEASURE HIDDEN",
+        "MEASURE VISIBLE"
       ]
     },
     "constraint": {
@@ -1146,6 +1148,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the table",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

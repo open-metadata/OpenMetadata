@@ -21,6 +21,7 @@ import {
   Typography,
 } from 'antd';
 import { ColumnType } from 'antd/lib/table';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, {
   forwardRef,
@@ -201,7 +202,12 @@ const Table = <T extends object = any>(
   return (
     <Row className="table-container" gutter={[0, 16]}>
       {(rest.extraTableFilters || !isFullViewTable) && (
-        <Col className="d-flex justify-end items-center gap-5" span={24}>
+        <Col
+          className={classNames(
+            'd-flex justify-end items-center gap-5',
+            rest.extraTableFiltersClassName
+          )}
+          span={24}>
           {rest.extraTableFilters}
           {!isFullViewTable && (
             <DndProvider backend={HTML5Backend}>
@@ -242,6 +248,7 @@ const Table = <T extends object = any>(
             emptyText: isLoading ? null : rest.locale?.emptyText,
           }}
           ref={ref}
+          tableLayout="fixed"
           {...resizingTableProps}
         />
       </Col>

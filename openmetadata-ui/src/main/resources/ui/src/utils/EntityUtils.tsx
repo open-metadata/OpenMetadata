@@ -25,6 +25,7 @@ import { EntityDetailUnion } from 'Models';
 import QueryString from 'qs';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { Node } from 'reactflow';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -43,13 +44,6 @@ import {
 import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getBotsPagePath,
-  getBotsPath,
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getKpiPath,
-  getServiceDetailsPath,
-  getTagsDetailsPath,
   NO_DATA,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
@@ -60,7 +54,12 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { TAG_START_WITH } from '../constants/Tag.constants';
-import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
+import {
+  EntityLineageNodeType,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
@@ -119,18 +118,25 @@ import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
   getApplicationDetailsPath,
+  getBotsPagePath,
+  getBotsPath,
   getClassificationTagPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
+  getEntityDetailsPath,
   getGlossaryPath,
+  getGlossaryTermDetailsPath,
   getIncidentManagerDetailPagePath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
+  getServiceDetailsPath,
   getSettingPath,
+  getTagsDetailsPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -2485,4 +2491,39 @@ export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
   ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
+export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
+  return ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    entityType
+  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
+/**
+ * Updates the node type based on whether it's a source or target node
+ * @param node - The node to update
+ * @param sourceNodeId - ID of the source node
+ * @param targetNodeId - ID of the target node
+ * @returns The updated node with the correct type
+ */
+export const updateNodeType = (
+  node: Node,
+  sourceNodeId?: string,
+  targetNodeId?: string
+): Node => {
+  if (node.id === sourceNodeId) {
+    return {
+      ...node,
+      type: EntityLineageNodeType.INPUT,
+    };
+  }
+  if (node.id === targetNodeId) {
+    return {
+      ...node,
+      type: EntityLineageNodeType.OUTPUT,
+    };
+  }
+
+  return node;
 };

@@ -3,14 +3,8 @@ name: SonarCloud + Jest Coverage
 on:
   # Trigger analysis when pushing in master or pull requests, and when creating
   # a pull request.
-  push:
-    branches:
-      - main
-      - "0.[0-9]+.[0-9]+"
-    paths:
-      - openmetadata-ui/src/main/resources/ui/**
   pull_request_target:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
       - openmetadata-ui/src/main/resources/ui/**
 
@@ -30,6 +24,7 @@ jobs:
       matrix:
         node-version: [18.x]
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.3.4

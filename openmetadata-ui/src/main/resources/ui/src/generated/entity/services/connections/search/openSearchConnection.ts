@@ -27,6 +27,10 @@ export interface OpenSearchConnection {
      * Host and port of the OpenSearch service.
      */
     hostPort?:                   string;
+    /**
+     * Regex to only fetch search indexes that matches the pattern.
+     */
+    searchIndexFilterPattern?: FilterPattern;
     sslConfig?:                  SSLConfig;
     supportsMetadataExtraction?: boolean;
     /**
@@ -141,6 +145,22 @@ export interface SSLCertificates {
      * Staging Directory Path
      */
     stagingDir?: string;
+}
+
+/**
+  * Regex to only fetch search indexes that matches the pattern.
+  *
+  * Regex to only fetch entities that matches the pattern.
+  */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

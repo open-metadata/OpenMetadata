@@ -19,6 +19,10 @@ export interface DayOneExperienceAppConfig {
      */
     active: boolean;
     /**
+     * Service Entity Link for which to trigger the application.
+     */
+    entityLink?: string;
+    /**
      * Application Type
      */
     type?: DayOneExperienceAppType;
@@ -30,5 +34,5 @@ export interface DayOneExperienceAppConfig {
  * Application type.
  */
 export enum DayOneExperienceAppType {
-    DayOneExperienceWorkflow = "DayOneExperienceWorkflow",
+    DayOneExperienceApplication = "DayOneExperienceApplication",
 }
