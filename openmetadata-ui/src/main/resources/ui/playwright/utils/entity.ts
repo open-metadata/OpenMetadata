@@ -1001,6 +1001,10 @@ export const checkForEditActions = async ({
     }
 
     if (entityType.startsWith('services/')) {
+      await page.getByRole('tab').nth(1).click();
+
+      await page.waitForLoadState('networkidle');
+
       continue;
     }
 
