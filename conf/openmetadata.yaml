@@ -300,7 +300,7 @@ elasticsearch:
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
   naturalLanguageSearch:
-    enabled: ${NATURAL_LANGUAGE_SEARCH_ENABLED:-true}
+    enabled: false
     providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
     bedrock:
       region: ${AWS_BEDROCK_REGION:-""}
