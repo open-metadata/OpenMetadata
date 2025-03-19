@@ -136,6 +136,8 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       }
 
       setSelectedDomains(selectedData);
+    } else {
+      handleSingleDomainSave();
     }
   };
 
@@ -239,25 +241,25 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
       {treeContent}
 
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-        <Button
-          className="update-btn"
-          data-testid="saveAssociatedTag"
-          htmlType="submit"
-          loading={isSubmitLoading}
-          size="small"
-          type="default"
-          onClick={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}>
-          {t('label.update')}
-        </Button>
-        <Button
-          data-testid="cancelAssociatedTag"
-          size="small"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Space>
+      {isMultiple ? (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            type="primary"
+            onClick={handleMultiDomainSave}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            type="default"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      ) : null}
     </div>
   );
 };
