@@ -34,8 +34,6 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,7 +62,6 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -145,7 +142,6 @@ import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -569,37 +565,11 @@ public class OpenSearchClient implements SearchClient {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
 
         // Try using the built-in OpenSearch NLQ feature as a first fallback
-        return useOpenSearchNLQService(request, subjectContext);
+        return fallbackToBasicSearch(request, subjectContext);
       }
     } else {
-      return useOpenSearchNLQService(request, subjectContext);
-    }
-  }
-
-  private Response useOpenSearchNLQService(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
-    try {
-      LOG.info("NLQ service not available, trying OpenSearch native NLQ");
-      Request nlqRequest = new Request("POST", "/_nlq");
-      nlqRequest.setJsonEntity(buildNLQRequest(request));
-      os.org.opensearch.client.Response nlqResponse =
-          client.getLowLevelClient().performRequest(nlqRequest);
-      String responseBody = EntityUtils.toString(nlqResponse.getEntity());
-      return Response.status(Response.Status.OK).entity(responseBody).build();
-    } catch (Exception e) {
-      LOG.warn("OpenSearch native NLQ failed, falling back to basic search: {}", e.getMessage());
       return fallbackToBasicSearch(request, subjectContext);
     }
-  }
-
-  private String buildNLQRequest(SearchRequest request) throws IOException {
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode queryJson = mapper.createObjectNode();
-    queryJson.put("index", request.getIndex());
-    queryJson.put("query", request.getQuery());
-    queryJson.put("size", request.getSize());
-    queryJson.put("from", request.getFrom());
-    return queryJson.toString();
   }
 
   private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext)
