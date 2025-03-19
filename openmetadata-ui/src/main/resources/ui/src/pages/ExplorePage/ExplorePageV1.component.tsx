@@ -50,7 +50,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
-import { searchQuery } from '../../rest/searchAPI';
+import { nlqSearch, searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
@@ -75,6 +75,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
+  const isNLPEnabled = searchClassBase.isNLPEnabled();
 
   const { tab } = useParams<UrlParams>();
 
@@ -361,7 +362,7 @@ const ExplorePageV1: FunctionComponent = () => {
 
     setIsLoading(true);
 
-    const searchAPICall = searchQuery({
+    const searchPayload = {
       query: !isEmpty(searchQueryParam)
         ? escapeESReservedCharacters(searchQueryParam)
         : '',
@@ -372,7 +373,11 @@ const ExplorePageV1: FunctionComponent = () => {
       pageNumber: page,
       pageSize: size,
       includeDeleted: showDeleted,
-    }).then((res) => {
+    };
+
+    const searchRequest = isNLPEnabled ? nlqSearch : searchQuery;
+
+    const searchAPICall = searchRequest(searchPayload).then((res) => {
       setSearchResults(res as SearchResponse<ExploreSearchIndex>);
       setUpdatedAggregations(res.aggregations);
     });
@@ -380,7 +385,7 @@ const ExplorePageV1: FunctionComponent = () => {
     const apiCalls = [searchAPICall];
 
     if (searchQueryParam) {
-      const countAPICall = searchQuery({
+      const countPayload = {
         query: escapeESReservedCharacters(searchQueryParam),
         pageNumber: 0,
         pageSize: 0,
@@ -390,7 +395,11 @@ const ExplorePageV1: FunctionComponent = () => {
         trackTotalHits: true,
         fetchSource: false,
         filters: '',
-      }).then((res) => {
+      };
+
+      const countRequest = isNLPEnabled ? nlqSearch : searchQuery;
+
+      const countAPICall = countRequest(countPayload).then((res) => {
         const buckets = res.aggregations['entityType'].buckets;
         const counts: Record<string, number> = {};
 
