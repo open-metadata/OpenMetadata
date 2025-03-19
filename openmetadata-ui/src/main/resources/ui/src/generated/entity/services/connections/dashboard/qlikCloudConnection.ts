@@ -35,9 +35,9 @@ export interface QlikCloudConnection {
      */
     projectFilterPattern?: FilterPattern;
     /**
-     * Space type to filter apps/dashboards.
+     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
-    spaceType?:                  SpaceType[];
+    spaceTypes?:                 SpaceType[];
     supportsMetadataExtraction?: boolean;
     /**
      * token to connect to Qlik Cloud.

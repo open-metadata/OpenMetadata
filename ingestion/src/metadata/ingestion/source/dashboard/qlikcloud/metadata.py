@@ -109,9 +109,10 @@ class QlikcloudSource(QliksenseSource):
         """
         Filter space based on space types configured in connection config.
         """
-        return project.type.value not in [
-            space_type.value for space_type in self.service_connection.spaceType
-        ]
+        spaceTypes = self.service_connection.spaceTypes
+        if spaceTypes is None:
+            return False
+        return project.type.value not in [space_type.value for space_type in spaceTypes]
 
     def is_personal_project(self, project: QlikSpace) -> bool:
         """
