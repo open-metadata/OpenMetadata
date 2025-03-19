@@ -84,13 +84,31 @@ def transform_tags(raw: Union[Dict[str, Any], List[TableauTag]]) -> List[Tableau
     return tags
 
 
+class TableauWorkbook(BaseModel):
+    """
+    Model for downstream workbook information
+    """
+
+    luid: Optional[str] = None
+    name: Optional[str] = None
+
+
 class CustomSQLTable(TableauBaseModel):
     """
     GraphQL API CustomSQLTable schema
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
+    downstreamWorkbooks: Optional[List[TableauWorkbook]] = None
     query: Optional[str] = None
+
+
+class CustomSQLTablesResponse(BaseModel):
+    """
+    Model for the custom SQL tables response
+    """
+
+    data: Dict[str, List[CustomSQLTable]]
 
 
 class UpstreamColumn(BaseModel):
@@ -173,6 +191,7 @@ class TableauDashboard(TableauBaseModel):
     webpageUrl: Optional[str] = None
     charts: Optional[List[TableauChart]] = None
     dataModels: List[DataSource] = []
+    custom_sql_queries: Optional[List[str]] = None
 
 
 class TableAndQuery(BaseModel):
