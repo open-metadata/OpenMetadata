@@ -460,7 +460,9 @@ const NavBar: React.FC = () => {
               <Button
                 className="flex-center p-sm"
                 icon={
-                  <Badge dot offset={[-6, 3]}>
+                  <Badge
+                    dot={hasTaskNotification || hasMentionNotification}
+                    offset={[-3, 3]}>
                     <IconBell width={20} />
                   </Badge>
                 }
