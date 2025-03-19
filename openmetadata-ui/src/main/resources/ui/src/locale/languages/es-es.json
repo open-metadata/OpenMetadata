@@ -907,6 +907,7 @@
     "owner-lowercase": "propietario",
     "owner-lowercase-plural": "owners",
     "owner-plural": "Propietarios",
+    "owner-plural-with-colon": "Propietarios:",
     "ownership": "Eigentum",
     "page": "Page",
     "page-not-found": "Página no encontrada",

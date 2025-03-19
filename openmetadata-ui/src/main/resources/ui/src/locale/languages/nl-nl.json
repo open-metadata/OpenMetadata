@@ -907,6 +907,7 @@
     "owner-lowercase": "eigenaar",
     "owner-lowercase-plural": "owners",
     "owner-plural": "Eigenaren",
+    "owner-plural-with-colon": "Eigenaren:",
     "ownership": "Eigendom",
     "page": "Page",
     "page-not-found": "Pagina niet gevonden",
