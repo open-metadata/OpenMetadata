@@ -23,13 +23,18 @@
 }
 
 .entity-search-settings-content {
-  margin: 20px !important;
+  margin: 20px;
   height: calc(100vh - 250px);
   overflow: hidden;
 }
 
+.settings-left-panel {
+  height: 100%;
+}
+
 .configuration-container {
-  border: 1px solid @border-color-1;
+  width: 100%;
+  padding: 0 20px 20px 20px;
 }
 
 .config-section {
@@ -42,8 +47,8 @@
 }
 
 .custom-select .ant-select-selector {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .preview-section {
@@ -53,26 +58,6 @@
   .preview-content {
     overflow: hidden;
   }
-
-  .restore-defaults-btn {
-    background-color: @blue-14;
-    border: 1px solid @blue-15;
-    color: @blue-9;
-    border-radius: 8px;
-  }
-
-  .save-btn {
-    background-color: @blue-9;
-    border: 1px solid @blue-9;
-    color: @white;
-    border-radius: 8px;
-  }
-
-  .save-btn:disabled {
-    background-color: @blue-9;
-    border: 1px solid @blue-9;
-    color: @white;
-  }
 }
 
 .add-field-btn {
@@ -80,14 +65,45 @@
   background-color: @blue-9;
   border: 1px solid @blue-9;
   color: @white;
-}
-
-.term-boosts-container {
-  background-color: @grey-15;
-  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .menu-items {
   max-height: 280px;
   overflow-y: auto;
+}
+
+.entity-collapse-container {
+  width: 100%;
+
+  .ant-collapse-item {
+    margin-bottom: 16px;
+    border: 1px solid @border-color-5;
+    border-radius: 12px;
+    overflow: hidden;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    > .ant-collapse-header {
+      background-color: @white;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+
+      .ant-collapse-header-text {
+        width: 100%;
+      }
+    }
+
+    > .ant-collapse-content {
+      background-color: @grey-15;
+
+      > .ant-collapse-content-box {
+        padding: 0;
+      }
+    }
+  }
 }

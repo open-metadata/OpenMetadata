@@ -615,15 +615,14 @@ export const DataAssetsHeader = ({
                               entity: t('label.tier'),
                             })}>
                             <Button
-                              className="flex-center edit-tier-button"
+                              className="flex-center edit-tier-button p-0"
                               data-testid="edit-tier"
                               icon={
                                 <EditIcon
                                   color={DE_ACTIVE_COLOR}
-                                  width="14px"
+                                  width="12px"
                                 />
                               }
-                              size="small"
                               type="text"
                             />
                           </Tooltip>
@@ -650,15 +649,14 @@ export const DataAssetsHeader = ({
                               entity: t('label.tier'),
                             })}>
                             <Button
-                              className="flex-center edit-tier-button"
+                              className="flex-center edit-tier-button p-0"
                               data-testid="edit-tier"
                               icon={
                                 <EditIcon
                                   color={DE_ACTIVE_COLOR}
-                                  width="14px"
+                                  width="12px"
                                 />
                               }
-                              size="small"
                               type="text"
                             />
                           </Tooltip>
