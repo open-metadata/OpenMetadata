@@ -217,6 +217,61 @@ public class SearchResource {
   }
 
   @POST
+  @Path("/query")
+  @Operation(
+      operationId = "searchEntitiesWithQueryPost",
+      summary = "Search entities",
+      description =
+          "Search entities using query text with various filters and parameters. <br/> "
+              + "1. Use `query` to send a search query to the engine. Supports substring search using wildcards (e.g., `*search_term*`). <br/>"
+              + "2. Specify `index` to define the search index (default: `table_search_index`). <br/>"
+              + "4. Use `from` and `size` for pagination (default: `0` and `10`, respectively). <br/>"
+              + "5. Apply additional Elasticsearch filters using `queryFilter` and `postFilter`. <br/>"
+              + "6. Get document body for each hit using `fetchSource` (default: `true`). <br/>"
+              + "7. Track total hits with `trackTotalHits` (default: `false`). <br/>"
+              + "8. Enable query explanation with `explain` (default: `false`, for debugging purposes). <br/>"
+              + "9. Filter by deleted entities using `deleted` (default: `false`). <br/>"
+              + "10. Sort results using `sortFieldParam` (default: `_score`) and `sortOrder` (`desc` by default). <br/>"
+              + "11. Get only selected fields of the document body for each hit with `includeSourceFields`. Empty value will return all fields. <br/>"
+              + "12. Use `searchAfter` for pagination to get only selected fields of the document body for each hit. Empty value will return all fields. <br/>"
+              + "13. Retrieve entity hierarchy using `isHierarchy` (default: `false`). For now only supported for glossaryterm and domain <br/>"
+              + "NOTE: Logical operators such as AND, OR, and NOT must be in uppercase.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchPost(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SearchRequest searchRequest)
+      throws IOException {
+
+    if (nullOrEmpty(searchRequest.getQuery())) {
+      searchRequest.setQuery("*");
+    }
+
+    // Add Domain Filter
+    List<EntityReference> domains = new ArrayList<>();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    SearchRequest request =
+        searchRequest
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(searchRequest.getIndex()))
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+    return searchRepository.search(request, subjectContext);
+  }
+
+  @POST
   @Path("/preview")
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
