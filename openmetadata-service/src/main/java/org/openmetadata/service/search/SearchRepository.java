@@ -937,10 +937,15 @@ public class SearchRepository {
             scriptTxt,
             List.of(new ImmutablePair<>("dashboards.id", docId)));
       }
-      default -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getChildAliases(clusterAlias),
-          scriptTxt,
-          List.of(new ImmutablePair<>(entityType + ".id", docId)));
+      default -> {
+        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        if (!indexNames.isEmpty()) {
+          searchClient.softDeleteOrRestoreChildren(
+              indexMapping.getChildAliases(clusterAlias),
+              scriptTxt,
+              List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        }
+      }
     }
   }
 
