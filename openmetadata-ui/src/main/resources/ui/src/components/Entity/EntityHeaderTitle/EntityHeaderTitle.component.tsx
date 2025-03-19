@@ -20,7 +20,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -40,7 +39,6 @@ const EntityHeaderTitle = ({
   badge,
   isDisabled,
   className,
-  color,
   showName = true,
   certification,
   excludeEntityService,
@@ -82,7 +80,7 @@ const EntityHeaderTitle = ({
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Tooltip placement="bottom" title={stringToHTML(name)}>
+          <Tooltip placement="bottom" title={stringToHTML(displayName ?? name)}>
             <Typography.Text
               className={classNames(
                 'entity-header-name',
@@ -91,7 +89,7 @@ const EntityHeaderTitle = ({
               )}
               data-testid="entity-header-name"
               ellipsis={{ tooltip: true }}>
-              {stringToHTML(name)}
+              {stringToHTML(displayName ?? name)}
             </Typography.Text>
           </Tooltip>
         ) : null}
@@ -99,17 +97,15 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Tooltip placement="bottom" title={stringToHTML(displayName || name)}>
+          <Tooltip placement="bottom" title={stringToHTML(name)}>
             <Typography.Text
-              className={classNames(
-                'entity-header-display-name',
-                displayNameClassName,
-                'm-b-0 text-md font-medium'
-              )}
+              className={classNames(displayNameClassName, 'm-b-0', {
+                'display-sm entity-header-name font-semibold': !displayName,
+                'text-md entity-header-display-name font-medium': displayName,
+              })}
               data-testid="entity-header-display-name"
-              ellipsis={{ tooltip: true }}
-              style={{ color: color ?? TEXT_COLOR }}>
-              {stringToHTML(displayName || name)}
+              ellipsis={{ tooltip: true }}>
+              {stringToHTML(name)}
               {openEntityInNewPage && (
                 <IconExternalLink
                   className="anticon vertical-baseline m-l-xss"
