@@ -174,7 +174,7 @@ const TagsV1 = ({
         className="tag-chip tag-chip-add-button"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
         <Typography.Paragraph
-          className="m-0 text-sm font-medium text-primary"
+          className="m-0 text-xs font-medium text-primary"
           data-testid="add-tag">
           {getTagDisplay(tagName)}
         </Typography.Paragraph>

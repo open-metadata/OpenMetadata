@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
@@ -306,6 +307,8 @@ public class SystemRepository {
         setting.setConfigValue(encryptSlackStateSetting(slackState));
       } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
+      } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));

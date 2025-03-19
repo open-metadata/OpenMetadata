@@ -177,7 +177,11 @@ describe('Database Util', () => {
         EditAll: true,
       } as OperationPermission;
 
-      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].key).toBe('import-button');
@@ -189,7 +193,11 @@ describe('Database Util', () => {
         EditAll: false,
       } as OperationPermission;
 
-      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].key).toBe('export-button');
@@ -201,7 +209,11 @@ describe('Database Util', () => {
         EditAll: true,
       } as OperationPermission;
 
-      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
 
       expect(result).toHaveLength(2);
       expect(result[0].key).toBe('import-button');
@@ -213,7 +225,26 @@ describe('Database Util', () => {
         ViewAll: false,
         EditAll: false,
       } as OperationPermission;
-      const result = ExtraDatabaseDropdownOptions('databaseFqn', permission);
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
+
+      expect(result).toHaveLength(0);
+      expect(result).toStrictEqual([]);
+    });
+
+    it('should not render any buttons when the entity is deleted', () => {
+      const permission = {
+        ViewAll: true,
+        EditAll: true,
+      } as OperationPermission;
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        true
+      );
 
       expect(result).toHaveLength(0);
       expect(result).toStrictEqual([]);

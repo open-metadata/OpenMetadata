@@ -239,7 +239,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       return EntityTabs.AGENTS;
     }
 
-    return getCountLabel(serviceCategory).toLowerCase();
+    return EntityTabs.INSIGHTS;
   }, [tab, serviceCategory, isMetadataService]);
 
   const handleSearchChange = useCallback(
@@ -264,9 +264,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
           ? EntityType.DATABASE_SERVICE
           : EntityType.ALL,
         decodedServiceFQN,
-        servicePermission
+        servicePermission,
+        serviceDetails?.deleted ?? false
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory]
+    [
+      servicePermission,
+      decodedServiceFQN,
+      serviceCategory,
+      serviceDetails?.deleted,
+    ]
   );
 
   const handleShowDeleted = useCallback(

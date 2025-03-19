@@ -1001,6 +1001,18 @@ export const checkForEditActions = async ({
     }
 
     if (entityType.startsWith('services/')) {
+      await page.getByRole('tab').nth(1).click();
+
+      await page.waitForLoadState('networkidle');
+
+      continue;
+    }
+
+    if (elementSelector === '[data-testid="entity-follow-button"]') {
+      deleted
+        ? await expect(page.locator(elementSelector)).not.toBeVisible()
+        : await expect(page.locator(elementSelector)).toBeVisible();
+
       continue;
     }
 

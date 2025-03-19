@@ -81,12 +81,12 @@ export const getDataBaseSchemaPageBaseTabs = ({
       label: (
         <TabsLabel
           count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          id={EntityTabs.ACTIVITY_FEEDS}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEEDS}
           name={t('label.activity-feed-plural')}
         />
       ),
-      key: EntityTabs.ACTIVITY_FEED,
+      key: EntityTabs.ACTIVITY_FEEDS,
       children: (
         <ActivityFeedTab
           refetchFeed
@@ -124,7 +124,8 @@ export const getDataBaseSchemaPageBaseTabs = ({
 
 export const ExtraDatabaseSchemaDropdownOptions = (
   fqn: string,
-  permission: OperationPermission
+  permission: OperationPermission,
+  deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const history = useHistory();
@@ -132,7 +133,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
   const { ViewAll, EditAll } = permission;
 
   return [
-    ...(EditAll
+    ...(EditAll && !deleted
       ? [
           {
             label: (
@@ -156,7 +157,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll
+    ...(ViewAll && !deleted
       ? [
           {
             label: (

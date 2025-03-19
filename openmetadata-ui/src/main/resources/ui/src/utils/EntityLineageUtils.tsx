@@ -1743,3 +1743,29 @@ export const handleExportPDFLineage = (nodes: Node[], fileName: string) => {
     showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
   }
 };
+
+export const getLineageEntityExclusionFilter = () => {
+  return {
+    query: {
+      bool: {
+        must_not: [
+          {
+            term: {
+              entityType: EntityType.GLOSSARY_TERM,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.TAG,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.DATA_PRODUCT,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
