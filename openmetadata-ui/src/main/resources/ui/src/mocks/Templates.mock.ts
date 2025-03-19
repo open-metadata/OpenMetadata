@@ -13,14 +13,14 @@
 
 import { IdSchema } from '@rjsf/utils';
 
-export const MOCK_ARRAY_FIELD = {
+export const MOCK_WORKFLOW_ARRAY_FIELD_TEMPLATE = {
   autofocus: false,
   disabled: false,
   formContext: { handleFocus: undefined },
   formData: ['test_value1', 'test_value2'],
   hideError: undefined,
-  id: 'root/array-field',
-  name: 'arrayField',
+  id: 'root/workflow-array-field-template',
+  name: 'workflowArrayFieldTemplate',
   options: {
     enumOptions: [],
   },
@@ -29,7 +29,7 @@ export const MOCK_ARRAY_FIELD = {
   readonly: false,
   required: false,
   idSchema: {
-    $id: 'root/array-field',
+    $id: 'root/workflow-array-field-template',
   } as IdSchema,
   idSeparator: '/',
   schema: {

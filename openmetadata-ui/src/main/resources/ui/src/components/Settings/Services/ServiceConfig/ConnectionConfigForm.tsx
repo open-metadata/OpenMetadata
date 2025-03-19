@@ -29,8 +29,8 @@ import {
   getFilteredSchema,
 } from '../../../../utils/ServiceConnectionUtils';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
-import ArrayField from '../../../common/Form/JSONSchema/JSONSchemaFields/ArrayField';
 import BooleanFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/BooleanFieldTemplate';
+import WorkflowArrayFieldTemplate from '../../../common/Form/JSONSchema/JSONSchemaTemplate/WorkflowArrayFieldTemplate';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
@@ -86,7 +86,7 @@ const ConnectionConfigForm = ({
 
   const customFields: RegistryFieldsType = {
     BooleanField: BooleanFieldTemplate,
-    ArrayField: ArrayField,
+    ArrayField: WorkflowArrayFieldTemplate,
   };
 
   const getConfigFields = () => {
