@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,33 +11,14 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../styles/variables.less';
-
-.search-container {
-  border: 1px solid #eaecf5;
-  border-radius: 12px;
-  background: #fdfdfd;
-  padding: 6px 20px;
-
-  .nlp-button {
-    border: 0.5px solid @border-color !important;
-
-    svg {
-      width: 14px;
-      height: 14px;
-    }
-
-    &.active {
-      background-color: @blue-11 !important;
-      border: 0.5px solid #b9e6fe !important;
-    }
-  }
-}
-
-.global-search-overlay {
-  left: 0 !important;
-
-  .ant-popover-inner-content {
-    padding: 16px 20px;
-  }
+export interface NavBarProps {
+  searchValue: string;
+  isTourRoute?: boolean;
+  pathname: string;
+  isSearchBoxOpen: boolean;
+  handleSearchBoxOpen: (value: boolean) => void;
+  handleSearchChange: (value: string) => void;
+  handleOnClick: () => void;
+  handleClear: () => void;
+  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }

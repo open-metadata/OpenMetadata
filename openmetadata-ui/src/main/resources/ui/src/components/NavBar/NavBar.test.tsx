@@ -10,12 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import NavBar from './NavBar';
+
+const mockHandleSearchBoxOpen = jest.fn();
+const mockHandleSearchChange = jest.fn();
+const mockHandleOnClick = jest.fn();
+const mockHandleKeyDown = jest.fn();
+const mockHandleClear = jest.fn();
+const mockProps = {
+  searchValue: 'searchValue',
+  isTourRoute: false,
+  pathname: '',
+  isSearchBoxOpen: false,
+  handleSearchBoxOpen: mockHandleSearchBoxOpen,
+  handleSearchChange: mockHandleSearchChange,
+  handleOnClick: mockHandleOnClick,
+  handleClear: mockHandleClear,
+  handleKeyDown: mockHandleKeyDown,
+};
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
@@ -132,7 +149,7 @@ jest.mock('../../utils/NavbarUtils', () => ({
 
 describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
-    render(<NavBar />);
+    render(<NavBar {...mockProps} />);
 
     expect(
       await screen.findByTestId('navbar-search-container')
@@ -141,6 +158,7 @@ describe('Test NavBar Component', () => {
       await screen.findByTestId('global-search-selector')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('searchBox')).toBeInTheDocument();
+    expect(await screen.findByTestId('cmd')).toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
@@ -157,13 +175,55 @@ describe('Test NavBar Component', () => {
   });
 
   it('should call getVersion onMount', () => {
-    render(<NavBar />);
+    render(<NavBar {...mockProps} />);
 
     expect(getVersion).toHaveBeenCalled();
   });
 
+  it('should handle search box open', () => {
+    render(<NavBar {...mockProps} />);
+    const searchBox = screen.getByTestId('searchBox');
+    fireEvent.click(searchBox);
+
+    expect(mockHandleSearchBoxOpen).toHaveBeenCalled();
+  });
+
+  it('should handle search change', () => {
+    render(<NavBar {...mockProps} />);
+    const searchBox = screen.getByTestId('searchBox');
+    fireEvent.change(searchBox, { target: { value: 'test' } });
+
+    expect(mockHandleSearchChange).toHaveBeenCalledWith('test');
+  });
+
+  it('should handle key down', () => {
+    render(<NavBar {...mockProps} />);
+    const searchBox = screen.getByTestId('searchBox');
+    fireEvent.keyDown(searchBox, { key: 'Enter', code: 'Enter' });
+
+    expect(mockHandleKeyDown).toHaveBeenCalled();
+  });
+
+  it('should render cancel icon', () => {
+    render(<NavBar {...mockProps} />);
+    const searchBox = screen.getByTestId('searchBox');
+    fireEvent.keyDown(searchBox, { key: 'Enter', code: 'Enter' });
+
+    expect(mockHandleKeyDown).toHaveBeenCalled();
+  });
+
+  it('should call function on icon search', async () => {
+    render(<NavBar {...mockProps} searchValue="" />);
+    const searchBox = await screen.findByTestId('search-icon');
+    await act(async () => {
+      fireEvent.click(searchBox);
+    });
+
+    expect(mockHandleOnClick).toHaveBeenCalled();
+  });
+
   it('should call getHelpDropdownItems function', async () => {
-    render(<NavBar />);
+    render(<NavBar {...mockProps} searchValue="" />);
 
     expect(getHelpDropdownItems).toHaveBeenCalled();
   });
