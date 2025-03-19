@@ -63,8 +63,15 @@ export const EntityExportModalProvider = ({
     [location]
   );
 
-  const handleCancel = () => {
+  const handleClearCSVExportData = () => {
     setExportData(null);
+    setCSVExportData(undefined);
+    setCSVExportJob(undefined);
+    csvExportJobRef.current = undefined;
+  };
+
+  const handleCancel = () => {
+    handleClearCSVExportData();
   };
 
   const showModal = (data: ExportData) => {
@@ -185,7 +192,7 @@ export const EntityExportModalProvider = ({
   const providerValue = useMemo(
     () => ({
       csvExportData,
-      clearCSVExportData: () => setCSVExportData(undefined),
+      clearCSVExportData: handleClearCSVExportData,
       showModal,
       triggerExportForBulkEdit: (exportData: ExportData) => {
         setExportData(exportData);
