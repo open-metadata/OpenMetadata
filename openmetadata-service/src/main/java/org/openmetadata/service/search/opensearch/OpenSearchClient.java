@@ -617,7 +617,7 @@ public class OpenSearchClient implements SearchClient {
       os.org.opensearch.action.search.SearchRequest osRequest =
           new os.org.opensearch.action.search.SearchRequest(request.getIndex());
       osRequest.source(searchSourceBuilder);
-
+      getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
       SearchResponse searchResponse = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
       return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
     } catch (Exception e) {
