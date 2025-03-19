@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Slider, Typography } from 'antd';
+import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as Document } from '../../../assets/svg/document.svg';
 import { ReactComponent as Save } from '../../../assets/svg/save.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
@@ -124,36 +123,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
 
   return (
     <div className="term-boost">
-      <Row className="p-box d-flex items-center justify-between term-boost-header">
-        <Col className="d-flex items-center gap-2">
-          <Icon className="text-md" component={Document} />
-          <Typography.Text
-            className="text-sm font-medium"
-            data-testid="term-boost-label">
-            {t('label.term-boost')}
-          </Typography.Text>
-        </Col>
-        <Col className="d-flex items-center gap-2">
-          <Button
-            className="delete-term-boost"
-            data-testid="delete-term-boost"
-            icon={<Icon className="text-md" component={Delete} />}
-            onClick={() => onDeleteBoost(termBoost.value)}
-          />
-          <Button
-            className="save-term-boost"
-            data-testid="save-term-boost"
-            disabled={
-              !termBoostData.field ||
-              !termBoostData.value ||
-              !termBoostData.boost
-            }
-            icon={<Icon className="text-md" component={Save} />}
-            onClick={handleSave}
-          />
-        </Col>
-      </Row>
-      <Row className="p-box d-flex flex-column gap-3">
+      <Row className="p-box d-flex flex-column">
         <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
           <AsyncSelect
             showSearch
@@ -169,7 +139,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             onChange={handleTagChange}
           />
         </Col>
-        <Col className="d-flex flex-column gap-2">
+        <Col className="d-flex flex-column gap-1">
           <div className="d-flex items-center justify-between p-x-xss">
             <Typography.Text data-testid="term-boost-impact-label">
               {t('label.boost')}
@@ -189,6 +159,26 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
               onChange={handleBoostChange}
             />
           </div>
+          <Divider className="m-b-md m-t-0" />
+        </Col>
+        <Col className="d-flex items-center justify-end gap-2">
+          <Button
+            className="delete-term-boost"
+            data-testid="delete-term-boost"
+            icon={<Icon className="text-md" component={Delete} />}
+            onClick={() => onDeleteBoost(termBoost.value)}
+          />
+          <Button
+            className="save-term-boost"
+            data-testid="save-term-boost"
+            disabled={
+              !termBoostData.field ||
+              !termBoostData.value ||
+              !termBoostData.boost
+            }
+            icon={<Icon className="text-md" component={Save} />}
+            onClick={handleSave}
+          />
         </Col>
       </Row>
     </div>

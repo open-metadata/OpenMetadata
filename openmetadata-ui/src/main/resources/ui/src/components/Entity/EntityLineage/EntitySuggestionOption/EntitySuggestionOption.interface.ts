@@ -10,32 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import url('../../../styles/variables.less');
+import { EntityReference } from '../../../../generated/entity/type';
 
-.add-boost-container {
-  border-radius: 10px;
-  background-color: @grey-15;
-}
-
-.add-boost-header {
-  background-color: @blue-14;
-  padding: 24px 20px;
-  border-radius: 10px 10px 0 0;
-  align-items: center;
-}
-
-.boost-value {
-  color: @blue-3;
-}
-
-.delete-boost-btn {
-  color: @red-12;
-  background-color: @red-13;
-  border: 1px solid @red-14;
-  border-radius: 8px;
-  &:hover {
-    color: @red-12;
-    background-color: @red-13;
-    border: 1px solid @red-14;
-  }
+export interface EntitySuggestionOptionProps {
+  entity: EntityReference;
+  heading?: string;
+  onSelectHandler?: (value: EntityReference) => void;
+  className?: string;
+  showEntityTypeBadge?: boolean;
 }
