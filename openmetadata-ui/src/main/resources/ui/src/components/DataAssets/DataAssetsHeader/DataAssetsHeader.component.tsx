@@ -121,7 +121,7 @@ export const ExtraInfoLabel = ({
         className="whitespace-nowrap text-sm d-flex flex-col gap-2"
         data-testid={dataTestId}>
         {!isEmpty(label) && (
-          <span className="extra-info-label-heading">{`${label}: `}</span>
+          <span className="extra-info-label-heading">{label}</span>
         )}
         <span
           className={classNames('font-medium extra-info-value', {
@@ -152,7 +152,7 @@ export const ExtraInfoLink = ({
       'w-48': ellipsis,
     })}>
     {!isEmpty(label) && (
-      <span className="extra-info-label-heading  m-r-xss">{`${label}: `}</span>
+      <span className="extra-info-label-heading  m-r-xss">{label}</span>
     )}
     <div className="d-flex items-center gap-1">
       <Tooltip title={value}>

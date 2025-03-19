@@ -99,24 +99,26 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Typography.Text
-            className={classNames(
-              'entity-header-display-name',
-              displayNameClassName,
-              'm-b-0 subheading text-md font-medium'
-            )}
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}
-            style={{ color: color ?? TEXT_COLOR }}>
-            {stringToHTML(displayName || name)}
-            {openEntityInNewPage && (
-              <IconExternalLink
-                className="anticon vertical-baseline m-l-xss"
-                height={14}
-                width={14}
-              />
-            )}
-          </Typography.Text>
+          <Tooltip placement="bottom" title={stringToHTML(displayName || name)}>
+            <Typography.Text
+              className={classNames(
+                'entity-header-display-name',
+                displayNameClassName,
+                'm-b-0 text-md font-medium'
+              )}
+              data-testid="entity-header-display-name"
+              ellipsis={{ tooltip: true }}
+              style={{ color: color ?? TEXT_COLOR }}>
+              {stringToHTML(displayName || name)}
+              {openEntityInNewPage && (
+                <IconExternalLink
+                  className="anticon vertical-baseline m-l-xss"
+                  height={14}
+                  width={14}
+                />
+              )}
+            </Typography.Text>
+          </Tooltip>
 
           <Tooltip
             placement="topRight"
@@ -127,7 +129,7 @@ const EntityHeaderTitle = ({
               onClick={handleShareButtonClick}
             />
           </Tooltip>
-          {!excludeEntityService && !isCustomizedView && handleFollowingClick && (
+          {!excludeEntityService && !deleted && !isCustomizedView && handleFollowingClick && (
             <Tooltip
               title={t('label.field-entity', {
                 field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
