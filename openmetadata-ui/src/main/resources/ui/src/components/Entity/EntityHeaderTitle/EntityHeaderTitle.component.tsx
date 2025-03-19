@@ -28,6 +28,7 @@ import { stringToHTML } from '../../../utils/StringsUtils';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
+
 const EntityHeaderTitle = ({
   icon,
   name,
@@ -49,6 +50,7 @@ const EntityHeaderTitle = ({
   entityType,
   nameClassName = '',
   displayNameClassName = '',
+  isCustomizedView = false,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -127,7 +129,7 @@ const EntityHeaderTitle = ({
               onClick={handleShareButtonClick}
             />
           </Tooltip>
-          {!excludeEntityService && !deleted && (
+          {!excludeEntityService && !deleted && !isCustomizedView && handleFollowingClick && (
             <Tooltip
               title={t('label.field-entity', {
                 field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
