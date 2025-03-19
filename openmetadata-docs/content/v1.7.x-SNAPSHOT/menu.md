@@ -20,6 +20,8 @@ site_menu:
 
   - category: Deployment
     url: /deployment
+  - category: Deployment / Minimum Requirements
+    url: /deployment/minimum-requirements
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
@@ -191,6 +193,8 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / How to enable Azure Auth
     url: /deployment/azure-auth
+  - category: Deployment / Azure - Enable Passwordless Database Backend Connection
+    url: /deployment/azure-passwordless-auth
   - category: Deployment / Production-Ready Requirements
     url: /deployment/requirements
   - category: Deployment / Server Configuration Reference
@@ -621,6 +625,10 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / OpenSearch
+    url: /connectors/search/opensearch
+  - category: Connectors / Search / OpenSearch / Run Externally
+    url: /connectors/search/opensearch/yaml
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -972,6 +980,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.5 Release
+    url: /releases/all-releases/#1.6.5-release
+  - category: Releases / All Releases / 1.6.4 Release
+    url: /releases/all-releases/#1.6.4-release
   - category: Releases / All Releases / 1.6.3 Release
     url: /releases/all-releases/#1.6.3-release
   - category: Releases / All Releases / 1.6.2 Release

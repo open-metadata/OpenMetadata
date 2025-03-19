@@ -13,11 +13,6 @@
 import { expect, Page } from '@playwright/test';
 import { isEmpty, lowerCase } from 'lodash';
 import {
-  customFormatDateTime,
-  getCurrentMillis,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
-import {
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
@@ -30,6 +25,11 @@ import {
   redirectToHomePage,
   toastNotification,
 } from './common';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from './dateTime';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -99,9 +99,9 @@ export const addOwner = async ({
     await patchRequest;
   }
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    owner
-  );
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
+  ).toBeVisible();
 };
 
 export const updateOwner = async ({
@@ -141,9 +141,9 @@ export const updateOwner = async ({
     await patchRequest;
   }
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    owner
-  );
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
+  ).toBeVisible();
 };
 
 export const removeOwnersFromList = async ({
@@ -174,8 +174,8 @@ export const removeOwnersFromList = async ({
 
   for (const ownerName of ownerNames) {
     await expect(
-      page.getByTestId(dataTestId ?? 'owner-link')
-    ).not.toContainText(ownerName);
+      page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
+    ).not.toBeVisible();
   }
 };
 
@@ -208,9 +208,9 @@ export const removeOwner = async ({
 
   await patchRequest;
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
-    ownerName
-  );
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
+  ).not.toBeVisible();
 };
 
 export const addMultiOwner = async (data: {
@@ -293,9 +293,9 @@ export const addMultiOwner = async (data: {
   }
 
   for (const name of owners) {
-    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
-      name
-    );
+    await expect(
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+    ).toBeVisible();
   }
 };
 
@@ -736,7 +736,9 @@ export const followEntity = async (
   await page.getByTestId('entity-follow-button').click();
   await followResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText('1');
+  await expect(page.getByTestId('entity-follow-button')).toContainText(
+    'Following'
+  );
 };
 
 export const unFollowEntity = async (
@@ -749,7 +751,9 @@ export const unFollowEntity = async (
   await page.getByTestId('entity-follow-button').click();
   await unFollowResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText('0');
+  await expect(page.getByTestId('entity-follow-button')).toContainText(
+    'Follow'
+  );
 };
 
 export const validateFollowedEntityToWidget = async (
@@ -997,6 +1001,18 @@ export const checkForEditActions = async ({
     }
 
     if (entityType.startsWith('services/')) {
+      await page.getByRole('tab').nth(1).click();
+
+      await page.waitForLoadState('networkidle');
+
+      continue;
+    }
+
+    if (elementSelector === '[data-testid="entity-follow-button"]') {
+      deleted
+        ? await expect(page.locator(elementSelector)).not.toBeVisible()
+        : await expect(page.locator(elementSelector)).toBeVisible();
+
       continue;
     }
 
@@ -1098,9 +1114,6 @@ export const deletedEntityCommonChecks = async ({
   deleted?: boolean;
 }) => {
   const isTableEntity = endPoint === EntityTypeEndpoint.Table;
-
-  // Go to first tab before starts validating
-  await page.click('.ant-tabs-tab:nth-child(1)');
 
   // Check if all the edit actions are available for the entity
   await checkForEditActions({
@@ -1220,13 +1233,13 @@ export const softDeleteEntity = async (
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
-    `/api/v1/${endPoint}/*?hardDelete=false&recursive=true`
+    `/api/v1/${endPoint}/async/*?hardDelete=false&recursive=true`
   );
   await page.click('[data-testid="confirm-button"]');
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(page, /Delete operation initiated for/);
 
   await page.reload();
 
@@ -1286,12 +1299,12 @@ export const hardDeleteEntity = async (
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
-    `/api/v1/${endPoint}/*?hardDelete=true&recursive=true`
+    `/api/v1/${endPoint}/async/*?hardDelete=true&recursive=true`
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(page, /Delete operation initiated for/);
 };
 
 export const checkDataAssetWidget = async (page: Page, serviceType: string) => {

@@ -20,11 +20,16 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
 } from '../../../../constants/constants';
+import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -42,10 +47,12 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getEntityName,
+  getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -53,6 +60,7 @@ import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
@@ -62,6 +70,7 @@ import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
 export const DatabaseSchemaTable = ({
   isVersionPage = false,
+  isCustomizationPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
@@ -222,8 +231,8 @@ export const DatabaseSchemaTable = ({
     () => [
       {
         title: t('label.schema-name'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         render: (_, record: DatabaseSchema) => (
           <DisplayName
@@ -248,8 +257,9 @@ export const DatabaseSchemaTable = ({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: 300,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerV1 markdown={text} />
@@ -261,12 +271,12 @@ export const DatabaseSchemaTable = ({
       },
       {
         title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
+        dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
+        key: TABLE_COLUMNS_KEYS.OWNERS,
         width: 120,
         render: (owners: EntityReference[]) =>
           !isEmpty(owners) && owners.length > 0 ? (
-            owners.map((owner: EntityReference) => getEntityName(owner))
+            <OwnerLabel owners={owners} />
           ) : (
             <Typography.Text data-testid="no-owner-text">
               {NO_DATA_PLACEHOLDER}
@@ -275,8 +285,8 @@ export const DatabaseSchemaTable = ({
       },
       {
         title: t('label.usage'),
-        dataIndex: 'usageSummary',
-        key: 'usageSummary',
+        dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+        key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
         width: 120,
         render: (text: UsageDetails) =>
           getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
@@ -285,9 +295,27 @@ export const DatabaseSchemaTable = ({
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(EntityType.DATABASE, decodedDatabaseFQN),
+    });
+  };
+
   useEffect(() => {
+    if (isCustomizationPage) {
+      setSchemas(DATABASE_SCHEMAS_DUMMY_DATA);
+
+      return;
+    }
+
     fetchDatabaseSchema();
-  }, [decodedDatabaseFQN, pageSize, showDeletedSchemas, isDatabaseDeleted]);
+  }, [
+    decodedDatabaseFQN,
+    pageSize,
+    showDeletedSchemas,
+    isDatabaseDeleted,
+    isCustomizationPage,
+  ]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -318,6 +346,11 @@ export const DatabaseSchemaTable = ({
           columns={schemaTableColumns}
           data-testid="database-databaseSchemas"
           dataSource={schemas}
+          defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
+          extraTableFilters={getBulkEditButton(
+            permissions.databaseSchema.EditAll && !isDatabaseDeleted,
+            handleEditTable
+          )}
           loading={isLoading}
           locale={{
             emptyText: <ErrorPlaceHolder className="m-y-md" />,
@@ -325,6 +358,7 @@ export const DatabaseSchemaTable = ({
           pagination={false}
           rowKey="id"
           size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />
       </Col>
       <Col span={24}>

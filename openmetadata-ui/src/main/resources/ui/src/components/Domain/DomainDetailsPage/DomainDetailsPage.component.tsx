@@ -53,7 +53,6 @@ import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ERROR_MESSAGE,
-  getEntityDetailsPath,
   PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -95,6 +94,7 @@ import {
   getDomainDetailsPath,
   getDomainPath,
   getDomainVersionsPath,
+  getEntityDetailsPath,
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
@@ -102,6 +102,7 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -109,7 +110,7 @@ import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
 import '../domain.less';
-import { DomainFormType, DomainTabs } from '../DomainPage.interface';
+import { DomainFormType } from '../DomainPage.interface';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
 
@@ -148,7 +149,7 @@ const DomainDetailsPage = ({
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
-  const { customizedPage } = useCustomPages(PageType.Domain);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
 
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
@@ -282,7 +283,7 @@ const DomainDetailsPage = ({
   );
 
   const addDataProduct = useCallback(
-    async (formData: CreateDataProduct) => {
+    async (formData: CreateDataProduct | CreateDomain) => {
       const data = {
         ...formData,
         domain: domain.fullyQualifiedName,
@@ -600,6 +601,10 @@ const DomainDetailsPage = ({
     );
   }, [domain, isSubDomain]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <>
       <Row
@@ -704,7 +709,7 @@ const DomainDetailsPage = ({
           <Col span={24}>
             <Tabs
               destroyInactiveTabPane
-              activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+              activeKey={activeTab}
               className="domain-details-page-tabs"
               data-testid="tabs"
               items={tabs}

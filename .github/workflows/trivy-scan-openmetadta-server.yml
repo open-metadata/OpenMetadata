@@ -1,7 +1,7 @@
 name: Trivy Scan For OpenMetadata Server Docker Image
 on:
     pull_request_target:
-        types: [labeled, opened, synchronize, reopened]
+        types: [labeled, opened, synchronize, reopened, ready_for_review]
         paths:
           - "**/*.java"
           - "docker/development/Dockerfile"
@@ -11,11 +11,12 @@ concurrency:
 jobs:
   build-and-scan:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     permissions:
       pull-requests: write
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -57,7 +58,7 @@ jobs:
             image-ref: openmetadata-server:trivy
             hide-progress: false
             ignore-unfixed: true
-            severity: "HIGH,CRITICAL"
+            severity: "HIGH,CRITICAL,MEDIUM"
             scan-ref: .
             format: 'template'
             template: "@.github/trivy/templates/github.tpl"

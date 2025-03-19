@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.databases;
 
+import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -47,6 +48,8 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.getEntityTypeFromObject;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidColumnFQN;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
@@ -97,6 +100,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
@@ -120,6 +124,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -145,6 +150,7 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -1978,6 +1984,159 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .orElse(null);
     assertNotNull(piiSensitive);
     assertEquals(LabelType.MANUAL, piiSensitive.getLabelType());
+  }
+
+  @Test
+  void patch_withChangeSource(TestInfo test) throws IOException {
+    Column nestedColumns = getColumn("testNested", INT, null);
+    CreateTable create =
+        createRequest(test)
+            .withColumns(
+                List.of(
+                    getColumn(C1, INT, null),
+                    getColumn(C2, BIGINT, null),
+                    getColumn("withNested", STRUCT, null).withChildren(List.of(nestedColumns))));
+    Table table = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    Table updated = JsonUtils.deepCopy(table, Table.class);
+    updated.setDescription("manual description");
+    updated =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(table),
+            updated,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.MANUAL);
+    assertEquals(
+        ChangeSource.MANUAL,
+        updated
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get("description")
+            .getChangeSource());
+
+    assertChangeSummaryInSearch(updated);
+
+    Table automatedUpdate = JsonUtils.deepCopy(updated, Table.class);
+    automatedUpdate.setDescription("automated description");
+    automatedUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(updated),
+            automatedUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.AUTOMATED);
+    assertEquals(
+        1,
+        automatedUpdate.getChangeDescription().getChangeSummary().getAdditionalProperties().size());
+    assertEquals(
+        ChangeSource.AUTOMATED,
+        automatedUpdate
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get("description")
+            .getChangeSource());
+
+    Table columnUpdate = JsonUtils.deepCopy(automatedUpdate, Table.class);
+    columnUpdate.getColumns().get(0).setDescription("suggested column description");
+    columnUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(automatedUpdate),
+            columnUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.SUGGESTED);
+
+    assertEquals(
+        2, columnUpdate.getChangeDescription().getChangeSummary().getAdditionalProperties().size());
+    assertEquals(
+        ChangeSource.SUGGESTED,
+        columnUpdate
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get(
+                FullyQualifiedName.build(
+                    "columns", automatedUpdate.getColumns().get(0).getName(), "description"))
+            .getChangeSource());
+
+    Table columnDelete = JsonUtils.deepCopy(columnUpdate, Table.class);
+    columnDelete.getTableConstraints().remove(0);
+    columnDelete.getColumns().remove(0);
+    columnDelete =
+        patchEntity(
+            table.getId(), JsonUtils.pojoToJson(columnUpdate), columnDelete, ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        1, columnDelete.getChangeDescription().getChangeSummary().getAdditionalProperties().size());
+    assertNull(
+        columnDelete
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get(
+                FullyQualifiedName.build(
+                    "columns", automatedUpdate.getColumns().get(0).getName(), "description")));
+
+    Table nestedColumnUpdate = JsonUtils.deepCopy(columnDelete, Table.class);
+    nestedColumnUpdate
+        .getColumns()
+        .get(1)
+        .getChildren()
+        .get(0)
+        .setDescription("nested description");
+    nestedColumnUpdate =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(columnDelete),
+            nestedColumnUpdate,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.AUTOMATED);
+
+    assertEquals(
+        nestedColumnUpdate
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .get(
+                FullyQualifiedName.build(
+                    "columns",
+                    nestedColumnUpdate.getColumns().get(1).getName(),
+                    nestedColumnUpdate.getColumns().get(1).getChildren().get(0).getName(),
+                    "description"))
+            .getChangeSource(),
+        ChangeSource.AUTOMATED);
+  }
+
+  private void assertChangeSummaryInSearch(EntityInterface entity) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = getSearchRepository().getIndexMapping(getEntityTypeFromObject(entity));
+    Request request =
+        new Request(
+            "GET",
+            format("%s/_search", index.getIndexName(getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            entity.getId().toString());
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Map<String, Object> actualChangeSummary = (Map<String, Object>) source.get("changeSummary");
+    assertEquals(
+        entity.getChangeDescription().getChangeSummary().getAdditionalProperties().size(),
+        actualChangeSummary.size());
+    assertEquals(
+        entity.getChangeDescription().getChangeSummary(),
+        JsonUtils.convertValue(actualChangeSummary, ChangeSummaryMap.class));
   }
 
   @Test

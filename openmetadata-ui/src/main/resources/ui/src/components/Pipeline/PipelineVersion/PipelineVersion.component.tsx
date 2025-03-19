@@ -17,7 +17,6 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -33,6 +32,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -295,7 +295,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
-                  defaultActiveKey={tab ?? EntityTabs.TASKS}
+                  defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}
                 />

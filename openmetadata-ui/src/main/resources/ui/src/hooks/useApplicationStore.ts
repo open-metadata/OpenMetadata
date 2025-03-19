@@ -65,6 +65,13 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ applicationConfig: config, theme: config.customTheme });
   },
   setCurrentUser: (user) => {
+    const { personas, defaultPersona } = user;
+    // Update selected Persona to fetch the customized pages
+    if (defaultPersona && personas?.find((p) => p.id === defaultPersona.id)) {
+      set({ selectedPersona: defaultPersona });
+    }
+
+    // Update the current user
     set({ currentUser: user });
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
@@ -97,6 +104,9 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   onLoginHandler: () => {
     // This is a placeholder function that will be replaced by the actual function
   },
+  /**
+   * Handler to perform logout within application
+   */
   onLogoutHandler: () => {
     // This is a placeholder function that will be replaced by the actual function
   },
@@ -109,11 +119,6 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   updateAxiosInterceptors: () => {
     // This is a placeholder function that will be replaced by the actual function
-  },
-  trySilentSignIn: (forceLogout?: boolean) => {
-    if (forceLogout) {
-      // This is a placeholder function that will be replaced by the actual function
-    }
   },
   updateCurrentUser: (user) => {
     set({ currentUser: user });

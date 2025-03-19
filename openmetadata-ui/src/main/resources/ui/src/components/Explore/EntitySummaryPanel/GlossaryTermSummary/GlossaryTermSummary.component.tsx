@@ -83,9 +83,8 @@ function GlossaryTermSummary({
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
       <Space className="w-full" direction="vertical" size={20}>
         <Row
-          className="p-md border-radius-card"
-          gutter={[0, 8]}
-          style={{ background: '#f5f5f5' }}>
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -100,7 +99,7 @@ function GlossaryTermSummary({
               </Space>
             ) : (
               <Typography.Text
-                className="text-grey-body"
+                className="no-data-chip-placeholder"
                 data-testid="no-reviewer-header">
                 {t('label.no-reviewer')}
               </Typography.Text>
@@ -109,9 +108,8 @@ function GlossaryTermSummary({
         </Row>
 
         <Row
-          className="p-md border-radius-card"
-          gutter={[0, 8]}
-          style={{ background: '#f5f5f5' }}>
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"
@@ -132,7 +130,7 @@ function GlossaryTermSummary({
               </div>
             ) : (
               <Typography.Text
-                className="text-grey-body"
+                className="no-data-chip-placeholder"
                 data-testid="no-synonyms-available-header">
                 {t('message.no-synonyms-available')}
               </Typography.Text>
@@ -141,9 +139,8 @@ function GlossaryTermSummary({
         </Row>
 
         <Row
-          className="p-md border-radius-card"
-          gutter={[0, 8]}
-          style={{ background: '#f5f5f5' }}>
+          className="p-md border-radius-card summary-panel-card"
+          gutter={[0, 8]}>
           <Col span={24}>
             <Typography.Text
               className="summary-panel-section-title"

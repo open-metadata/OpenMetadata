@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -34,9 +34,11 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetailsClassBase';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -70,7 +72,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     deleted,
     followers = [],
   } = useMemo(() => metricDetails, [metricDetails]);
-  const { customizedPage } = useCustomPages(PageType.Metric);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Metric);
 
   const { isFollowing } = useMemo(
     () => ({
@@ -205,6 +207,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     metricDetails,
     fetchMetricDetails,
     deleted,
+    getEntityFeedCount,
     handleFeedCount,
     editCustomAttributePermission,
     editLineagePermission,
@@ -212,6 +215,10 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     viewSampleDataPermission,
     viewAllPermission,
   ]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
@@ -247,7 +254,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           onUpdate={onMetricUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.OVERVIEW}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

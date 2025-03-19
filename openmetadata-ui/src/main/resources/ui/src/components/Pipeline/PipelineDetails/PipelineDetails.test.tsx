@@ -228,6 +228,7 @@ jest.mock(
 jest.mock('../../../utils/TableUtils', () => ({
   getTagsWithoutTier: jest.fn().mockReturnValue([]),
   getTierTags: jest.fn().mockReturnValue([]),
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../Execution/Execution.component', () => {
@@ -253,6 +254,26 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
     data: mockPipelineDetails,
     permissions: DEFAULT_ENTITY_PERMISSION,
   }),
+}));
+
+jest.mock('../../../constants/constants', () => ({
+  getEntityDetailsPath: jest.fn(),
+}));
+
+jest.mock('../../../utils/EntityUtils', () => {
+  return {
+    getEntityFeedLink: jest.fn(),
+    getEntityName: jest.fn(),
+    getColumnSorter: jest.fn(),
+  };
+});
+
+jest.mock('../../../rest/pipelineAPI', () => ({
+  restorePipeline: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockReturnValue([]),
 }));
 
 describe('Test PipelineDetails component', () => {
@@ -318,7 +339,7 @@ describe('Test PipelineDetails component', () => {
   });
 
   it('Check if active tab is activity feed', async () => {
-    (useParams as jest.Mock).mockReturnValue({ tab: 'activity_feed' });
+    (useParams as jest.Mock).mockReturnValue({ tab: EntityTabs.ACTIVITY_FEED });
 
     const { container } = render(
       <PipelineDetails {...PipelineDetailsProps} />,

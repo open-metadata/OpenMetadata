@@ -151,12 +151,17 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             table_query = client.query(self.raw_dataset)
         session_query = self._base_sample_query(
             column,
-            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
+            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
+            if self.sample_config.randomizedSample
+            else None,
         )
-        return (
+        query = (
             session_query.order_by(RANDOM_LABEL)
-            .limit(self.sample_config.profileSample)
-            .cte(f"{self.get_sampler_table_name()}_rnd")
+            if self.sample_config.randomizedSample
+            else session_query
+        )
+        return query.limit(self.sample_config.profileSample).cte(
+            f"{self.get_sampler_table_name()}_rnd"
         )
 
     def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
@@ -167,7 +172,10 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.sample_config.profileSample:
+        if not self.sample_config.profileSample or (
+            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            and self.sample_config.profileSample == 100
+        ):
             if self.partition_details:
                 partitioned = self._partitioned_table()
                 return partitioned.cte(f"{self.get_sampler_table_name()}_partitioned")

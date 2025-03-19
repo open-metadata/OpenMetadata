@@ -32,11 +32,7 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -74,13 +70,14 @@ import {
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { customizedPage } = useCustomPages(PageType.APICollection);
+  const { customizedPage, isLoading } = useCustomPages(PageType.APICollection);
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
@@ -109,9 +106,10 @@ const APICollectionPage: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.API_COLLECTION,
         decodedAPICollectionFQN,
-        apiCollectionPermission
+        apiCollectionPermission,
+        apiCollection?.deleted ?? false
       ),
-    [apiCollectionPermission, decodedAPICollectionFQN]
+    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection?.deleted]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
@@ -418,7 +416,18 @@ const APICollectionPage: FunctionComponent = () => {
       customizedPage?.tabs,
       EntityTabs.API_ENDPOINT
     );
-  }, [activeTab]);
+  }, [
+    activeTab,
+    customizedPage,
+    feedCount,
+    apiCollection,
+    fetchAPICollectionDetails,
+    getEntityFeedCount,
+    handleFeedCount,
+    editCustomAttributePermission,
+    viewAllPermission,
+    apiEndpointCount,
+  ]);
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
@@ -433,7 +442,7 @@ const APICollectionPage: FunctionComponent = () => {
     }
   };
 
-  if (isPermissionsLoading) {
+  if (isPermissionsLoading || isLoading) {
     return <Loader />;
   }
 

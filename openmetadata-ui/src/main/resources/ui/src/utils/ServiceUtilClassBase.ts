@@ -12,7 +12,10 @@
  */
 
 import { capitalize, get, toLower } from 'lodash';
+import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
+import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -721,6 +724,22 @@ class ServiceUtilClassBase {
 
   public getAPIServiceConfig(type: APIServiceType) {
     return getAPIConfig(type);
+  }
+
+  public getInsightsTabWidgets(_: ServiceTypes) {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      PlatformInsightsWidget,
+    };
+
+    return widgets;
+  }
+
+  public getAgentsTabWidgets() {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      MetadataAgentsWidget,
+    };
+
+    return widgets;
   }
 
   /**

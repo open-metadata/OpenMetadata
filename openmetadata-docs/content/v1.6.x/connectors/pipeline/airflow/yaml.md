@@ -11,9 +11,9 @@ availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Owners"]
 unavailableFeatures=["Tags"]
 / %}
 
-In this section, we provide guides and references to use the Airbyte connector.
+In this section, we provide guides and references to use the Airflow connector.
 
-Configure and schedule Airbyte metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Airflow metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -47,8 +47,8 @@ Instead, just run `pip3 install "openmetadata-ingestion"`.
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.
-[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/airbyteConnection.json)
-you can find the structure to create a connection to Airbyte.
+[Here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/airflowConnection.json)
+you can find the structure to create a connection to Airflow.
 
 In order to create and run a Metadata Ingestion workflow, we will follow
 the steps to create a YAML configuration able to connect to the source,
@@ -59,7 +59,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for Airbyte:
+This is a sample config for Airflow:
 
 {% codePreview %}
 

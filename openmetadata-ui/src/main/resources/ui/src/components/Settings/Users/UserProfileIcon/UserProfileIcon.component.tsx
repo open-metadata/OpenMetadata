@@ -13,7 +13,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { isEmpty, some } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   ReactNode,
   useCallback,
@@ -25,8 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
   LIGHT_GREEN_COLOR,
   NO_DATA_PLACEHOLDER,
   TERM_ADMIN,
@@ -40,6 +38,10 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../../utils/ProfilerUtils';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../../utils/RouterUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
@@ -310,19 +312,6 @@ export const UserProfileIcon = () => {
       showAllPersona,
     ]
   );
-
-  useEffect(() => {
-    let defaultPersona = currentUser?.defaultPersona ?? ({} as EntityReference);
-    if (currentUser?.defaultPersona?.id) {
-      defaultPersona = some(
-        currentUser?.personas,
-        (persona) => persona.id === currentUser?.defaultPersona?.id
-      )
-        ? currentUser?.defaultPersona
-        : ({} as EntityReference);
-    }
-    updateSelectedPersona(defaultPersona);
-  }, [currentUser?.defaultPersona, currentUser?.personas]);
 
   return (
     <Dropdown

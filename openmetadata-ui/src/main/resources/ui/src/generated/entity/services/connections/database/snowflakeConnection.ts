@@ -31,11 +31,19 @@ export interface SnowflakeConnection {
     connectionArguments?:    { [key: string]: any };
     connectionOptions?:      { [key: string]: string };
     /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
+    /**
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
      * attempts to scan all the databases.
      */
     database?: string;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: DefaultDatabaseFilterPattern;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
@@ -60,6 +68,10 @@ export interface SnowflakeConnection {
     role?:                    string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?: SnowflakeScheme;
@@ -78,6 +90,10 @@ export interface SnowflakeConnection {
     supportsSystemProfile?:                 boolean;
     supportsUsageExtraction?:               boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: SnowflakeType;
@@ -90,6 +106,15 @@ export interface SnowflakeConnection {
      * Snowflake warehouse.
      */
     warehouse: string;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ */
+export interface DefaultDatabaseFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -171,10 +196,35 @@ export interface AwsCredentials {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DefaultSchemaFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum SnowflakeScheme {
     Snowflake = "snowflake",
+}
+
+/**
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

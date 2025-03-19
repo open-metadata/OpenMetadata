@@ -28,11 +28,9 @@ import './../../styles/layout/page-layout.less';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   leftPanel?: ReactNode;
-  header?: ReactNode;
   rightPanel?: ReactNode;
   center?: boolean;
   pageTitle: string;
-  headerClassName?: string;
   mainContainerClassName?: string;
   pageContainerStyle?: React.CSSProperties;
   rightPanelWidth?: number;
@@ -54,11 +52,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   rightPanel,
   className,
   pageTitle,
-  header,
   center = false,
   leftPanelWidth = 230,
   rightPanelWidth = 284,
-  headerClassName = '',
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
@@ -79,18 +75,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
-      {header && (
-        <div
-          className={classNames(
-            {
-              'header-center': center,
-              'm-t-md p-x-md': !center,
-            },
-            headerClassName
-          )}>
-          {header}
-        </div>
-      )}
       <Row
         className={classNames('bg-white', className)}
         data-testid="page-layout-v1"
@@ -105,11 +89,10 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll ${
-              !alert && 'p-t-sm'
-            }`,
+            `page-layout-v1-center page-layout-v1-vertical-scroll `,
             {
               'flex justify-center': center,
+              'p-t-sm': !alert,
             },
             mainContainerClassName
           )}
@@ -122,7 +105,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            <Col className={`${alert && 'p-t-sm'}`} span={24}>
+            <Col className={classNames({ 'p-t-sm': alert })} span={24}>
               {children}
             </Col>
           </Row>

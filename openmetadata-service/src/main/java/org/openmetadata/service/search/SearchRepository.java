@@ -34,6 +34,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 
@@ -67,9 +68,15 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
+import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -83,6 +90,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.search.nlq.NLQService;
+import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -123,6 +132,8 @@ public class SearchRepository {
           AGGREGATED_COST_ANALYSIS_REPORT_DATA);
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
+
+  private NLQService nlqService;
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
@@ -178,11 +189,15 @@ public class SearchRepository {
 
   public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
     SearchClient sc;
+
+    // Initialize NLQ service first
+    initializeNLQService(config);
+
     if (config != null
         && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
-      sc = new OpenSearchClient(config);
+      sc = new OpenSearchClient(config, nlqService);
     } else {
-      sc = new ElasticSearchClient(config);
+      sc = new ElasticSearchClient(config, nlqService);
     }
     return sc;
   }
@@ -1004,17 +1019,40 @@ public class SearchRepository {
     return searchClient.search(request, subjectContext);
   }
 
+  public Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException {
+    return searchClient.previewSearch(request, subjectContext, searchSettings);
+  }
+
+  public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchWithNLQ(request, subjectContext);
+  }
+
   public Response getDocument(String indexName, UUID entityId) throws IOException {
     return searchClient.getDocByID(indexName, entityId.toString());
   }
 
-  public SearchClient.SearchResultListMapper listWithOffset(
+  public SearchResultListMapper listWithOffset(
       SearchListFilter filter,
       int limit,
       int offset,
       String entityType,
       SearchSortFilter searchSortFilter,
       String q)
+      throws IOException {
+    return listWithOffset(filter, limit, offset, entityType, searchSortFilter, q, null);
+  }
+
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString)
       throws IOException {
     IndexMapping index = entityIndexMap.get(entityType);
     return searchClient.listWithOffset(
@@ -1023,10 +1061,11 @@ public class SearchRepository {
         offset,
         index.getIndexName(clusterAlias),
         searchSortFilter,
-        q);
+        q,
+        queryString);
   }
 
-  public SearchClient.SearchResultListMapper listWithDeepPagination(
+  public SearchResultListMapper listWithDeepPagination(
       String entityType,
       String query,
       String filter,
@@ -1050,16 +1089,18 @@ public class SearchRepository {
     return searchClient.searchBySourceUrl(sourceUrl);
   }
 
-  public Response searchLineage(
-      String fqn,
-      int upstreamDepth,
-      int downstreamDepth,
-      String queryFilter,
-      boolean deleted,
-      String entityType)
+  public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    return searchClient.searchLineage(lineageRequest);
+  }
+
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted) throws IOException {
+    return searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineage(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return searchClient.searchLineageWithDirection(lineageRequest);
   }
 
   public Response searchEntityRelationship(
@@ -1081,7 +1122,7 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
-  public Map<String, Object> searchLineageForExport(
+  public SearchLineageResult searchLineageForExport(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -1089,8 +1130,14 @@ public class SearchRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    return searchClient.searchLineageInternal(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+    return searchClient.searchLineage(
+        new SearchLineageRequest()
+            .withFqn(fqn)
+            .withUpstreamDepth(upstreamDepth)
+            .withDownstreamDepth(downstreamDepth)
+            .withQueryFilter(queryFilter)
+            .withIncludeDeleted(deleted)
+            .withIsConnectedVia(isConnectedVia(entityType)));
   }
 
   public Response searchByField(String fieldName, String fieldValue, String index)
@@ -1143,17 +1190,18 @@ public class SearchRepository {
               ReindexingUtil.escapeDoubleQuotes(entityFQN));
 
       SearchRequest searchRequest =
-          new SearchRequest.ElasticSearchRequestBuilder(
-                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
-              .from(0)
-              .queryFilter(queryFilter)
-              .fetchSource(true)
-              .trackTotalHits(false)
-              .sortFieldParam("_score")
-              .deleted(false)
-              .sortOrder("desc")
-              .includeSourceFields(new ArrayList<>())
-              .build();
+          new SearchRequest()
+              .withQuery("")
+              .withSize(size)
+              .withIndex(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+              .withFrom(0)
+              .withQueryFilter(queryFilter)
+              .withFetchSource(true)
+              .withTrackTotalHits(false)
+              .withSortFieldParam("_score")
+              .withDeleted(false)
+              .withSortOrder("desc")
+              .withIncludeSourceFields(new ArrayList<>());
 
       // Execute the search and parse the response
       Response response = search(searchRequest, null);
@@ -1192,7 +1240,26 @@ public class SearchRepository {
     String relationDocId = fromTableId.toString() + "-" + toTableId.toString();
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
-        new ImmutablePair<>("entityRelationship.doc_id.keyword", relationDocId),
+        new ImmutablePair<>("entityRelationship.docId.keyword", relationDocId),
         new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
+  }
+
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    return searchClient.getQueryCostRecords(serviceName);
+  }
+
+  public void initializeNLQService(ElasticSearchConfiguration config) {
+    try {
+      IndexMapping.initializeSchemaCache();
+      NaturalLanguageSearchConfiguration nlqConfig = config.getNaturalLanguageSearch();
+      if (nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled())) {
+        nlqService = NLQServiceFactory.createNLQService(nlqConfig);
+        LOG.info("Initialized NLQ service with provider: {}", nlqConfig.getProviderClass());
+      } else {
+        LOG.info("Natural language search is not enabled");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to initialize NLQ service", e);
+    }
   }
 }

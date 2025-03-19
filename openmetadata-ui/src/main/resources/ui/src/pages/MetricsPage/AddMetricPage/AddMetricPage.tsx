@@ -20,7 +20,7 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import SchemaEditor from '../../../components/Database/SchemaEditor/SchemaEditor';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { OPEN_METADATA } from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -32,16 +32,18 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const AddMetricPage = () => {
   const history = useHistory();
-  const { t } = useTranslation();
   const [form] = Form.useForm();
-
+  const { t } = useTranslation();
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
 
@@ -261,7 +263,7 @@ const AddMetricPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -343,4 +345,8 @@ const AddMetricPage = () => {
   );
 };
 
-export default AddMetricPage;
+export default withPageLayout(
+  i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.metric'),
+  })
+)(AddMetricPage);

@@ -19,6 +19,7 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
@@ -26,10 +27,6 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -61,6 +58,7 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import searchIndexClassBase from '../../utils/SearchIndexDetailsClassBase';
 import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
@@ -81,7 +79,7 @@ function SearchIndexDetailsPage() {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { customizedPage } = useCustomPages(PageType.SearchIndex);
+  const { customizedPage, isLoading } = useCustomPages(PageType.SearchIndex);
 
   const [searchIndexPermissions, setSearchIndexPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -509,7 +507,7 @@ function SearchIndexDetailsPage() {
     }
   }, [decodedSearchIndexFQN, viewPermission]);
 
-  if (loading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -558,7 +556,7 @@ function SearchIndexDetailsPage() {
           onUpdate={onSearchIndexUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.FIELDS}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}
@@ -575,4 +573,4 @@ function SearchIndexDetailsPage() {
   );
 }
 
-export default SearchIndexDetailsPage;
+export default withActivityFeed(SearchIndexDetailsPage);

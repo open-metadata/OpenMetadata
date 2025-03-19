@@ -68,6 +68,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   independent = false,
   hideCounts = false,
   hasNullOption = false,
+  triggerButtonSize = 'small',
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -341,10 +342,12 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       <Tooltip
         mouseLeaveDelay={0}
         overlayClassName={isEmpty(selectedKeys) ? 'd-none' : ''}
-        placement="bottom"
+        placement="top"
         title={getSelectedOptionLabelString(selectedKeys, true)}
         trigger="hover">
-        <Button className="quick-filter-dropdown-trigger-btn">
+        <Button
+          className="quick-filter-dropdown-trigger-btn"
+          size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space size={0}>
               <Typography.Text>{label}</Typography.Text>

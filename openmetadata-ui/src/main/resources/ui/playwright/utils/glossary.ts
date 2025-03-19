@@ -555,7 +555,7 @@ export const approveGlossaryTermTask = async (
 ) => {
   await validateGlossaryTermTask(page, term);
   const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-  await page.getByRole('button', { name: 'Approve' }).click();
+  await page.getByTestId('approve-button').click();
   await taskResolve;
 
   // Display toast notification
@@ -1104,14 +1104,14 @@ export const approveTagsTask = async (
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
-  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+  const dropdownButton = page.getByTestId('column-dropdown');
 
   await expect(dropdownButton).toBeVisible();
 
   await dropdownButton.click();
 
   await page.waitForSelector(
-    '.ant-dropdown [role="menu"] .glossary-col-sel-dropdown-title',
+    '.ant-dropdown [role="menu"] [data-testid="column-dropdown-title"]',
     {
       state: 'visible',
     }
@@ -1123,11 +1123,12 @@ export async function selectColumns(
   checkboxLabels: string[]
 ): Promise<void> {
   for (const label of checkboxLabels) {
-    const checkbox = page.locator('.glossary-dropdown-label', {
+    const checkbox = page.locator('.draggable-menu-item-button', {
       hasText: label,
     });
     await checkbox.click();
   }
+  await clickOutside(page);
 }
 
 export async function deselectColumns(
@@ -1135,25 +1136,12 @@ export async function deselectColumns(
   checkboxLabels: string[]
 ): Promise<void> {
   for (const label of checkboxLabels) {
-    const checkbox = page.locator('.glossary-dropdown-label', {
+    const checkbox = page.locator('.draggable-menu-item-button', {
       hasText: label,
     });
     await checkbox.click();
   }
-}
-
-export async function clickSaveButton(page: Page): Promise<void> {
-  // Adding manual wait to avoid flakiness for the operations performed in the
-  // dropdown like selection or drag and drop
-  await page.waitForTimeout(500);
-
-  const saveButton = page.locator(
-    '[data-testid="glossary-col-dropdown-save"]',
-    {
-      hasText: 'Save',
-    }
-  );
-  await saveButton.click();
+  await clickOutside(page);
 }
 
 export async function verifyColumnsVisibility(
@@ -1177,24 +1165,25 @@ export async function verifyColumnsVisibility(
   }
 }
 
-export async function toggleAllColumnsSelection(
+export async function toggleBulkActionColumnsSelection(
   page: Page,
-  isSelected: boolean
+  isViewAllSelected: boolean
 ): Promise<void> {
-  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+  await openColumnDropdown(page);
 
-  await expect(dropdownButton).toBeVisible();
+  const button = page.getByTestId('column-dropdown-action-button');
 
-  await dropdownButton.click();
+  if (isViewAllSelected) {
+    await expect(button).toHaveText('Hide All');
 
-  const checkboxLabel = 'All';
-  const checkbox = page.locator('.custom-glossary-col-sel-checkbox', {
-    hasText: checkboxLabel,
-  });
-  if (isSelected) {
-    await checkbox.click();
+    await button.click();
+  } else {
+    await expect(button).toHaveText('View All');
+
+    await button.click();
   }
-  await clickSaveButton(page);
+
+  await clickOutside(page);
 }
 
 export async function verifyAllColumns(

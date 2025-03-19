@@ -145,7 +145,13 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "fileFormats": True,
 }
 
-RESTRICT_UPDATE_LIST = ["description", "tags", "owners", "displayName"]
+RESTRICT_UPDATE_LIST = [
+    "description",
+    "tags",
+    "owners",
+    "displayName",
+    "tableConstraints",
+]
 
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
 

@@ -14,8 +14,8 @@
 import { t } from 'i18next';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import ActivityFeedProvider from '../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
@@ -87,17 +87,16 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.ACTIVITY_FEED,
       children: (
-        <ActivityFeedProvider>
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.SEARCH_INDEX}
-            owners={searchIndexDetails?.owners}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={fetchSearchIndexDetails}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        </ActivityFeedProvider>
+        <ActivityFeedTab
+          refetchFeed
+          entityFeedTotalCount={feedCount.totalCount}
+          entityType={EntityType.SEARCH_INDEX}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          owners={searchIndexDetails?.owners}
+          onFeedUpdate={getEntityFeedCount}
+          onUpdateEntityDetails={fetchSearchIndexDetails}
+          onUpdateFeedCount={handleFeedCount}
+        />
       ),
     },
     {

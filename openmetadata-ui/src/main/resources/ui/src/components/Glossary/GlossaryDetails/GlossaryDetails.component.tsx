@@ -18,7 +18,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -45,8 +44,11 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
@@ -83,7 +85,7 @@ const GlossaryDetails = ({
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
   const { tab: activeTab = EntityTabs.TERMS } =
     useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Glossary);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Glossary);
 
   useGridLayoutDirection();
 
@@ -310,6 +312,7 @@ const GlossaryDetails = ({
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
+                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
@@ -339,6 +342,10 @@ const GlossaryDetails = ({
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <GenericProvider<Glossary>
       data={updatedGlossary}
@@ -363,7 +370,7 @@ const GlossaryDetails = ({
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.TERMS}
+            activeKey={activeTab}
             className="glossary-details-page-tabs"
             data-testid="tabs"
             items={tabs}

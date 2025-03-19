@@ -160,8 +160,8 @@ const AddService = ({
         entityLowercase: t('label.service-lowercase'),
         entityLowercasePlural: t('label.service-lowercase-plural'),
         setInlineAlertDetails,
-        name: serviceConfig.serviceName,
         defaultErrorType: 'create',
+        name: serviceConfig.serviceName,
       });
     } finally {
       setSaveServiceState('initial');
@@ -294,7 +294,7 @@ const AddService = ({
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,

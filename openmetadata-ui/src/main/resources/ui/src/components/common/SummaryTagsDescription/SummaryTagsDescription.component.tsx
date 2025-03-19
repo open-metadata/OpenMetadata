@@ -33,9 +33,8 @@ const SummaryTagsDescription = ({
   return (
     <>
       <Row
-        className="p-md border-radius-card"
-        gutter={[0, 8]}
-        style={{ background: '#f5f5f5' }}>
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
@@ -47,7 +46,7 @@ const SummaryTagsDescription = ({
           {tags.length > 0 ? (
             <TagsViewer sizeCap={-1} tags={tags} />
           ) : (
-            <Typography.Text className="text-grey-body text-grey-muted text-sm">
+            <Typography.Text className="text-sm no-data-chip-placeholder">
               {t('label.no-tags-added')}
             </Typography.Text>
           )}
@@ -55,9 +54,8 @@ const SummaryTagsDescription = ({
       </Row>
 
       <Row
-        className="p-md border-radius-card"
-        gutter={[0, 8]}
-        style={{ background: '#f5f5f5' }}>
+        className="p-md border-radius-card summary-panel-card"
+        gutter={[0, 8]}>
         <Col span={24}>
           <Typography.Text
             className="summary-panel-section-title"
@@ -73,7 +71,7 @@ const SummaryTagsDescription = ({
                 maxLength={200}
               />
             ) : (
-              <Typography className="text-grey-body">
+              <Typography className="no-data-chip-placeholder">
                 {t('label.no-data-found')}
               </Typography>
             )}

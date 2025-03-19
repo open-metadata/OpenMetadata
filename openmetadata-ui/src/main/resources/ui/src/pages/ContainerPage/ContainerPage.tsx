@@ -25,11 +25,7 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -72,6 +68,7 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -81,7 +78,9 @@ const ContainerPage = () => {
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Container);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Container
+  );
   const { fqn: decodedContainerName } = useFqn();
 
   // Local states
@@ -449,7 +448,7 @@ const ContainerPage = () => {
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA
     );
   }, [
     isDataModelEmpty,
@@ -493,7 +492,7 @@ const ContainerPage = () => {
   }, [decodedContainerName]);
 
   // Rendering
-  if (isLoading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -546,10 +545,7 @@ const ContainerPage = () => {
           onUpdate={handleContainerUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={
-                tab ??
-                (isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA)
-              }
+              activeKey={tab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

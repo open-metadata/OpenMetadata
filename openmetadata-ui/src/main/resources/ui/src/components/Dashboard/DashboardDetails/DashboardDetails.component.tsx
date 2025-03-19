@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -37,9 +36,11 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDetailsClassBase from '../../../utils/DashboardDetailsClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -62,7 +63,7 @@ const DashboardDetails = ({
   const history = useHistory();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Dashboard);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
   const { fqn: decodedDashboardFQN } = useFqn();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -260,6 +261,10 @@ const DashboardDetails = ({
     onExtensionUpdate,
   ]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
       className="bg-white"
@@ -294,7 +299,7 @@ const DashboardDetails = ({
           onUpdate={onDashboardUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

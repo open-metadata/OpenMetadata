@@ -13,10 +13,6 @@
 
 import { Browser, expect, Page, Response } from '@playwright/test';
 import {
-  customFormatDateTime,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
-import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
 } from '../constant/permission';
@@ -37,6 +33,7 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
+import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -105,7 +102,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     }
   );
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
   );
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
@@ -214,7 +211,7 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
   await page.fill('[data-testid="displayName"]', '');
-  await page.type('[data-testid="displayName"]', editedUserName);
+  await page.getByTestId('displayName').fill(editedUserName);
 
   const saveResponse = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save-display-name"]');
@@ -231,7 +228,7 @@ export const editTeams = async (page: Page, teamName: string) => {
   await page.click('.ant-select-selection-item-remove > .anticon');
 
   await page.click('[data-testid="team-select"]');
-  await page.type('[data-testid="team-select"]', teamName);
+  await page.getByTestId('team-select').fill(teamName);
 
   // Click the team from the dropdown
   await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
@@ -550,26 +547,16 @@ export const checkDataConsumerPermissions = async (page: Page) => {
     )
   ).toBeVisible();
 
-  if (process.env.PLAYWRIGHT_IS_OSS) {
-    await expect(
-      page.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
-  } else {
-    await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
+  await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
 
-    await page.click('[data-testid="manage-button"]');
+  await page.click('[data-testid="manage-button"]');
 
-    await expect(page.locator('[data-testid="export-button"]')).toBeVisible();
-    await expect(
-      page.locator('[data-testid="import-button"]')
-    ).not.toBeVisible();
-    await expect(
-      page.locator('[data-testid="announcement-button"]')
-    ).not.toBeVisible();
-    await expect(
-      page.locator('[data-testid="delete-button"]')
-    ).not.toBeVisible();
-  }
+  await expect(page.locator('[data-testid="export-button"]')).toBeVisible();
+  await expect(page.locator('[data-testid="import-button"]')).not.toBeVisible();
+  await expect(
+    page.locator('[data-testid="announcement-button"]')
+  ).not.toBeVisible();
+  await expect(page.locator('[data-testid="delete-button"]')).not.toBeVisible();
 
   await page.click('[data-testid="lineage"]');
 
@@ -681,10 +668,7 @@ export const addUser = async (
   await page.fill('#confirmPassword', password);
 
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page.type(
-    '[data-testid="roles-dropdown"] > .ant-select-selector',
-    role
-  );
+  await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
   await page.click('.ant-select-item-option-content');
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
 

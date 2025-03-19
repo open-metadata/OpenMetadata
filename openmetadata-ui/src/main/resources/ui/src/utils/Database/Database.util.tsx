@@ -15,9 +15,13 @@ import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import { isUndefined, toLower } from 'lodash';
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
+import { ReactComponent as ImportIcon } from '../../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -25,10 +29,9 @@ import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface'
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
-import {
-  getEntityDetailsPath,
-  NO_DATA_PLACEHOLDER,
-} from '../../constants/constants';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
   EntityTabs,
@@ -39,8 +42,12 @@ import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
 import { PageType } from '../../generated/system/ui/page';
 import { UsageDetails } from '../../generated/type/entityUsage';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getEntityName } from '../EntityUtils';
+import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
+import { getEntityImportPath, getEntityName } from '../EntityUtils';
+import i18n from '../i18next/LocalUtil';
+import { getEntityDetailsPath } from '../RouterUtils';
 import { getUsagePercentile } from '../TableUtils';
 import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 
@@ -147,29 +154,30 @@ export const getDatabasePageBaseTabs = ({
       label: (
         <TabsLabel
           count={schemaInstanceCount}
-          id={EntityTabs.SCHEMA}
-          isActive={activeTab === EntityTabs.SCHEMA}
+          id={EntityTabs.SCHEMAS}
+          isActive={activeTab === EntityTabs.SCHEMAS}
           name={t('label.schema-plural')}
         />
       ),
-      key: EntityTabs.SCHEMA,
+      key: EntityTabs.SCHEMAS,
       children: <GenericTab type={PageType.Database} />,
     },
     {
       label: (
         <TabsLabel
           count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          id={EntityTabs.ACTIVITY_FEEDS}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEEDS}
           name={t('label.activity-feed-plural')}
         />
       ),
-      key: EntityTabs.ACTIVITY_FEED,
+      key: EntityTabs.ACTIVITY_FEEDS,
       children: (
         <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DATABASE}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={getDetailsByFQN}
           onUpdateFeedCount={handleFeedCount}
@@ -210,4 +218,63 @@ export const getDatabaseWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       widgetConfig={widgetConfig}
     />
   );
+};
+
+export const ExtraDatabaseDropdownOptions = (
+  fqn: string,
+  permission: OperationPermission,
+  deleted: boolean
+) => {
+  const { showModal } = useEntityExportModalProvider();
+  const history = useHistory();
+
+  const { ViewAll, EditAll } = permission;
+
+  return [
+    ...(EditAll && !deleted
+      ? [
+          {
+            label: (
+              <LimitWrapper resource="database">
+                <ManageButtonItemLabel
+                  description={i18n.t('message.import-entity-help', {
+                    entity: i18n.t('label.database'),
+                  })}
+                  icon={ImportIcon}
+                  id="import-button"
+                  name={i18n.t('label.import')}
+                  onClick={() =>
+                    history.push(getEntityImportPath(EntityType.DATABASE, fqn))
+                  }
+                />
+              </LimitWrapper>
+            ),
+            key: 'import-button',
+          },
+        ]
+      : []),
+    ...(ViewAll && !deleted
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={i18n.t('message.export-entity-help', {
+                  entity: i18n.t('label.database'),
+                })}
+                icon={ExportIcon}
+                id="export-button"
+                name={i18n.t('label.export')}
+                onClick={() =>
+                  showModal({
+                    name: fqn,
+                    onExport: exportDatabaseDetailsInCSV,
+                  })
+                }
+              />
+            ),
+            key: 'export-button',
+          },
+        ]
+      : []),
+  ];
 };

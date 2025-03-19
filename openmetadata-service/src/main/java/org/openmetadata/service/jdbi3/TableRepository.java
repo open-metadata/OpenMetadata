@@ -86,6 +86,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -101,7 +102,6 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -134,8 +134,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
   public static final String CUSTOM_METRICS = "customMetrics";
-
-  private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+  private static final Set<String> CHANGE_SUMMARY_FIELDS =
+      Set.of("description", "owners", "columns.description");
 
   public TableRepository() {
     super(
@@ -144,7 +144,8 @@ public class TableRepository extends EntityRepository<Table> {
         Table.class,
         Entity.getCollectionDAO().tableDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
   }
 
@@ -715,8 +716,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
-    return new TableUpdater(original, updated, operation);
+  public EntityUpdater getUpdater(
+      Table original, Table updated, Operation operation, ChangeSource changeSource) {
+    return new TableUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -1154,8 +1156,9 @@ public class TableRepository extends EntityRepository<Table> {
 
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends ColumnEntityUpdater {
-    public TableUpdater(Table original, Table updated, Operation operation) {
-      super(original, updated, operation);
+    public TableUpdater(
+        Table original, Table updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Override
@@ -1165,12 +1168,23 @@ public class TableRepository extends EntityRepository<Table> {
       DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
       updateTableConstraints(origTable, updatedTable, operation);
+      updateProcessedLineage(origTable, updatedTable);
       updateColumns(
           COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
+      recordChange(
+          "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
+    }
+
+    private void updateProcessedLineage(Table origTable, Table updatedTable) {
+      // if schema definition changes make processed lineage false
+      if (origTable.getProcessedLineage().booleanValue()
+          && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
+        updatedTable.setProcessedLineage(false);
+      }
     }
 
     private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {

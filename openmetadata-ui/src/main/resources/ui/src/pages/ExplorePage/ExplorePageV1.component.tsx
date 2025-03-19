@@ -31,7 +31,7 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
-import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
   ES_EXCEPTION_SHARDS_FAILED,
@@ -46,6 +46,7 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
@@ -56,6 +57,8 @@ import {
   extractTermKeys,
   findActiveSearchIndex,
 } from '../../utils/ExploreUtils';
+import i18n from '../../utils/i18next/LocalUtil';
+import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -478,4 +481,6 @@ const ExplorePageV1: FunctionComponent = () => {
   );
 };
 
-export default withAdvanceSearch(ExplorePageV1);
+export default withPageLayout(i18n.t('label.explore'))(
+  withAdvanceSearch(ExplorePageV1)
+);

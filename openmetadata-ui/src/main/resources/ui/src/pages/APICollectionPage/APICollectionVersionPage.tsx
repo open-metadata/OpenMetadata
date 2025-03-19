@@ -31,11 +31,7 @@ import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  PAGE_SIZE,
-} from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -71,6 +67,7 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import APIEndpointsTab from './APIEndpointsTab';
 
@@ -398,7 +395,7 @@ const APICollectionVersionPage = () => {
                   <Tabs
                     className="entity-details-page-tabs"
                     data-testid="tabs"
-                    defaultActiveKey={tab ?? EntityTabs.API_COLLECTION}
+                    defaultActiveKey={tab}
                     items={tabs}
                     onChange={handleTabChange}
                   />

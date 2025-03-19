@@ -21,6 +21,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
+import {
+  DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -38,6 +42,7 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -259,8 +264,8 @@ export const DashboardChartTable = () => {
         title: t('label.chart-entity', {
           entity: t('label.name'),
         }),
-        dataIndex: 'chartName',
-        key: 'chartName',
+        dataIndex: TABLE_COLUMNS_KEYS.CHART_NAME,
+        key: TABLE_COLUMNS_KEYS.CHART_NAME,
         width: 220,
         fixed: 'left',
         sorter: getColumnSorter<ChartType, 'name'>('name'),
@@ -288,14 +293,14 @@ export const DashboardChartTable = () => {
         title: t('label.chart-entity', {
           entity: t('label.type'),
         }),
-        dataIndex: 'chartType',
-        key: 'chartType',
+        dataIndex: TABLE_COLUMNS_KEYS.CHART_TYPE,
+        key: TABLE_COLUMNS_KEYS.CHART_TYPE,
         width: 120,
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => {
           const permissionsObject = chartsPermissionsArray?.find(
@@ -324,9 +329,9 @@ export const DashboardChartTable = () => {
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: ChartType, index: number) => {
@@ -350,9 +355,9 @@ export const DashboardChartTable = () => {
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: ChartType, index: number) => (
@@ -400,24 +405,30 @@ export const DashboardChartTable = () => {
         columns={tableColumn}
         data-testid="charts-table"
         dataSource={charts}
+        defaultVisibleColumns={DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS}
         pagination={false}
         rowKey="id"
         scroll={{ x: 1200 }}
         size="small"
+        staticVisibleColumns={[TABLE_COLUMNS_KEYS.CHART_NAME]}
       />
       {editChart && (
-        <ModalWithMarkdownEditor
-          header={t('label.edit-chart-name', {
-            name: getEntityName(editChart.chart),
-          })}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.chart'),
-          })}
-          value={editChart.chart.description ?? ''}
-          visible={Boolean(editChart)}
-          onCancel={closeEditChartModal}
-          onSave={onChartUpdate}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editChart.chart.fullyQualifiedName}
+          entityType={EntityType.CHART}>
+          <ModalWithMarkdownEditor
+            header={t('label.edit-chart-name', {
+              name: getEntityName(editChart.chart),
+            })}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.chart'),
+            })}
+            value={editChart.chart.description ?? ''}
+            visible={Boolean(editChart)}
+            onCancel={closeEditChartModal}
+            onSave={onChartUpdate}
+          />
+        </EntityAttachmentProvider>
       )}
     </>
   );

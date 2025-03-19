@@ -42,15 +42,18 @@
 }
 
 .show-thread {
-  background: rgba(239, 244, 250, 0.25);
+  background: @grey-9;
   padding: 20px;
-  border: 0.8px solid #dfdfdf;
+  border: 0.5px solid #eaecf5;
   margin-top: 20px;
   border-radius: 8px;
+  max-height: 400px;
+  overflow-y: scroll;
+  overflow-x: hidden;
 }
 
 .show-thread.description {
-  padding: 20px 20px 20px 6px;
+  padding: 20px 6px 20px 6px;
 }
 
 .hide-thread {
@@ -58,6 +61,10 @@
   padding: 20px;
   margin-top: 2px;
   border-radius: 8px;
+  max-height: 200px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  border: 0.5px solid #eaecf5;
 }
 
 .hide-thread.description.updated {

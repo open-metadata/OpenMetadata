@@ -73,14 +73,19 @@
 }
 
 .assets-tab-container {
+  overflow-y: scroll;
+  background-color: @white;
+  border: 1px solid #eaecf5;
+
   .explore-search-card {
     border-radius: 12px;
     border-left: 4px solid transparent;
     opacity: 0.95;
     background: @grey-9;
+    border: 0.5px solid #eaecf5;
     &.highlight-card {
-      border-color: #2081f0;
-      background: rgb(230, 241, 254);
+      border-left: 4px solid #1570ef;
+      background: #eff8ff;
     }
     margin: 0 0 20px;
     &:last-child {

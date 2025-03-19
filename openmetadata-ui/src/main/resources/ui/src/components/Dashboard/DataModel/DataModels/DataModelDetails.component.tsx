@@ -17,10 +17,6 @@ import { isUndefined, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
@@ -34,9 +30,14 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
-import { getDashboardDataModelDetailPageTabs } from '../../../../utils/DashboardDataModelUtils';
+import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import Loader from '../../../common/Loader/Loader';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -59,7 +60,9 @@ const DataModelDetails = ({
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDataModelFQN } = useFqn();
-  const { customizedPage } = useCustomPages(PageType.DashboardDataModel);
+  const { customizedPage, isLoading } = useCustomPages(
+    PageType.DashboardDataModel
+  );
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -161,23 +164,24 @@ const DataModelDetails = ({
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
-    const allTabs = getDashboardDataModelDetailPageTabs({
-      feedCount,
-      activeTab,
-      handleFeedCount,
-      editLineagePermission,
-      dataModelData,
-      dataModelPermissions,
-      deleted: deleted ?? false,
-      getEntityFeedCount,
-      fetchDataModel,
-      labelMap: tabLabelMap,
-    });
+    const allTabs =
+      dashboardDataModelClassBase.getDashboardDataModelDetailPageTabs({
+        feedCount,
+        activeTab,
+        handleFeedCount,
+        editLineagePermission,
+        dataModelData,
+        dataModelPermissions,
+        deleted: deleted ?? false,
+        getEntityFeedCount,
+        fetchDataModel,
+        labelMap: tabLabelMap,
+      });
 
     return getDetailsTabWithNewLabel(
       allTabs,
       customizedPage?.tabs,
-      EntityTabs.TASKS
+      EntityTabs.MODEL
     );
   }, [
     feedCount.conversationCount,
@@ -185,8 +189,13 @@ const DataModelDetails = ({
     dataModelData?.sql,
     deleted,
     handleFeedCount,
+    customizedPage?.tabs,
     editLineagePermission,
   ]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
@@ -222,7 +231,7 @@ const DataModelDetails = ({
           onUpdate={onUpdateDataModel}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.MODEL}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}
