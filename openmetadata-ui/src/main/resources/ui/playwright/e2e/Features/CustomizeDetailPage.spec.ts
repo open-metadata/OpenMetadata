@@ -35,7 +35,7 @@ const user = new UserClass();
 
 const creationConfig: EntityDataClassCreationConfig = {
   table: true,
-  entityDetails: false,
+  entityDetails: true,
   topic: true,
   dashboard: true,
   mlModel: true,
@@ -310,6 +310,10 @@ test.describe('Persona customization', () => {
             .click();
 
           await adminPage.getByRole('button', { name: 'Add tab' }).click();
+          await adminPage
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Add' })
+            .click();
           await adminPage.getByTestId('add-widget-button').click();
           await adminPage.getByTestId('Description-widget').click();
           await adminPage

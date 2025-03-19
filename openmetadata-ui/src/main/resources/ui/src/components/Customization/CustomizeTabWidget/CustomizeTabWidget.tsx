@@ -359,8 +359,14 @@ export const CustomizeTabWidget = () => {
       )}
       {showAddTabModal && (
         <Modal
+          closable
+          cancelText={t('label.cancel')}
+          closeIcon={null}
+          okText={t('label.add')}
           open={showAddTabModal}
-          title="Add tab"
+          title={t('label.add-entity', {
+            entity: t('label.tab'),
+          })}
           onCancel={() => setShowAddTabModal(false)}
           onOk={add}>
           <Input
