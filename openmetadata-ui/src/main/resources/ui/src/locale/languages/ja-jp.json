@@ -533,6 +533,7 @@
     "explore-now": "いますぐ探索する",
     "export": "エクスポート",
     "export-entity": "Export {{entity}}",
+    "export-type": "エクスポートタイプ",
     "expression": "Expression",
     "extend-open-meta-data": "Extend OpenMetadata",
     "extension": "Extension",

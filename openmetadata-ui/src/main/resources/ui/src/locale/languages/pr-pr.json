@@ -533,6 +533,7 @@
     "explore-now": "اکنون کاوش کنید",
     "export": "صادر کردن",
     "export-entity": "صادر کردن {{entity}}",
+    "export-type": "نوع صادرات",
     "expression": "عبارت",
     "extend-open-meta-data": "گسترش OpenMetadata",
     "extension": "افزونه",

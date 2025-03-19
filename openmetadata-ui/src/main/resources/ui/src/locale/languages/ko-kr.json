@@ -533,6 +533,7 @@
     "explore-now": "지금 탐색",
     "export": "내보내기",
     "export-entity": "{{entity}} 내보내기",
+    "export-type": "내보내기 유형",
     "expression": "식",
     "extend-open-meta-data": "OpenMetadata 확장",
     "extension": "확장",

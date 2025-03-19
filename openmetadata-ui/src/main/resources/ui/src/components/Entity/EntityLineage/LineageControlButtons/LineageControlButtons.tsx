@@ -32,11 +32,7 @@ import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
-import {
-  getLoadingStatusValue,
-  handleExportPDFLineage,
-} from '../../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getLoadingStatusValue } from '../../../../utils/EntityLineageUtils';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { LineageConfig } from '../EntityLineage.interface';
 import LineageConfigModal from '../LineageConfigModal';
@@ -53,7 +49,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   const { t } = useTranslation();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
   const {
-    nodes,
     activeLayer,
     isEditMode,
     expandAllColumns,
@@ -67,7 +62,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
     onLineageConfigUpdate,
     reactFlowInstance,
     redraw,
-    entityLineage,
   } = useLineageProvider();
 
   const isColumnLayerActive = useMemo(() => {
@@ -103,16 +97,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   const handleRearrange = useCallback(() => {
     redraw?.();
   }, [redraw]);
-
-  const handlePDFExport = useCallback(() => {
-    handleExportPDFLineage(
-      nodes,
-      `${getEntityName(entityLineage.entity)}-lineage`,
-      {
-        title: getEntityName(entityLineage.entity),
-      }
-    );
-  }, [nodes, entityLineage.entity]);
 
   return (
     <>
@@ -163,20 +147,6 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           title={t('label.export-entity', { entity: t('label.lineage') })}
           type="text"
           onClick={onExportClick}
-        />
-
-        <Button
-          className="lineage-button"
-          data-testid="lineage-pdf-export-button"
-          disabled={isEditMode}
-          icon={
-            <span className="anticon">
-              <ExportIcon height={18} width={18} />
-            </span>
-          }
-          title={t('label.export-entity', { entity: t('label.lineage') })}
-          type="text"
-          onClick={handlePDFExport}
         />
 
         {handleFullScreenViewClick && (

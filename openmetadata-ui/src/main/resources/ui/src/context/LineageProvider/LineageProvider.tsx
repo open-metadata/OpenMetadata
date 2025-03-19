@@ -55,6 +55,7 @@ import {
 } from '../../components/Lineage/Lineage.interface';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { ExportTypes } from '../../constants/Export.constants';
 import {
   ELEMENT_DELETE_STATE,
   ZOOM_VALUE,
@@ -100,6 +101,7 @@ import {
   getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
+  getViewportForLineagePDFExport,
   onLoad,
   parseLineageData,
   positionNodesUsingElk,
@@ -439,10 +441,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (decodedFqn) {
       showModal({
         name: decodedFqn,
+        exportTypes: [ExportTypes.CSV, ExportTypes.PDF],
+        documentSelector: '.react-flow__viewport',
+        viewport: getViewportForLineagePDFExport(nodes),
         onExport: exportLineageData,
       });
     }
-  }, [entityType, decodedFqn, lineageConfig, queryFilter]);
+  }, [entityType, decodedFqn, lineageConfig, queryFilter, nodes]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: LineageDirection) => {

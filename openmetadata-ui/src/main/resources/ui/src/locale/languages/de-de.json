@@ -533,6 +533,7 @@
     "explore-now": "Jetzt erkunden",
     "export": "Exportieren",
     "export-entity": "{{entity}} exportieren",
+    "export-type": "Exporttyp",
     "expression": "Expression",
     "extend-open-meta-data": "OpenMetadata erweitern",
     "extension": "Erweiterung",

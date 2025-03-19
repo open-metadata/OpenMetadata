@@ -533,6 +533,7 @@
     "explore-now": "สำรวจตอนนี้",
     "export": "ส่งออก",
     "export-entity": "ส่งออก {{entity}}",
+    "export-type": "ประเภทการส่งออก",
     "expression": "สมการ",
     "extend-open-meta-data": "ขยาย OpenMetadata",
     "extension": "ส่วนขยาย",

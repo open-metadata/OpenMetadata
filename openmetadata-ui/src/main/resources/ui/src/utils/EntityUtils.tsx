@@ -12,6 +12,8 @@
  */
 
 import { Popover, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { toPng } from 'html-to-image';
 import i18next, { t } from 'i18next';
 import {
   isEmpty,
@@ -33,6 +35,7 @@ import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAsse
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
+import { ExportViewport } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   EntityServiceUnion,
   EntityWithServices,
@@ -115,7 +118,9 @@ import {
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
+import { convertPngToPDFExport } from './Export/PDFExportUtils';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import {
   getApplicationDetailsPath,
   getBotsPagePath,
@@ -148,6 +153,7 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
+import { showErrorToast } from './ToastUtils';
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
@@ -2526,4 +2532,41 @@ export const updateNodeType = (
   }
 
   return node;
+};
+
+export const handleExportPDF = (
+  fileName: string,
+  documentSelector: string,
+  viewport?: ExportViewport,
+  headerData?: { title: string }
+) => {
+  try {
+    const exportElement = document.querySelector(documentSelector);
+
+    if (!exportElement) {
+      throw new Error(i18n.t('message.error-generating-pdf'));
+    }
+
+    const imageWidth = exportElement.scrollWidth;
+    const imageHeight = exportElement.scrollHeight;
+
+    toPng(exportElement as HTMLElement, {
+      backgroundColor: '#ffffff',
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: imageWidth.toString(),
+        height: imageHeight.toString(),
+        ...(!isUndefined(viewport)
+          ? {
+              transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+            }
+          : {}),
+      },
+    }).then((base64Image) =>
+      convertPngToPDFExport(base64Image, fileName, headerData)
+    );
+  } catch (error) {
+    showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
+  }
 };

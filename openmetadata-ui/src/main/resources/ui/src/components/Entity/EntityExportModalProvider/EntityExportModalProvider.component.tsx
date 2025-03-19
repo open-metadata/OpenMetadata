@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Form, Input, Modal } from 'antd';
+import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
@@ -24,8 +24,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import {
+  ExportTypes,
+  EXPORT_TYPES_OPTIONS,
+} from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { handleExportPDF } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import {
@@ -57,6 +62,9 @@ export const EntityExportModalProvider = ({
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
 
   const [csvExportData, setCSVExportData] = useState<string>();
+
+  const selectedExportType =
+    Form.useWatch<ExportTypes>(['exportType'], form) ?? ExportTypes.CSV;
 
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
@@ -90,12 +98,35 @@ export const EntityExportModalProvider = ({
     document.body.removeChild(element);
   };
 
-  const handleExport = async ({ fileName }: { fileName: string }) => {
+  const handleExport = async ({
+    fileName,
+    exportType,
+  }: {
+    fileName: string;
+    exportType: ExportTypes;
+  }) => {
     if (exportData === null) {
       return;
     }
     try {
       setDownloading(true);
+
+      if (exportType === ExportTypes.PDF) {
+        handleExportPDF(
+          exportData.name,
+          exportData.documentSelector ?? '',
+          exportData.viewport,
+          {
+            title: exportData.name,
+          }
+        );
+
+        handleCancel();
+        setDownloading(false);
+
+        return;
+      }
+
       // assigning the job data to ref here, as exportData.onExport may take time to return the data
       // and websocket connection may be respond before that, so we need to keep the job data in ref
       // to handle the download
@@ -172,12 +203,15 @@ export const EntityExportModalProvider = ({
   useEffect(() => {
     if (exportData) {
       if (isBulkEdit) {
-        handleExport({ fileName: 'bulk-edit' });
+        handleExport({
+          fileName: 'bulk-edit',
+          exportType: ExportTypes.CSV,
+        });
       } else {
-        form.setFieldValue(
-          'fileName',
-          `${exportData.name}_${getCurrentISODate()}`
-        );
+        form.setFieldsValue({
+          fileName: `${exportData.name}_${getCurrentISODate()}`,
+          exportType: exportData.exportTypes[0],
+        });
       }
     }
   }, [isBulkEdit, exportData]);
@@ -221,13 +255,26 @@ export const EntityExportModalProvider = ({
               id="export-form"
               layout="vertical"
               onFinish={handleExport}>
+              <Form.Item label={`${t('label.export-type')}:`} name="exportType">
+                <Select
+                  data-testid="export-type-select"
+                  disabled={exportData.exportTypes.length === 1}
+                  options={EXPORT_TYPES_OPTIONS}
+                />
+              </Form.Item>
+
               <Form.Item
                 className={classNames({ 'mb-0': !csvExportJob?.jobId })}
                 label={`${t('label.entity-name', {
                   entity: t('label.file'),
                 })}:`}
                 name="fileName">
-                <Input addonAfter=".csv" data-testid="file-name-input" />
+                <Input
+                  addonAfter={
+                    selectedExportType === ExportTypes.CSV ? '.csv' : '.pdf'
+                  }
+                  data-testid="file-name-input"
+                />
               </Form.Item>
             </Form>
 

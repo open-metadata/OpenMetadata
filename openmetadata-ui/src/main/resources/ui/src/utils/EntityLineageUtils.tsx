@@ -15,7 +15,6 @@ import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-import { toPng } from 'html-to-image';
 import { t } from 'i18next';
 import { get, isEmpty, isNil, isUndefined, uniqueId } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
@@ -39,6 +38,7 @@ import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg'
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import Loader from '../components/common/Loader/Loader';
+import { ExportViewport } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
 import {
@@ -85,9 +85,7 @@ import { TagSource } from '../generated/type/tagLabel';
 import { addLineage, deleteLineageEdge } from '../rest/miscAPI';
 import { getPartialNameFromTableFQN, isDeleted } from './CommonUtils';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import { convertPngToPDFExport } from './Export/PDFExportUtils';
 import Fqn from './Fqn';
-import i18n from './i18next/LocalUtil';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -1711,43 +1709,20 @@ export const getViewportForBoundsReactFlow = (
   return { x: translateX, y: translateY, zoom: scale };
 };
 
-export const handleExportPDFLineage = (
-  nodes: Node[],
-  fileName: string,
-  pdfHeaderData?: { title: string }
-) => {
-  try {
-    const exportElement = document.querySelector(
-      '.react-flow__viewport'
-    ) as HTMLElement;
+export const getViewportForLineagePDFExport = (
+  nodes: Node[]
+): ExportViewport => {
+  const exportElement = document.querySelector(
+    '.react-flow__viewport'
+  ) as HTMLElement;
 
-    const imageWidth = exportElement.scrollWidth;
-    const imageHeight = exportElement.scrollHeight;
+  const imageWidth = exportElement.scrollWidth;
+  const imageHeight = exportElement.scrollHeight;
 
-    const nodesBounds = getNodesBoundsReactFlow(nodes);
+  const nodesBounds = getNodesBoundsReactFlow(nodes);
 
-    // Calculate the viewport to fit all nodes
-    const viewport = getViewportForBoundsReactFlow(
-      nodesBounds,
-      imageWidth,
-      imageHeight
-    );
-
-    toPng(exportElement, {
-      backgroundColor: '#ffffff',
-      width: imageWidth,
-      height: imageHeight,
-      style: {
-        width: imageWidth.toString(),
-        height: imageHeight.toString(),
-        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-      },
-    }).then((base64Image) =>
-      convertPngToPDFExport(base64Image, fileName, pdfHeaderData)
-    );
-  } catch (error) {
-    showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
-  }
+  // Calculate the viewport to fit all nodes
+  return getViewportForBoundsReactFlow(nodesBounds, imageWidth, imageHeight);
 };
 
 export const getLineageEntityExclusionFilter = () => {
