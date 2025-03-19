@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
@@ -167,7 +166,7 @@ public final class SearchUtils {
 
   public static List<Object> searchAfter(String searchAfter) {
     if (!nullOrEmpty(searchAfter)) {
-      return Collections.singletonList(Stream.of(searchAfter.split(",")));
+      return List.of(searchAfter.split(","));
     }
     return null;
   }
