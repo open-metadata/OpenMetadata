@@ -128,6 +128,13 @@ class TableauSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
+    def prepare(self):
+        """
+        Prepare the source before ingestion
+        we will fetch the custom sql tables from the tableau server
+        """
+        self.client.cache_custom_sql_tables()
+
     def get_dashboards_list(self) -> Optional[List[TableauDashboard]]:
         return self.client.get_workbooks()
 
@@ -144,6 +151,11 @@ class TableauSource(DashboardServiceSource):
 
         # Get the tableau data sources
         dashboard.dataModels = self.client.get_datasources(dashboard_id=dashboard.id)
+
+        # Get custom SQL queries
+        dashboard.custom_sql_queries = self.client.get_custom_sql_table_queries(
+            dashboard_id=dashboard.id
+        )
 
         return dashboard
 
@@ -646,6 +658,65 @@ class TableauSource(DashboardServiceSource):
                             db_service_name=db_service_name,
                             upstream_data_model_entity=data_model_entity,
                         )
+
+                # Process custom SQL queries if available
+                if dashboard_details.custom_sql_queries:
+                    for query in dashboard_details.custom_sql_queries:
+                        try:
+                            db_service_entity = None
+                            if db_service_name:
+                                db_service_entity = self.metadata.get_by_name(
+                                    entity=DatabaseService, fqn=db_service_name
+                                )
+                            lineage_parser = LineageParser(
+                                query,
+                                ConnectionTypeDialectMapper.dialect_of(
+                                    db_service_entity.serviceType.value
+                                )
+                                if db_service_entity
+                                else Dialect.ANSI,
+                            )
+                            for source_table in lineage_parser.source_tables or []:
+                                database_schema_table = fqn.split_table_name(
+                                    str(source_table)
+                                )
+                                database_name = database_schema_table.get("database")
+                                if db_service_entity:
+                                    if isinstance(
+                                        db_service_entity.connection.config,
+                                        BigQueryConnection,
+                                    ):
+                                        database_name = None
+                                    database_name = get_database_name_for_lineage(
+                                        db_service_entity, database_name
+                                    )
+                                schema_name = self.check_database_schema_name(
+                                    database_schema_table.get("database_schema")
+                                )
+                                table_name = database_schema_table.get("table")
+                                fqn_search_string = build_es_fqn_search_string(
+                                    database_name=database_name,
+                                    schema_name=schema_name,
+                                    service_name=db_service_name or "*",
+                                    table_name=table_name,
+                                )
+                                from_entities = self.metadata.search_in_any_service(
+                                    entity_type=Table,
+                                    fqn_search_string=fqn_search_string,
+                                    fetch_multiple_entities=True,
+                                )
+                                for table_entity in from_entities:
+                                    yield self._get_add_lineage_request(
+                                        to_entity=data_model_entity,
+                                        from_entity=table_entity,
+                                        sql=query,
+                                    )
+                        except Exception as err:
+                            logger.debug(traceback.format_exc())
+                            logger.error(
+                                f"Error processing custom SQL query lineage: {err}"
+                            )
+
             except Exception as err:
                 yield Either(
                     left=StackTraceError(
