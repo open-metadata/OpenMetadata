@@ -39,7 +39,6 @@ const EntityHeaderTitle = ({
   badge,
   isDisabled,
   className,
-  color,
   showName = true,
   certification,
   excludeEntityService,
