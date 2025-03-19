@@ -51,6 +51,7 @@ const LeftSidebar = () => {
   const { selectedPersona } = useApplicationStore();
   const { i18n } = useTranslation();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
 
   const { currentPersonaDocStore, setCurrentPersonaDocStore } =
     useCustomizeStore();
@@ -154,6 +155,7 @@ const LeftSidebar = () => {
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
     setIsSidebarCollapsed(true);
+    setOpenKeys([]);
   }, []);
 
   return (
@@ -187,10 +189,12 @@ const LeftSidebar = () => {
         inlineIndent={16}
         items={menuItems as MenuItemType[]}
         mode="inline"
+        openKeys={openKeys}
         rootClassName="left-sidebar-menu"
         selectedKeys={selectedKeys}
         subMenuCloseDelay={1}
         onClick={handleMenuClick}
+        onOpenChange={setOpenKeys}
       />
 
       {showConfirmLogoutModal && (
