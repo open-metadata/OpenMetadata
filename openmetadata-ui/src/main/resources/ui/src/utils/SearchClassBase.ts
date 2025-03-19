@@ -632,7 +632,7 @@ class SearchClassBase {
   }
 
   public isNLPEnabled() {
-    return true;
+    return false;
   }
 }
 

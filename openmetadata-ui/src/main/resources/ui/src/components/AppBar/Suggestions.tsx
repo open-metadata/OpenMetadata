@@ -52,7 +52,7 @@ import {
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
 } from '../../interface/search.interface';
-import { searchQuery } from '../../rest/searchAPI';
+import { nlqSearch, searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import {
@@ -288,12 +288,22 @@ const Suggestions = ({
     try {
       setIsLoading(true);
 
-      const res = await searchQuery({
-        query: searchText,
-        searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
-        queryFilter: quickFilter,
-        pageSize: PAGE_SIZE_BASE,
-      });
+      let res;
+      if (isNLPActive) {
+        res = await nlqSearch({
+          query: searchText,
+          searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
+          queryFilter: quickFilter,
+          pageSize: PAGE_SIZE_BASE,
+        });
+      } else {
+        res = await searchQuery({
+          query: searchText,
+          searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
+          queryFilter: quickFilter,
+          pageSize: PAGE_SIZE_BASE,
+        });
+      }
 
       setOptions(res.hits.hits as unknown as Option[]);
       updateSuggestions(res.hits.hits as unknown as Option[]);

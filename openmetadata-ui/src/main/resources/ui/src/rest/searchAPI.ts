@@ -243,3 +243,12 @@ export const searchPreview = async (payload: PreviewSearchRequest) => {
 
   return response.data;
 };
+
+export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
+  const response = await APIClient.post<SearchResponse<SearchIndex>>(
+    '/search/nlq/query',
+    payload
+  );
+
+  return response.data;
+};
