@@ -157,7 +157,7 @@ public class ElasticSearchSourceBuilderFactory
             .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
             .defaultOperator(Operator.AND)
             .fuzziness(Fuzziness.AUTO)
-            .fuzzyPrefixLength(3)
+            .fuzzyPrefixLength(1)
             .tieBreaker(0.3f);
 
     baseQuery.must(queryStringQueryBuilder);
