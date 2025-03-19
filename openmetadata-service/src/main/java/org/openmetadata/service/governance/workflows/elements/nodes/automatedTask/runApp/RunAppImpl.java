@@ -99,20 +99,20 @@ public class RunAppImpl {
           (JsonUtils.convertValue(config, CollateAIAppConfig.class))
               .withFilter(
                   String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName().toLowerCase()));
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      service.getName()));
       case "CollateAIQualityAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
               .withFilter(
                   String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName().toLowerCase()));
+                          "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      service.getName()));
       case "CollateAITierAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
               .withFilter(
                   String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}}]}},{\"bool\":{\"must\":[{\"term\":{\"service.name.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName().toLowerCase()));
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      service.getName()));
       case "DataInsightsApplication" -> {
         DataInsightsAppConfig updatedAppConfig =
             (JsonUtils.convertValue(config, DataInsightsAppConfig.class));
