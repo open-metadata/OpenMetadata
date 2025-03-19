@@ -30,7 +30,7 @@
     padding: 0 12px;
 
     .ant-menu-submenu.ant-menu-submenu-inline {
-      &.ant-menu-submenu-active:not(.ant-menu-submenu-open) {
+      &.ant-menu-submenu-active:not(.ant-menu-submenu-open):not(.ant-menu-submenu-selected) {
         .ant-menu-submenu-title {
           background: @hover-color;
         }
@@ -229,7 +229,13 @@
     &.ant-menu-submenu-selected:not(.ant-menu-submenu-open) {
       color: @active-color;
       .ant-menu-submenu-title {
-        color: @active-color;
+        background: @active-color;
+        color: @white;
+        border-radius: 12px;
+
+        .ant-menu-submenu-arrow {
+          color: @white;
+        }
       }
     }
   }
