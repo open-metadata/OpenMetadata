@@ -105,7 +105,7 @@ public class RunAppImpl {
           (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
               .withFilter(
                   String.format(
-                          "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
                       service.getName()));
       case "CollateAITierAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
