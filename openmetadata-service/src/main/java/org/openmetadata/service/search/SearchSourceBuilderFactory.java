@@ -8,6 +8,7 @@ import static org.openmetadata.service.search.SearchUtil.isTimeSeriesIndex;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.service.Entity;
@@ -22,6 +23,23 @@ import org.openmetadata.service.Entity;
  * @param <F> The FunctionScoreQueryBuilder type
  */
 public interface SearchSourceBuilderFactory<S, Q, H, F> {
+
+  Pattern QUERY_SYNTAX_PATTERN =
+      Pattern.compile(
+          "\\w+\\s*:\\s*\\w+|"
+              + // Field queries (field:value)
+              "\\b(?i)(?:AND|OR|NOT)\\b|"
+              + // Boolean operators
+              "[*?]|"
+              + // Wildcards
+              "[()]|"
+              + // Parentheses
+              "\"|"
+              + // Quotes
+              "\\[.+\\s+TO\\s+.+\\]|"
+              + // Range queries
+              "[+\\-~\\^]" // Special operators
+          );
 
   /**
    * Get the appropriate search source builder based on the index name.
@@ -207,4 +225,12 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
   S searchBuilder(Q queryBuilder, H highlightBuilder, int from, int size);
 
   S addAggregationsToNLQQuery(S searchSourceBuilder, String indexName);
+
+  default boolean containsQuerySyntax(String query) {
+    if (query == null || query.isEmpty()) {
+      return false;
+    }
+    query = query.replace("%20", " ").trim();
+    return QUERY_SYNTAX_PATTERN.matcher(query).find();
+  }
 }

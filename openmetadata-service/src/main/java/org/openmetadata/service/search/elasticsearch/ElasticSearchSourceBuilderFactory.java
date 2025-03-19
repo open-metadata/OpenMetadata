@@ -153,6 +153,17 @@ public class ElasticSearchSourceBuilderFactory
 
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       baseQuery.must(QueryBuilders.matchAllQuery());
+    } else if (containsQuerySyntax(query)) {
+      QueryStringQueryBuilder queryStringBuilder =
+          QueryBuilders.queryStringQuery(query)
+              .fields(fields)
+              .defaultOperator(Operator.AND)
+              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+              .fuzziness(Fuzziness.AUTO)
+              .fuzzyPrefixLength(1)
+              .tieBreaker(0.3f);
+
+      baseQuery.must(queryStringBuilder);
     } else {
       MultiMatchQueryBuilder multiMatchQueryBuilder =
           QueryBuilders.multiMatchQuery(query)
