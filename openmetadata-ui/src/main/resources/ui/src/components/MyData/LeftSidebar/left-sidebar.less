@@ -46,9 +46,9 @@
       .ant-menu-submenu-title {
         display: flex;
         align-items: center;
-        padding: 16px !important;
+        padding: 16px 12px !important;
         height: auto !important;
-        margin-bottom: 0;
+        margin-bottom: 12px;
         border-radius: 12px;
 
         &.ant-menu-item-selected {
@@ -56,15 +56,8 @@
           color: @white;
 
           .ant-menu-title-content {
-            // .left-panel-label {
-            //   color: #175cd3;
-            // }
             line-height: 16px;
             font-weight: 500;
-
-            // a {
-            //   color: #175cd3;
-            // }
           }
         }
 
@@ -92,7 +85,7 @@
     .ant-menu-item {
       display: flex;
       align-items: center;
-      padding: 16px !important;
+      padding: 16px 12px !important;
       height: auto !important;
       margin-bottom: 12px;
       border-radius: 12px;
@@ -177,7 +170,7 @@
       font-size: 14px;
       border-radius: 12px 12px 0 0 !important;
       color: @white;
-      padding: 16px !important;
+      padding: 16px 12px !important;
 
       .ant-menu-title-content {
         font-weight: 500;
@@ -217,6 +210,10 @@
         padding: 6px 16px !important;
         border-radius: 0;
 
+        .anticon {
+          font-size: 24px !important;
+        }
+
         &:last-child {
           border-radius: 0 0 12px 12px;
         }
@@ -239,7 +236,7 @@
   .ant-menu-submenu > .ant-menu-submenu-title {
     display: flex;
     align-items: center;
-    padding: 16px !important;
+    padding: 16px 12px !important;
     height: auto !important;
     line-height: 0 !important;
     margin-bottom: 12px;
