@@ -96,7 +96,7 @@ $$
 $$section
 ### Sampling Method Type $(id="samplingMethodType")
 
-**This parameter is effective for Snowflake only**
+**This parameter is effective for Postgres and Snowflake**
 
 The sampling method type can be set to **BERNOULLI** or **SYSTEM**. Only database supporting these two sampling methods will take this setting into account. When you choose **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restrictions than **SYSTEM**. For more information you can reference the service documentation.
 
@@ -116,6 +116,16 @@ $$section
 This will set the duration a profiling job against a table should wait before interrupting its execution and moving on to profiling the next table.
 
 It is important to note that the profiler will wait for the hanging query to **terminate** before killing the execution. If there is a risk for your profiling job to hang, it is important to also set a query/connection timeout on your database engine. The default value for the profiler timeout is 12 hours.
+$$
+
+$$section
+### Randomized Sample $(id="randomizedSample")
+
+**This parameter is effective when Profile Sample Type is ROWS**
+
+When using the ROWS sampling type choose wheather to randomized the sample or. Non randomized sample will be faster to compute.
+
+Defaults to `True`
 $$
 
 $$section

@@ -153,6 +153,7 @@ class ProfilerSource(ProfilerSourceInterface):
                 profileSample=self.source_config.profileSample,
                 profileSampleType=self.source_config.profileSampleType,
                 samplingMethodType=self.source_config.samplingMethodType,
+                randomizedSample=self.source_config.randomizedSample,
             ),
         )
 

@@ -45,8 +45,12 @@ export interface DatabaseServiceProfilerPipeline {
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
      */
-    profileSample?:      number;
-    profileSampleType?:  ProfileSampleType;
+    profileSample?:     number;
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?:   boolean;
     samplingMethodType?: SamplingMethodType;
     /**
      * Regex to only fetch tables or databases that matches the pattern.
