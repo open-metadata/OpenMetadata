@@ -210,27 +210,6 @@ class ServiceUtilClassBase {
     return types.filter((type) => !this.unSupportedServices.includes(type));
   }
 
-  public ADVANCED_PROPERTIES = [
-    'connectionArguments',
-    'connectionOptions',
-    'scheme',
-    'sampleDataStorageConfig',
-    'computeTableMetrics',
-    'computeColumnMetrics',
-    'includeViews',
-    'useStatistics',
-    'confidence',
-    'samplingMethodType',
-    'sampleDataCount',
-    'threadCount',
-    'timeoutSeconds',
-    'sslConfig',
-    'sslMode',
-    'schemaRegistrySSL',
-    'consumerConfigSSL',
-    'verify',
-  ];
-
   public getServiceConfigData(data: {
     serviceName: string;
     serviceType: string;
@@ -256,7 +235,7 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo(_data?: ServicesType): any {
+  public getServiceExtraInfo(_data?: ServicesType) {
     return null;
   }
 

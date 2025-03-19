@@ -26,7 +26,10 @@ import { MlModelServiceType } from '../../../../generated/entity/services/mlmode
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
-import { ConfigData } from '../../../../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+} from '../../../../interface/service.interface';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import './service-connection-details.less';
@@ -35,7 +38,7 @@ type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
   serviceCategory: string;
   serviceFQN: string;
-  extraInfo: any;
+  extraInfo?: ExtraInfoType | null;
 };
 
 const ServiceConnectionDetails = ({
