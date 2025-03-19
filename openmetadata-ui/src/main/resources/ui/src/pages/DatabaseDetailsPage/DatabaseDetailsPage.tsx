@@ -88,12 +88,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
-
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
-  const { customizedPage } = useCustomPages(PageType.Database);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Database
+  );
 
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
@@ -128,9 +128,10 @@ const DatabaseDetails: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.DATABASE,
         decodedDatabaseFQN,
-        databasePermission
+        databasePermission,
+        database?.deleted ?? false
       ),
-    [decodedDatabaseFQN, databasePermission]
+    [decodedDatabaseFQN, databasePermission, database?.deleted]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
@@ -403,7 +404,7 @@ const DatabaseDetails: FunctionComponent = () => {
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      EntityTabs.SCHEMAS
     );
   }, [
     activeTab,
@@ -434,7 +435,7 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  if (isLoading || isDatabaseDetailsLoading) {
+  if (isLoading || isDatabaseDetailsLoading || loading) {
     return <Loader />;
   }
 
@@ -480,7 +481,7 @@ const DatabaseDetails: FunctionComponent = () => {
             onUpdate={settingsUpdateHandler}>
             <Col span={24}>
               <Tabs
-                activeKey={activeTab ?? EntityTabs.SCHEMA}
+                activeKey={activeTab}
                 className="entity-details-page-tabs"
                 data-testid="tabs"
                 items={tabs}

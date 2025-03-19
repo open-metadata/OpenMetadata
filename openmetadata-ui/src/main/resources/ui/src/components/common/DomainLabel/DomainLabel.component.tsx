@@ -205,7 +205,7 @@ export const DomainLabel = ({
       <div className="d-flex   flex-col gap-2 justify-center">
         {headerLayout && (
           <div
-            className="d-flex text-sm font-medium items-center "
+            className="d-flex text-sm gap-1 font-medium items-center "
             data-testid="header-domain-container">
             <Typography.Text className="domain-link right-panel-label m-r-xss">
               {t('label.domain')}

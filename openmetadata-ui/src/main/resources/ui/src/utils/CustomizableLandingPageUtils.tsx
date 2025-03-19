@@ -34,7 +34,7 @@ import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
-const getNewWidgetPlacement = (
+export const getNewWidgetPlacement = (
   currentLayout: WidgetConfig[],
   widgetWidth: number
 ) => {

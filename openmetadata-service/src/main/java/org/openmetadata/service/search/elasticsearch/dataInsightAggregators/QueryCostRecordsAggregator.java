@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.QueryDetails;
 import org.openmetadata.schema.entity.data.QueryGroup;
 import org.openmetadata.schema.entity.data.QueryHolder;
+import org.openmetadata.service.Entity;
 
 public class QueryCostRecordsAggregator {
 
@@ -112,7 +113,11 @@ public class QueryCostRecordsAggregator {
     }
 
     // Build the search request
-    searchRequest = searchRequestBuilder.request().indices("query_cost_record_search_index");
+    searchRequest =
+        searchRequestBuilder
+            .request()
+            .indices(
+                Entity.getSearchRepository().getIndexOrAliasName("query_cost_record_search_index"));
 
     return searchRequest;
   }

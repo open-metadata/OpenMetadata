@@ -33,6 +33,7 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   container: true,
   searchIndex: true,
   dashboardDataModel: true,
+  entityDetails: true,
 };
 
 const entities = [
@@ -248,13 +249,13 @@ test.describe('Entity Version pages', () => {
 
           await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
           const deleteResponse = page.waitForResponse(
-            `/api/v1/${entity.endpoint}/*?hardDelete=false&recursive=true`
+            `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
           );
           await page.click('[data-testid="confirm-button"]');
 
           await deleteResponse;
 
-          await toastNotification(page, /deleted successfully!/);
+          await toastNotification(page, /Delete operation initiated for/);
 
           await page.reload();
 

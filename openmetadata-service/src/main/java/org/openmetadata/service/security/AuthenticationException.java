@@ -58,6 +58,12 @@ public class AuthenticationException extends RuntimeException {
     return new AuthenticationException(msg);
   }
 
+  public static AuthenticationException invalidEmailMessage(String principalDomain) {
+    return new AuthenticationException(
+        String.format(
+            "Not Authorized! Email does not match the principal domain %s", principalDomain));
+  }
+
   private static ErrorResponse convertToErrorResponseMessage(String msg) {
     return new ErrorResponse(msg);
   }
