@@ -867,6 +867,7 @@
     "new-test-suite": "ชุดทดสอบใหม่",
     "next": "ถัดไป",
     "no": "ไม่",
+    "no-access": "ไม่มีการเข้าถึง",
     "no-comma-cancel": "ไม่, ยกเลิก",
     "no-data-asset-found-for": "ไม่พบสินทรัพย์ข้อมูลสำหรับ",
     "no-data-found": "ไม่พบข้อมูล",

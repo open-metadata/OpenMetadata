@@ -867,6 +867,7 @@
     "new-test-suite": "新质控测试",
     "next": "下一步",
     "no": "否",
+    "no-access": "无法访问",
     "no-comma-cancel": "No, cancel",
     "no-data-asset-found-for": "没有查询到相关的数据资产",
     "no-data-found": "未找到数据",
