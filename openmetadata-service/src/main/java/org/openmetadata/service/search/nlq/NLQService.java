@@ -1,7 +1,7 @@
 package org.openmetadata.service.search.nlq;
 
 import java.io.IOException;
-import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.schema.search.SearchRequest;
 
 /**
  * Interface for Natural Language Query (NLQ) processing services.

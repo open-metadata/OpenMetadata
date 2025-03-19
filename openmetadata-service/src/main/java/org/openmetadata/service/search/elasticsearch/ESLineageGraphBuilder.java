@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.common.utils.CommonUtil.collectionOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
@@ -21,6 +22,7 @@ import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,35 @@ public class ESLineageGraphBuilder {
 
   public ESLineageGraphBuilder(RestHighLevelClient esClient) {
     this.esClient = esClient;
+  }
+
+  public SearchLineageResult getPlatformLineage(String index, String queryFilter, boolean deleted)
+      throws IOException {
+    SearchLineageResult result =
+        new SearchLineageResult()
+            .withNodes(new HashMap<>())
+            .withUpstreamEdges(new HashMap<>())
+            .withDownstreamEdges(new HashMap<>());
+    SearchResponse searchResponse = EsUtils.searchEntities(index, queryFilter, deleted);
+
+    // Add Nodes
+    Arrays.stream(searchResponse.getHits().getHits())
+        .map(hit -> collectionOrEmpty(hit.getSourceAsMap()))
+        .forEach(
+            sourceMap -> {
+              String fqn = sourceMap.get(FQN_FIELD).toString();
+              result.getNodes().putIfAbsent(fqn, new NodeInformation().withEntity(sourceMap));
+
+              List<EsLineageData> upstreamLineageList = getUpstreamLineageListIfExist(sourceMap);
+              for (EsLineageData esLineageData : upstreamLineageList) {
+                result
+                    .getUpstreamEdges()
+                    .putIfAbsent(
+                        esLineageData.getDocId(),
+                        esLineageData.withToEntity(getRelationshipRef(sourceMap)));
+              }
+            });
+    return result;
   }
 
   public SearchLineageResult getUpstreamLineage(SearchLineageRequest request) throws IOException {

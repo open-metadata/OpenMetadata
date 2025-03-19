@@ -56,6 +56,7 @@ const Lineage = ({
   hasEditAccess,
   entity,
   entityType,
+  isPlatformLineage,
 }: LineageProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -115,8 +116,8 @@ const Lineage = ({
   );
 
   useEffect(() => {
-    updateEntityData(entityType, entity as SourceType);
-  }, [entity, entityType]);
+    updateEntityData(entityType, entity as SourceType, isPlatformLineage);
+  }, [entity, entityType, isPlatformLineage]);
 
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
@@ -136,6 +137,7 @@ const Lineage = ({
             <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
             <LineageControlButtons
               deleted={deleted}
+              entityType={entityType}
               handleFullScreenViewClick={
                 !isFullScreen ? onFullScreenClick : undefined
               }
@@ -192,8 +194,9 @@ const Lineage = ({
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
               <MiniMap position="bottom-right" />
+
               <Panel position="bottom-left">
-                <LineageLayers />
+                <LineageLayers entityType={entityType} />
               </Panel>
             </ReactFlow>
           </ReactFlowProvider>

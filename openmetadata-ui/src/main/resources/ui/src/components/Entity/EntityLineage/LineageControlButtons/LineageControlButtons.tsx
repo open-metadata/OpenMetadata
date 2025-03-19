@@ -28,10 +28,12 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
 import { getLoadingStatusValue } from '../../../../utils/EntityLineageUtils';
+import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { LineageConfig } from '../EntityLineage.interface';
 import LineageConfigModal from '../LineageConfigModal';
 import './lineage-control-buttons.less';
@@ -42,6 +44,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   onExitFullScreenViewClick,
   deleted,
   hasEditAccess,
+  entityType,
 }) => {
   const { t } = useTranslation();
   const [dialogVisible, setDialogVisible] = useState<boolean>(false);
@@ -98,23 +101,26 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   return (
     <>
       <div className="lineage-control-buttons">
-        {!deleted && platformView === LineagePlatformView.None && (
-          <Button
-            className={classNames('lineage-button', {
-              active: isEditMode,
-            })}
-            data-testid="edit-lineage"
-            disabled={!hasEditAccess}
-            icon={getLoadingStatusValue(editIcon, loading, status)}
-            title={
-              hasEditAccess
-                ? t('label.edit-entity', { entity: t('label.lineage') })
-                : NO_PERMISSION_FOR_ACTION
-            }
-            type="text"
-            onClick={onLineageEditClick}
-          />
-        )}
+        {!deleted &&
+          platformView === LineagePlatformView.None &&
+          entityType &&
+          !SERVICE_TYPES.includes(entityType as AssetsUnion) && (
+            <Button
+              className={classNames('lineage-button', {
+                active: isEditMode,
+              })}
+              data-testid="edit-lineage"
+              disabled={!hasEditAccess}
+              icon={getLoadingStatusValue(editIcon, loading, status)}
+              title={
+                hasEditAccess
+                  ? t('label.edit-entity', { entity: t('label.lineage') })
+                  : NO_PERMISSION_FOR_ACTION
+              }
+              type="text"
+              onClick={onLineageEditClick}
+            />
+          )}
 
         {isColumnLayerActive && !isEditMode && (
           <Button

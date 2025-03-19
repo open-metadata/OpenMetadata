@@ -22,6 +22,7 @@ export interface LineageProps {
   hasEditAccess: boolean;
   isFullScreen?: boolean;
   entity?: SourceType;
+  isPlatformLineage?: boolean;
 }
 
 export interface EntityLineageResponse {

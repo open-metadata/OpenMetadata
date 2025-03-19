@@ -163,4 +163,11 @@ public final class SearchUtils {
         Set.of("fullyQualifiedName", "service", "fqnHash", "id", "entityType", "upstreamLineage"));
     return requiredFields;
   }
+
+  public static List<Object> searchAfter(String searchAfter) {
+    if (!nullOrEmpty(searchAfter)) {
+      return List.of(searchAfter.split(","));
+    }
+    return null;
+  }
 }

@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { EntityType } from '../../../../enums/entity.enum';
+
 export interface LineageControlButtonsProps {
   handleFullScreenViewClick?: () => void;
   onExitFullScreenViewClick?: () => void;
   deleted?: boolean;
   hasEditAccess: boolean;
+  entityType?: EntityType;
 }

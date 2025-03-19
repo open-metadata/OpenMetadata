@@ -14,6 +14,7 @@ import { act, queryByText, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import { EntityType } from '../../../../enums/entity.enum';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import LineageLayers from './LineageLayers';
 
@@ -71,7 +72,7 @@ describe('LineageLayers component', () => {
   it('renders LineageLayers component', () => {
     const { container } = render(
       <ReactFlowProvider>
-        <LineageLayers />
+        <LineageLayers entityType={EntityType.TABLE} />
       </ReactFlowProvider>
     );
     const layerBtn = screen.getByText('label.layer-plural');
@@ -90,7 +91,7 @@ describe('LineageLayers component', () => {
   it('calls onUpdateLayerView when a button is clicked', async () => {
     render(
       <ReactFlowProvider>
-        <LineageLayers />
+        <LineageLayers entityType={EntityType.TABLE} />
       </ReactFlowProvider>
     );
 

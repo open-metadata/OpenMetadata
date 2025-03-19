@@ -139,6 +139,7 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -160,7 +161,6 @@ import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
-import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -393,7 +393,7 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     if (!nullOrEmpty(request.getSearchAfter())) {
-      searchSourceBuilder.searchAfter(request.getSearchAfter());
+      searchSourceBuilder.searchAfter(request.getSearchAfter().toArray());
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
@@ -409,7 +409,7 @@ public class ElasticSearchClient implements SearchClient {
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
+              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
@@ -450,10 +450,10 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
+              .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
+    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
       FieldSortBuilder fieldSortBuilder =
           new FieldSortBuilder(request.getSortFieldParam())
               .order(SortOrder.fromString(request.getSortOrder()));
@@ -482,11 +482,11 @@ public class ElasticSearchClient implements SearchClient {
     https://github.com/elastic/elasticsearch/issues/33028 */
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
-            request.isFetchSource(),
+            request.getFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
             new String[] {}));
 
-    if (request.isTrackTotalHits()) {
+    if (request.getTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
@@ -502,7 +502,7 @@ public class ElasticSearchClient implements SearchClient {
                   .source(searchSourceBuilder),
               RequestOptions.DEFAULT);
 
-      if (!request.isGetHierarchy()) {
+      if (!request.getIsHierarchy()) {
         return Response.status(OK).entity(searchResponse.toString()).build();
       } else {
         // Build the nested hierarchy from elastic search response
@@ -546,7 +546,7 @@ public class ElasticSearchClient implements SearchClient {
       SearchRequest request, SearchSourceBuilder searchSourceBuilder, RestHighLevelClient client)
       throws IOException {
 
-    if (!request.isGetHierarchy()) {
+    if (!request.getIsHierarchy()) {
       return;
     }
 
@@ -956,6 +956,12 @@ public class ElasticSearchClient implements SearchClient {
                   getLineageDirection(
                       lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
     }
+  }
+
+  @Override
+  public SearchLineageResult searchPlatformLineage(
+      String index, String queryFilter, boolean deleted) throws IOException {
+    return lineageGraphBuilder.getPlatformLineage(index, queryFilter, deleted);
   }
 
   private void getEntityRelationship(
@@ -1457,7 +1463,7 @@ public class ElasticSearchClient implements SearchClient {
               "deleted",
               Collections.singletonList(
                   CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.isDeleted()))
+                      .setCategory(String.valueOf(request.getDeleted()))
                       .build())));
     }
     SuggestBuilder suggestBuilder = new SuggestBuilder();
@@ -1467,7 +1473,7 @@ public class ElasticSearchClient implements SearchClient {
         .timeout(new TimeValue(30, TimeUnit.SECONDS))
         .fetchSource(
             new FetchSourceContext(
-                request.isFetchSource(),
+                request.getFetchSource(),
                 request.getIncludeSourceFields().toArray(String[]::new),
                 new String[] {}));
     es.org.elasticsearch.action.search.SearchRequest searchRequest =

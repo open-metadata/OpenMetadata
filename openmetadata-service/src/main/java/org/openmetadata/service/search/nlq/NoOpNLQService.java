@@ -3,7 +3,7 @@ package org.openmetadata.service.search.nlq;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.NLQConfiguration;
-import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.schema.search.SearchRequest;
 
 /**
  * A no-operation implementation of NLQService that returns null/empty responses.
