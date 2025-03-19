@@ -251,9 +251,9 @@ const GlossaryDetails = ({
     return layout.map((widget: WidgetConfig) => (
       <div
         data-grid={widget}
+        data-testid={widget.i}
         id={widget.i}
-        key={widget.i}
-        style={{ overflow: 'scroll' }}>
+        key={widget.i}>
         {getWidgetFromKeyInternal(widget)}
       </div>
     ));
