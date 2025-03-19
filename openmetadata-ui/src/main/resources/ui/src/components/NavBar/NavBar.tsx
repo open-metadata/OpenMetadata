@@ -105,7 +105,6 @@ const NavBar: React.FC = () => {
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-  //   const domainContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchOMVersion = async () => {
     try {
