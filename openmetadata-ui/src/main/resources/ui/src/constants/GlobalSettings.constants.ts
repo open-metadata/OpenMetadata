@@ -21,6 +21,7 @@ export enum GlobalSettingsMenuCategory {
   BOTS = 'bots',
   APPLICATIONS = 'apps',
   PERSONA = 'persona',
+  SEARCH = 'search',
 }
 
 export enum GlobalSettingOptions {

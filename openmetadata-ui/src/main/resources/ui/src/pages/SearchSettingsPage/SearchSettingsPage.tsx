@@ -10,24 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Switch, Typography } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button, Col, Collapse, Row, Switch, Table, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as ArrowRight } from '../../assets/svg/arrow-right.svg';
+import { ReactComponent as Delete } from '../../assets/svg/delete-colored.svg';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import FieldValueBoostModal from '../../components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
 import TermBoostList from '../../components/SearchSettings/TermBoostList/TermBoostList';
-import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { globalSettings } from '../../constants/SearchSettings.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
+  FieldValueBoost,
   SearchSettings,
   TermBoost,
 } from '../../generated/configuration/searchSettings';
@@ -56,6 +62,11 @@ const SearchSettingsPage = () => {
   const [searchConfig, setSearchConfig] = useState<SearchSettings>();
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
+  const [showFieldValueBoostModal, setShowFieldValueBoostModal] =
+    useState<boolean>(false);
+  const [selectedFieldValueBoost, setSelectedFieldValueBoost] = useState<
+    FieldValueBoost | undefined
+  >();
 
   const settingCategoryData = useMemo(
     () => getSearchSettingCategories(permissions, isAdminUser ?? false),
@@ -70,6 +81,39 @@ const SearchSettingsPage = () => {
       ),
     []
   );
+
+  const entityFields = useMemo(() => {
+    if (!searchConfig?.allowedFields) {
+      return [];
+    }
+
+    return searchConfig.allowedFields.map((entityField) => ({
+      entityType: entityField.entityType,
+      fields: entityField.fields.map((field) => field.name),
+    }));
+  }, [searchConfig]);
+
+  // Transform entityFields into options for the selects
+  const entityOptions = useMemo(() => {
+    return entityFields.map((entity) => ({
+      label: entity.entityType,
+      value: entity.entityType,
+    }));
+  }, [entityFields]);
+
+  // Create a mapping of entity types to their fields
+  const fieldOptionsByEntity = useMemo(() => {
+    const options: Record<string, { label: string; value: string }[]> = {};
+
+    entityFields.forEach((entity) => {
+      options[entity.entityType] = entity.fields.map((field) => ({
+        label: field,
+        value: field,
+      }));
+    });
+
+    return options;
+  }, [entityFields]);
 
   const fetchSearchConfig = async () => {
     try {
@@ -188,6 +232,141 @@ const SearchSettingsPage = () => {
     history.push(getSettingsPathWithFqn(category, option, entity));
   };
 
+  const handleAddFieldValueBoost = () => {
+    setSelectedFieldValueBoost(undefined);
+    setShowFieldValueBoostModal(true);
+  };
+
+  const handleEditFieldValueBoost = (boost: FieldValueBoost) => {
+    setSelectedFieldValueBoost(boost);
+    setShowFieldValueBoostModal(true);
+  };
+
+  const handleSaveFieldValueBoost = async (values: FieldValueBoost) => {
+    if (!searchConfig) {
+      return;
+    }
+    const fieldValueBoosts = [
+      ...(searchConfig.globalSettings?.fieldValueBoosts || []),
+    ];
+    const existingIndex = fieldValueBoosts.findIndex(
+      (boost) => boost.field === values.field
+    );
+
+    if (existingIndex >= 0) {
+      fieldValueBoosts[existingIndex] = values;
+    } else {
+      fieldValueBoosts.push(values);
+    }
+
+    await handleUpdateSearchConfig({
+      field: 'fieldValueBoosts',
+      value: fieldValueBoosts,
+    });
+
+    setShowFieldValueBoostModal(false);
+    setSelectedFieldValueBoost(undefined);
+  };
+
+  const handleDeleteFieldValueBoost = async (fieldName: string) => {
+    if (!searchConfig) {
+      return;
+    }
+    const fieldValueBoosts =
+      searchConfig.globalSettings?.fieldValueBoosts?.filter(
+        (boost) => boost.field !== fieldName
+      ) || [];
+
+    await handleUpdateSearchConfig({
+      field: 'fieldValueBoosts',
+      value: fieldValueBoosts,
+    });
+  };
+
+  const columns = useMemo(() => {
+    return [
+      {
+        title: t('label.field'),
+        dataIndex: 'field',
+        key: 'field',
+        width: 250,
+      },
+      {
+        title: t('label.factor'),
+        dataIndex: 'factor',
+        key: 'factor',
+        width: 80,
+      },
+      {
+        title: t('label.modifier'),
+        dataIndex: 'modifier',
+        key: 'modifier',
+        width: 120,
+      },
+      {
+        title: t('label.missing-value'),
+        dataIndex: 'missing',
+        key: 'missing',
+        width: 120,
+      },
+      {
+        title: t('label.greater-than'),
+        key: 'gt',
+        width: 120,
+        render: (record: FieldValueBoost) => (
+          <span>{record.condition?.range?.gt ?? '-'}</span>
+        ),
+      },
+      {
+        title: t('label.greater-than-or-equal-to'),
+        key: 'gte',
+        width: 120,
+        render: (record: FieldValueBoost) => (
+          <span>{record.condition?.range?.gte ?? '-'}</span>
+        ),
+      },
+      {
+        title: t('label.less-than'),
+        key: 'lt',
+        width: 120,
+        render: (record: FieldValueBoost) => (
+          <span>{record.condition?.range?.lt ?? '-'}</span>
+        ),
+      },
+      {
+        title: t('label.less-than-or-equal-to'),
+        key: 'lte',
+        width: 120,
+        render: (record: FieldValueBoost) => (
+          <span>{record.condition?.range?.lte ?? '-'}</span>
+        ),
+      },
+      {
+        title: t('label.action-plural'),
+        key: 'actions',
+        width: 100,
+        render: (record: FieldValueBoost) => (
+          <div className="d-flex items-center gap-2">
+            <Button
+              className="edit-field-value-boost-btn"
+              data-testid="edit-field-value-boost-btn"
+              icon={<Icon className="text-md" component={EditIcon} />}
+              type="text"
+              onClick={() => handleEditFieldValueBoost(record)}
+            />
+            <Button
+              className="delete-field-value-boost-btn"
+              data-testid="delete-field-value-boost-btn"
+              icon={<Icon className="text-md" component={Delete} />}
+              type="text"
+              onClick={() => handleDeleteFieldValueBoost(record.field)}
+            />
+          </div>
+        ),
+      },
+    ];
+  }, [searchConfig]);
+
   useEffect(() => {
     fetchSearchConfig();
   }, []);
@@ -248,36 +427,136 @@ const SearchSettingsPage = () => {
               </Col>
             ))}
           </Row>
-          <Row className="term-boosts-section p-box m-t-lg" gutter={[0, 16]}>
-            <Col span={24}>
-              <Typography.Text className="text-sm font-semibold">
-                {t('label.configure-term-boost')}
-              </Typography.Text>
-              <TermBoostList
-                handleAddNewTermBoost={handleAddNewTermBoost}
-                handleDeleteTermBoost={handleDeleteTermBoost}
-                handleTermBoostChange={handleTermBoostChange}
-                showNewTermBoost={showNewTermBoost}
-                termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
-              />
-            </Col>
+          <Row className="boosts-section m-t-lg" gutter={[0, 16]}>
+            <Collapse
+              accordion
+              bordered={false}
+              className="w-full search-settings-collapse">
+              <Collapse.Panel
+                className="term-boost-panel"
+                header={
+                  <Row className="d-flex items-center justify-between w-full">
+                    <Col className="d-flex items-center gap-4">
+                      <Typography.Text className="text-sm font-semibold m-0">
+                        {t('label.configure-term-boost')}
+                      </Typography.Text>
+                      <span className="count-label">
+                        {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
+                      </span>
+                    </Col>
+                    <Col className="d-flex items-center gap-2">
+                      <Button
+                        className="term-boost-add-btn"
+                        icon={
+                          <Icon className="text-sm" component={PlusOutlined} />
+                        }
+                        type="primary"
+                        onClick={handleAddNewTermBoost}>
+                        {t('label.term-boost')}
+                      </Button>
+                    </Col>
+                  </Row>
+                }
+                key="1">
+                <Col span={24}>
+                  <TermBoostList
+                    handleDeleteTermBoost={handleDeleteTermBoost}
+                    handleTermBoostChange={handleTermBoostChange}
+                    showNewTermBoost={showNewTermBoost}
+                    termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
+                  />
+                </Col>
+              </Collapse.Panel>
+              <Collapse.Panel
+                className="field-value-boost-panel"
+                header={
+                  <Row className="d-flex items-center justify-between w-full">
+                    <Col className="d-flex items-center gap-4">
+                      <Typography.Text className="text-sm font-semibold m-0">
+                        {t('label.configure-field-value-boost')}
+                      </Typography.Text>
+                      <span className="count-label">
+                        {searchConfig?.globalSettings?.fieldValueBoosts
+                          ?.length ?? 0}
+                      </span>
+                    </Col>
+                    <Col className="d-flex items-center gap-2">
+                      <Button
+                        className="field-value-boost-add-btn"
+                        data-testid="add-field-value-boost-btn"
+                        icon={
+                          <Icon className="text-sm" component={PlusOutlined} />
+                        }
+                        onClick={handleAddFieldValueBoost}>
+                        {t('label.field-value-boost')}
+                      </Button>
+                    </Col>
+                  </Row>
+                }
+                key="2">
+                <Row className="p-t-sm w-full">
+                  <div className="field-value-boost-table-container">
+                    <Table
+                      bordered
+                      columns={columns}
+                      data-testid="field-value-boost-table"
+                      dataSource={searchConfig?.globalSettings?.fieldValueBoosts?.map(
+                        (boost) => ({
+                          ...boost,
+                          key: boost.field,
+                        })
+                      )}
+                      loading={isLoading}
+                      pagination={false}
+                      scroll={{ x: 'max-content' }}
+                      size="small"
+                    />
+                  </div>
+                </Row>
+              </Collapse.Panel>
+            </Collapse>
           </Row>
         </Col>
       </Row>
 
       <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
-          <Col key={data.key} span={6}>
-            <SettingItemCard
-              isButtonVisible
+          <Col key={data.key} span={8}>
+            <div
               className="search-setting-card"
-              data={data}
-              key={data.key}
-              onClick={handleViewDetailClick}
-            />
+              onClick={() => handleViewDetailClick(data.key)}>
+              <div className="search-setting-card-icon">
+                <Icon component={data.icon} />
+              </div>
+              <div className="search-setting-card-content">
+                <Typography.Text className="font-semibold">
+                  {data.label}
+                </Typography.Text>
+                <Typography.Paragraph
+                  className="font-normal text-sm"
+                  ellipsis={{ rows: 2 }}>
+                  {data.description}
+                </Typography.Paragraph>
+              </div>
+              <div className="search-setting-card-action">
+                <Icon className="text-sm" component={ArrowRight} />
+              </div>
+            </div>
           </Col>
         ))}
       </Row>
+
+      <FieldValueBoostModal
+        entityOptions={entityOptions}
+        fieldOptionsByEntity={fieldOptionsByEntity}
+        open={showFieldValueBoostModal}
+        selectedBoost={selectedFieldValueBoost}
+        onCancel={() => {
+          setShowFieldValueBoostModal(false);
+          setSelectedFieldValueBoost(undefined);
+        }}
+        onSave={handleSaveFieldValueBoost}
+      />
     </PageLayoutV1>
   );
 };

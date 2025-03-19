@@ -29,6 +29,7 @@ const mockProps = {
   onHighlightFieldsChange: jest.fn(),
   onFieldWeightChange: jest.fn(),
   onDeleteSearchField: jest.fn(),
+  entityFields: [],
 };
 
 jest.mock('react-i18next', () => ({

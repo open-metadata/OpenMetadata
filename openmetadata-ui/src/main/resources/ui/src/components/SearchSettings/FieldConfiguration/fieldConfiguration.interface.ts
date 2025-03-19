@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
+import {
+  Field,
+  FieldValueBoost,
+} from '../../../generated/configuration/searchSettings';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 
 export interface FieldConfigurationProps {
@@ -20,6 +23,7 @@ export interface FieldConfigurationProps {
   };
   searchSettings: EntitySearchSettingsState;
   index: number;
+  entityFields: Field[];
   onHighlightFieldsChange: (fieldName: string) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;
   onValueBoostChange?: (fieldName: string, boost: FieldValueBoost) => void;

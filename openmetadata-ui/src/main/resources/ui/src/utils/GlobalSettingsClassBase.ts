@@ -91,6 +91,10 @@ class GlobalSettingsClassBase {
       name: t('label.preference-plural'),
       url: GlobalSettingsMenuCategory.PREFERENCES,
     },
+    [GlobalSettingOptions.SEARCH_SETTINGS]: {
+      name: t('label.search'),
+      url: `${GlobalSettingsMenuCategory.PREFERENCES}/${GlobalSettingOptions.SEARCH_SETTINGS}`,
+    },
     [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
       name: t('label.custom-property-plural'),
       url: GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,

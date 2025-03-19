@@ -10,11 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import TermBoostComponent from '../TermBoost/TermBoost';
 import './term-boost-list.less';
@@ -25,7 +22,6 @@ interface TermBoostListProps {
   showNewTermBoost?: boolean;
   handleDeleteTermBoost: (value: string) => void;
   handleTermBoostChange: (termBoost: TermBoost) => void;
-  handleAddNewTermBoost: () => void;
 }
 
 const TermBoostList = ({
@@ -34,20 +30,17 @@ const TermBoostList = ({
   showNewTermBoost,
   handleDeleteTermBoost,
   handleTermBoostChange,
-  handleAddNewTermBoost,
 }: TermBoostListProps) => {
-  const { t } = useTranslation();
-
   return (
     <div
       className={classNames(
         className,
-        'p-t-md d-flex items-center gap-2 flex-wrap term-boosts-container'
+        'd-flex items-center gap-2 flex-wrap m-b-xs term-boosts-container'
       )}>
-      <div className="d-flex items-center gap-2 flex-wrap term-boosts-container">
+      <div className="d-flex items-center gap-2 flex-wrap">
         {termBoosts.map((termBoost) => (
           <TermBoostComponent
-            key={termBoost.value || 'new'}
+            key={termBoost.value}
             termBoost={termBoost}
             onDeleteBoost={handleDeleteTermBoost}
             onTermBoostChange={handleTermBoostChange}
@@ -61,19 +54,6 @@ const TermBoostList = ({
             onTermBoostChange={handleTermBoostChange}
           />
         )}
-        <div className="add-term-boost-card">
-          <Row className="p-box d-flex flex-column items-center justify-center gap-3">
-            <Button
-              className="add-term-boost-btn"
-              data-testid="add-term-boost"
-              icon={<PlusOutlined />}
-              onClick={handleAddNewTermBoost}
-            />
-            <Typography.Text className="add-term-boost-label">
-              {t('label.add-term-boost')}
-            </Typography.Text>
-          </Row>
-        </div>
       </div>
     </div>
   );

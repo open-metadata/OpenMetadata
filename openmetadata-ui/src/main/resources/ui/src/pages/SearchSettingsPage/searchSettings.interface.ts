@@ -12,6 +12,7 @@
  */
 import {
   AssetTypeConfiguration,
+  FieldValueBoost,
   GlobalSettings,
   TermBoost,
 } from '../../generated/configuration/searchSettings';
@@ -43,6 +44,12 @@ export interface SettingCategoryData {
 
 export interface UpdateConfigParams {
   enabled?: boolean;
-  field?: PropertyKey | 'enableAccessControl' | 'termBoosts';
-  value?: number | TermBoost[];
+  field?:
+    | 'maxAggregateSize'
+    | 'maxResultHits'
+    | 'maxAnalyzedOffset'
+    | 'enableAccessControl'
+    | 'termBoosts'
+    | 'fieldValueBoosts';
+  value?: number | TermBoost[] | FieldValueBoost[];
 }

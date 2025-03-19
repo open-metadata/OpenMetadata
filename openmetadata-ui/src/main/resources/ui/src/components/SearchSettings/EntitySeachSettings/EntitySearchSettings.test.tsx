@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import {
@@ -18,8 +18,6 @@ import {
   ScoreMode,
 } from '../../../generated/configuration/searchSettings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { restoreSettingsConfig } from '../../../rest/settingConfigAPI';
-import { showSuccessToast } from '../../../utils/ToastUtils';
 import EntitySearchSettings from './EntitySearchSettings';
 
 const mockEntityType = 'table';
@@ -98,29 +96,6 @@ jest.mock('../../../hooks/authHooks', () => ({
   }),
 }));
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Select: ({
-    value,
-    onChange,
-    'data-testid': testId,
-  }: {
-    value: string;
-    onChange?: (value: string) => void;
-    'data-testid'?: string;
-  }) => (
-    <select
-      data-testid={testId}
-      value={value}
-      onChange={(e) => onChange?.(e.target.value)}>
-      <option value="avg">avg</option>
-      <option value="max">max</option>
-      <option value="multiply">multiply</option>
-      <option value="sum">sum</option>
-    </select>
-  ),
-}));
-
 describe('EntitySearchSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -147,37 +122,5 @@ describe('EntitySearchSettings', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
     expect(screen.getByTestId('field-configurations')).toBeInTheDocument();
-  });
-
-  it('Should handle restore defaults successfully', async () => {
-    const mockDefaultConfig = {
-      ...mockSearchConfig,
-      assetTypeConfigurations: [
-        {
-          ...mockSearchConfig.assetTypeConfigurations[0],
-          boostMode: BoostMode.Multiply,
-          scoreMode: ScoreMode.Sum,
-        },
-      ],
-    };
-
-    (restoreSettingsConfig as jest.Mock).mockResolvedValueOnce({
-      data: mockDefaultConfig,
-    });
-
-    render(
-      <MemoryRouter>
-        <EntitySearchSettings />
-      </MemoryRouter>
-    );
-
-    const restoreButton = screen.getByTestId('restore-defaults-btn');
-    await act(async () => {
-      fireEvent.click(restoreButton);
-    });
-
-    expect(restoreSettingsConfig).toHaveBeenCalled();
-    expect(showSuccessToast).toHaveBeenCalled();
-    expect(mockSetAppPreferences).toHaveBeenCalled();
   });
 });

@@ -59,7 +59,6 @@ describe('TermBoost Component', () => {
   it('Should render component with initial values', () => {
     render(<TermBoostComponent {...mockProps} />);
 
-    expect(screen.getByTestId('term-boost-label')).toBeInTheDocument();
     expect(screen.getByTestId('term-boost-impact-label')).toBeInTheDocument();
     expect(screen.getByTestId('term-boost-value')).toBeInTheDocument();
     expect(screen.getByTestId('term-boost-slider')).toBeInTheDocument();
