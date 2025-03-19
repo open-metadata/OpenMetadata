@@ -29,6 +29,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
@@ -79,6 +80,7 @@ public class MigrationUtil {
 
   public static void runLineageMigrationForNullColumn(Handle handle) {
     try {
+      LOG.info("MIGRATION 1.7.0 - STARTING MIGRATION FOR NULL JSON");
       long currentTime = System.currentTimeMillis();
       LineageDetails lineageDetails =
           new LineageDetails()
@@ -103,6 +105,7 @@ public class MigrationUtil {
 
   public static void runLineageMigrationForNonNullColumn(Handle handle) {
     try {
+      LOG.info("MIGRATION 1.7.0 - STARTING MIGRATION FOR NON NULL JSON");
       long currentTime = System.currentTimeMillis();
       String updateSql =
           Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
@@ -121,29 +124,33 @@ public class MigrationUtil {
   }
 
   public static void updateDataInsightsApplication() {
-    // Delete DataInsightsApplication - It will be recreated on AppStart
-    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
-
     try {
-      appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
-    } catch (EntityNotFoundException ex) {
-      LOG.debug("DataInsights Application not found.");
-    } catch (UnableToExecuteStatementException ex) {
-      // Note: Due to a change in the code this delete fails on a postDelete step that is not
-      LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
-    }
+      // Delete DataInsightsApplication - It will be recreated on AppStart
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
-    // Update DataInsightsApplication MarketplaceDefinition - It will be recreated on AppStart
-    AppMarketPlaceRepository marketPlaceRepository =
-        (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+      try {
+        appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+      } catch (EntityNotFoundException ex) {
+        LOG.debug("DataInsights Application not found.");
+      } catch (UnableToExecuteStatementException ex) {
+        // Note: Due to a change in the code this delete fails on a postDelete step that is not
+        LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
+      }
 
-    try {
-      marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
-    } catch (EntityNotFoundException ex) {
-      LOG.debug("DataInsights Application Marketplace Definition not found.");
-    } catch (UnableToExecuteStatementException ex) {
-      // Note: Due to a change in the code this delete fails on a postDelete step that is not
-      LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
+      // Update DataInsightsApplication MarketplaceDefinition - It will be recreated on AppStart
+      AppMarketPlaceRepository marketPlaceRepository =
+          (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+
+      try {
+        marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+      } catch (EntityNotFoundException ex) {
+        LOG.debug("DataInsights Application Marketplace Definition not found.");
+      } catch (UnableToExecuteStatementException ex) {
+        // Note: Due to a change in the code this delete fails on a postDelete step that is not
+        LOG.debug("[UnableToExecuteStatementException]: {}", ex.getMessage());
+      }
+    } catch (Exception ex) {
+      LOG.error("Error while updating DataInsightsApplication", ex);
     }
   }
 
@@ -198,42 +205,46 @@ public class MigrationUtil {
   }
 
   public static void updateGovernanceWorkflowDefinitions() {
-    WorkflowDefinitionRepository repository =
-        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    List<WorkflowDefinition> workflowDefinitions =
-        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+    try {
+      WorkflowDefinitionRepository repository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      List<WorkflowDefinition> workflowDefinitions =
+          repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
 
-    for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
-      MainWorkflow.WorkflowGraph graph = new MainWorkflow.WorkflowGraph(workflowDefinition);
+      for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
+        MainWorkflow.WorkflowGraph graph = new MainWorkflow.WorkflowGraph(workflowDefinition);
 
-      for (WorkflowNodeDefinitionInterface nodeDefinition : workflowDefinition.getNodes()) {
-        setDefaultInputNamespaceMap(nodeDefinition);
+        for (WorkflowNodeDefinitionInterface nodeDefinition : workflowDefinition.getNodes()) {
+          setDefaultInputNamespaceMap(nodeDefinition);
 
-        Map<String, String> nodeInputNamespaceMap =
-            (Map<String, String>)
-                JsonUtils.readOrConvertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
+          Map<String, String> nodeInputNamespaceMap =
+              (Map<String, String>)
+                  JsonUtils.readOrConvertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
 
-        if (nodeInputNamespaceMap == null) {
-          continue;
-        }
+          if (nodeInputNamespaceMap == null) {
+            continue;
+          }
 
-        if (nodeDefinition.getInput().contains(UPDATED_BY_VARIABLE)
-            && nodeInputNamespaceMap.get(UPDATED_BY_VARIABLE) == null) {
-          if (graph.getIncomingEdgesMap().containsKey(nodeDefinition.getName())) {
-            for (String incomeNodeName :
-                graph.getIncomingEdgesMap().get(nodeDefinition.getName())) {
-              List<String> incomeNodeOutput = graph.getNodeMap().get(incomeNodeName).getOutput();
-              if (incomeNodeOutput != null && incomeNodeOutput.contains(UPDATED_BY_VARIABLE)) {
-                nodeInputNamespaceMap.put(UPDATED_BY_VARIABLE, incomeNodeName);
-                updateInputNamespaceMap(nodeDefinition, nodeInputNamespaceMap);
-                break;
+          if (nodeDefinition.getInput().contains(UPDATED_BY_VARIABLE)
+              && nodeInputNamespaceMap.get(UPDATED_BY_VARIABLE) == null) {
+            if (graph.getIncomingEdgesMap().containsKey(nodeDefinition.getName())) {
+              for (String incomeNodeName :
+                  graph.getIncomingEdgesMap().get(nodeDefinition.getName())) {
+                List<String> incomeNodeOutput = graph.getNodeMap().get(incomeNodeName).getOutput();
+                if (incomeNodeOutput != null && incomeNodeOutput.contains(UPDATED_BY_VARIABLE)) {
+                  nodeInputNamespaceMap.put(UPDATED_BY_VARIABLE, incomeNodeName);
+                  updateInputNamespaceMap(nodeDefinition, nodeInputNamespaceMap);
+                  break;
+                }
               }
             }
           }
         }
+        workflowDefinition.withConfig(new WorkflowConfiguration());
+        repository.createOrUpdate(null, workflowDefinition);
       }
-      workflowDefinition.withConfig(new WorkflowConfiguration());
-      repository.createOrUpdate(null, workflowDefinition);
+    } catch (Exception ex) {
+      LOG.error("Error while updating workflow definitions", ex);
     }
   }
 
@@ -372,6 +383,7 @@ public class MigrationUtil {
 
   public static void runMigrationForDomainLineage(Handle handle) {
     try {
+      LOG.info("MIGRATION 1.7.0 - STARTING MIGRATION FOR DOMAIN LINEAGE");
       List<Domain> allDomains = getAllDomains();
       for (Domain fromDomain : allDomains) {
         for (Domain toDomain : allDomains) {
@@ -429,13 +441,22 @@ public class MigrationUtil {
   private static void insertServiceLineageDetails(
       Handle handle, ServiceEntityInterface fromService, ServiceEntityInterface toService) {
     try {
+      LOG.info("MIGRATION 1.7.0 - STARTING MIGRATION FOR SERVICES LINEAGE");
+
       if (fromService.getId().equals(toService.getId())
-          && fromService.getServiceType().equals(toService.getServiceType())) {
+          && fromService
+              .getEntityReference()
+              .getType()
+              .equals(toService.getEntityReference().getType())) {
         return;
       }
 
-      String fromServiceHash = FullyQualifiedName.buildHash(fromService.getFullyQualifiedName());
-      String toServiceHash = FullyQualifiedName.buildHash(toService.getFullyQualifiedName());
+      String fromServiceHash =
+          FullyQualifiedName.buildHash(
+              EntityInterfaceUtil.quoteName(fromService.getFullyQualifiedName()));
+      String toServiceHash =
+          FullyQualifiedName.buildHash(
+              EntityInterfaceUtil.quoteName(toService.getFullyQualifiedName()));
       List<String> fromTableNames =
           listOrEmpty(SERVICE_TYPE_ENTITY_MAP.get(fromService.getEntityReference().getType()));
       List<String> toTableNames =
