@@ -33,7 +33,6 @@ export const TOPIC_DUMMY_DATA: Topic = {
     fullyQualifiedName: 'sample_kafka',
     displayName: 'sample_kafka',
     deleted: false,
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/services/messagingServices/46f09e52-34de-4580-8133-a7e54e23c22b',
   },
   serviceType: MessagingServiceType.Kafka,
   messageSchema: {

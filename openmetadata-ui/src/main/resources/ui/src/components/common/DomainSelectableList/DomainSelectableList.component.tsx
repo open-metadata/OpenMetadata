@@ -103,7 +103,7 @@ const DomainSelectableList = ({
     // Used Button to stop click propagation event anywhere in the component to parent
     // TeamDetailV1 collapsible panel
     <Button
-      className="remove-button-default-styling"
+      className="remove-button-default-styling flex-center"
       onClick={(e) => e.stopPropagation()}>
       <Popover
         destroyTooltipOnHide
@@ -135,11 +135,10 @@ const DomainSelectableList = ({
                 : NO_PERMISSION_FOR_ACTION
             }>
             <Button
-              className="d-flex align-center justify-center p-xss w-6 h-6"
+              className="d-flex align-center justify-center "
               data-testid="add-domain"
               disabled={!hasPermission}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               type="text"
             />
           </Tooltip>

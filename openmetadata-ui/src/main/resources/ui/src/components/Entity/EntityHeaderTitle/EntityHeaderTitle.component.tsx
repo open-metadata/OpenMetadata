@@ -20,7 +20,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -28,6 +27,7 @@ import { stringToHTML } from '../../../utils/StringsUtils';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
+
 const EntityHeaderTitle = ({
   icon,
   name,
@@ -39,7 +39,6 @@ const EntityHeaderTitle = ({
   badge,
   isDisabled,
   className,
-  color,
   showName = true,
   certification,
   excludeEntityService,
@@ -49,6 +48,7 @@ const EntityHeaderTitle = ({
   entityType,
   nameClassName = '',
   displayNameClassName = '',
+  isCustomizedView = false,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -80,7 +80,7 @@ const EntityHeaderTitle = ({
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Tooltip placement="bottom" title={stringToHTML(name)}>
+          <Tooltip placement="bottom" title={stringToHTML(displayName ?? name)}>
             <Typography.Text
               className={classNames(
                 'entity-header-name',
@@ -89,7 +89,7 @@ const EntityHeaderTitle = ({
               )}
               data-testid="entity-header-name"
               ellipsis={{ tooltip: true }}>
-              {stringToHTML(name)}
+              {stringToHTML(displayName ?? name)}
             </Typography.Text>
           </Tooltip>
         ) : null}
@@ -97,24 +97,24 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Typography.Text
-            className={classNames(
-              'entity-header-display-name',
-              displayNameClassName,
-              'm-b-0 subheading text-md font-medium'
-            )}
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}
-            style={{ color: color ?? TEXT_COLOR }}>
-            {stringToHTML(displayName || name)}
-            {openEntityInNewPage && (
-              <IconExternalLink
-                className="anticon vertical-baseline m-l-xss"
-                height={14}
-                width={14}
-              />
-            )}
-          </Typography.Text>
+          <Tooltip placement="bottom" title={stringToHTML(name)}>
+            <Typography.Text
+              className={classNames(displayNameClassName, 'm-b-0', {
+                'display-sm entity-header-name font-semibold': !displayName,
+                'text-md entity-header-display-name font-medium': displayName,
+              })}
+              data-testid="entity-header-display-name"
+              ellipsis={{ tooltip: true }}>
+              {stringToHTML(name)}
+              {openEntityInNewPage && (
+                <IconExternalLink
+                  className="anticon vertical-baseline m-l-xss"
+                  height={14}
+                  width={14}
+                />
+              )}
+            </Typography.Text>
+          </Tooltip>
 
           <Tooltip
             placement="topRight"
@@ -125,25 +125,28 @@ const EntityHeaderTitle = ({
               onClick={handleShareButtonClick}
             />
           </Tooltip>
-          {!excludeEntityService && (
-            <Tooltip
-              title={t('label.field-entity', {
-                field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                entity: capitalize(entityType),
-              })}>
-              <Button
-                className="entity-follow-button flex-center gap-1 text-sm "
-                data-testid="entity-follow-button"
-                disabled={deleted}
-                icon={<Icon component={StarFilledIcon} />}
-                loading={isFollowingLoading}
-                onClick={handleFollowingClick}>
-                <Typography.Text>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Typography.Text>
-              </Button>
-            </Tooltip>
-          )}
+          {!excludeEntityService &&
+            !deleted &&
+            !isCustomizedView &&
+            handleFollowingClick && (
+              <Tooltip
+                title={t('label.field-entity', {
+                  field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                  entity: capitalize(entityType),
+                })}>
+                <Button
+                  className="entity-follow-button flex-center gap-1 text-sm "
+                  data-testid="entity-follow-button"
+                  disabled={deleted}
+                  icon={<Icon component={StarFilledIcon} />}
+                  loading={isFollowingLoading}
+                  onClick={handleFollowingClick}>
+                  <Typography.Text>
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Typography.Text>
+                </Button>
+              </Tooltip>
+            )}
         </div>
       </Col>
       {certification && (

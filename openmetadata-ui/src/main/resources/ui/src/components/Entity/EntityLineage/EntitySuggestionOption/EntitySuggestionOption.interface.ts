@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityReference } from '../../../../generated/entity/type';
 
-export interface NavBarProps {
-  searchValue: string;
-  isTourRoute?: boolean;
-  pathname: string;
-  isSearchBoxOpen: boolean;
-  handleSearchBoxOpen: (value: boolean) => void;
-  handleSearchChange: (value: string) => void;
-  handleOnClick: () => void;
-  handleClear: () => void;
-  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+export interface EntitySuggestionOptionProps {
+  entity: EntityReference;
+  heading?: string;
+  onSelectHandler?: (value: EntityReference) => void;
+  className?: string;
+  showEntityTypeBadge?: boolean;
 }

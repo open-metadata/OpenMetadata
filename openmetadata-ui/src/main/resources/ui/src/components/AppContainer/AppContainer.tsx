@@ -13,10 +13,10 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useEffect } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { SearchSettings } from '../../generated/configuration/searchSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
@@ -29,25 +29,29 @@ import applicationsClassBase from '../Settings/Applications/AppDetails/Applicati
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './app-container.less';
 
+const { Content } = Layout;
+
 const AppContainer = () => {
-  const { i18n } = useTranslation();
-  const { Header, Sider, Content } = Layout;
   const { currentUser, setAppPreferences } = useApplicationStore();
   const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
-  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+
   const { setConfig, bannerDetails } = useLimitStore();
 
   const fetchAppConfigurations = useCallback(async () => {
     try {
-      const [response, lineageConfig] = await Promise.all([
+      const [response, lineageConfig, searchConfig] = await Promise.all([
         getLimitConfig(),
         getSettingsByType(SettingType.LineageSettings),
+        getSettingsByType(SettingType.SearchSettings),
       ]);
 
       setConfig(response);
-      setAppPreferences({ lineageConfig: lineageConfig as LineageSettings });
+      setAppPreferences({
+        lineageConfig: lineageConfig as LineageSettings,
+        searchConfig: searchConfig as SearchSettings,
+      });
     } catch (error) {
       // silent fail
     }
@@ -77,17 +81,15 @@ const AppContainer = () => {
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
         })}>
-        <Sider
-          className={classNames('left-sidebar-col', {
-            'left-sidebar-col-rtl': isDirectionRTL,
-          })}
-          width={60}>
-          <LeftSidebar />
-        </Sider>
+        {/* Render left side navigation */}
+        <LeftSidebar />
+
+        {/* Render main content */}
         <Layout>
-          <Header className="p-x-0">
-            <Appbar />
-          </Header>
+          {/* Render Appbar */}
+          <Appbar />
+
+          {/* Render main content */}
           <Content>
             <AuthenticatedRouter />
             {ApplicationExtras && <ApplicationExtras />}
