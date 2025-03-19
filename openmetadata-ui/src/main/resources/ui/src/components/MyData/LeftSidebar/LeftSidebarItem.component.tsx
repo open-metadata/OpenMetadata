@@ -51,7 +51,10 @@ const LeftSidebarItem = ({
       )}
     </NavLink>
   ) : (
-    <span className="left-panel-item left-panel-label p-0" onClick={onClick}>
+    <span
+      className="left-panel-item left-panel-label p-0"
+      data-testid={dataTestId}
+      onClick={onClick}>
       {title}
     </span>
   );

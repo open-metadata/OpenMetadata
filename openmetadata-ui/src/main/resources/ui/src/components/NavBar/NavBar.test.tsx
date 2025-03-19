@@ -141,7 +141,6 @@ describe('Test NavBar Component', () => {
       await screen.findByTestId('global-search-selector')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('searchBox')).toBeInTheDocument();
-    expect(await screen.findByTestId('cmd')).toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')

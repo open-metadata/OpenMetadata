@@ -323,6 +323,7 @@ export const UserProfileIcon = () => {
       trigger={['click']}>
       <Button
         className="user-profile-btn flex-center"
+        data-testid="dropdown-profile"
         icon={
           isImgUrlValid ? (
             <img

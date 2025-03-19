@@ -89,6 +89,7 @@ const LeftSidebar = () => {
       [SETTING_ITEM, LOGOUT_ITEM].map((item) => ({
         key: item.key,
         icon: <Icon component={item.icon} />,
+        onClick: item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
         label: (
           <LeftSidebarItem
             data={{
