@@ -1178,7 +1178,7 @@
     "search": "Search",
     "search-by-type": "Search by {{type}}",
     "search-entity": "Search {{entity}}",
-    "search-entity-for-lineage": "Nach {{entity}} suchen, um Abstammung anzuzeigen",
+    "search-entity-for-lineage": "Search {{entity}} to view lineage",
     "search-for-type": "Search for {{type}}",
     "search-index": "Search Index",
     "search-index-ingestion": "Search Index Ingestion",
