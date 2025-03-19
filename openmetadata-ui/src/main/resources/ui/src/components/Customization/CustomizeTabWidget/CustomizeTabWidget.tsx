@@ -62,11 +62,13 @@ export const CustomizeTabWidget = () => {
   const items = useMemo(() => {
     return currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType);
   }, [currentPage, currentPageType, currentPage?.tabs]);
+  const [showAddTabModal, setShowAddTabModal] = useState<boolean>(false);
+  const { t } = useTranslation();
+  const [newTabName, setNewTabName] = useState<string>(t('label.new-tab'));
 
   const [activeKey, setActiveKey] = useState<string | null>(
     items.find((i) => i.editable)?.id ?? null
   );
-  const { t } = useTranslation();
 
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
   const [tabLayouts, setTabLayouts] = useState<WidgetConfig[]>(
@@ -110,21 +112,20 @@ export const CustomizeTabWidget = () => {
 
   const add = () => {
     const newActiveKey = uniqueId(`custom`);
+    const newTab = {
+      name: newTabName,
+      layout: [],
+      id: newActiveKey,
+      editable: true,
+    } as Tab;
 
     updateCurrentPage({
       ...currentPage,
-      tabs: [
-        ...items,
-        {
-          name: t('label.new-tab'),
-          layout: [],
-          id: newActiveKey,
-          editable: true,
-        } as Tab,
-      ],
+      tabs: [...items, newTab],
     } as Page);
 
     onChange(newActiveKey, false);
+    setShowAddTabModal(false);
   };
 
   const remove = (targetKey: TargetKey) => {
@@ -288,7 +289,10 @@ export const CustomizeTabWidget = () => {
           bordered={false}
           data-testid="customize-tab-card"
           extra={
-            <Button icon={<PlusOutlined />} type="primary" onClick={add}>
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setShowAddTabModal(true)}>
               {t('label.add-entity', {
                 entity: t('label.tab'),
               })}
@@ -353,6 +357,19 @@ export const CustomizeTabWidget = () => {
           widgetsList={getCustomizableWidgetByPage(currentPageType)}
         />
       )}
+      {showAddTabModal && (
+        <Modal
+          open={showAddTabModal}
+          title="Add tab"
+          onCancel={() => setShowAddTabModal(false)}
+          onOk={add}>
+          <Input
+            autoFocus
+            value={newTabName}
+            onChange={(e) => setNewTabName(e.target.value)}
+          />
+        </Modal>
+      )}
       {editableItem && (
         <Modal
           maskClosable
@@ -361,6 +378,7 @@ export const CustomizeTabWidget = () => {
           onCancel={() => setEditableItem(null)}
           onOk={handleRenameSave}>
           <Input
+            autoFocus
             value={toString(getEntityName(editableItem))}
             onChange={handleChange}
           />
