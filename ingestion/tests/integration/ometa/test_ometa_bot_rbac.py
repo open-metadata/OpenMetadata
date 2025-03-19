@@ -12,7 +12,10 @@
 OMeta Bot RBAC tests
 """
 from _openmetadata_testutils.ometa import int_admin_ometa
-from metadata.generated.schema.configuration.searchSettings import SearchSettings
+from metadata.generated.schema.configuration.searchSettings import (
+    GlobalSettings,
+    SearchSettings,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.settings.settings import Settings, SettingType
@@ -40,7 +43,9 @@ def test_bots_rbac_pagination(metadata, service, tables):
 
     settings = Settings(
         config_type=SettingType.searchSettings,
-        config_value=SearchSettings(enableAccessControl=True),
+        config_value=SearchSettings(
+            globalSettings=GlobalSettings(enableAccessControl=True)
+        ),
     )
     # Ensure search is enabled
     metadata.client.put("/system/settings", data=settings.model_dump_json())
