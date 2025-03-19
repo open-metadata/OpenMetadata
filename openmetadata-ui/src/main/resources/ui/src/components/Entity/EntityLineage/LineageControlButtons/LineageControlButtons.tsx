@@ -107,7 +107,10 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
   const handlePDFExport = useCallback(() => {
     handleExportPDFLineage(
       nodes,
-      `${getEntityName(entityLineage.entity)}-lineage`
+      `${getEntityName(entityLineage.entity)}-lineage`,
+      {
+        title: getEntityName(entityLineage.entity),
+      }
     );
   }, [nodes, entityLineage.entity]);
 

@@ -10,82 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
-import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import i18n from '../i18next/LocalUtil';
-import { showErrorToast } from '../ToastUtils';
 
-export const exportAsPDF = async (elmId: string, fileName: string) => {
-  try {
-    const exportElement = document.getElementById(elmId);
-    if (!exportElement) {
-      return;
-    }
+const addHeaderInPdf = (pdf: jsPDF, headerData: { title: string }) => {
+  pdf.saveGraphicsState();
 
-    // Get the full height of the content
-    const scrollHeight = exportElement.scrollHeight;
-    const scrollWidth = exportElement.scrollWidth;
-
-    // Set temporary styles to capture full content
-    const originalStyle = exportElement.style.cssText;
-    exportElement.style.height = `${scrollHeight}px`;
-    exportElement.style.width = `${scrollWidth}px`;
-    exportElement.style.position = 'absolute';
-    exportElement.style.top = '0';
-    exportElement.style.left = '0';
-
-    const canvas = await html2canvas(exportElement, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      height: scrollHeight,
-      width: scrollWidth,
-      windowHeight: scrollHeight,
-      windowWidth: scrollWidth,
-    });
-
-    // Restore original styles
-    exportElement.style.cssText = originalStyle;
-
-    const imgWidth = 210; // A4 width in mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgData = canvas.toDataURL('image/png');
-
-    // If content is longer than A4, add multiple pages
-    let heightLeft = imgHeight;
-    let position = 0;
-    const pageHeight = 295; // A4 height in mm
-
-    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft >= 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-
-    pdf.save(`${fileName}.pdf`);
-  } catch (error) {
-    showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
-  }
+  // Set header styles and add header content
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(12);
+  pdf.text(headerData.title, 10, 10); // Left aligned
+  pdf.restoreGraphicsState(); // Restore state
 };
 
 export const convertPngToPDFExport = (
   base64Image: string,
-  fileName: string
+  fileName: string,
+  headerData?: {
+    title: string;
+  }
 ) => {
   const pdf = new jsPDF();
+  if (headerData) {
+    addHeaderInPdf(pdf, headerData);
+  }
 
   // PDF dimensions (A4 size)
   const pdfWidth = pdf.internal.pageSize.width;
   const pdfHeight = pdf.internal.pageSize.height;
 
-  // Create an Image object to load the base64 image
+  // Set indentation
+  const indent = 10;
+  const availableWidth = pdfWidth - 2 * indent; // Account for left and right indentation
+
   const img = new Image();
   img.src = base64Image;
 
@@ -93,18 +49,29 @@ export const convertPngToPDFExport = (
   img.onload = function () {
     const aspectRatio = img.width / img.height;
 
-    // Calculate width and height to fit the PDF
-    let imgWidth = pdfWidth;
-    let imgHeight = pdfWidth / aspectRatio;
+    // Calculate width and height to fit the PDF with indentation
+    let imgWidth = availableWidth; // Use available width after indentation
+    let imgHeight = imgWidth / aspectRatio;
 
     // If the image height exceeds the PDF page height, scale it down
     if (imgHeight > pdfHeight) {
       imgHeight = pdfHeight;
       imgWidth = pdfHeight * aspectRatio;
-    }
 
-    // Add the image to the PDF
-    pdf.addImage(base64Image, 'PNG', 0, 0, imgWidth, imgHeight);
+      // Recalculate left indent to center if image is height-constrained
+      const horizontalIndent = (pdfWidth - imgWidth) / 2;
+      pdf.addImage(
+        base64Image,
+        'PNG',
+        horizontalIndent,
+        15,
+        imgWidth,
+        imgHeight
+      );
+    } else {
+      // Use standard indentation if image is width-constrained
+      pdf.addImage(base64Image, 'PNG', indent, 15, imgWidth, imgHeight);
+    }
     pdf.save(`${fileName}.pdf`);
   };
 };

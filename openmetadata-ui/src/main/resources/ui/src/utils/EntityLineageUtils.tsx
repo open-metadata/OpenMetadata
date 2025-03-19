@@ -1711,7 +1711,11 @@ export const getViewportForBoundsReactFlow = (
   return { x: translateX, y: translateY, zoom: scale };
 };
 
-export const handleExportPDFLineage = (nodes: Node[], fileName: string) => {
+export const handleExportPDFLineage = (
+  nodes: Node[],
+  fileName: string,
+  pdfHeaderData?: { title: string }
+) => {
   try {
     const exportElement = document.querySelector(
       '.react-flow__viewport'
@@ -1738,7 +1742,9 @@ export const handleExportPDFLineage = (nodes: Node[], fileName: string) => {
         height: imageHeight.toString(),
         transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
       },
-    }).then((base64Image) => convertPngToPDFExport(base64Image, fileName));
+    }).then((base64Image) =>
+      convertPngToPDFExport(base64Image, fileName, pdfHeaderData)
+    );
   } catch (error) {
     showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
   }
