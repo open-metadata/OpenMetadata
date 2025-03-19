@@ -94,6 +94,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
 
     return (
       <ActivityFeedCardNew
+        isForFeedTab
         isOpenInDrawer
         feed={feed}
         isActive={isActive}

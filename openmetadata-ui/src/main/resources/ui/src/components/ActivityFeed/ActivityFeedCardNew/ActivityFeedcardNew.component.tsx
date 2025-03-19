@@ -283,6 +283,7 @@ const ActivityFeedCardNew = ({
           <FeedCardBodyNew
             feed={feed}
             isEditPost={isEditPost}
+            isForFeedTab={isForFeedTab}
             isPost={isPost}
             message={
               !isPost
