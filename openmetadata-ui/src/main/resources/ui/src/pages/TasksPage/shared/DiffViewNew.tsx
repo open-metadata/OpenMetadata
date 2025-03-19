@@ -66,21 +66,21 @@ export const DiffViewNew = ({
     return () => clearTimeout(timer);
   }, [diffArr]);
 
-  const getDiffKey = (diff: Change, index: number) => {
+  const getDiffKey = (diff: Change) => {
     if (diff.added) {
-      return `diff-${index}-added`;
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-added`;
     }
     if (diff.removed) {
-      return `diff-${index}-removed`;
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-removed`;
     }
 
-    return `diff-${index}-normal`;
+    return `diff-${diff.value}-${diff.removed}-${diff.added}-normal`;
   };
 
   const elements = useMemo(
     () =>
-      diffArr.map((diff, index) => {
-        const key = getDiffKey(diff, index);
+      diffArr.map((diff) => {
+        const key = getDiffKey(diff);
 
         if (diff.added) {
           return (
