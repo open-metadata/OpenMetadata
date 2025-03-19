@@ -1008,6 +1008,14 @@ export const checkForEditActions = async ({
       continue;
     }
 
+    if (elementSelector === '[data-testid="entity-follow-button"]') {
+      deleted
+        ? await expect(page.locator(elementSelector)).not.toBeVisible()
+        : await expect(page.locator(elementSelector)).toBeVisible();
+
+      continue;
+    }
+
     const isDisabled = await page
       .locator(`${containerSelector} ${elementSelector}`)
       .isEnabled();
