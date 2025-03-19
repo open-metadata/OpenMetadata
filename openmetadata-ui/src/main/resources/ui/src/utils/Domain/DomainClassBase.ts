@@ -70,10 +70,10 @@ class DomainClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
       [DetailPageWidgetKeys.OWNERS]: 1,
-      [DetailPageWidgetKeys.TAGS]: 2,
-      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.TAGS]: 1.5,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
       [DetailPageWidgetKeys.EXPERTS]: 2,
       [DetailPageWidgetKeys.DOMAIN_TYPE]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,

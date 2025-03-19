@@ -13,4 +13,5 @@
 
 export interface DatabaseSchemaTableProps {
   isVersionPage?: boolean;
+  isCustomizationPage?: boolean;
 }

@@ -129,25 +129,28 @@ const EntityHeaderTitle = ({
               onClick={handleShareButtonClick}
             />
           </Tooltip>
-          {!excludeEntityService && !deleted && !isCustomizedView && handleFollowingClick && (
-            <Tooltip
-              title={t('label.field-entity', {
-                field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                entity: capitalize(entityType),
-              })}>
-              <Button
-                className="entity-follow-button flex-center gap-1 text-sm "
-                data-testid="entity-follow-button"
-                disabled={deleted}
-                icon={<Icon component={StarFilledIcon} />}
-                loading={isFollowingLoading}
-                onClick={handleFollowingClick}>
-                <Typography.Text>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Typography.Text>
-              </Button>
-            </Tooltip>
-          )}
+          {!excludeEntityService &&
+            !deleted &&
+            !isCustomizedView &&
+            handleFollowingClick && (
+              <Tooltip
+                title={t('label.field-entity', {
+                  field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                  entity: capitalize(entityType),
+                })}>
+                <Button
+                  className="entity-follow-button flex-center gap-1 text-sm "
+                  data-testid="entity-follow-button"
+                  disabled={deleted}
+                  icon={<Icon component={StarFilledIcon} />}
+                  loading={isFollowingLoading}
+                  onClick={handleFollowingClick}>
+                  <Typography.Text>
+                    {isFollowing ? 'Following' : 'Follow'}
+                  </Typography.Text>
+                </Button>
+              </Tooltip>
+            )}
         </div>
       </Col>
       {certification && (

@@ -22,6 +22,7 @@ import ContainerChildren from '../../components/Container/ContainerChildren/Cont
 import { ContainerWidget } from '../../components/Container/ContainerWidget/ContainerWidget';
 import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTable/DashboardChartTable';
 import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
+import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
@@ -153,4 +154,5 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.API_SCHEMA]: () => <APIEndpointSchema />,
   [DetailPageWidgetKeys.CONTAINER_SCHEMA]: () => <ContainerWidget />,
+  [DetailPageWidgetKeys.DATABASE_SCHEMA]: () => <DatabaseSchemaTable />,
 } as const;
