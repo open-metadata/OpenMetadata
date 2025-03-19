@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { Change } from 'diff';
-import { uniqueId } from 'lodash';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
 import {
@@ -66,50 +66,73 @@ export const DiffViewNew = ({
     return () => clearTimeout(timer);
   }, [diffArr]);
 
-  const elements = diffArr.map((diff) => {
+  const getDiffKey = (diff: Change, index: number) => {
     if (diff.added) {
-      return (
-        <ins
-          className="diff-added-new"
-          data-testid="diff-added"
-          key={uniqueId()}>
-          <TaskDescriptionPreviewer
-            enableSeeMoreVariant={false}
-            markdown={diff.value}
-            showReadMoreBtn={false}
-          />
-        </ins>
-      );
+      return `diff-${index}-added`;
     }
     if (diff.removed) {
-      return (
-        <del
-          className="diff-removed-new"
-          data-testid="diff-removed-new"
-          key={uniqueId()}>
-          <TaskDescriptionPreviewer
-            enableSeeMoreVariant={false}
-            markdown={diff.value}
-            showReadMoreBtn={false}
-          />
-        </del>
-      );
+      return `diff-${index}-removed`;
     }
 
-    return (
-      <span
-        className="diff-normal-new"
-        data-testid="diff-normal-new"
-        key={uniqueId()}>
-        {' '}
-        <TaskDescriptionPreviewer
-          enableSeeMoreVariant={false}
-          markdown={diff.value}
-          showReadMoreBtn={false}
-        />
-      </span>
-    );
-  });
+    return `diff-${index}-normal`;
+  };
+
+  const elements = useMemo(
+    () =>
+      diffArr.map((diff, index) => {
+        const key = getDiffKey(diff, index);
+
+        if (diff.added) {
+          return (
+            <ins className="diff-added-new" data-testid="diff-added" key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </ins>
+          );
+        }
+        if (diff.removed) {
+          return (
+            <del
+              className="diff-removed-new"
+              data-testid="diff-removed-new"
+              key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </del>
+          );
+        }
+
+        return (
+          <span
+            className="diff-normal-new"
+            data-testid="diff-normal-new"
+            key={key}>
+            <TaskDescriptionPreviewer
+              enableSeeMoreVariant={false}
+              markdown={diff.value}
+              showReadMoreBtn={false}
+            />
+          </span>
+        );
+      }),
+    [diffArr]
+  );
+
+  const getContentClassName = () => {
+    if (expanded) {
+      return '';
+    }
+
+    return showDescTitle
+      ? 'clamp-text-3 overflow-hidden'
+      : 'clamp-text-2 overflow-hidden';
+  };
 
   return (
     <div
@@ -149,25 +172,18 @@ export const DiffViewNew = ({
         {diffArr.length ? (
           <>
             <div
-              className={classNames(
-                'relative',
-                expanded
-                  ? ''
-                  : showDescTitle
-                  ? 'clamp-text-3 overflow-hidden'
-                  : 'clamp-text-2  overflow-hidden'
-              )}
+              className={classNames('relative', getContentClassName())}
               ref={contentRef}>
               {elements}
             </div>
             {shouldShowViewMore && (
               <div className="mt-2">
-                <span
-                  className="cursor-pointer view-more-less-button"
+                <Button
+                  className="view-more-less-button cursor-pointer remove-button-default-styling"
                   data-testid="view-more-button"
                   onClick={() => setExpanded(!expanded)}>
                   {expanded ? t('label.view-less') : t('label.view-more')}
-                </span>
+                </Button>
               </div>
             )}
           </>
