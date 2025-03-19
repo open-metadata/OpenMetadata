@@ -10,3 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../../styles/variables.less');
+
+.data-assets-header-container {
+  .data-asset-button-group {
+    .ant-button-vote {
+      outline: black;
+      &:hover {
+        background-color: @blue-11;
+      }
+    }
+    .ant-btn.ant-button-vote-active {
+      background-color: @blue-11;
+      border: 1px solid @blue-12;
+      svg {
+        path {
+          fill: @blue-12;
+        }
+      }
+      .ant-typography {
+        color: @blue-12;
+      }
+    }
+  }
+}
