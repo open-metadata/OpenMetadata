@@ -81,7 +81,7 @@ const EntityHeaderTitle = ({
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Tooltip placement="bottom" title={stringToHTML(name)}>
+          <Tooltip placement="bottom" title={stringToHTML(displayName ?? name)}>
             <Typography.Text
               className={classNames(
                 'entity-header-name',
@@ -90,7 +90,7 @@ const EntityHeaderTitle = ({
               )}
               data-testid="entity-header-name"
               ellipsis={{ tooltip: true }}>
-              {stringToHTML(name)}
+              {stringToHTML(displayName ?? name)}
             </Typography.Text>
           </Tooltip>
         ) : null}
@@ -98,7 +98,7 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Tooltip placement="bottom" title={stringToHTML(displayName || name)}>
+          <Tooltip placement="bottom" title={stringToHTML(name)}>
             <Typography.Text
               className={classNames(displayNameClassName, 'm-b-0', {
                 'display-sm entity-header-name font-semibold': !displayName,
@@ -106,7 +106,7 @@ const EntityHeaderTitle = ({
               })}
               data-testid="entity-header-display-name"
               ellipsis={{ tooltip: true }}>
-              {stringToHTML(displayName || name)}
+              {stringToHTML(name)}
               {openEntityInNewPage && (
                 <IconExternalLink
                   className="anticon vertical-baseline m-l-xss"
