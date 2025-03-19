@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { first, round, sortBy } from 'lodash';
+import { isUndefined, round } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { EntityType } from '../enums/entity.enum';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
+import { getSevenDaysStartGMTArrayInMillis } from './date-time/DateTimeUtils';
 
 const { t } = i18n;
 
@@ -83,29 +84,34 @@ export const getPlatformInsightsChartDataFormattingMethod =
   (chartType: SystemChartType) => {
     const summaryChartData = chartsData[chartType];
 
-    const data = sortBy(summaryChartData.results, 'day');
+    // Get the seven days start GMT array in milliseconds
+    const sevenDaysStartGMTArrayInMillis = getSevenDaysStartGMTArrayInMillis();
+
+    // Get the data for the seven days
+    // If the data is not available for a day, fill in the data with the count as 0
+    const data = sevenDaysStartGMTArrayInMillis.map((day) => {
+      const item = summaryChartData.results.find((item) => item.day === day);
+
+      return item ? item : { day, count: 0 };
+    });
 
     // This is the data for the day 7 days ago
     const sevenDaysAgoData = data.find((item) => item.day === startTime)?.count;
     // This is the data for the current day
     const currentData = data.find((item) => item.day === endTime)?.count;
-    // This is the data for the earliest day
-    // separating this out because sometimes the data is not available for all the days
-    const earliestDayData = first(data)?.count;
 
     // This is the percentage change for the last 7 days
     // This is undefined if the data is not available for all the days
     const percentageChangeInSevenDays =
-      currentData && sevenDaysAgoData
+      !isUndefined(currentData) && !isUndefined(sevenDaysAgoData)
         ? round(Math.abs(currentData - sevenDaysAgoData), 2)
         : undefined;
 
     // This is true if the current data is greater than the earliest day data
     // This is false if the data is not available for more than 1 day
-    const isIncreased =
-      currentData && data.length > 1
-        ? currentData > (earliestDayData ?? 0)
-        : false;
+    const isIncreased = !isUndefined(currentData)
+      ? currentData >= (sevenDaysAgoData ?? 0)
+      : false;
 
     return {
       chartType,

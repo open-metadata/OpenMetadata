@@ -16,6 +16,18 @@ import { SearchSettings } from '../../../generated/api/search/previewSearchReque
 import { searchPreview } from '../../../rest/searchAPI';
 import SearchPreview from './SearchPreview';
 
+jest.mock('lodash', () => ({
+  ...jest.requireActual('lodash'),
+  debounce: jest.fn((fn) => {
+    const mockFn = function (...args: any[]) {
+      return fn(...args);
+    };
+    mockFn.cancel = jest.fn();
+
+    return mockFn;
+  }),
+}));
+
 const mockSearchConfig: SearchSettings = {
   globalSettings: {
     useNaturalLanguageSearch: false,
@@ -23,6 +35,14 @@ const mockSearchConfig: SearchSettings = {
     highlightFields: ['description'],
     fieldValueBoosts: [],
   },
+};
+
+const mockProps = {
+  handleRestoreDefaults: jest.fn(),
+  handleSaveChanges: jest.fn(),
+  isSaving: false,
+  disabledSave: false,
+  searchConfig: mockSearchConfig,
 };
 
 const mockSearchResponse = {
@@ -43,7 +63,7 @@ const mockSearchResponse = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useParams: () => ({ tab: 'tables' }),
+  useParams: () => ({ fqn: 'table' }),
   useHistory: () => ({
     push: jest.fn(),
   }),
@@ -92,8 +112,8 @@ describe('SearchPreview', () => {
     jest.clearAllMocks();
   });
 
-  it('Should render search preview component', async () => {
-    render(<SearchPreview searchConfig={mockSearchConfig} />);
+  it('Should render search preview component', () => {
+    render(<SearchPreview {...mockProps} />);
 
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
     expect(screen.getByTestId('searchbar')).toBeInTheDocument();
@@ -106,7 +126,7 @@ describe('SearchPreview', () => {
   });
 
   it('Should display search results', async () => {
-    render(<SearchPreview searchConfig={mockSearchConfig} />);
+    render(<SearchPreview {...mockProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('searched-data-card')).toBeInTheDocument();
@@ -119,21 +139,39 @@ describe('SearchPreview', () => {
     );
   });
 
-  it('Should handle search input changes', async () => {
-    render(<SearchPreview searchConfig={mockSearchConfig} />);
+  it('Should handle search input changes', () => {
+    (searchPreview as jest.Mock).mockClear();
 
+    render(<SearchPreview {...mockProps} />);
+
+    // Initial fetch is made on component mount
+    expect(searchPreview).toHaveBeenCalledTimes(1);
+
+    // The first call should have empty query
+    expect(searchPreview).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: '',
+        searchSettings: mockSearchConfig,
+      })
+    );
+
+    // Clear the mock to focus only on the search input change
+    (searchPreview as jest.Mock).mockClear();
+
+    // Set up the mock to return data for the search term
+    (searchPreview as jest.Mock).mockResolvedValueOnce(mockSearchResponse);
+
+    // Input a search term
     const searchInput = screen.getByTestId('searchbar');
     fireEvent.change(searchInput, { target: { value: 'test search' } });
 
-    await waitFor(
-      () => {
-        expect(searchPreview).toHaveBeenCalledWith(
-          expect.objectContaining({
-            query: 'test search',
-          })
-        );
-      },
-      { timeout: 1000 }
+    // verify the call
+    expect(searchPreview).toHaveBeenCalledTimes(1);
+    expect(searchPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'test search',
+        searchSettings: mockSearchConfig,
+      })
     );
   });
 });

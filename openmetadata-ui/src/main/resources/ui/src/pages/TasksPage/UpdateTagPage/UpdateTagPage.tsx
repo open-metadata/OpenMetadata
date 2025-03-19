@@ -36,6 +36,7 @@ import { Chart } from '../../../generated/entity/data/chart';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
@@ -45,6 +46,7 @@ import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -62,8 +64,8 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const UpdateTag = () => {
-  const { t } = useTranslation();
   const location = useCustomLocation();
+  const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm();
   const { currentUser } = useApplicationStore();
@@ -215,7 +217,7 @@ const UpdateTag = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 700,
@@ -346,4 +348,4 @@ const UpdateTag = () => {
   );
 };
 
-export default UpdateTag;
+export default withPageLayout(i18n.t('label.task'))(UpdateTag);

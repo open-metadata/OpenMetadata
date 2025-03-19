@@ -220,6 +220,10 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             entity=Database,
             params={"service": self.config.source.serviceName},
         )
+        if not databases:
+            raise ValueError(
+                f"No databases found for service {self.config.source.serviceName}"
+            )
         databases = cast(Iterable[Database], databases)
 
         if self.source_config.databaseFilterPattern:

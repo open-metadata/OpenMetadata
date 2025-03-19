@@ -19,10 +19,6 @@
   min-width: 300px;
 }
 
-.term-boost-header {
-  background-color: @blue-14;
-}
-
 .delete-term-boost {
   color: @red-12;
   background-color: @red-13;
@@ -58,30 +54,29 @@
 
 .custom-select {
   .ant-select-selector {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
+    padding-left: 0;
+    padding-right: 0;
     border: none !important;
-    box-shadow: none !important;
   }
 
   .ant-select-focused .ant-select-selector,
   .ant-select-selector:focus,
   .ant-select-selector:active,
   .ant-select-open .ant-select-selector {
-    border: none !important;
-    box-shadow: none !important;
+    border: none;
+    box-shadow: none;
   }
 
   &.ant-select-focused:not(.ant-select-disabled):not(.ant-select-customize-input):not(.ant-select-borderless)
     .ant-select-selector {
-    border: none !important;
-    box-shadow: none !important;
+    border: none;
+    box-shadow: none;
   }
 
   &.ant-select-disabled {
     .ant-select-selector {
-      background-color: transparent !important;
-      color: @black !important;
+      background-color: transparent;
+      color: @black;
     }
   }
 }

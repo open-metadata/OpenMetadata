@@ -79,10 +79,3 @@ export const updateType = async (entityTypeId: string, data: Operation[]) => {
 
   return response.data;
 };
-
-export const getEntityFields = async (entityType: string) => {
-  const path = `/metadata/types/fields/${entityType}`;
-  const response = await APIClient.get(path);
-
-  return response.data;
-};

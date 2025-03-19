@@ -39,6 +39,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -66,7 +67,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { customizedPage } = useCustomPages(PageType.APIEndpoint);
+  const { customizedPage, isLoading } = useCustomPages(PageType.APIEndpoint);
 
   const {
     owners,
@@ -226,7 +227,12 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     editCustomAttributePermission,
     viewAllPermission,
     editLineagePermission,
+    customizedPage,
   ]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
@@ -261,7 +267,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           onUpdate={onApiEndpointUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

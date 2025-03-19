@@ -56,12 +56,12 @@
         "field": "databaseSchema.name.keyword"
       },
       {
-        "name": "database.displayName.keyword",
+        "name": "database.displayName",
         "type": "terms",
         "field": "database.displayName.keyword"
       },
       {
-        "name": "databaseSchema.displayName.keyword",
+        "name": "databaseSchema.displayName",
         "type": "terms",
         "field": "databaseSchema.displayName.keyword"
       }

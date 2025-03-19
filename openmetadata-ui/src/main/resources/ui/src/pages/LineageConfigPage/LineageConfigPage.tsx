@@ -40,6 +40,7 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const LineageConfigPage = () => {
@@ -248,4 +249,6 @@ const LineageConfigPage = () => {
   );
 };
 
-export default withPageLayout('lineage-config')(LineageConfigPage);
+export default withPageLayout(i18n.t('label.lineage-config'))(
+  LineageConfigPage
+);

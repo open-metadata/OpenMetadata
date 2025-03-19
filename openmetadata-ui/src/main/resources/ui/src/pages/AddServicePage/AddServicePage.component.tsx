@@ -33,6 +33,7 @@ import {
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -40,6 +41,7 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getAddServicePath,
   getServiceDetailsPath,
@@ -324,4 +326,8 @@ const AddServicePage = () => {
   );
 };
 
-export default AddServicePage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(AddServicePage);
