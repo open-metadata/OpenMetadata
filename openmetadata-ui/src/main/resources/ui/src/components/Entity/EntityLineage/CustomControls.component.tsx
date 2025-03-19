@@ -40,7 +40,7 @@ const CustomControls: FC<ControlProps> = ({
   className,
 }: ControlProps) => {
   const { t } = useTranslation();
-  const { onQueryFilterUpdate } = useLineageProvider();
+  const { onQueryFilterUpdate, nodes } = useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
@@ -50,6 +50,24 @@ const CustomControls: FC<ControlProps> = ({
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
   };
+
+  const queryFilter = useMemo(() => {
+    const nodeIds = (nodes ?? [])
+      .map((node) => node.data?.node?.id)
+      .filter(Boolean);
+
+    return {
+      query: {
+        bool: {
+          must: {
+            terms: {
+              'id.keyword': nodeIds,
+            },
+          },
+        },
+      },
+    };
+  }, [nodes]);
 
   const filterMenu: ItemType[] = useMemo(() => {
     return filters.map((filter) => ({
@@ -145,6 +163,7 @@ const CustomControls: FC<ControlProps> = ({
           <ExploreQuickFilters
             independent
             aggregations={{}}
+            defaultQueryFilter={queryFilter}
             fields={selectedQuickFilters}
             index={SearchIndex.ALL}
             showDeleted={false}

@@ -19,6 +19,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -214,6 +215,9 @@ public interface SearchClient {
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
+      throws IOException;
+
+  SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
       throws IOException;
 
   Response searchEntityRelationship(

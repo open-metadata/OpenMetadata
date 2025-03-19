@@ -49,6 +49,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.FieldInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +63,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.RoleRepository;
@@ -718,5 +720,22 @@ public final class Entity {
   public static boolean entityHasField(String entityType, String field) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getAllowedFields().contains(field);
+  }
+
+  public static List<ServiceEntityInterface> getAllServicesForLineage() {
+    List<ServiceEntityInterface> allServices = new ArrayList<>();
+    Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
+    serviceTypes.remove(ServiceType.METADATA);
+
+    for (ServiceType serviceType : serviceTypes) {
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getServiceEntityRepository(serviceType);
+      ListFilter filter = new ListFilter(Include.ALL);
+      List<ServiceEntityInterface> services =
+          (List<ServiceEntityInterface>) repository.listAll(repository.getFields("id"), filter);
+      allServices.addAll(services);
+    }
+
+    return allServices;
   }
 }
