@@ -2120,6 +2120,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             ChangeSource.AUTOMATED);
 
     assertNotNull(updateNonTrackedField.getChangeDescription().getChangeSummary());
+    assertFalse(
+        updateNonTrackedField
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .isEmpty());
   }
 
   private void assertChangeSummaryInSearch(EntityInterface entity) throws IOException {
