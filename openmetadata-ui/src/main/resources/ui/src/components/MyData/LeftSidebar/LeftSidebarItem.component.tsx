@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button } from 'antd';
+import { Badge } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
@@ -51,13 +51,9 @@ const LeftSidebarItem = ({
       )}
     </NavLink>
   ) : (
-    <Button
-      className="left-panel-item left-panel-label p-0"
-      data-testid={dataTestId}
-      type="text"
-      onClick={onClick}>
+    <span className="left-panel-item left-panel-label p-0" onClick={onClick}>
       {title}
-    </Button>
+    </span>
   );
 };
 

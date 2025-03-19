@@ -152,6 +152,10 @@ const LeftSidebar = () => {
     }
   }, [selectedPersona]);
 
+  const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
+    setIsSidebarCollapsed(true);
+  }, []);
+
   return (
     <Sider
       collapsible
@@ -186,6 +190,7 @@ const LeftSidebar = () => {
         rootClassName="left-sidebar-menu"
         selectedKeys={selectedKeys}
         subMenuCloseDelay={1}
+        onClick={handleMenuClick}
       />
 
       {showConfirmLogoutModal && (

@@ -31,11 +31,20 @@ import { SidebarItem } from '../enums/sidebar.enum';
 import { getDataInsightPathWithFqn } from '../utils/DataInsightUtils';
 import { ROUTES } from './constants';
 
+import { ReactComponent as HomeIcon } from '../assets/svg/ic-home-new.svg';
+
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
+  {
+    key: ROUTES.HOME,
+    title: i18next.t('label.home'),
+    redirect_url: ROUTES.HOME,
+    icon: HomeIcon,
+    dataTestId: `app-bar-item-${SidebarItem.HOME}`,
+  },
   {
     key: ROUTES.EXPLORE,
     title: i18next.t('label.explore'),
