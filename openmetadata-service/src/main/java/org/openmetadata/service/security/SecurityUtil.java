@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
@@ -180,6 +181,7 @@ public final class SecurityUtil {
       List<String> jwtPrincipalClaimsOrder,
       Map<String, Claim> claims,
       String principalDomain,
+      Set<String> allowedDomains,
       boolean enforcePrincipalDomain) {
     String domain = StringUtils.EMPTY;
     if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
@@ -201,10 +203,21 @@ public final class SecurityUtil {
     }
 
     // Validate
-    if (!isBot(claims) && (enforcePrincipalDomain && !domain.equals(principalDomain))) {
-      throw new AuthenticationException(
-          String.format(
-              "Not Authorized! Email does not match the principal domain %s", principalDomain));
+    if (isBot(claims)) {
+      // Bots don't need to be validated
+      return;
+    }
+    if (enforcePrincipalDomain) {
+      if (allowedDomains == null || allowedDomains.isEmpty()) {
+        // Validate against the principal domain if allowed domains are not supplied
+        if (!domain.equals(principalDomain)) {
+          throw AuthenticationException.invalidEmailMessage(principalDomain);
+        }
+      }
+      // Validate against allowed domains if supplied
+      else if (!allowedDomains.contains(domain)) {
+        throw AuthenticationException.invalidEmailMessage(domain);
+      }
     }
   }
 

@@ -21,6 +21,10 @@ export interface AuthorizerConfiguration {
      */
     adminPrincipals: string[];
     /**
+     * Allowed Domains to access
+     */
+    allowedDomains?: string[];
+    /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
