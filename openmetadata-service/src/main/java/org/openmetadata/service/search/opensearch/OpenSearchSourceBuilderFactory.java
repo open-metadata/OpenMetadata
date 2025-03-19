@@ -22,6 +22,7 @@ import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.index.query.BoolQueryBuilder;
+import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
 import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
@@ -150,16 +151,36 @@ public class OpenSearchSourceBuilderFactory
     }
 
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
-    QueryStringQueryBuilder queryStringQueryBuilder =
-        QueryBuilders.queryStringQuery(query)
-            .fields(fields)
-            .type(MOST_FIELDS)
-            .defaultOperator(Operator.AND)
-            .fuzziness(Fuzziness.AUTO)
-            .fuzzyPrefixLength(1)
-            .tieBreaker(0.3f);
+    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
+      baseQuery.must(QueryBuilders.matchAllQuery());
+    } else if (containsQuerySyntax(query)) {
+      QueryStringQueryBuilder queryStringBuilder =
+          QueryBuilders.queryStringQuery(query)
+              .fields(fields)
+              .defaultOperator(Operator.AND)
+              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+              .fuzziness(Fuzziness.AUTO)
+              .fuzzyPrefixLength(1)
+              .tieBreaker(0.3f);
 
-    baseQuery.must(queryStringQueryBuilder);
+      baseQuery.must(queryStringBuilder);
+    } else {
+      MultiMatchQueryBuilder multiMatchQueryBuilder =
+          QueryBuilders.multiMatchQuery(query)
+              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+              .fuzziness(Fuzziness.AUTO)
+              .prefixLength(1)
+              .operator(Operator.AND)
+              .tieBreaker(0.3f);
+
+      for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
+        String fieldName = fieldEntry.getKey();
+        Float boost = fieldEntry.getValue();
+        multiMatchQueryBuilder.field(fieldName, boost);
+      }
+
+      baseQuery.must(multiMatchQueryBuilder);
+    }
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
