@@ -152,7 +152,7 @@ const ServiceConnectionDetails = ({
       </div>
 
       {extraInfo && (
-        <div className="service-connection-details m-t-md">
+        <div className="service-connection-details m-t-md m-y-lg">
           <Row className="w-full" gutter={[8, 8]}>
             <Col span={12}>
               <Row>

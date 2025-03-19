@@ -235,7 +235,7 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo(_data?: ServicesType) {
+  public getServiceExtraInfo(_data?: ServicesType): any {
     return null;
   }
 
