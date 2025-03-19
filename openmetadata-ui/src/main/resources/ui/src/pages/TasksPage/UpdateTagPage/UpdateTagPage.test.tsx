@@ -26,6 +26,18 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
     search: 'field=columns&value="address.street_name"',
   }));
 });
+jest.mock('../../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),

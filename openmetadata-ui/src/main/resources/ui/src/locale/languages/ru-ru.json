@@ -867,6 +867,7 @@
     "new-test-suite": "Новый набор тестов",
     "next": "Следующий",
     "no": "Нет",
+    "no-access": "Нет доступа",
     "no-comma-cancel": "No, cancel",
     "no-data-asset-found-for": "Объекты данных не найдены",
     "no-data-found": "Данные не найдены",

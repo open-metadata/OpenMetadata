@@ -52,6 +52,19 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div>ErrorPlaceHolder</div>)
 );
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>

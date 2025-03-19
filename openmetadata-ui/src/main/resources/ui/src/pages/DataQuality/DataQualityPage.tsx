@@ -26,6 +26,7 @@ import ResizableLeftPanels from '../../components/common/ResizablePanels/Resizab
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../constants/constants';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -33,10 +34,9 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { t } = useTranslation();
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
-
+  const { t } = useTranslation();
   const menuItems: MenuProps['items'] = useMemo(() => {
     const data = DataQualityClassBase.getLeftSideBar();
 
@@ -144,4 +144,4 @@ const DataQualityPage = () => {
   );
 };
 
-export default withPageLayout('quality')(DataQualityPage);
+export default withPageLayout(i18n.t('label.quality'))(DataQualityPage);

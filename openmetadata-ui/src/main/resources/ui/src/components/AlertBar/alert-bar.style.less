@@ -64,6 +64,8 @@
 
   &.show-alert {
     animation: resize-show-animation 0.3s ease-in-out forwards;
+    display: flex;
+    align-items: center;
   }
 
   &.hide-alert {
@@ -100,14 +102,12 @@
 
   .ant-alert-description {
     font-size: 14px;
+    line-height: 18px;
+    text-align: left;
   }
 
   .alert-close-icon {
-    margin-right: 6px;
     display: flex;
     align-items: center;
-    margin-top: 3px;
-    width: 14px;
-    height: 14px;
   }
 }

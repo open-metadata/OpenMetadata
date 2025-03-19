@@ -42,6 +42,19 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test-fqn' }),
 }));
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock(
   '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1',
   () => ({

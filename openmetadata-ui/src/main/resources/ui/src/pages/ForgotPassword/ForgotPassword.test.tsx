@@ -38,6 +38,17 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
+jest.mock('../../hooks/useAlertStore', () => ({
+  useAlertStore: jest.fn(() => ({
+    alert: { message: 'Test Alert', type: 'success' },
+    resetAlert: jest.fn(),
+  })),
+}));
+
+jest.mock('../../components/AlertBar/AlertBar', () => {
+  return jest.fn().mockReturnValue(<p data-testid="alert-bar">Alert Bar</p>);
+});
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
@@ -108,9 +119,7 @@ describe('ForgotPassword', () => {
     });
 
     expect(mockHandleForgotPassword).toHaveBeenCalledWith('test@example.com');
-    expect(getByTestId('success-screen-container')).toBeInTheDocument();
-    expect(getByTestId('success-icon')).toBeInTheDocument();
-    expect(getByTestId('success-line')).toBeInTheDocument();
+    expect(getByTestId('alert-bar')).toBeInTheDocument();
   });
 
   it('show call push back to login', async () => {
@@ -128,7 +137,7 @@ describe('ForgotPassword', () => {
       handleForgotPassword: mockHandleError,
     });
 
-    const { getByLabelText, getByText, queryByTestId } = render(
+    const { getByLabelText, getByText, getByTestId } = render(
       <ForgotPassword />
     );
     const emailInput = getByLabelText('label.email');
@@ -142,6 +151,6 @@ describe('ForgotPassword', () => {
 
     expect(showErrorToast).toHaveBeenCalledWith('server.email-not-found');
     expect(mockHandleError).toHaveBeenCalledWith('test@example.com');
-    expect(queryByTestId('success-screen-container')).not.toBeInTheDocument();
+    expect(getByTestId('alert-bar')).toBeInTheDocument();
   });
 });

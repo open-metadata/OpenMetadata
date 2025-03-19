@@ -37,16 +37,18 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 function EditEmailConfigPage() {
-  const { t } = useTranslation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
@@ -172,14 +174,16 @@ function EditEmailConfigPage() {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.service') })}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.service'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -190,4 +194,8 @@ function EditEmailConfigPage() {
   );
 }
 
-export default EditEmailConfigPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(EditEmailConfigPage);
