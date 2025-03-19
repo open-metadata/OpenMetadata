@@ -44,6 +44,7 @@ import {
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
+  verifyExportLineagePDF,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
@@ -136,6 +137,13 @@ for (const EntityClass of entities) {
         await currentEntity.visitEntityPage(page);
         await visitLineageTab(page);
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
+      });
+
+      await test.step('Verify Lineage Export PDF', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyExportLineagePDF(page);
       });
 
       await test.step(
