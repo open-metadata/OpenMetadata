@@ -23,6 +23,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   field,
   index,
   searchSettings,
+  entityFields,
   onHighlightFieldsChange,
   onFieldWeightChange,
   onDeleteSearchField,
@@ -32,6 +33,10 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     Record<number, string[]>
   >({});
   const [fieldWeight, setFieldWeight] = useState(field.weight);
+
+  const fieldDescription = entityFields.find(
+    (entityField) => entityField.name === field.fieldName
+  )?.description;
 
   const handleCollapseChange = (key: string | string[], index: number) => {
     setActiveFieldKeys((prevKeys) => ({
@@ -52,7 +57,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
       key={index}
       onChange={(key) => handleCollapseChange(key, index)}>
       <Collapse.Panel
-        className="bg-white custom-panel m-b-md"
+        className=" custom-panel m-b-md"
         header={
           <div
             className="field-container-header"
@@ -79,7 +84,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
 
             <div className="d-flex items-center justify-between m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
-                {t('label.select-field-and-weight')}
+                {fieldDescription}
               </span>
               <span
                 className="p-x-xs font-semibold text-primary d-flex items-center field-weightage"
