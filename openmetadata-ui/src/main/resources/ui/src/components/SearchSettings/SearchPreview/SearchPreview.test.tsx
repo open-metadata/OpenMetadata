@@ -113,7 +113,7 @@ describe('SearchPreview', () => {
   });
 
   it('Should render search preview component', () => {
-    render(<SearchPreview searchConfig={mockSearchConfig} />);
+    render(<SearchPreview {...mockProps} />);
 
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
     expect(screen.getByTestId('searchbar')).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('SearchPreview', () => {
   it('Should handle search input changes', () => {
     (searchPreview as jest.Mock).mockClear();
 
-    render(<SearchPreview searchConfig={mockSearchConfig} />);
+    render(<SearchPreview {...mockProps} />);
 
     // Initial fetch is made on component mount
     expect(searchPreview).toHaveBeenCalledTimes(1);
