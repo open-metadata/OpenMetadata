@@ -328,6 +328,9 @@ export const ENTITY_PATH = {
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
   metrics: 'metric',
+  dataAssets: 'dataAsset',
+  query: 'query',
+  testCases: 'testCase',
   domains: 'domain',
 };
 

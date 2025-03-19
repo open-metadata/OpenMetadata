@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React, { useCallback, useEffect } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { SearchSettings } from '../../generated/configuration/searchSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
@@ -40,13 +41,17 @@ const AppContainer = () => {
 
   const fetchAppConfigurations = useCallback(async () => {
     try {
-      const [response, lineageConfig] = await Promise.all([
+      const [response, lineageConfig, searchConfig] = await Promise.all([
         getLimitConfig(),
         getSettingsByType(SettingType.LineageSettings),
+        getSettingsByType(SettingType.SearchSettings),
       ]);
 
       setConfig(response);
-      setAppPreferences({ lineageConfig: lineageConfig as LineageSettings });
+      setAppPreferences({
+        lineageConfig: lineageConfig as LineageSettings,
+        searchConfig: searchConfig as SearchSettings,
+      });
     } catch (error) {
       // silent fail
     }

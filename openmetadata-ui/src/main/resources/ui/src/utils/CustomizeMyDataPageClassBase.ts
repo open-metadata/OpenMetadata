@@ -28,7 +28,7 @@ import DescriptionLargeImg from '../assets/img/widgets/description-large.png';
 import DescriptionImg from '../assets/img/widgets/description.png';
 import DomainImg from '../assets/img/widgets/Domain.png';
 import FrequentlyJoinedTablesImg from '../assets/img/widgets/frequently-joined-tables.png';
-import GlossaryTermImg from '../assets/img/widgets/glossary-term.png';
+import GlossaryTermImg from '../assets/img/widgets/glossary-terms.png';
 import OwnersImg from '../assets/img/widgets/owners.png';
 import ReferencesImg from '../assets/img/widgets/References.png';
 import RelatedTermsImg from '../assets/img/widgets/RelatedTerms.png';

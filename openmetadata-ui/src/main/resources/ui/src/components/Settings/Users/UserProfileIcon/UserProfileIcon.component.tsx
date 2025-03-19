@@ -13,7 +13,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { isEmpty, some } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   ReactNode,
   useCallback,
@@ -312,19 +312,6 @@ export const UserProfileIcon = () => {
       showAllPersona,
     ]
   );
-
-  useEffect(() => {
-    let defaultPersona = currentUser?.defaultPersona ?? ({} as EntityReference);
-    if (currentUser?.defaultPersona?.id) {
-      defaultPersona = some(
-        currentUser?.personas,
-        (persona) => persona.id === currentUser?.defaultPersona?.id
-      )
-        ? currentUser?.defaultPersona
-        : ({} as EntityReference);
-    }
-    updateSelectedPersona(defaultPersona);
-  }, [currentUser?.defaultPersona, currentUser?.personas]);
 
   return (
     <Dropdown
