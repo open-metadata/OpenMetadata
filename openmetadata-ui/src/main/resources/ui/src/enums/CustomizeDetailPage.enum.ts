@@ -47,6 +47,7 @@ export enum DetailPageWidgetKeys {
   API_SCHEMA = 'KnowledgePanel.APISchema',
   RELATED_METRICS = 'KnowledgePanel.RelatedMetrics',
   ML_MODEL_FEATURES = 'KnowledgePanel.MlModelFeatures',
+  CONTAINER_SCHEMA = 'KnowledgePanel.ContainerSchema',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

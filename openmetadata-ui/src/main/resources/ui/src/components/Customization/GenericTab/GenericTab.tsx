@@ -43,7 +43,9 @@ export const GenericTab = ({ type }: GenericTabProps) => {
     );
 
     if (page) {
-      return page.tabs.find((t: Tab) => t.id === tab)?.layout;
+      return tab
+        ? page.tabs.find((t: Tab) => t.id === tab)?.layout
+        : page.tabs[0].layout;
     } else {
       return getDefaultWidgetForTab(type, tab);
     }
@@ -51,17 +53,15 @@ export const GenericTab = ({ type }: GenericTabProps) => {
 
   const widgets = useMemo(() => {
     return layout.map((widget: WidgetConfig) => {
-      const renderedWidget = getWidgetsFromKey(type, widget);
-
-      return renderedWidget ? (
+      return (
         <div
-          className="overflow-scroll"
+          className="overflow-auto-y"
           data-grid={widget}
           id={widget.i}
           key={widget.i}>
-          {renderedWidget}
+          {getWidgetsFromKey(type, widget)}
         </div>
-      ) : null;
+      );
     });
   }, [layout, type]);
 

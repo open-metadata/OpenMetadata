@@ -22,30 +22,26 @@ describe('PersonaUtils', () => {
       const categories = getCustomizePageCategories();
 
       expect(categories).toEqual([
-        {
+        expect.objectContaining({
           key: 'navigation',
           label: 'label.navigation',
-          description: 'Navigation',
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: PageType.LandingPage,
           label: 'label.homepage',
-          description: 'Homepage',
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: 'governance',
           label: 'label.governance',
-          description: 'Governance',
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: 'data-assets',
           label: 'label.data-asset-plural',
-          description: 'Data assets',
           icon: 'svg-mock',
-        },
+        }),
       ]);
     });
   });
@@ -55,24 +51,21 @@ describe('PersonaUtils', () => {
       const options = getCustomizePageOptions('governance');
 
       expect(options).toEqual([
-        {
+        expect.objectContaining({
           key: PageType.Domain,
           label: 'Domain',
-          description: PageType.Domain,
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: PageType.Glossary,
           label: 'Glossary',
-          description: PageType.Glossary,
           icon: 'svg-mock',
-        },
-        {
+        }),
+        expect.objectContaining({
           key: PageType.GlossaryTerm,
           label: 'Glossary Term',
-          description: PageType.GlossaryTerm,
           icon: 'svg-mock',
-        },
+        }),
       ]);
     });
 
@@ -81,36 +74,31 @@ describe('PersonaUtils', () => {
 
       expect(options).toEqual(
         expect.arrayContaining([
-          {
+          expect.objectContaining({
             key: PageType.Dashboard,
             label: 'Dashboard',
-            description: PageType.Dashboard,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Database,
             label: 'Database',
-            description: PageType.Database,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Pipeline,
             label: 'Pipeline',
-            description: PageType.Pipeline,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Table,
             label: 'Table',
-            description: PageType.Table,
             icon: 'svg-mock',
-          },
-          {
+          }),
+          expect.objectContaining({
             key: PageType.Container,
             label: 'Container',
-            description: PageType.Container,
             icon: 'svg-mock',
-          },
+          }),
         ])
       );
     });

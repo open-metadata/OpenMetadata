@@ -80,4 +80,16 @@ module.exports = {
   timers: 'fake',
 
   moduleDirectories: ['node_modules', 'src'],
+
+  reporters: [
+    "default",
+    ["jest-junit", {
+        outputDirectory: "../../../../target/test-reports",
+        outputName: "jest-junit.xml",
+        classNameTemplate: "{classname}",
+        titleTemplate: "{title}",
+        ancestorSeparator: " › ",
+        usePathForSuiteName: "true"
+    }]
+  ]
 };
