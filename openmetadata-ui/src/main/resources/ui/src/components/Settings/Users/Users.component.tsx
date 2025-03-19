@@ -165,7 +165,10 @@ const Users = ({
     [previewAsset, assetCount, handleAssetClick, setPreviewAsset, currentTab]
   );
   useEffect(() => {
-    if (subTab === ActivityFeedTabs.MENTIONS) {
+    if (
+      subTab === ActivityFeedTabs.MENTIONS ||
+      subTab === ActivityFeedTabs.TASKS
+    ) {
       setCurrentTab(UserPageTabs.TASK);
     }
   }, [subTab]);
