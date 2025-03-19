@@ -923,7 +923,7 @@ public class ElasticSearchClient implements SearchClient {
       es.org.elasticsearch.action.search.SearchRequest esRequest =
           new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
       esRequest.source(searchSourceBuilder);
-
+      getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
       SearchResponse searchResponse = client.search(esRequest, RequestOptions.DEFAULT);
       return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
     } catch (Exception e) {

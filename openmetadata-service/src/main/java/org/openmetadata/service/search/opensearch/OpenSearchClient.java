@@ -569,34 +569,26 @@ public class OpenSearchClient implements SearchClient {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
 
         // Try using the built-in OpenSearch NLQ feature as a first fallback
-        try {
-          LOG.debug("Trying OpenSearch native NLQ as fallback");
-          Request nlqRequest = new Request("POST", "/_nlq");
-          nlqRequest.setJsonEntity(buildNLQRequest(request));
-          os.org.opensearch.client.Response nlqResponse =
-              client.getLowLevelClient().performRequest(nlqRequest);
-          String responseBody = EntityUtils.toString(nlqResponse.getEntity());
-          return Response.status(Response.Status.OK).entity(responseBody).build();
-        } catch (Exception ex) {
-          LOG.error(
-              "OpenSearch native NLQ failed, falling back to basic search: {}", ex.getMessage());
-          return fallbackToBasicSearch(request, subjectContext);
-        }
+        return useOpenSearchNLQService(request, subjectContext);
       }
     } else {
-      // NLQ service not available, try using OpenSearch's built-in NLQ feature
-      try {
-        LOG.info("NLQ service not available, trying OpenSearch native NLQ");
-        Request nlqRequest = new Request("POST", "/_nlq");
-        nlqRequest.setJsonEntity(buildNLQRequest(request));
-        os.org.opensearch.client.Response nlqResponse =
-            client.getLowLevelClient().performRequest(nlqRequest);
-        String responseBody = EntityUtils.toString(nlqResponse.getEntity());
-        return Response.status(Response.Status.OK).entity(responseBody).build();
-      } catch (Exception e) {
-        LOG.warn("OpenSearch native NLQ failed, falling back to basic search: {}", e.getMessage());
-        return fallbackToBasicSearch(request, subjectContext);
-      }
+      return useOpenSearchNLQService(request, subjectContext);
+    }
+  }
+
+  private Response useOpenSearchNLQService(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    try {
+      LOG.info("NLQ service not available, trying OpenSearch native NLQ");
+      Request nlqRequest = new Request("POST", "/_nlq");
+      nlqRequest.setJsonEntity(buildNLQRequest(request));
+      os.org.opensearch.client.Response nlqResponse =
+          client.getLowLevelClient().performRequest(nlqRequest);
+      String responseBody = EntityUtils.toString(nlqResponse.getEntity());
+      return Response.status(Response.Status.OK).entity(responseBody).build();
+    } catch (Exception e) {
+      LOG.warn("OpenSearch native NLQ failed, falling back to basic search: {}", e.getMessage());
+      return fallbackToBasicSearch(request, subjectContext);
     }
   }
 
