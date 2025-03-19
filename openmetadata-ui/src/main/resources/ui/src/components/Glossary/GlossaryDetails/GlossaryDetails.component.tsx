@@ -48,6 +48,7 @@ import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
@@ -84,7 +85,7 @@ const GlossaryDetails = ({
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
   const { tab: activeTab = EntityTabs.TERMS } =
     useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Glossary);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Glossary);
 
   useGridLayoutDirection();
 
@@ -341,6 +342,10 @@ const GlossaryDetails = ({
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <GenericProvider<Glossary>
       data={updatedGlossary}
@@ -365,7 +370,7 @@ const GlossaryDetails = ({
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.TERMS}
+            activeKey={activeTab}
             className="glossary-details-page-tabs"
             data-testid="tabs"
             items={tabs}

@@ -154,24 +154,24 @@ export const getDatabasePageBaseTabs = ({
       label: (
         <TabsLabel
           count={schemaInstanceCount}
-          id={EntityTabs.SCHEMA}
-          isActive={activeTab === EntityTabs.SCHEMA}
+          id={EntityTabs.SCHEMAS}
+          isActive={activeTab === EntityTabs.SCHEMAS}
           name={t('label.schema-plural')}
         />
       ),
-      key: EntityTabs.SCHEMA,
+      key: EntityTabs.SCHEMAS,
       children: <GenericTab type={PageType.Database} />,
     },
     {
       label: (
         <TabsLabel
           count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          id={EntityTabs.ACTIVITY_FEEDS}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEEDS}
           name={t('label.activity-feed-plural')}
         />
       ),
-      key: EntityTabs.ACTIVITY_FEED,
+      key: EntityTabs.ACTIVITY_FEEDS,
       children: (
         <ActivityFeedTab
           refetchFeed

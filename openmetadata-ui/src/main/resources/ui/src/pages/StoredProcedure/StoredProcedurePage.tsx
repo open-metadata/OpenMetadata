@@ -83,7 +83,9 @@ const StoredProcedurePage = () => {
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const { customizedPage } = useCustomPages(PageType.StoredProcedure);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.StoredProcedure
+  );
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -511,7 +513,7 @@ const StoredProcedurePage = () => {
     }
   }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
 
-  if (isLoading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -557,7 +559,7 @@ const StoredProcedurePage = () => {
           {/* Entity Tabs */}
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.CODE}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

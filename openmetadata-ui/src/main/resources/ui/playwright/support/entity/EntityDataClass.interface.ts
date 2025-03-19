@@ -12,6 +12,7 @@
  */
 export interface EntityDataClassCreationConfig {
   all?: boolean;
+  entityDetails?: boolean;
   table?: boolean;
   topic?: boolean;
   dashboard?: boolean;

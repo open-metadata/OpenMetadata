@@ -56,7 +56,6 @@ export const DATABASE_DUMMY_DATA: Database = {
     fullyQualifiedName: 'Engineering',
     description: 'Domain related engineering development.',
     displayName: 'Engineering',
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
   },
   votes: {
     upVotes: 0,

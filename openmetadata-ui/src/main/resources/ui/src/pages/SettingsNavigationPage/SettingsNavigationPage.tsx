@@ -235,7 +235,6 @@ export const SettingsNavigationPage = ({
         <Col span={24}>
           <Tree
             autoExpandParent
-            // blockNode
             defaultExpandAll
             draggable
             showIcon

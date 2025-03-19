@@ -78,7 +78,9 @@ const ContainerPage = () => {
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Container);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Container
+  );
   const { fqn: decodedContainerName } = useFqn();
 
   // Local states
@@ -446,7 +448,7 @@ const ContainerPage = () => {
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA
     );
   }, [
     isDataModelEmpty,
@@ -490,7 +492,7 @@ const ContainerPage = () => {
   }, [decodedContainerName]);
 
   // Rendering
-  if (isLoading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -543,10 +545,7 @@ const ContainerPage = () => {
           onUpdate={handleContainerUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={
-                tab ??
-                (isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA)
-              }
+              activeKey={tab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

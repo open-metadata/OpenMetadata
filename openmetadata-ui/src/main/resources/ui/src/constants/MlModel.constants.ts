@@ -112,7 +112,7 @@ export const ML_MODEL_DUMMY_DATA: Mlmodel = {
     storage: 's3://path-to-pickle',
     imageRepository: 'https://docker.hub.com/image',
   },
-  server: 'http://my-server.ai/',
+  server: 'https://my-server.ai/',
   owners: [],
   followers: [],
   tags: [],

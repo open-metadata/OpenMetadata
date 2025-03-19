@@ -81,12 +81,12 @@ export const getDataBaseSchemaPageBaseTabs = ({
       label: (
         <TabsLabel
           count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          id={EntityTabs.ACTIVITY_FEEDS}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEEDS}
           name={t('label.activity-feed-plural')}
         />
       ),
-      key: EntityTabs.ACTIVITY_FEED,
+      key: EntityTabs.ACTIVITY_FEEDS,
       children: (
         <ActivityFeedTab
           refetchFeed

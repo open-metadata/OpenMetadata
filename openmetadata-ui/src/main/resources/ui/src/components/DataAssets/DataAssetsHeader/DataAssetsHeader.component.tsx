@@ -44,7 +44,6 @@ import {
 } from '../../../enums/entity.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
-import { Metric } from '../../../generated/entity/data/metric';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -215,6 +214,7 @@ export const DataAssetsHeader = ({
 
     return serviceType ? (
       <img
+        alt={get(dataAsset, 'service.displayName', '')}
         className="header-icon"
         src={serviceUtilClassBase.getServiceTypeLogo(
           dataAsset as SearchSourceAlias
@@ -367,7 +367,7 @@ export const DataAssetsHeader = ({
       fetchActiveAnnouncement();
       fetchDQFailureCount();
     }
-    if (entityType === EntityType.CONTAINER) {
+    if (entityType === EntityType.CONTAINER && !isCustomizedView) {
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
@@ -481,7 +481,9 @@ export const DataAssetsHeader = ({
         <Col className="d-flex flex-col gap-3" span={24}>
           <TitleBreadcrumb
             loading={isBreadcrumbLoading}
-            titleLinks={breadcrumbs}
+            titleLinks={breadcrumbs.map((link) =>
+              isCustomizedView ? { ...link, url: '', noLink: true } : link
+            )}
           />
           <Row>
             <Col flex="auto">
@@ -495,6 +497,7 @@ export const DataAssetsHeader = ({
                 followers={followers}
                 handleFollowingClick={handleFollowingClick}
                 icon={icon}
+                isCustomizedView={isCustomizedView}
                 isFollowing={isFollowing}
                 isFollowingLoading={isFollowingLoading}
                 name={dataAsset?.name}
@@ -690,7 +693,7 @@ export const DataAssetsHeader = ({
 
             {entityType === EntityType.METRIC && onMetricUpdate && (
               <MetricHeaderInfo
-                metricDetails={dataAsset as Metric}
+                metricDetails={dataAsset}
                 metricPermissions={permissions}
                 onUpdateMetricDetails={onMetricUpdate}
               />

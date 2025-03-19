@@ -45,6 +45,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -67,7 +68,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { currentUser } = useApplicationStore();
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.MlModel);
+  const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
 
   const { fqn: decodedMlModelFqn } = useFqn();
 
@@ -360,6 +361,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     customizedPage?.tabs,
   ]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
       className="bg-white"
@@ -393,7 +398,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onUpdate={onMlModelUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.FEATURES}
+              activeKey={activeTab}
               className="entity-details-page-tabs"
               data-testid="tabs"
               items={tabs}

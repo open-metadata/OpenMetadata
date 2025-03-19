@@ -241,7 +241,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 onUpdate={() => Promise.resolve()}>
                 <Col span={24}>
                   <Tabs
-                    activeKey={tab ?? EntityTabs.MODEL}
+                    activeKey={tab}
                     items={tabItems}
                     onChange={handleTabChange}
                   />

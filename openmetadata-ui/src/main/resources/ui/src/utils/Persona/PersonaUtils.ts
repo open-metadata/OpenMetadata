@@ -63,25 +63,26 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'navigation',
       label: i18n.t('label.navigation'),
-      description: 'Navigation',
+      description: 'Customize left sidebar ',
       icon: ENTITY_ICONS[camelCase('Navigation')],
     },
     {
       key: PageType.LandingPage,
       label: i18n.t('label.homepage'),
-      description: 'Homepage',
+      description: 'Customize the My data page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('Homepage')],
     },
     {
       key: 'governance',
       label: i18n.t('label.governance'),
-      description: 'Governance',
+      description: 'Customize the Govern pages with widget of your preference',
       icon: ENTITY_ICONS[camelCase('GOVERN')],
     },
     {
       key: 'data-assets',
       label: i18n.t('label.data-asset-plural'),
-      description: 'Data assets',
+      description:
+        'Customize the entity detail page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('data-assets')],
     },
   ];
@@ -90,7 +91,9 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
 const generateSettingItems = (pageType: PageType): SettingMenuItem => ({
   key: pageType,
   label: startCase(pageType),
-  description: pageType,
+  description: i18n.t('message.entity-customize-description', {
+    entity: startCase(pageType),
+  }),
   icon: ENTITY_ICONS[pageType],
 });
 

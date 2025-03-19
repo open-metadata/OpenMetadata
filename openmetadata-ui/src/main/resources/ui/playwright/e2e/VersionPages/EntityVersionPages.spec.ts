@@ -33,6 +33,7 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   container: true,
   searchIndex: true,
   dashboardDataModel: true,
+  entityDetails: true,
 };
 
 const entities = [
