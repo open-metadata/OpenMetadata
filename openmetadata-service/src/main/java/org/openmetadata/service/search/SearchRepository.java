@@ -37,6 +37,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCR
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -412,10 +413,7 @@ public class SearchRepository {
         ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
         ChangeDescription changeDescription;
 
-        if (incrementalChangeDescription != null
-            && (!incrementalChangeDescription.getFieldsAdded().isEmpty()
-                || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
-                || !incrementalChangeDescription.getFieldsDeleted().isEmpty())) {
+        if (isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
           changeDescription = incrementalChangeDescription;
         } else {
           changeDescription = entity.getChangeDescription();
