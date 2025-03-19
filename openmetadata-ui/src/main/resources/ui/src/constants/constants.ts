@@ -126,6 +126,8 @@ export const ROUTES = {
   FORBIDDEN: '/403',
   UNAUTHORISED: '/unauthorised',
   LOGOUT: '/logout',
+  PLATFORM_LINEAGE: '/lineage',
+  PLATFORM_LINEAGE_WITH_FQN: `/lineage/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -328,6 +330,9 @@ export const ENTITY_PATH = {
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
   metrics: 'metric',
+  dataAssets: 'dataAsset',
+  query: 'query',
+  testCases: 'testCase',
   domains: 'domain',
 };
 

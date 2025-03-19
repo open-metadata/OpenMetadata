@@ -30,6 +30,15 @@
     background-color: @grey-2;
   }
 
+  .chart-container {
+    position: relative;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 0.6;
+  }
+
   .assets-list-container {
     flex: 0.5;
     padding: 16px;
@@ -39,6 +48,21 @@
     background-color: @grey-1;
     border-radius: @border-radius-xs;
     height: fit-content;
+  }
+
+  .tooltip-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 8px;
+    z-index: 10;
+    pointer-events: none;
+    text-align: center;
   }
 
   .total-data-assets-info {

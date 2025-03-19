@@ -625,7 +625,7 @@ const SchemaTable = () => {
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
           extraTableFilters={getBulkEditButton(
-            tablePermissions.EditAll,
+            tablePermissions.EditAll && !deleted,
             handleEditTable
           )}
           locale={{
