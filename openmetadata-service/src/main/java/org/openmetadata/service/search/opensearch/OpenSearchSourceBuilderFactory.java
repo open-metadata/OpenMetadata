@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
+import static os.org.opensearch.index.query.MultiMatchQueryBuilder.Type.MOST_FIELDS;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,7 +22,6 @@ import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.index.query.BoolQueryBuilder;
-import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
 import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
@@ -47,7 +47,7 @@ public class OpenSearchSourceBuilderFactory
   public QueryStringQueryBuilder buildSearchQueryBuilder(String query, Map<String, Float> fields) {
     return QueryBuilders.queryStringQuery(query)
         .fields(fields)
-        .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+        .type(MOST_FIELDS)
         .defaultOperator(Operator.AND)
         .fuzziness(Fuzziness.AUTO)
         .fuzzyPrefixLength(3)
@@ -150,25 +150,16 @@ public class OpenSearchSourceBuilderFactory
     }
 
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
-    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
-      baseQuery.must(QueryBuilders.matchAllQuery());
-    } else {
-      MultiMatchQueryBuilder multiMatchQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
-              .prefixLength(1)
-              .operator(Operator.AND)
-              .tieBreaker(0.3f);
+    QueryStringQueryBuilder queryStringQueryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(fields)
+            .type(MOST_FIELDS)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyPrefixLength(3)
+            .tieBreaker(0.3f);
 
-      for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
-        String fieldName = fieldEntry.getKey();
-        Float boost = fieldEntry.getValue();
-        multiMatchQueryBuilder.field(fieldName, boost);
-      }
-
-      baseQuery.must(multiMatchQueryBuilder);
-    }
+    baseQuery.must(queryStringQueryBuilder);
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {

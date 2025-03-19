@@ -151,25 +151,16 @@ public class ElasticSearchSourceBuilderFactory
     }
     BoolQueryBuilder baseQuery = QueryBuilders.boolQuery();
 
-    if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
-      baseQuery.must(QueryBuilders.matchAllQuery());
-    } else {
-      MultiMatchQueryBuilder multiMatchQueryBuilder =
-          QueryBuilders.multiMatchQuery(query)
-              .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
-              .fuzziness(Fuzziness.AUTO)
-              .prefixLength(1)
-              .operator(Operator.AND)
-              .tieBreaker(0.3f);
+    QueryStringQueryBuilder queryStringQueryBuilder =
+        QueryBuilders.queryStringQuery(query)
+            .fields(fields)
+            .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
+            .defaultOperator(Operator.AND)
+            .fuzziness(Fuzziness.AUTO)
+            .fuzzyPrefixLength(3)
+            .tieBreaker(0.3f);
 
-      for (Map.Entry<String, Float> fieldEntry : fields.entrySet()) {
-        String fieldName = fieldEntry.getKey();
-        Float boost = fieldEntry.getValue();
-        multiMatchQueryBuilder.field(fieldName, boost);
-      }
-
-      baseQuery.must(multiMatchQueryBuilder);
-    }
+    baseQuery.must(queryStringQueryBuilder);
 
     List<FunctionScoreQueryBuilder.FilterFunctionBuilder> functions = new ArrayList<>();
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
