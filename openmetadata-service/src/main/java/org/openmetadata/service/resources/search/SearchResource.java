@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
+import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import es.org.elasticsearch.action.search.SearchResponse;
@@ -23,12 +24,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import javax.ws.rs.Consumes;
 import javax.validation.Valid;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -43,6 +46,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.search.PreviewSearchRequest;
+import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -51,6 +56,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 @Path("/v1/search")
@@ -75,7 +81,7 @@ public class SearchResource {
       operationId = "searchEntitiesWithQuery",
       summary = "Search entities",
       description =
-          "Search entities using query test. Use query params `from` and `size` for pagination. Use "
+          "Search entities using query text. Use query params `from` and `size` for pagination. Use "
               + "`sort_field` to sort the results in `sort_order`.",
       responses = {
         @ApiResponse(
@@ -183,7 +189,6 @@ public class SearchResource {
     if (nullOrEmpty(query)) {
       query = "*";
     }
-
     // Add Domain Filter
     List<EntityReference> domains = new ArrayList<>();
     SubjectContext subjectContext = getSubjectContext(securityContext);
@@ -260,6 +265,94 @@ public class SearchResource {
         !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
 
     return searchRepository.search(request, subjectContext);
+  }
+
+  @POST
+  @Path("/preview")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "previewSearch",
+      summary = "Preview Search Results",
+      description =
+          "Preview search results based on provided SearchSettings without saving changes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Search preview response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response previewSearch(
+      @Context SecurityContext securityContext,
+      @RequestBody(description = "Preview request containing search settings", required = true)
+          PreviewSearchRequest previewRequest)
+      throws IOException {
+
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+
+    SearchRequest searchRequest =
+        new SearchRequest.ElasticSearchRequestBuilder(
+                previewRequest.getQuery(),
+                previewRequest.getSize(),
+                Entity.getSearchRepository().getIndexOrAliasName(previewRequest.getIndex()))
+            .from(previewRequest.getFrom())
+            .queryFilter(previewRequest.getQueryFilter())
+            .postFilter(previewRequest.getPostFilter())
+            .fetchSource(previewRequest.getFetchSource())
+            .trackTotalHits(previewRequest.getTrackTotalHits())
+            .sortFieldParam(previewRequest.getSortField())
+            .sortOrder(previewRequest.getSortOrder().value())
+            .includeSourceFields(previewRequest.getIncludeSourceFields())
+            .explain(previewRequest.getExplain())
+            .build();
+
+    return searchRepository.previewSearch(
+        searchRequest, subjectContext, previewRequest.getSearchSettings());
+  }
+
+  @GET
+  @Path("/nlq/query")
+  @Operation(
+      operationId = "searchEntitiesWithNLQ",
+      summary = "Search entities using Natural Language Query (NLQ)",
+      description = "Search entities using Natural Language Queries (NLQ).",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "NLQ search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchWithNLQ(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ElasticSearch/OpenSearch index name", required = true)
+          @DefaultValue("table_search_index")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "NLQ query string in natural language") @QueryParam("q")
+          String nlqQuery,
+      @Parameter(description = "From offset for pagination") @DefaultValue("0") @QueryParam("from")
+          int from,
+      @Parameter(description = "Number of results to return")
+          @DefaultValue("10")
+          @QueryParam("size")
+          int size)
+      throws IOException {
+
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+
+    SearchRequest request =
+        new SearchRequest.ElasticSearchRequestBuilder(
+                nlqQuery, size, Entity.getSearchRepository().getIndexOrAliasName(index))
+            .from(from)
+            .build();
+
+    return searchRepository.searchWithNLQ(request, subjectContext);
   }
 
   @GET
@@ -458,30 +551,31 @@ public class SearchResource {
     return searchRepository.aggregate(index, fieldName, value, query);
   }
 
-  @POST
-  @Path("/aggregate")
+  @GET
+  @Path("/reindex/stream/status")
   @Operation(
-      operationId = "aggregateSearchRequest",
-      summary = "Get aggregated Search Request",
-      description = "Get aggregated fields from entities.",
+      operationId = "getStreamJobStatus",
+      summary = "Get Stream Job Latest Status",
+      description = "Stream Job Status",
       responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Table Aggregate API",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = SearchResponse.class)))
+        @ApiResponse(responseCode = "200", description = "Success"),
+        @ApiResponse(responseCode = "404", description = "Status not found")
       })
-  public Response aggregateSearchRequest(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid SearchRequest searchRequest)
-      throws IOException {
-    return searchRepository.aggregate(
-        searchRequest.getIndex(),
-        searchRequest.getFieldName(),
-        searchRequest.getFieldValue(),
-        searchRequest.getQuery());
+  public Response reindexAllJobLastStatus(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // Only admins  can issue a reindex request
+    authorizer.authorizeAdmin(securityContext);
+    // Check if there is a running job for reindex for requested entity
+    String jobRecord;
+    jobRecord =
+        Entity.getCollectionDAO()
+            .entityExtensionTimeSeriesDao()
+            .getLatestExtension(ELASTIC_SEARCH_ENTITY_FQN_STREAM, ELASTIC_SEARCH_EXTENSION);
+    if (jobRecord != null) {
+      return Response.status(Response.Status.OK)
+          .entity(JsonUtils.readValue(jobRecord, EventPublisherJob.class))
+          .build();
+    }
+    return Response.status(Response.Status.NOT_FOUND).entity("No Last Run.").build();
   }
 }

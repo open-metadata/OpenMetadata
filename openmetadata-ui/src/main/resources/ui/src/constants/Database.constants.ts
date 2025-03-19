@@ -56,7 +56,6 @@ export const DATABASE_DUMMY_DATA: Database = {
     fullyQualifiedName: 'Engineering',
     description: 'Domain related engineering development.',
     displayName: 'Engineering',
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/domains/31c2b84e-b87a-4e47-934f-9c5309fbb7c3',
   },
   votes: {
     upVotes: 0,
@@ -65,6 +64,56 @@ export const DATABASE_DUMMY_DATA: Database = {
     downVoters: [],
   },
 };
+
+export const DATABASE_SCHEMAS_DUMMY_DATA: DatabaseSchema[] = [
+  {
+    id: 'a17d3132-b844-4157-9645-ad543f64217d',
+    name: 'shopify',
+    fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+    description:
+      'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+    version: 0.1,
+    updatedAt: 1742103676753,
+    updatedBy: 'admin',
+    owners: [],
+    service: {
+      id: 'b4f35a48-0972-4d81-af2b-9082df4e427f',
+      type: 'databaseService',
+      name: 'sample_data',
+      fullyQualifiedName: 'sample_data',
+      displayName: 'sample_data',
+      deleted: false,
+    },
+    serviceType: DatabaseServiceType.BigQuery,
+    database: {
+      id: '46a43167-fe50-435b-86de-1fd02cfdb879',
+      type: 'database',
+      name: 'ecommerce_db',
+      fullyQualifiedName: 'sample_data.ecommerce_db',
+      description:
+        'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+      displayName: 'ecommerce_db',
+      deleted: false,
+    },
+    usageSummary: {
+      dailyStats: {
+        count: 32,
+        percentileRank: 0,
+      },
+      weeklyStats: {
+        count: 64,
+        percentileRank: 0,
+      },
+      monthlyStats: {
+        count: 64,
+        percentileRank: 0,
+      },
+      date: new Date('2025-03-18'),
+    },
+    deleted: false,
+    sourceUrl: 'https://www.ecommerce-db.com/shopify',
+  },
+];
 
 export const DATABASE_SCHEMA_DUMMY_DATA: DatabaseSchema = {
   id: '9f127bdc-d060-4fac-ae7b-c635933fc2e0',

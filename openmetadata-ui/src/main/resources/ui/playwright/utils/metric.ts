@@ -27,7 +27,7 @@ export const updateMetricType = async (page: Page, metric: string) => {
 
   // verify the metric type is updated
   await expect(
-    page.getByText(`Metric Type: ${metric.toUpperCase()}`)
+    page.getByText(`Metric Type ${metric.toUpperCase()}`)
   ).toBeVisible();
 };
 
@@ -60,7 +60,7 @@ export const updateUnitOfMeasurement = async (
 
   // verify the unit of measurement is updated
   await expect(
-    page.getByText(`Unit of Measurement: ${unitOfMeasurement.toUpperCase()}`)
+    page.getByText(`Unit of Measurement ${unitOfMeasurement.toUpperCase()}`)
   ).toBeVisible();
 };
 
@@ -88,7 +88,7 @@ export const updateGranularity = async (page: Page, granularity: string) => {
 
   // verify the granularity is updated
   await expect(
-    page.getByText(`Granularity: ${granularity.toUpperCase()}`)
+    page.getByText(`Granularity ${granularity.toUpperCase()}`)
   ).toBeVisible();
 };
 
@@ -260,20 +260,20 @@ export const addMetric = async (page: Page) => {
 
   // verify the metric type is updated
   await expect(
-    page.getByText(`Metric Type: ${metricData.metricType.toUpperCase()}`)
+    page.getByText(`Metric Type ${metricData.metricType.toUpperCase()}`)
   ).toBeVisible();
 
   // verify the unit of measurement is updated
 
   await expect(
     page.getByText(
-      `Unit of Measurement: ${metricData.unitOfMeasurement.toUpperCase()}`
+      `Unit of Measurement ${metricData.unitOfMeasurement.toUpperCase()}`
     )
   ).toBeVisible();
 
   // verify the granularity is updated
   await expect(
-    page.getByText(`Granularity: ${metricData.granularity.toUpperCase()}`)
+    page.getByText(`Granularity ${metricData.granularity.toUpperCase()}`)
   ).toBeVisible();
 
   // clean the created metric

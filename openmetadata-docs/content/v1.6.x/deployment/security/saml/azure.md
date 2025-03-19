@@ -92,12 +92,14 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
 
 - Open the downloaded metadata xml file, and populate the following properties in `openmetadata.yml`
 ```yaml
+  authenticationConfiguration:
+    provider: ${AUTHENTICATION_PROVIDER:-saml}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
       entityId: ${SAML_IDP_ENTITY_ID:-"https://mocksaml.com/api/saml/sso"}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-"https://saml.example.com/entityid"}
-      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""} #Pass the certificate as a string
       authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}
     sp:
@@ -120,7 +122,9 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
       keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
 ```
 
-- Populate the above config from xml metadata
+- Populate the above config from [xml metadata](/deployment/security/saml/xml_file)
+
+ {% image src="/images/v1.6/deployment/security/saml/aws/saml-aws-8.png" alt="populate-metadata" /%}
 
 - IDP Config         
     `entityID` -> Populate it from Metadata XML Entity ID

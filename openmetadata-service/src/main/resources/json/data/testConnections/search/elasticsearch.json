@@ -1,7 +1,7 @@
 {
     "name": "ElasticSearch",
     "displayName": "ElasticSearch Test Connection",
-    "description": "This Test Connection validates the access against the server and basic metadata extraction of dashboards and charts.",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of indexes.",
     "steps": [
         {
             "name": "CheckAccess",

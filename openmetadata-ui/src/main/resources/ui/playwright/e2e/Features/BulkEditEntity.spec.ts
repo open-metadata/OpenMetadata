@@ -166,6 +166,10 @@ test.describe('Bulk Edit Entity', () => {
 
       await toastNotification(page, /details updated successfully/);
 
+      await page.click('[data-testid="databases"]');
+
+      await page.waitForLoadState('networkidle');
+
       // Verify Details updated
       await expect(page.getByTestId('column-name')).toHaveText(
         `${table.database.name}${databaseDetails.displayName}`
