@@ -81,8 +81,8 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   };
 
-  const handleSingleDomainSave = async () => {
-    const selectedFqn = selectedDomains[0]?.fullyQualifiedName;
+  const handleSingleDomainSave = async (domains?: Domain[]) => {
+    const selectedFqn = (domains ?? selectedDomains)[0]?.fullyQualifiedName;
     const initialFqn = value?.[0];
 
     if (selectedFqn !== initialFqn) {
@@ -136,8 +136,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       }
 
       setSelectedDomains(selectedData);
-    } else {
-      handleSingleDomainSave();
+      handleSingleDomainSave(selectedData);
     }
   };
 
