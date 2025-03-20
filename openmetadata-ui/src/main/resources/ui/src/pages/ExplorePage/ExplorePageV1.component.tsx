@@ -12,7 +12,7 @@
  */
 
 import { Typography } from 'antd';
-import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
+import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -49,6 +49,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useSearchStore } from '../../hooks/useSearchStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { nlqSearch, searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
@@ -75,8 +76,8 @@ const ExplorePageV1: FunctionComponent = () => {
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
-  const { isNLPActive } = useApplicationStore();
-  const isNLPEnabled = searchClassBase.isNLPEnabled() && isNLPActive;
+  const { isNLPActive, isNLPEnabled } = useSearchStore();
+  const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
 
   const { tab } = useParams<UrlParams>();
 
@@ -334,6 +335,20 @@ const ExplorePageV1: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
+  const getSearchRequest = useCallback(
+    (combinedQueryFilter) => {
+      const isQuickFiltersEmpty = !isUndefined(
+        combinedQueryFilter?.query?.bool?.must
+      );
+      if (isQuickFiltersEmpty) {
+        return searchQuery;
+      }
+
+      return isNLPRequestEnabled ? nlqSearch : searchQuery;
+    },
+    [isNLPRequestEnabled]
+  );
+
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
       setAdvancedSearchQuickFilters(undefined);
@@ -361,6 +376,8 @@ const ExplorePageV1: FunctionComponent = () => {
       queryFilter as unknown as QueryFilterInterface
     );
 
+    const searchRequest = getSearchRequest(combinedQueryFilter);
+
     setIsLoading(true);
 
     const searchPayload = {
@@ -375,8 +392,6 @@ const ExplorePageV1: FunctionComponent = () => {
       pageSize: size,
       includeDeleted: showDeleted,
     };
-
-    const searchRequest = isNLPEnabled ? nlqSearch : searchQuery;
 
     const searchAPICall = searchRequest(searchPayload).then((res) => {
       setSearchResults(res as SearchResponse<ExploreSearchIndex>);
@@ -398,9 +413,7 @@ const ExplorePageV1: FunctionComponent = () => {
         filters: '',
       };
 
-      const countRequest = isNLPEnabled ? nlqSearch : searchQuery;
-
-      const countAPICall = countRequest(countPayload).then((res) => {
+      const countAPICall = searchRequest(countPayload).then((res) => {
         const buckets = res.aggregations['entityType'].buckets;
         const counts: Record<string, number> = {};
 

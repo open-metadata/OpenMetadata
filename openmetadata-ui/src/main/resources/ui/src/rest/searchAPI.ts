@@ -262,3 +262,9 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
 
   return formatSearchQueryResponse(response.data);
 };
+
+export const getNLPEnabledStatus = async () => {
+  const response = await APIClient.get<boolean>('/system/search/nlq');
+
+  return response.data;
+};

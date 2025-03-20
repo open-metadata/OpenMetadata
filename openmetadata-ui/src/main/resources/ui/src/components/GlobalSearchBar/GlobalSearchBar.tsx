@@ -15,7 +15,13 @@ import { Button, Divider, Input, Popover, Select } from 'antd';
 import classNames from 'classnames';
 import { debounce, isString } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
@@ -26,6 +32,8 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useSearchStore } from '../../hooks/useSearchStore';
+import { getNLPEnabledStatus } from '../../rest/searchAPI';
 import { addToRecentSearched } from '../../utils/CommonUtils';
 import {
   getExplorePath,
@@ -39,8 +47,9 @@ import './global-search-bar.less';
 
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const { searchCriteria, updateSearchCriteria, isNLPActive, setIsNLPActive } =
-    useApplicationStore();
+  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
+  const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
+    useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
@@ -50,7 +59,6 @@ export const GlobalSearchBar = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const history = useHistory();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
-  const isNLPEnabled = searchClassBase.isNLPEnabled();
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
@@ -155,6 +163,16 @@ export const GlobalSearchBar = () => {
     }
   };
 
+  const fetchNLPEnabledStatus = useCallback(() => {
+    getNLPEnabledStatus().then((enabled) => {
+      setNLPEnabled(enabled);
+    });
+  }, [setNLPEnabled]);
+
+  useEffect(() => {
+    fetchNLPEnabledStatus();
+  }, []);
+
   return (
     <div
       className="flex-center search-container relative"
@@ -169,7 +187,7 @@ export const GlobalSearchBar = () => {
             data-testid="nlp-suggestions-button"
             icon={<Icon component={IconSuggestionsBlue} />}
             type="text"
-            onClick={() => setIsNLPActive(!isNLPActive)}
+            onClick={() => setNLPActive(!isNLPActive)}
           />
           <Divider className="h-full m-r-0 m-l-md" type="vertical" />
         </>

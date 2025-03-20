@@ -45,7 +45,6 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   cachedEntityData: {},
   selectedPersona: {} as EntityReference,
   searchCriteria: '',
-  isNLPActive: false,
   inlineAlertDetails: undefined,
   applications: [],
   appPreferences: {},
@@ -60,10 +59,6 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
 
   setSelectedPersona: (persona: EntityReference) => {
     set({ selectedPersona: persona });
-  },
-
-  setIsNLPActive: (isNLPActive: boolean) => {
-    set({ isNLPActive });
   },
 
   setApplicationConfig: (config: UIThemePreference) => {
