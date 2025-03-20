@@ -384,6 +384,10 @@ class JSONLogicSearchClassBase {
         showNot: false,
         valueLabel: t('label.criteria') + ':',
         renderButton: renderJSONLogicQueryBuilderButtons,
+        customFieldSelectProps: {
+          ...this.baseConfig.settings.customFieldSelectProps,
+          popupClassName: 'json-logic-field-select',
+        },
       },
     };
 
