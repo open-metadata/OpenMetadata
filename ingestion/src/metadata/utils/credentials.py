@@ -103,7 +103,7 @@ def build_google_credentials_dict(
         private_key_str = private_key_str.replace("\\n", "\n")
         validate_private_key(private_key_str)
 
-        # Assume first defined project is the one on behalf of which will dbt gcs integration work
+        # Assume first defined project is the one on behalf of which clients will work
         project_id = gcp_values.projectId.root \
             if isinstance(gcp_values.projectId.root, str) \
             else gcp_values.projectId.root[0]
