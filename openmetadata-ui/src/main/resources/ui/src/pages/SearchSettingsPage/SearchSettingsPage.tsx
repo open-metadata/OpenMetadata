@@ -93,26 +93,11 @@ const SearchSettingsPage = () => {
     }));
   }, [searchConfig]);
 
-  // Transform entityFields into options for the selects
   const entityOptions = useMemo(() => {
-    return entityFields.map((entity) => ({
-      label: entity.entityType,
-      value: entity.entityType,
-    }));
-  }, [entityFields]);
+    const allFields = entityFields.flatMap((entity) => entity.fields);
+    const uniqueFields = [...new Set(allFields)];
 
-  // Create a mapping of entity types to their fields
-  const fieldOptionsByEntity = useMemo(() => {
-    const options: Record<string, { label: string; value: string }[]> = {};
-
-    entityFields.forEach((entity) => {
-      options[entity.entityType] = entity.fields.map((field) => ({
-        label: field,
-        value: field,
-      }));
-    });
-
-    return options;
+    return uniqueFields;
   }, [entityFields]);
 
   const fetchSearchConfig = async () => {
@@ -376,7 +361,10 @@ const SearchSettingsPage = () => {
   }
 
   return (
-    <PageLayoutV1 className="search-settings" pageTitle={t('label.search')}>
+    <PageLayoutV1
+      className="search-settings"
+      mainContainerClassName="p-t-0"
+      pageTitle={t('label.search')}>
       <Row className="p-y-md p-x-lg settings-row" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -463,6 +451,7 @@ const SearchSettingsPage = () => {
                     handleDeleteTermBoost={handleDeleteTermBoost}
                     handleTermBoostChange={handleTermBoostChange}
                     showNewTermBoost={showNewTermBoost}
+                    termBoostCardClassName="settings-term-boost-card"
                     termBoosts={searchConfig?.globalSettings?.termBoosts ?? []}
                   />
                 </Col>
@@ -548,7 +537,6 @@ const SearchSettingsPage = () => {
 
       <FieldValueBoostModal
         entityOptions={entityOptions}
-        fieldOptionsByEntity={fieldOptionsByEntity}
         open={showFieldValueBoostModal}
         selectedBoost={selectedFieldValueBoost}
         onCancel={() => {

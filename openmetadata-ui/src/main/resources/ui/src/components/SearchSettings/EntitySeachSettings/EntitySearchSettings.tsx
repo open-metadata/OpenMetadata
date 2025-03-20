@@ -439,12 +439,15 @@ const EntitySearchSettings = () => {
       ),
     };
 
-    setPreviewSearchConfig(updatedConfig);
+    if (searchSettings.searchFields?.length) {
+      setPreviewSearchConfig(updatedConfig);
+    }
   }, [searchSettings, searchConfig, entityType]);
 
   return (
     <PageLayoutV1
       className="entity-search-settings"
+      mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
       <Row
         className="entity-search-settings-header bg-white m-b-lg p-box"
@@ -454,7 +457,7 @@ const EntitySearchSettings = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col className="flex items-center gap-4" span={24}>
-          <Icon component={entityData?.icon} style={{ fontSize: '55px' }} />
+          <Icon className="entity-icon" component={entityData?.icon} />
           <div
             className="page-header-container"
             data-testid="page-header-container">
@@ -591,6 +594,7 @@ const EntitySearchSettings = () => {
                     handleDeleteTermBoost={handleDeleteTermBoost}
                     handleTermBoostChange={handleTermBoostChange}
                     showNewTermBoost={showNewTermBoost}
+                    termBoostCardClassName="term-boost-card"
                     termBoosts={searchSettings.termBoosts ?? []}
                   />
                 </div>

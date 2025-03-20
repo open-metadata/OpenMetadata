@@ -13,6 +13,7 @@
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
@@ -25,6 +26,7 @@ import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
 import './term-boost.less';
 
 interface TermBoostProps {
+  className?: string;
   termBoost: TermBoost;
   onTermBoostChange: (termBoost: TermBoost) => void;
   onDeleteBoost: (termValue: string) => void;
@@ -32,6 +34,7 @@ interface TermBoostProps {
 }
 
 const TermBoostComponent: React.FC<TermBoostProps> = ({
+  className,
   termBoost,
   onTermBoostChange,
   onDeleteBoost,
@@ -122,7 +125,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
   };
 
   return (
-    <div className="term-boost">
+    <div className={classNames('term-boost', className)}>
       <Row className="p-box d-flex flex-column">
         <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
           <AsyncSelect
