@@ -14,7 +14,7 @@
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
 import { t } from 'i18next';
-import { isArray, startCase } from 'lodash';
+import { isArray, isObject, startCase } from 'lodash';
 import React from 'react';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
@@ -33,7 +33,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
 
   const generateOptions = () => {
     if (
-      typeof props.schema.items === 'object' &&
+      isObject(props.schema.items) &&
       !isArray(props.schema.items) &&
       props.schema.items.type === 'string' &&
       isArray(props.schema.items.enum)
