@@ -1257,7 +1257,7 @@ public class SearchRepository {
     try {
       NaturalLanguageSearchConfiguration nlqConfig = config.getNaturalLanguageSearch();
       if (nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled())) {
-        nlqService = NLQServiceFactory.createNLQService(nlqConfig);
+        nlqService = NLQServiceFactory.createNLQService(config);
         LOG.info("Initialized NLQ service with provider: {}", nlqConfig.getProviderClass());
       } else {
         LOG.info("Natural language search is not enabled");
