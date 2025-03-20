@@ -3117,7 +3117,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // delete operation
         if (!Objects.equals(updated.getDeleted(), original.getDeleted())
             && Boolean.TRUE.equals(updated.getDeleted())
-            && (!isNullOrEmptyChangeDescription(changeDescription))) {
+            && isNullOrEmptyChangeDescription(changeDescription)
+            && (Objects.equals(original.getVersion(), updated.getVersion()))) {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
