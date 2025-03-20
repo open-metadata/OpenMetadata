@@ -232,6 +232,20 @@ class PowerbiSource(DashboardServiceSource):
         for workspace in self._prepare_workspace_data():
             self.workspace_data.append(workspace)
             self.context.get().workspace = workspace
+            self.filtered_dashboards = []
+            for dashboard in self.get_dashboards_list() or []:
+                dashboard_details = self.get_dashboard_details(dashboard)
+                dashboard_name = self.get_dashboard_name(dashboard_details)
+                if filter_by_dashboard(
+                    self.source_config.dashboardFilterPattern,
+                    dashboard_name,
+                ):
+                    self.status.filter(
+                        dashboard_name,
+                        "Dashboard Filtered Out",
+                    )
+                    continue
+                self.filtered_dashboards.append(dashboard_details)
             yield workspace
 
     def get_dashboards_list(
@@ -302,18 +316,8 @@ class PowerbiSource(DashboardServiceSource):
         Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
         try:
-            for dashboard in self.get_dashboards_list() or []:
+            for dashboard in self.filtered_dashboards or []:
                 dashboard_details = self.get_dashboard_details(dashboard)
-                dashboard_name = self.get_dashboard_name(dashboard_details)
-                if filter_by_dashboard(
-                    self.source_config.dashboardFilterPattern,
-                    dashboard_name,
-                ):
-                    self.status.filter(
-                        dashboard_name,
-                        "Dashboard Filtered Out",
-                    )
-                    continue
                 if isinstance(dashboard_details, PowerBIDashboard):
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
@@ -377,7 +381,7 @@ class PowerbiSource(DashboardServiceSource):
         Returns:
             Iterable[Chart]
         """
-        for dashboard in self.get_dashboards_list() or []:
+        for dashboard in self.filtered_dashboards or []:
             dashboard_details = self.get_dashboard_details(dashboard)
             if isinstance(dashboard_details, PowerBIDashboard):
                 charts = dashboard_details.tiles
@@ -845,7 +849,7 @@ class PowerbiSource(DashboardServiceSource):
         We will build the logic to build the logic as below
         tables - datamodel - report - dashboard
         """
-        for dashboard in self.get_dashboards_list() or []:
+        for dashboard in self.filtered_dashboards or []:
             dashboard_details = self.get_dashboard_details(dashboard)
             try:
                 if isinstance(dashboard_details, PowerBIReport):
