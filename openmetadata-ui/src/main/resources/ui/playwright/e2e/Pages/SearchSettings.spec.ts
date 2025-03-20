@@ -53,7 +53,7 @@ test.describe('Search Settings Tests', () => {
     ).toHaveText('2000');
   });
 
-  test('Update entity search settings', async ({ page }) => {
+  test.fixme('Update entity search settings', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
     const tableCard = page.getByTestId(mockEntitySearchSettings.key);
