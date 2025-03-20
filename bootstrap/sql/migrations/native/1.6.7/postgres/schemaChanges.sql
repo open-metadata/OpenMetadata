@@ -1,4 +1,3 @@
-ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_timestamp(timestamp);
-ALTER TABLE workflow_instance_time_series ADD INDEX workflow_instance_time_series_timestamp(timestamp);
-ALTER TABLE workflow_instance_state_time_series ADD INDEX workflow_instance_state_time_series_timestamp(timestamp);
-DELETE
+CREATE INDEX apps_extension_time_series_timestamp ON apps_extension_time_series("timestamp");
+CREATE INDEX workflow_instance_time_series_timestamp ON workflow_instance_time_series("timestamp");
+CREATE INDEX workflow_instance_state_time_series_timestamp ON workflow_instance_state_time_series("timestamp");
