@@ -273,7 +273,7 @@ export const addMetric = async (page: Page) => {
 
   // verify the granularity is updated
   await expect(
-    page.getByText(`Granularity ${metricData.granularity.toUpperCase()}`)
+    page.getByText(`Granularity${metricData.granularity.toUpperCase()}`)
   ).toBeVisible();
 
   // clean the created metric
