@@ -3004,6 +3004,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .map(ChangeDescription::getChangeSummary)
               .map(changeSummaryMap -> JsonUtils.deepCopy(changeSummaryMap, ChangeSummaryMap.class))
               .orElse(new ChangeSummaryMap());
+      changeDescription.setChangeSummary(current);
 
       Map<String, ChangeSummary> addedSummaries =
           changeSummarizer.summarizeChanges(
@@ -3012,11 +3013,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               changeSource,
               updated.getUpdatedBy(),
               updated.getUpdatedAt());
-
-      if (!addedSummaries.isEmpty()) {
-        changeDescription.setChangeSummary(current);
-        changeDescription.getChangeSummary().getAdditionalProperties().putAll(addedSummaries);
-      }
+      changeDescription.getChangeSummary().getAdditionalProperties().putAll(addedSummaries);
 
       Set<String> keysToDelete =
           changeSummarizer
