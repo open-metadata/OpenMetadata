@@ -171,7 +171,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
               entity: label,
             })}>
             <Button
-              className="flex-center p-0"
+              className="flex-center edit-metrics p-0"
               data-testid={`edit-${modiFiedLabel}-button`}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
               loading={isUpdating}

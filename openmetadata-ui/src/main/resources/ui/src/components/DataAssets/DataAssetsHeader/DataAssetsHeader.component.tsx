@@ -25,6 +25,7 @@ import { ReactComponent as IconExternalLink } from '../../../assets/svg/external
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/link-icon-with-bg.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
@@ -46,6 +47,7 @@ import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -67,6 +69,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -94,7 +97,7 @@ export const ExtraInfoLabel = ({
   inlineLayout = false,
 }: {
   label: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   dataTestId?: string;
   showAsATag?: boolean;
   inlineLayout?: boolean;
@@ -489,7 +492,6 @@ export const DataAssetsHeader = ({
             <Col flex="auto">
               <EntityHeaderTitle
                 badge={alertBadge}
-                certification={(dataAsset as Table)?.certification}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
                 entityType={entityType}
@@ -538,6 +540,23 @@ export const DataAssetsHeader = ({
                     </Button>
                   </Tooltip>
 
+                  {(dataAsset as Table).sourceUrl && (
+                    <Tooltip title={t('label.source-url')}>
+                      <Button
+                        className="source-url-button font-semibold"
+                        data-testid="source-url-button"
+                        icon={
+                          <Icon className="flex-center" component={LinkIcon} />
+                        }
+                        onClick={() => {
+                          window.open((dataAsset as Table).sourceUrl, '_blank');
+                        }}>
+                        <Typography.Text>
+                          {t('label.source-url')}
+                        </Typography.Text>
+                      </Button>
+                    </Tooltip>
+                  )}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
@@ -695,6 +714,27 @@ export const DataAssetsHeader = ({
                 metricPermissions={permissions}
                 onUpdateMetricDetails={onMetricUpdate}
               />
+            )}
+
+            {(dataAsset as Table).certification && (
+              <>
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+                <ExtraInfoLabel
+                  label={t('label.certification')}
+                  value={
+                    <CertificationTag
+                      showName
+                      certification={
+                        (dataAsset as Table).certification ??
+                        ({} as AssetCertification)
+                      }
+                    />
+                  }
+                />
+              </>
             )}
             {extraInfo}
           </div>
