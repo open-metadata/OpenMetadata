@@ -24,6 +24,7 @@
         "ViewProfilerGlobalConfiguration",
         "ViewSampleData",
         "ViewTestCaseFailedRowsSample",
+        "ViewCustomFields",
         "EditAll",
         "EditCustomFields",
         "EditDataProfile",
