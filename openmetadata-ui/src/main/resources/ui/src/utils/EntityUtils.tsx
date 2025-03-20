@@ -35,7 +35,7 @@ import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAsse
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
-import { ExportViewport } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   EntityServiceUnion,
   EntityWithServices,
@@ -2548,11 +2548,9 @@ const downloadImageFromBase64 = (
 
 export const handleExportFile = (
   exportType: ExportTypes,
-  fileName: string,
-  documentSelector: string,
-  viewport?: ExportViewport,
-  headerData?: { title: string }
+  exportData: ExportData
 ) => {
+  const { name: fileName, documentSelector = '', viewport, title } = exportData;
   try {
     const exportElement = document.querySelector(documentSelector);
 
@@ -2591,7 +2589,9 @@ export const handleExportFile = (
     })
       .then((base64Image: string) => {
         if (exportType === ExportTypes.PDF) {
-          convertPngToPDFExport(base64Image, fileName, headerData);
+          convertPngToPDFExport(base64Image, fileName, {
+            title: title ?? '',
+          });
         } else {
           downloadImageFromBase64(base64Image, fileName, exportType);
         }

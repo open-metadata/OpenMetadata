@@ -120,15 +120,7 @@ export const EntityExportModalProvider = ({
       setDownloading(true);
 
       if (exportType !== ExportTypes.CSV) {
-        handleExportFile(
-          exportType,
-          exportData.name,
-          exportData.documentSelector ?? '',
-          exportData.viewport,
-          {
-            title: exportData.title ?? '',
-          }
-        );
+        handleExportFile(exportType, exportData);
 
         handleCancel();
         setDownloading(false);
