@@ -550,9 +550,10 @@ export const ActivityFeedTab = ({
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
               <TaskFilterIcon
-                className={`task-filter-icon ${
-                  isMentionTabSelected ? 'cursor-not-allowed' : 'cursor-pointer'
-                }`}
+                className={classNames('task-filter-icon', {
+                  'cursor-pointer': !isMentionTabSelected,
+                  disabled: isMentionTabSelected,
+                })}
                 data-testid="user-profile-page-task-filter-icon"
               />
             </Dropdown>

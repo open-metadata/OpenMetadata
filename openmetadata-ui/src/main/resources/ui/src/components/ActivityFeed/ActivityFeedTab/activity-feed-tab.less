@@ -298,10 +298,6 @@
   .ant-dropdown-menu {
     padding: 0px;
   }
-  .task-filter-icon:hover path {
-    stroke: #2e90fa;
-    stroke-width: 2;
-  }
   .task-count-container {
     background: #e9eaeb;
     border-radius: 16px;
@@ -541,4 +537,15 @@
   font-weight: 400;
   line-height: normal;
   margin-left: @margin-xss;
+}
+.task-filter-icon {
+  stroke: @grey-8;
+  cursor: pointer;
+  &.disabled {
+    cursor: not-allowed;
+    stroke: @grey-300;
+    path {
+      stroke: @grey-300;
+    }
+  }
 }
