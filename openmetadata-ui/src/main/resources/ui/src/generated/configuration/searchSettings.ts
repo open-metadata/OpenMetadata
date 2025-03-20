@@ -264,6 +264,10 @@ export interface NlqConfiguration {
     examples?:                   Example[];
     globalInstructions?:         PromptSection[];
     /**
+     * Configuration for including Elasticsearch mapping information in prompts
+     */
+    mappingConfiguration?: MappingConfiguration;
+    /**
      * Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific
      * instructions should appear.
      */
@@ -275,8 +279,8 @@ export interface EntitySpecificInstruction {
     /**
      * Entity type this instruction applies to (e.g., 'table', 'dashboard')
      */
-    entityType?: string;
-    sections?:   PromptSection[];
+    entityType: string;
+    sections:   PromptSection[];
     [property: string]: any;
 }
 
@@ -309,5 +313,55 @@ export interface Example {
      * Natural language query example
      */
     query: string;
+    [property: string]: any;
+}
+
+/**
+ * Configuration for including Elasticsearch mapping information in prompts
+ */
+export interface MappingConfiguration {
+    /**
+     * Specific guidance for interpreting field patterns in the mapping
+     */
+    fieldInterpretations?: FieldInterpretation[];
+    /**
+     * Whether to include mapping information in the prompts
+     */
+    includeMappings?: boolean;
+    /**
+     * How to present the mapping information in the prompt
+     */
+    mappingSection?: MappingSection;
+    [property: string]: any;
+}
+
+export interface FieldInterpretation {
+    /**
+     * How to interpret and query this field pattern
+     */
+    explanation: string;
+    /**
+     * Field pattern to match (e.g., 'tags.tagFQN')
+     */
+    pattern: string;
+    [property: string]: any;
+}
+
+/**
+ * How to present the mapping information in the prompt
+ */
+export interface MappingSection {
+    /**
+     * Description text for the mapping section
+     */
+    description?: string;
+    /**
+     * Position of this section in the prompt (lower numbers appear first)
+     */
+    order?: number;
+    /**
+     * Title for the mapping section
+     */
+    title?: string;
     [property: string]: any;
 }

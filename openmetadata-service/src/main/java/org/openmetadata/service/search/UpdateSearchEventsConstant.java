@@ -14,4 +14,9 @@ public class UpdateSearchEventsConstant {
   public static final String DATABASE_SCHEMA_ID = "databaseSchema.id";
   public static final String SENDING_REQUEST_TO_ELASTIC_SEARCH =
       "Sending request to ElasticSearch {}";
+  public static final String TAGS_FQN = "tags.tagFQN";
+
+  public static final String PARENT = "parent";
+  public static final String TEST_SUITES = "testSuites";
+  public static final String SEARCH_SOURCE = "_source";
 }

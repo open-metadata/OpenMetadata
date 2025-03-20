@@ -2296,6 +2296,37 @@
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}",
         "entityTypes": ["table"]
       }
-    ]
+    ],
+    
+    "mappingConfiguration": {
+      "includeMappings": true,
+      "mappingSection": {
+        "title": "INDEX MAPPINGS",
+        "description": "Below are the Elasticsearch mappings for the relevant indices. Use these to understand the document structure:",
+        "order": 5
+      },
+      "fieldInterpretations": [
+        {
+          "pattern": "properties",
+          "explanation": "Fields with 'properties' are objects. Only use nested queries when explicitly marked as 'type: nested'."
+        },
+        {
+          "pattern": "tags.tagFQN",
+          "explanation": "The 'tags' field is NOT nested despite having properties. Use direct term queries: {\"term\": {\"tags.tagFQN\": \"value\"}}"
+        },
+        {
+          "pattern": "owners.name",
+          "explanation": "The 'owners' field is NOT nested despite having properties. Use direct term queries: {\"term\": {\"owners.name\": \"value\"}}"
+        },
+        {
+          "pattern": "tier.tagFQN",
+          "explanation": "The 'tier' field is NOT nested despite having properties. Use direct term queries: {\"term\": {\"tier.tagFQN\": \"value\"}}"
+        },
+        {
+          "pattern": "columns",
+          "explanation": "The 'columns' field is NOT nested despite having properties. Use direct match queries: {\"match\": {\"columns.name\": \"value\"}}"
+        }
+      ]
+    }
   }
 }
