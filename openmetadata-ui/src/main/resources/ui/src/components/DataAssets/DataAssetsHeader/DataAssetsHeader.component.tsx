@@ -112,7 +112,7 @@ export const ExtraInfoLabel = ({
           {!isEmpty(label) && (
             <span className="text-grey-muted">{`${label}: `}</span>
           )}
-          <div className="font-medium">{value}</div>
+          <span className="font-medium">{value}</span>
         </Typography.Text>
       </>
     );
@@ -126,12 +126,12 @@ export const ExtraInfoLabel = ({
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <span
+        <div
           className={classNames('font-medium extra-info-value', {
             showAsATag: showAsATag,
           })}>
           {value}
-        </span>
+        </div>
       </Typography.Text>
     </div>
   );
