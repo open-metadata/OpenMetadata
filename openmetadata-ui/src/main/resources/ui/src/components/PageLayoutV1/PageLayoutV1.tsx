@@ -79,7 +79,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     if (alert && alert.type === 'error') {
       resetAlert();
     }
-  }, [location.pathname, alert]);
+  }, [location.pathname]);
 
   return (
     <Fragment>

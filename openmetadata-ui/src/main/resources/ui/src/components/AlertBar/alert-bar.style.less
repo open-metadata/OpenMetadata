@@ -15,28 +15,30 @@
 @keyframes resize-show-animation {
   from {
     height: 0px;
-    padding: 0 20px;
+    padding: 0 16px;
   }
   to {
     height: max-content;
-    padding: 16px 20px;
+    padding: 12px 16px;
   }
 }
 
 @keyframes resize-hide-animation {
   from {
     height: max-content;
-    padding: 16px 20px;
+    padding: 12px 16px;
   }
   to {
     height: 0px;
-    padding: 0 20px;
+    padding: 0 16px;
   }
 }
 
 .alert-container {
   backdrop-filter: blur(500px);
   height: 0px;
+  color: @alert-text-color;
+  border: 1px solid;
 
   .alert-message {
     display: -webkit-box;
@@ -66,6 +68,7 @@
     animation: resize-show-animation 0.3s ease-in-out forwards;
     display: flex;
     align-items: center;
+    border-radius: 12px;
   }
 
   &.hide-alert {
@@ -73,43 +76,37 @@
   }
 
   &.info {
-    background-color: @info-bg-color;
-    color: @info-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-info-bg;
+    border-color: @alert-info;
   }
 
   &.success {
-    background-color: @success-bg-color;
-    color: @success-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-success-bg;
+    border-color: @alert-success;
   }
 
   &.warning {
-    background-color: @warning-bg-color;
-    color: @warning-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-warning-bg;
+    border-color: @alert-warning;
   }
 
   &.error {
-    background-color: @error-bg-color;
-    color: @error-color;
-    border: none;
-    border-radius: 0px;
+    background-color: @alert-error-bg;
+    border-color: @alert-error;
   }
 
   .ant-alert-description {
     font-size: 14px;
-    line-height: 18px;
+    line-height: 20px;
     text-align: left;
+    font-weight: 600;
   }
 
   .alert-close-icon {
     display: flex;
     align-items: center;
-    width: 14px;
-    height: 14px;
+    width: 10px;
+    height: 10px;
+    margin-right: 13px;
   }
 }
