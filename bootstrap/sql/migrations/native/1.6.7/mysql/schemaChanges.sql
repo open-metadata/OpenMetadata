@@ -1,0 +1,1 @@
+ALTER TABLE apps_extension_time_series ADD INDEX apps_extension_time_series_timestamp(timestamp);
