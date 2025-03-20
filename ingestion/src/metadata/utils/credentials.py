@@ -104,9 +104,11 @@ def build_google_credentials_dict(
         validate_private_key(private_key_str)
 
         # Assume first defined project is the one on behalf of which clients will work
-        project_id = gcp_values.projectId.root \
-            if isinstance(gcp_values.projectId.root, str) \
+        project_id = (
+            gcp_values.projectId.root
+            if isinstance(gcp_values.projectId.root, str)
             else gcp_values.projectId.root[0]
+        )
 
         return {
             "type": gcp_values.type,
