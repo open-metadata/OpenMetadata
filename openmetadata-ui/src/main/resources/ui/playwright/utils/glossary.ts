@@ -49,10 +49,8 @@ type TaskEntity = {
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
-export const checkDisplayName = async (page: Page, displayName: string) => {
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName
-  );
+export const checkName = async (page: Page, name: string) => {
+  await expect(page.getByTestId('entity-header-name')).toHaveText(name);
 };
 
 export const selectActiveGlossary = async (
@@ -166,7 +164,7 @@ export const validateForm = async (page: Page) => {
   );
 
   // Max length validation
-  await page.locator('[data-testid="name"]').type(INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('name').fill(INVALID_NAMES.MAX_LENGTH);
 
   await expect(page.locator('#name_help')).toHaveText(
     NAME_MAX_LENGTH_VALIDATION_ERROR
@@ -174,9 +172,7 @@ export const validateForm = async (page: Page) => {
 
   // With special char validation
   await page.locator('[data-testid="name"]').clear();
-  await page
-    .locator('[data-testid="name"]')
-    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page.getByTestId('name').fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
 
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
@@ -301,7 +297,7 @@ export const createGlossary = async (
 
   await expect(page).toHaveURL(/\/glossary\//);
 
-  await checkDisplayName(page, glossaryData.name);
+  await checkName(page, glossaryData.name);
 };
 
 export const verifyGlossaryDetails = async (
@@ -313,7 +309,7 @@ export const verifyGlossaryDetails = async (
     .locator('span')
     .click();
 
-  await checkDisplayName(page, glossaryDetails.name);
+  await checkName(page, glossaryDetails.name);
 
   const viewerContainerText = await page.textContent(
     '[data-testid="viewer-container"]'

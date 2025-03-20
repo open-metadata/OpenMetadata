@@ -265,10 +265,10 @@ test(
       searchTerm: DATA_QUALITY_TABLE.term,
       dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
     });
-    await page.waitForSelector(`[data-testid="entity-header-display-name"]`);
+    await page.waitForSelector(`[data-testid="entity-header-name"]`);
 
     await expect(
-      page.locator(`[data-testid="entity-header-display-name"]`)
+      page.locator(`[data-testid="entity-header-name"]`)
     ).toContainText(DATA_QUALITY_TABLE.term);
 
     const profilerResponse = page.waitForResponse(

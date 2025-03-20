@@ -99,6 +99,12 @@ test.describe('Persona pages', async () => {
   });
 
   test('should show all the customize options', async ({ adminPage }) => {
+    await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+    await adminPage.getByText(persona.responseData.displayName).click();
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
     await expect(adminPage.getByText('Navigation')).toBeVisible();

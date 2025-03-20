@@ -92,9 +92,7 @@ export const deleteService = async (
   // click on created service
   await page.click(`[data-testid="service-name-${serviceName}"]`);
 
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    serviceName
-  );
+  await expect(page.getByTestId('entity-header-name')).toHaveText(serviceName);
 
   // Clicking on permanent delete radio button and checking the service name
   await page.click('[data-testid="manage-button"]');

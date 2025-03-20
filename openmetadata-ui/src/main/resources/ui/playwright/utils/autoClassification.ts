@@ -35,6 +35,12 @@ export const addAndTriggerAutoClassificationPipeline = async (
   // Add auto classification ingestion
   await page.click('[data-testid="agents"]');
 
+  const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+  if (await metadataTab.isVisible()) {
+    await metadataTab.click();
+  }
+  await page.waitForLoadState('networkidle');
+
   await page.click('[data-testid="add-new-ingestion-button"]');
 
   await page.waitForSelector(
@@ -62,6 +68,11 @@ export const addAndTriggerAutoClassificationPipeline = async (
   // Header available once page loads
   await page.getByTestId('loader').waitFor({ state: 'detached' });
   await page.getByTestId('agents').click();
+  const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+  if (await metadataTab2.isVisible()) {
+    await metadataTab2.click();
+  }
+  await page.waitForLoadState('networkidle');
   await page
     .getByLabel('agents')
     .getByTestId('loader')

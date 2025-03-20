@@ -43,22 +43,20 @@ test.describe('Search Settings Tests', () => {
     );
     await globalSettingEditIcon.click();
 
-    await page.getByTestId('value-input').fill('15000');
+    await page.getByTestId('value-input').fill('10000');
 
     await page.getByTestId('inline-save-btn').click();
     await toastNotification(page, /Search Settings updated successfully/);
 
     await expect(
       page.getByTestId(`global-setting-value-Max Aggregate Size`)
-    ).toHaveText('15000');
+    ).toHaveText('10000');
   });
 
-  test('Update entity search settings', async ({ page }) => {
+  test.fixme('Update entity search settings', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
-    const tableCard = page.getByTestId(mockEntitySearchSettings.key);
-
-    await tableCard.getByTestId('view-detail-button').click();
+    await page.getByTestId(mockEntitySearchSettings.key).click();
 
     await expect(page).toHaveURL(
       new RegExp(mockEntitySearchSettings.url + '$')

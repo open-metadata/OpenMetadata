@@ -152,6 +152,12 @@ class ServiceBaseClass {
   async addIngestionPipeline(page: Page) {
     await page.click('[role="tab"] [data-testid="agents"]');
 
+    const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab.isVisible()) {
+      await metadataTab.click();
+    }
+    await page.waitForLoadState('networkidle');
+
     await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
 
     await page.click('[data-testid="add-new-ingestion-button"]');
@@ -185,6 +191,11 @@ class ServiceBaseClass {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
     await page.getByTestId('agents').click();
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
     await page
       .getByLabel('agents')
       .getByTestId('loader')
@@ -333,6 +344,11 @@ class ServiceBaseClass {
 
     await page.waitForSelector('[data-testid="agents"]');
     await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
     await expect(
@@ -355,6 +371,11 @@ class ServiceBaseClass {
     );
 
     await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
 
     // click and edit pipeline schedule for Hours
 
@@ -502,6 +523,11 @@ class ServiceBaseClass {
       `/api/v1/services/ingestionPipelines/*/pipelineStatus?**`
     );
     await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
 
     await ingestionResponse;
     await page

@@ -47,7 +47,7 @@ export const visitServiceDetailsPage = async (
 
   if (verifyHeader) {
     const text = await page.textContent(
-      `[data-testid="entity-header-display-name"]`
+      `[data-testid="entity-header-name"]`
     );
 
     expect(text).toBe(service.displayName);

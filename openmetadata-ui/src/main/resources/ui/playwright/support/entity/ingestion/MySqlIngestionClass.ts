@@ -105,7 +105,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
       await page.click('[data-testid="agents"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
-      await page.waitForTimeout(1000);
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+      await page.waitForLoadState('networkidle');
       await page.click('[data-testid="add-new-ingestion-button"]');
 
       await page.waitForSelector(
@@ -126,6 +131,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await page.waitForSelector('[data-testid="data-assets-header"]');
       await page.getByTestId('loader').waitFor({ state: 'detached' });
       await page.getByTestId('agents').click();
+      const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab2.isVisible()) {
+        await metadataTab2.click();
+      }
+      await page.waitForLoadState('networkidle');
+
       await page
         .getByLabel('agents')
         .getByTestId('loader')

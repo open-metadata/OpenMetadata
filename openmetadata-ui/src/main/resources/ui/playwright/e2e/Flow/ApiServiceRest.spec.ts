@@ -69,7 +69,7 @@ test.describe('API service', () => {
     await dayOneExperienceApplicationRequest;
 
     // step 3
-    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+    await expect(page.getByTestId('entity-header-name')).toHaveText(
       apiServiceConfig.name
     );
 
