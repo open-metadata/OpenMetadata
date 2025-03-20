@@ -14,7 +14,7 @@ import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -25,11 +25,9 @@ import {
 import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 
-import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
-import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import {
   filterAndArrangeTreeByKeys,
   getNestedKeysFromNavigationItems,
@@ -45,21 +43,17 @@ const LeftSidebar = () => {
   const { onLogoutHandler } = useApplicationStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
-  const { selectedPersona } = useApplicationStore();
 
-  const { currentPersonaDocStore, setCurrentPersonaDocStore } =
-    useCustomizeStore();
+  const { navigation } = useCustomPages('Navigation');
 
-  const navigationItems = useMemo(() => {
-    return currentPersonaDocStore?.data?.navigation;
-  }, [currentPersonaDocStore]);
-
-  const sideBarItems = isEmpty(navigationItems)
-    ? leftSidebarClassBase.getSidebarItems()
-    : filterAndArrangeTreeByKeys(
-        leftSidebarClassBase.getSidebarItems(),
-        getNestedKeysFromNavigationItems(navigationItems)
-      );
+  const sideBarItems = useMemo(() => {
+    return isEmpty(navigation)
+      ? leftSidebarClassBase.getSidebarItems()
+      : filterAndArrangeTreeByKeys(
+          leftSidebarClassBase.getSidebarItems(),
+          getNestedKeysFromNavigationItems(navigation ?? [])
+        );
+  }, [navigation]);
 
   const selectedKeys = useMemo(() => {
     const pathArray = location.pathname.split('/');
@@ -105,23 +99,6 @@ const LeftSidebar = () => {
   const handleMouseOut = useCallback(() => {
     setIsSidebarCollapsed(true);
   }, []);
-
-  const fetchCustomizedDocStore = useCallback(async (personaFqn: string) => {
-    try {
-      const pageLayoutFQN = `${EntityType.PERSONA}.${personaFqn}`;
-
-      const document = await getDocumentByFQN(pageLayoutFQN);
-      setCurrentPersonaDocStore(document);
-    } catch (error) {
-      // silent error
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedPersona.fullyQualifiedName) {
-      fetchCustomizedDocStore(selectedPersona.fullyQualifiedName);
-    }
-  }, [selectedPersona]);
 
   return (
     <div

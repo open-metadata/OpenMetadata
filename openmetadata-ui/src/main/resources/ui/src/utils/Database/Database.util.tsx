@@ -157,7 +157,7 @@ export const getDatabasePageBaseTabs = ({
           count={schemaInstanceCount}
           id={EntityTabs.SCHEMAS}
           isActive={activeTab === EntityTabs.SCHEMAS}
-          name={labelMap?.[EntityTabs.SCHEMAS] || t('label.schema-plural')}
+          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.schema-plural')}
         />
       ),
       key: EntityTabs.SCHEMAS,
@@ -170,7 +170,7 @@ export const getDatabasePageBaseTabs = ({
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={
-            labelMap?.[EntityTabs.ACTIVITY_FEED] ||
+            labelMap?.[EntityTabs.ACTIVITY_FEED] ??
             t('label.activity-feed-and-task-plural')
           }
         />
@@ -194,7 +194,7 @@ export const getDatabasePageBaseTabs = ({
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
           name={
-            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ||
+            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
             t('label.custom-property-plural')
           }
         />

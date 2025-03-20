@@ -17,7 +17,8 @@ export const filterAndArrangeTreeByKeys = <
   T extends { key: string | number; children?: T[] }
 >(
   tree: T[],
-  keys: Array<string | number>
+  keys: Array<string | number>,
+  skipFilter = false
 ): T[] => {
   // Sort nodes according to the keys order
   function sortByKeys(nodeArray: T[]) {
@@ -27,7 +28,7 @@ export const filterAndArrangeTreeByKeys = <
   // Helper function to recursively filter and arrange the tree
   function filterAndArrange(node: T) {
     // If the current node's key is in the keys array, process it
-    if (keys.includes(node.key)) {
+    if (skipFilter || keys.includes(node.key)) {
       // If the node has children, we recursively filter and arrange them
       if (node.children && node.children.length > 0) {
         node.children = node.children
