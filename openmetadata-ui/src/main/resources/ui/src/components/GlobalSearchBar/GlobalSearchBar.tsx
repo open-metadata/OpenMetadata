@@ -39,7 +39,8 @@ import './global-search-bar.less';
 
 export const GlobalSearchBar = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
+  const { searchCriteria, updateSearchCriteria, isNLPActive, setIsNLPActive } =
+    useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
@@ -50,7 +51,6 @@ export const GlobalSearchBar = () => {
   const history = useHistory();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
   const isNLPEnabled = searchClassBase.isNLPEnabled();
-  const [isNLPActive, setIsNLPActive] = useState<boolean>(false);
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')

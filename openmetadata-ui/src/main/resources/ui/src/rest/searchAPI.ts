@@ -252,9 +252,13 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
         q: payload.query,
         index: payload.searchIndex,
         size: payload.pageSize,
+        from: payload.pageNumber,
+        sort_field: payload.sortField,
+        sort_order: payload.sortOrder,
+        query_filter: JSON.stringify(payload.queryFilter),
       },
     }
   );
 
-  return response.data;
+  return formatSearchQueryResponse(response.data);
 };

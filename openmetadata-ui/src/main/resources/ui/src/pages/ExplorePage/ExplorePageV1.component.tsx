@@ -75,7 +75,8 @@ const ExplorePageV1: FunctionComponent = () => {
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
-  const isNLPEnabled = searchClassBase.isNLPEnabled();
+  const { isNLPActive } = useApplicationStore();
+  const isNLPEnabled = searchClassBase.isNLPEnabled() && isNLPActive;
 
   const { tab } = useParams<UrlParams>();
 

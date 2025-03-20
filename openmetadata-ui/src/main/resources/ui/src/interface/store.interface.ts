@@ -60,6 +60,8 @@ export interface ApplicationStore
   theme: UIThemePreference['customTheme'];
   inlineAlertDetails?: InlineAlertProps;
   applications: string[];
+  isNLPActive: boolean;
+  setIsNLPActive: (isNLPActive: boolean) => void;
   appPreferences: AppPreferences;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
