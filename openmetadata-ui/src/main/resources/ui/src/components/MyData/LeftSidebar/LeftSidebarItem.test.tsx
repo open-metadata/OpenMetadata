@@ -32,6 +32,8 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
 
     expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
+
+    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
   it('should renders sidebar items with redirect url', () => {
@@ -46,6 +48,8 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByText('label.setting-plural')).toBeInTheDocument();
 
     expect(screen.getByRole('link')).toBeInTheDocument();
+
+    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
   it('should renders sidebar items without redirect url', () => {
@@ -60,6 +64,8 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByText('label.logout')).toBeInTheDocument();
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    expect(screen.getByRole('img')).toBeInTheDocument();
   });
 
   it('should fire onClick event if provided', () => {
