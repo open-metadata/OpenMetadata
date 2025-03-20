@@ -255,7 +255,7 @@ class cockroachUnitTest(TestCase):
         inspector.get_foreign_keys = lambda table_name, schema_name: []
 
         result, _, _ = self.cockroach_source.get_columns_and_constraints(
-            "public", TableType.Regular, "user", "cockroach", inspector
+            "public", "user", "cockroach", inspector, TableType.Regular
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])

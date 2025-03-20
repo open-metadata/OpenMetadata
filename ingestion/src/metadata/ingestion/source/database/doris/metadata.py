@@ -227,10 +227,10 @@ class DorisSource(CommonDbSourceService):
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
         schema_name: str,
-        table_type: str,
         table_name: str,
         db_name: str,
         inspector: Inspector,
+        table_type: str = None,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:

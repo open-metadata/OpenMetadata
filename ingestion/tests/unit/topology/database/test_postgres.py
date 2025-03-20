@@ -317,7 +317,7 @@ class PostgresUnitTest(TestCase):
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
         result, _, _ = self.postgres_source.get_columns_and_constraints(
-            "public", TableType.Regular, "user", "postgres", inspector
+            "public", "user", "postgres", inspector, TableType.Regular
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])

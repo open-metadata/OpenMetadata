@@ -793,13 +793,13 @@ class SnowflakeSource(
         else:
             yield from super().mark_tables_as_deleted()
 
-    def get_columns(
+    def _get_columns_internal(
         self,
         schema_name: str,
-        table_type: str,
         table_name: str,
         db_name: str,
         inspector: Inspector,
+        table_type: TableType = None,
     ):
         """
         Get columns of table/view/stream

@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.table import (
     ConstraintType,
     DataType,
     TableConstraint,
+    TableType,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils.execution_time_tracker import calculate_execution_time
@@ -202,13 +203,13 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
-    def get_columns(
+    def _get_columns_internal(
         self,
         schema_name: str,
-        table_type: str,
         table_name: str,
         db_name: str,
         inspector: Inspector,
+        table_type: TableType = None,
     ):
         """
         Get columns list
@@ -222,10 +223,10 @@ class SqlColumnHandlerMixin:
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
         schema_name: str,
-        table_type: str,
         table_name: str,
         db_name: str,
         inspector: Inspector,
+        table_type: TableType = None,
     ) -> Tuple[
         Optional[List[Column]], Optional[List[TableConstraint]], Optional[List[Dict]]
     ]:
@@ -267,8 +268,8 @@ class SqlColumnHandlerMixin:
 
         table_columns = []
 
-        columns = self.get_columns(
-            schema_name, table_type, table_name, db_name, inspector
+        columns = self._get_columns_internal(
+            schema_name, table_name, db_name, inspector, table_type
         )
         for column in columns:
             try:
