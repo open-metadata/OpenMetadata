@@ -215,6 +215,12 @@ test.describe('Persona customization', () => {
             .click();
 
           await adminPage.getByRole('button', { name: 'Add tab' }).click();
+
+          await adminPage
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Add' })
+            .click();
+
           await adminPage.getByTestId('add-widget-button').click();
           await adminPage.getByTestId('Description-widget').click();
           await adminPage

@@ -16,7 +16,6 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.OVERVIEW]: 'label.overview',
   [EntityTabs.GLOSSARY_TERMS]: 'label.glossary-term-plural',
   [EntityTabs.ASSETS]: 'label.asset-plural',
-  [EntityTabs.ACTIVITY_FEEDS]: 'label.activity-feed-plural',
   [EntityTabs.ACTIVITY_FEED]: 'label.activity-feed-and-task-plural',
   [EntityTabs.CUSTOM_PROPERTIES]: 'label.custom-property-plural',
   [EntityTabs.TERMS]: 'label.terms',
