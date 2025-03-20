@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Badge, Button, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
@@ -28,35 +29,40 @@ interface LeftSidebarItemProps {
 }
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, isBeta, onClick },
+  data: { title, redirect_url, dataTestId, icon, isBeta, onClick },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
   return redirect_url ? (
     <NavLink
-      className="left-panel-item left-panel-label no-underline"
+      className="left-panel-item no-underline"
       data-testid={dataTestId}
       to={{
         pathname: redirect_url,
       }}>
-      {title}
+      <div className="d-flex items-center">
+        <Icon component={icon} />
+        <Typography.Text className="left-panel-label">{title}</Typography.Text>
 
-      {isBeta && (
-        <Badge
-          className="service-beta-tag"
-          count={t('label.beta')}
-          offset={[10, 0]}
-          size="small"
-        />
-      )}
+        {isBeta && (
+          <Badge
+            className="service-beta-tag"
+            count={t('label.beta')}
+            offset={[10, 0]}
+            size="small"
+          />
+        )}
+      </div>
     </NavLink>
   ) : (
-    <span
-      className="left-panel-item left-panel-label p-0"
+    <Button
+      className="left-panel-item d-flex items-center p-0"
       data-testid={dataTestId}
+      type="text"
       onClick={onClick}>
-      {title}
-    </span>
+      <Icon component={icon} />
+      <Typography.Text className="left-panel-label">{title}</Typography.Text>
+    </Button>
   );
 };
 

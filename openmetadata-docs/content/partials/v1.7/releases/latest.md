@@ -54,4 +54,4 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Implemented Incremental Lineage Processing
 - Don't overwrite query to execute
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.5-release...1.6.6-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.5-release...1.6.6-release)

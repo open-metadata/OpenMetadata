@@ -87,7 +87,7 @@ const EntityHeaderTitle = ({
                 nameClassName,
                 'm-b-0 d-block display-sm font-semibold'
               )}
-              data-testid="entity-header-name"
+              data-testid="entity-header-display-name"
               ellipsis={{ tooltip: true }}>
               {stringToHTML(displayName ?? name)}
             </Typography.Text>
@@ -103,7 +103,7 @@ const EntityHeaderTitle = ({
                 'display-sm entity-header-name font-semibold': !displayName,
                 'text-md entity-header-display-name font-medium': displayName,
               })}
-              data-testid="entity-header-display-name"
+              data-testid="entity-header-name"
               ellipsis={{ tooltip: true }}>
               {stringToHTML(name)}
               {openEntityInNewPage && (

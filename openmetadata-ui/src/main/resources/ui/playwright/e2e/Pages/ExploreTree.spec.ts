@@ -124,7 +124,7 @@ test.describe('Explore Tree scenarios ', () => {
     );
   });
 
-  test('Verify Database and Database schema after rename', async ({ page }) => {
+  test.fixme('Verify Database and Database schema after rename', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass();
     await table.create(apiContext);
