@@ -51,7 +51,7 @@
       "type": "string"
     },
     "ingestionAgent" : {
-      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "description": "The ingestion agent responsible for executing the ingestion pipeline. It will be defined at runtime based on the Ingestion Agent of the service.",
       "$ref": "../../type/entityReference.json"
     }
   },

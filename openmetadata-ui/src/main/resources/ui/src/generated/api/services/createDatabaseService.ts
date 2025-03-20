@@ -32,7 +32,8 @@ export interface CreateDatabaseService {
      */
     domain?: string;
     /**
-     * The ingestion agent responsible for executing the ingestion pipeline.
+     * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+     * at runtime based on the Ingestion Agent of the service.
      */
     ingestionAgent?: EntityReference;
     /**
@@ -2009,7 +2010,8 @@ export enum VerifySSL {
 }
 
 /**
- * The ingestion agent responsible for executing the ingestion pipeline.
+ * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+ * at runtime based on the Ingestion Agent of the service.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
