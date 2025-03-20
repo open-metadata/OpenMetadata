@@ -32,7 +32,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Support pagination for container children  
 - Improved search matching for keywords
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.4-release...1.6.5-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.4-release...1.6.5-release)
 
 # 1.6.4 Release 🎉
 
@@ -71,7 +71,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Improvement: Show sourceUrl if present.
 - Improvement: Modify the lineage alignment algorithm to tree view.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.3-release...1.6.4-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.3-release...1.6.4-release)
 
 # 1.6.3 Release 🎉
 
@@ -150,7 +150,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Improvement: Support rename for custom dashboard and charts. (Collate)
 - Improvement: Improve Onboarding Application. (Collate)
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.2-release...1.6.3-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.2-release...1.6.3-release)
 
 # 1.6.2 Release 🎉
 
@@ -198,7 +198,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Improvement: Add the missing filters for different assets in the Automator(Ex. Database filter for Database Schema asset).  (Collate)
 - Improvement: Add Glossary Term and Metric as assets for Automation. (Collate)
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.1-release...1.6.2-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.1-release...1.6.2-release)
 
 # 1.6.1 Release 🎉
 
@@ -363,7 +363,7 @@ Release 1.6 comes with several other notable improvements:
 - Alert Debuggability: Allowing users to test the destinations and see whenever the alert was triggered.
 - And even more fixes and improvements!
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.6.1-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.6.1-release)
 
 # 1.5.15 Release 🎉
 
@@ -382,7 +382,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Minor: DBT v12 Model Changes
 - Fix database and schema aggregation key
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.14-release...1.5.15-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.14-release...1.5.15-release)
 
 # 1.5.14 Release
 
@@ -402,7 +402,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Minor - Add APIs to Ref Map
 - Minor: Domain only access policy prevents bots from listing
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.5.14-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.5.14-release)
 
 # 1.5.13 Release
 
@@ -415,7 +415,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix Microstrategy Login Mode
 - Add Snowflake UDF Lineage Support
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.12-release...1.5.13-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.12-release...1.5.13-release)
 
 # 1.5.12 Release
 
@@ -437,7 +437,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix: Store procedure yielding by adding Try/Except.
 - Fix: Lineage export when there is no column / pipeline edge.
 
-Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.11-release...1.5.12-release
+Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.11-release...1.5.12-release)
 
 # 1.5.11 Release
 
@@ -461,7 +461,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix: Materialized View Lineage.
 - Fix: Custom property save config.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.10-release...1.5.11-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.10-release...1.5.11-release)
 
 # 1.5.10 Release
 
@@ -478,7 +478,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix unable to add more enum values for enum cp.
 - Fix navigate to listing for deleting a service.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.9-release...1.5.10-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.9-release...1.5.10-release)
 
 # 1.5.9 Release
 
@@ -497,7 +497,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix backend database Azure auth
 - Mask Greenplum secrets on the UI
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.8-release...1.5.9-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.8-release...1.5.9-release)
 
 # 1.5.8 Release
 
@@ -523,7 +523,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix: Task deserialization in Airflow metadata ingestion.
 - Fix: Web analytic activity being reset.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.7-release...1.5.8-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.7-release...1.5.8-release)
 
 # 1.5.7 Release
 
@@ -574,7 +574,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix: ArchiveLog to FALSE for test connection (Collate)
 - Fix: Knowledge Page deletion is not deleting from the search index (Collate)`,
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.6-release...1.5.7-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.6-release...1.5.7-release)
 
 # 1.5.6 Release
 
@@ -607,7 +607,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fixed Expected ColumnLineage but got dict
 - Improved Collate API with Knowledge Center routes. (Collate)
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.5-release...1.5.6-release)
 
 # 1.5.5 Release
 
@@ -644,7 +644,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Export with new line in description (Collate)
 - Fix Page entity publicationDate datatype (Collate)
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.4-release...1.5.5-release)
 
 # 1.5.4 Release
 
@@ -674,7 +674,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Fix Automator pagination
 - Fix MetaPilot push for no constraint
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.3-release...1.5.4-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.3-release...1.5.4-release)
 
 # 1.5.3 Release
 
@@ -704,7 +704,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Shipped VertexAI Connector
 - Fixed automator lineage propagation issues with possible None entities
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.2-release...1.5.3-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.2-release...1.5.3-release)
 
 # 1.5.2 Release
 
@@ -726,7 +726,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
 - Added custom properties support in Data Product.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.1-release...1.5.2-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.5.1-release...1.5.2-release)
 
 # 1.5.1 Release
 
@@ -915,7 +915,7 @@ To continue pursuing this objective, the application was completely refactored t
 - **Teradata** as a community contribution from [gbpy](https://github.com/gpby) to broaden the integration capabilities for enterprise-scale analytics and data management.
 - **GCS Storage Connector** as a community contribution from [Matt Chamberlin](https://github.com/MChamberlin)
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.4.0-release...1.5.1-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.4.0-release...1.5.1-release)
 
 # 1.4.8 Release
 
