@@ -6,7 +6,18 @@ public class FieldExtensionBuilder {
   private String fieldName;
   private String fieldValue = null;
 
+  /* If the field is required, then the expression is required. Default is true */
+  private final boolean required;
+
   private String expression = null;
+
+  public FieldExtensionBuilder() {
+    this.required = true;
+  }
+
+  public FieldExtensionBuilder(boolean required) {
+    this.required = required;
+  }
 
   public FieldExtensionBuilder fieldName(String fieldName) {
     this.fieldName = fieldName;
@@ -30,7 +41,7 @@ public class FieldExtensionBuilder {
       fieldExtension.setStringValue(fieldValue);
     } else if (expression != null) {
       fieldExtension.setExpression(expression);
-    } else {
+    } else if (required) {
       throw new RuntimeException(
           "FieldExtension must have either a 'fieldValue' or an  'expression'");
     }
