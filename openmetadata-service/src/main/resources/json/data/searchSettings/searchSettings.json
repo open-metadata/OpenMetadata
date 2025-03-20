@@ -2217,13 +2217,18 @@
     }
   ],
   "nlqConfiguration": {
-    "promptTemplate": "You are an assistant that translates natural language queries into Elasticsearch queries.\n\n{{INSTRUCTIONS}}\n\nUSER QUERY: {{QUERY}}\n\nGenerate a valid Elasticsearch JSON query object. Return ONLY the JSON query with no explanations.",
+    "promptTemplate": "You are an assistant that translates natural language queries into OpenSearch queries.\n\n{{INSTRUCTIONS}}\n\nUSER QUERY: {{QUERY}}\n\nGenerate a valid OpenSearch JSON query object. Return ONLY the JSON query with no explanations.",
 
     "globalInstructions": [
       {
         "section": "CRITICAL FIELD CORRECTIONS",
         "content": "1. Use 'owners.name' (plural) NOT 'owner.name' (singular)\n2. Use 'tags.tagFQN' NOT just 'tags' for regular tags\n3. Use 'tier.tagFQN' NOT 'tags.tagFQN' for tier-related queries\n4. Top-level fields like 'owners', 'tags', 'tier' do NOT need nested queries\n5. Only use nested queries for 'columns', 'charts', 'tasks', etc.",
         "order": 10
+      },
+      {
+        "section": "ENTITY TYPE FILTERING",
+        "content": "When a user specifies a particular entity type (e.g., 'tables', 'dashboards', 'pipelines'):\n1. ALWAYS add a term filter for 'entityType' with the SINGULAR form\n2. For example: If query mentions 'tables', add {\"term\": {\"entityType\": \"table\"}} (not 'tables')\n3. For example: If query mentions 'dashboards', add {\"term\": {\"entityType\": \"dashboard\"}} (not 'dashboards')\n4. This MUST be combined with any other filters (like tags, owners, etc.) using a 'must' clause",
+        "order": 12
       },
       {
         "section": "TIER TAG FORMATTING",
