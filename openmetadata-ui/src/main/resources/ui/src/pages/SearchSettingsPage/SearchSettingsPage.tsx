@@ -11,19 +11,18 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Collapse, Row, Switch, Table, Typography } from 'antd';
+import { Button, Col, Collapse, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as Delete } from '../../assets/svg/delete-colored.svg';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import FieldValueBoostList from '../../components/SearchSettings/FieldValueBoostList/FieldValueBoostList';
 import FieldValueBoostModal from '../../components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
 import TermBoostList from '../../components/SearchSettings/TermBoostList/TermBoostList';
@@ -162,6 +161,7 @@ const SearchSettingsPage = () => {
     }
   };
 
+  // Term Boost
   const handleAddNewTermBoost = () => {
     setShowNewTermBoost(true);
   };
@@ -216,10 +216,7 @@ const SearchSettingsPage = () => {
     });
   };
 
-  const handleViewDetailClick = (key: string) => {
-    const [category, option, entity] = key.split('.');
-    history.push(getSettingsPathWithFqn(category, option, entity));
-  };
+  // Field Value Boost
 
   const handleAddFieldValueBoost = () => {
     setSelectedFieldValueBoost(undefined);
@@ -272,89 +269,10 @@ const SearchSettingsPage = () => {
     });
   };
 
-  const columns = useMemo(() => {
-    return [
-      {
-        title: t('label.field'),
-        dataIndex: 'field',
-        key: 'field',
-        width: 250,
-      },
-      {
-        title: t('label.factor'),
-        dataIndex: 'factor',
-        key: 'factor',
-        width: 80,
-      },
-      {
-        title: t('label.modifier'),
-        dataIndex: 'modifier',
-        key: 'modifier',
-        width: 120,
-      },
-      {
-        title: t('label.missing-value'),
-        dataIndex: 'missing',
-        key: 'missing',
-        width: 120,
-      },
-      {
-        title: t('label.greater-than'),
-        key: 'gt',
-        width: 120,
-        render: (record: FieldValueBoost) => (
-          <span>{record.condition?.range?.gt ?? '-'}</span>
-        ),
-      },
-      {
-        title: t('label.greater-than-or-equal-to'),
-        key: 'gte',
-        width: 120,
-        render: (record: FieldValueBoost) => (
-          <span>{record.condition?.range?.gte ?? '-'}</span>
-        ),
-      },
-      {
-        title: t('label.less-than'),
-        key: 'lt',
-        width: 120,
-        render: (record: FieldValueBoost) => (
-          <span>{record.condition?.range?.lt ?? '-'}</span>
-        ),
-      },
-      {
-        title: t('label.less-than-or-equal-to'),
-        key: 'lte',
-        width: 120,
-        render: (record: FieldValueBoost) => (
-          <span>{record.condition?.range?.lte ?? '-'}</span>
-        ),
-      },
-      {
-        title: t('label.action-plural'),
-        key: 'actions',
-        width: 100,
-        render: (record: FieldValueBoost) => (
-          <div className="d-flex items-center gap-2">
-            <Button
-              className="edit-field-value-boost-btn"
-              data-testid="edit-field-value-boost-btn"
-              icon={<Icon className="text-md" component={EditIcon} />}
-              type="text"
-              onClick={() => handleEditFieldValueBoost(record)}
-            />
-            <Button
-              className="delete-field-value-boost-btn"
-              data-testid="delete-field-value-boost-btn"
-              icon={<Icon className="text-md" component={Delete} />}
-              type="text"
-              onClick={() => handleDeleteFieldValueBoost(record.field)}
-            />
-          </div>
-        ),
-      },
-    ];
-  }, [searchConfig]);
+  const handleViewDetailClick = (key: string) => {
+    const [category, option, entity] = key.split('.');
+    history.push(getSettingsPathWithFqn(category, option, entity));
+  };
 
   useEffect(() => {
     fetchSearchConfig();
@@ -489,20 +407,14 @@ const SearchSettingsPage = () => {
                 key="2">
                 <Row className="p-t-sm w-full">
                   <div className="field-value-boost-table-container">
-                    <Table
-                      bordered
-                      columns={columns}
-                      data-testid="field-value-boost-table"
-                      dataSource={searchConfig?.globalSettings?.fieldValueBoosts?.map(
-                        (boost) => ({
-                          ...boost,
-                          key: boost.field,
-                        })
-                      )}
-                      loading={isLoading}
-                      pagination={false}
-                      scroll={{ x: 'max-content' }}
-                      size="small"
+                    <FieldValueBoostList
+                      dataTestId="field-value-boost-table"
+                      fieldValueBoosts={
+                        searchConfig?.globalSettings?.fieldValueBoosts ?? []
+                      }
+                      handleDeleteFieldValueBoost={handleDeleteFieldValueBoost}
+                      handleEditFieldValueBoost={handleEditFieldValueBoost}
+                      isLoading={isLoading}
                     />
                   </div>
                 </Row>
@@ -515,10 +427,7 @@ const SearchSettingsPage = () => {
       <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
           <Col key={data.key} span={8}>
-            <SettingItemCard
-              data={data}
-              onClick={() => handleViewDetailClick(data.key)}
-            />
+            <SettingItemCard data={data} onClick={handleViewDetailClick} />
           </Col>
         ))}
       </Row>
