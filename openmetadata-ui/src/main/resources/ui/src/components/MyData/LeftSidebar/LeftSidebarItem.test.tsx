@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
@@ -18,8 +18,6 @@ import {
   SETTING_ITEM,
 } from '../../../constants/LeftSidebar.constants';
 import LeftSidebarItem from './LeftSidebarItem.component';
-
-const mockOnClick = jest.fn();
 
 describe('LeftSidebar Items', () => {
   it('should renders sidebar items data', () => {
@@ -60,21 +58,5 @@ describe('LeftSidebar Items', () => {
     expect(screen.getByText('label.logout')).toBeInTheDocument();
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
-
-  it('should fire onClick event if provided', () => {
-    render(
-      <BrowserRouter>
-        <LeftSidebarItem data={{ ...LOGOUT_ITEM, onClick: mockOnClick }} />
-      </BrowserRouter>
-    );
-
-    const logoutItem = screen.getByTestId('app-bar-item-logout');
-
-    expect(logoutItem).toBeInTheDocument();
-
-    fireEvent.click(logoutItem);
-
-    expect(mockOnClick).toHaveBeenCalled();
   });
 });

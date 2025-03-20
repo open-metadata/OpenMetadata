@@ -110,7 +110,7 @@
 @font-size-base: 14px;
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
 @white: #fff;
-@border-radius-base: 12px;
+@border-radius-base: 4px;
 @border-radius-xs: 8px;
 @border-radius-sm: 12px;
 @border-radius-md: 16px;
@@ -235,7 +235,8 @@
 @warning-bg-color: rgb(from @warning-color r g b / 0.1);
 @info-bg-color: rgb(from @info-color r g b / 0.1);
 
-@card-radius: 12px;
+@card-radius: @border-radius-sm;
+@menu-radius: @border-radius-sm;
 
 // Layout
 
@@ -248,8 +249,8 @@
 
 // Buttons
 
-@btn-border-radius-base: 8px;
-@btn-border-radius-sm: 8px;
+@btn-border-radius-base: @border-radius-xs;
+@btn-border-radius-sm: @border-radius-xs;
 
 //grey colors
 @grey-25: #fdfdfd;

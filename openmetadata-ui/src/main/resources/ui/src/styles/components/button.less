@@ -13,13 +13,11 @@
 
 @import (reference) url('../variables.less');
 
-@btn-border-radius-base: 8px;
-@btn-border-radius-sm: 8px;
-
 .ant-btn,
 button {
   &:disabled {
     cursor: not-allowed;
+
     img,
     svg {
       opacity: 0.5;
@@ -42,6 +40,7 @@ button {
 .ant-btn-link-custom:hover {
   color: @primary-color;
 }
+
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
   background: @primary-color;
@@ -56,6 +55,7 @@ button {
   border-color: @primary-color;
   border-left-color: #ffffff;
 }
+
 .ant-btn-primary-custom:hover,
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {

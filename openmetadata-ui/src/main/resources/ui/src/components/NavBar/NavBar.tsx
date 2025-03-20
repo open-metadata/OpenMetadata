@@ -346,11 +346,11 @@ const NavBar: React.FC = () => {
     }
 
     return () => {
-      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
+      socket?.off(SOCKET_EVENTS.TASK_CHANNEL);
+      socket?.off(SOCKET_EVENTS.MENTION_CHANNEL);
+      socket?.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+      socket?.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
+      socket?.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
     };
   }, [socket, onUpdateCSVExportJob]);
 

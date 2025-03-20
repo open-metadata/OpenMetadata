@@ -54,7 +54,7 @@ export const GlobalSearchBar = () => {
 
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
-      ? location.search.substr(1)
+      ? location.search.substring(1)
       : location.search
   );
   const searchQuery = isString(parsedQueryString.search)

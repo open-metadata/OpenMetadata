@@ -23,12 +23,11 @@ interface LeftSidebarItemProps {
     redirect_url?: string;
     icon: SvgComponent;
     isBeta?: boolean;
-    onClick?: () => void;
   };
 }
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, isBeta, onClick },
+  data: { title, redirect_url, dataTestId, isBeta },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
@@ -53,8 +52,7 @@ const LeftSidebarItem = ({
   ) : (
     <span
       className="left-panel-item left-panel-label p-0"
-      data-testid={dataTestId}
-      onClick={onClick}>
+      data-testid={dataTestId}>
       {title}
     </span>
   );

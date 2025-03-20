@@ -58,6 +58,14 @@
       "type": "integer",
       "default": 10000
     },
+    "filter": {
+      "title": "Rules to Check",
+      "description": "Define certain set of rules that you would like to check. If all the rules apply, this will be set as 'True' and will continue through the positive flow. Otherwise it will be set to 'False' and continue through the negative flow.",
+      "type": "string",
+      "outputType": "jsonlogic",
+      "format": "queryBuilder",
+      "entityType": "table"
+    },
     "entities": {
       "title": "Entities",
       "description": "List of entities that you need to reindex",
