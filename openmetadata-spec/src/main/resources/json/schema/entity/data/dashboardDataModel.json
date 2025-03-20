@@ -24,7 +24,8 @@
         "PowerBIDataModel",
         "QlikDataModel",
         "QuickSightDataModel",
-        "SigmaDataModel"
+        "SigmaDataModel",
+        "PowerBIDataFlow"
       ],
       "javaEnums": [
         {
@@ -59,6 +60,9 @@
         },
         {
           "name": "SigmaDataModel"
+        },
+        {
+          "name": "PowerBIDataFlow"
         }
       ]
     }
