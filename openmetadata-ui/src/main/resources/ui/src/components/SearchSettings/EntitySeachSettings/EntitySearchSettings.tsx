@@ -570,7 +570,9 @@ const EntitySearchSettings = () => {
             <Collapse.Panel
               header={
                 <div className="d-flex items-center justify-between">
-                  <Typography.Text className="text-md font-semibold">
+                  <Typography.Text
+                    className="text-md font-semibold"
+                    data-testid="term-boost-header">
                     {t('label.term-boost')}
                   </Typography.Text>
                   <Button
@@ -590,7 +592,7 @@ const EntitySearchSettings = () => {
               <div className="bg-white border-radius-card p-box configuration-container">
                 <div className="overflow-y-auto" style={{ maxHeight: '50vh' }}>
                   <TermBoostList
-                    className="p-box flex-column justify-center"
+                    className="flex-column justify-center"
                     handleDeleteTermBoost={handleDeleteTermBoost}
                     handleTermBoostChange={handleTermBoostChange}
                     showNewTermBoost={showNewTermBoost}

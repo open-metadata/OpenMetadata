@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as ArrowRight } from '../../assets/svg/arrow-right.svg';
 import { ReactComponent as Delete } from '../../assets/svg/delete-colored.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusOutlined } from '../../assets/svg/plus-outlined.svg';
@@ -28,6 +27,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import FieldValueBoostModal from '../../components/SearchSettings/FieldValueBoostModal/FieldValueBoostModal';
 import { GlobalSettingItem } from '../../components/SearchSettings/GlobalSettingsItem/GlobalSettingsItem';
 import TermBoostList from '../../components/SearchSettings/TermBoostList/TermBoostList';
+import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { globalSettings } from '../../constants/SearchSettings.constant';
@@ -511,26 +511,10 @@ const SearchSettingsPage = () => {
       <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
           <Col key={data.key} span={8}>
-            <div
-              className="search-setting-card"
-              onClick={() => handleViewDetailClick(data.key)}>
-              <div className="search-setting-card-icon">
-                <Icon component={data.icon} />
-              </div>
-              <div className="search-setting-card-content">
-                <Typography.Text className="font-semibold">
-                  {data.label}
-                </Typography.Text>
-                <Typography.Paragraph
-                  className="font-normal text-sm"
-                  ellipsis={{ rows: 2 }}>
-                  {data.description}
-                </Typography.Paragraph>
-              </div>
-              <div className="search-setting-card-action">
-                <Icon className="text-sm" component={ArrowRight} />
-              </div>
-            </div>
+            <SettingItemCard
+              data={data}
+              onClick={() => handleViewDetailClick(data.key)}
+            />
           </Col>
         ))}
       </Row>

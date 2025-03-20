@@ -13,49 +13,44 @@
 @import url('../../../styles/variables.less');
 
 .setting-card-item {
-  height: 100%;
-  border: 1px solid @grey-bg-with-alpha;
-  border-radius: 10px;
-  transition: 0.3s ease-in-out;
+  border: 1px solid @grey-10;
+  background-color: @white;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
   cursor: pointer;
 
   &:hover {
-    border: 1px solid @primary-color;
+    border: 1px solid @blue-15;
   }
 
-  .ant-card-body {
-    padding: 60px 20px 40px;
-    text-align: center;
+  .setting-card-icon {
+    flex: 0 0 auto;
 
-    .setting-card-icon-container {
-      .setting-card-icon {
-        svg {
-          font-size: 50px;
-          fill: transparent;
-        }
-      }
+    svg {
+      font-size: 90px;
+      fill: transparent;
     }
+  }
 
-    .setting-card-item-content {
-      margin-top: 24px;
-      .setting-card-title {
-        font-size: 18px;
-        font-weight: 600;
-      }
+  .setting-card-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 
-      .setting-card-description {
-        margin-top: 5px;
-        font-size: 14px;
-        font-weight: 400;
-        color: @text-grey-muted;
-      }
+    .ant-typography-ellipsis {
+      color: @grey-600;
+      margin-bottom: 0;
     }
+  }
 
-    .setting-card-action-btn {
-      margin-top: 8px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-    }
+  .setting-card-action {
+    flex: 0 0 auto;
+    margin-left: auto;
   }
 }

@@ -43,14 +43,14 @@ test.describe('Search Settings Tests', () => {
     );
     await globalSettingEditIcon.click();
 
-    await page.getByTestId('value-input').fill('15000');
+    await page.getByTestId('value-input').fill('2000');
 
     await page.getByTestId('inline-save-btn').click();
     await toastNotification(page, /Search Settings updated successfully/);
 
     await expect(
       page.getByTestId(`global-setting-value-Max Aggregate Size`)
-    ).toHaveText('15000');
+    ).toHaveText('2000');
   });
 
   test('Update entity search settings', async ({ page }) => {
@@ -58,7 +58,7 @@ test.describe('Search Settings Tests', () => {
 
     const tableCard = page.getByTestId(mockEntitySearchSettings.key);
 
-    await tableCard.getByTestId('view-detail-button').click();
+    await tableCard.click();
 
     await expect(page).toHaveURL(
       new RegExp(mockEntitySearchSettings.url + '$')
@@ -82,23 +82,23 @@ test.describe('Search Settings Tests', () => {
     // Score Mode
     const scoreModeSelect = page.getByTestId('score-mode-select');
     await scoreModeSelect.click();
-    await page.getByTitle('max').click();
+    await page.getByTitle('Max').click();
 
     // Boost Mode
     const boostModeSelect = page.getByTestId('boost-mode-select');
     await boostModeSelect.click();
-    await page.getByTitle('replace').click();
+    await page.getByTitle('Replace').click();
 
     // Save
     await page.getByTestId('save-btn').click();
 
     await toastNotification(page, /Search Settings updated successfully/);
 
-    await expect(scoreModeSelect).toHaveText('max');
-    await expect(boostModeSelect).toHaveText('replace');
+    await expect(scoreModeSelect).toHaveText('Max');
+    await expect(boostModeSelect).toHaveText('Replace');
 
     // Restore Defaults
     await page.getByTestId('restore-defaults-btn').click();
-    await toastNotification(page, /Search Settings updated successfully/);
+    await toastNotification(page, /Search Settings restored successfully/);
   });
 });
