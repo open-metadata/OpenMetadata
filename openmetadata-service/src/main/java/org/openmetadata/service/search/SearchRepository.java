@@ -34,12 +34,17 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
+import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
+import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.search.SearchConstants.HITS;
+import static org.openmetadata.service.search.SearchConstants.ID;
+import static org.openmetadata.service.search.SearchConstants.PARENT;
+import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
+import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
+import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.PARENT;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SEARCH_SOURCE;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SERVICE_ID;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.TAGS_FQN;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.TEST_SUITES;
 import static org.openmetadata.service.search.models.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 
@@ -262,9 +267,8 @@ public class SearchRepository {
       }
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "Failed to Create Index for entity %s due to ",
-              indexMapping.getIndexName(clusterAlias)),
+          String.format(FAILED_TO_CREATE_INDEX_MESSAGE),
+          indexMapping.getIndexName(clusterAlias),
           e);
     }
   }
@@ -1214,13 +1218,13 @@ public class SearchRepository {
 
       // Extract hits from the response JSON and create entity references
       for (Iterator<JsonNode> it =
-              ((ArrayNode) Objects.requireNonNull(JsonUtils.extractValue(json, "hits", "hits")))
+              ((ArrayNode) Objects.requireNonNull(JsonUtils.extractValue(json, HITS, HITS)))
                   .elements();
           it.hasNext(); ) {
         JsonNode jsonNode = it.next();
-        String id = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, "id");
-        String fqn = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, "fullyQualifiedName");
-        String type = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, "entityType");
+        String id = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, ID);
+        String fqn = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, FULLY_QUALIFIED_NAME);
+        String type = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, ENTITY_TYPE);
         if (!nullOrEmpty(fqn) && !nullOrEmpty(type)) {
           fqns.add(
               new EntityReference()

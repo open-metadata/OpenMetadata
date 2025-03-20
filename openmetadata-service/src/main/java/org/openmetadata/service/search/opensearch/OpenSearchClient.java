@@ -25,11 +25,11 @@ import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLA
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
+import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
@@ -158,7 +158,6 @@ import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
-import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.common.unit.TimeValue;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
@@ -185,7 +184,6 @@ import os.org.opensearch.script.Script;
 import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
-import os.org.opensearch.search.SearchModule;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.BucketOrder;
@@ -216,7 +214,6 @@ public class OpenSearchClient implements SearchClient {
   @Getter protected final RestHighLevelClient client;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
-  private final QueryBuilderFactory queryBuilderFactory;
 
   private final OSLineageGraphBuilder lineageGraphBuilder;
 
@@ -234,14 +231,9 @@ public class OpenSearchClient implements SearchClient {
           "chart_suggest",
           "field_suggest");
 
-  private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
-      Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
-          .toList();
-
   private static final RequestOptions OPENSEARCH_REQUEST_OPTIONS;
 
   static {
-    SearchModule searchModule = new SearchModule(Settings.EMPTY, List.of());
     RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
     builder.addHeader("Content-Type", "application/json");
     builder.addHeader("Accept", "application/json");
@@ -260,7 +252,7 @@ public class OpenSearchClient implements SearchClient {
     this.client = createOpenSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
-    queryBuilderFactory = new OpenSearchQueryBuilderFactory();
+    QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new OSLineageGraphBuilder(client);
   }
@@ -474,7 +466,8 @@ public class OpenSearchClient implements SearchClient {
               .must(QueryBuilders.termQuery("deleted", request.getDeleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
+    if (!nullOrEmpty(request.getSortFieldParam())
+        && Boolean.TRUE.equals(!request.getIsHierarchy())) {
       FieldSortBuilder fieldSortBuilder =
           new FieldSortBuilder(request.getSortFieldParam())
               .order(SortOrder.fromString(request.getSortOrder()));
@@ -507,14 +500,14 @@ public class OpenSearchClient implements SearchClient {
             request.getIncludeSourceFields().toArray(String[]::new),
             new String[] {}));
 
-    if (request.getTrackTotalHits()) {
+    if (Boolean.TRUE.equals(request.getTrackTotalHits())) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    if (request.getExplain()) {
+    if (Boolean.TRUE.equals(request.getExplain())) {
       searchSourceBuilder.explain(true);
     }
     try {
@@ -559,6 +552,7 @@ public class OpenSearchClient implements SearchClient {
           searchRequest.source(searchSourceBuilder);
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
+          nlqService.cacheQuery(request.getQuery(), transformedQuery);
           return Response.status(Response.Status.OK).entity(response.toString()).build();
         }
       } catch (Exception e) {
@@ -572,8 +566,7 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext)
-      throws IOException {
+  private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext) {
     try {
       LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
 
@@ -624,7 +617,7 @@ public class OpenSearchClient implements SearchClient {
       SearchRequest request, SearchSourceBuilder searchSourceBuilder, RestHighLevelClient client)
       throws IOException {
 
-    if (!request.getIsHierarchy()) {
+    if (Boolean.FALSE.equals(request.getIsHierarchy())) {
       return;
     }
 
@@ -837,7 +830,8 @@ public class OpenSearchClient implements SearchClient {
       SearchHits searchHits = response.getHits();
       SearchHit[] hits = searchHits.getHits();
       Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
-      return new SearchResultListMapper(results, searchHits.getTotalHits().value);
+      return new SearchResultListMapper(
+          results, searchHits.getTotalHits() != null ? searchHits.getTotalHits().value : 0);
     } catch (OpenSearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
