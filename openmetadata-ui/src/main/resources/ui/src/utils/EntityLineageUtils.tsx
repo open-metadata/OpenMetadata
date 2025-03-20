@@ -1666,3 +1666,29 @@ export const removeUnconnectedNodes = (
 
   return updatedNodes;
 };
+
+export const getLineageEntityExclusionFilter = () => {
+  return {
+    query: {
+      bool: {
+        must_not: [
+          {
+            term: {
+              entityType: EntityType.GLOSSARY_TERM,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.TAG,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.DATA_PRODUCT,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
