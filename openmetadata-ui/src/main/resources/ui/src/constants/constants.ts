@@ -126,6 +126,8 @@ export const ROUTES = {
   FORBIDDEN: '/403',
   UNAUTHORISED: '/unauthorised',
   LOGOUT: '/logout',
+  PLATFORM_LINEAGE: '/lineage',
+  PLATFORM_LINEAGE_WITH_FQN: `/lineage/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',

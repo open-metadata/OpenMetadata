@@ -11,16 +11,10 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Input, Typography } from 'antd';
+import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
@@ -39,13 +33,26 @@ import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCa
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import './search-preview.less';
 
-const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
+interface SearchPreviewProps {
+  searchConfig: SearchSettings;
+  handleRestoreDefaults: () => void;
+  handleSaveChanges: () => void;
+  isSaving: boolean;
+  disabledSave: boolean;
+}
+
+const SearchPreview = ({
+  searchConfig,
+  handleRestoreDefaults,
+  handleSaveChanges,
+  isSaving,
+  disabledSave,
+}: SearchPreviewProps) => {
   const { t } = useTranslation();
   const { fqn } = useParams<{ fqn: keyof typeof ENTITY_PATH }>();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
-  const initialFetchDone = useRef(false);
   const {
     currentPage,
     pageSize,
@@ -154,31 +161,39 @@ const SearchPreview = ({ searchConfig }: { searchConfig: SearchSettings }) => {
   };
 
   useEffect(() => {
-    if (
-      searchConfig &&
-      Object.keys(searchConfig).length > 0 &&
-      !initialFetchDone.current
-    ) {
-      fetchAssets({ searchTerm: '', page: currentPage });
-      initialFetchDone.current = true;
-    }
-  }, [currentPage, searchConfig]);
-
-  // Separate effect for handling page changes after initial fetch
-  useEffect(() => {
-    if (initialFetchDone.current && currentPage > 1) {
+    if (searchConfig && Object.keys(searchConfig).length > 0) {
       fetchAssets({ searchTerm: searchValue, page: currentPage });
     }
-  }, [currentPage]);
+  }, [searchConfig, currentPage]);
 
   return (
     <div className="search-preview">
-      <Typography.Title
-        className="header-title"
-        data-testid="search-preview"
-        level={5}>
-        {t('label.preview')}
-      </Typography.Title>
+      <Row className="d-flex justify-between items-center m-b-sm">
+        <Col>
+          <Typography.Text
+            className="header-title"
+            data-testid="search-preview">
+            {t('label.preview')}
+          </Typography.Text>
+        </Col>
+        <Col>
+          <Button
+            className="restore-defaults-btn font-semibold"
+            data-testid="restore-defaults-btn"
+            onClick={handleRestoreDefaults}>
+            {t('label.restore-default-plural')}
+          </Button>
+          <Button
+            className="save-btn font-semibold m-l-md"
+            data-testid="save-btn"
+            disabled={disabledSave}
+            loading={isSaving}
+            onClick={handleSaveChanges}>
+            {t('label.save')}
+          </Button>
+        </Col>
+      </Row>
+
       <Input
         allowClear
         className="search-box"

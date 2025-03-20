@@ -122,6 +122,7 @@ def get_profile_sample_config(
                     profileSample=config.profileSample,
                     profileSampleType=config.profileSampleType,
                     samplingMethodType=config.samplingMethodType,
+                    randomizedSample=config.randomizedSample,
                 )
         except AttributeError:
             pass

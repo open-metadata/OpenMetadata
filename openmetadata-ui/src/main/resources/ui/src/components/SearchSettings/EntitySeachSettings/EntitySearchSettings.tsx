@@ -10,18 +10,33 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Checkbox, Col, Dropdown, Row, Select, Typography } from 'antd';
+import {
+  Button,
+  Checkbox,
+  Col,
+  Collapse,
+  Dropdown,
+  Row,
+  Select,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
+import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
+  AllowedSearchFields,
   BoostMode,
+  Field,
   ScoreMode,
   SearchSettings,
   TermBoost,
@@ -30,7 +45,6 @@ import { Settings, SettingType } from '../../../generated/settings/settings';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
-import { getEntityFields } from '../../../rest/metadataTypeAPI';
 import {
   restoreSettingsConfig,
   updateSettingsConfig,
@@ -78,7 +92,8 @@ const EntitySearchSettings = () => {
   const [previewSearchConfig, setPreviewSearchConfig] =
     useState<SearchSettings>(searchConfig ?? {});
   const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
-  const [availableFields, setAvailableFields] = useState<string[]>([]);
+  const [allowedFields, setAllowedFields] = useState<AllowedSearchFields[]>([]);
+  const [activeKey, setActiveKey] = useState<string>('1');
 
   const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
 
@@ -110,42 +125,46 @@ const EntitySearchSettings = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
-        t('label.search')
+        startCase(entityType),
+        GlobalSettingOptions.SEARCH_SETTINGS
       ),
     []
   );
 
-  const fetchEntityFields = async () => {
-    try {
-      const response = await getEntityFields(entityType);
-      const fields = response.map((field: { name: string }) => field.name);
-      setAvailableFields(fields);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   useEffect(() => {
-    fetchEntityFields();
-  }, [entityType]);
+    if (searchConfig) {
+      setAllowedFields(searchConfig?.allowedFields ?? []);
+    }
+  }, [searchConfig]);
+
+  const entityFields: Field[] = useMemo(() => {
+    const currentEntityFields =
+      allowedFields.find((field) => field.entityType === entityType)?.fields ??
+      [];
+
+    return currentEntityFields.map((field) => ({
+      name: field.name,
+      description: field.description,
+    }));
+  }, [allowedFields, entityType]);
 
   const menuItems = useMemo(
     () => ({
-      items: availableFields.map((fieldName) => ({
-        key: fieldName,
+      items: entityFields.map((field) => ({
+        key: field.name,
         label: (
           <Checkbox
             checked={searchSettings.searchFields?.some(
-              (field) => field.field === fieldName
+              (searchField) => searchField.field === field.name
             )}
-            onChange={() => handleFieldSelection(fieldName)}>
-            {fieldName}
+            onChange={() => handleFieldSelection(field.name)}>
+            {field.name}
           </Checkbox>
         ),
       })),
       className: 'menu-items',
     }),
-    [availableFields, searchSettings.searchFields]
+    [entityFields, searchSettings.searchFields]
   );
 
   const handleFieldSelection = (fieldName: string) => {
@@ -155,7 +174,6 @@ const EntitySearchSettings = () => {
       );
 
       if (isFieldSelected) {
-        // Remove field if already selected
         return {
           ...prev,
           searchFields: prev.searchFields?.filter(
@@ -164,12 +182,14 @@ const EntitySearchSettings = () => {
           isUpdated: true,
         };
       } else {
-        // Add new field with boost value 0
         return {
           ...prev,
           searchFields: [
             ...(prev.searchFields ?? []),
-            { field: fieldName, boost: 0 },
+            {
+              field: fieldName,
+              boost: 0,
+            },
           ],
           isUpdated: true,
         };
@@ -306,6 +326,7 @@ const EntitySearchSettings = () => {
 
   const handleAddNewTermBoost = () => {
     setShowNewTermBoost(true);
+    setActiveKey('2');
   };
 
   const handleTermBoostChange = (newTermBoost: TermBoost) => {
@@ -336,14 +357,12 @@ const EntitySearchSettings = () => {
   };
 
   const handleDeleteTermBoost = (value: string) => {
-    // If deleting a new card (empty value), just hide it
     if (!value) {
       setShowNewTermBoost(false);
 
       return;
     }
 
-    // For existing cards, update the state
     setSearchSettings((prev) => ({
       ...prev,
       termBoosts: prev.termBoosts?.filter((tb) => tb.value !== value) || [],
@@ -368,13 +387,17 @@ const EntitySearchSettings = () => {
       });
 
       showSuccessToast(
-        t('server.update-entity-success', {
+        t('server.restore-entity-success', {
           entity: t('label.search-setting-plural'),
         })
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
+  };
+
+  const handleCollapseChange = (key: string | string[]) => {
+    setActiveKey(Array.isArray(key) ? key[0] : key);
   };
 
   useEffect(() => {
@@ -449,117 +472,143 @@ const EntitySearchSettings = () => {
           </div>
         </Col>
       </Row>
-      <Row className="entity-search-settings-header bg-white m-b-lg p-box">
-        <Col span={24}>
-          <Typography.Text className="text-sm font-semibold">
-            {t('label.configure-term-boost')}
-          </Typography.Text>
-          <TermBoostList
-            className="p-box m-t-md"
-            handleAddNewTermBoost={handleAddNewTermBoost}
-            handleDeleteTermBoost={handleDeleteTermBoost}
-            handleTermBoostChange={handleTermBoostChange}
-            showNewTermBoost={showNewTermBoost}
-            termBoosts={searchSettings.termBoosts ?? []}
-          />
-        </Col>
-      </Row>
       <Row
         className="d-flex gap-5 items-start entity-search-settings-content"
         gutter={0}>
-        <Col
-          className="bg-white border-radius-card h-full flex-1 p-box configuration-container"
-          span={8}>
-          <Typography.Title level={5}>
-            {t('label.matching-fields')}
-          </Typography.Title>
-          <Row
-            className="p-y-xs config-section"
-            data-testid="field-configurations">
-            {entitySearchFields.map((field, index) => (
-              <Col key={field.fieldName} span={24}>
-                <FieldConfiguration
-                  field={field}
-                  index={index}
-                  key={field.fieldName}
-                  searchSettings={searchSettings}
-                  onDeleteSearchField={handleDeleteSearchField}
-                  onFieldWeightChange={handleFieldWeightChange}
-                  onHighlightFieldsChange={handleHighlightFieldsChange}
-                />
-              </Col>
-            ))}
-            <Col className="m-b-sm" span={24}>
-              <Dropdown
-                getPopupContainer={(triggerNode) => triggerNode.parentElement!}
-                menu={menuItems}
-                placement="bottomLeft"
-                trigger={['click']}>
-                <Button
-                  className="add-field-btn"
-                  data-testid="add-field-btn"
-                  icon={<PlusOutlined />}
-                  type="primary">
-                  {t('label.add-matching-field')}
-                </Button>
-              </Dropdown>
-            </Col>
-            {/* Score Mode and Boost Mode Section */}
-            <Col className="flex flex-col w-full">
-              <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                <Typography.Text className="text-grey-muted text-xs font-normal">
-                  {t('label.score-mode')}
-                </Typography.Text>
-                <Select
-                  bordered={false}
-                  className="w-full border-none custom-select"
-                  data-testid="score-mode-select"
-                  options={scoreModeOptions}
-                  value={searchSettings.scoreMode}
-                  onChange={(value: ScoreMode) =>
-                    handleModeUpdate('scoreMode', value)
-                  }
-                />
+        <Col className="d-flex flex-column settings-left-panel" span={8}>
+          <Collapse
+            accordion
+            activeKey={activeKey}
+            bordered={false}
+            className="w-full entity-collapse-container"
+            onChange={handleCollapseChange}>
+            <Collapse.Panel
+              header={
+                <div className="d-flex items-center justify-between">
+                  <Typography.Text className="text-md font-semibold">
+                    {t('label.matching-fields')}
+                  </Typography.Text>
+                  <Dropdown
+                    getPopupContainer={(triggerNode) =>
+                      triggerNode.parentElement!
+                    }
+                    menu={menuItems}
+                    placement="bottomLeft"
+                    trigger={['click']}>
+                    <Button
+                      className="add-field-btn"
+                      data-testid="add-field-btn"
+                      icon={
+                        <Icon className="text-xs" component={PlusOutlined} />
+                      }
+                      type="primary"
+                      onClick={(e) => e.stopPropagation()}>
+                      {t('label.add')}
+                    </Button>
+                  </Dropdown>
+                </div>
+              }
+              key="1">
+              <div className="bg-white configuration-container">
+                <Row
+                  className="p-y-xs config-section overflow-y-auto"
+                  data-testid="field-configurations"
+                  style={{ maxHeight: '50vh' }}>
+                  {entitySearchFields.map((field, index) => (
+                    <Col className="m-b-sm" key={field.fieldName} span={24}>
+                      <FieldConfiguration
+                        entityFields={entityFields}
+                        field={field}
+                        index={index}
+                        key={field.fieldName}
+                        searchSettings={searchSettings}
+                        onDeleteSearchField={handleDeleteSearchField}
+                        onFieldWeightChange={handleFieldWeightChange}
+                        onHighlightFieldsChange={handleHighlightFieldsChange}
+                      />
+                    </Col>
+                  ))}
+                  {/* Score Mode and Boost Mode Section */}
+                  <Col className="flex flex-col w-full">
+                    <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
+                      <Typography.Text className="text-grey-muted text-xs font-normal">
+                        {t('label.score-mode')}
+                      </Typography.Text>
+                      <Select
+                        bordered={false}
+                        className="w-full border-none custom-select"
+                        data-testid="score-mode-select"
+                        options={scoreModeOptions}
+                        value={searchSettings.scoreMode}
+                        onChange={(value: ScoreMode) =>
+                          handleModeUpdate('scoreMode', value)
+                        }
+                      />
+                    </div>
+                    <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
+                      <Typography.Text className="text-grey-muted text-xs font-normal">
+                        {t('label.boost-mode')}
+                      </Typography.Text>
+                      <Select
+                        bordered={false}
+                        className="w-full border-none custom-select"
+                        data-testid="boost-mode-select"
+                        options={boostModeOptions}
+                        value={searchSettings.boostMode}
+                        onChange={(value: BoostMode) =>
+                          handleModeUpdate('boostMode', value)
+                        }
+                      />
+                    </div>
+                  </Col>
+                </Row>
               </div>
-              <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">
-                <Typography.Text className="text-grey-muted text-xs font-normal">
-                  {t('label.boost-mode')}
-                </Typography.Text>
-                <Select
-                  bordered={false}
-                  className="w-full border-none custom-select"
-                  data-testid="boost-mode-select"
-                  options={boostModeOptions}
-                  value={searchSettings.boostMode}
-                  onChange={(value: BoostMode) =>
-                    handleModeUpdate('boostMode', value)
-                  }
-                />
+            </Collapse.Panel>
+            <Collapse.Panel
+              header={
+                <div className="d-flex items-center justify-between">
+                  <Typography.Text className="text-md font-semibold">
+                    {t('label.term-boost')}
+                  </Typography.Text>
+                  <Button
+                    className="add-field-btn"
+                    data-testid="add-term-boost-btn"
+                    icon={<Icon className="text-xs" component={PlusOutlined} />}
+                    type="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddNewTermBoost();
+                    }}>
+                    {t('label.add')}
+                  </Button>
+                </div>
+              }
+              key="2">
+              <div className="bg-white border-radius-card p-box configuration-container">
+                <div className="overflow-y-auto" style={{ maxHeight: '50vh' }}>
+                  <TermBoostList
+                    className="p-box flex-column justify-center"
+                    handleDeleteTermBoost={handleDeleteTermBoost}
+                    handleTermBoostChange={handleTermBoostChange}
+                    showNewTermBoost={showNewTermBoost}
+                    termBoosts={searchSettings.termBoosts ?? []}
+                  />
+                </div>
               </div>
-            </Col>
-          </Row>
+            </Collapse.Panel>
+          </Collapse>
         </Col>
         <Col
           className="bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
           span={16}>
           <div className="preview-content d-flex flex-column flex-1">
-            <SearchPreview searchConfig={previewSearchConfig} />
-          </div>
-          <div className="d-flex justify-end p-t-md">
-            <Button
-              className="restore-defaults-btn font-semibold"
-              data-testid="restore-defaults-btn"
-              onClick={handleRestoreDefaults}>
-              {t('label.restore-default-plural')}
-            </Button>
-            <Button
-              className="save-btn font-semibold m-l-md"
-              data-testid="save-btn"
-              disabled={!searchSettings.isUpdated || isSaving}
-              loading={isSaving}
-              onClick={handleSaveChanges}>
-              {t('label.save')}
-            </Button>
+            <SearchPreview
+              disabledSave={!searchSettings.isUpdated || isSaving}
+              handleRestoreDefaults={handleRestoreDefaults}
+              handleSaveChanges={handleSaveChanges}
+              isSaving={isSaving}
+              searchConfig={previewSearchConfig}
+            />
           </div>
         </Col>
       </Row>
