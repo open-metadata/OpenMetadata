@@ -119,7 +119,7 @@ import {
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
-import { convertPngToPDFExport } from './Export/PDFExportUtils';
+import exportUtilClassBase from './ExportUtilClassBase';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
 import {
@@ -2535,22 +2535,11 @@ export const updateNodeType = (
   return node;
 };
 
-const downloadImageFromBase64 = (
-  dataUrl: string,
-  fileName: string,
-  exportType: ExportTypes
-) => {
-  const a = document.createElement('a');
-  a.setAttribute('download', `${fileName}.${lowerCase(exportType)}`);
-  a.setAttribute('href', dataUrl);
-  a.click();
-};
-
-export const handleExportFile = (
+export const handleExportFile = async (
   exportType: ExportTypes,
   exportData: ExportData
 ) => {
-  const { name: fileName, documentSelector = '', viewport, title } = exportData;
+  const { name: fileName, documentSelector = '', viewport } = exportData;
   try {
     const exportElement = document.querySelector(documentSelector);
 
@@ -2570,7 +2559,7 @@ export const handleExportFile = (
     const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
     const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
 
-    toPng(exportElement as HTMLElement, {
+    await toPng(exportElement as HTMLElement, {
       backgroundColor: '#ffffff',
       width: imageWidth + padding * 2,
       height: imageHeight + padding * 2,
@@ -2588,13 +2577,12 @@ export const handleExportFile = (
       },
     })
       .then((base64Image: string) => {
-        if (exportType === ExportTypes.PDF) {
-          convertPngToPDFExport(base64Image, fileName, {
-            title: title ?? '',
-          });
-        } else {
-          downloadImageFromBase64(base64Image, fileName, exportType);
-        }
+        exportUtilClassBase.exportMethodBasedOnType({
+          exportType,
+          base64Image,
+          fileName,
+          exportData,
+        });
       })
       .catch((error) => {
         throw error;

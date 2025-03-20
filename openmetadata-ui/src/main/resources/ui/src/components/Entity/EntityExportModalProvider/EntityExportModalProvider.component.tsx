@@ -24,13 +24,11 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import {
-  ExportTypes,
-  EXPORT_TYPES_OPTIONS,
-} from '../../../constants/Export.constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { handleExportFile } from '../../../utils/EntityUtils';
+import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import {
@@ -71,11 +69,13 @@ export const EntityExportModalProvider = ({
     [location]
   );
 
-  const FILTERED_EXPORT_TYPES = useMemo(
+  const exportTypesOptions = useMemo(
     () =>
-      EXPORT_TYPES_OPTIONS.filter((option) =>
-        exportData?.exportTypes.includes(option.value as ExportTypes)
-      ),
+      exportUtilClassBase
+        .getExportTypeOptions()
+        .filter((option) =>
+          exportData?.exportTypes.includes(option.value as ExportTypes)
+        ),
     [exportData]
   );
 
@@ -120,7 +120,7 @@ export const EntityExportModalProvider = ({
       setDownloading(true);
 
       if (exportType !== ExportTypes.CSV) {
-        handleExportFile(exportType, exportData);
+        await handleExportFile(exportType, exportData);
 
         handleCancel();
         setDownloading(false);
@@ -247,6 +247,7 @@ export const EntityExportModalProvider = ({
               htmlType: 'submit',
               id: 'submit-button',
               disabled: downloading,
+              loading: selectedExportType !== ExportTypes.CSV && downloading,
             }}
             okText={t('label.export')}
             title={exportData.title ?? t('label.export')}
@@ -260,7 +261,7 @@ export const EntityExportModalProvider = ({
                 <Select
                   data-testid="export-type-select"
                   disabled={exportData.exportTypes.length === 1}
-                  options={FILTERED_EXPORT_TYPES}
+                  options={exportTypesOptions}
                 />
               </Form.Item>
 

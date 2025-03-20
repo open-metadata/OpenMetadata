@@ -101,7 +101,7 @@ import {
   getNewLineageConnectionDetails,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
-  getViewportForLineagePDFExport,
+  getViewportForLineageExport,
   onLoad,
   parseLineageData,
   positionNodesUsingElk,
@@ -443,7 +443,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         name: decodedFqn,
         exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
         documentSelector: '.react-flow__viewport',
-        viewport: getViewportForLineagePDFExport(nodes),
+        viewport: getViewportForLineageExport(nodes),
         onExport: exportLineageData,
       });
     }

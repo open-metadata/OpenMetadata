@@ -1709,9 +1709,7 @@ export const getViewportForBoundsReactFlow = (
   return { x: translateX, y: translateY, zoom: scale };
 };
 
-export const getViewportForLineagePDFExport = (
-  nodes: Node[]
-): ExportViewport => {
+export const getViewportForLineageExport = (nodes: Node[]): ExportViewport => {
   const exportElement = document.querySelector(
     '.react-flow__viewport'
   ) as HTMLElement;

@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export enum ExportTypes {
-  CSV = 'CSV',
-  PNG = 'PNG',
-}
+import { lowerCase } from 'lodash';
+import { ExportTypes } from '../../constants/Export.constants';
+
+export const downloadImageFromBase64 = (
+  dataUrl: string,
+  fileName: string,
+  exportType: ExportTypes
+) => {
+  const a = document.createElement('a');
+  a.setAttribute('download', `${fileName}.${lowerCase(exportType)}`);
+  a.setAttribute('href', dataUrl);
+  a.click();
+};
