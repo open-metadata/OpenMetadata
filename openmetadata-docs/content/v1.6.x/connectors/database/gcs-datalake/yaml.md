@@ -62,18 +62,10 @@ The workflow is modeled around the following JSON Schema.
 
 #### Source Configuration - Service Connection
 
+{% partial file="/v1.6/connectors/yaml/common/gcp-config-def.md" /%}
+
 {% codeInfo srNumber=5 %}
 
-* **type**: Credentials type, e.g. `service_account`.
-* **projectId**
-* **privateKey**
-* **privateKeyId**
-* **clientEmail**
-* **clientId**
-* **authUri**: [https://accounts.google.com/o/oauth2/auth](https://accounts.google.com/o/oauth2/auth) by default
-* **tokenUri**: [https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token) by default
-* **authProviderX509CertUrl**: [https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs) by default
-* **clientX509CertUrl**
 * **bucketName**: name of the bucket in GCS
 * **Prefix**: prefix in gcp bucket
 
@@ -99,19 +91,11 @@ source:
       type: Datalake
       configSource:
         securityConfig:
-```
-```yaml {% srNumber=5 %}
           gcpConfig:
-            type: type of account
-            projectId: project id
-            privateKeyId: private key id
-            privateKey: private key
-            clientEmail: client email
-            clientId: client id
-            authUri: https://accounts.google.com/o/oauth2/auth
-            tokenUri: https://oauth2.googleapis.com/token
-            authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
-            clientX509CertUrl:  clientX509 Certificate Url
+```
+{% partial file="/v1.6/connectors/yaml/common/gcp-config.md" /%}
+
+```yaml {% srNumber=5 %}
       bucketName: bucket name
       prefix: prefix
 ```
