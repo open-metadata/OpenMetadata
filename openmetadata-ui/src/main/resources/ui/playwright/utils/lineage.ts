@@ -634,7 +634,7 @@ export const verifyExportLineageCSV = async (
   });
 };
 
-export const verifyExportLineagePDF = async (page: Page) => {
+export const verifyExportLineagePNG = async (page: Page) => {
   await page.waitForSelector('[data-testid="lineage-export"]', {
     state: 'visible',
   });
@@ -651,10 +651,10 @@ export const verifyExportLineagePDF = async (page: Page) => {
   );
 
   await page.getByTestId('export-type-select').click();
-  await page.locator('.ant-select-item[title="PDF"]').click();
+  await page.locator('.ant-select-item[title="PNG"]').click();
 
   await expect(
-    page.getByTestId('export-type-select').getByTitle('PDF')
+    page.getByTestId('export-type-select').getByTitle('PNG')
   ).toBeVisible();
 
   const [download] = await Promise.all([

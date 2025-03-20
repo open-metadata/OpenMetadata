@@ -441,7 +441,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (decodedFqn) {
       showModal({
         name: decodedFqn,
-        exportTypes: [ExportTypes.CSV, ExportTypes.PDF],
+        exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
         documentSelector: '.react-flow__viewport',
         viewport: getViewportForLineagePDFExport(nodes),
         onExport: exportLineageData,

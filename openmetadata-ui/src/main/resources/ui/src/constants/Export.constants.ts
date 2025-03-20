@@ -13,9 +13,11 @@
 export enum ExportTypes {
   CSV = 'CSV',
   PDF = 'PDF',
+  PNG = 'PNG',
 }
 
 export const EXPORT_TYPES_OPTIONS = [
   { label: 'CSV', value: ExportTypes.CSV },
   { label: 'PDF', value: ExportTypes.PDF },
+  { label: 'PNG', value: ExportTypes.PNG },
 ];

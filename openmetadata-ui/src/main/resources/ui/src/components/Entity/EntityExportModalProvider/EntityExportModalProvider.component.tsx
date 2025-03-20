@@ -13,7 +13,7 @@
 import { Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString } from 'lodash';
+import { isString, lowerCase } from 'lodash';
 import React, {
   ReactNode,
   useCallback,
@@ -30,7 +30,7 @@ import {
 } from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { handleExportPDF } from '../../../utils/EntityUtils';
+import { handleExportFile } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import {
@@ -69,6 +69,14 @@ export const EntityExportModalProvider = ({
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
     [location]
+  );
+
+  const FILTERED_EXPORT_TYPES = useMemo(
+    () =>
+      EXPORT_TYPES_OPTIONS.filter((option) =>
+        exportData?.exportTypes.includes(option.value as ExportTypes)
+      ),
+    [exportData]
   );
 
   const handleCancel = () => {
@@ -111,13 +119,14 @@ export const EntityExportModalProvider = ({
     try {
       setDownloading(true);
 
-      if (exportType === ExportTypes.PDF) {
-        handleExportPDF(
+      if (exportType !== ExportTypes.CSV) {
+        handleExportFile(
+          exportType,
           exportData.name,
           exportData.documentSelector ?? '',
           exportData.viewport,
           {
-            title: exportData.name,
+            title: exportData.title ?? '',
           }
         );
 
@@ -259,7 +268,7 @@ export const EntityExportModalProvider = ({
                 <Select
                   data-testid="export-type-select"
                   disabled={exportData.exportTypes.length === 1}
-                  options={EXPORT_TYPES_OPTIONS}
+                  options={FILTERED_EXPORT_TYPES}
                 />
               </Form.Item>
 
@@ -270,9 +279,7 @@ export const EntityExportModalProvider = ({
                 })}:`}
                 name="fileName">
                 <Input
-                  addonAfter={
-                    selectedExportType === ExportTypes.CSV ? '.csv' : '.pdf'
-                  }
+                  addonAfter={`.${lowerCase(selectedExportType)}`}
                   data-testid="file-name-input"
                 />
               </Form.Item>

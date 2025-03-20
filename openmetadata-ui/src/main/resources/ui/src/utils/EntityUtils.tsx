@@ -52,6 +52,7 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
+import { ExportTypes } from '../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -2534,7 +2535,19 @@ export const updateNodeType = (
   return node;
 };
 
-export const handleExportPDF = (
+const downloadImageFromBase64 = (
+  dataUrl: string,
+  fileName: string,
+  exportType: ExportTypes
+) => {
+  const a = document.createElement('a');
+  a.setAttribute('download', `${fileName}.${lowerCase(exportType)}`);
+  a.setAttribute('href', dataUrl);
+  a.click();
+};
+
+export const handleExportFile = (
+  exportType: ExportTypes,
   fileName: string,
   documentSelector: string,
   viewport?: ExportViewport,
@@ -2544,29 +2557,54 @@ export const handleExportPDF = (
     const exportElement = document.querySelector(documentSelector);
 
     if (!exportElement) {
-      throw new Error(i18n.t('message.error-generating-pdf'));
+      throw new Error(
+        i18n.t('message.error-generating-export-type', {
+          exportType,
+        })
+      );
     }
 
-    const imageWidth = exportElement.scrollWidth;
-    const imageHeight = exportElement.scrollHeight;
+    // Minimum width and height for the image
+    const minWidth = 1000;
+    const minHeight = 800;
+    const padding = 20;
+
+    const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
+    const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
 
     toPng(exportElement as HTMLElement, {
       backgroundColor: '#ffffff',
-      width: imageWidth,
-      height: imageHeight,
+      width: imageWidth + padding * 2,
+      height: imageHeight + padding * 2,
       style: {
         width: imageWidth.toString(),
         height: imageHeight.toString(),
+        margin: `${padding}px`,
+        minWidth: `${minWidth}px`,
+        minHeight: `${minHeight}px`,
         ...(!isUndefined(viewport)
           ? {
               transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
             }
           : {}),
       },
-    }).then((base64Image) =>
-      convertPngToPDFExport(base64Image, fileName, headerData)
-    );
+    })
+      .then((base64Image: string) => {
+        if (exportType === ExportTypes.PDF) {
+          convertPngToPDFExport(base64Image, fileName, headerData);
+        } else {
+          downloadImageFromBase64(base64Image, fileName, exportType);
+        }
+      })
+      .catch((error) => {
+        throw error;
+      });
   } catch (error) {
-    showErrorToast(error as AxiosError, i18n.t('message.error-generating-pdf'));
+    showErrorToast(
+      error as AxiosError,
+      i18n.t('message.error-generating-export-type', {
+        exportType,
+      })
+    );
   }
 };
