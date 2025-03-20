@@ -69,7 +69,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
 
         expected_dict = {
             "type": "service_account",
-            "project_id": ["project_id"],
+            "project_id": "project_id",
             "private_key_id": "private_key_id",
             "private_key": private_key,
             "client_email": "email@mail.com",
