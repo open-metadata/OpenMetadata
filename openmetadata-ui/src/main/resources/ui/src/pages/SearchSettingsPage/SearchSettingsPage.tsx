@@ -61,6 +61,7 @@ const SearchSettingsPage = () => {
   const [searchConfig, setSearchConfig] = useState<SearchSettings>();
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
+  const [termBoostsChanged, setTermBoostsChanged] = useState<boolean>(false);
   const [showFieldValueBoostModal, setShowFieldValueBoostModal] =
     useState<boolean>(false);
   const [selectedFieldValueBoost, setSelectedFieldValueBoost] = useState<
@@ -109,6 +110,7 @@ const SearchSettingsPage = () => {
         ...appPreferences,
         searchConfig: configValue as SearchSettings,
       });
+      setTermBoostsChanged(false);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -149,6 +151,10 @@ const SearchSettingsPage = () => {
         searchConfig: updatedSearchConfig,
       });
 
+      if (field === 'termBoosts') {
+        setTermBoostsChanged(false);
+      }
+
       showSuccessToast(
         t('server.update-entity-success', {
           entity: t('label.search-setting-plural'),
@@ -162,7 +168,8 @@ const SearchSettingsPage = () => {
   };
 
   // Term Boost
-  const handleAddNewTermBoost = () => {
+  const handleAddNewTermBoost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     setShowNewTermBoost(true);
   };
 
@@ -191,11 +198,22 @@ const SearchSettingsPage = () => {
     };
 
     setSearchConfig(updatedConfig);
+    setShowNewTermBoost(false);
+    setTermBoostsChanged(true);
+  };
+
+  const handleSaveTermBoost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (!searchConfig) {
+      return;
+    }
+    const termBoosts = searchConfig.globalSettings?.termBoosts ?? [];
     handleUpdateSearchConfig({
       field: 'termBoosts',
       value: termBoosts,
     });
     setShowNewTermBoost(false);
+    setTermBoostsChanged(false);
   };
 
   const handleDeleteTermBoost = (value: string) => {
@@ -214,6 +232,7 @@ const SearchSettingsPage = () => {
       field: 'termBoosts',
       value: termBoosts,
     });
+    setTermBoostsChanged(false);
   };
 
   // Field Value Boost
@@ -355,6 +374,12 @@ const SearchSettingsPage = () => {
                       </span>
                     </Col>
                     <Col className="d-flex items-center gap-2">
+                      <Button
+                        className="term-boost-save-btn"
+                        disabled={!termBoostsChanged}
+                        onClick={handleSaveTermBoost}>
+                        {t('label.save')}
+                      </Button>
                       <Button
                         className="term-boost-add-btn"
                         icon={

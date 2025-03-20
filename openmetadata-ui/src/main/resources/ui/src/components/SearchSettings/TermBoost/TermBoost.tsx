@@ -17,7 +17,6 @@ import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as Save } from '../../../assets/svg/save.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -110,18 +109,14 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     };
 
     setTermBoostData(updatedData);
+    onTermBoostChange(updatedData);
   };
 
   const handleBoostChange = (value: number) => {
     const updatedData = { ...termBoostData, boost: value };
 
     setTermBoostData(updatedData);
-  };
-
-  const handleSave = () => {
-    if (termBoostData.field && termBoostData.value && termBoostData.boost) {
-      onTermBoostChange(termBoostData);
-    }
+    onTermBoostChange(updatedData);
   };
 
   return (
@@ -134,6 +129,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             className="w-full custom-select"
             data-testid="term-boost-select"
             defaultValue={termBoostData.value || undefined}
+            disabled={!!termBoost.value}
             filterOption={getFilterOptions}
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
@@ -170,17 +166,6 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             data-testid="delete-term-boost"
             icon={<Icon className="text-md" component={Delete} />}
             onClick={() => onDeleteBoost(termBoost.value)}
-          />
-          <Button
-            className="save-term-boost"
-            data-testid="save-term-boost"
-            disabled={
-              !termBoostData.field ||
-              !termBoostData.value ||
-              !termBoostData.boost
-            }
-            icon={<Icon className="text-md" component={Save} />}
-            onClick={handleSave}
           />
         </Col>
       </Row>

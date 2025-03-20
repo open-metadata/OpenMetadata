@@ -666,15 +666,13 @@ const EntitySearchSettings = () => {
         <Col
           className="bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
           span={16}>
-          <div className="preview-content d-flex flex-column flex-1">
-            <SearchPreview
-              disabledSave={!searchSettings.isUpdated || isSaving}
-              handleRestoreDefaults={handleRestoreDefaults}
-              handleSaveChanges={handleSaveChanges}
-              isSaving={isSaving}
-              searchConfig={previewSearchConfig}
-            />
-          </div>
+          <SearchPreview
+            disabledSave={!searchSettings.isUpdated || isSaving}
+            handleRestoreDefaults={handleRestoreDefaults}
+            handleSaveChanges={handleSaveChanges}
+            isSaving={isSaving}
+            searchConfig={previewSearchConfig}
+          />
         </Col>
       </Row>
 

@@ -82,7 +82,8 @@
 }
 
 .field-value-boost-add-btn,
-.term-boost-add-btn {
+.term-boost-add-btn,
+.term-boost-save-btn {
   background-color: @blue-9;
   border: 1px solid @blue-9;
   color: @white;
@@ -91,6 +92,11 @@
     background-color: @blue-9;
     border-color: @blue-9;
     color: @white;
+  }
+  &:disabled {
+    background-color: @grey-100;
+    border-color: @grey-300;
+    color: @grey-400;
   }
 }
 
