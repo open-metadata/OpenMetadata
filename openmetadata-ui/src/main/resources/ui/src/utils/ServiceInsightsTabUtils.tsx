@@ -13,7 +13,10 @@
 import { isUndefined, round } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { SystemChartType } from '../enums/DataInsight.enum';
+import { DayOneExperienceWorkflowStages } from '../enums/DayOneWorkflow.enum';
 import { EntityType } from '../enums/entity.enum';
+import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
+import { WorkflowInstanceState } from '../generated/governance/workflows/workflowInstanceState';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSevenDaysStartGMTArrayInMillis } from './date-time/DateTimeUtils';
@@ -121,3 +124,18 @@ export const getPlatformInsightsChartDataFormattingMethod =
       currentPercentage: round(currentData ?? 0, 2),
     };
   };
+
+export const getStatusByWorkflowStage = (
+  workflowStates: WorkflowInstanceState[],
+  workflowStageName: DayOneExperienceWorkflowStages
+): WorkflowStatus | undefined => {
+  const workflowState = workflowStates.find(
+    (workflowState) => workflowState.stage?.name === workflowStageName
+  );
+
+  if (workflowState) {
+    return workflowState.status;
+  }
+
+  return;
+};
