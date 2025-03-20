@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Checkbox, Col, Collapse, Row, Select, Typography } from 'antd';
+import { Col, Collapse, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -94,6 +94,9 @@ const EntitySearchSettings = () => {
   >();
   const [allowedFields, setAllowedFields] = useState<AllowedSearchFields[]>([]);
   const [activeKey, setActiveKey] = useState<string>('1');
+  const [lastAddedSearchField, setLastAddedSearchField] = useState<
+    string | null
+  >(null);
 
   const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
 
@@ -142,26 +145,28 @@ const EntitySearchSettings = () => {
     }));
   }, [allowedFields, entityType]);
 
-  const menuItems = useMemo(
-    () => ({
-      items: entityFields.map((field) => ({
+  const menuItems = useMemo(() => {
+    return entityFields
+      .filter(
+        (field) =>
+          !searchSettings.searchFields?.some(
+            (searchField) => searchField.field === field.name
+          )
+      )
+      .map((field) => ({
         key: field.name,
-        label: (
-          <Checkbox
-            checked={searchSettings.searchFields?.some(
-              (searchField) => searchField.field === field.name
-            )}
-            onChange={() => handleFieldSelection(field.name)}>
-            {field.name}
-          </Checkbox>
-        ),
-      })),
-      className: 'menu-items',
-    }),
-    [entityFields, searchSettings.searchFields]
-  );
+        label: field.name,
+        onClick: (e: any) => {
+          e.domEvent.stopPropagation();
+          handleFieldSelection(field.name);
+        },
+      }));
+  }, [entityFields, searchSettings.searchFields]);
 
   const handleFieldSelection = (fieldName: string) => {
+    setActiveKey('1');
+    setLastAddedSearchField(fieldName);
+
     setSearchSettings((prev) => {
       const isFieldSelected = prev.searchFields?.some(
         (field) => field.field === fieldName
@@ -179,11 +184,11 @@ const EntitySearchSettings = () => {
         return {
           ...prev,
           searchFields: [
-            ...(prev.searchFields ?? []),
             {
               field: fieldName,
               boost: 0,
             },
+            ...(prev.searchFields ?? []),
           ],
           isUpdated: true,
         };
@@ -571,6 +576,7 @@ const EntitySearchSettings = () => {
                         entityFields={entityFields}
                         field={field}
                         index={index}
+                        initialOpen={field.fieldName === lastAddedSearchField}
                         key={field.fieldName}
                         searchSettings={searchSettings}
                         onDeleteSearchField={handleDeleteSearchField}
