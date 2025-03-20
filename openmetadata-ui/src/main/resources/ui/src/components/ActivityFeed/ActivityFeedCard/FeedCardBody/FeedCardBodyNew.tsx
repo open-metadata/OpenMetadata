@@ -70,7 +70,13 @@ const FeedCardBodyNew = ({
       }
 
       if (cardStyle === CardStyle.Owner) {
-        return <OwnersFeed feed={feed} isForFeedTab={isForFeedTab} />;
+        return (
+          <OwnersFeed
+            feed={feed}
+            isForFeedTab={isForFeedTab}
+            showThread={showThread}
+          />
+        );
       }
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {

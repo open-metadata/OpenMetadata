@@ -31,9 +31,14 @@ import ProfilePictureNew from '../../../../common/ProfilePicture/ProfilePictureN
 interface OwnersFeedProps {
   feed: Thread;
   isForFeedTab?: boolean;
+  showThread?: boolean;
 }
 
-function OwnersFeed({ feed, isForFeedTab }: Readonly<OwnersFeedProps>) {
+function OwnersFeed({
+  feed,
+  isForFeedTab,
+  showThread,
+}: Readonly<OwnersFeedProps>) {
   const { t } = useTranslation();
   const { previousOwner, updatedOwner } = useMemo(() => {
     return {
@@ -65,7 +70,9 @@ function OwnersFeed({ feed, isForFeedTab }: Readonly<OwnersFeedProps>) {
                 <Row wrap align="middle">
                   {updatedOwner.map((owner: EntityReference) => (
                     <div
-                      className="owner-chip d-flex items-center"
+                      className={`owner-chip d-flex items-center ${
+                        showThread && 'bg-white'
+                      }`}
                       key={owner.id}>
                       <ProfilePictureNew
                         displayName={owner.displayName}
@@ -105,7 +112,9 @@ function OwnersFeed({ feed, isForFeedTab }: Readonly<OwnersFeedProps>) {
                 <Row align="middle">
                   {previousOwner.map((owner: EntityReference) => (
                     <div
-                      className="owner-chip d-flex items-center"
+                      className={`owner-chip d-flex items-center ${
+                        showThread && 'bg-white'
+                      }`}
                       key={owner.id}>
                       <ProfilePictureNew
                         displayName={owner.displayName}
