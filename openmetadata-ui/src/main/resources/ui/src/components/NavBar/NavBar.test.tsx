@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
+
 import { getVersion } from '../../rest/miscAPI';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import NavBar from './NavBar';
@@ -22,6 +23,14 @@ jest.mock('../../hooks/useApplicationStore', () => ({
     searchCriteria: '',
     updateSearchCriteria: jest.fn(),
   })),
+}));
+
+jest.mock('../GlobalSearchBar/GlobalSearchBar', () => ({
+  GlobalSearchBar: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="global-search-bar">GlobalSearchBar</div>
+    )),
 }));
 
 jest.mock('../../context/WebSocketProvider/WebSocketProvider', () => ({
@@ -134,13 +143,7 @@ describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBar />);
 
-    expect(
-      await screen.findByTestId('navbar-search-container')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('global-search-selector')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('searchBox')).toBeInTheDocument();
+    expect(await screen.findByTestId('global-search-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
