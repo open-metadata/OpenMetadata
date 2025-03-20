@@ -82,7 +82,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               />
             </div>
 
-            <div className="d-flex items-center justify-between m-y-xss">
+            <div className="d-flex items-center justify-between gap-2 m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
                 {fieldDescription}
               </span>

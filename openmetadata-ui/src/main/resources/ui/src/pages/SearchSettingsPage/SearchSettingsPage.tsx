@@ -106,6 +106,10 @@ const SearchSettingsPage = () => {
 
       const configValue = await getSettingsByType(SettingType.SearchSettings);
       setSearchConfig(configValue as SearchSettings);
+      setAppPreferences({
+        ...appPreferences,
+        searchConfig: configValue as SearchSettings,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -426,7 +430,7 @@ const SearchSettingsPage = () => {
                   <Row className="d-flex items-center justify-between w-full">
                     <Col className="d-flex items-center gap-4">
                       <Typography.Text className="text-sm font-semibold m-0">
-                        {t('label.configure-term-boost')}
+                        {t('label.term-boost')}
                       </Typography.Text>
                       <span className="count-label">
                         {searchConfig?.globalSettings?.termBoosts?.length ?? 0}
@@ -440,7 +444,7 @@ const SearchSettingsPage = () => {
                         }
                         type="primary"
                         onClick={handleAddNewTermBoost}>
-                        {t('label.term-boost')}
+                        {t('label.add')}
                       </Button>
                     </Col>
                   </Row>
@@ -462,7 +466,7 @@ const SearchSettingsPage = () => {
                   <Row className="d-flex items-center justify-between w-full">
                     <Col className="d-flex items-center gap-4">
                       <Typography.Text className="text-sm font-semibold m-0">
-                        {t('label.configure-field-value-boost')}
+                        {t('label.field-value-boost')}
                       </Typography.Text>
                       <span className="count-label">
                         {searchConfig?.globalSettings?.fieldValueBoosts
@@ -477,7 +481,7 @@ const SearchSettingsPage = () => {
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
                         onClick={handleAddFieldValueBoost}>
-                        {t('label.field-value-boost')}
+                        {t('label.add')}
                       </Button>
                     </Col>
                   </Row>

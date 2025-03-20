@@ -46,6 +46,7 @@ import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 import {
+  getSettingsByType,
   restoreSettingsConfig,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
@@ -195,6 +196,21 @@ const EntitySearchSettings = () => {
         };
       }
     });
+  };
+
+  const fetchSearchConfig = async () => {
+    try {
+      if (searchConfig) {
+        return;
+      }
+      const configValue = await getSettingsByType(SettingType.SearchSettings);
+      setAppPreferences({
+        ...appPreferences,
+        searchConfig: configValue as SearchSettings,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   // Handle save changes - makes API call with all changes
@@ -401,6 +417,10 @@ const EntitySearchSettings = () => {
   };
 
   useEffect(() => {
+    fetchSearchConfig();
+  }, []);
+
+  useEffect(() => {
     if (getEntityConfiguration) {
       setSearchSettings({
         searchFields: getEntityConfiguration?.searchFields,
@@ -412,7 +432,7 @@ const EntitySearchSettings = () => {
         isUpdated: false,
       });
     }
-  }, [getEntityConfiguration, searchConfig]);
+  }, [getEntityConfiguration]);
 
   // Update preview config whenever searchSettings change
   useEffect(() => {
@@ -440,7 +460,11 @@ const EntitySearchSettings = () => {
     };
 
     if (searchSettings.searchFields?.length) {
-      setPreviewSearchConfig(updatedConfig);
+      setPreviewSearchConfig((prev) =>
+        JSON.stringify(prev) !== JSON.stringify(updatedConfig)
+          ? updatedConfig
+          : prev
+      );
     }
   }, [searchSettings, searchConfig, entityType]);
 
