@@ -15,11 +15,11 @@ import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
-import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
@@ -163,7 +163,6 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
@@ -898,13 +897,17 @@ public class ElasticSearchClient implements SearchClient {
         searchRequest.source(searchSourceBuilder);
         es.org.elasticsearch.action.search.SearchResponse response =
             client.search(searchRequest, RequestOptions.DEFAULT);
+        if (response.getHits().getTotalHits().value > 0) {
+          nlqService.cacheQuery(request.getQuery(), transformedQuery);
+        }
         return Response.status(Response.Status.OK).entity(response.toString()).build();
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
+
+        // Try using the built-in OpenSearch NLQ feature as a first fallback
         return fallbackToBasicSearch(request, subjectContext);
       }
     } else {
-      LOG.info("NLQ service not available, falling back to basic search");
       return fallbackToBasicSearch(request, subjectContext);
     }
   }
@@ -923,7 +926,7 @@ public class ElasticSearchClient implements SearchClient {
       es.org.elasticsearch.action.search.SearchRequest esRequest =
           new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
       esRequest.source(searchSourceBuilder);
-
+      getSearchBuilderFactory().addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
       SearchResponse searchResponse = client.search(esRequest, RequestOptions.DEFAULT);
       return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
     } catch (Exception e) {
@@ -1329,15 +1332,7 @@ public class ElasticSearchClient implements SearchClient {
   public Response aggregate(String index, String fieldName, String value, String query)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    XContentParser filterParser =
-        XContentType.JSON
-            .xContent()
-            .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-    es.org.elasticsearch.index.query.QueryBuilder filter =
-        SearchSourceBuilder.fromXContent(filterParser).query();
-
-    es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-        QueryBuilders.boolQuery().must(filter);
+    buildSearchSourceFilter(query, searchSourceBuilder);
     searchSourceBuilder
         .aggregation(
             AggregationBuilders.terms(fieldName)
@@ -1345,7 +1340,6 @@ public class ElasticSearchClient implements SearchClient {
                 .size(MAX_AGGREGATE_SIZE)
                 .includeExclude(new IncludeExclude(value.toLowerCase(), null))
                 .order(BucketOrder.key(true)))
-        .query(boolQueryBuilder)
         .size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =
@@ -1817,7 +1811,7 @@ public class ElasticSearchClient implements SearchClient {
   public void updateElasticSearch(UpdateRequest updateRequest) {
     if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
@@ -1839,7 +1833,7 @@ public class ElasticSearchClient implements SearchClient {
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
@@ -1876,7 +1870,7 @@ public class ElasticSearchClient implements SearchClient {
   @SneakyThrows
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
-      LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
       client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }

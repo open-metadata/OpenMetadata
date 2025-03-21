@@ -70,7 +70,7 @@ export const createDescriptionTask = async (
     const dropdownValue = page.getByTestId(value.assignee);
     await dropdownValue.hover();
     await dropdownValue.click();
-    await page.click('body');
+    await clickOutside(page);
   }
 
   if (addDescription) {

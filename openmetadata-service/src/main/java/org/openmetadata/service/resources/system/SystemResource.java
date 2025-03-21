@@ -79,6 +79,7 @@ public class SystemResource {
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
+  private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
@@ -93,6 +94,8 @@ public class SystemResource {
 
     this.jwtFilter =
         new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+    this.isNlqEnabled =
+        config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled();
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -184,6 +187,26 @@ public class SystemResource {
       authorizer.authorizeAdmin(securityContext);
     }
     return systemRepository.getConfigWithKey(name);
+  }
+
+  @GET
+  @Path("/search/nlq")
+  @Operation(
+      operationId = "",
+      summary = "Check if Nlq is enabled in elastic search setting",
+      description = "Check if Nlq is enabled in elastic search setting",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Boolean Nlq Service",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Response checkSearchSettings(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    return Response.ok().entity(isNlqEnabled).build();
   }
 
   @GET

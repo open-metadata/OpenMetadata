@@ -1007,7 +1007,6 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
-    await page.getByTestId('saveAssociatedTag').click();
 
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
     const getTestCaseList = page.waitForResponse(

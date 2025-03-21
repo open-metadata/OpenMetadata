@@ -64,18 +64,11 @@ const PlatformLineage = () => {
         const searchIndices = [
           SearchIndex.DATA_ASSET,
           SearchIndex.DOMAIN,
-          SearchIndex.DATABASE_SERVICE,
-          SearchIndex.DASHBOARD_SERVICE,
-          SearchIndex.PIPELINE_SERVICE,
-          SearchIndex.ML_MODEL_SERVICE,
-          SearchIndex.STORAGE_SERVICE,
-          SearchIndex.MESSAGING_SERVICE,
-          SearchIndex.SEARCH_SERVICE,
-          SearchIndex.API_SERVICE_INDEX,
+          SearchIndex.SERVICE,
         ];
 
         const response = await searchQuery({
-          query: `*${value}*`,
+          query: value,
           searchIndex: searchIndices,
           pageSize: PAGE_SIZE_BASE,
           queryFilter: getLineageEntityExclusionFilter(),

@@ -1190,7 +1190,7 @@ export const deletedEntityCommonChecks = async ({
     ).toBeVisible();
   }
 
-  await page.click('body');
+  await clickOutside(page);
 };
 
 export const restoreEntity = async (page: Page) => {
@@ -1221,7 +1221,7 @@ export const softDeleteEntity = async (
     deleted: false,
   });
 
-  await page.click('body'); // Equivalent to clicking outside
+  await clickOutside(page);
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
@@ -1253,7 +1253,7 @@ export const softDeleteEntity = async (
     deleted: true,
   });
 
-  await page.click('body'); // Equivalent to clicking outside
+  await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
     await page.click('[data-testid="breadcrumb-link"]:last-child');

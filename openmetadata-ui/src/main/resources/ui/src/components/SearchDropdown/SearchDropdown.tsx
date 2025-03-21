@@ -350,7 +350,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
             <Space size={0}>
-              <Typography.Text>{label}</Typography.Text>
+              <Typography.Text className="filters-label font-medium">
+                {label}
+              </Typography.Text>
               {selectedKeys.length > 0 && (
                 <span>
                   {': '}

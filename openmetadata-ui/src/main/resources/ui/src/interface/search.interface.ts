@@ -229,6 +229,7 @@ export type ExploreSearchSource =
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
   [SearchIndex.DATA_ASSET]: TableSearchSource;
+  [SearchIndex.SERVICE]: DatabaseServiceSearchSource;
   [SearchIndex.TABLE]: TableSearchSource;
   [SearchIndex.CHART]: ChartSearchSource;
   [SearchIndex.MLMODEL]: MlmodelSearchSource;
