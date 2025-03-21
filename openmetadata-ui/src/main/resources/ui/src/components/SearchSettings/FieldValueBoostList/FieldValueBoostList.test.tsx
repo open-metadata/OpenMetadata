@@ -127,12 +127,12 @@ describe('FieldValueBoostList Component', () => {
   it('should render in entity search settings mode correctly', () => {
     render(<FieldValueBoostList {...mockProps} entitySearchSettingsPage />);
 
-    expect(screen.queryByText('label.factor')).not.toBeInTheDocument();
     expect(screen.queryByText('label.modifier')).not.toBeInTheDocument();
     expect(screen.queryByText('label.missing-value')).not.toBeInTheDocument();
     expect(screen.queryByText('label.greater-than')).not.toBeInTheDocument();
 
     expect(screen.getByText('label.field')).toBeInTheDocument();
+    expect(screen.queryByText('label.factor')).toBeInTheDocument();
     expect(screen.getByText('label.action-plural')).toBeInTheDocument();
 
     expect(screen.getByText('description')).toBeInTheDocument();

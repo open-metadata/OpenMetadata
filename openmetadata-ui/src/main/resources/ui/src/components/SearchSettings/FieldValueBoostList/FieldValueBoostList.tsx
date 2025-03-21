@@ -46,14 +46,14 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
         key: 'field',
         width: 250,
       },
+      {
+        title: t('label.factor'),
+        dataIndex: 'factor',
+        key: 'factor',
+        width: 80,
+      },
       ...(!entitySearchSettingsPage
         ? [
-            {
-              title: t('label.factor'),
-              dataIndex: 'factor',
-              key: 'factor',
-              width: 80,
-            },
             {
               title: t('label.modifier'),
               dataIndex: 'modifier',
