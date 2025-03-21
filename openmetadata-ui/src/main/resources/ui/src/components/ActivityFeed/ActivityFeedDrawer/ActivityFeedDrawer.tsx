@@ -33,7 +33,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
 
   return (
     <Drawer
-      className={classNames('feed-drawer', className)}
+      className={classNames('activity-feed-drawer', className)}
       closable={false}
       open={open}
       title={

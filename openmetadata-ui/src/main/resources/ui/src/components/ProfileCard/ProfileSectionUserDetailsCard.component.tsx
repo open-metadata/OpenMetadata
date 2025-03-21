@@ -44,7 +44,7 @@ interface ProfileSectionUserDetailsCardProps {
   userData: User;
   afterDeleteAction: (isSoftDelete?: boolean, version?: number) => void;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
-  handleRestoreUser: () => void;
+  handleRestoreUser: () => Promise<void>;
 }
 
 const ProfileSectionUserDetailsCard = ({
@@ -126,9 +126,13 @@ const ProfileSectionUserDetailsCard = ({
   );
 
   const handleRestore = async () => {
-    setIsRestoring(true);
-    handleRestoreUser();
-    setShowRestoreModal(false);
+    try {
+      setIsRestoring(true);
+      await handleRestoreUser();
+    } finally {
+      setIsRestoring(false);
+      setShowRestoreModal(false);
+    }
   };
 
   const manageProfileOptions = (
@@ -299,12 +303,16 @@ const ProfileSectionUserDetailsCard = ({
             centered
             cancelButtonProps={{
               type: 'link',
+              disabled: isRestoring,
             }}
             className="reactive-modal"
             closable={false}
             confirmLoading={isRestoring}
             data-testid="restore-user-modal"
             maskClosable={false}
+            okButtonProps={{
+              loading: isRestoring,
+            }}
             okText={t('label.restore')}
             open={showRestoreModal}
             title={t('label.restore-entity', {
