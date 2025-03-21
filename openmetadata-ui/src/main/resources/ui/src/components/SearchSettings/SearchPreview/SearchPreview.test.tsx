@@ -30,7 +30,6 @@ jest.mock('lodash', () => ({
 
 const mockSearchConfig: SearchSettings = {
   globalSettings: {
-    useNaturalLanguageSearch: false,
     enableAccessControl: true,
     highlightFields: ['description'],
     fieldValueBoosts: [],

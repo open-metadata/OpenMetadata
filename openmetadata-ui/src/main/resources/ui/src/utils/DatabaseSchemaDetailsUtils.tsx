@@ -25,6 +25,7 @@ import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -172,6 +173,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportDatabaseSchemaDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />

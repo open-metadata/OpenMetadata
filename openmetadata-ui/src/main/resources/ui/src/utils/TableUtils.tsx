@@ -138,6 +138,7 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
+import { ExportTypes } from '../constants/Export.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
@@ -1122,6 +1123,7 @@ export const ExtraTableDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportTableDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />

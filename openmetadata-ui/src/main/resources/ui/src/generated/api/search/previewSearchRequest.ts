@@ -44,6 +44,10 @@ export interface PreviewSearchRequest {
 
 export interface SearchSettings {
     /**
+     * Configurations of allowed searchable fields for each entity type
+     */
+    allowedFields?: AllowedSearchFields[];
+    /**
      * List of per-asset search configurations that override the global settings.
      */
     assetTypeConfigurations?: AssetTypeConfiguration[];
@@ -52,6 +56,29 @@ export interface SearchSettings {
      */
     defaultConfiguration?: AssetTypeConfiguration;
     globalSettings?:       GlobalSettings;
+    /**
+     * Configuration for Natural Language Query capabilities
+     */
+    nlqConfiguration?: NlqConfiguration;
+}
+
+export interface AllowedSearchFields {
+    /**
+     * Entity type this field configuration applies to
+     */
+    entityType: string;
+    fields:     Field[];
+}
+
+export interface Field {
+    /**
+     * Detailed explanation of what this field represents and how it affects search behavior
+     */
+    description: string;
+    /**
+     * Field name that can be used in searchFields
+     */
+    name: string;
 }
 
 /**
@@ -259,10 +286,62 @@ export interface GlobalSettings {
      * List of field=value term-boost rules that apply only to this asset.
      */
     termBoosts?: TermBoost[];
+}
+
+/**
+ * Configuration for Natural Language Query capabilities
+ */
+export interface NlqConfiguration {
+    entitySpecificInstructions?: EntitySpecificInstruction[];
+    examples?:                   Example[];
+    globalInstructions?:         PromptSection[];
     /**
-     * If true, uses more flexible natural language search (fuzziness, synonyms, etc.) globally.
+     * Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific
+     * instructions should appear.
      */
-    useNaturalLanguageSearch?: boolean;
+    promptTemplate?: string;
+    [property: string]: any;
+}
+
+export interface EntitySpecificInstruction {
+    /**
+     * Entity type this instruction applies to (e.g., 'table', 'dashboard')
+     */
+    entityType?: string;
+    sections?:   PromptSection[];
+    [property: string]: any;
+}
+
+export interface PromptSection {
+    /**
+     * The content for this section of the prompt
+     */
+    content: string;
+    /**
+     * Display order for this section (lower numbers appear first)
+     */
+    order?: number;
+    /**
+     * Section name (e.g., 'CRITICAL FIELD CORRECTIONS', 'QUERY PATTERNS')
+     */
+    section: string;
+    [property: string]: any;
+}
+
+export interface Example {
+    /**
+     * Entity types this example applies to (empty array = all types)
+     */
+    entityTypes?: string[];
+    /**
+     * The corresponding Elasticsearch query
+     */
+    esQuery: string;
+    /**
+     * Natural language query example
+     */
+    query: string;
+    [property: string]: any;
 }
 
 export enum SortOrder {

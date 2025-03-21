@@ -634,6 +634,41 @@ export const verifyExportLineageCSV = async (
   });
 };
 
+export const verifyExportLineagePNG = async (page: Page) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
+  await page.getByTestId('lineage-export').click();
+
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
+
+  await page.getByTestId('export-type-select').click();
+  await page.locator('.ant-select-item[title="PNG"]').click();
+
+  await expect(
+    page.getByTestId('export-type-select').getByTitle('PNG')
+  ).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
+  ]);
+
+  const filePath = await download.path();
+
+  expect(filePath).not.toBeNull();
+};
+
 export const verifyColumnLineageInCSV = async (
   page: Page,
   sourceEntity: EntityClass,

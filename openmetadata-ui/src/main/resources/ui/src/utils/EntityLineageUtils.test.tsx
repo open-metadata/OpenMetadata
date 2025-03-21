@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Edge } from 'reactflow';
+import { Edge, Node } from 'reactflow';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -31,8 +31,10 @@ import {
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getNodesBoundsReactFlow,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
+  getViewportForBoundsReactFlow,
 } from './EntityLineageUtils';
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
@@ -650,6 +652,273 @@ describe('Test EntityLineageUtils utility', () => {
       const result = getColumnFunctionValue(columns, sourceFqn, targetFqn);
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getNodesBoundsReactFlow', () => {
+    it('should return correct bounds for single node', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: 100, y: 200 },
+          width: 50,
+          height: 30,
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: 100,
+        yMin: 200,
+        xMax: 150, // x + width
+        yMax: 230, // y + height
+      });
+    });
+
+    it('should return correct bounds for multiple nodes', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: 100, y: 200 },
+          width: 50,
+          height: 30,
+          type: 'default',
+        } as Node,
+        {
+          id: '2',
+          position: { x: 0, y: 0 },
+          width: 40,
+          height: 20,
+          type: 'default',
+        } as Node,
+        {
+          id: '3',
+          position: { x: 200, y: 300 },
+          width: 60,
+          height: 40,
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: 0,
+        yMin: 0,
+        xMax: 260, // rightmost x (200) + width (60)
+        yMax: 340, // bottom y (300) + height (40)
+      });
+    });
+
+    it('should handle nodes without width and height', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: 100, y: 200 },
+          type: 'default',
+        } as Node,
+        {
+          id: '2',
+          position: { x: 200, y: 300 },
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: 100,
+        yMin: 200,
+        xMax: 200,
+        yMax: 300,
+      });
+    });
+
+    it('should return Infinity bounds for empty nodes array', () => {
+      const nodes: Node[] = [];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: Infinity,
+        yMin: Infinity,
+        xMax: -Infinity,
+        yMax: -Infinity,
+      });
+    });
+
+    it('should handle negative coordinates', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: -100, y: -200 },
+          width: 50,
+          height: 30,
+          type: 'default',
+        } as Node,
+        {
+          id: '2',
+          position: { x: 100, y: 200 },
+          width: 40,
+          height: 20,
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: -100,
+        yMin: -200,
+        xMax: 140, // rightmost x (100) + width (40)
+        yMax: 220, // bottom y (200) + height (20)
+      });
+    });
+  });
+
+  describe('getViewportForBoundsReactFlow', () => {
+    it('should calculate viewport for square bounds', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 100,
+        yMax: 100,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: 0,
+        y: 0,
+        zoom: 2,
+      });
+    });
+
+    it('should handle rectangular bounds with scale factor', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 200,
+        yMax: 100,
+      };
+      const imageWidth = 400;
+      const imageHeight = 300;
+      const scaleFactor = 0.5;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight,
+        scaleFactor
+      );
+
+      expect(viewport).toEqual({
+        x: 100,
+        y: 100,
+        zoom: 1,
+      });
+    });
+
+    it('should handle negative coordinates', () => {
+      const bounds = {
+        xMin: -100,
+        yMin: -100,
+        xMax: 100,
+        yMax: 100,
+      };
+      const imageWidth = 400;
+      const imageHeight = 400;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: 200,
+        y: 200,
+        zoom: 2,
+      });
+    });
+
+    it('should handle different aspect ratios', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 400,
+        yMax: 200,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: 0,
+        y: 50,
+        zoom: 0.5,
+      });
+    });
+
+    it('should handle zero dimensions', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 0,
+        yMax: 0,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: NaN,
+        y: NaN,
+        zoom: Infinity,
+      });
+    });
+
+    it('should handle custom scale factor', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 100,
+        yMax: 100,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+      const scaleFactor = 2;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight,
+        scaleFactor
+      );
+
+      expect(viewport).toEqual({
+        x: -100,
+        y: -100,
+        zoom: 4,
+      });
     });
   });
 });
