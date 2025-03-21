@@ -257,7 +257,7 @@ test.describe('Persona customize UI tab', async () => {
             .getByTestId('page-layout-v1')
             .getByText('Explore')
             .getByRole('switch')
-        ).not.toBeChecked();
+        ).toBeChecked();
 
         // Show Metrics
         await adminPage
@@ -271,7 +271,7 @@ test.describe('Persona customize UI tab', async () => {
             .getByTestId('page-layout-v1')
             .getByText('Metrics')
             .getByRole('switch')
-        ).not.toBeChecked();
+        ).toBeChecked();
 
         // Hide Glossary
         await adminPage

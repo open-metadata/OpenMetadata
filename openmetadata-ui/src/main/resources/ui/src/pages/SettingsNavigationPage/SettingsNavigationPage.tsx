@@ -208,7 +208,7 @@ export const SettingsNavigationPage = ({
                   level={5}>
                   {t('label.customize-your-navigation')}
                 </Typography.Title>
-                <Typography.Paragraph className="m-0">
+                <Typography.Paragraph className="m-0 text-sm font-normal">
                   {t('message.customize-your-navigation-subheader')}
                 </Typography.Paragraph>
               </div>
