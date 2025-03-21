@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
+import { lowerCase } from 'lodash';
+import { ExportTypes } from '../../constants/Export.constants';
 
-.term-boosts-container {
-  border-radius: 6px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-
-  .term-boost {
-    display: flex;
-    flex-direction: column;
-  }
-}
+export const downloadImageFromBase64 = (
+  dataUrl: string,
+  fileName: string,
+  exportType: ExportTypes
+) => {
+  const a = document.createElement('a');
+  a.setAttribute('download', `${fileName}.${lowerCase(exportType)}`);
+  a.setAttribute('href', dataUrl);
+  a.click();
+};
