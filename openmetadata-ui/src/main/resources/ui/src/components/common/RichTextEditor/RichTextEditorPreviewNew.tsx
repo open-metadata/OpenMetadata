@@ -12,7 +12,7 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   formatContent,
@@ -78,10 +78,9 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     };
   }, [content, readMore]);
 
-  let maxHeight = '3em';
-  if (isContentLoaded && readMore) {
-    maxHeight = 'none';
-  }
+  const maxHeight = useMemo(() => {
+    return isContentLoaded && readMore ? 'none' : '4em';
+  }, [isContentLoaded, readMore]);
 
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
