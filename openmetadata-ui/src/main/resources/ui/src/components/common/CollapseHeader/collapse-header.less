@@ -10,16 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
+@import url('../../../styles/variables.less');
 
-.term-boosts-container {
-  border-radius: 6px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.add-field-btn {
+  border-radius: 8px;
+  background-color: @blue-9;
+  border: 1px solid @blue-9;
+  color: @white;
+  font-size: 14px;
+  font-weight: 500;
+}
 
-  .term-boost {
-    display: flex;
-    flex-direction: column;
-  }
+.menu-items {
+  max-height: 280px;
+  overflow-y: auto;
 }

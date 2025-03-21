@@ -89,6 +89,7 @@
     "fast-json-patch": "^3.1.1",
     "history": "4.5.1",
     "html-react-parser": "^1.4.14",
+    "html-to-image": "1.11.11",
     "https-browserify": "^1.0.0",
     "i18next": "^21.10.0",
     "i18next-browser-languagedetector": "^6.1.6",
