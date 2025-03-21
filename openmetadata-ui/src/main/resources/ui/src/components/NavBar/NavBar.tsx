@@ -482,6 +482,7 @@ const NavBar: React.FC = () => {
               trigger={['click']}>
               <Button
                 className="flex-center p-sm"
+                data-testid="help-icon"
                 icon={<Help width={20} />}
                 size="large"
                 title={t('label.need-help')}
