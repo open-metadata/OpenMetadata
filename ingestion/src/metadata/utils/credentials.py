@@ -89,7 +89,8 @@ def create_credential_tmp_file(credentials: dict) -> str:
 
 
 def build_google_credentials_dict(
-    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount], single_project: bool = False
+    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount],
+    single_project: bool = False,
 ) -> Dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
@@ -137,7 +138,9 @@ def build_google_credentials_dict(
     )
 
 
-def set_google_credentials(gcp_credentials: GCPCredentials, single_project: bool = False) -> None:
+def set_google_credentials(
+    gcp_credentials: GCPCredentials, single_project: bool = False
+) -> None:
     """
     Set GCP credentials environment variable
     :param gcp_credentials: GCPCredentials
@@ -171,7 +174,9 @@ def set_google_credentials(gcp_credentials: GCPCredentials, single_project: bool
             )
             return
 
-        credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig, single_project)
+        credentials_dict = build_google_credentials_dict(
+            gcp_credentials.gcpConfig, single_project
+        )
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
