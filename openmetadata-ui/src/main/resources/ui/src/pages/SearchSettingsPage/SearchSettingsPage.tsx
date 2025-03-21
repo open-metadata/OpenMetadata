@@ -168,8 +168,7 @@ const SearchSettingsPage = () => {
   };
 
   // Term Boost
-  const handleAddNewTermBoost = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
+  const handleAddNewTermBoost = () => {
     setShowNewTermBoost(true);
   };
 
@@ -376,12 +375,14 @@ const SearchSettingsPage = () => {
                     <Col className="d-flex items-center gap-2">
                       <Button
                         className="term-boost-save-btn"
+                        data-testid="term-boost-save-btn"
                         disabled={!termBoostsChanged}
                         onClick={handleSaveTermBoost}>
                         {t('label.save')}
                       </Button>
                       <Button
                         className="term-boost-add-btn"
+                        data-testid="term-boost-add-btn"
                         icon={
                           <Icon className="text-sm" component={PlusOutlined} />
                         }

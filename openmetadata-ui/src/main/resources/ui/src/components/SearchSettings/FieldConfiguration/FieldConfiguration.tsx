@@ -70,6 +70,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
       onChange={(key) => handleCollapseChange(key, index)}>
       <Collapse.Panel
         className=" custom-panel m-b-md"
+        data-testid={`field-configuration-panel-${field.fieldName}`}
         header={
           <div
             className="field-container-header"

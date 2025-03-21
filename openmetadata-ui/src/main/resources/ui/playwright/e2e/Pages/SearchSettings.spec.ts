@@ -15,6 +15,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   mockEntitySearchSettings,
+  restoreDefaultSearchSettings,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
@@ -53,7 +54,7 @@ test.describe('Search Settings Tests', () => {
     ).toHaveText('2000');
   });
 
-  test.fixme('Update entity search settings', async ({ page }) => {
+  test('Update entity search settings', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
     const tableCard = page.getByTestId(mockEntitySearchSettings.key);
@@ -96,9 +97,24 @@ test.describe('Search Settings Tests', () => {
 
     await expect(scoreModeSelect).toHaveText('Max');
     await expect(boostModeSelect).toHaveText('Replace');
+  });
 
-    // Restore Defaults
-    await page.getByTestId('restore-defaults-btn').click();
+  test('Restore default search settings', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+    const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+
+    await tableCard.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(mockEntitySearchSettings.url + '$')
+    );
+
+    const restoreDefaultsBtn = page.getByTestId('restore-defaults-btn');
+    await restoreDefaultsBtn.click();
+
+    await restoreDefaultSearchSettings(page);
+
     await toastNotification(page, /Search Settings restored successfully/);
   });
 });
