@@ -335,10 +335,11 @@ const Suggestions = ({
   // Add a function to render AI query suggestions
   const renderAIQuerySuggestions = () => {
     const aiQueries = [
-      'Create todays sales summary',
-      "Create action items based on today's forecast",
-      'Annual report summary',
-      'Date set report',
+      'Tables owned by marketing',
+      'Tables with Tier1 classification',
+      'Find dashboards tagged with PII.Sensitive',
+      'Topics with schema fields containing address',
+      'Tables tagged with tier1 or tier2',
     ];
 
     return (

@@ -39,6 +39,7 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
 import {
@@ -68,6 +69,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
@@ -233,6 +235,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
   const fetchEntityCounts = useCallback(async () => {
     try {
+      setIsLoading(true);
       const res = await searchQuery({
         query: searchQueryParam ?? '',
         pageNumber: 0,
@@ -255,8 +258,14 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           );
         }
       });
+
+      setTreeData((origin) =>
+        origin.filter((node) => node.count === undefined || node.count > 0)
+      );
     } catch (error) {
       // Do nothing
+    } finally {
+      setIsLoading(false);
     }
   }, [staticKeysHavingCounts]);
 
@@ -270,6 +279,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       setSelectedKeys([]);
     }
   }, [parsedSearch]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <Tree

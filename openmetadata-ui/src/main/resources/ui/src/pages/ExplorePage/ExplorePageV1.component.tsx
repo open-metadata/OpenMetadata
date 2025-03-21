@@ -12,7 +12,7 @@
  */
 
 import { Typography } from 'antd';
-import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
+import { get, isEmpty, isNil, isString, lowerCase } from 'lodash';
 import Qs from 'qs';
 import React, {
   FunctionComponent,
@@ -335,20 +335,6 @@ const ExplorePageV1: FunctionComponent = () => {
     return showDeletedParam === 'true';
   }, [parsedSearch.showDeleted]);
 
-  const getSearchRequest = useCallback(
-    (combinedQueryFilter) => {
-      const isQuickFiltersEmpty = !isUndefined(
-        combinedQueryFilter?.query?.bool?.must
-      );
-      if (isQuickFiltersEmpty) {
-        return searchQuery;
-      }
-
-      return isNLPRequestEnabled ? nlqSearch : searchQuery;
-    },
-    [isNLPRequestEnabled]
-  );
-
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
       setAdvancedSearchQuickFilters(undefined);
@@ -376,7 +362,7 @@ const ExplorePageV1: FunctionComponent = () => {
       queryFilter as unknown as QueryFilterInterface
     );
 
-    const searchRequest = getSearchRequest(combinedQueryFilter);
+    const searchRequest = isNLPRequestEnabled ? nlqSearch : searchQuery;
 
     setIsLoading(true);
 

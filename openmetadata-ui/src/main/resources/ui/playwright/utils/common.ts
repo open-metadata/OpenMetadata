@@ -164,7 +164,6 @@ export const assignDomain = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
