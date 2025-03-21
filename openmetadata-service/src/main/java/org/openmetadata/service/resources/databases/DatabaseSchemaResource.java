@@ -417,8 +417,15 @@ public class DatabaseSchemaResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database schema", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
-    return exportCsvInternalAsync(securityContext, name);
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive) {
+    return exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @GET
@@ -443,7 +450,7 @@ public class DatabaseSchemaResource
           @PathParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT

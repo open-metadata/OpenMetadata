@@ -2813,7 +2813,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Override this method to support downloading CSV functionality
    */
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 

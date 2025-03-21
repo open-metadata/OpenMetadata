@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -67,7 +66,7 @@ public class DatabaseServiceRepository
   }
 
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate database name
     DatabaseRepository repository = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
@@ -77,7 +76,7 @@ public class DatabaseServiceRepository
             databaseService.getFullyQualifiedName());
 
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new DatabaseServiceCsv(databaseService, user).exportAllCsv(databases);
+    return new DatabaseServiceCsv(databaseService, user).exportAllCsv(databases, recursive);
   }
 
   @Override
@@ -87,7 +86,8 @@ public class DatabaseServiceRepository
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate glossary name
     DatabaseServiceCsv databaseServiceCsv = new DatabaseServiceCsv(databaseService, user);
-    return databaseServiceCsv.importCsv(csv, dryRun);
+    List<CSVRecord> records = databaseServiceCsv.parse(csv);
+    return databaseServiceCsv.importCsv(records, dryRun);
   }
 
   public static class DatabaseServiceCsv extends EntityCsv<Database> {
@@ -103,13 +103,17 @@ public class DatabaseServiceRepository
     /**
      * Export all databases with their child entities (schema, tables, stored procedures, columns)
      */
-    public String exportAllCsv(List<Database> databases) throws IOException {
+    public String exportAllCsv(List<Database> databases, boolean recursive) throws IOException {
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
       for (Database database : databases) {
         addEntityToCSV(csvFile, database, DATABASE);
+        if (!recursive) {
+          continue;
+        }
         DatabaseRepository databaseRepository =
             (DatabaseRepository) Entity.getEntityRepository(DATABASE);
-        String dbCsv = databaseRepository.exportToCsv(database.getFullyQualifiedName(), importedBy);
+        String dbCsv =
+            databaseRepository.exportToCsv(database.getFullyQualifiedName(), importedBy, recursive);
         if (dbCsv != null && !dbCsv.isEmpty()) {
           try {
             // Parse the CSV content
@@ -195,37 +199,12 @@ public class DatabaseServiceRepository
       if (DATABASE.equals(entityType)) {
         createDatabaseEntity(printer, csvRecord, entityFQN);
       } else {
-        // For other entity types, delegate to the appropriate repository based on hierarchy
-        // If entityFQN is provided, extract the database name from it
-        if (entityFQN != null) {
-          String[] parts = entityFQN.split("\\.");
-          if (parts.length >= 2) {
-            String dbFqn = service.getFullyQualifiedName() + "." + parts[1];
-            DatabaseRepository dbRepo = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
-
-            // Create a CSV record for this entity and import it via database repository
-            StringBuilder recordBuilder = new StringBuilder();
-            for (int i = 0; i < csvRecord.size(); i++) {
-              recordBuilder.append(csvRecord.get(i));
-              if (i < csvRecord.size() - 1) {
-                recordBuilder.append(",");
-              }
-            }
-
-            // Build a small CSV with just this one record
-            String entityCsv =
-                HEADERS.stream()
-                        .map(
-                            header ->
-                                header.getName()
-                                    + (Boolean.TRUE.equals(header.getRequired()) ? "*" : ""))
-                        .collect(Collectors.joining(","))
-                    + System.lineSeparator()
-                    + recordBuilder.toString();
-
-            // Import this entity through the database repository
-            dbRepo.importFromCsv(dbFqn, entityCsv, !processRecord, importedBy);
-          }
+        String[] parts = entityFQN.split("\\.");
+        if (parts.length >= 2) {
+          String dbFqn = service.getFullyQualifiedName() + "." + parts[1];
+          DatabaseRepository dbRepo = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
+          List<CSVRecord> subRecords = List.of(csvRecords.get(0), csvRecord);
+          dbRepo.importFromCsv(dbFqn, subRecords, !processRecord, importedBy);
         }
       }
     }

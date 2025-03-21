@@ -800,7 +800,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     // Validate table
     Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));

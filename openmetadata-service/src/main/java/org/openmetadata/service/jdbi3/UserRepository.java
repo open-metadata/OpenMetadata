@@ -283,7 +283,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public String exportToCsv(String importingTeam, String user) throws IOException {
+  public String exportToCsv(String importingTeam, String user, boolean recursive)
+      throws IOException {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     return new UserCsv(team, user).exportCsv();
   }

@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -43,8 +42,6 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -131,7 +128,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database name
 
     // Get schemas
@@ -144,7 +141,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
     // Export schemas and all their child entities
-    return new DatabaseCsv(database, user).exportAllCsv(schemas);
+    return new DatabaseCsv(database, user).exportAllCsv(schemas, recursive);
   }
 
   @Override
@@ -162,7 +159,27 @@ public class DatabaseRepository extends EntityRepository<Database> {
       }
     }
     DatabaseCsv databaseCsv = new DatabaseCsv(database, user);
-    return databaseCsv.importCsv(csv, dryRun);
+
+    List<CSVRecord> records = databaseCsv.parse(csv);
+
+    return databaseCsv.importCsv(records, dryRun);
+  }
+
+  public CsvImportResult importFromCsv(
+      String name, List<CSVRecord> records, boolean dryRun, String user) throws IOException {
+    Database database = null;
+    try {
+      database = getByName(null, name, getFields("service"));
+    } catch (EntityNotFoundException e) {
+      if (!dryRun) {
+        throw e;
+      } else {
+        LOG.warn("Dry run mode: Database '{}' not found. Skipping existence validation.", name);
+        database = new Database().withName(name);
+      }
+    }
+    DatabaseCsv databaseCsv = new DatabaseCsv(database, user);
+    return databaseCsv.importCsv(records, dryRun);
   }
 
   public void setFields(Database database, Fields fields) {
@@ -284,13 +301,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
     /**
      * Export database schemas and all their child entities (tables, views, stored procedures)
      */
-    public String exportAllCsv(List<DatabaseSchema> schemas) throws IOException {
+    public String exportAllCsv(List<DatabaseSchema> schemas, boolean recursive) throws IOException {
       // Create CSV file with schemas
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
 
       // Add schemas
       for (DatabaseSchema schema : schemas) {
         addEntityToCSV(csvFile, schema, DATABASE_SCHEMA);
+        if (!recursive) {
+          continue;
+        }
 
         // Get tables under each schema
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
@@ -564,75 +584,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
       } else if (importResult.getDryRun()) {
         LOG.info(
             "Dry run: Stored Procedure {} would be created under schema {}.", spName, schemaFQN);
-      }
-    }
-
-    private void createColumnEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
-        throws IOException {
-      if (entityFQN == null) {
-        LOG.error("Column entry is missing table reference in fullyQualifiedName");
-        return;
-      }
-
-      // Extract table name from FQN
-      String tableFQN = FullyQualifiedName.getParentFQN(entityFQN);
-
-      // Fetch the corresponding table
-      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-      Table table;
-      try {
-        table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
-      } catch (EntityNotFoundException ex) {
-        LOG.warn("Table not found for column: {}, skipping column creation.", entityFQN);
-        return;
-      }
-
-      // Ensure column list is initialized
-      List<Column> columns = table.getColumns() == null ? new ArrayList<>() : table.getColumns();
-      // Parse data type
-      ColumnDataType dataType = ColumnDataType.fromValue(csvRecord.get(14));
-
-      // Handle data length safely
-      Integer dataLength = null;
-      if (dataType == ColumnDataType.VARCHAR) {
-        if (nullOrEmpty(csvRecord.get(16))) {
-          LOG.error("Data length is required for VARCHAR columns: {}", csvRecord.get(0));
-          throw new IllegalArgumentException(
-              "Data length is mandatory for VARCHAR columns: " + csvRecord.get(0));
-        }
-        try {
-          dataLength = Integer.valueOf(csvRecord.get(16));
-        } catch (NumberFormatException e) {
-          LOG.error(
-              "Invalid data length for VARCHAR column {}: {}", csvRecord.get(0), csvRecord.get(16));
-          throw new IllegalArgumentException(
-              "Invalid data length for VARCHAR column: " + csvRecord.get(0));
-        }
-      } else {
-        try {
-          dataLength = nullOrEmpty(csvRecord.get(16)) ? null : Integer.valueOf(csvRecord.get(16));
-        } catch (NumberFormatException e) {
-          LOG.warn("Invalid data length for column {}, setting to null", csvRecord.get(0));
-          dataLength = null;
-        }
-      }
-
-      // Create new column object
-      Column newColumn =
-          new Column()
-              .withName(csvRecord.get(0))
-              .withFullyQualifiedName(entityFQN)
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withDataType(dataType)
-              .withDataLength(dataLength);
-
-      // Use ColumnUtil to add or update the column
-      ColumnUtil.addOrUpdateColumn(columns, newColumn);
-      table.withColumns(columns);
-
-      if (processRecord) {
-        tableRepository.createOrUpdate(null, table);
       }
     }
 

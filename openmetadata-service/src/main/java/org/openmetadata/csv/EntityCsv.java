@@ -23,6 +23,7 @@ import static org.openmetadata.csv.CsvUtil.fieldToEntities;
 import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
 import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
 import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -55,14 +56,18 @@ import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -76,10 +81,14 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ValidatorUtil;
@@ -668,68 +677,106 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return null;
   }
 
-  private List<CSVRecord> parse(String csv) {
-    Reader in = new StringReader(csv);
-    List<String> correctedCsvLines = new ArrayList<>();
-    int rowNumber = 1;
+  public List<CSVRecord> parse(String csv) {
+    String processedCsv = preprocessCsv(csv); // Preprocess the CSV
+    List<CSVRecord> records = new ArrayList<>();
+    Reader in = new StringReader(processedCsv);
 
     try {
-      Iterable<CSVRecord> records = CSVFormat.DEFAULT.withIgnoreSurroundingSpaces().parse(in);
+      CSVParser parser =
+          CSVFormat.DEFAULT
+              .withFirstRecordAsHeader()
+              .withIgnoreSurroundingSpaces()
+              .withQuote('"')
+              .withIgnoreEmptyLines() // Ignore empty lines
+              .withEscape('\\') // Handle escaped quotes
+              .parse(in);
 
-      for (CSVRecord record : records) {
-        List<String> fixedRow = fixMisplacedCommas(record.toList());
+      List<List<String>> fixedRows = new ArrayList<>();
+      List<String> headers = new ArrayList<>(parser.getHeaderMap().keySet()); // Extract headers
 
-        // Ensure correct column count
-        fixedRow = padOrTrimColumns(fixedRow);
-
-        // Log corrected row before adding
-        LOG.info("Processed Row {}: {}", rowNumber, fixedRow);
-        correctedCsvLines.add(String.join(",", fixedRow));
-        rowNumber++;
+      // Add headers explicitly at the top if they are missing
+      if (fixedRows.isEmpty()) {
+        fixedRows.add(headers);
       }
 
-      String correctedCsv = String.join("\n", correctedCsvLines);
-      Reader correctedReader = new StringReader(correctedCsv);
-      return CSVFormat.DEFAULT.parse(correctedReader).stream().toList();
+      // Process each record
+      for (CSVRecord record : parser) {
+        List<String> fixedRow = new ArrayList<>();
+        for (String value : record) {
+          // Preserve the raw value without additional processing
+          fixedRow.add(value);
+        }
+        // Pad or trim the row to match the number of columns in headers
+        fixedRow = padOrTrimColumns(fixedRow);
+        fixedRows.add(fixedRow);
+      }
+
+      // Convert fixedRows back to CSVRecords
+      records = convertToCSVRecords(fixedRows, headers);
+
     } catch (IOException e) {
-      LOG.error("CSV parsing error: {}", e.getMessage());
-      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+      e.printStackTrace();
     }
-    return new ArrayList<>();
+
+    return records;
   }
 
-  private List<String> fixMisplacedCommas(List<String> row) {
-    List<String> fixedRow = new ArrayList<>();
-    StringBuilder mergedField = new StringBuilder();
-    boolean merging = false;
+  private List<CSVRecord> convertToCSVRecords(List<List<String>> fixedRows, List<String> headers)
+      throws IOException {
+    List<CSVRecord> finalRecords = new ArrayList<>();
+    StringWriter stringWriter = new StringWriter();
 
-    for (String value : row) {
-      // Case 1: If field starts without quotes but has commas, start merging
-      if (value.contains(",") && !value.startsWith("\"") && !value.endsWith("\"")) {
-        merging = true;
-        mergedField.append(value);
-      }
-      // Case 2: If merging is active, append additional parts of the broken description
-      else if (merging) {
-        mergedField.append(" ").append(value);
+    CSVPrinter csvPrinter =
+        new CSVPrinter(stringWriter, CSVFormat.DEFAULT.withHeader(headers.toArray(new String[0])));
 
-        // Stop merging if sentence seems to be complete (ends with "." or has closing quote)
-        if (value.endsWith(".") || value.endsWith("\"")) {
-          fixedRow.add("\"" + mergedField.toString().trim() + "\"");
-          mergedField.setLength(0);
-          merging = false;
+    // Write updated records
+    for (List<String> row : fixedRows) {
+      csvPrinter.printRecord(row);
+    }
+    csvPrinter.flush();
+
+    // Parse CSV again with headers
+    Reader in = new StringReader(stringWriter.toString());
+    CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
+    finalRecords.addAll(parser.getRecords());
+
+    return finalRecords;
+  }
+
+  public String preprocessCsv(String csv) {
+    StringBuilder processedCsv = new StringBuilder();
+    String[] lines = csv.split("\n"); // Split CSV into lines
+
+    for (String line : lines) {
+      StringBuilder processedLine = new StringBuilder();
+      boolean insideQuotes = false;
+      StringBuilder field = new StringBuilder();
+
+      for (int i = 0; i < line.length(); i++) {
+        char c = line.charAt(i);
+
+        if (c == '"') {
+          // Toggle insideQuotes flag
+          insideQuotes = !insideQuotes;
+          field.append(c); // Add the quote to the field
+        } else if (c == ',' && !insideQuotes) {
+          // End of field, add it to the processed line
+          processedLine.append(field.toString()).append(",");
+          field.setLength(0); // Reset the field buffer
+        } else {
+          field.append(c); // Add the character to the field
         }
       }
-      // Case 3: Normal field, just add it
-      else {
-        fixedRow.add(value);
-      }
+
+      // Add the last field in the line
+      processedLine.append(field.toString());
+
+      // Add the processed line to the result
+      processedCsv.append(processedLine).append("\n");
     }
-    // If merging was still active, close the last merged field
-    if (merging) {
-      fixedRow.add("\"" + mergedField.toString().trim() + "\"");
-    }
-    return fixedRow;
+
+    return processedCsv.toString().trim(); // Remove the last newline
   }
 
   private List<String> padOrTrimColumns(List<String> row) {
@@ -919,6 +966,84 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
+  protected void createColumnEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+      throws IOException {
+    if (entityFQN == null) {
+      LOG.error("Column entry is missing table reference in fullyQualifiedName");
+      return;
+    }
+
+    String tableFQN = FullyQualifiedName.getTableFQN(entityFQN);
+
+    // Fetch the corresponding table
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+    Table table;
+    try {
+      table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("Table not found for column: {}, skipping column creation.", entityFQN);
+      return;
+    }
+
+    List<Column> columns = table.getColumns() == null ? new ArrayList<>() : table.getColumns();
+
+    ColumnDataType dataType = ColumnDataType.fromValue(csvRecord.get(14));
+    // Handle data length safely
+    Integer dataLength = parseDataLength(csvRecord.get(16), dataType, csvRecord.get(0));
+    // Create new column object
+    Column newColumn =
+        new Column()
+            .withName(csvRecord.get(0))
+            .withFullyQualifiedName(entityFQN)
+            .withDisplayName(csvRecord.get(1))
+            .withDescription(csvRecord.get(2))
+            .withDataType(dataType)
+            .withDataLength(dataLength);
+
+    if (dataType == ColumnDataType.STRUCT) {
+      newColumn.withChildren(new ArrayList<>());
+    }
+
+    if (dataType == ColumnDataType.ARRAY) {
+      newColumn.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(15).toUpperCase()));
+    }
+
+    ColumnUtil.addOrUpdateColumn(columns, newColumn);
+    table.withColumns(columns);
+
+    if (processRecord) {
+      tableRepository.createOrUpdate(null, table);
+    }
+  }
+
+  private Integer parseDataLength(
+      String dataLengthStr, ColumnDataType dataType, String columnName) {
+    Integer dataLength = null;
+
+    if (dataType == ColumnDataType.VARCHAR) {
+      if (nullOrEmpty(dataLengthStr)) {
+        LOG.error("Data length is required for VARCHAR columns: {}", columnName);
+        throw new IllegalArgumentException(
+            "Data length is mandatory for VARCHAR columns: " + columnName);
+      }
+      try {
+        dataLength = Integer.valueOf(dataLengthStr);
+      } catch (NumberFormatException e) {
+        LOG.error("Invalid data length for VARCHAR column {}: {}", columnName, dataLengthStr);
+        throw new IllegalArgumentException("Invalid data length for VARCHAR column: " + columnName);
+      }
+    } else {
+      try {
+        dataLength = nullOrEmpty(dataLengthStr) ? null : Integer.valueOf(dataLengthStr);
+      } catch (NumberFormatException e) {
+        LOG.warn("Invalid data length for column {}, setting to null", columnName);
+        dataLength = null;
+      }
+    }
+
+    return dataLength;
+  }
+
   public String failed(String exception, CsvErrorType errorType) {
     return String.format("#%s: Failed to parse the CSV filed - reason %s", errorType, exception);
   }
@@ -1044,6 +1169,35 @@ public abstract class EntityCsv<T extends EntityInterface> {
       status = ApiStatus.PARTIAL_SUCCESS;
     }
     importResult.setStatus(status);
+  }
+
+  public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+    importResult.withDryRun(dryRun);
+    StringWriter writer = new StringWriter();
+    CSVPrinter resultsPrinter = getResultsCsv(csvHeaders, writer);
+    if (resultsPrinter == null) {
+      return importResult;
+    }
+
+    if (records == null) {
+      return importResult; // Error during parsing
+    }
+
+    // First record is CSV header - Validate headers
+    if (!validateHeaders(records.get(recordIndex++))) {
+      return importResult;
+    }
+    importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+
+    // Validate and load each record
+    while (recordIndex < records.size()) {
+      processRecord(resultsPrinter, records);
+    }
+
+    // Finally, create the entities parsed from the record
+    setFinalStatus();
+    importResult.withImportResultsCsv(writer.toString());
+    return importResult;
   }
 
   public record ImportResult(String result, CSVRecord record, String details) {}

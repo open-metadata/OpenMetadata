@@ -44,8 +44,6 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -204,7 +202,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
 
     // Get tables under this schema
@@ -224,7 +222,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     storedProcedures.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
     // Export all entities using a single CSV
-    return new DatabaseSchemaCsv(schema, user).exportAllCsv(tables, storedProcedures);
+    return new DatabaseSchemaCsv(schema, user).exportAllCsv(tables, storedProcedures, recursive);
   }
 
   @Override
@@ -305,7 +303,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     /**
      * Export tables and stored procedures under this schema
      */
-    public String exportAllCsv(List<Table> tables, List<StoredProcedure> storedProcedures)
+    public String exportAllCsv(
+        List<Table> tables, List<StoredProcedure> storedProcedures, boolean recursive)
         throws IOException {
       // Create CSV file
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
@@ -315,7 +314,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       for (Table table : tables) {
         // Export the table entity
         addEntityToCSV(csvFile, table, TABLE);
-
+        if (!recursive) {
+          continue;
+        }
         // Export all columns as separate rows with entityType = COLUMN
         tableRepository.exportColumnsRecursively(table, csvFile);
       }
@@ -472,70 +473,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       if (processRecord) {
         // Use the SP repository to create/update the stored procedure
         spRepository.createOrUpdate(null, sp);
-      }
-    }
-
-    private void createColumnEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
-        throws IOException {
-      if (entityFQN == null) {
-        LOG.error("Column entry is missing table reference in fullyQualifiedName");
-        return;
-      }
-
-      // Extract table name from FQN
-      String tableFQN = FullyQualifiedName.getParentFQN(entityFQN);
-      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
-      Table table;
-
-      try {
-        table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
-      } catch (EntityNotFoundException ex) {
-        LOG.warn("Table not found for column: {}, skipping column creation.", entityFQN);
-        return;
-      }
-
-      // Ensure column list is initialized
-      List<Column> columns = table.getColumns() == null ? new ArrayList<>() : table.getColumns();
-
-      // Parse the data type
-      ColumnDataType dataType = ColumnDataType.fromValue(csvRecord.get(14));
-
-      // Handle dataLength validation
-      Integer dataLength = null;
-      if (dataType == ColumnDataType.VARCHAR) {
-        if (nullOrEmpty(csvRecord.get(16))) {
-          LOG.error("Data length is required for VARCHAR columns: {}", csvRecord.get(0));
-          throw new IllegalArgumentException(
-              "Data length is mandatory for VARCHAR columns: " + csvRecord.get(0));
-        }
-        try {
-          dataLength = Integer.parseInt(csvRecord.get(16));
-        } catch (NumberFormatException e) {
-          LOG.error(
-              "Invalid data length for VARCHAR column {}: {}", csvRecord.get(0), csvRecord.get(16));
-          throw new IllegalArgumentException(
-              "Invalid data length for VARCHAR column: " + csvRecord.get(0));
-        }
-      } else {
-        dataLength = nullOrEmpty(csvRecord.get(16)) ? null : Integer.parseInt(csvRecord.get(16));
-      }
-
-      // Create or update column using utility method
-      Column newColumn =
-          new Column()
-              .withName(csvRecord.get(0))
-              .withFullyQualifiedName(entityFQN)
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withDataType(dataType)
-              .withDataLength(dataLength);
-
-      // Use common utility to update/add column
-      ColumnUtil.addOrUpdateColumn(columns, newColumn);
-      table.withColumns(columns);
-
-      if (processRecord && !importResult.getDryRun()) {
-        tableRepository.createOrUpdate(null, table);
       }
     }
 
