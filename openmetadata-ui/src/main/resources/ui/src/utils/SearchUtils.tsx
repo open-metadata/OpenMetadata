@@ -73,7 +73,9 @@ export const getSearchAPIQueryParams = (
     query: query + (filters ? ` AND ${filters}` : ''),
     from: start,
     size: size,
-    index: searchIndex as string,
+    index: Array.isArray(searchIndex)
+      ? searchIndex.join(',')
+      : (searchIndex as string),
   };
 
   if (onlyDeleted) {

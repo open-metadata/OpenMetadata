@@ -307,16 +307,20 @@ export const checkMustPaths = async (
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
         index: 'dataAsset',
-        from: '0',
-        size: '10',
+        from: 0,
+        size: 10,
       })
   );
 
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
+  const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
+  const queryFilter = requestBody.queryFilter;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(JSON.stringify(queryFilter)).toContain(
+    getEncodedFqn(searchData, true)
+  );
 
   const json = await res.json();
 
@@ -357,15 +361,21 @@ export const checkMustNotPaths = async (
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
         index: 'dataAsset',
-        from: '0',
-        size: '10',
+        from: 0,
+        size: 10,
       })
   );
 
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
+
+  const queryFilter = requestBody.queryFilter;
+
+  expect(JSON.stringify(queryFilter)).toContain(
+    getEncodedFqn(searchData, true)
+  );
 
   if (!['columns.name.keyword'].includes(field.name)) {
     const json = await res.json();
@@ -404,14 +414,14 @@ export const checkNullPaths = async (
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
         index: 'dataAsset',
-        from: '0',
-        size: '10',
+        from: 0,
+        size: 10,
       })
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
-  const urlParams = new URLSearchParams(res.request().url());
-  const queryFilter = JSON.parse(urlParams.get('query_filter') ?? '');
+  const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
+  const queryFilter = requestBody.queryFilter;
 
   const resultQuery =
     condition === 'Is null'
@@ -450,7 +460,7 @@ export const checkNullPaths = async (
           },
         };
 
-  expect(JSON.stringify(queryFilter)).toContain(JSON.stringify(resultQuery));
+  expect(queryFilter).toEqual(JSON.stringify(resultQuery));
 };
 
 export const verifyAllConditions = async (
@@ -553,8 +563,8 @@ export const checkAddRuleOrGroupWithOperator = async (
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
         index: 'dataAsset',
-        from: '0',
-        size: '10',
+        from: 0,
+        size: 10,
       })
   );
 

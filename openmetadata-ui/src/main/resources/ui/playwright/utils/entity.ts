@@ -392,7 +392,7 @@ export const assignTag = async (
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
-        query: `*${encodeURIComponent(tag)}*`,
+        query: `*${encodeURIComponent(tag)}* AND disabled:false`,
       })
   );
   await page.locator('#tagsForm_tags').fill(tag);

@@ -32,6 +32,7 @@ import {
   descriptionBox,
   getApiContext,
   INVALID_NAMES,
+  matchRequestParams,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
@@ -967,7 +968,11 @@ export const createDescriptionTaskForGlossary = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'user_search_index,team_search_index',
+        })
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -1022,7 +1027,11 @@ export const createTagTaskForGlossary = async (
     );
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'user_search_index,team_search_index',
+        })
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -1042,7 +1051,11 @@ export const createTagTaskForGlossary = async (
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.tag}*&index=tag_search_index&*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'tag_search_index',
+        })
     );
     await suggestTags.fill(value.tag ?? '');
 

@@ -25,6 +25,7 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
+  matchRequestParams,
   uuid,
 } from './common';
 
@@ -211,7 +212,15 @@ export const setValueForProperty = async (data: {
         )}*`;
         await page.route(searchApi, (route) => route.continue());
         await page.locator('#entityReference').clear();
-        const searchEntity = page.waitForResponse(searchApi);
+
+        const searchEntity = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            matchRequestParams(response, 'POST', {
+              query: `*${encodeURIComponent(val)}*`,
+            })
+        );
+
         await page.locator('#entityReference').fill(val);
         await searchEntity;
         await page.locator(`[data-testid="${val}"]`).click();
