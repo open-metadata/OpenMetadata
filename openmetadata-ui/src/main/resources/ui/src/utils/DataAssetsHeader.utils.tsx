@@ -59,7 +59,6 @@ import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
-  getEntityName,
 } from './EntityUtils';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
@@ -665,22 +664,6 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getBreadcrumbForTable(tableDetails);
 
       break;
-  }
-
-  if ('sourceUrl' in dataAsset && dataAsset.sourceUrl) {
-    returnData.extraInfo = (
-      <>
-        {returnData.extraInfo}
-        <Divider className="self-center vertical-divider" type="vertical" />
-        <ExtraInfoLink
-          ellipsis
-          newTab
-          href={dataAsset.sourceUrl}
-          label={t('label.source-url')}
-          value={getEntityName(dataAsset)}
-        />
-      </>
-    );
   }
 
   return returnData;

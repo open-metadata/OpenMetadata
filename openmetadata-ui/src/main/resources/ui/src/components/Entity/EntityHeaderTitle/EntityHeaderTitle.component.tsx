@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Divider, Row, Tooltip, Typography } from 'antd';
+import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -24,7 +24,6 @@ import { ROUTES } from '../../../constants/constants';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -40,7 +39,6 @@ const EntityHeaderTitle = ({
   isDisabled,
   className,
   showName = true,
-  certification,
   excludeEntityService,
   isFollowing,
   isFollowingLoading,
@@ -149,14 +147,7 @@ const EntityHeaderTitle = ({
             )}
         </div>
       </Col>
-      {certification && (
-        <Col className="text-xs">
-          <div className="d-flex items-center">
-            <Divider className="m-x-xs h-6 m-r-sm" type="vertical" />
-            <CertificationTag certification={certification} />
-          </div>
-        </Col>
-      )}
+
       {isDisabled && (
         <Badge
           className="m-l-xs badge-grey"

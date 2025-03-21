@@ -12,7 +12,6 @@
  */
 
 import { EntityType } from '../../../enums/entity.enum';
-import { AssetCertification } from '../../../generated/entity/data/table';
 
 export interface EntityHeaderTitleProps {
   className?: string;
@@ -27,7 +26,6 @@ export interface EntityHeaderTitleProps {
   badge?: React.ReactNode;
   isDisabled?: boolean;
   showName?: boolean;
-  certification?: AssetCertification;
   excludeEntityService?: boolean;
   isFollowing?: boolean;
   isFollowingLoading?: boolean;

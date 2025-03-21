@@ -38,7 +38,6 @@ import {
   UnitOfMeasurement,
 } from '../../../generated/entity/data/metric';
 import { getSortedOptions } from '../../../utils/MetricEntityUtils/MetricUtils';
-import { ExtraInfoLabel } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import './metric-header-info.less';
 
 interface MetricInfoItemOption {
@@ -150,37 +149,46 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   );
 
   return (
-    <Space className="d-flex align-start" data-testid={modiFiedLabel}>
-      <ExtraInfoLabel
-        dataTestId={modiFiedLabel}
-        label={label}
-        value={value ?? NO_DATA_PLACEHOLDER}
-      />
-      {hasPermission && !metricDetails.deleted && (
-        <Popover
-          destroyTooltipOnHide
-          content={list}
-          open={popupVisible}
-          overlayClassName="metric-header-info-popover"
-          placement="bottomRight"
-          showArrow={false}
-          trigger="click"
-          onOpenChange={setPopupVisible}>
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: label,
-            })}>
-            <Button
-              className="flex-center p-0"
-              data-testid={`edit-${modiFiedLabel}-button`}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              loading={isUpdating}
-              size="small"
-              type="text"
-            />
-          </Tooltip>
-        </Popover>
-      )}
+    <Space
+      className="d-flex metric-header-info-container align-start"
+      data-testid={modiFiedLabel}>
+      <div className="d-flex extra-info-container align-start ">
+        <Typography.Text
+          className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+          data-testid={modiFiedLabel}>
+          <div className="d-flex items-center gap-1">
+            <span className="extra-info-label-heading">{label}</span>
+            {hasPermission && !metricDetails.deleted && (
+              <Popover
+                destroyTooltipOnHide
+                content={list}
+                open={popupVisible}
+                overlayClassName="metric-header-info-popover"
+                placement="bottomRight"
+                showArrow={false}
+                trigger="click"
+                onOpenChange={setPopupVisible}>
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: label,
+                  })}>
+                  <Button
+                    className="flex-center edit-metrics p-0"
+                    data-testid={`edit-${modiFiedLabel}-button`}
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+                    loading={isUpdating}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
+              </Popover>
+            )}
+          </div>
+          <div className={classNames('font-medium extra-info-value')}>
+            {value ?? NO_DATA_PLACEHOLDER}
+          </div>
+        </Typography.Text>
+      </div>
     </Space>
   );
 };
