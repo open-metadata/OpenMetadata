@@ -12,7 +12,12 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import { TableClass } from '../../support/entity/TableClass';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import {
   mockEntitySearchSettings,
   restoreDefaultSearchSettings,
@@ -116,5 +121,77 @@ test.describe('Search Settings Tests', () => {
     await restoreDefaultSearchSettings(page);
 
     await toastNotification(page, /Search Settings restored successfully/);
+  });
+});
+
+test.describe('Search Preview test', () => {
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+  // Override properties to include "Searchable" keyword
+  table1.entity.name = `pw-table-Searchable-${
+    table1.entity.name.split('pw-table-')[1]
+  }`;
+  table1.entity.displayName = `Searchable Table ${
+    table1.entity.displayName.split('pw table ')[1]
+  }`;
+  table2.entity.description =
+    'This is a Searchable test table for search settings verification';
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    // Create tables with the customized properties
+    await table1.create(apiContext);
+    await table2.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Search preview for searchable table', async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+    const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+    await tableCard.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(mockEntitySearchSettings.url + '$')
+    );
+
+    const searchInput = page.getByTestId('searchbar');
+    await searchInput.fill('Searchable');
+
+    const descriptionField = page.getByTestId(
+      `field-configuration-panel-description`
+    );
+    await descriptionField.click();
+    await setSliderValue(page, 'field-weight-slider', 68);
+    await descriptionField.click();
+
+    await page.waitForLoadState('networkidle');
+
+    const searchResultsContainer = page.locator('.search-results-container');
+
+    // Get the search result cards
+    const searchCards = searchResultsContainer.locator('.search-card');
+
+    // Check the first card has table1's display name using data-testid
+    const firstCard = searchCards.nth(0);
+
+    await expect(
+      firstCard.getByTestId('entity-header-display-name')
+    ).toHaveText(table1.entity.displayName);
+
+    // Check the second card has table2's description using data-testid
+    const secondCard = searchCards.nth(1);
+
+    await expect(secondCard.getByTestId('description-text')).toContainText(
+      table2.entity.description
+    );
   });
 });
