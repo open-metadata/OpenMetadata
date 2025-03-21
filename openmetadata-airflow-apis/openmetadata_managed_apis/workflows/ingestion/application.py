@@ -36,7 +36,7 @@ from metadata.generated.schema.metadataIngestion.applicationPipeline import (
 from metadata.workflow.application import ApplicationWorkflow
 
 
-def application_workflow(workflow_config: OpenMetadataApplicationConfig):
+def application_workflow(workflow_config: OpenMetadataApplicationConfig, **context):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -48,9 +48,24 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig):
 
     set_operator_logger(workflow_config)
 
+    # Get app config override from Airflow params
+    params = context.get('params', {})
+    app_config_override = params.get('appConfigOverride')
+
     config = json.loads(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
+
+    # Apply app config override if available
+    if app_config_override:
+        if not config.get('appConfig'):
+            config['appConfig'] = {'root': {}}
+        # Merge only root-level keys
+        if config['appConfig'].get('root'):
+            config['appConfig']['root'].update(app_config_override)
+        else:
+            config['appConfig']['root'] = app_config_override
+
     workflow = ApplicationWorkflow.create(config)
 
     workflow.execute()

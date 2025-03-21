@@ -380,6 +380,10 @@ def build_dag(
             owner=ingestion_pipeline.owners.root[0].name
             if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
             else "openmetadata",
+            params={
+                # This can be used to override the config in the application workflow
+                "appConfigOverride": {}
+            }
         )
 
         return dag

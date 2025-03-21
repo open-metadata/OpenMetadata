@@ -13,6 +13,8 @@ Module containing the logic to trigger a DAG
 """
 from typing import Optional
 
+from openmetadata_managed_apis.utils.logger import operations_logger
+
 try:
     from airflow.api.common.trigger_dag import trigger_dag
 except ImportError:
@@ -20,13 +22,32 @@ except ImportError:
 from airflow.utils import timezone
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse
+from airflow.models import DagRun
+from airflow.utils.session import create_session
+
+logger = operations_logger()
 
 
-def trigger(dag_id: str, run_id: Optional[str]) -> Response:
+def trigger(dag_id: str, run_id: Optional[str], conf: Optional[dict] = None) -> Response:
+
+    if conf:
+        with create_session() as session:
+            most_recent_run = session.query(DagRun).filter(
+                DagRun.dag_id == dag_id
+            ).order_by(DagRun.execution_date.desc()).first()
+
+            if most_recent_run and most_recent_run.conf:
+                # Start with the most recent configuration
+                merged_conf = most_recent_run.conf.copy()
+                # Update only the root-level keys
+                merged_conf.update(conf)
+            else:
+                merged_conf = conf
+
     dag_run = trigger_dag(
         dag_id=dag_id,
         run_id=run_id,
-        conf=None,
+        conf=merged_conf,
         execution_date=timezone.utcnow(),
     )
     return ApiResponse.success(
