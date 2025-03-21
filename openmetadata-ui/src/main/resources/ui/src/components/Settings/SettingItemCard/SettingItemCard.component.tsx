@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Typography } from 'antd';
+import { Badge, Card, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,13 @@ interface SettingMenuItemProps {
   className?: string;
 }
 
+const cardBodyStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '16px',
+  padding: 0,
+};
+
 const SettingItemCard = ({
   data,
   onClick,
@@ -34,7 +41,8 @@ const SettingItemCard = ({
   const handleOnClick = useCallback(() => onClick(data.key), []);
 
   return (
-    <div
+    <Card
+      bodyStyle={cardBodyStyle}
       className={classNames('setting-card-item', className)}
       data-testid={data.key}
       onClick={handleOnClick}>
@@ -57,7 +65,7 @@ const SettingItemCard = ({
       <div className="setting-card-action">
         <Icon className="text-sm" component={ArrowRight} />
       </div>
-    </div>
+    </Card>
   );
 };
 
