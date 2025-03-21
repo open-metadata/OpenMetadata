@@ -143,7 +143,7 @@ public class SearchRepository {
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
-  private NLQService nlqService;
+  protected NLQService nlqService;
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
