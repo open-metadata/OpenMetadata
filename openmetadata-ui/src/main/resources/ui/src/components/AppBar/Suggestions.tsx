@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
@@ -69,6 +68,7 @@ type SuggestionProp = {
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
   isNLPActive?: boolean;
+  onSearchTextUpdate?: (text: string) => void;
 };
 
 const Suggestions = ({
@@ -76,6 +76,7 @@ const Suggestions = ({
   setIsOpen,
   searchCriteria,
   isNLPActive = false,
+  onSearchTextUpdate,
 }: SuggestionProp) => {
   const { t } = useTranslation();
   const { isTourOpen } = useTourProvider();
@@ -348,15 +349,20 @@ const Suggestions = ({
           {t('label.ai-queries')}
         </Typography.Text>
         {aiQueries.map((query) => (
-          <div className="m-b-md" key={query}>
-            <Button
-              className="nlp-button w-6 h-6 active m-r-md"
-              data-testid="nlp-suggestions-button"
-              icon={<Icon component={IconSuggestionsBlue} />}
-              type="text"
-            />
+          <Button
+            block
+            className="m-b-md w-100 text-left d-flex items-center p-0"
+            data-testid="nlp-suggestions-button"
+            icon={
+              <div className="nlp-button active w-6 h-6 flex-center m-r-md">
+                <IconSuggestionsBlue />
+              </div>
+            }
+            key={query}
+            type="text"
+            onClick={() => onSearchTextUpdate?.(query)}>
             {query}
-          </div>
+          </Button>
         ))}
       </div>
     );

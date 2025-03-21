@@ -392,7 +392,7 @@ const ExplorePageV1: FunctionComponent = () => {
         pageNumber: 0,
         pageSize: 0,
         queryFilter: combinedQueryFilter,
-        searchIndex: SearchIndex.ALL,
+        searchIndex: SearchIndex.DATA_ASSET,
         includeDeleted: showDeleted,
         trackTotalHits: true,
         fetchSource: false,

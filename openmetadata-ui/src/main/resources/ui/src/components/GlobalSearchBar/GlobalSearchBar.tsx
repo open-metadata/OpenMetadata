@@ -214,6 +214,7 @@ export const GlobalSearchBar = () => {
               }
               searchText={suggestionSearch}
               setIsOpen={setIsSearchBoxOpen}
+              onSearchTextUpdate={handleSearchChange}
             />
           ))
         }
