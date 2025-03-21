@@ -94,7 +94,7 @@ export const getHiddenKeysFromNavigationItems = (
 
 export const filterHiddenNavigationItems = (
   navigationItems?: NavigationItem[] | null
-) => {
+): LeftSidebarItem[] => {
   if (!navigationItems) {
     return leftSidebarItems;
   }
@@ -121,5 +121,5 @@ export const filterHiddenNavigationItems = (
 
   return navigationItems
     .map((navItem) => enhanceNavItem(navItem, sidebarMap))
-    .filter((item) => item !== null);
+    .filter((item): item is LeftSidebarItem => item !== null);
 };

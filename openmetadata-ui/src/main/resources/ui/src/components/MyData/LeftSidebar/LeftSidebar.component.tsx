@@ -13,7 +13,7 @@
 import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import { isEmpty, noop } from 'lodash';
+import { noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -23,8 +23,6 @@ import {
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
-import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -43,11 +41,10 @@ const LeftSidebar = () => {
 
   const { navigation } = useCustomPages('Navigation');
 
-  const sideBarItems = useMemo(() => {
-    return isEmpty(navigation)
-      ? leftSidebarClassBase.getSidebarItems()
-      : filterHiddenNavigationItems(navigation);
-  }, [navigation]);
+  const sideBarItems = useMemo(
+    () => filterHiddenNavigationItems(navigation),
+    [navigation]
+  );
 
   const selectedKeys = useMemo(() => {
     const pathArray = location.pathname.split('/');
