@@ -96,12 +96,13 @@ function FeedCardFooterNew({
             )}
 
             {!isPost && (
-              <ThreadIcon
-                data-testid="reply-count"
-                height={18}
-                width={18}
-                onClick={isForFeedTab ? showReplies : undefined}
-              />
+              <Button
+                className="p-0 flex-center"
+                data-testid="reply-button"
+                type="text"
+                onClick={isForFeedTab ? showReplies : undefined}>
+                <ThreadIcon data-testid="reply-count" height={18} width={18} />
+              </Button>
             )}
             <Reactions
               reactions={post.reactions ?? []}
