@@ -62,7 +62,13 @@ export const redirectToHomePage = async (page: Page) => {
 };
 
 export const removeLandingBanner = async (page: Page) => {
-  const widgetResponse = page.waitForResponse('/api/v1/search/query?q=**');
+  const widgetResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        query: '',
+      })
+  );
   await page.click('[data-testid="welcome-screen-close-btn"]');
   await widgetResponse;
 };

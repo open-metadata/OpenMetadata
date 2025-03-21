@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { matchRequestParams } from './common';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 export const searchServiceFromSettingPage = async (
   page: Page,
   service: string
 ) => {
-  const serviceResponse = page.waitForResponse(`/api/v1/search/query?q=*`);
+  const serviceResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST')
+  );
   await page.fill('[data-testid="searchbar"]', service);
 
   await serviceResponse;
@@ -46,9 +51,7 @@ export const visitServiceDetailsPage = async (
   await page.waitForLoadState('networkidle');
 
   if (verifyHeader) {
-    const text = await page.textContent(
-      `[data-testid="entity-header-name"]`
-    );
+    const text = await page.textContent(`[data-testid="entity-header-name"]`);
 
     expect(text).toBe(service.displayName);
   }
