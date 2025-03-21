@@ -59,34 +59,6 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     await oktaAuth.signInWithRedirect();
   };
 
-  const restoreOriginalUri = useCallback(async (_oktaAuth: OktaAuth) => {
-    const idToken = _oktaAuth.getIdToken() ?? '';
-    const scopes =
-      _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-    setOidcToken(idToken);
-    _oktaAuth
-      .getUser()
-      .then((info) => {
-        const user = {
-          id_token: idToken,
-          scope: scopes,
-          profile: {
-            email: info.email ?? '',
-            name: info.name ?? '',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            picture: (info as any).imageUrl ?? '',
-            locale: info.locale ?? '',
-            sub: info.sub,
-          },
-        };
-        onLoginSuccess(user);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error(err);
-      });
-  }, []);
-
   const customAuthHandler = async () => {
     const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();
     if (!previousAuthState?.isAuthenticated) {
@@ -99,6 +71,39 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
       // Ask the user to trigger the login process during token autoRenew process
     }
   };
+
+  const restoreOriginalUri = useCallback(
+    async (_oktaAuth: OktaAuth) => {
+      const idToken = _oktaAuth.getIdToken() ?? '';
+      const scopes =
+        _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
+      setOidcToken(idToken);
+      _oktaAuth
+        .getUser()
+        .then((info) => {
+          const user = {
+            id_token: idToken,
+            scope: scopes,
+            profile: {
+              email: info.email ?? '',
+              name: info.name ?? '',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              picture: (info as any).imageUrl ?? '',
+              locale: info.locale ?? '',
+              sub: info.sub,
+            },
+          };
+          onLoginSuccess(user);
+        })
+        .catch(async (err) => {
+          // eslint-disable-next-line no-console
+          console.error(err);
+          // Redirect to login on error
+          await customAuthHandler();
+        });
+    },
+    [onLoginSuccess]
+  );
 
   return (
     <Security
