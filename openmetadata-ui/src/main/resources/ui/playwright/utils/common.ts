@@ -12,6 +12,7 @@
  */
 import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { Response } from 'playwright';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
@@ -271,4 +272,100 @@ export const closeFirstPopupAlert = async (page: Page) => {
   if ((await toastElement.count()) > 0) {
     await page.getByTestId('alert-icon-close').first().click();
   }
+};
+
+/**
+ * Utility to check if a request matches specific parameters based on request type
+ * @param response - The response to check
+ * @param method - The HTTP method (GET, POST, etc.)
+ * @param params - Key-value pairs to match in the request (optional)
+ * @returns boolean indicating if the request matches all criteria
+ */
+export const matchRequestParams = (
+  response: Response,
+  method: string,
+  params?: Record<string, any>
+): boolean => {
+  if (response.request().method() !== method) {
+    return false;
+  }
+
+  // If no params specified, match based on method alone
+  if (!params || Object.keys(params).length === 0) {
+    return true;
+  }
+
+  if (method === 'GET') {
+    // For GET requests, check URL parameters
+    const url = new URL(response.url());
+
+    return Object.entries(params).every(([key, value]) => {
+      const paramValue = url.searchParams.get(key);
+      if (Array.isArray(value)) {
+        return value.some((v) => paramValue?.includes(String(v)));
+      }
+
+      return paramValue?.includes(String(value));
+    });
+  } else if (method === 'POST') {
+    // For POST requests, check request body
+    try {
+      const postData = response.request().postData();
+      if (!postData) {
+        return false;
+      }
+
+      const payload = JSON.parse(postData);
+
+      return Object.entries(params).every(([key, value]) => {
+        if (Array.isArray(payload[key])) {
+          return Array.isArray(value)
+            ? value.every((v) => payload[key].includes(v))
+            : payload[key].includes(value);
+        }
+
+        return payload[key] === value;
+      });
+    } catch (e) {
+      return false;
+    }
+  }
+
+  return false;
+};
+
+/**
+ * Utility to search for a substring anywhere in the request payload
+ * @param response - The response to check
+ * @param method - The HTTP method (GET, POST, etc.)
+ * @param searchString - The string to look for in the request payload
+ * @returns boolean indicating if the string was found in the payload
+ */
+export const searchRequestPayload = (
+  response: Response,
+  method: string,
+  searchString: string
+): boolean => {
+  if (response.request().method() !== method) {
+    return false;
+  }
+
+  if (method === 'GET') {
+    // For GET requests, check URL
+    return response.url().includes(searchString);
+  } else if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
+    // For POST/PUT/PATCH requests, check request body
+    try {
+      const postData = response.request().postData();
+      if (!postData) {
+        return false;
+      }
+
+      return postData.includes(searchString);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  return false;
 };

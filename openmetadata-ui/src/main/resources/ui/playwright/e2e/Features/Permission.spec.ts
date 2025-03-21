@@ -17,7 +17,12 @@ import { RolesClass } from '../../support/access-control/RolesClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  getApiContext,
+  matchRequestParams,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { validateViewPermissions } from '../../utils/permission';
 
 const policy = new PolicyClass();
@@ -205,8 +210,13 @@ test('Permissions', async ({ userPage, adminPage }) => {
     await userPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
+
     const queryListResponse = userPage.waitForResponse(
-      '/api/v1/search/query?q=*&index=query_search_index*'
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'query_search_index',
+        })
     );
     await userPage.click('[data-testid="table_queries"]');
     await queryListResponse;
