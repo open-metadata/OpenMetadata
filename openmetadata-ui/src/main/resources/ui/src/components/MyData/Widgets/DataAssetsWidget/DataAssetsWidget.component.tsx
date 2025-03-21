@@ -22,7 +22,7 @@ import { HOW_TO_GUIDE_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -41,17 +41,24 @@ const DataAssetsWidget = ({
   const fetchDataAssets = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await searchData('', 0, 0, '', 'updatedAt', '', [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.SEARCH_INDEX,
-        SearchIndex.API_ENDPOINT_INDEX,
-      ]);
-      setServices(res?.data.aggregations?.['sterms#serviceType'].buckets);
+      const res = await searchQuery({
+        query: '',
+        searchIndex: [
+          SearchIndex.TABLE,
+          SearchIndex.TOPIC,
+          SearchIndex.DASHBOARD,
+          SearchIndex.PIPELINE,
+          SearchIndex.MLMODEL,
+          SearchIndex.CONTAINER,
+          SearchIndex.SEARCH_INDEX,
+          SearchIndex.API_ENDPOINT_INDEX,
+        ],
+        pageSize: 0,
+        fetchSource: false,
+        sortField: 'updatedAt',
+      });
+
+      setServices(res?.aggregations?.['serviceType'].buckets);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

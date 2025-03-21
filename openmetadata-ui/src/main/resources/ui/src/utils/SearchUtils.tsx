@@ -39,6 +39,7 @@ import {
 } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { SearchRequest } from '../generated/search/searchRequest';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import searchClassBase from './SearchClassBase';
@@ -56,7 +57,7 @@ export const getSearchAPIQueryParams = (
   onlyDeleted = false,
   trackTotalHits = false,
   wildcard = true
-): Record<string, string | boolean | number | string[]> => {
+): SearchRequest => {
   const start = (from - 1) * size;
 
   const encodedQueryString = queryString
@@ -68,11 +69,11 @@ export const getSearchAPIQueryParams = (
       ? `*${encodedQueryString}*`
       : encodedQueryString;
 
-  const params: Record<string, string | boolean | number | string[]> = {
-    q: query + (filters ? ` AND ${filters}` : ''),
+  const params: SearchRequest = {
+    query: query + (filters ? ` AND ${filters}` : ''),
     from: start,
-    size,
-    index: searchIndex,
+    size: size,
+    index: searchIndex as string,
   };
 
   if (onlyDeleted) {
@@ -80,15 +81,15 @@ export const getSearchAPIQueryParams = (
   }
 
   if (!isEmpty(sortField)) {
-    params.sort_field = sortField;
+    params.sortFieldParam = sortField;
   }
 
   if (!isEmpty(sortOrder)) {
-    params.sort_order = sortOrder;
+    params.sortOrder = sortOrder;
   }
 
   if (trackTotalHits) {
-    params.track_total_hits = trackTotalHits;
+    params.trackTotalHits = trackTotalHits;
   }
 
   return params;

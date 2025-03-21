@@ -39,7 +39,7 @@ export const searchData = <SI extends SearchIndex>(
   trackTotalHits = false,
   wildcard = true
 ) => {
-  const { q, ...params } = getSearchAPIQueryParams(
+  const params = getSearchAPIQueryParams(
     queryString,
     from,
     size,
@@ -52,9 +52,7 @@ export const searchData = <SI extends SearchIndex>(
     wildcard
   );
 
-  return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
-    params,
-  });
+  return APIClient.post<SearchResponse<SI>>(`/search/query`, params);
 };
 
 export const fetchAuthenticationConfig = async () => {

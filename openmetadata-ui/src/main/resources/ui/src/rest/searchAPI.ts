@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
 import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
+import { SearchRequest as SearchRequestPayload } from '../generated/search/searchRequest';
 import {
   Aggregations,
   KeysOfUnion,
@@ -182,31 +183,27 @@ export const rawSearchQuery = <
       : queryWithSlash
     : '';
 
-  const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
+  const payload: SearchRequestPayload = {
+    query: `${apiQuery}${filters ?? ''}`,
+    index: getSearchIndexParam(searchIndex),
+    from: (pageNumber - 1) * pageSize,
+    size: pageSize,
+    deleted: includeDeleted,
+    queryFilter: JSON.stringify(queryFilter),
+    postFilter: JSON.stringify(postFilter),
+    sortFieldParam: sortField,
+    sortOrder: sortOrder,
+    trackTotalHits: trackTotalHits,
+    fetchSource: fetchSource,
+    includeSourceFields: req.fetchSource ? req.includeFields : undefined,
+  };
 
-  return APIClient.get<
+  return APIClient.post<
     SearchResponse<
       SI extends Array<SearchIndex> ? SI[number] : SI,
       TIncludeFields
     >
-  >(apiUrl, {
-    params: {
-      index: getSearchIndexParam(searchIndex),
-      from: (pageNumber - 1) * pageSize,
-      size: pageSize,
-      deleted: includeDeleted,
-      query_filter: JSON.stringify(queryFilter),
-      post_filter: JSON.stringify(postFilter),
-      sort_field: sortField,
-      sort_order: sortOrder,
-      track_total_hits: trackTotalHits,
-      fetch_source: fetchSource,
-      include_source_fields: req.fetchSource ? req.includeFields : undefined,
-    },
-    paramsSerializer: {
-      indexes: null,
-    },
-  });
+  >('/search/query', payload);
 };
 
 /**
