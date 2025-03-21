@@ -1403,13 +1403,7 @@ public class OpenSearchClient implements SearchClient {
   public Response aggregate(String index, String fieldName, String value, String query)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    XContentParser filterParser =
-        XContentType.JSON
-            .xContent()
-            .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-    QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-
-    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(filter);
+    buildSearchSourceFilter(query, searchSourceBuilder);
     searchSourceBuilder
         .aggregation(
             AggregationBuilders.terms(fieldName)
@@ -1417,7 +1411,6 @@ public class OpenSearchClient implements SearchClient {
                 .size(MAX_AGGREGATE_SIZE)
                 .includeExclude(new IncludeExclude(value.toLowerCase(), null))
                 .order(BucketOrder.key(true)))
-        .query(boolQueryBuilder)
         .size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =

@@ -1332,15 +1332,7 @@ public class ElasticSearchClient implements SearchClient {
   public Response aggregate(String index, String fieldName, String value, String query)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    XContentParser filterParser =
-        XContentType.JSON
-            .xContent()
-            .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-    es.org.elasticsearch.index.query.QueryBuilder filter =
-        SearchSourceBuilder.fromXContent(filterParser).query();
-
-    es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-        QueryBuilders.boolQuery().must(filter);
+    buildSearchSourceFilter(query, searchSourceBuilder);
     searchSourceBuilder
         .aggregation(
             AggregationBuilders.terms(fieldName)
@@ -1348,7 +1340,6 @@ public class ElasticSearchClient implements SearchClient {
                 .size(MAX_AGGREGATE_SIZE)
                 .includeExclude(new IncludeExclude(value.toLowerCase(), null))
                 .order(BucketOrder.key(true)))
-        .query(boolQueryBuilder)
         .size(0);
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     String response =

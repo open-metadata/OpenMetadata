@@ -544,7 +544,6 @@ public class SearchResource {
                       + "AND tags.tagFQN:user.address <br/>"
                       + "NOTE: logic operators such as AND, OR and NOT must be in uppercase ",
               required = true)
-          @DefaultValue("*")
           @QueryParam("q")
           String query,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
