@@ -31,6 +31,7 @@ import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonW
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { ExportTypes } from '../../constants/Export.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
@@ -275,6 +276,7 @@ export const ExtraDatabaseDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportDatabaseDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />
