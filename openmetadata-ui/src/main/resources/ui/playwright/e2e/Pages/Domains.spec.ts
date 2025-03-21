@@ -273,7 +273,6 @@ test.describe('Domains', () => {
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
-    await page.getByTestId('saveAssociatedTag').click();
 
     await page.waitForLoadState('networkidle');
 

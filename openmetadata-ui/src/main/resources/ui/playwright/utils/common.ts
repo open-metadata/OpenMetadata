@@ -192,7 +192,6 @@ export const updateDomain = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -207,7 +206,6 @@ export const removeDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };
