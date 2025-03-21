@@ -18,7 +18,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 - Improvements:- Added loggedInAPI to show more specific error messages instead of generic ones
 - Added support for \`/logout\` path to perform logout from API redirect
-- Added displayName field in the \`createCustomProperty\` schema
+- Added displayName field in the \`createCustomProperty\` schema    
 - Improved search relevancy for plural/singular words and partial matches
 - Introduced "clear sample" option in entity config to support explicit null
 - Made domain a required field for Data Product creation
