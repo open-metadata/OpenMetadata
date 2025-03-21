@@ -68,6 +68,19 @@ const EntityHeaderTitle = ({
     [location.pathname]
   );
 
+  const entityName = useMemo(
+    () =>
+      stringToHTML(
+        showOnlyDisplayName
+          ? getEntityName({
+              displayName,
+              name,
+            })
+          : name
+      ),
+    [showOnlyDisplayName, displayName, name]
+  );
+
   const content = (
     <Row
       align="middle"
@@ -99,16 +112,7 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Tooltip
-            placement="bottom"
-            title={stringToHTML(
-              showOnlyDisplayName
-                ? getEntityName({
-                    displayName,
-                    name,
-                  })
-                : name
-            )}>
+          <Tooltip placement="bottom" title={entityName}>
             <Typography.Text
               className={classNames(displayNameClassName, 'm-b-0', {
                 'display-sm entity-header-name font-semibold': !displayName,
@@ -116,14 +120,7 @@ const EntityHeaderTitle = ({
               })}
               data-testid="entity-header-name"
               ellipsis={{ tooltip: true }}>
-              {stringToHTML(
-                showOnlyDisplayName
-                  ? getEntityName({
-                      displayName,
-                      name,
-                    })
-                  : name
-              )}
+              {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
                   className="anticon vertical-baseline m-l-xss"
