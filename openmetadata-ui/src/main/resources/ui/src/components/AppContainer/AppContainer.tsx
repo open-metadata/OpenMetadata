@@ -31,8 +31,6 @@ import './app-container.less';
 const { Content } = Layout;
 
 const AppContainer = () => {
-  const { i18n } = useTranslation();
-  const { Header, Sider, Content } = Layout;
   const { currentUser, setAppPreferences, appPreferences } =
     useApplicationStore();
   const { applications } = useApplicationsProvider();
