@@ -119,7 +119,7 @@ export const ExtraInfoLabel = ({
   }
 
   return (
-    <div className="d-flex align-start ">
+    <div className="d-flex align-start extra-info-container">
       <Typography.Text
         className="whitespace-nowrap text-sm d-flex flex-col gap-2"
         data-testid={dataTestId}>

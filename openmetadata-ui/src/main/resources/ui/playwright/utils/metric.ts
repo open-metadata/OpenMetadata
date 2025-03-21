@@ -60,7 +60,7 @@ export const updateUnitOfMeasurement = async (
 
   // verify the unit of measurement is updated
   await expect(
-    page.getByText(`Unit of Measurement${unitOfMeasurement.toUpperCase()}`)
+    page.getByText(`Measurement Unit${unitOfMeasurement.toUpperCase()}`)
   ).toBeVisible();
 };
 
@@ -74,7 +74,7 @@ export const removeUnitOfMeasurement = async (page: Page) => {
   await patchPromise;
 
   // verify the unit of measurement is updated
-  await expect(page.getByText('Unit of Measurement--')).toBeVisible();
+  await expect(page.getByText('Measurement Unit--')).toBeVisible();
 };
 
 export const updateGranularity = async (page: Page, granularity: string) => {
@@ -267,7 +267,7 @@ export const addMetric = async (page: Page) => {
 
   await expect(
     page.getByText(
-      `Unit of Measurement${metricData.unitOfMeasurement.toUpperCase()}`
+      `Measurement Unit${metricData.unitOfMeasurement.toUpperCase()}`
     )
   ).toBeVisible();
 
