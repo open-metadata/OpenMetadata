@@ -552,7 +552,9 @@ public class OpenSearchClient implements SearchClient {
           searchRequest.source(searchSourceBuilder);
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
-          nlqService.cacheQuery(request.getQuery(), transformedQuery);
+          if (response.getHits().getTotalHits().value > 0) {
+            nlqService.cacheQuery(request.getQuery(), transformedQuery);
+          }
           return Response.status(Response.Status.OK).entity(response.toString()).build();
         }
       } catch (Exception e) {

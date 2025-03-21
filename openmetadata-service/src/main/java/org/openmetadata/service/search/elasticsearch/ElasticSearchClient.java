@@ -897,6 +897,9 @@ public class ElasticSearchClient implements SearchClient {
         searchRequest.source(searchSourceBuilder);
         es.org.elasticsearch.action.search.SearchResponse response =
             client.search(searchRequest, RequestOptions.DEFAULT);
+        if (response.getHits().getTotalHits().value > 0) {
+          nlqService.cacheQuery(request.getQuery(), transformedQuery);
+        }
         return Response.status(Response.Status.OK).entity(response.toString()).build();
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
