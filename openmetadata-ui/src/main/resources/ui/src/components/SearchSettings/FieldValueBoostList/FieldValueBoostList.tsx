@@ -16,6 +16,10 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import {
+  fieldValueBoostAdditionalColumns,
+  fieldValueBoostBaseColumns,
+} from '../../../constants/SearchSettings.constant';
 import { FieldValueBoost } from '../../../generated/configuration/searchSettings';
 import './field-value-boost-list.less';
 
@@ -40,32 +44,10 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
 
   const columns = useMemo(() => {
     return [
-      {
-        title: t('label.field'),
-        dataIndex: 'field',
-        key: 'field',
-        width: 250,
-      },
-      {
-        title: t('label.factor'),
-        dataIndex: 'factor',
-        key: 'factor',
-        width: 80,
-      },
+      ...fieldValueBoostBaseColumns,
       ...(!entitySearchSettingsPage
         ? [
-            {
-              title: t('label.modifier'),
-              dataIndex: 'modifier',
-              key: 'modifier',
-              width: 120,
-            },
-            {
-              title: t('label.missing-value'),
-              dataIndex: 'missing',
-              key: 'missing',
-              width: 120,
-            },
+            ...fieldValueBoostAdditionalColumns,
             {
               title: t('label.greater-than'),
               key: 'gt',

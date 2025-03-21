@@ -16,15 +16,18 @@
   border: 1px solid @grey-10;
   background-color: @white;
   border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
   width: 100%;
   cursor: pointer;
 
   &:hover {
     border: 1px solid @blue-15;
+  }
+
+  .ant-card-body {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 4px;
   }
 
   .setting-card-icon {
@@ -53,4 +56,11 @@
     flex: 0 0 auto;
     margin-left: auto;
   }
+}
+
+.setting-card-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0;
 }

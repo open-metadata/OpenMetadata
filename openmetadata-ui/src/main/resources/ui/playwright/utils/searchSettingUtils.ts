@@ -86,22 +86,14 @@ export async function setSliderValue(
 export const restoreDefaultSearchSettings = async (page: Page) => {
   const { apiContext } = await getApiContext(page);
 
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext.put(
-          '/api/v1/system/settings/reset/searchSettings'
-        );
-        const data = await response.json();
+  const response = await apiContext.put(
+    '/api/v1/system/settings/reset/searchSettings'
+  );
+  const data = await response.json();
 
-        return data?.assetTypeConfigurations?.find(
-          (config: { assetType: string }) => config.assetType === 'table'
-        );
-      },
-      {
-        timeout: 35_000,
-        intervals: [40_000, 30_000],
-      }
-    )
-    .toEqual(mockEntitySearchConfig);
+  const tableConfig = data?.assetTypeConfigurations?.find(
+    (config: { assetType: string }) => config.assetType === 'table'
+  );
+
+  expect(tableConfig).toEqual(mockEntitySearchConfig);
 };

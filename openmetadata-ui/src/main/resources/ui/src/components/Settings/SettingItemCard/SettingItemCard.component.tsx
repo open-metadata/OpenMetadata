@@ -25,13 +25,6 @@ interface SettingMenuItemProps {
   className?: string;
 }
 
-const cardBodyStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '16px',
-  padding: 0,
-};
-
 const SettingItemCard = ({
   data,
   onClick,
@@ -42,7 +35,6 @@ const SettingItemCard = ({
 
   return (
     <Card
-      bodyStyle={cardBodyStyle}
       className={classNames('setting-card-item', className)}
       data-testid={data.key}
       onClick={handleOnClick}>
