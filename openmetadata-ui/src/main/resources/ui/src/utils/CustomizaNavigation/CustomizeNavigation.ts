@@ -38,40 +38,39 @@ const sidebarMap = createSidebarMap(leftSidebarItems);
 export const getTreeDataForNavigationItems = (
   navigationItems?: NavigationItem[]
 ) => {
-  return (
-    navigationItems?.map((item) => {
-      const sidebarItem = sidebarMap.get(item.id);
+  return isEmpty(navigationItems)
+    ? leftSidebarItems.map((item) => {
+        return {
+          title: item.title,
+          key: item.key ?? '',
+          icon: item.icon,
+          children: item.children?.map((i) => {
+            return {
+              title: i.title,
+              key: i.key,
+              icon: i.icon,
+            };
+          }),
+        };
+      })
+    : navigationItems?.map((item) => {
+        const sidebarItem = sidebarMap.get(item.id);
 
-      return {
-        title: item.title,
-        key: item.id,
-        icon: sidebarItem?.icon,
-        children: item.children?.map((i) => {
-          const sidebarItem = sidebarMap.get(i.id);
+        return {
+          title: item.title,
+          key: item.id,
+          icon: sidebarItem?.icon,
+          children: item.children?.map((i) => {
+            const sidebarItem = sidebarMap.get(i.id);
 
-          return {
-            title: i.title,
-            key: i.id,
-            icon: sidebarItem?.icon,
-          };
-        }),
-      };
-    }) ??
-    leftSidebarItems.map((item) => {
-      return {
-        title: item.title,
-        key: item.key ?? '',
-        icon: item.icon,
-        children: item.children?.map((i) => {
-          return {
-            title: i.title,
-            key: i.key,
-            icon: i.icon,
-          };
-        }),
-      };
-    })
-  );
+            return {
+              title: i.title,
+              key: i.id,
+              icon: sidebarItem?.icon,
+            };
+          }),
+        };
+      }) ?? [];
 };
 
 export const getHiddenKeysFromNavigationItems = (

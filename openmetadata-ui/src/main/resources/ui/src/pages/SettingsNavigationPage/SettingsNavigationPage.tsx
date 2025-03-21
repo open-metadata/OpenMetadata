@@ -218,7 +218,6 @@ export const SettingsNavigationPage = ({
 
         <Col span={24}>
           <Card
-            bodyStyle={{ padding: 20 }}
             bordered={false}
             className="custom-navigation-tree-container"
             title="Navigation Menus">
@@ -229,7 +228,6 @@ export const SettingsNavigationPage = ({
               showIcon
               draggable={{ icon: <HolderOutlined /> }}
               itemHeight={48}
-              style={{ width: '420px' }}
               switcherIcon={switcherIcon}
               titleRender={titleRenderer}
               treeData={treeData}
