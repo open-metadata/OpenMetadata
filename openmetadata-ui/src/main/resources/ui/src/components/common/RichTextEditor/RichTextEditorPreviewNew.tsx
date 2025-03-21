@@ -27,7 +27,6 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   className = '',
   enableSeeMoreVariant = true,
   textVariant = 'black',
-  showReadMoreBtn = true,
   isDescriptionExpanded = false,
 }) => {
   const { t, i18n } = useTranslation();
@@ -79,13 +78,10 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     };
   }, [content, readMore]);
 
-  const getMaxHeight = () => {
-    if (!isContentLoaded) {
-      return '3em';
-    }
-
-    return readMore ? 'none' : '3em';
-  };
+  let maxHeight = '3em';
+  if (isContentLoaded && readMore) {
+    maxHeight = 'none';
+  }
 
   if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
@@ -107,23 +103,20 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
           WebkitBoxOrient: 'vertical',
           WebkitLineClamp: readMore ? 'unset' : 2,
           overflow: 'hidden',
-          maxHeight: getMaxHeight(),
+          maxHeight: maxHeight,
           transition: 'max-height 0.3s ease',
         }}>
         <BlockEditor autoFocus={false} content={content} editable={false} />
       </div>
-      {isContentLoaded &&
-        isOverflowing &&
-        showReadMoreBtn &&
-        enableSeeMoreVariant && (
-          <Button
-            className="text-right view-more-less-button"
-            data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-            type="link"
-            onClick={handleReadMoreToggle}>
-            {readMore ? t('label.view-less') : t('label.view-more')}
-          </Button>
-        )}
+      {isContentLoaded && isOverflowing && enableSeeMoreVariant && (
+        <Button
+          className="text-right view-more-less-button"
+          data-testid={`read-${readMore ? 'less' : 'more'}-button`}
+          type="link"
+          onClick={handleReadMoreToggle}>
+          {readMore ? t('label.view-less') : t('label.view-more')}
+        </Button>
+      )}
     </div>
   );
 };

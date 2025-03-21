@@ -124,7 +124,7 @@ export const DiffViewNew = ({
     [diffArr]
   );
 
-  const getContentClassName = () => {
+  const contentClassName = useMemo(() => {
     if (expanded) {
       return '';
     }
@@ -132,7 +132,7 @@ export const DiffViewNew = ({
     return showDescTitle
       ? 'clamp-text-3 overflow-hidden'
       : 'clamp-text-2 overflow-hidden';
-  };
+  }, [expanded, showDescTitle]);
 
   return (
     <div
@@ -172,7 +172,7 @@ export const DiffViewNew = ({
         {diffArr.length ? (
           <>
             <div
-              className={classNames('relative', getContentClassName())}
+              className={classNames('relative', contentClassName)}
               ref={contentRef}>
               {elements}
             </div>
