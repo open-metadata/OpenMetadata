@@ -58,9 +58,11 @@ export enum EntityFields {
   CERTIFICATION = 'certification.tagLabel.tagFQN',
   SERVICE = 'service.displayName.keyword',
   DATABASE = 'database.displayName.keyword',
+  DATABASE_NAME = 'database.name.keyword',
   DATABASE_SCHEMA = 'databaseSchema.displayName.keyword',
   DATABASE_DISPLAY_NAME = 'database.displayName',
   DATABASE_SCHEMA_DISPLAY_NAME = 'databaseSchema.displayName',
+  DATABASE_SCHEMA_NAME = 'databaseSchema.name.keyword',
   COLUMN = 'columns.name.keyword',
   API_COLLECTION = 'apiCollection.displayName.keyword',
   CHART = 'charts.displayName.keyword',
@@ -68,6 +70,7 @@ export enum EntityFields {
   GLOSSARY_TERM_STATUS = 'status',
   REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
   RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
+  SERVICE_NAME = 'service.name.keyword',
 }
 
 // This enum contains list of fields that are there in the object of the entity
