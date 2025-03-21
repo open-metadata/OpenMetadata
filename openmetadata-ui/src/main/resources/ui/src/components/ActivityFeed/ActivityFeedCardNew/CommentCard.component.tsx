@@ -13,7 +13,13 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
 import {
@@ -37,16 +43,42 @@ interface CommentCardInterface {
   feed: Thread;
   post: any;
   isLastReply: boolean;
+  closeFeedEditor: () => void;
 }
 
-const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
+const CommentCard = ({
+  feed,
+  post,
+  isLastReply,
+  closeFeedEditor,
+}: CommentCardInterface) => {
   const { updateFeed } = useActivityFeedProvider();
   const [isHovered, setIsHovered] = useState(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
   const seperator = '.';
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isEditPost &&
+        editorRef.current &&
+        !editorRef.current.contains(event.target as Node)
+      ) {
+        setIsEditPost(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEditPost]);
 
   const onEditPost = () => {
+    closeFeedEditor();
     setIsEditPost(!isEditPost);
   };
 
@@ -69,14 +101,16 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
       return (
-        <ActivityFeedEditor
-          focused
-          className="mb-8 reply-feed-editor"
-          defaultValue={defaultValue}
-          editorClass="is_edit_post"
-          onSave={handleSave}
-          onTextChange={(message) => setPostMessage(message)}
-        />
+        <div ref={editorRef}>
+          <ActivityFeedEditor
+            focused
+            className="mb-8 reply-feed-editor"
+            defaultValue={defaultValue}
+            editorClass="is_edit_post"
+            onSave={handleSave}
+            onTextChange={(message) => setPostMessage(message)}
+          />
+        </div>
       );
     }
 

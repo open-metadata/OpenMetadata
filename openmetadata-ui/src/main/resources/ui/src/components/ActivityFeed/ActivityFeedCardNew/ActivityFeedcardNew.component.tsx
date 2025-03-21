@@ -14,7 +14,7 @@ import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
@@ -74,6 +74,10 @@ const ActivityFeedCardNew = ({
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const { updateFeed } = useActivityFeedProvider();
+
+  useEffect(() => {
+    setShowFeedEditor(false);
+  }, [feed.id]);
 
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
@@ -193,6 +197,10 @@ const ActivityFeedCardNew = ({
       </Typography.Text>
     </Tooltip>
   ) : null;
+
+  const closeFeedEditor = () => {
+    setShowFeedEditor(false);
+  };
 
   return (
     <Card
@@ -331,6 +339,7 @@ const ActivityFeedCardNew = ({
                 .sort((a, b) => (b.postTs as number) - (a.postTs as number))
                 .map((reply, index, arr) => (
                   <CommentCard
+                    closeFeedEditor={closeFeedEditor}
                     feed={feed}
                     isLastReply={index === arr.length - 1}
                     key={reply.id}

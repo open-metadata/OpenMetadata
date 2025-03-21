@@ -240,19 +240,26 @@
 }
 .activity-feed-editor-container-new {
   background-color: @grey-9;
-  border: none;
+  border: 0.5px solid @blue-15;
   border-radius: 10px;
   width: 100%;
   .ql-container {
     background-color: @grey-9;
-    border: none;
+    border: 1px solid @blue-15;
     width: 100%;
+
+    &:focus-within {
+      border: 0.5px solid @blue-15;
+    }
   }
   .ql-toolbar {
     background-color: @grey-9;
-    border: none;
-    border-bottom: 1px solid #d9d9d9;
+    border: 1px solid @blue-15;
     flex-wrap: wrap;
+
+    &:focus-within {
+      border: 0.5px solid @blue-15;
+    }
   }
   .ql-toolbar button {
     color: #292929;
