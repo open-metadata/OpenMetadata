@@ -509,6 +509,7 @@ class CommonDbSourceService(
                 foreign_columns,
             ) = self.get_columns_and_constraints(
                 schema_name=schema_name,
+                table_type=table_type,
                 table_name=table_name,
                 db_name=self.context.get().database,
                 inspector=self.inspector,
