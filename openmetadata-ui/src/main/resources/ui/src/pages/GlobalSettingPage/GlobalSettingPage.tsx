@@ -75,10 +75,11 @@ const GlobalSettingPage = () => {
         </Col>
 
         <Col span={24}>
-          <Row gutter={[20, 20]}>
+          <Row className="setting-items-container" gutter={[20, 20]}>
             {settingItems.map((setting) => (
-              <Col key={setting?.key} span={6}>
+              <Col key={setting?.key} span={8}>
                 <SettingItemCard
+                  className="global-setting-card"
                   data={setting}
                   onClick={handleSettingItemClick}
                 />

@@ -112,6 +112,7 @@ const SearchPreview = ({
           <ExploreSearchCard
             showEntityIcon
             className="search-card"
+            classNameForBreadcrumb="breadcrumb-width"
             data-testid="searched-data-card"
             id={_id}
             key={_source.name}

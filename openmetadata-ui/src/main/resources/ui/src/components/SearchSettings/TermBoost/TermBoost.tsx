@@ -13,10 +13,10 @@
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as Save } from '../../../assets/svg/save.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';
 import { getFilterOptions } from '../../../utils/SearchSettingsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -25,6 +25,7 @@ import { AsyncSelect } from '../../common/AsyncSelect/AsyncSelect';
 import './term-boost.less';
 
 interface TermBoostProps {
+  className?: string;
   termBoost: TermBoost;
   onTermBoostChange: (termBoost: TermBoost) => void;
   onDeleteBoost: (termValue: string) => void;
@@ -32,6 +33,7 @@ interface TermBoostProps {
 }
 
 const TermBoostComponent: React.FC<TermBoostProps> = ({
+  className,
   termBoost,
   onTermBoostChange,
   onDeleteBoost,
@@ -107,22 +109,18 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
     };
 
     setTermBoostData(updatedData);
+    onTermBoostChange(updatedData);
   };
 
   const handleBoostChange = (value: number) => {
     const updatedData = { ...termBoostData, boost: value };
 
     setTermBoostData(updatedData);
-  };
-
-  const handleSave = () => {
-    if (termBoostData.field && termBoostData.value && termBoostData.boost) {
-      onTermBoostChange(termBoostData);
-    }
+    onTermBoostChange(updatedData);
   };
 
   return (
-    <div className="term-boost">
+    <div className={classNames('term-boost', className)}>
       <Row className="p-box d-flex flex-column">
         <Col className="p-y-xs p-l-sm p-r-xss border-radius-card m-b-sm bg-white config-section-content">
           <AsyncSelect
@@ -131,6 +129,7 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             className="w-full custom-select"
             data-testid="term-boost-select"
             defaultValue={termBoostData.value || undefined}
+            disabled={!!termBoost.value}
             filterOption={getFilterOptions}
             optionLabelProp="value"
             placeholder={t('label.select-tag')}
@@ -167,17 +166,6 @@ const TermBoostComponent: React.FC<TermBoostProps> = ({
             data-testid="delete-term-boost"
             icon={<Icon className="text-md" component={Delete} />}
             onClick={() => onDeleteBoost(termBoost.value)}
-          />
-          <Button
-            className="save-term-boost"
-            data-testid="save-term-boost"
-            disabled={
-              !termBoostData.field ||
-              !termBoostData.value ||
-              !termBoostData.boost
-            }
-            icon={<Icon className="text-md" component={Save} />}
-            onClick={handleSave}
           />
         </Col>
       </Row>

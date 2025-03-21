@@ -24,6 +24,7 @@ export interface FieldConfigurationProps {
   searchSettings: EntitySearchSettingsState;
   index: number;
   entityFields: Field[];
+  initialOpen?: boolean;
   onHighlightFieldsChange: (fieldName: string) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;
   onValueBoostChange?: (fieldName: string, boost: FieldValueBoost) => void;

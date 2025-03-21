@@ -10,13 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { getApiContext } from './common';
 
 export const mockScoreMode = 'first';
 export const mockBoostMode = 'replace';
 export const mockEntitySearchSettings = {
-  key: 'search-settings.tables',
-  url: '/settings/search-settings/tables',
+  key: 'preferences.search-settings.tables',
+  url: 'settings/preferences/search-settings/tables',
+};
+
+export const mockEntitySearchConfig = {
+  assetType: 'table',
+  searchFields: [
+    { field: 'displayName.keyword', boost: 20 },
+    { field: 'name', boost: 10 },
+    { field: 'name.ngram', boost: 1 },
+    { field: 'displayName', boost: 10 },
+    { field: 'displayName.ngram', boost: 1 },
+    { field: 'description', boost: 2 },
+    { field: 'fullyQualifiedName', boost: 5 },
+    { field: 'fqnParts', boost: 5 },
+    { field: 'columns.name.keyword', boost: 2 },
+    { field: 'columns.displayName.keyword', boost: 2 },
+    { field: 'columns.children.name.keyword', boost: 1 },
+    { field: 'tags.tagFQN.text', boost: 5 },
+  ],
+  highlightFields: ['name', 'description', 'displayName'],
+  aggregations: [
+    {
+      name: 'database.displayName.keyword',
+      type: 'terms',
+      field: 'database.displayName.keyword',
+    },
+    {
+      name: 'databaseSchema.displayName.keyword',
+      type: 'terms',
+      field: 'databaseSchema.displayName.keyword',
+    },
+  ],
+  termBoosts: [],
+  fieldValueBoosts: [],
+  scoreMode: 'sum',
+  boostMode: 'multiply',
 };
 
 export async function setSliderValue(
@@ -24,7 +60,7 @@ export async function setSliderValue(
   testId: string,
   value: number,
   min = 0,
-  max = 10
+  max = 100
 ) {
   const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
   const sliderTrack = page.getByTestId(testId).locator('.ant-slider-track');
@@ -46,3 +82,18 @@ export async function setSliderValue(
   await page.mouse.move(valuePosition, box.y);
   await page.mouse.up();
 }
+
+export const restoreDefaultSearchSettings = async (page: Page) => {
+  const { apiContext } = await getApiContext(page);
+
+  const response = await apiContext.put(
+    '/api/v1/system/settings/reset/searchSettings'
+  );
+  const data = await response.json();
+
+  const tableConfig = data?.assetTypeConfigurations?.find(
+    (config: { assetType: string }) => config.assetType === 'table'
+  );
+
+  expect(tableConfig).toEqual(mockEntitySearchConfig);
+};

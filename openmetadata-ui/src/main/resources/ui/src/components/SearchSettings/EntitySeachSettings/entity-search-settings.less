@@ -20,6 +20,13 @@
   margin: 20px;
   border: 1px solid @border-color-1;
   border-radius: 10px;
+
+  .entity-icon {
+    svg {
+      fill: transparent;
+      font-size: 55px;
+    }
+  }
 }
 
 .entity-search-settings-content {
@@ -35,10 +42,7 @@
 .configuration-container {
   width: 100%;
   padding: 0 20px 20px 20px;
-}
-
-.config-section {
-  height: 100%;
+  max-height: 45vh;
   overflow-y: auto;
 
   .config-section-content {
@@ -54,24 +58,6 @@
 .preview-section {
   border: 1px solid @border-color-1;
   flex: 2;
-
-  .preview-content {
-    overflow: hidden;
-  }
-}
-
-.add-field-btn {
-  border-radius: 8px;
-  background-color: @blue-9;
-  border: 1px solid @blue-9;
-  color: @white;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.menu-items {
-  max-height: 280px;
-  overflow-y: auto;
 }
 
 .entity-collapse-container {
@@ -106,4 +92,8 @@
       }
     }
   }
+}
+
+.term-boost-card {
+  min-width: 100%;
 }

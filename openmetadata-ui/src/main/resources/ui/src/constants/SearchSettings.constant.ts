@@ -33,3 +33,33 @@ export const globalSettings: Property[] = [
     max: 1000000,
   },
 ];
+
+export const fieldValueBoostBaseColumns = [
+  {
+    title: i18n.t('label.field'),
+    dataIndex: 'field',
+    key: 'field',
+    width: 250,
+  },
+  {
+    title: i18n.t('label.factor'),
+    dataIndex: 'factor',
+    key: 'factor',
+    width: 80,
+  },
+];
+
+export const fieldValueBoostAdditionalColumns = [
+  {
+    title: i18n.t('label.modifier'),
+    dataIndex: 'modifier',
+    key: 'modifier',
+    width: 120,
+  },
+  {
+    title: i18n.t('label.missing-value'),
+    dataIndex: 'missing',
+    key: 'missing',
+    width: 120,
+  },
+];

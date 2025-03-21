@@ -117,7 +117,7 @@ const GlobalSettingCategoryPage = () => {
         <Col span={24}>
           <Row className={settingCategoryData?.key} gutter={[20, 20]}>
             {settingCategoryData?.items?.map((category) => (
-              <Col key={category?.key} span={6}>
+              <Col key={category?.key} span={8}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={category}

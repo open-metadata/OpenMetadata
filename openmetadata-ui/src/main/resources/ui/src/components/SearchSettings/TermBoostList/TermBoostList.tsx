@@ -18,6 +18,7 @@ import './term-boost-list.less';
 
 interface TermBoostListProps {
   className?: string;
+  termBoostCardClassName?: string;
   termBoosts: TermBoost[];
   showNewTermBoost?: boolean;
   handleDeleteTermBoost: (value: string) => void;
@@ -26,6 +27,7 @@ interface TermBoostListProps {
 
 const TermBoostList = ({
   className,
+  termBoostCardClassName,
   termBoosts,
   showNewTermBoost,
   handleDeleteTermBoost,
@@ -37,24 +39,24 @@ const TermBoostList = ({
         className,
         'd-flex items-center gap-2 flex-wrap m-b-xs term-boosts-container'
       )}>
-      <div className="d-flex items-center gap-2 flex-wrap">
-        {termBoosts.map((termBoost) => (
-          <TermBoostComponent
-            key={termBoost.value}
-            termBoost={termBoost}
-            onDeleteBoost={handleDeleteTermBoost}
-            onTermBoostChange={handleTermBoostChange}
-          />
-        ))}
-        {showNewTermBoost && (
-          <TermBoostComponent
-            showNewTermBoost
-            termBoost={{ field: '', value: '', boost: 0 }}
-            onDeleteBoost={() => handleDeleteTermBoost('')}
-            onTermBoostChange={handleTermBoostChange}
-          />
-        )}
-      </div>
+      {termBoosts.map((termBoost) => (
+        <TermBoostComponent
+          className={termBoostCardClassName}
+          key={termBoost.value}
+          termBoost={termBoost}
+          onDeleteBoost={handleDeleteTermBoost}
+          onTermBoostChange={handleTermBoostChange}
+        />
+      ))}
+      {showNewTermBoost && (
+        <TermBoostComponent
+          showNewTermBoost
+          className={termBoostCardClassName}
+          termBoost={{ field: '', value: '', boost: 0 }}
+          onDeleteBoost={() => handleDeleteTermBoost('')}
+          onTermBoostChange={handleTermBoostChange}
+        />
+      )}
     </div>
   );
 };
