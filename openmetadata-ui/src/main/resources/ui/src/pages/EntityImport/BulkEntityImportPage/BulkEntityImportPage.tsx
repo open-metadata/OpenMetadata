@@ -111,14 +111,15 @@ const BulkEntityImportPage = () => {
     }
   }, [entityType, fqn]);
 
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => (entity ? getBulkEntityBreadcrumbList(entityType, entity) : []),
-    [entityType, entity]
-  );
-
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
     [location]
+  );
+
+  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      entity ? getBulkEntityBreadcrumbList(entityType, entity, isBulkEdit) : [],
+    [entityType, entity, isBulkEdit]
   );
 
   const importedEntityType = useMemo(

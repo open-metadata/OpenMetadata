@@ -64,7 +64,7 @@ export const getImportedEntityType = (entityType: EntityType) => {
 export const getBulkEntityBreadcrumbList = (
   entityType: EntityType,
   entity: DataAssetsHeaderProps['dataAsset'],
-  isBulkEdit?: boolean
+  isBulkEdit: boolean
 ): TitleBreadcrumbProps['titleLinks'] => {
   return [
     ...getEntityBreadcrumbs(entity, entityType, true),
