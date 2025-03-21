@@ -35,4 +35,5 @@ export interface ExploreSearchCardProps {
   onCheckboxChange?: (checked: boolean) => void;
   searchValue?: string;
   score?: number;
+  classNameForBreadcrumb?: string;
 }

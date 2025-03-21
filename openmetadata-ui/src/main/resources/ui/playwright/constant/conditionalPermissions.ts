@@ -140,7 +140,7 @@ export const assetsData = [
     asset: 'database',
     withOwner: tableWithOwner,
     withTag: tableWithTag,
-    childTabId: 'schema',
+    childTabId: 'schemas',
     assetOwnerUrl: `/database`,
     assetTagUrl: `/database`,
   },

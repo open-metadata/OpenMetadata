@@ -38,6 +38,7 @@ import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/Enti
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
@@ -311,6 +312,7 @@ const GlossaryHeader = ({
       showModal({
         name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [selectedData]);
