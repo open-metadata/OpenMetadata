@@ -241,8 +241,36 @@ const GlossaryTermTab = ({
     [permissions.Create, tableWidth]
   );
 
+  const updateGlossaryTermStatus = (
+    terms: any[],
+    targetFqn: string,
+    newStatus: Status
+  ): any[] => {
+    return terms.map((term) => {
+      if (term.fullyQualifiedName === targetFqn && 'status' in term) {
+        return {
+          ...term,
+          status: newStatus,
+        };
+      }
+
+      if (term.children && term.children.length > 0) {
+        return {
+          ...term,
+          children: updateGlossaryTermStatus(
+            term.children,
+            targetFqn,
+            newStatus
+          ),
+        };
+      }
+
+      return term;
+    });
+  };
+
   const updateTaskData = useCallback(
-    async (data: ResolveTask, taskId: string) => {
+    async (data: ResolveTask, taskId: string, glossaryTermFqn: string) => {
       try {
         if (!taskId) {
           return;
@@ -252,23 +280,58 @@ const GlossaryTermTab = ({
         showSuccessToast(t('server.task-resolved-successfully'));
 
         const currentExpandedKeys = [...expandedRowKeys];
-        refreshGlossaryTerms && refreshGlossaryTerms();
         setExpandedRowKeys(currentExpandedKeys);
+
+        if (glossaryChildTerms && glossaryTermFqn) {
+          const newStatus =
+            data.newValue === 'approved' ? Status.Approved : Status.Rejected;
+
+          const updatedTerms = updateGlossaryTermStatus(
+            [...glossaryChildTerms],
+            glossaryTermFqn,
+            newStatus
+          );
+
+          setGlossaryChildTerms(updatedTerms);
+
+          // remove resolved task from term task threads
+          if (termTaskThreads[glossaryTermFqn]) {
+            const updatedThreads = { ...termTaskThreads };
+            updatedThreads[glossaryTermFqn] = updatedThreads[
+              glossaryTermFqn
+            ].filter(
+              (thread) => !(thread.id && thread.id.toString() === taskId)
+            );
+
+            setTermTaskThreads(updatedThreads);
+          }
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [refreshGlossaryTerms, expandedRowKeys]
+    [
+      glossaryChildTerms,
+      termTaskThreads,
+      setGlossaryChildTerms,
+      expandedRowKeys,
+    ]
   );
 
-  const handleApproveGlossaryTerm = (taskId: string) => {
+  const handleApproveGlossaryTerm = (
+    taskId: string,
+    glossaryTermFqn: string
+  ) => {
     const data = { newValue: 'approved' } as ResolveTask;
-    updateTaskData(data, taskId);
+    updateTaskData(data, taskId, glossaryTermFqn);
   };
 
-  const handleRejectGlossaryTerm = (taskId: string) => {
+  const handleRejectGlossaryTerm = (
+    taskId: string,
+    glossaryTermFqn: string
+  ) => {
     const data = { newValue: 'rejected' } as ResolveTask;
-    updateTaskData(data, taskId);
+    updateTaskData(data, taskId, glossaryTermFqn);
   };
 
   const columns = useMemo(() => {
@@ -385,8 +448,8 @@ const GlossaryTermTab = ({
               {status === Status.InReview && permission ? (
                 <StatusAction
                   dataTestId={record.name}
-                  onApprove={() => handleApproveGlossaryTerm(taskId)}
-                  onReject={() => handleRejectGlossaryTerm(taskId)}
+                  onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
+                  onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
                 />
               ) : (
                 <StatusBadge
