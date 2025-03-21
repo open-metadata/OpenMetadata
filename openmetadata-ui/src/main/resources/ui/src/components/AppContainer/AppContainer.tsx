@@ -17,7 +17,6 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
-import { SearchSettings } from '../../generated/configuration/searchSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
@@ -33,7 +32,8 @@ import './app-container.less';
 const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
-  const { currentUser, setAppPreferences } = useApplicationStore();
+  const { currentUser, setAppPreferences, appPreferences } =
+    useApplicationStore();
   const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
@@ -42,16 +42,15 @@ const AppContainer = () => {
 
   const fetchAppConfigurations = useCallback(async () => {
     try {
-      const [response, lineageConfig, searchConfig] = await Promise.all([
+      const [response, lineageConfig] = await Promise.all([
         getLimitConfig(),
         getSettingsByType(SettingType.LineageSettings),
-        getSettingsByType(SettingType.SearchSettings),
       ]);
 
       setConfig(response);
       setAppPreferences({
+        ...appPreferences,
         lineageConfig: lineageConfig as LineageSettings,
-        searchConfig: searchConfig as SearchSettings,
       });
     } catch (error) {
       // silent fail

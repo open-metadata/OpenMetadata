@@ -10,16 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
+@import url('../../../styles/variables.less');
 
-.term-boosts-container {
-  border-radius: 6px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.edit-field-value-boost-btn {
+  background: transparent;
 
-  .term-boost {
-    display: flex;
-    flex-direction: column;
+  &:hover {
+    background-color: @blue-6;
+    border-radius: 8px;
+  }
+}
+
+.delete-field-value-boost-btn {
+  background: transparent;
+
+  &:hover {
+    background-color: @red-13;
+    border-radius: 8px;
   }
 }

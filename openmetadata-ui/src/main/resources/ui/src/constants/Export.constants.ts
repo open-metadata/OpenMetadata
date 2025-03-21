@@ -10,16 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
-
-.term-boosts-container {
-  border-radius: 6px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-
-  .term-boost {
-    display: flex;
-    flex-direction: column;
-  }
+export enum ExportTypes {
+  CSV = 'CSV',
+  PNG = 'PNG',
 }
