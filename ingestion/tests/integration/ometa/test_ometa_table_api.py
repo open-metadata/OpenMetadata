@@ -673,3 +673,18 @@ class OMetaTableTest(TestCase):
         )
 
         assert res.name == name
+
+    def test_ingest_sample_data_with_binary_data(self):
+        """
+        Test ingesting sample data with binary data
+        """
+        table: Table = self.metadata.create_or_update(
+            data=get_create_entity(
+                entity=Table,
+                name="random",
+                reference=self.create_schema_entity.fullyQualifiedName,
+            )
+        )
+        sample_data = TableData(columns=["id"], rows=[[b"\x00\x01\x02"]])
+        res = self.metadata.ingest_table_sample_data(table, sample_data)
+        assert res == sample_data

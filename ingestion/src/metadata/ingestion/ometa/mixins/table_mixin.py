@@ -67,6 +67,25 @@ class OMetaTableMixin:
         """
         resp = None
         try:
+            # Pre-process sample data to handle binary/non-UTF-8 data before serialization
+            if sample_data and sample_data.rows:
+                import base64
+
+                for row in sample_data.rows:
+                    if not row:
+                        continue
+                    for col_idx, value in enumerate(row):
+                        # Handle binary data explicitly
+                        if isinstance(value, bytes):
+                            # Convert binary data to Base64-encoded string
+                            try:
+                                row[
+                                    col_idx
+                                ] = f"[base64]{base64.b64encode(value).decode('ascii')}"
+                            except Exception as _:
+                                row[col_idx] = f"[binary]{value}"
+
+            # Now safely serialize to JSON
             resp = self.client.put(
                 f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
                 data=sample_data.model_dump_json(),
