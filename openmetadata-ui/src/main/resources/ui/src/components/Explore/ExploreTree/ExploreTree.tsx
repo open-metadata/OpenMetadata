@@ -168,6 +168,20 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 style={{ width: 18, height: 18 }}
               />
             );
+          } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+            logo = searchClassBase.getEntityIcon(
+              'database',
+              'service-icon w-4 h-4'
+            ) ?? <></>;
+          } else if (
+            bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
+          ) {
+            logo = searchClassBase.getEntityIcon(
+              'databaseSchema',
+              'service-icon w-4 h-4'
+            ) ?? <></>;
+          } else if (bucketToFind === EntityFields.SERVICE) {
+            logo = treeNode.icon;
           }
 
           if (bucket.key.toLowerCase() === defaultServiceType) {

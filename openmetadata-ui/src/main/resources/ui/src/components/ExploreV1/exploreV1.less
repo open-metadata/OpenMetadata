@@ -25,6 +25,11 @@
     }
   }
 
+  .explore-icon {
+    width: 16px;
+    height: 16px;
+  }
+
   .explore-left-panel {
     position: sticky;
     top: 0;
@@ -33,6 +38,13 @@
     z-index: 10;
     display: flex;
     flex-direction: column;
+
+    .custom-menu {
+      .ant-menu-item {
+        height: 36px;
+        line-height: 36px;
+      }
+    }
 
     .ant-card {
       flex: 1;
