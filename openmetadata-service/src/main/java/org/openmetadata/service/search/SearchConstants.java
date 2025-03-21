@@ -32,4 +32,6 @@ public class SearchConstants {
 
   public static final String FAILED_TO_CREATE_INDEX_MESSAGE =
       "Failed to Create Index for entity {} due to ";
+
+  public static final String DATA_ASSET = "dataAsset";
 }

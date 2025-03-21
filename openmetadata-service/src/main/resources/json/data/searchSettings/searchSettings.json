@@ -2321,9 +2321,23 @@
         "query": "tables with PII.Sensitive tag",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}",
         "entityTypes": ["table"]
+      },
+      {
+        "query": "tables where business owner is infrastructure",
+        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"extension.businessOwner.name\": \"infrastructure\"}}]}}",
+        "entityTypes": ["table"]
+      },
+      {
+        "query": "find tables with data steward John",
+        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"extension.dataSteward.name\": \"John\"}}]}}",
+        "entityTypes": ["table"]
+      },
+      {
+        "query": "dashboards with support team sales",
+        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"dashboard\"}}, {\"term\": {\"extension.supportTeam.name\": \"sales\"}}]}}",
+        "entityTypes": ["dashboard"]
       }
     ],
-    
     "mappingConfiguration": {
       "includeMappings": true,
       "mappingSection": {
@@ -2351,6 +2365,61 @@
         {
           "pattern": "columns",
           "explanation": "The 'columns' field is NOT nested despite having properties. Use direct match queries: {\"match\": {\"columns.name\": \"value\"}}"
+        },
+        {
+          "pattern": "extension",
+          "explanation": "The 'extension' field contains custom properties. Query like: {\"term\": {\"extension.propertyName\": \"value\"}}"
+        },
+        {
+          "pattern": "customProperty",
+          "explanation": "Custom properties are stored under the 'extension' field. Always use the pattern 'extension.propertyName' in queries."
+        }
+      ]
+    },
+    "extensionFieldGuidelines": {
+      "header": "EXTENSION FIELD STRUCTURE GUIDELINES:",
+      "sections": [
+        {
+          "title": "For EntityReference type custom properties:",
+          "guidelines": [
+            "Use .name suffix for text searches: extension.businessOwner.name",
+            "Use .id suffix for ID searches: extension.businessOwner.id",
+            "Use .displayName for display name searches: extension.businessOwner.displayName"
+          ]
+        },
+        {
+          "title": "For array type custom properties:",
+          "guidelines": [
+            "Use [] notation to indicate arrays: extension.tags[].name"
+          ]
+        },
+        {
+          "title": "For simple type custom properties (string, integer, etc.):",
+          "guidelines": [
+            "Access directly: extension.priority"
+          ]
+        }
+      ],
+      "examples": [
+        {
+          "description": "Tables with business owner 'infrastructure':",
+          "query": "tables where business owner is infrastructure",
+          "esQuery": "{\"term\": {\"extension.businessOwner.name\": \"infrastructure\"}}"
+        },
+        {
+          "description": "Dashboards with data steward 'John':",
+          "query": "dashboards with data steward John",
+          "esQuery": "{\"term\": {\"extension.dataSteward.name\": \"John\"}}"
+        },
+        {
+          "description": "Tables with support team 'sales':",
+          "query": "tables with support team sales",
+          "esQuery": "{\"term\": {\"extension.supportTeam.name\": \"sales\"}}"
+        },
+        {
+          "description": "Tables with any custom property containing 'marketing':",
+          "query": "tables with marketing in any field",
+          "esQuery": "{\"multi_match\": {\"query\": \"marketing\", \"fields\": [\"extension.*\"]}}"
         }
       ]
     }

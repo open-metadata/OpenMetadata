@@ -261,8 +261,12 @@ export interface GlobalSettings {
  */
 export interface NlqConfiguration {
     entitySpecificInstructions?: EntitySpecificInstruction[];
-    examples?:                   Example[];
-    globalInstructions?:         PromptSection[];
+    examples?:                   QueryExample[];
+    /**
+     * Guidelines for querying custom properties in extension fields
+     */
+    extensionFieldGuidelines?: ExtensionFieldGuidelines;
+    globalInstructions?:       PromptSection[];
     /**
      * Configuration for including Elasticsearch mapping information in prompts
      */
@@ -300,7 +304,11 @@ export interface PromptSection {
     [property: string]: any;
 }
 
-export interface Example {
+export interface QueryExample {
+    /**
+     * Human-readable description of the example query
+     */
+    description?: string;
     /**
      * Entity types this example applies to (empty array = all types)
      */
@@ -317,6 +325,28 @@ export interface Example {
 }
 
 /**
+ * Guidelines for querying custom properties in extension fields
+ */
+export interface ExtensionFieldGuidelines {
+    examples?: QueryExample[];
+    /**
+     * Title for the extension field guidelines section
+     */
+    header:   string;
+    sections: GuidelineSection[];
+    [property: string]: any;
+}
+
+export interface GuidelineSection {
+    guidelines: string[];
+    /**
+     * Section title (e.g., 'For EntityReference type custom properties')
+     */
+    title: string;
+    [property: string]: any;
+}
+
+/**
  * Configuration for including Elasticsearch mapping information in prompts
  */
 export interface MappingConfiguration {
@@ -328,10 +358,7 @@ export interface MappingConfiguration {
      * Whether to include mapping information in the prompts
      */
     includeMappings?: boolean;
-    /**
-     * How to present the mapping information in the prompt
-     */
-    mappingSection?: MappingSection;
+    mappingSection?:  TitleSection;
     [property: string]: any;
 }
 
@@ -347,12 +374,9 @@ export interface FieldInterpretation {
     [property: string]: any;
 }
 
-/**
- * How to present the mapping information in the prompt
- */
-export interface MappingSection {
+export interface TitleSection {
     /**
-     * Description text for the mapping section
+     * Description text for the section
      */
     description?: string;
     /**
@@ -360,7 +384,7 @@ export interface MappingSection {
      */
     order?: number;
     /**
-     * Title for the mapping section
+     * Title for the section
      */
     title?: string;
     [property: string]: any;

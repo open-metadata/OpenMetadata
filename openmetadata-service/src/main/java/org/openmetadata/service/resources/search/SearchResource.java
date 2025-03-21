@@ -59,7 +59,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @Path("/v1/search")
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "elasticsearch")
+@Collection(name = "search")
 public class SearchResource {
   private final SearchRepository searchRepository;
 

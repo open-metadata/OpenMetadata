@@ -114,28 +114,7 @@
         "examples": {
           "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "query": {
-                "type": "string",
-                "description": "Natural language query example"
-              },
-              "esQuery": {
-                "type": "string",
-                "description": "The corresponding Elasticsearch query"
-              },
-              "entityTypes": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "Entity types this example applies to (empty array = all types)"
-              }
-            },
-            "required": [
-              "query",
-              "esQuery"
-            ]
+            "$ref": "#/definitions/queryExample"
           }
         },
         "mappingConfiguration": {
@@ -149,45 +128,40 @@
               "default": true
             },
             "mappingSection": {
-              "type": "object",
-              "description": "How to present the mapping information in the prompt",
-              "properties": {
-                "title": {
-                  "type": "string",
-                  "description": "Title for the mapping section",
-                  "default": "INDEX MAPPINGS"
-                },
-                "description": {
-                  "type": "string",
-                  "description": "Description text for the mapping section",
-                  "default": "Below are the Elasticsearch mappings for the relevant indices. Use these to understand the document structure:"
-                },
-                "order": {
-                  "type": "integer",
-                  "description": "Position of this section in the prompt (lower numbers appear first)",
-                  "default": 5
-                }
-              }
+              "$ref": "#/definitions/titleSection"
             },
             "fieldInterpretations": {
               "type": "array",
               "description": "Specific guidance for interpreting field patterns in the mapping",
               "items": {
-                "type": "object",
-                "properties": {
-                  "pattern": {
-                    "type": "string",
-                    "description": "Field pattern to match (e.g., 'tags.tagFQN')"
-                  },
-                  "explanation": {
-                    "type": "string",
-                    "description": "How to interpret and query this field pattern"
-                  }
-                },
-                "required": ["pattern", "explanation"]
+                "$ref": "#/definitions/fieldInterpretation"
               }
             }
           }
+        },
+        "extensionFieldGuidelines": {
+          "description": "Guidelines for querying custom properties in extension fields",
+          "javaType": "org.openmetadata.schema.api.search.ExtensionFieldGuidelines",
+          "type": "object",
+          "properties": {
+            "header": {
+              "type": "string",
+              "description": "Title for the extension field guidelines section"
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/guidelineSection"
+              }
+            },
+            "examples": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/queryExample"
+              }
+            }
+          },
+          "required": ["header", "sections"]
         }
       }
     }
@@ -424,6 +398,89 @@
         }
       },
       "required": ["section", "content"]
+    },
+    "titleSection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.TitleSection",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Title for the section",
+          "default": "INDEX MAPPINGS"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description text for the section",
+          "default": "Below are the Elasticsearch mappings for the relevant indices. Use these to understand the document structure:"
+        },
+        "order": {
+          "type": "integer",
+          "description": "Position of this section in the prompt (lower numbers appear first)",
+          "default": 5
+        }
+      }
+    },
+
+    "fieldInterpretation": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.FieldInterpretation",
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "description": "Field pattern to match (e.g., 'tags.tagFQN')"
+        },
+        "explanation": {
+          "type": "string",
+          "description": "How to interpret and query this field pattern"
+        }
+      },
+      "required": ["pattern", "explanation"]
+    },
+
+    "guidelineSection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.GuidelineSection",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Section title (e.g., 'For EntityReference type custom properties')"
+        },
+        "guidelines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Individual guideline or rule for this section"
+          }
+        }
+      },
+      "required": ["title", "guidelines"]
+    },
+
+    "queryExample": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.search.QueryExample",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the example query"
+        },
+        "query": {
+          "type": "string",
+          "description": "Natural language query example"
+        },
+        "esQuery": {
+          "type": "string",
+          "description": "The corresponding Elasticsearch query"
+        },
+        "entityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Entity types this example applies to (empty array = all types)"
+        }
+      },
+      "required": ["query", "esQuery"]
     }
   },
   "additionalProperties": false
