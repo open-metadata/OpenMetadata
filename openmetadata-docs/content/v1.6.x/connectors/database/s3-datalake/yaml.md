@@ -90,13 +90,11 @@ The workflow is modeled around the following JSON Schema.
 
 {% codeInfo srNumber=1 %}
 
-* **awsAccessKeyId**: Enter your secure access key ID for your DynamoDB connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
-* **awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-* **awsRegion**: Specify the region in which your DynamoDB is located. This setting is required even if you have configured a local AWS profile.
 * **schemaFilterPattern** and **tableFilterPattern**: Note that the `schemaFilterPattern` and `tableFilterPattern` both support regex as `include` or `exclude`. E.g.,
 
 {% /codeInfo %}
 
+{% partial file="/v1.6/connectors/yaml/common/aws-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
@@ -120,9 +118,11 @@ source:
 ```yaml {% srNumber=1 %}
       configSource:      
         securityConfig: 
-          awsAccessKeyId: aws access key id
-          awsSecretAccessKey: aws secret access key
-          awsRegion: aws region
+```
+
+{% partial file="/v1.6/connectors/yaml/common/aws-config.md" /%}
+
+```yaml {% srNumber=1 %}
       bucketName: bucket name
       prefix: prefix
 ```

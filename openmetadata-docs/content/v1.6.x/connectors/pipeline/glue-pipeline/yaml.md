@@ -63,58 +63,7 @@ This is a sample config for Glue:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
-
-
-**awsAccessKeyId**: Enter your secure access key ID for your Glue connection. The specified key ID should be
-  authorized to read all databases you want to include in the metadata ingestion workflow.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=2 %}
-
-**awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsRegion**: Enter the location of the amazon cluster that your data and account are associated with.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=4 %}
-
-**awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary
-  session token.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=5 %}
-
-**endPointURL**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You
-  may override this behavior by entering a value to the endpoint URL.
-
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=6 %}
-**profileName**: The name of a profile to use with the boto session.
-{% /codeInfo %}
-
-{% codeInfo srNumber=7 %}
-**assumeRoleArn**: The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role.
-{% /codeInfo %}
-
-{% codeInfo srNumber=8 %}
-**assumeRoleSessionName**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role.
-{% /codeInfo %}
-
-{% codeInfo srNumber=9 %}
-**assumeRoleSourceIdentity**:  The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role.
-{% /codeInfo %}
-
+{% partial file="/v1.6/connectors/yaml/common/aws-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
 
@@ -135,34 +84,8 @@ source:
       type: GluePipeline
       awsConfig:
 ```
-```yaml {% srNumber=1 %}
-        awsAccessKeyId: KEY
-```
-```yaml {% srNumber=2 %}
-        awsSecretAccessKey: SECRET
-```
-```yaml {% srNumber=3 %}
-        awsRegion: us-east-2
-```
-```yaml {% srNumber=4 %}
-        # awsSessionToken: TOKEN
-```
-```yaml {% srNumber=5 %}
-        # endPointURL: https://glue.us-east-2.amazonaws.com/
-```
-```yaml {% srNumber=6 %}
-        # profileName: ""
-```
-```yaml {% srNumber=7 %}
-        # assumeRoleArn: ""
-```
-```yaml {% srNumber=8 %}
-        # assumeRoleSessionName: OpenMetadataSession
-```
-```yaml {% srNumber=9 %}
-        # assumeRoleSourceIdentity : ""
-```
 
+{% partial file="/v1.6/connectors/yaml/common/aws-config.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
 
