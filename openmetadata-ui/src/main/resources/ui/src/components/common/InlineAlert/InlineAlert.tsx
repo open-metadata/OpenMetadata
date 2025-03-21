@@ -118,7 +118,7 @@ function InlineAlert({
                 </>
               )}
             </Typography.Paragraph>
-            {combinedText.length > 200 && (
+            {combinedText.length >= 200 && (
               <Button
                 className="text-xs p-0 m-0 w-fit-content h-auto"
                 data-testid={`read-${showMore ? 'less' : 'more'}-button`}
