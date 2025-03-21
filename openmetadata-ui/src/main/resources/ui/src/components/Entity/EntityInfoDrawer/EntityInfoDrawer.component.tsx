@@ -104,7 +104,6 @@ const EntityInfoDrawer = ({
               )}
               name={selectedNode.name}
               serviceName={selectedNode.service?.type ?? ''}
-              showName={false}
             />
           </Col>
         </Row>

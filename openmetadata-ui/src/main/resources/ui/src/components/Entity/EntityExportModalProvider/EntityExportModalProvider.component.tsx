@@ -168,11 +168,9 @@ export const EntityExportModalProvider = ({
           data,
           fileName ?? `${exportData?.name}_${getCurrentISODate()}`
         );
+        handleCancel();
       }
       setDownloading(false);
-      handleCancel();
-      setCSVExportJob(undefined);
-      csvExportJobRef.current = undefined;
     },
     [isBulkEdit]
   );
