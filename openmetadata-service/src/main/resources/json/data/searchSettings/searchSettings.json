@@ -2336,6 +2336,16 @@
         "query": "dashboards with support team sales",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"dashboard\"}}, {\"term\": {\"extension.supportTeam.name\": \"sales\"}}]}}",
         "entityTypes": ["dashboard"]
+      },
+      {
+        "description": "Find tables with no tags:",
+        "query": "tables with no tags",
+        "esQuery": "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"tags.length\":0}}]}}"
+      },
+      {
+        "description": "Find tables with no description:",
+        "query": "tables without description",
+        "esQuery": "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"description\":\"\"}}]}}"
       }
     ],
     "mappingConfiguration": {
