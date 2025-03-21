@@ -24,5 +24,17 @@
         justify-content: space-between;
       }
     }
+
+    .ant-tree-treenode-draggable {
+      .ant-tree-draggable-icon {
+        visibility: hidden;
+      }
+
+      &:hover {
+        .ant-tree-draggable-icon {
+          visibility: visible;
+        }
+      }
+    }
   }
 }
