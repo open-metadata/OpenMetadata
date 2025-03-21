@@ -49,7 +49,6 @@ class CustomTime(TypeDecorator):
                     seconds - minutes * 60,
                     microsecond=microseconds,
                 )
-            else:
-                return None
+            return None
 
         return process
