@@ -28,10 +28,7 @@ import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import {
-  filterAndArrangeTreeByKeys,
-  getNestedKeysFromNavigationItems,
-} from '../../../utils/CustomizaNavigation/CustomizeNavigation';
+import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
 import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
@@ -49,10 +46,7 @@ const LeftSidebar = () => {
   const sideBarItems = useMemo(() => {
     return isEmpty(navigation)
       ? leftSidebarClassBase.getSidebarItems()
-      : filterAndArrangeTreeByKeys(
-          leftSidebarClassBase.getSidebarItems(),
-          getNestedKeysFromNavigationItems(navigation ?? [])
-        );
+      : filterHiddenNavigationItems(navigation);
   }, [navigation]);
 
   const selectedKeys = useMemo(() => {

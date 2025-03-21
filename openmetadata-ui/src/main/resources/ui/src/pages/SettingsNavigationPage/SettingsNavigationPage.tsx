@@ -29,26 +29,19 @@ import {
   TreeProps,
   Typography,
 } from 'antd';
-import { DataNode } from 'antd/lib/tree';
-import { cloneDeep, isEmpty, xor } from 'lodash';
+import { cloneDeep } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
-import { LeftSidebarItem } from '../../components/MyData/LeftSidebar/LeftSidebar.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
-  filterAndArrangeTreeByKeys,
-  getNavigationItems,
-  getNestedKeys,
-  getNestedKeysFromNavigationItems,
+  getHiddenKeysFromNavigationItems,
+  getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
-import leftSidebarClassBase from '../../utils/LeftSidebarClassBase';
 import './settings-navigation-page.less';
-
-const sidebarOptions = leftSidebarClassBase.getSidebarItems();
 
 interface Props {
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
@@ -62,54 +55,28 @@ export const SettingsNavigationPage = ({
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
   const history = useHistory();
-  const [targetKeys, setTargetKeys] = useState<string[]>(() => {
-    const initialTargetKeys = isEmpty(currentNavigation)
-      ? getNestedKeys(sidebarOptions)
-      : getNestedKeysFromNavigationItems(currentNavigation ?? []);
-
-    return initialTargetKeys;
-  });
-
-  // Internal state to track hidden keys
-  const [hiddenKeys, setHiddenKeys] = useState<string[]>(() => {
-    const initialHiddenKeys = isEmpty(currentNavigation)
-      ? []
-      : xor(getNestedKeys(sidebarOptions), targetKeys);
-
-    return initialHiddenKeys;
-  });
-
-  // Tree data to display in the UI
-  const treeData = filterAndArrangeTreeByKeys<DataNode>(
-    cloneDeep(sidebarOptions),
-    targetKeys,
-    true
+  const [hiddenKeys, setHiddenKeys] = useState<string[]>(
+    getHiddenKeysFromNavigationItems(currentNavigation)
   );
-
-  const handleChange = (newTargetKeys: string[]) => {
-    setTargetKeys(newTargetKeys);
-  };
+  const [treeData, setTreeData] = useState<TreeDataNode[]>(() =>
+    getTreeDataForNavigationItems(currentNavigation)
+  );
 
   const handleSave = async () => {
     setSaving(true);
-    const navigationItems = getNavigationItems(
-      filterAndArrangeTreeByKeys<LeftSidebarItem>(
-        cloneDeep(sidebarOptions),
-        targetKeys,
-        true
-      )
-        .map((t) => {
-          if (t.children) {
-            t.children = t.children.filter((c) => !hiddenKeys.includes(c.key));
-          }
 
-          return t;
-        })
-        .filter(
-          (t) =>
-            !hiddenKeys.includes(t.key) || (t.children && t.children.length > 0)
-        )
-    );
+    const getNavigationItems = (treeData: TreeDataNode[]): NavigationItem[] => {
+      return treeData.map((item) => {
+        return {
+          id: item.key,
+          title: item.title,
+          isHidden: hiddenKeys.includes(item.key as string),
+          children: getNavigationItems(item.children ?? []),
+        } as NavigationItem;
+      });
+    };
+
+    const navigationItems = getNavigationItems(treeData);
 
     await onSave(navigationItems);
     setSaving(false);
@@ -168,7 +135,7 @@ export const SettingsNavigationPage = ({
       }
     }
 
-    handleChange(getNestedKeys(tempData));
+    setTreeData(tempData);
   };
 
   const switcherIcon = useCallback(({ expanded }) => {
@@ -176,12 +143,13 @@ export const SettingsNavigationPage = ({
   }, []);
 
   const handleReset = () => {
-    handleChange(getNestedKeys(sidebarOptions));
+    setTreeData(getTreeDataForNavigationItems());
+    setHiddenKeys(getHiddenKeysFromNavigationItems());
   };
 
   const handleRemoveToggle = (checked: boolean, key: string) => {
     setHiddenKeys((prev) =>
-      checked ? prev.filter((k) => k !== key) : [...prev, key]
+      checked ? prev.filter((i) => i !== key) : [...prev, key]
     );
   };
 
