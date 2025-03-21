@@ -178,7 +178,9 @@ export const CommonWidgets = ({
   const descriptionWidget = useMemo(() => {
     return (
       <DescriptionV1
+        newLook
         showSuggestions
+        wrapInCard
         description={description}
         entityName={entityName}
         entityType={type}

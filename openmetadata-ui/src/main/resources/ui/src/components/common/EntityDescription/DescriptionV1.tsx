@@ -37,6 +37,7 @@ import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAler
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
+import './description-v1.less';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
 
@@ -58,6 +59,7 @@ const DescriptionV1 = ({
   showSuggestions = false,
   isDescriptionExpanded,
   entityFullyQualifiedName,
+  newLook = false,
 }: DescriptionProps) => {
   const history = useHistory();
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
@@ -255,7 +257,13 @@ const DescriptionV1 = ({
     </EntityAttachmentProvider>
   );
 
-  return wrapInCard ? <Card>{content}</Card> : content;
+  return wrapInCard ? (
+    <Card className={classNames({ 'new-description-card': newLook })}>
+      {content}
+    </Card>
+  ) : (
+    content
+  );
 };
 
 export default DescriptionV1;
