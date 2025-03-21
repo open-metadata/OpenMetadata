@@ -10,8 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import (reference) url('../../styles/variables.less');
+
 .custom-navigation-tree-container {
   .ant-tree-list {
+    .ant-tree-treenode {
+      padding: 12px 0;
+      border-radius: 12px;
+
+      .ant-tree-node-content-wrapper {
+        .ant-tree-title {
+          margin-left: 8px;
+        }
+
+        &:hover {
+          background: transparent;
+        }
+      }
+
+      &:hover {
+        background: #f5faff;
+      }
+    }
     .ant-tree-switcher.ant-tree-switcher-noop {
       display: none;
     }
@@ -33,6 +54,7 @@
       &:hover {
         .ant-tree-draggable-icon {
           visibility: visible;
+          color: @grey-4;
         }
       }
     }

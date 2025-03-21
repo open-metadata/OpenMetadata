@@ -11,7 +11,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
+import {
+  CloseOutlined,
+  HolderOutlined,
+  RedoOutlined,
+  SaveOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -253,8 +258,8 @@ export const SettingsNavigationPage = ({
               autoExpandParent
               blockNode
               defaultExpandAll
-              draggable
               showIcon
+              draggable={{ icon: <HolderOutlined /> }}
               itemHeight={48}
               style={{ width: '420px' }}
               switcherIcon={switcherIcon}
