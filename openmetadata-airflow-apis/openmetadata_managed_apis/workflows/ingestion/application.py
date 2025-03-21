@@ -48,26 +48,17 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig, **conte
 
     set_operator_logger(workflow_config)
 
-    # Get app config override from Airflow params
-    params = context.get('params', {})
-    app_config_override = params.get('appConfigOverride')
-
+    # set overridden app config
     config = json.loads(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
-
-    # Apply app config override if available
-    if app_config_override:
-        if not config.get('appConfig'):
-            config['appConfig'] = {'root': {}}
-        # Merge only root-level keys
-        if config['appConfig'].get('root'):
-            config['appConfig']['root'].update(app_config_override)
-        else:
-            config['appConfig']['root'] = app_config_override
+    params = context.get("params") or {}
+    config["appConfig"] = {
+        **(config.get("appConfig") or {}),
+        **(params.get("appConfigOverride") or {}),
+    }
 
     workflow = ApplicationWorkflow.create(config)
-
     workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()
@@ -116,6 +107,9 @@ def build_application_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=application_workflow_config,
         workflow_fn=application_workflow,
+        params={
+            "appConfigOverride": None  # Default to None, will be overridden by trigger conf
+        },
     )
 
     return dag

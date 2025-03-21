@@ -63,6 +63,8 @@ public class AirflowRESTClient extends PipelineServiceClient {
   protected final URL serviceURL;
   private static final List<String> API_ENDPOINT_SEGMENTS = List.of("api", "v1", "openmetadata");
   private static final String DAG_ID = "dag_id";
+  private static final String CONF = "conf";
+  private static final String APP_CONFIG_OVERRIDE = "appConfigOverride";
 
   public AirflowRESTClient(PipelineServiceClientConfiguration config) throws KeyStoreException {
 
@@ -209,6 +211,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
+      requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return getResponse(200, response.body());

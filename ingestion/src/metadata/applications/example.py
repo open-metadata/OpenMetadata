@@ -11,7 +11,14 @@
 """
 Example external application
 """
-from metadata.generated.schema.metadataIngestion.application import OpenMetadataApplicationConfig
+from time import sleep
+
+from metadata.generated.schema.entity.applications.configuration.internal.helloPipelinesConfiguration import (
+    HelloPipelinesAppConfiguration,
+)
+from metadata.generated.schema.metadataIngestion.application import (
+    OpenMetadataApplicationConfig,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import app_logger
 from metadata.workflow.application import AppRunner, InvalidAppConfiguration
@@ -49,30 +56,24 @@ class HelloPipelines(AppRunner):
 
     def __init__(self, config: OpenMetadataApplicationConfig, metadata: OpenMetadata):
         super().__init__(config, metadata)
-
-        if not isinstance(self.app_config, object):
-            raise InvalidAppConfiguration(
-                f"Hello pipelines received invalid configuration"
+        try:
+            self.app_config: HelloPipelinesAppConfiguration = (
+                HelloPipelinesAppConfiguration.model_validate(self.app_config)
             )
-
+        except Exception as e:
+            raise InvalidAppConfiguration(
+                f"Hello pipelines received invalid configuration: {e}"
+            )
 
     @property
     def name(self) -> str:
         return "HelloPipelines"
 
     def run(self) -> None:
-        """
-        Main entrypoint. We'll do a couple of things:
-        1. First, we'll get the different tables that have been processed by the filter, and we'll
-           organize them by the database they belong to. We have the relationship of: Collate DB <> WAII Connection.
-        1. Then, iterate over each db (with the list of tables), index all the connections (dbs)
-           and send the schema and sample data to WAII.
-           1.1. We'll wait until WAII is done indexing.
-           1.2. We might be able to figure out a way to manage new described tables by directly looking in the server,
-                but we have all the data here. We'll send a request to bump the limit.
-        2. Then we'll iterate over the connections and suggest descriptions for tables and columns.
-        """
-        print("this is running")
+        logger.info(f"sleeping for {self.app_config.sleep}")
+        sleep(self.app_config.sleep)
+        logger.info("echoing")
+        logger.info(self.app_config.echo)
 
     def close(self) -> None:
         """Nothing to close"""

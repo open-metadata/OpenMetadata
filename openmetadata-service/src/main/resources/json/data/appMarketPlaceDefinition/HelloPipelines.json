@@ -11,6 +11,7 @@
   "supportEmail": "support@getcollate.io",
   "scheduleType": "ScheduledOrManual",
   "permission": "All",
+  "className": "org.openmetadata.service.apps.AbstractNativeApplication",
   "sourcePythonClass": "metadata.applications.example.HelloPipelines",
   "runtime": {
     "enabled": "true"

@@ -11,7 +11,7 @@
     "echo": {
       "type": "string",
       "description": "String to return in the response"
-    },
-    "additionalProperties": false
-  }
+    }
+  },
+  "additionalProperties": false
 }

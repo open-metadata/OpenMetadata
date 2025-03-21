@@ -1,3 +1,4 @@
+∑
 # OpenMetadata Airflow Managed DAGS Api
 
 This is a plugin for Apache Airflow >= 1.10 and Airflow >=2.x that exposes REST APIs to deploy an
@@ -5,11 +6,15 @@ OpenMetadata workflow definition and manage DAGS and tasks.
 
 ## Development
 
-You can run `make branch=issue-3659-v2 test_up` and specify any branch from OpenMetadata that you'd
-need to test the changes in the APIs. This will prepare a separated airflow container.
+The file [`development/airflow/airflow.cfg`](./development/airflow/airflow.cfg) contains configuration which runs based on
+the airflow server deployed by the quick-start and development compose files.
 
-The command will build the image by downloading the branch changes inside the container. This helps us
-test the REST APIs using some ongoing changes on OpenMetadata as well.
+You ca run the following command to start the development environment:
+
+```bash
+export AIRFLOW_HOME=$(pwd)/development/airflow
+airflow webserver
+```
 
 ## Requirements
 
