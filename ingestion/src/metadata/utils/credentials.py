@@ -89,7 +89,7 @@ def create_credential_tmp_file(credentials: dict) -> str:
 
 
 def build_google_credentials_dict(
-    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount]
+    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount], single_project: bool = False
 ) -> Dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
@@ -103,12 +103,14 @@ def build_google_credentials_dict(
         private_key_str = private_key_str.replace("\\n", "\n")
         validate_private_key(private_key_str)
 
-        # Assume first defined project is the one on behalf of which clients will work
-        project_id = (
-            gcp_values.projectId.root
-            if isinstance(gcp_values.projectId.root, str)
-            else gcp_values.projectId.root[0]
-        )
+        if single_project:
+            project_id = (
+                gcp_values.projectId.root
+                if isinstance(gcp_values.projectId.root, str)
+                else gcp_values.projectId.root[0]
+            )
+        else:
+            project_id = gcp_values.projectId.root
 
         return {
             "type": gcp_values.type,
@@ -135,7 +137,7 @@ def build_google_credentials_dict(
     )
 
 
-def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
+def set_google_credentials(gcp_credentials: GCPCredentials, single_project: bool = False) -> None:
     """
     Set GCP credentials environment variable
     :param gcp_credentials: GCPCredentials
@@ -169,7 +171,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
             )
             return
 
-        credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig)
+        credentials_dict = build_google_credentials_dict(gcp_credentials.gcpConfig, single_project)
         tmp_credentials_file = create_credential_tmp_file(credentials=credentials_dict)
         os.environ[GOOGLE_CREDENTIALS] = tmp_credentials_file
         return
