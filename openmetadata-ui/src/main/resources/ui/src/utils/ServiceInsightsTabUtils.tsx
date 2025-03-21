@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { isUndefined, round } from 'lodash';
 import { ServiceTypes } from 'Models';
+import { FunctionComponent } from 'react';
+import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
+import { ReactComponent as LoadingIcon } from '../assets/svg/ic-loader.svg';
+import { ReactComponent as WarningIcon } from '../assets/svg/incident-icon.svg';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DayOneExperienceWorkflowStages } from '../enums/DayOneWorkflow.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -138,4 +143,44 @@ export const getStatusByWorkflowStage = (
   }
 
   return;
+};
+
+export const getStatusIconFromStatusType = (status?: WorkflowStatus) => {
+  let Icon: FunctionComponent<any>;
+  let message;
+  let description;
+
+  switch (status) {
+    case WorkflowStatus.Exception:
+      Icon = WarningIcon;
+      message = t('message.workflow-status-exception');
+      description = t('message.workflow-status-failure-description');
+
+      break;
+    case WorkflowStatus.Failure:
+      Icon = ExclamationCircleOutlined;
+      message = t('message.workflow-status-failure');
+      description = t('message.workflow-status-failure-description');
+
+      break;
+    case WorkflowStatus.Finished:
+      Icon = SuccessIcon;
+      message = t('message.workflow-status-finished');
+      description = t('message.workflow-status-finished-description');
+
+      break;
+    case WorkflowStatus.Running:
+    default:
+      Icon = LoadingIcon;
+      message = t('message.workflow-status-running');
+      description = t('message.workflow-status-running-description');
+
+      break;
+  }
+
+  return {
+    Icon,
+    message,
+    description,
+  };
 };

@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { CloseOutlined } from '@ant-design/icons';
+import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -22,6 +24,7 @@ import {
   SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
 } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
 import {
   getWorkflowInstancesForApplication,
@@ -33,7 +36,10 @@ import {
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { getPlatformInsightsChartDataFormattingMethod } from '../../utils/ServiceInsightsTabUtils';
+import {
+  getPlatformInsightsChartDataFormattingMethod,
+  getStatusIconFromStatusType,
+} from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -60,6 +66,7 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [workflowStatesData, setWorkflowStatesData] =
     useState<WorkflowStatesData>();
+  const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(false);
 
   const serviceName = serviceDetails.name;
 
@@ -67,6 +74,7 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
 
   const fetchWorkflowInstanceStates = async () => {
     try {
+      setIsWorkflowStatusLoading(true);
       const startTs = getDayAgoStartGMTinMillis(6);
       const endTs = getCurrentMillis();
       const entityType = getEntityTypeFromServiceCategory(serviceCategory);
@@ -80,24 +88,26 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
         ),
       });
 
-      const workflowInstanceId = workflowInstances.data[0].id;
+      const workflowInstanceId = workflowInstances.data[0]?.id;
 
-      const workflowInstanceStates = await getWorkflowInstanceStateById(
-        SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
-        workflowInstanceId ?? '',
-        {
-          startTs,
-          endTs,
-        }
-      );
-      setWorkflowStatesData({
-        mainInstanceState: workflowInstances.data[0],
-        subInstanceStates: workflowInstanceStates.data,
-      });
+      if (workflowInstanceId) {
+        const workflowInstanceStates = await getWorkflowInstanceStateById(
+          SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+          workflowInstanceId,
+          {
+            startTs,
+            endTs,
+          }
+        );
+        setWorkflowStatesData({
+          mainInstanceState: workflowInstances.data[0],
+          subInstanceStates: workflowInstanceStates.data,
+        });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsWorkflowStatusLoading(false);
     }
   };
 
@@ -181,8 +191,35 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
     }
   };
 
+  const {
+    Icon: StatusIcon,
+    message,
+    description,
+  } = getStatusIconFromStatusType(
+    workflowStatesData?.mainInstanceState?.status
+  );
+
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
+      {!isWorkflowStatusLoading && !isUndefined(workflowStatesData) && (
+        <Alert
+          closable
+          showIcon
+          className={classNames(
+            'status-banner',
+            workflowStatesData?.mainInstanceState?.status ??
+              WorkflowStatus.Running
+          )}
+          closeIcon={<CloseOutlined className="text-md" />}
+          description={description}
+          icon={
+            <div className="status-banner-icon">
+              <StatusIcon height={20} width={20} />
+            </div>
+          }
+          message={message}
+        />
+      )}
       {arrayOfWidgets.map(
         ({ Widget, name }) =>
           !isUndefined(Widget) && (
