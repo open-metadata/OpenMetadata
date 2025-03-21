@@ -13,19 +13,36 @@
 @import url('../../../styles/variables.less');
 
 .explore-search-card {
-  background-color: @white;
   padding: 20px;
   position: relative;
+  border-radius: 12px;
+  border-left: 4px solid transparent;
+  opacity: 0.95;
+  background-color: @grey-9 !important;
+  border: 0.5px solid #eaecf5;
+  margin: 0 0 20px;
+
   &.highlight-card {
-    border-left: 4px solid @info-color;
-    box-shadow: none;
+    border-left: 4px solid #1570ef;
+    background: #eff8ff !important;
   }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .service-icon {
+    height: 16px;
+  }
+
   .entity-summary-details {
     font-size: 12px;
+
     .no-owner {
       color: @text-grey-muted;
     }
   }
+
   .explore-card-actions {
     position: absolute;
     right: 10px;
@@ -34,10 +51,6 @@
     padding: 4px;
     border-radius: 6px;
     display: flex;
-  }
-
-  &:hover {
-    background-color: @grey-1;
   }
 }
 

@@ -147,7 +147,6 @@ export const fillDomainDetails = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
-  await page.getByTestId('saveAssociatedTag').click();
   await page.waitForTimeout(100);
 };
 
