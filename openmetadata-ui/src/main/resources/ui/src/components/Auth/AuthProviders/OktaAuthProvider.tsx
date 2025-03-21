@@ -47,6 +47,10 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         tokenManager: {
           autoRenew: false,
         },
+        cookies: {
+          secure: true,
+          sameSite: 'none',
+        },
       }),
     [clientId, issuer, redirectUri, scopes, pkce]
   );
@@ -85,7 +89,10 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
 
   const customAuthHandler = async () => {
     const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();
-    if (!previousAuthState || !previousAuthState.isAuthenticated) {
+    if (!previousAuthState?.isAuthenticated) {
+      // Clear storage before triggering login
+      oktaAuth.tokenManager.clear();
+      await oktaAuth.signOut();
       // App initialization stage
       await triggerLogin();
     } else {
