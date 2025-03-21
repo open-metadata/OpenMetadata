@@ -82,15 +82,16 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   };
 
   const handleSingleDomainSave = async (domains?: Domain[]) => {
-    const selectedFqn = (domains ?? selectedDomains)[0]?.fullyQualifiedName;
+    const availableDomains = domains ?? selectedDomains;
+    const selectedFqn = availableDomains[0]?.fullyQualifiedName;
     const initialFqn = value?.[0];
 
     if (selectedFqn !== initialFqn) {
       setIsSubmitLoading(true);
       let retn: EntityReference[] = [];
-      if (selectedDomains.length > 0) {
+      if (availableDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
-          selectedDomains[0],
+          availableDomains[0],
           EntityType.DOMAIN
         );
         retn = [domain];
