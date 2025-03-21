@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
 import { useHistory, useParams } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
+import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
@@ -64,6 +65,7 @@ const BulkEditEntity = ({
     triggerExportForBulkEdit({
       name: fqn,
       onExport: getBulkEditCSVExportEntityApi(entityType),
+      exportTypes: [ExportTypes.CSV],
     });
   }, []);
 
