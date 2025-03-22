@@ -81,7 +81,7 @@ export const validateLeftSidebarWithHiddenItems = async (
 };
 
 export const selectPersona = async (page: Page, persona: PersonaClass) => {
-  await page.getByTestId(`profile-avatar`).click();
+  await page.getByTestId('dropdown-profile').click();
   await page
     .getByTestId('persona-label')
     .getByText(persona.data.displayName)
