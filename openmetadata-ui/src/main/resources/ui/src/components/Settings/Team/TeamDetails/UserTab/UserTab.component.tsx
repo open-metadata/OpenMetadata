@@ -111,6 +111,11 @@ export const UserTab = ({
     [permission.EditAll, permission.EditUsers]
   );
 
+  const isTeamDeleted = useMemo(
+    () => currentTeam.deleted ?? false,
+    [currentTeam.deleted]
+  );
+
   /**
    * Make API call to fetch current team user data
    */
@@ -196,11 +201,6 @@ export const UserTab = ({
     getCurrentTeamUsers(currentTeam.name);
     handlePageChange(INITIAL_PAGING_VALUE);
   }, [currentTeam, pageSize]);
-
-  const isTeamDeleted = useMemo(
-    () => currentTeam.deleted ?? false,
-    [currentTeam]
-  );
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
@@ -329,7 +329,7 @@ export const UserTab = ({
         button={
           <Space>
             <UserSelectableList
-              hasPermission
+              hasPermission={editUserPermission && !isTeamDeleted}
               selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
               <Tooltip placement="topRight" title={addUserButtonTitle}>
@@ -386,7 +386,7 @@ export const UserTab = ({
               onSearch={handleUsersSearchAction}
             />
           </Col>
-          {!currentTeam.deleted && isGroupType && (
+          {!isTeamDeleted && isGroupType && (
             <Col>
               <Space>
                 {users.length > 0 && editUserPermission && (
