@@ -559,7 +559,7 @@ const StoredProcedurePage = () => {
           <Col span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={(activeKey: string) =>

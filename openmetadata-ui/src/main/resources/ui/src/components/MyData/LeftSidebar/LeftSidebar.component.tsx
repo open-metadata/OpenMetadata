@@ -124,7 +124,7 @@ const LeftSidebar = () => {
   return (
     <Sider
       collapsible
-      className={classNames('left-sidebar-col left-sidebar-container', {
+      className={classNames({
         'left-sidebar-col-rtl': isDirectionRTL,
         'sidebar-open': !isSidebarCollapsed,
       })}

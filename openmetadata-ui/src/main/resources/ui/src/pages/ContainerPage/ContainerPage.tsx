@@ -545,7 +545,7 @@ const ContainerPage = () => {
           <Col span={24}>
             <Tabs
               activeKey={tab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

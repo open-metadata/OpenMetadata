@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+.grid-container {
+  .react-grid-item {
+    & > div {
+      height: 100%;
+    }
 
-.table-details-page-tabs {
-  .ant-tabs-nav {
-    margin: 0 !important;
-    padding: 0 20px;
+    .ant-card.ant-card-bordered,
+    .ant-card.new-description-card {
+      height: 100%;
+    }
   }
 }

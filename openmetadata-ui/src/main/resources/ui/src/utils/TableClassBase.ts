@@ -74,15 +74,15 @@ class TableClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.TABLE_SCHEMA]: 8,
-      [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: 1.5,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1,
-      [DetailPageWidgetKeys.TAGS]: 1.5,
-      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
+      [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: 2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
-      [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 1.5,
-      [DetailPageWidgetKeys.PARTITIONED_KEYS]: 1.5,
+      [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
+      [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
     };
   }
 

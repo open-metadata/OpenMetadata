@@ -34,3 +34,42 @@
     padding: 0 24px;
   }
 }
+
+.ant-tabs-tab {
+  color: @text-color-tertiary;
+}
+
+.ant-tabs.tabs-new {
+  width: 100%;
+  background: @white;
+
+  .ant-tabs-nav {
+    margin: 0;
+    padding: 0 20px;
+    height: 48px;
+
+    &::before {
+      border-bottom: none;
+    }
+
+    .ant-tabs-nav-list {
+      border-bottom: none;
+
+      .ant-tabs-tab {
+        padding-bottom: 8px;
+        position: relative;
+
+        &.ant-tabs-tab-active {
+          color: @primary-color;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+
+  .ant-tabs-ink-bar {
+    bottom: 6px;
+    height: 2px;
+    background-color: @primary-color;
+  }
+}

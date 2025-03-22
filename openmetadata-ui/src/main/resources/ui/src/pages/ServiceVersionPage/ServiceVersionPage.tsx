@@ -477,11 +477,7 @@ function ServiceVersionPage() {
                 />
               </Col>
               <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  items={tabs}
-                />
+                <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
               </Col>
             </Row>
           </div>

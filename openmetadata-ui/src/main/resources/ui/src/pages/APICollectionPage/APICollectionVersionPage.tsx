@@ -393,7 +393,7 @@ const APICollectionVersionPage = () => {
                 onUpdate={() => Promise.resolve()}>
                 <Col span={24}>
                   <Tabs
-                    className="entity-details-page-tabs"
+                    className="tabs-new"
                     data-testid="tabs"
                     defaultActiveKey={tab}
                     items={tabs}

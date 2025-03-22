@@ -292,7 +292,7 @@ const IncidentManagerDetailPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="entity-details-page-tabs"
+            className="tabs-new"
             data-testid="tabs"
             items={tabDetails}
             onChange={handleTabChange}
