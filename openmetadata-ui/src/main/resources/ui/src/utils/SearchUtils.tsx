@@ -44,7 +44,7 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
+import { escapeESReservedCharacters } from './StringsUtils';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -61,7 +61,7 @@ export const getSearchAPIQueryParams = (
   const start = (from - 1) * size;
 
   const encodedQueryString = queryString
-    ? getEncodedFqn(escapeESReservedCharacters(queryString))
+    ? escapeESReservedCharacters(queryString)
     : '';
 
   const query =

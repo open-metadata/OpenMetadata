@@ -90,7 +90,7 @@ export const addOwner = async ({
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
-        query: `*${encodeURIComponent(owner)}*`,
+        query: `*${encodeURIComponent(owner)}* AND teamType:Group`,
       })
   );
 
@@ -574,13 +574,7 @@ export const assignGlossaryTerm = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  const searchGlossaryTerm = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      matchRequestParams(response, 'POST', {
-        query: `*${encodeURIComponent(glossaryTerm.displayName)}*`,
-      })
-  );
+  const searchGlossaryTerm = page.waitForResponse('/api/v1/search/query*');
 
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
