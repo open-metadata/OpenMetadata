@@ -12,7 +12,7 @@
  */
 
 import { List, Space, Typography } from 'antd';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
@@ -39,6 +39,50 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
 }) => {
   const { t } = useTranslation();
   const { task: taskDetails } = task ?? {};
+
+  const taskContent = useMemo(() => {
+    if (
+      entityType === 'glossaryTerm' &&
+      task.task?.type === TaskType.RequestApproval
+    ) {
+      return (
+        <>
+          <span className="p-x-xss">{task.message}</span>
+          <Link
+            className='className="p-r-xss"'
+            to={getEntityLinkFromType(
+              task?.entityRef?.fullyQualifiedName ?? '',
+              task?.entityRef?.type as EntityType,
+              task?.entityRef as SourceType
+            )}>
+            <span className="m-r-xss">{task?.entityRef?.displayName}</span>
+          </Link>
+          <span>{t('label.of-lowercase')}</span>
+          <Link
+            to={getEntityLinkFromType(
+              Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0],
+              task?.entityRef?.type as EntityType,
+              task?.entityRef as SourceType
+            )}>
+            <span className="m-l-xss">
+              {Fqn.split(task?.entityRef?.fullyQualifiedName ?? '')[0]}
+            </span>
+          </Link>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <span className="p-x-xss">
+          {t('message.assigned-you-a-new-task-lowercase')}
+        </span>
+        <Link to={getTaskDetailPath(task)}>
+          {`#${taskDetails?.id}`} {taskDetails?.type}
+        </Link>
+      </>
+    );
+  }, [entityType, task, taskDetails]);
 
   return (
     <Link
@@ -68,51 +112,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
                   </Link>
                 </>
               ) : (
-                <>
-                  {entityType === 'glossaryTerm' &&
-                  task.task?.type === TaskType.RequestApproval ? (
-                    <>
-                      <span className="p-x-xss">{task.message}</span>
-                      <Link
-                        className='className="p-r-xss"'
-                        to={getEntityLinkFromType(
-                          task?.entityRef?.fullyQualifiedName ?? '',
-                          task?.entityRef?.type as EntityType,
-                          task?.entityRef as SourceType
-                        )}>
-                        <span className="m-r-xss">
-                          {task?.entityRef?.displayName}
-                        </span>
-                      </Link>
-                      <span>{t('label.of-lowercase')}</span>
-                      <Link
-                        to={getEntityLinkFromType(
-                          Fqn.split(
-                            task?.entityRef?.fullyQualifiedName ?? ''
-                          )[0],
-                          task?.entityRef?.type as EntityType,
-                          task?.entityRef as SourceType
-                        )}>
-                        <span className="m-l-xss">
-                          {
-                            Fqn.split(
-                              task?.entityRef?.fullyQualifiedName ?? ''
-                            )[0]
-                          }
-                        </span>
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <span className="p-x-xss">
-                        {t('message.assigned-you-a-new-task-lowercase')}
-                      </span>
-                      <Link to={getTaskDetailPath(task)}>
-                        {`#${taskDetails?.id}`} {taskDetails?.type}
-                      </Link>
-                    </>
-                  )}
-                </>
+                taskContent
               )}
             </Typography.Paragraph>
             <Typography.Text
