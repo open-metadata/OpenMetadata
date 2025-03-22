@@ -73,17 +73,6 @@ export const DiffViewNew = ({
     };
   }, [diffArr, showDescTitle]);
 
-  const getDiffKey = (diff: Change, index: number) => {
-    if (diff.added) {
-      return `diff-${index}-added`;
-    }
-    if (diff.removed) {
-      return `diff-${index}-removed`;
-    }
-
-    return `diff-${index}-normal`;
-  };
-
   const elements = useMemo(
     () =>
       diffArr.map((diff, index) => {
@@ -141,7 +130,65 @@ export const DiffViewNew = ({
       : 'clamp-text-2 overflow-hidden';
   }, [expanded, showDescTitle]);
 
-  return (
+  const getDiffKey = (diff: Change) => {
+    if (diff.added) {
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-added`;
+    }
+    if (diff.removed) {
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-removed`;
+    }
+
+    return `diff-${diff.value}-${diff.removed}-${diff.added}-normal`;
+  };
+
+  const elements = useMemo(
+    () =>
+      diffArr.map((diff) => {
+        const key = getDiffKey(diff);
+
+        if (diff.added) {
+          return (
+            <ins className="diff-added-new" data-testid="diff-added" key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </ins>
+          );
+        }
+        if (diff.removed) {
+          return (
+            <del
+              className="diff-removed-new"
+              data-testid="diff-removed-new"
+              key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </del>
+          );
+        }
+
+        return (
+          <span
+            className="diff-normal-new"
+            data-testid="diff-normal-new"
+            key={key}>
+            <TaskDescriptionPreviewer
+              enableSeeMoreVariant={false}
+              markdown={diff.value}
+              showReadMoreBtn={false}
+            />
+          </span>
+        );
+      }),
+    [diffArr]
+  );
+
+ return (
     <div
       className={classNames('w-full overflow-y-auto p-md border-radius-xs', {
         'diff-view-container-card': !showDescTitle,

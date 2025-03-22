@@ -994,6 +994,15 @@ export const TaskTabNew = ({
     );
   };
 
+  const closeFeedEditor = () => {
+    setShowFeedEditor(false);
+    setComment('');
+  };
+
+  useEffect(() => {
+    closeFeedEditor();
+  }, [taskThread.id]);
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1092,6 +1101,7 @@ export const TaskTabNew = ({
                   .sort((a, b) => (b.postTs as number) - (a.postTs as number))
                   .map((reply, index, arr) => (
                     <CommentCard
+                      closeFeedEditor={closeFeedEditor}
                       feed={taskThread}
                       isLastReply={index === arr.length - 1}
                       key={reply.id}

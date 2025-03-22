@@ -594,7 +594,8 @@ export const ActivityFeedTab = ({
         {loader}
         {selectedThread &&
           !loading &&
-          (activeTab !== ActivityFeedTabs.TASKS ? (
+          (activeTab !== ActivityFeedTabs.TASKS &&
+          selectedThread?.type !== ThreadType.Task ? (
             <div id="feed-panel">
               <div>
                 <FeedPanelBodyV1New

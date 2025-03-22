@@ -17,6 +17,7 @@ import { AssetCertification } from '../../../generated/entity/data/table';
 export interface EntityHeaderTitleProps {
   className?: string;
   icon: React.ReactNode;
+  showOnlyDisplayName?: boolean;
   name: string;
   displayName?: string;
   link?: string;

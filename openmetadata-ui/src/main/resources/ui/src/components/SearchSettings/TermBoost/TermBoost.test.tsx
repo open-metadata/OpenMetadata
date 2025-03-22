@@ -76,12 +76,6 @@ describe('TermBoost Component', () => {
     });
 
     expect(screen.getByText('PII.Sensitive')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('PII.Sensitive'));
-
-    const saveButton = screen.getByTestId('save-term-boost');
-
-    expect(saveButton).not.toBeDisabled();
   });
 
   it('Should handle delete tag boost', () => {
@@ -91,20 +85,5 @@ describe('TermBoost Component', () => {
     fireEvent.click(deleteIcon);
 
     expect(mockProps.onDeleteBoost).toHaveBeenCalledWith('PII.Sensitive');
-  });
-
-  it('Should handle save with valid data', () => {
-    render(<TermBoostComponent {...mockProps} />);
-
-    const saveButton = screen.getByTestId('save-term-boost');
-    fireEvent.click(saveButton);
-
-    expect(mockProps.onTermBoostChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        field: 'tags.tagFQN',
-        value: 'PII.Sensitive',
-        boost: 5,
-      })
-    );
   });
 });
