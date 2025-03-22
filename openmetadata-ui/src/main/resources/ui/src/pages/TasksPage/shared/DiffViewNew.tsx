@@ -73,53 +73,6 @@ export const DiffViewNew = ({
     };
   }, [diffArr, showDescTitle]);
 
-  const elements = useMemo(
-    () =>
-      diffArr.map((diff, index) => {
-        const key = getDiffKey(diff, index);
-
-        if (diff.added) {
-          return (
-            <ins className="diff-added-new" data-testid="diff-added" key={key}>
-              <TaskDescriptionPreviewer
-                enableSeeMoreVariant={false}
-                markdown={diff.value}
-                showReadMoreBtn={false}
-              />
-            </ins>
-          );
-        }
-        if (diff.removed) {
-          return (
-            <del
-              className="diff-removed-new"
-              data-testid="diff-removed-new"
-              key={key}>
-              <TaskDescriptionPreviewer
-                enableSeeMoreVariant={false}
-                markdown={diff.value}
-                showReadMoreBtn={false}
-              />
-            </del>
-          );
-        }
-
-        return (
-          <span
-            className="diff-normal-new"
-            data-testid="diff-normal-new"
-            key={key}>
-            <TaskDescriptionPreviewer
-              enableSeeMoreVariant={false}
-              markdown={diff.value}
-              showReadMoreBtn={false}
-            />
-          </span>
-        );
-      }),
-    [diffArr]
-  );
-
   const contentClassName = useMemo(() => {
     if (expanded) {
       return '';
@@ -188,7 +141,7 @@ export const DiffViewNew = ({
     [diffArr]
   );
 
- return (
+  return (
     <div
       className={classNames('w-full overflow-y-auto p-md border-radius-xs', {
         'diff-view-container-card': !showDescTitle,
