@@ -330,18 +330,6 @@ test.describe('Activity feed', () => {
 
     expect(descriptionTask).toContain('Request to update description');
 
-    const commentInput = page.locator('[data-testid="comments-input-field"]');
-    await commentInput.scrollIntoViewIfNeeded();
-    await commentInput.click();
-
-    await page.fill(
-      '[data-testid="editor-wrapper"] .ql-editor',
-      'Test comment added'
-    );
-    const addComment = page.waitForResponse('/api/v1/feed/*/posts');
-    await page.getByTestId('send-button').click();
-    await addComment;
-
     // Close the task from the Button.Group, should throw error when no comment is added.
     await page.getByRole('button', { name: 'down' }).click();
     await page.waitForSelector('.ant-dropdown', {
@@ -353,12 +341,15 @@ test.describe('Activity feed', () => {
     await toastNotification(page, 'Task cannot be closed without a comment.');
 
     // Close the task from the Button.Group, with comment is added.
+    const commentInput = page.locator('[data-testid="comments-input-field"]');
+
     await commentInput.scrollIntoViewIfNeeded();
     await commentInput.click();
     await page.fill(
       '[data-testid="editor-wrapper"] .ql-editor',
       'Closing the task with comment'
     );
+    await page.getByTestId('send-button').click();
     const commentWithCloseTask = page.waitForResponse(
       '/api/v1/feed/tasks/*/close'
     );
