@@ -946,6 +946,7 @@
     "owner-lowercase": "propriétaire",
     "owner-lowercase-plural": "owners",
     "owner-plural": "Propriétaires",
+    "owner-plural-with-colon": "Propriétaires :",
     "ownership": "Propriété",
     "page": "Page",
     "page-not-found": "Page Non Trouvée",

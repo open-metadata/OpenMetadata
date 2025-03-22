@@ -17,6 +17,7 @@ export interface FeedCardFooterProps {
   feed: Thread;
   post: Post;
   isPost?: boolean;
+  isForFeedTab?: boolean;
   componentsVisibility?: {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;

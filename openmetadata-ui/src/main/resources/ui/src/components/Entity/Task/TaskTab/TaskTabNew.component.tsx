@@ -1044,7 +1044,9 @@ export const TaskTabNew = ({
             />
           </div>
         )}
-        {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
+        {taskThread.task?.status === ThreadTaskStatus.Open &&
+          !rest.isOpenInDrawer &&
+          ActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
@@ -1062,7 +1064,9 @@ export const TaskTabNew = ({
                 className={classNames(
                   'm-t-md feed-editor activity-feed-editor-container-new',
                   {
-                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                    'm-b-md':
+                      (showFeedEditor && taskThread?.posts?.length === 0) ||
+                      rest.isOpenInDrawer,
                   }
                 )}
                 onSave={onSave}

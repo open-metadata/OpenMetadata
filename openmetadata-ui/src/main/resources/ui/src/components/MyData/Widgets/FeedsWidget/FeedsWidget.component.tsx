@@ -36,11 +36,11 @@ import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityUserLink } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
+import ActivityFeedListV1New from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import '../../../ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import { ActivityFeedTabs } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import FeedsFilterPopover from '../../../common/FeedsFilterPopover/FeedsFilterPopover.component';
-import './feeds-widget.less';
 
 const FeedsWidget = ({
   isEditView = false,
@@ -110,6 +110,10 @@ const FeedsWidget = ({
   const onTabChange = (key: string) => {
     if (key === ActivityFeedTabs.TASKS) {
       setDefaultFilter(FeedFilter.OWNER);
+    } else if (key === ActivityFeedTabs.ALL) {
+      setDefaultFilter(
+        currentUser?.isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS
+      );
     }
     setActiveTab(key as ActivityFeedTabs);
   };
@@ -195,6 +199,20 @@ const FeedsWidget = ({
     ),
     []
   );
+  const handleFeedFetchFromFeedList = useCallback(() => {
+    getFeedData(
+      defaultFilter,
+      undefined,
+      ThreadType.Task,
+      undefined,
+      undefined,
+      ThreadTaskStatus.Open
+    );
+  }, [defaultFilter, getFeedData]);
+  const handleAfterTaskClose = () => {
+    handleFeedFetchFromFeedList();
+    fetchFeedsCount();
+  };
 
   return (
     <div
@@ -202,14 +220,15 @@ const FeedsWidget = ({
       data-testid="activity-feed-widget">
       <Tabs
         destroyInactiveTabPane
-        className="h-full"
+        className="h-full d-flex"
         items={[
           {
             label: t('label.all'),
             key: ActivityFeedTabs.ALL,
             children: (
               <>
-                <ActivityFeedListV1
+                <ActivityFeedListV1New
+                  isForFeedTab
                   emptyPlaceholderText={emptyPlaceholderText}
                   feedList={isTourOpen ? mockFeedData : threads}
                   hidePopover={isEditView}
@@ -230,8 +249,13 @@ const FeedsWidget = ({
             key: ActivityFeedTabs.MENTIONS,
             children: (
               <>
-                <ActivityFeedListV1
-                  emptyPlaceholderText={t('message.no-mentions')}
+                <ActivityFeedListV1New
+                  isForFeedTab
+                  emptyPlaceholderText={
+                    <Typography.Text className="placeholder-text">
+                      {t('message.no-mentions')}
+                    </Typography.Text>
+                  }
                   feedList={threads}
                   hidePopover={isEditView}
                   isLoading={loading}
@@ -251,12 +275,23 @@ const FeedsWidget = ({
             key: ActivityFeedTabs.TASKS,
             children: (
               <>
-                <ActivityFeedListV1
-                  emptyPlaceholderText={t('message.no-open-tasks')}
+                <ActivityFeedListV1New
+                  isForFeedTab
+                  emptyPlaceholderText={
+                    <div className="d-flex flex-col gap-4">
+                      <Typography.Text className="placeholder-title">
+                        {t('message.no-open-tasks-title')}
+                      </Typography.Text>
+                      <Typography.Text className="placeholder-text">
+                        {t('message.no-open-tasks-description')}
+                      </Typography.Text>
+                    </div>
+                  }
                   feedList={threads}
                   hidePopover={isEditView}
                   isLoading={loading}
                   showThread={false}
+                  onAfterClose={handleAfterTaskClose}
                 />
                 {moreButton}
               </>
