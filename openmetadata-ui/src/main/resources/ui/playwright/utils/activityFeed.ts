@@ -149,9 +149,7 @@ export const addMentionCommentInFeed = async (
     )
     .click();
 
-  const userSuggestionsResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${user}***`
-  );
+  const userSuggestionsResponse = page.waitForResponse(`/api/v1/search/query`);
 
   await page
     .locator(

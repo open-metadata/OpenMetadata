@@ -31,6 +31,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
   descriptionBox,
+  matchRequestParams,
   redirectToHomePage,
   removeLandingBanner,
   toastNotification,
@@ -834,7 +835,7 @@ base.describe('Activity feed with Data Consumer User', () => {
         });
 
         const tagsSuggestionResponse = page2.waitForResponse(
-          '/api/v1/search/query?q=***'
+          '/api/v1/search/query'
         );
         await page2.getByRole('button', { name: 'Add Tags' }).click();
         await tagsSuggestionResponse;
@@ -856,8 +857,13 @@ base.describe('Activity feed with Data Consumer User', () => {
         await suggestTags.click();
 
         const querySearchResponse = page2.waitForResponse(
-          `/api/v1/search/query?q=*${'PII.None'}*&index=tag_search_index&*`
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            matchRequestParams(response, 'POST', {
+              index: 'tag_search_index',
+            })
         );
+
         await suggestTags.fill('PII.None');
 
         await querySearchResponse;

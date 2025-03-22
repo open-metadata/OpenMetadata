@@ -14,8 +14,7 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { toastNotification } from './common';
-import { escapeESReservedCharacters } from './entity';
+import { matchRequestParams, toastNotification } from './common';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -80,9 +79,11 @@ export const deleteService = async (
   page: Page
 ) => {
   const serviceResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      escapeESReservedCharacters(serviceName)
-    )}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        query: `*${encodeURIComponent(serviceName)}*`,
+      })
   );
 
   await page.fill('[data-testid="searchbar"]', serviceName);

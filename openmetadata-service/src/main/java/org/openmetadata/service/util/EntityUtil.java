@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
-import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import java.io.IOException;
@@ -66,6 +65,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -694,11 +694,14 @@ public final class EntityUtil {
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    if (!entityRepository.isSupportsDomain()) {
+      return;
+    }
+
     // If the User is admin then no need to add domainId in the query param
     // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+    if (!subjectContext.isAdmin() && !subjectContext.isBot()) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));

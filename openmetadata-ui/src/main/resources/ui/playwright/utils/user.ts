@@ -29,6 +29,7 @@ import {
   descriptionBoxReadOnly,
   getAuthContext,
   getToken,
+  matchRequestParams,
   redirectToHomePage,
   toastNotification,
   visitOwnProfilePage,
@@ -101,9 +102,15 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
       state: 'detached',
     }
   );
+
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        query: `**AND isAdmin:false isBot:false`,
+      })
   );
+
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
     {
@@ -122,7 +129,11 @@ export const softDeleteUserProfilePage = async (
   displayName: string
 ) => {
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        from: 0,
+      })
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
@@ -325,7 +336,11 @@ export const softDeleteUser = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        from: 0,
+      })
   );
   await page.fill('[data-testid="searchbar"]', username);
   await searchResponse;
@@ -351,8 +366,9 @@ export const softDeleteUser = async (
 
   // Search soft deleted user in non-deleted mode
   const searchSoftDeletedUserResponse = page.waitForResponse(
-    '/api/v1/search/query*'
+    '/api/v1/search/query'
   );
+
   await page.fill('[data-testid="searchbar"]', username);
   await searchSoftDeletedUserResponse;
 
@@ -379,7 +395,7 @@ export const restoreUser = async (
   // Wait for the loader to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
-  const searchUsers = page.waitForResponse('/api/v1/search/query*');
+  const searchUsers = page.waitForResponse('/api/v1/search/query');
   await page.fill('[data-testid="searchbar"]', username);
   await searchUsers;
 
@@ -420,7 +436,7 @@ export const permanentDeleteUser = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   // Search the user
-  const searchUserResponse = page.waitForResponse('/api/v1/search/query*');
+  const searchUserResponse = page.waitForResponse('/api/v1/search/query');
   await page.fill('[data-testid="searchbar"]', username);
   await searchUserResponse;
 
@@ -451,7 +467,7 @@ export const permanentDeleteUser = async (
 
   // Search the user again
   const searchUserAfterDeleteResponse = page.waitForResponse(
-    '/api/v1/search/query*'
+    '/api/v1/search/query'
   );
   await page.fill('[data-testid="searchbar"]', username);
 
@@ -584,9 +600,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');
 
-  const getSearchResultResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*'
-  );
+  const getSearchResultResponse = page.waitForResponse('/api/v1/search/query');
   await page.click('[data-testid="update-btn"]');
 
   await getSearchResultResponse;

@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { ResponseDataWithServiceType } from '../support/entity/Entity.interface';
+import { matchRequestParams } from './common';
 
 export const createQueryByTableName = async (data: {
   apiContext: APIRequestContext;
@@ -56,9 +57,15 @@ export const queryFilters = async ({
   await searchInputResponse;
   await page.hover(`[data-testid="search-dropdown-${key}"]`);
   await page.click(`[data-testid="drop-down-menu"] [title="${filter}"]`);
+
   const queryResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'query_search_index',
+      })
   );
+
   await page.click('[data-testid="update-btn"]');
   await queryResponse;
 };
