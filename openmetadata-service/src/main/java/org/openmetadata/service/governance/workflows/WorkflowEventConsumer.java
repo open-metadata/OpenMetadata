@@ -1,6 +1,9 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,11 +30,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   // TODO: Understand if we need to consider ENTITY_NO_CHANGE, ENTITY_FIELDS_CHANGED or
   // ENTITY_RESTORED.
   private static List<EventType> validEventTypes =
-      List.of(
-          EventType.ENTITY_CREATED,
-          EventType.ENTITY_UPDATED,
-          EventType.ENTITY_SOFT_DELETED,
-          EventType.ENTITY_DELETED);
+      List.of(EventType.ENTITY_CREATED, EventType.ENTITY_UPDATED);
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
@@ -64,7 +63,9 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
         Map<String, Object> variables = new HashMap<>();
 
-        variables.put("relatedEntity", entityLink.getLinkString());
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+            entityLink.getLinkString());
 
         WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       }

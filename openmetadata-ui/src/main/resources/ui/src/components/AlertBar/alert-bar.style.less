@@ -1,0 +1,113 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) url('../../styles/variables.less');
+
+@keyframes resize-show-animation {
+  from {
+    height: 0px;
+    padding: 0 20px;
+  }
+  to {
+    height: max-content;
+    padding: 16px 20px;
+  }
+}
+
+@keyframes resize-hide-animation {
+  from {
+    height: max-content;
+    padding: 16px 20px;
+  }
+  to {
+    height: 0px;
+    padding: 0 20px;
+  }
+}
+
+.alert-container {
+  backdrop-filter: blur(500px);
+  height: 0px;
+
+  .alert-message {
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limits to 2 lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 3em; /* Approx height for 2 lines */
+    transition: max-height 0.3s ease;
+  }
+
+  .alert-message.expanded {
+    -webkit-line-clamp: unset;
+    max-height: none;
+  }
+
+  .alert-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    font-size: 14px;
+    text-decoration: underline;
+  }
+
+  &.show-alert {
+    animation: resize-show-animation 0.3s ease-in-out forwards;
+    display: flex;
+    align-items: center;
+  }
+
+  &.hide-alert {
+    animation: resize-hide-animation 0.2s ease-in-out forwards;
+  }
+
+  &.info {
+    background-color: @info-bg-color;
+    color: @info-color;
+    border: none;
+    border-radius: 0px;
+  }
+
+  &.success {
+    background-color: @success-bg-color;
+    color: @success-color;
+    border: none;
+    border-radius: 0px;
+  }
+
+  &.warning {
+    background-color: @warning-bg-color;
+    color: @warning-color;
+    border: none;
+    border-radius: 0px;
+  }
+
+  &.error {
+    background-color: @error-bg-color;
+    color: @error-color;
+    border: none;
+    border-radius: 0px;
+  }
+
+  .ant-alert-description {
+    font-size: 14px;
+    line-height: 18px;
+    text-align: left;
+  }
+
+  .alert-close-icon {
+    display: flex;
+    align-items: center;
+  }
+}

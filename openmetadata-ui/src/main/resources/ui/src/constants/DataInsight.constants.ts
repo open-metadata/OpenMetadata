@@ -14,10 +14,10 @@
 import { RowProps } from 'antd/lib/grid/row';
 import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
+import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
-import { SystemChartType } from '../rest/DataInsightAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -54,8 +54,6 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
   '#D87F7F',
   '#DA996A',
 ];
-
-export const BAR_SIZE = 15;
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
@@ -129,11 +127,6 @@ export const ENTITIES_SUMMARY_LIST = [
 ];
 
 export const KPI_DATE_PICKER_FORMAT = 'YYYY-MM-DD';
-
-export const KPI_DATES = {
-  startDate: '',
-  endDate: '',
-};
 
 export const BASE_COLORS = [
   '#E57373',

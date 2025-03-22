@@ -27,11 +27,7 @@ import React, {
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-  TERM_ADMIN,
-} from '../../../constants/constants';
+import { TERM_ADMIN } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -40,6 +36,10 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../utils/RouterUtils';
 import { getUserWithImage } from '../../../utils/UserDataUtils';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -259,7 +259,8 @@ const UserPopOverCard: FC<Props> = ({
           userName={userName}
         />
       }
-      trigger="hover">
+      trigger="hover"
+      zIndex={9999}>
       {children ?? (
         <Link
           className={classNames(

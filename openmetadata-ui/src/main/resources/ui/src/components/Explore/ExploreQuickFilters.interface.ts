@@ -26,10 +26,5 @@ export interface ExploreQuickFiltersProps {
   onChangeShowDeleted?: (showDeleted: boolean) => void;
   independent?: boolean; // flag to indicate if the filters are independent of aggregations
   fieldsWithNullValues?: EntityFields[];
-}
-
-export interface FilterFieldsMenuItem {
-  key: string;
-  label: string;
-  defaultField: boolean;
+  defaultQueryFilter?: Record<string, unknown>;
 }

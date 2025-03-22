@@ -27,6 +27,7 @@ public record DatabaseServiceIndex(DatabaseService databaseService) implements S
     Map<String, Object> commonAttributes =
         getCommonAttributesMap(databaseService, Entity.DATABASE_SERVICE);
     doc.putAll(commonAttributes);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(databaseService.getEntityReference()));
     return doc;
   }
 }

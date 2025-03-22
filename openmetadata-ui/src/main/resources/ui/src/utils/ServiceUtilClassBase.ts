@@ -12,7 +12,10 @@
  */
 
 import { capitalize, get, toLower } from 'lodash';
+import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
+import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
+import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -24,7 +27,9 @@ import {
   AZURESQL,
   BIGQUERY,
   BIGTABLE,
+  CASSANDRA,
   CLICKHOUSE,
+  COCKROACH,
   COUCHBASE,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
@@ -346,11 +351,17 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.MongoDB:
         return MONGODB;
 
+      case this.DatabaseServiceTypeSmallCase.Cassandra:
+        return CASSANDRA;
+
       case this.DatabaseServiceTypeSmallCase.SAS:
         return SAS;
 
       case this.DatabaseServiceTypeSmallCase.Couchbase:
         return COUCHBASE;
+
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return COCKROACH;
 
       case this.DatabaseServiceTypeSmallCase.Greenplum:
         return GREENPLUM;
@@ -619,6 +630,8 @@ class ServiceUtilClassBase {
         return 'MariaDB';
       case this.DatabaseServiceTypeSmallCase.MongoDB:
         return 'MongoDB';
+      case this.DatabaseServiceTypeSmallCase.Cassandra:
+        return 'Cassandra';
       case this.DatabaseServiceTypeSmallCase.PinotDB:
         return 'pinotdb';
       case this.DatabaseServiceTypeSmallCase.SapHana:
@@ -669,6 +682,8 @@ class ServiceUtilClassBase {
         return 'ElasticSearch';
       case this.SearchServiceTypeSmallCase.CustomSearch:
         return 'Custom Search';
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return 'Cockroach';
 
       default:
         return capitalize(serviceType);
@@ -709,6 +724,22 @@ class ServiceUtilClassBase {
 
   public getAPIServiceConfig(type: APIServiceType) {
     return getAPIConfig(type);
+  }
+
+  public getInsightsTabWidgets(_: ServiceTypes) {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      PlatformInsightsWidget,
+    };
+
+    return widgets;
+  }
+
+  public getAgentsTabWidgets() {
+    const widgets: Record<string, React.ComponentType<any>> = {
+      MetadataAgentsWidget,
+    };
+
+    return widgets;
   }
 
   /**

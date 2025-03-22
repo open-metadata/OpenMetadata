@@ -7,8 +7,8 @@ slug: /connectors/database/mysql/yaml
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage"]
+unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
 In this section, we provide guides and references to use the MySQL connector.

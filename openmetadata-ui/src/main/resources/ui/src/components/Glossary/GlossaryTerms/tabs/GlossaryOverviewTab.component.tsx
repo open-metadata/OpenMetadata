@@ -25,7 +25,7 @@ import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
-import customizeGlossaryTermPageClassBase from '../../../../utils/CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
+import customizeGlossaryTermPageClassBase from '../../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
@@ -33,11 +33,11 @@ import {
 } from '../../../../utils/EntityVersionUtils';
 import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
-import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { DomainLabelV2 } from '../../../DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
-import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
@@ -48,18 +48,10 @@ import RelatedTerms from './RelatedTerms';
 const ReactGridLayout = WidthProvider(RGL);
 
 type Props = {
-  onThreadLinkSelect: (value: string) => void;
   editCustomAttributePermission: boolean;
-  onExtensionUpdate: (updatedTable: GlossaryTerm) => Promise<void>;
 };
 
-const GlossaryOverviewTab = ({
-  onThreadLinkSelect,
-  editCustomAttributePermission,
-  onExtensionUpdate,
-}: Props) => {
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
+const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const { currentPersonaDocStore } = useCustomizeStore();
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
@@ -79,7 +71,7 @@ const GlossaryOverviewTab = ({
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     }
     const pageType = isGlossary ? PageType.Glossary : PageType.GlossaryTerm;
-    const page = currentPersonaDocStore?.data?.pages.find(
+    const page = currentPersonaDocStore?.data?.pages?.find(
       (p: Page) => p.pageType === pageType
     );
 
@@ -97,9 +89,6 @@ const GlossaryOverviewTab = ({
         description: updatedHTML,
       };
       onUpdate(updatedTableDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
     }
   };
 
@@ -151,27 +140,15 @@ const GlossaryOverviewTab = ({
     return (
       <DescriptionV1
         description={glossaryDescription}
-        entityFqn={selectedData.fullyQualifiedName}
         entityName={getEntityName(selectedData)}
         entityType={EntityType.GLOSSARY_TERM}
         hasEditAccess={permissions.EditDescription || permissions.EditAll}
-        isEdit={isDescriptionEditable}
         owner={selectedData?.owners}
         showActions={!selectedData.deleted}
-        onCancel={() => setIsDescriptionEditable(false)}
-        onDescriptionEdit={() => setIsDescriptionEditable(true)}
         onDescriptionUpdate={onDescriptionUpdate}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
-  }, [
-    glossaryDescription,
-    isDescriptionEditable,
-    selectedData,
-    onDescriptionUpdate,
-    onThreadLinkSelect,
-    permissions,
-  ]);
+  }, [glossaryDescription, selectedData, onDescriptionUpdate, permissions]);
 
   const tagsWidget = useMemo(() => {
     return (
@@ -183,26 +160,16 @@ const GlossaryOverviewTab = ({
         selectedTags={tags ?? []}
         tagType={TagSource.Classification}
         onSelectionChange={handleTagsUpdate}
-        onThreadLinkSelect={onThreadLinkSelect}
       />
     );
-  }, [
-    tags,
-    selectedData.fullyQualifiedName,
-    hasEditTagsPermissions,
-    onThreadLinkSelect,
-  ]);
+  }, [tags, selectedData.fullyQualifiedName, hasEditTagsPermissions]);
 
   const domainWidget = useMemo(() => {
     return (
-      <DomainLabel
+      <DomainLabelV2
         showDomainHeading
-        domain={selectedData.domain}
-        entityFqn={selectedData.fullyQualifiedName ?? ''}
-        entityId={selectedData.id ?? ''}
-        entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         // Only allow domain selection at glossary level. Glossary Term will inherit
-        hasPermission={isGlossary ? permissions.EditAll : false}
+        hasPermission={permissions.EditAll}
       />
     );
   }, [
@@ -217,11 +184,7 @@ const GlossaryOverviewTab = ({
     return (
       <CustomPropertyTable
         isRenderedInRightPanel
-        entityDetails={selectedData as GlossaryTerm}
         entityType={EntityType.GLOSSARY_TERM}
-        handleExtensionUpdate={async (updatedTable) => {
-          await onExtensionUpdate?.(updatedTable);
-        }}
         hasEditAccess={Boolean(editCustomAttributePermission)}
         hasPermission={hasViewAllPermission}
         maxDataCap={5}

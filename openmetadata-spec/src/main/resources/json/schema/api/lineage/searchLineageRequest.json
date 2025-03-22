@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/searchLineageRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchLineageRequest",
+  "description": "Search Lineage Request Schema to find linage from Elastic Search.",
+  "javaType": "org.openmetadata.schema.api.lineage.SearchLineageRequest",
+  "type": "object",
+  "properties": {
+    "fqn": {
+      "description": "Entity Fqn to search lineage",
+      "type": "string"
+    },
+    "isConnectedVia": {
+      "description": "Connected Via",
+      "type": "boolean"
+    },
+    "direction": {
+      "$ref": "./lineageDirection.json"
+    },
+    "directionValue": {
+      "description": "Lineage Direction Value.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "upstreamDepth": {
+      "description": "The upstream depth of the lineage",
+      "type": "integer",
+      "default": 3
+    },
+    "downstreamDepth": {
+      "description": "The downstream depth of the lineage",
+      "type": "integer",
+      "default": 3
+    },
+    "layerFrom": {
+      "description": "Layer to start the search from.",
+      "type": "integer",
+      "default": 0
+    },
+    "layerSize": {
+      "description": "Size of the search result.",
+      "type": "integer",
+      "default": 1000
+    },
+    "queryFilter": {
+      "description": "Query Filter",
+      "type": "string"
+    },
+    "includeDeleted": {
+      "description": "Include deleted entities",
+      "type": "boolean",
+      "default": null
+    },
+    "includeSourceFields": {
+      "description": "Include source fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": ["fqn", "direction"],
+  "additionalProperties": false
+}

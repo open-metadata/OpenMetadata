@@ -27,14 +27,12 @@ import {
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
@@ -44,11 +42,15 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { withPageLayout } from '../../hoc/withPageLayout';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import {
   getDataInsightPathWithFqn,
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
+import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -60,23 +62,25 @@ import { KPIFormValues } from './KPIPage.interface';
 
 const breadcrumb = [
   {
-    name: t('label.data-insight'),
+    name: i18n.t('label.data-insight'),
     url: getDataInsightPathWithFqn(),
   },
   {
-    name: t('label.kpi-list'),
+    name: i18n.t('label.kpi-list'),
     url: ROUTES.KPI_LIST,
   },
   {
-    name: t('label.add-new-entity', { entity: t('label.kpi-uppercase') }),
+    name: i18n.t('label.add-new-entity', {
+      entity: i18n.t('label.kpi-uppercase'),
+    }),
     url: '',
     activeTitle: true,
   },
 ];
 
 const AddKPIPage = () => {
-  const { t } = useTranslation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = useForm<KPIFormValues>();
 
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
@@ -158,13 +162,40 @@ const AddKPIPage = () => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: true,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      rules: [
+        {
+          required: true,
+          message: t('label.field-required', {
+            field: t('label.description-kpi'),
+          }),
+        },
+      ],
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+      },
+    }),
+    []
+  );
+
   useEffect(() => {
     fetchKpiList();
   }, []);
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -346,25 +377,7 @@ const AddKPIPage = () => {
                 </Col>
               </Row>
 
-              <Form.Item
-                label={t('label.description')}
-                name="description"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.description-kpi'),
-                    }),
-                  },
-                ]}
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  height="200px"
-                  placeHolder={t('message.write-your-description')}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
+              {getField(descriptionField)}
 
               <Space align="center" className="w-full justify-end">
                 <Button
@@ -410,4 +423,8 @@ const AddKPIPage = () => {
   );
 };
 
-export default AddKPIPage;
+export default withPageLayout(
+  i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.kpi-uppercase'),
+  })
+)(AddKPIPage);

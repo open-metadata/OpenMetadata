@@ -54,7 +54,10 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
-import { downloadIngestionLog } from '../../utils/IngestionLogs/LogsUtils';
+import {
+  downloadAppLogs,
+  downloadIngestionLog,
+} from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './logs-viewer-page.style.less';
@@ -274,8 +277,8 @@ const LogsViewerPage = () => {
       return (
         <IngestionRecentRuns
           appRuns={appRuns}
+          fetchStatus={!isApplicationType}
           ingestion={ingestionDetails}
-          isApplicationType={isApplicationType}
         />
       );
     }
@@ -307,18 +310,24 @@ const LogsViewerPage = () => {
       );
 
       updateProgress(paging?.after ? progress : 1);
-
-      const logs = await downloadIngestionLog(
-        ingestionDetails?.id,
+      let logs = '';
+      let fileName = `${getEntityName(ingestionDetails)}-${
         ingestionDetails?.pipelineType
-      );
+      }.log`;
+      if (isApplicationType) {
+        logs = await downloadAppLogs(ingestionName);
+        fileName = `${ingestionName}.log`;
+      } else {
+        logs = await downloadIngestionLog(
+          ingestionDetails?.id,
+          ingestionDetails?.pipelineType
+        );
+      }
 
       const element = document.createElement('a');
       const file = new Blob([logs || ''], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
-      element.download = `${getEntityName(ingestionDetails)}-${
-        ingestionDetails?.pipelineType
-      }.log`;
+      element.download = fileName;
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);

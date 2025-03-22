@@ -92,11 +92,14 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 2
 
-    def inserted_rows_count(self) -> int:
-        return len(self.insert_data_queries)
+    def expected_sample_size(self) -> int:
+        return 50
 
     def view_column_lineage_count(self) -> int:
         return 2
+
+    def expected_lineage_node(self) -> str:
+        return "local_bigquery.open-metadata-beta.exclude_me.view_orders"
 
     @staticmethod
     def _expected_profiled_tables() -> int:

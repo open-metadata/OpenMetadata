@@ -2,15 +2,16 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask.im
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.identitylink.api.IdentityLink;
@@ -26,39 +27,40 @@ import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
-import org.openmetadata.service.resources.feeds.FeedResource;
+import org.openmetadata.service.resources.feeds.FeedMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class CreateApprovalTaskImpl implements TaskListener {
+  private Expression inputNamespaceMapExpr;
+
   @Override
   public void notify(DelegateTask delegateTask) {
+    WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
     try {
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(delegateTask), Map.class);
       List<EntityReference> assignees = getAssignees(delegateTask);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
-              (String) delegateTask.getVariable(RELATED_ENTITY_VARIABLE));
+              (String)
+                  varHandler.getNamespacedVariable(
+                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
       GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
-
-      UUID workflowInstanceStateId =
-          (UUID) delegateTask.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
-      WorkflowInstanceStateRepository workflowInstanceStateRepository =
-          (WorkflowInstanceStateRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-      workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
     } catch (Exception exc) {
       LOG.error(
           String.format(
               "[%s] Failure: ",
               getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
           exc);
-      delegateTask.setVariable(EXCEPTION_VARIABLE, exc.toString());
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }
@@ -100,7 +102,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
     } catch (EntityNotFoundException ex) {
       TaskDetails taskDetails =
           new TaskDetails()
-              .withAssignees(FeedResource.formatAssignees(assignees))
+              .withAssignees(FeedMapper.formatAssignees(assignees))
               .withType(TaskType.RequestApproval)
               .withStatus(TaskStatus.Open);
 

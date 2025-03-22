@@ -23,6 +23,7 @@ import static org.openmetadata.csv.CsvUtil.fieldToEntities;
 import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
 import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
 import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.JsonSchema;
@@ -49,6 +50,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
@@ -60,7 +62,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -72,7 +76,9 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -188,7 +194,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   /** Owner field is in entityType:entityName format */
-  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+  public List<EntityReference> getOwners(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      Function<Integer, String> invalidMessageCreator)
       throws IOException {
     if (!processRecord) {
       return null;
@@ -202,7 +212,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     for (String owner : owners) {
       List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToEntities(owner));
       if (ownerTypes.size() != 2) {
-        importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+        importFailure(printer, invalidMessageCreator.apply(fieldNumber), csvRecord);
         return Collections.emptyList();
       }
       EntityReference ownerRef =
@@ -212,6 +222,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
     return refs.isEmpty() ? null : refs;
+  }
+
+  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidOwner);
+  }
+
+  public List<EntityReference> getReviewers(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+    return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidReviewer);
   }
 
   /** Owner field is in entityName format */
@@ -721,6 +741,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(entity, false);
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(() -> createChangeEventAndUpdateInES(response, importedBy));
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
@@ -741,6 +764,20 @@ public abstract class EntityCsv<T extends EntityInterface> {
       importSuccess(resultsPrinter, csvRecord, ENTITY_CREATED);
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+    }
+  }
+
+  private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
+    if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(
+              importedBy, response.getChangeType(), response.getEntity());
+      Object entity = changeEvent.getEntity();
+      changeEvent = copyChangeEvent(changeEvent);
+      changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
+      // Change Event and Update in Es
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      Entity.getSearchRepository().updateEntity(response.getEntity().getEntityReference());
     }
   }
 
@@ -843,6 +880,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   public static String invalidOwner(int field) {
     String error = "Owner should be of format user:userName or team:teamName";
+    return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
+  }
+
+  public static String invalidReviewer(int field) {
+    String error = "Reviewer should be of format user:userName or team:teamName";
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 

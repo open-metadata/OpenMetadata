@@ -54,6 +54,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -250,7 +251,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public UserUpdater getUpdater(User original, User updated, Operation operation) {
+  public EntityRepository<User>.EntityUpdater getUpdater(
+      User original, User updated, Operation operation, ChangeSource changeSource) {
     return new UserUpdater(original, updated, operation);
   }
 
@@ -648,8 +650,8 @@ public class UserRepository extends EntityRepository<User> {
       deleteFrom(original.getId(), USER, Relationship.HAS, Entity.ROLE);
       assignRoles(updated, updated.getRoles());
 
-      List<EntityReference> origRoles = listOrEmpty(original.getRoles());
-      List<EntityReference> updatedRoles = listOrEmpty(updated.getRoles());
+      List<EntityReference> origRoles = listOrEmptyMutable(original.getRoles());
+      List<EntityReference> updatedRoles = listOrEmptyMutable(updated.getRoles());
 
       origRoles.sort(EntityUtil.compareEntityReference);
       updatedRoles.sort(EntityUtil.compareEntityReference);

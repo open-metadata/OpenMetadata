@@ -109,10 +109,7 @@ mlruns/
 /ingestion/tests/integration/source/mlflow/tests/db/
 
 # Antlr
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.interp
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/Fqn.tokens
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.interp
-/openmetadata-ui/src/main/resources/ui/src/antlr/generated/FqnLexer.tokens
+openmetadata-ui/src/main/resources/ui/src/generated/antlr/
 .antlr
 
 # SQLAlchemy tests

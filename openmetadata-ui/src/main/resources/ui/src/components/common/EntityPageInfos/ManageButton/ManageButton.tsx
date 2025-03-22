@@ -45,6 +45,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   entityType,
   canDelete,
   entityId,
+  isAsyncDelete = false,
   isRecursiveDelete,
   extraDropdownContent,
   onRestoreEntity,
@@ -210,7 +211,7 @@ const ManageButton: FC<ManageButtonProps> = ({
         // Used Button to stop click propagation event in the
         // TeamDetailsV1 and User.component collapsible panel.
         <Button
-          className="remove-button-default-styling"
+          className="remove-button-default-styling p-0"
           onClick={(e) => e.stopPropagation()}>
           <Dropdown
             align={{ targetOffset: [-12, 0] }}
@@ -247,6 +248,7 @@ const ManageButton: FC<ManageButtonProps> = ({
           entityName={displayName ?? entityName}
           entityType={entityType}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
+          isAsyncDelete={isAsyncDelete}
           isRecursiveDelete={isRecursiveDelete}
           prepareType={prepareType}
           softDeleteMessagePostFix={softDeleteMessagePostFix}

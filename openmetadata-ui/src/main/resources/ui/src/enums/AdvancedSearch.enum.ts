@@ -62,6 +62,7 @@ export enum EntityFields {
   DATABASE_DISPLAY_NAME = 'database.displayName',
   DATABASE_SCHEMA_DISPLAY_NAME = 'databaseSchema.displayName',
   COLUMN = 'columns.name.keyword',
+  API_COLLECTION = 'apiCollection.displayName.keyword',
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
   GLOSSARY_TERM_STATUS = 'status',
@@ -74,8 +75,8 @@ export enum EntityFields {
 export enum EntityReferenceFields {
   REVIEWERS = 'reviewers.fullyQualifiedName',
   OWNERS = 'owners.fullyQualifiedName',
-  DATABASE = 'database.fullyQualifiedName',
-  DATABASE_SCHEMA = 'databaseSchema.fullyQualifiedName',
+  DATABASE = 'database.name',
+  DATABASE_SCHEMA = 'databaseSchema.name',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
@@ -83,4 +84,5 @@ export enum EntityReferenceFields {
   TIER = 'tier.tagFQN',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
+  SERVICE = 'service.name',
 }

@@ -48,30 +48,24 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.BotRepository;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.UserUtil;
 
@@ -87,6 +81,7 @@ import org.openmetadata.service.util.UserUtil;
 @Collection(name = "bots", order = 4, requiredForOps = true) // initialize after user resource
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
+  private final BotMapper mapper = new BotMapper();
 
   public BotResource(Authorizer authorizer, Limits limits) {
     super(Entity.BOT, authorizer, limits);
@@ -105,7 +100,17 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
               .withIsAdmin(false);
       user.setRoles(
           listOrEmpty(botUser.getRoles()).stream()
-              .map(entityReference -> RoleResource.getRole(entityReference.getName()))
+              .map(
+                  entityReference -> {
+                    Role role =
+                        Entity.getEntityByName(
+                            Entity.ROLE,
+                            entityReference.getName(),
+                            "id",
+                            Include.NON_DELETED,
+                            true);
+                    return role.getEntityReference();
+                  })
               .toList());
       // Add or update User Bot
       UserUtil.addOrUpdateBotUser(user);
@@ -300,7 +305,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
-    Bot bot = getBot(securityContext, create);
+    Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, bot);
   }
 
@@ -321,7 +326,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateBot create) {
-    Bot bot = getBot(securityContext, create);
+    Bot bot = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, bot);
   }
 
@@ -405,6 +410,28 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteBotAsync",
+      summary = "Asynchronously delete a bot by Id",
+      description = "Asynchronously delete a bot by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Bot for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the bot", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteBotByFQN",
@@ -448,65 +475,5 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Bot getBot(CreateBot create, String user) {
-    return repository
-        .copy(new Bot(), create, user)
-        .withBotUser(getEntityReference(Entity.USER, create.getBotUser()))
-        .withProvider(create.getProvider())
-        .withFullyQualifiedName(create.getName());
-  }
-
-  private boolean userHasRelationshipWithAnyBot(User user, Bot botUser) {
-    if (user == null) {
-      return false;
-    }
-    List<EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(user);
-    return !userBotRelationship.isEmpty()
-        && (botUser == null
-            || userBotRelationship.stream()
-                .anyMatch(relationship -> !relationship.getId().equals(botUser.getId())));
-  }
-
-  private List<EntityRelationshipRecord> retrieveBotRelationshipsFor(User user) {
-    return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
-  }
-
-  private Bot getBot(SecurityContext securityContext, CreateBot create) {
-    Bot bot = getBot(create, securityContext.getUserPrincipal().getName());
-    Bot originalBot = retrieveBot(bot.getName());
-    User botUser = retrieveUser(bot);
-    if (botUser != null && !Boolean.TRUE.equals(botUser.getIsBot())) {
-      throw new IllegalArgumentException(
-          String.format("User [%s] is not a bot user", botUser.getName()));
-    }
-    if (userHasRelationshipWithAnyBot(botUser, originalBot)) {
-      List<EntityRelationshipRecord> userBotRelationship = retrieveBotRelationshipsFor(botUser);
-      bot =
-          repository.get(
-              null,
-              userBotRelationship.stream().findFirst().orElseThrow().getId(),
-              EntityUtil.Fields.EMPTY_FIELDS);
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.userAlreadyBot(botUser.getName(), bot.getName()));
-    }
-    // TODO: review this flow on https://github.com/open-metadata/OpenMetadata/issues/8321
-    if (originalBot != null) {
-      bot.setProvider(originalBot.getProvider());
-    }
-    return bot;
-  }
-
-  private User retrieveUser(Bot bot) {
-    EntityRepository<? extends EntityInterface> userRepository =
-        Entity.getEntityRepository(Entity.USER);
-    return (User)
-        userRepository.findByNameOrNull(
-            bot.getBotUser().getFullyQualifiedName(), Include.NON_DELETED);
-  }
-
-  private Bot retrieveBot(String botName) {
-    return repository.findByNameOrNull(botName, Include.NON_DELETED);
   }
 }

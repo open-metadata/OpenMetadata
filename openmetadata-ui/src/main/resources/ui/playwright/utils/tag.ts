@@ -22,6 +22,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
+  descriptionBox,
   getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
@@ -38,23 +39,31 @@ export const TAG_INVALID_NAMES = {
 
 export const visitClassificationPage = async (
   page: Page,
-  classificationName: string
+  classificationName: string,
+  classificationDisplayName: string
 ) => {
   await redirectToHomePage(page);
   const classificationResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
+  const fetchTags = page.waitForResponse(
+    `/api/v1/tags?*parent=${classificationName}**`
+  );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await page
-    .locator(`[data-testid="side-panel-classification"]`)
-    .filter({ hasText: classificationName })
+    .getByTestId('data-summary-container')
+    .getByText(classificationDisplayName)
     .click();
 
   await expect(page.locator('.activeCategory')).toContainText(
-    classificationName
+    classificationDisplayName
   );
 
   await fetchTags;
@@ -74,6 +83,11 @@ export const addAssetsToTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -131,6 +145,11 @@ export const removeAssetsFromTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -298,6 +317,11 @@ export const verifyTagPageUI = async (
   await tag.visitPage(page);
   await res;
 
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
   );
@@ -331,13 +355,19 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await page.getByTestId('edit-description').click();
 
   await expect(page.getByRole('dialog')).toBeVisible();
 
-  await page.locator('.toastui-editor-pseudo-clipboard').clear();
+  await page.locator(descriptionBox).clear();
   await page
-    .locator('.toastui-editor-pseudo-clipboard')
+    .locator(descriptionBox)
     .fill(`This is updated test description for tag ${tag.data.name}.`);
 
   const editDescription = page.waitForResponse(`/api/v1/tags/*`);
@@ -350,9 +380,8 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
 };
 
 export const verifyCertificationTagPageUI = async (page: Page) => {
-  await redirectToHomePage(page);
+  await visitClassificationPage(page, 'Certification', 'Certification');
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
-  await visitClassificationPage(page, 'Certification');
   await page.getByTestId('Gold').click();
   await res;
 

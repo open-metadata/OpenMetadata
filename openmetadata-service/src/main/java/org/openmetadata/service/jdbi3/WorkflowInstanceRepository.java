@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.service.Entity;
@@ -38,6 +39,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
             .withId(workflowInstanceId)
             .withWorkflowDefinitionId(workflowDefinitionId)
             .withStartedAt(startedAt)
+            .withStatus(WorkflowInstance.WorkflowStatus.RUNNING)
             .withVariables(variables)
             .withTimestamp(System.currentTimeMillis()),
         workflowDefinitionName);
@@ -49,9 +51,11 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
 
     workflowInstance.setEndedAt(endedAt);
+    workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.FINISHED);
 
-    if (variables.containsKey(EXCEPTION_VARIABLE)) {
+    if (Optional.ofNullable(variables.getOrDefault(EXCEPTION_VARIABLE, null)).isPresent()) {
       workflowInstance.setException(true);
+      workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.EXCEPTION);
     }
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);

@@ -31,4 +31,9 @@ export interface FeedPanelBodyPropV1 {
   isAnnouncementTab?: boolean;
   updateAnnouncementThreads?: () => void;
   permissions?: boolean;
+  showActivityFeedEditor?: boolean;
+  onAfterClose?: any;
+  onUpdateEntityDetails?: any;
+  handlePanelResize?: (isFullWidth: boolean) => void;
+  isFullWidth?: boolean;
 }

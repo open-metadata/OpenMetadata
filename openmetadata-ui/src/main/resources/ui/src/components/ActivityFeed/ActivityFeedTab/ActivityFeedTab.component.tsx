@@ -10,13 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Menu, Skeleton, Space, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Dropdown,
+  Menu,
+  Segmented,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { noop } from 'lodash';
 import {
   default as React,
-  ReactNode,
   RefObject,
   useCallback,
   useEffect,
@@ -25,17 +31,22 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
+import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
+import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-filter-button.svg';
+import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
+import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
+
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as AnnouncementsIcon } from '../../../assets/svg/announcements-v1.svg';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
-import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
-import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
 import {
   COMMON_ICON_STYLES,
   ICON_DIMENSION,
-  ROUTES,
+  ICON_DIMENSION_USER_PAGE,
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -50,17 +61,14 @@ import {
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
+import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import {
   ANNOUNCEMENT_ENTITIES,
   setSelectedAnnouncementStatus,
 } from '../../../utils/AnnouncementsUtils';
-import {
-  getCountBadge,
-  getFeedCounts,
-  Transi18next,
-} from '../../../utils/CommonUtils';
+import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -68,16 +76,15 @@ import {
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
-import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
+import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import AddAnnouncementModal from '../../Modals/AnnouncementModal/AddAnnouncementModal';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
-import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
-import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
-import FeedPanelHeader from '../ActivityFeedPanel/FeedPanelHeader';
+import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
+import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-tab.less';
 import {
+  ActivityFeedLayoutType,
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
@@ -88,7 +95,6 @@ const componentsVisibility = {
 };
 
 export const ActivityFeedTab = ({
-  fqn,
   owners = [],
   columns,
   entityType,
@@ -99,21 +105,22 @@ export const ActivityFeedTab = ({
   onUpdateFeedCount,
   onUpdateEntityDetails,
   permissions,
+  subTab,
+  layoutType,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
   const initialRender = useRef(true);
+  const { fqn } = useFqn();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const {
-    tab = EntityTabs.ACTIVITY_FEED,
-    subTab: activeTab = ActivityFeedTabs.ALL,
-  } = useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
+  const { tab = EntityTabs.ACTIVITY_FEED, subTab: activeTab = subTab } =
+    useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
@@ -130,6 +137,7 @@ export const ActivityFeedTab = ({
     []
   );
 
+  const [isFullWidth, setIsFullWidth] = useState<boolean>(false);
   const [countData, setCountData] = useState<{
     loading: boolean;
     data: FeedCounts;
@@ -140,7 +148,6 @@ export const ActivityFeedTab = ({
   const showAnnouncementsSubTab = ANNOUNCEMENT_ENTITIES.includes(entityType);
 
   const {
-    postFeed,
     selectedThread,
     setActiveThread,
     entityThread,
@@ -171,16 +178,12 @@ export const ActivityFeedTab = ({
     () => activeTab === ActivityFeedTabs.ANNOUNCEMENTS,
     [activeTab]
   );
-
-  const getElementWithCountLoader = useCallback(
-    (element: ReactNode) => {
-      if (countData.loading) {
-        return <Skeleton.Button active className="count-loader" size="small" />;
-      }
-
-      return element;
-    },
-    [countData.loading]
+  useEffect(() => {
+    setIsFullWidth(false);
+  }, [isTaskActiveTab]);
+  const isMentionTabSelected = useMemo(
+    () => activeTab === ActivityFeedTabs.MENTIONS,
+    [activeTab]
   );
 
   const handleTabChange = (subTab: string) => {
@@ -193,25 +196,40 @@ export const ActivityFeedTab = ({
       )
     );
     setActiveThread();
+    setIsFullWidth(false);
   };
 
   const placeholderText = useMemo(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
       return (
-        <Transi18next
-          i18nKey="message.no-activity-feed"
-          renderElement={<Link to={ROUTES.EXPLORE} />}
-          values={{
-            explored: t('message.have-not-explored-yet'),
-          }}
-        />
+        <div className="d-flex flex-col gap-4">
+          <Typography.Text className="placeholder-title">
+            {t('message.no-activity-feed-title')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text">
+            {t('message.no-activity-feed-description')}
+          </Typography.Text>
+        </div>
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return t('message.no-mentions');
+      return (
+        <Typography.Text className="placeholder-text">
+          {t('message.no-mentions')}
+        </Typography.Text>
+      );
     } else if (activeTab === ActivityFeedTabs.ANNOUNCEMENTS) {
       return t('message.no-announcement-message');
     } else {
-      return t('message.no-open-tasks');
+      return (
+        <div className="d-flex flex-col gap-4">
+          <Typography.Text className="placeholder-title">
+            {t('message.no-open-tasks-title')}
+          </Typography.Text>
+          <Typography.Text className="placeholder-text">
+            {t('message.no-open-tasks-description')}
+          </Typography.Text>
+        </div>
+      );
     }
   }, [activeTab]);
 
@@ -266,10 +284,8 @@ export const ActivityFeedTab = ({
   );
 
   useEffect(() => {
-    if (fqn && isActivityFeedTab) {
-      fetchFeedsCount();
-    }
-  }, [fqn, isActivityFeedTab]);
+    fetchFeedsCount();
+  }, []);
 
   const { feedFilter, threadType } = useMemo(() => {
     const currentFilter =
@@ -379,14 +395,10 @@ export const ActivityFeedTab = ({
     }
   }, [entityPaging, loading, isInView, fqn]);
 
-  const loader = useMemo(() => (loading ? <Loader /> : null), [loading]);
-
-  const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
-  };
+  const loader = useMemo(
+    () => (loading ? <Loader className="aspect-square" /> : null),
+    [loading]
+  );
 
   const handleUpdateTaskFilter = (filter: ThreadTaskStatus) => {
     setTaskFilter(filter);
@@ -408,7 +420,129 @@ export const ActivityFeedTab = ({
 
   const handleAfterTaskClose = () => {
     handleFeedFetchFromFeedList();
-    handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+    fetchFeedsCount();
+  };
+  const taskFilterOptions = useMemo(
+    () => [
+      {
+        key: ThreadTaskStatus.Open,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: taskFilter === ThreadTaskStatus.Open }
+            )}
+            data-testid="open-tasks">
+            <div className="flex items-center space-x-2">
+              {taskFilter === ThreadTaskStatus.Open ? (
+                <TaskOpenIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: taskFilter === ThreadTaskStatus.Open,
+                })}>
+                {t('label.open')}
+              </span>
+            </div>
+            <span
+              className={classNames('task-count-container d-flex flex-center', {
+                active: taskFilter === ThreadTaskStatus.Open,
+              })}>
+              <span className="task-count-text">
+                {countData.data.openTaskCount}
+              </span>
+            </span>
+          </div>
+        ),
+        onClick: () => {
+          handleUpdateTaskFilter(ThreadTaskStatus.Open);
+          setActiveThread();
+        },
+      },
+      {
+        key: ThreadTaskStatus.Closed,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: taskFilter === ThreadTaskStatus.Closed }
+            )}
+            data-testid="closed-tasks">
+            <div className="flex items-center space-x-2">
+              {taskFilter === ThreadTaskStatus.Closed ? (
+                <TaskCloseIconBlue
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskCloseIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: taskFilter === ThreadTaskStatus.Closed,
+                })}>
+                {t('label.closed')}
+              </span>
+            </div>
+            <span
+              className={classNames('task-count-container d-flex flex-center', {
+                active: taskFilter === ThreadTaskStatus.Closed,
+              })}>
+              <span className="task-count-text">
+                {countData.data.closedTaskCount}
+              </span>
+            </span>
+          </div>
+        ),
+        onClick: () => {
+          handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+          setActiveThread();
+        },
+      },
+    ],
+    [taskFilter, countData.data, handleUpdateTaskFilter, setActiveThread, t]
+  );
+
+  const TaskToggle = useCallback(() => {
+    return (
+      <Segmented
+        className="task-toggle"
+        defaultValue={ActivityFeedTabs.TASKS}
+        options={[
+          {
+            label: (
+              <span className="toggle-item">
+                <MyTaskIcon {...ICON_DIMENSION_USER_PAGE} />
+                {t('label.my-task-plural')}
+              </span>
+            ),
+            value: ActivityFeedTabs.TASKS,
+          },
+          {
+            label: (
+              <span className="toggle-item">
+                <MentionIcon {...ICON_DIMENSION_USER_PAGE} />
+                {t('label.mention-plural')}
+              </span>
+            ),
+            value: ActivityFeedTabs.MENTIONS,
+          },
+        ]}
+        onChange={(value) => handleTabChange(value as ActivityFeedTabs)}
+      />
+    );
+  }, [t, handleTabChange]);
+
+  const handlePanelResize = (isFullWidth: boolean) => {
+    setIsFullWidth(isFullWidth);
   };
   const refetchAnnouncements = useCallback(() => {
     getFeedData(
@@ -441,156 +575,128 @@ export const ActivityFeedTab = ({
 
   return (
     <div className="activity-feed-tab">
-      <Menu
-        className="custom-menu p-t-sm"
-        data-testid="global-setting-left-panel"
-        items={[
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <Space align="center" size="small">
-                  <AllActivityIcon
-                    style={COMMON_ICON_STYLES}
-                    {...ICON_DIMENSION}
-                  />
-                  <span>{t('label.all')}</span>
-                </Space>
+      {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
+        <Menu
+          className="custom-menu p-t-sm"
+          data-testid="global-setting-left-panel"
+          items={[
+            {
+              label: (
+                <div className="d-flex justify-between">
+                  <Space align="center" size="small">
+                    <AllActivityIcon
+                      style={COMMON_ICON_STYLES}
+                      {...ICON_DIMENSION}
+                    />
+                    <span>{t('label.all')}</span>
+                  </Space>
 
-                <span>
-                  {!isUserEntity &&
-                    getCountBadge(
-                      countData.data.conversationCount,
+                  <span>
+                    {!isUserEntity &&
+                      getCountBadge(
+                        countData.data.conversationCount,
+                        '',
+                        activeTab === ActivityFeedTabs.ALL
+                      )}
+                  </span>
+                </div>
+              ),
+              key: ActivityFeedTabs.ALL,
+            },
+            {
+              label: (
+                <div className="d-flex justify-between">
+                  <Space align="center" size="small">
+                    <TaskListIcon
+                      style={COMMON_ICON_STYLES}
+                      {...ICON_DIMENSION}
+                    />
+                    <span>{t('label.task-plural')}</span>
+                  </Space>
+                  <span>
+                    {getCountBadge(
+                      countData.data.openTaskCount,
                       '',
-                      activeTab === ActivityFeedTabs.ALL
+                      isTaskActiveTab
                     )}
-                </span>
-              </div>
-            ),
-            key: 'all',
-          },
-          ...(isUserEntity
-            ? [
-                {
-                  label: (
-                    <div className="d-flex justify-between">
-                      <Space align="center" size="small">
-                        <MentionIcon
-                          style={COMMON_ICON_STYLES}
-                          {...ICON_DIMENSION}
-                        />
-                        <span>{t('label.mention-plural')}</span>
-                      </Space>
-
-                      <span>
-                        {getCountBadge(
-                          countData.data.mentionCount,
-                          '',
-                          activeTab === ActivityFeedTabs.MENTIONS
-                        )}
-                      </span>
-                    </div>
-                  ),
-                  key: 'mentions',
-                },
-              ]
-            : []),
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <Space align="center" size="small">
-                  <TaskListIcon
-                    style={COMMON_ICON_STYLES}
-                    {...ICON_DIMENSION}
-                  />
-                  <span>{t('label.task-plural')}</span>
-                </Space>
-                <span>
-                  {getCountBadge(
-                    countData.data.openTaskCount,
-                    '',
-                    isTaskActiveTab
-                  )}
-                </span>
-              </div>
-            ),
-            key: 'tasks',
-          },
-          ...(showAnnouncementsSubTab
-            ? [
-                {
-                  label: (
-                    <div
-                      className="d-flex justify-between"
-                      data-testid="announcement-sub-tab">
-                      <Space align="center" size="small">
-                        <AnnouncementsIcon
-                          style={COMMON_ICON_STYLES}
-                          {...ICON_DIMENSION}
-                        />
-                        <span>{t('label.announcement-plural')}</span>
-                      </Space>
-
-                      <span>
-                        {!isUserEntity &&
-                          getCountBadge(
-                            countData.data.conversationCount,
-                            '',
-                            activeTab === ActivityFeedTabs.ANNOUNCEMENTS
-                          )}
-                      </span>
-                    </div>
-                  ),
-                  key: 'announcements',
-                },
-              ]
-            : []),
-        ]}
-        mode="inline"
-        rootClassName="left-container"
-        selectedKeys={[activeTab]}
-        onClick={(info) => handleTabChange(info.key)}
-      />
-
-      <div className="center-container" id="center-container">
-        {isTaskActiveTab && (
-          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
-            {getElementWithCountLoader(
-              <Typography.Text
-                className={classNames(
-                  'cursor-pointer p-l-xss d-flex items-center',
+                  </span>
+                </div>
+              ),
+              key: ActivityFeedTabs.TASKS,
+            },
+            ...(showAnnouncementsSubTab
+              ? [
                   {
-                    'font-medium': taskFilter === ThreadTaskStatus.Open,
-                  }
-                )}
-                data-testid="open-task"
-                onClick={() => {
-                  handleUpdateTaskFilter(ThreadTaskStatus.Open);
-                  setActiveThread();
-                }}>
-                <TaskIcon className="m-r-xss" width={14} />{' '}
-                {countData.data.openTaskCount} {t('label.open')}
-              </Typography.Text>
-            )}
-            {getElementWithCountLoader(
-              <Typography.Text
-                className={classNames('cursor-pointer d-flex items-center', {
-                  'font-medium': taskFilter === ThreadTaskStatus.Closed,
-                })}
-                data-testid="closed-task"
-                onClick={() => {
-                  handleUpdateTaskFilter(ThreadTaskStatus.Closed);
-                  setActiveThread();
-                }}>
-                <CheckIcon className="m-r-xss" width={14} />{' '}
-                {countData.data.closedTaskCount} {t('label.closed')}
-              </Typography.Text>
-            )}
+                    label: (
+                      <div
+                        className="d-flex justify-between"
+                        data-testid="announcement-sub-tab">
+                        <Space align="center" size="small">
+                          <AnnouncementsIcon
+                            style={COMMON_ICON_STYLES}
+                            {...ICON_DIMENSION}
+                          />
+                          <span>{t('label.announcement-plural')}</span>
+                        </Space>
+
+                        <span>
+                          {!isUserEntity &&
+                            getCountBadge(
+                              countData.data.conversationCount,
+                              '',
+                              activeTab === ActivityFeedTabs.ANNOUNCEMENTS
+                            )}
+                        </span>
+                      </div>
+                    ),
+                    key: 'announcements',
+                  },
+                ]
+              : []),
+          ]}
+          mode="inline"
+          rootClassName="left-container"
+          selectedKeys={[
+            activeTab === ActivityFeedTabs.ALL
+              ? ActivityFeedTabs.ALL
+              : ActivityFeedTabs.TASKS,
+          ]}
+          onClick={(info) => handleTabChange(info.key)}
+        />
+      )}
+      <div
+        className={classNames('center-container', {
+          'full-width': isFullWidth,
+          'three-panel-layout':
+            layoutType === ActivityFeedLayoutType.THREE_PANEL,
+        })}
+        id="center-container">
+        {(isTaskActiveTab || isMentionTabSelected) && (
+          <div
+            className="d-flex gap-4  p-b-xs justify-between items-center"
+            style={{ marginTop: '6px' }}>
+            <Dropdown
+              disabled={isMentionTabSelected}
+              menu={{
+                items: taskFilterOptions,
+                selectedKeys: [...taskFilter],
+              }}
+              overlayClassName="task-tab-custom-dropdown"
+              trigger={['click']}>
+              <TaskFilterIcon
+                className={`task-filter-icon ${
+                  isMentionTabSelected ? 'cursor-not-allowed' : 'cursor-pointer'
+                }`}
+                data-testid="user-profile-page-task-filter-icon"
+              />
+            </Dropdown>
+            {TaskToggle()}
           </div>
         )}
         {isAnnouncementActiveTab && (
           <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task justify-between">
             <div className="d-flex gap-4">
-              {getElementWithCountLoader(
+              {/* {getElementWithCountLoader(
                 <Typography.Text
                   className={classNames(
                     'cursor-pointer p-l-xss d-flex items-center',
@@ -603,8 +709,8 @@ export const ActivityFeedTab = ({
                   onClick={handleActiveClick}>
                   {countData.data.openTaskCount} {t('label.active')}
                 </Typography.Text>
-              )}
-              {getElementWithCountLoader(
+              )} */}
+              {/* {getElementWithCountLoader(
                 <Typography.Text
                   className={classNames('cursor-pointer d-flex items-center', {
                     'font-medium':
@@ -614,7 +720,7 @@ export const ActivityFeedTab = ({
                   onClick={handleInactiveClick}>
                   {countData.data.closedTaskCount} {t('label.inactive')}
                 </Typography.Text>
-              )}
+              )} */}
             </div>
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
@@ -627,20 +733,59 @@ export const ActivityFeedTab = ({
             </Tooltip>
           </div>
         )}
-        <ActivityFeedListV1
+        {isAnnouncementActiveTab && (
+          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task justify-between">
+            <div className="d-flex gap-4">
+              {/* {getElementWithCountLoader(
+                <Typography.Text
+                  className={classNames(
+                    'cursor-pointer p-l-xss d-flex items-center',
+                    {
+                      'font-medium':
+                        announcementFilter === AnnoucementStatus.Active,
+                    }
+                  )}
+                  data-testid="active-announcement"
+                  onClick={handleActiveClick}>
+                  {countData.data.openTaskCount} {t('label.active')}
+                </Typography.Text>
+              )} */}
+              {/* {getElementWithCountLoader(
+                <Typography.Text
+                  className={classNames('cursor-pointer d-flex items-center', {
+                    'font-medium':
+                      announcementFilter === AnnoucementStatus.Inactive,
+                  })}
+                  data-testid="inactive-announcements"
+                  onClick={handleInactiveClick}>
+                  {countData.data.closedTaskCount} {t('label.inactive')}
+                </Typography.Text>
+              )} */}
+            </div>
+            <Tooltip title={t('message.no-permission-to-view')}>
+              <Button
+                data-testid="add-announcement-btn"
+                disabled={!permissions?.EditAll}
+                type="primary"
+                onClick={handleOpenAnnouncementModal}>
+                {t('label.add')}
+              </Button>
+            </Tooltip>
+          </div>
+        )}
+        <ActivityFeedListV1New
           hidePopover
           activeFeedId={selectedThread?.id}
           componentsVisibility={componentsVisibility}
           emptyPlaceholderText={placeholderText}
           feedList={entityThread}
+          handlePanelResize={handlePanelResize}
           isForFeedTab={isForFeedTab}
-          isLoading={false}
-          permissions={permissions?.EditAll}
+          isFullWidth={isFullWidth}
+          isLoading={loading}
+          // permissions={permissions?.EditAll}
           selectedThread={selectedThread}
           showThread={false}
-          updateAnnouncementThreads={
-            isAnnouncementActiveTab ? refetchAnnouncements : noop
-          }
           onFeedClick={handleFeedClick}
         />
         {loader}
@@ -653,48 +798,44 @@ export const ActivityFeedTab = ({
         />
       </div>
 
-      <div className="right-container">
+      <div
+        className={classNames('right-container', {
+          'hide-panel': isFullWidth,
+          'three-panel-layout':
+            layoutType === ActivityFeedLayoutType.THREE_PANEL,
+        })}>
         {loader}
         {selectedThread &&
           !loading &&
           (activeTab !== ActivityFeedTabs.TASKS ? (
             <div id="feed-panel">
-              <div className="feed-explore-heading">
-                <FeedPanelHeader
-                  hideCloseIcon
-                  className="p-x-md"
-                  entityLink={selectedThread.about}
-                  feed={selectedThread}
-                  threadType={selectedThread?.type ?? ThreadType.Conversation}
-                  onCancel={noop}
-                />
-              </div>
-
-              <div className="m-md">
-                <FeedPanelBodyV1
+              <div>
+                <FeedPanelBodyV1New
                   isAnnouncementCard
                   isOpenInDrawer
+                  showActivityFeedEditor
                   showThread
                   componentsVisibility={{
-                    showThreadIcon: false,
-                    showRepliesContainer: false,
+                    showThreadIcon: true,
+                    showRepliesContainer: true,
                   }}
                   feed={selectedThread}
+                  handlePanelResize={handlePanelResize}
                   hidePopover={false}
                   isForFeedTab={isForFeedTab}
-                />
-                <ActivityFeedEditor
-                  className="m-t-md feed-editor"
-                  onSave={onSave}
+                  isFullWidth={isFullWidth}
+                  onAfterClose={handleAfterTaskClose}
+                  onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               </div>
             </div>
           ) : (
             <div id="task-panel">
               {entityType === EntityType.TABLE ? (
-                <TaskTab
+                <TaskTabNew
                   columns={columns}
                   entityType={EntityType.TABLE}
+                  handlePanelResize={handlePanelResize}
                   isForFeedTab={isForFeedTab}
                   owners={owners}
                   taskThread={selectedThread}
@@ -702,8 +843,9 @@ export const ActivityFeedTab = ({
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />
               ) : (
-                <TaskTab
+                <TaskTabNew
                   entityType={isUserEntity ? entityTypeTask : entityType}
+                  handlePanelResize={handlePanelResize}
                   hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}
                   owners={owners}

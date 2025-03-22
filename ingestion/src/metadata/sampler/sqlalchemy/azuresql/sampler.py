@@ -14,10 +14,11 @@ for the profiler
 """
 from typing import List, Optional
 
-from sqlalchemy import Column
+from sqlalchemy import Column, Table, text
+from sqlalchemy.orm import Query
 
-from metadata.generated.schema.entity.data.table import TableData
-from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.generated.schema.entity.data.table import TableData, TableType
+from metadata.sampler.sqlalchemy.sampler import ProfileSampleType, SQASampler
 
 
 class AzureSQLSampler(SQASampler):
@@ -30,6 +31,31 @@ class AzureSQLSampler(SQASampler):
     # an error when trying to fetch data from these columns
     # pyodbc.ProgrammingError: ('ODBC SQL type -151 is not yet supported.  column-index=x  type=-151', 'HY106')
     NOT_COMPUTE_PYODBC = {"SQASGeography", "UndeterminedType"}
+
+    def set_tablesample(self, selectable: Table):
+        """Set the TABLESAMPLE clause for MSSQL
+        Args:
+            selectable (Table): _description_
+        """
+        if self.entity.tableType != TableType.View:
+            if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+                return selectable.tablesample(
+                    text(f"{self.sample_config.profileSample or 100} PERCENT")
+                )
+
+            return selectable.tablesample(
+                text(f"{int(self.sample_config.profileSample or 100)} ROWS")
+            )
+
+        return selectable
+
+    def get_sample_query(self, *, column=None) -> Query:
+        """get query for sample data"""
+        rnd = self._base_sample_query(column).cte(
+            f"{self.get_sampler_table_name()}_rnd"
+        )
+        query = self.client.query(rnd)
+        return query.cte(f"{self.get_sampler_table_name()}_sample")
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         sqa_columns = []

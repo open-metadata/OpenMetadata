@@ -38,6 +38,7 @@ import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/Enti
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
@@ -68,8 +69,8 @@ import {
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Voting from '../../Entity/Voting/Voting.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
@@ -311,6 +312,7 @@ const GlossaryHeader = ({
       showModal({
         name: selectedData?.fullyQualifiedName || '',
         onExport: exportGlossaryInCSVFormat,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [selectedData]);

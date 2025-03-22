@@ -16,7 +16,11 @@ test entity link utils
 import pytest
 from antlr4.error.Errors import ParseCancellationException
 
-from metadata.utils.entity_link import get_decoded_column, get_table_or_column_fqn
+from metadata.utils.entity_link import (
+    get_decoded_column,
+    get_table_fqn,
+    get_table_or_column_fqn,
+)
 
 
 @pytest.mark.parametrize(
@@ -154,3 +158,16 @@ def test_invalid_get_table_or_column_fqn(entity_link, error):
     """
     with pytest.raises(error):
         get_table_or_column_fqn(entity_link)
+
+
+@pytest.mark.parametrize(
+    "entity_link,expected",
+    [
+        (
+            "<#E::table::red.dev.dbt_jaffle.customers::columns::a>",
+            "red.dev.dbt_jaffle.customers",
+        ),
+    ],
+)
+def test_get_table_fqn(entity_link, expected):
+    assert get_table_fqn(entity_link) == expected

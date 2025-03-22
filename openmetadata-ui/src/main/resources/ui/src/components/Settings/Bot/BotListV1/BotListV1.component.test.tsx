@@ -29,6 +29,17 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(() => <>LimitWrapper</>);
 });
 
+jest.mock('../../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn((text) => text),
+  getTitleCase: jest.fn((text) => text.charAt(0).toUpperCase() + text.slice(1)),
+}));
+
 describe('BotListV1', () => {
   it('renders the component', () => {
     render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });

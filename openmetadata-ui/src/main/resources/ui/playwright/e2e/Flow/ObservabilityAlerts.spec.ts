@@ -156,6 +156,18 @@ test('Pipeline Alert', async ({ page }) => {
     });
   });
 
+  await test.step('Verify diagnostic info tab', async () => {
+    await visitObservabilityAlertPage(page);
+    await visitAlertDetailsPage(page, data.alertDetails);
+
+    const diagnosticTab = page.getByRole('tab', { name: /diagnostic info/i });
+    const diagnosticInfoResponse = page.waitForResponse(
+      `/api/v1/events/subscriptions/**/diagnosticInfo`
+    );
+    await diagnosticTab.click();
+    await diagnosticInfoResponse;
+  });
+
   await test.step('Check created alert details', async () => {
     await visitObservabilityAlertPage(page);
     await visitAlertDetailsPage(page, data.alertDetails);
@@ -202,7 +214,8 @@ const OBSERVABILITY_CREATION_DETAILS = getObservabilityCreationDetails({
   tableName1: table1.entity.name,
   tableName2: table2.entity.name,
   testSuiteFQN: TEST_SUITE_NAME,
-  testCaseName: TEST_CASE_NAME,
+  // @aniketkatkar97 please
+  // testCaseName: TEST_CASE_NAME,
   ingestionPipelineName: INGESTION_PIPELINE_NAME,
   domainName: domain.data.name,
   domainDisplayName: domain.data.displayName,

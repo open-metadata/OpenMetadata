@@ -10,7 +10,7 @@ This installation doc will help you start a OpenMetadata standalone instance on 
 If you'd rather see the steps in a guided tutorial, we've got you covered! Otherwise, feel free to read the
 content below 👇
 
-{%  youtube videoId="ld43_jafL9w" start="0:00" end="6:47" width="560px" height="315px" /%}
+{%  youtube videoId="ld43_jafL9w" start="0:00" end="6:47" width="800px" height="450px" /%}
 
 # Requirements (OSX, Linux and Windows)
 
@@ -203,6 +203,11 @@ You can access Airflow at [http://localhost:8080](http://localhost:8080). Use th
 - Username: `admin`
 - Password: `admin`
 
+### Customizing Airflow Admin Credentials:  
+  When using Docker Compose, you can change the default Airflow admin credentials by setting the following environment variables:  
+  - Username: `AIRFLOW_ADMIN_USER`
+  - Password: `AIRFLOW_ADMIN_PASSWORD`
+
 ## Airflow DAGs Showcased in Deployment
 
 You can explore the examples of Airflow DAGs used with OpenMetadata. Refer [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/airflow/dags) for more information.
@@ -217,21 +222,46 @@ alt="DAG_Examples" /%}
 src="/images/v1.5/quickstart/tour.png"
 alt="tour" /%}
 
-## Stop
-To stop the services, from the same directory as mentioned in [step 1](#1.-create-a-directory-for-openmetadata), simply run below command.
+## Start and Stop
+
+From the same directory mentioned in [step 1](#1.-create-a-directory-for-openmetadata), use the following commands to start and stop the Docker Compose services.
+
+To stop the services
+
+```
+docker compose stop
+```
+
+To start the services
+
+```
+docker compose start
+```
+
+{% note %} Start and stop are used to completely halt or restart the running services. When services are stopped, their containers are shut down but remain available for restarting without rebuilding.
+Importantly, any data stored in Docker volumes remains unaffected during this process. The volumes stay intact and accessible, preserving your application’s state and making it easy to restart the services without losing data. This makes it a reliable option for temporary shutdowns while maintaining continuity.{% /note %}
+
+## Cleanup
+
+To stop the Docker Compose services, run the following command from the same directory mentioned in [step 1](#1.-create-a-directory-for-openmetadata).
+
+Stop the services
+
 ```
 docker compose down
 ```
 
-## Delete
+If you want to clean up the associated named volumes as well, use the following command
 
-From the same directory as mentioned in [step 1](#1.-create-a-directory-for-openmetadata), run the below command to stop the docker compose services and clean named volumes.
-{% warning %}
-This will delete all the data stored in database and search containers. Only run this if you want to delete and stop all the services.
-{%/ warning %}
 ```
 docker compose down --volumes
 ```
+
+{% note noteType="Tip" %}  
+Named volumes are used to persist data created by containers, ensuring that the data remains even after the containers are stopped or removed. These volumes are managed by Docker and stored independently from the containers.  
+Using the `--volumes` flag with the `docker compose down` command will delete these volumes, permanently removing all stored data.
+{% /note %}
+
 
 ## Troubleshooting
 

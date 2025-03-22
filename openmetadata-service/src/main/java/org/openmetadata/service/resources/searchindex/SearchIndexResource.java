@@ -75,6 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
+  private final SearchIndexMapper mapper = new SearchIndexMapper();
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
   static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
 
@@ -309,7 +310,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSearchIndex create) {
-    SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
+    SearchIndex searchIndex =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, searchIndex);
   }
 
@@ -389,7 +391,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSearchIndex create) {
-    SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
+    SearchIndex searchIndex =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, searchIndex);
   }
 
@@ -574,6 +577,36 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteSearchIndexAsync",
+      summary = "Asynchronously delete a SearchIndex by id",
+      description = "Asynchronously delete a SearchIndex by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "SearchIndex for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the SearchIndex", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteSearchIndexByFQN",
@@ -625,17 +658,5 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private SearchIndex getSearchIndex(CreateSearchIndex create, String user) {
-    SearchIndex searchIndex =
-        repository
-            .copy(new SearchIndex(), create, user)
-            .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
-            .withFields(create.getFields())
-            .withSearchIndexSettings(create.getSearchIndexSettings())
-            .withSourceHash(create.getSourceHash())
-            .withIndexType(create.getIndexType());
-    return searchIndex;
   }
 }

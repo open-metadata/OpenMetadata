@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the `Database Service` is a service such as MySQL, BigQuery,
  * Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database
  * Server instance are also used for database service.
@@ -55,6 +53,14 @@ export interface DatabaseService {
      * Unique identifier of this database service instance.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
     /**
      * Name that identifies this database service.
      */
@@ -101,6 +107,7 @@ export interface DatabaseService {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -117,6 +124,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -209,6 +239,8 @@ export interface DatabaseConnection {
  *
  * MongoDB Connection Config
  *
+ * Cassandra Connection Config
+ *
  * Couchbase Connection Config
  *
  * Greenplum Database Connection Config
@@ -228,6 +260,8 @@ export interface DatabaseConnection {
  * Synapse Database Connection Config
  *
  * Exasol Database Connection Config
+ *
+ * Cockroach Database Connection Config
  */
 export interface ConfigClass {
     /**
@@ -236,9 +270,17 @@ export interface ConfigClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Cost per TiB for BigQuery usage
+     */
+    costPerTB?: number;
+    /**
      * GCP Credentials
      */
     credentials?: GCPCredentials;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: ConfigDatabaseFilterPattern;
     /**
      * BigQuery APIs URL.
      *
@@ -283,6 +325,9 @@ export interface ConfigClass {
      * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
      * host when using the `mongodb+srv` scheme.
      *
+     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
+     * host when using the `cassandra+srv` scheme.
+     *
      * Host and port of the Doris service.
      *
      * Host and port of the Teradata service.
@@ -290,9 +335,15 @@ export interface ConfigClass {
      * Host and Port of the SAP ERP instance.
      *
      * Host and port of the Azure Synapse service.
+     *
+     * Host and port of the Cockrooach service.
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: SchemaFilterPatternObject;
     /**
      * SQLAlchemy driver scheme options.
      *
@@ -300,10 +351,11 @@ export interface ConfigClass {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                ConfigScheme;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
-    supportsDBTExtraction?: boolean;
+    scheme?:                                ConfigScheme;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
@@ -316,6 +368,10 @@ export interface ConfigClass {
      * Supports Usage Extraction.
      */
     supportsUsageExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Taxonomy location used to fetch policy tags
      */
@@ -373,6 +429,9 @@ export interface ConfigClass {
      *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
      */
     database?: string;
     /**
@@ -513,6 +572,9 @@ export interface ConfigClass {
      * Username to connect to MongoDB. This user should have privileges to read all the metadata
      * in MongoDB.
      *
+     * Username to connect to Cassandra. This user should have privileges to read all the
+     * metadata in Cassandra.
+     *
      * Username to connect to Couchbase. This user should have privileges to read all the
      * metadata in Couchbase.
      *
@@ -532,6 +594,9 @@ export interface ConfigClass {
      *
      * Username to connect to Exasol. This user should have privileges to read all the metadata
      * in Exasol.
+     *
+     * Username to connect to Cockroach. This user should have privileges to read all the
+     * metadata in Cockroach.
      */
     username?: string;
     /**
@@ -584,9 +649,21 @@ export interface ConfigClass {
      */
     httpPath?: string;
     /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
      * Generated Token to connect to Databricks.
      */
-    token?:                         string;
+    token?: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?:               string;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -687,10 +764,18 @@ export interface ConfigClass {
      */
     account?: string;
     /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
+    /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
      */
     clientSessionKeepAlive?: boolean;
+    /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
@@ -865,6 +950,8 @@ export enum AuthMechanismEnum {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * Configuration for connecting to DataStax Astra DB in the cloud.
  */
 export interface AuthConfigurationType {
     /**
@@ -877,6 +964,10 @@ export interface AuthConfigurationType {
      * JWT to connect to source.
      */
     jwt?: string;
+    /**
+     * Configuration for connecting to DataStax Astra DB in the cloud.
+     */
+    cloudConfig?: DataStaxAstraDBConfiguration;
 }
 
 /**
@@ -953,6 +1044,30 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Configuration for connecting to DataStax Astra DB in the cloud.
+ */
+export interface DataStaxAstraDBConfiguration {
+    /**
+     * Timeout in seconds for establishing new connections to Cassandra.
+     */
+    connectTimeout?: number;
+    /**
+     * Timeout in seconds for individual Cassandra requests.
+     */
+    requestTimeout?: number;
+    /**
+     * File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax
+     * Astra DB.
+     */
+    secureConnectBundle?: string;
+    /**
+     * The Astra DB application token used for authentication.
+     */
+    token?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1513,6 +1628,27 @@ export interface GCPCredentials {
 }
 
 /**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface ConfigDatabaseFilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * Specifies the logon authentication method. Possible values are TD2 (the default), JWT,
  * LDAP, KRB5 for Kerberos, or TDNEGO
  */
@@ -1550,6 +1686,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: HiveMetastoreConnectionDetailsDatabaseFilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -1561,6 +1701,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DefaultSchemaFilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -1578,6 +1722,10 @@ export interface HiveMetastoreConnectionDetails {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -1619,6 +1767,27 @@ export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface HiveMetastoreConnectionDetailsDatabaseFilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -1700,6 +1869,15 @@ export interface AwsCredentials {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DefaultSchemaFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum HiveMetastoreConnectionDetailsScheme {
@@ -1743,6 +1921,26 @@ export enum SSLMode {
 }
 
 /**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
  * Service Type
  *
  * Service type.
@@ -1776,6 +1974,27 @@ export interface OracleConnectionType {
 }
 
 /**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface SchemaFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  *
  * Mongo connection scheme options.
@@ -1787,6 +2006,7 @@ export enum ConfigScheme {
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
@@ -1853,7 +2073,9 @@ export enum ConfigType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",
@@ -1916,6 +2138,8 @@ export enum VerifySSL {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Database service belongs to.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline.
  */
 export interface EntityReference {
     /**
@@ -1968,7 +2192,9 @@ export enum DatabaseServiceType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",

@@ -19,6 +19,7 @@ import static java.util.function.Function.identity;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -74,6 +75,22 @@ public class ConnectionAwareAnnotationSqlLocator implements SqlLocator {
                             .findFirst())
                 .flatMap(identity()) // Unwrap Option<Optional<?>> to Optional<?>
                 .map(ConnectionAwareSqlQuery::value),
+        () -> {
+          Optional<ConnectionAwareSqlBatchContainer> containerAnnotation =
+              Optional.ofNullable(method.getAnnotation(ConnectionAwareSqlBatchContainer.class));
+
+          Optional<List<ConnectionAwareSqlBatch>> annotationsList =
+              containerAnnotation.map(ConnectionAwareSqlBatchContainer::value).map(Arrays::asList);
+
+          Optional<ConnectionAwareSqlBatch> matchingAnnotation =
+              annotationsList.flatMap(
+                  annotations ->
+                      annotations.stream()
+                          .filter(annotation -> annotation.connectionType().equals(connectionType))
+                          .findFirst());
+
+          return matchingAnnotation.map(ConnectionAwareSqlBatch::value);
+        },
         () -> SqlAnnotations.getAnnotationValue(method));
   }
 }

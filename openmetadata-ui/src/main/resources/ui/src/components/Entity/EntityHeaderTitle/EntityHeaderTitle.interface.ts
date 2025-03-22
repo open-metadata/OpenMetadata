@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../../../enums/entity.enum';
 import { AssetCertification } from '../../../generated/entity/data/table';
 
 export interface EntityHeaderTitleProps {
@@ -27,4 +28,13 @@ export interface EntityHeaderTitleProps {
   isDisabled?: boolean;
   showName?: boolean;
   certification?: AssetCertification;
+  excludeEntityService?: boolean;
+  isFollowing?: boolean;
+  isFollowingLoading?: boolean;
+  handleFollowingClick?: () => void;
+  followers?: number;
+  entityType?: EntityType;
+  nameClassName?: string;
+  displayNameClassName?: string;
+  isCustomizedView?: boolean;
 }

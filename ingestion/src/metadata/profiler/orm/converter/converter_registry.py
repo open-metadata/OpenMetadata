@@ -17,6 +17,7 @@ from collections import defaultdict
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
 from metadata.profiler.orm.converter.bigquery.converter import BigqueryMapTypes
 from metadata.profiler.orm.converter.common import CommonMapTypes
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
@@ -28,3 +29,4 @@ converter_registry[DatabaseServiceType.BigQuery] = BigqueryMapTypes
 converter_registry[DatabaseServiceType.Snowflake] = SnowflakeMapTypes
 converter_registry[DatabaseServiceType.Redshift] = RedshiftMapTypes
 converter_registry[DatabaseServiceType.Mssql] = MssqlMapTypes
+converter_registry[DatabaseServiceType.AzureSQL] = AzureSqlMapTypes

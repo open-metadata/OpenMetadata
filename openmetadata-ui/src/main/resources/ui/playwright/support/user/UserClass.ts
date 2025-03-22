@@ -127,7 +127,7 @@ export class UserClass {
     await dataStewardTeam.create(apiContext);
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
     if (this.isUserDataSteward) {
       await dataStewardPolicy.delete(apiContext);
       await dataStewardRoles.delete(apiContext);
@@ -135,7 +135,7 @@ export class UserClass {
     }
 
     const response = await apiContext.delete(
-      `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=true`
+      `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=${hardDelete}`
     );
 
     return response.body;
@@ -157,6 +157,17 @@ export class UserClass {
     const loginRes = page.waitForResponse('/api/v1/users/login');
     await page.getByTestId('login').click();
     await loginRes;
+
+    const modal = await page
+      .getByRole('dialog')
+      .locator('div')
+      .filter({ hasText: 'Getting Started' })
+      .nth(1)
+      .isVisible();
+
+    if (modal) {
+      await page.getByRole('dialog').getByRole('img').first().click();
+    }
   }
 
   async logout(page: Page) {

@@ -18,9 +18,6 @@ import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../../constants/constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/api/feed/createThread';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -28,22 +25,25 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../generated/tests/testCase';
 import {
   Severities,
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
   getListTestCaseIncidentByStateId,
   postTestCaseIncidentStatus,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -56,7 +56,6 @@ import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.inte
 
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
-  testCaseData,
   fetchTaskCount,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
@@ -64,6 +63,7 @@ const IncidentManagerPageHeader = ({
   const [testCaseStatusData, setTestCaseStatusData] =
     useState<TestCaseResolutionStatus>();
   const [isLoading, setIsLoading] = useState(true);
+  const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
   const { fqn } = useParams<{ fqn: string }>();
   const decodedFqn = getDecodedFqn(fqn);
@@ -75,6 +75,17 @@ const IncidentManagerPageHeader = ({
     updateTestCaseIncidentStatus,
     initialAssignees,
   } = useActivityFeedProvider();
+
+  const columnName = useMemo(() => {
+    const isColumn = testCaseData?.entityLink.includes('::columns::');
+    if (isColumn) {
+      const name = getColumnNameFromEntityLink(testCaseData?.entityLink ?? '');
+
+      return name;
+    }
+
+    return null;
+  }, [testCaseData]);
 
   const tableFqn = useMemo(
     () => getEntityFQN(testCaseData?.entityLink ?? ''),
@@ -198,14 +209,14 @@ const IncidentManagerPageHeader = ({
     }
   }, [testCaseData]);
 
-  const { permissions } = usePermissionProvider();
-  const hasEditPermission = useMemo(() => {
-    return checkPermission(
-      Operation.EditAll,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
+  const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
+    return {
+      hasEditStatusPermission:
+        testCasePermission?.EditAll || testCasePermission?.EditStatus,
+      hasEditOwnerPermission:
+        testCasePermission?.EditAll || testCasePermission?.EditOwners,
+    };
+  }, [testCasePermission]);
 
   const statusDetails = useMemo(() => {
     if (isLoading) {
@@ -243,7 +254,7 @@ const IncidentManagerPageHeader = ({
                 className="font-medium"
                 data-testid="table-name"
                 to={getTaskDetailPath(activeTask)}>
-                {`#${activeTask?.task?.id}` ?? '--'}
+                {`#${activeTask?.task?.id}`}
               </Link>
             </Typography.Text>
           </>
@@ -256,6 +267,7 @@ const IncidentManagerPageHeader = ({
 
           <TestCaseIncidentManagerStatus
             data={testCaseStatusData}
+            hasPermission={hasEditStatusPermission}
             usersList={initialAssignees}
             onSubmit={onIncidentStatusUpdate}
           />
@@ -267,7 +279,7 @@ const IncidentManagerPageHeader = ({
           <span className="text-grey-muted">{`${t('label.assignee')}: `}</span>
 
           <OwnerLabel
-            hasPermission={hasEditPermission}
+            hasPermission={hasEditStatusPermission}
             multiple={{
               user: false,
               team: false,
@@ -287,18 +299,25 @@ const IncidentManagerPageHeader = ({
           <span className="text-grey-muted">{`${t('label.severity')}: `}</span>
 
           <Severity
+            hasPermission={hasEditStatusPermission}
             severity={testCaseStatusData.severity}
             onSubmit={handleSeverityUpdate}
           />
         </Typography.Text>
       </>
     );
-  }, [testCaseStatusData, isLoading, activeTask, initialAssignees]);
+  }, [
+    testCaseStatusData,
+    isLoading,
+    activeTask,
+    initialAssignees,
+    hasEditStatusPermission,
+  ]);
 
   return (
     <Space wrap align="center">
       <OwnerLabel
-        hasPermission={hasEditPermission}
+        hasPermission={hasEditOwnerPermission}
         owners={testCaseData?.owners}
         onUpdate={onOwnerUpdate}
       />
@@ -324,6 +343,17 @@ const IncidentManagerPageHeader = ({
               }}>
               {getNameFromFQN(tableFqn)}
             </Link>
+          </Typography.Text>
+        </>
+      )}
+      {columnName && (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <Typography.Text className="self-center text-xs whitespace-nowrap">
+            <span className="text-grey-muted">{`${t('label.column')}: `}</span>
+            <span className="font-medium" data-testid="test-column-name">
+              {columnName}
+            </span>
           </Typography.Text>
         </>
       )}

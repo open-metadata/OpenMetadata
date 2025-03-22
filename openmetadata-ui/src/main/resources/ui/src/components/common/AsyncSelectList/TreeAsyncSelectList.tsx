@@ -43,7 +43,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import {
   convertGlossaryTermsToTreeOptions,
   filterTreeNodeOptions,
-  findGlossaryTermByFqn,
+  findItemByFqn,
 } from '../../../utils/GlossaryUtils';
 import {
   escapeESReservedCharacters,
@@ -173,6 +173,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
     return (
       <TagsV1
+        isEditTags
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}
         tagProps={tagProps}
@@ -199,7 +200,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       if (lastSelectedMap.has(value)) {
         return lastSelectedMap.get(value) as SelectOption;
       }
-      const initialData = findGlossaryTermByFqn(
+      const initialData = findItemByFqn(
         [
           ...glossaries,
           ...(isNull(searchOptions) ? [] : searchOptions),
@@ -267,13 +268,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
   }, 300);
 
-  const handleDropdownChange = (open: boolean) => {
-    if (!open) {
-      // Close the form when the dropdown closes
-      onCancel && onCancel();
-    }
-  };
-
   useEffect(() => {
     if (glossaries.length) {
       expandableKeys.current = glossaries.map((glossary) => glossary.id);
@@ -334,7 +328,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       treeData={treeData}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
-      onDropdownVisibleChange={handleDropdownChange}
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}

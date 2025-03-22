@@ -18,7 +18,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
-import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
@@ -37,6 +36,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
@@ -86,7 +86,7 @@ const FeedCardBodyV1 = ({
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
-          entityType === EntityType.TEST_SUITE && entityInfo.executable;
+          entityType === EntityType.TEST_SUITE && entityInfo.basic;
         const isObservabilityAlert =
           entityType === EntityType.EVENT_SUBSCRIPTION &&
           (entityInfo as EventSubscription).alertType ===
@@ -121,7 +121,7 @@ const FeedCardBodyV1 = ({
     }
 
     return (
-      <RichTextEditorPreviewer
+      <RichTextEditorPreviewerV1
         className="text-wrap"
         markdown={getFrontEndFormat(message)}
       />
@@ -212,13 +212,21 @@ const FeedCardBodyV1 = ({
             ) : (
               <Row>
                 <Col span={24}>
-                  <RichTextEditorPreviewer
+                  <RichTextEditorPreviewerV1
                     className="text-wrap"
                     markdown={announcement.description ?? ''}
                   />
                 </Col>
               </Row>
             )}
+            <Row>
+              <Col span={24}>
+                <RichTextEditorPreviewerV1
+                  className="text-wrap"
+                  markdown={announcement.description ?? ''}
+                />
+              </Col>
+            </Row>
           </>
         ) : (
           feedBodyRender

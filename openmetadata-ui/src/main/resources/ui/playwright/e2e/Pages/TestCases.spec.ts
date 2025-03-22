@@ -16,6 +16,7 @@ import {
   descriptionBox,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 
@@ -79,18 +80,27 @@ test('Table difference test case', async ({ page }) => {
         .locator('div')
         .click();
 
-      await page.fill(`#tableTestForm_params_keyColumns_0_value`, 'user_id');
-      await page.getByTitle('user_id').click();
+      await page.fill(
+        `#tableTestForm_params_keyColumns_0_value`,
+        table1.entity?.columns[0].name
+      );
+      await page.getByTitle(table1.entity?.columns[0].name).click();
       await page.fill('#tableTestForm_params_threshold', testCase.threshold);
-      await page.fill('#tableTestForm_params_useColumns_0_value', 'user_id');
-
-      await expect(page.getByTitle('user_id').nth(2)).toHaveClass(
-        /ant-select-item-option-disabled/
+      await page.fill(
+        '#tableTestForm_params_useColumns_0_value',
+        table1.entity?.columns[0].name
       );
 
+      await expect(
+        page.getByTitle(table1.entity?.columns[0].name).nth(2)
+      ).toHaveClass(/ant-select-item-option-disabled/);
+
       await page.locator('#tableTestForm_params_useColumns_0_value').clear();
-      await page.fill('#tableTestForm_params_useColumns_0_value', 'shop_id');
-      await page.getByTitle('shop_id').click();
+      await page.fill(
+        '#tableTestForm_params_useColumns_0_value',
+        table1.entity?.columns[1].name
+      );
+      await page.getByTitle(table1.entity?.columns[1].name).click();
 
       await page.fill('#tableTestForm_params_where', 'test');
       const createTestCaseResponse = page.waitForResponse(
@@ -121,23 +131,29 @@ test('Table difference test case', async ({ page }) => {
         .filter({ hasText: 'Key Columns' })
         .getByRole('button')
         .click();
-      await page.fill('#tableTestForm_params_keyColumns_1_value', 'email');
-      await page.getByTitle('email', { exact: true }).click();
+      await page.fill(
+        '#tableTestForm_params_keyColumns_1_value',
+        table1.entity?.columns[3].name
+      );
+      await page
+        .getByTitle(table1.entity?.columns[3].name, { exact: true })
+        .click();
 
       await page
         .locator('label')
         .filter({ hasText: 'Use Columns' })
         .getByRole('button')
         .click();
-      await page.fill('#tableTestForm_params_useColumns_1_value', 'name');
-      await page.getByTitle('name', { exact: true }).click();
+      await page.fill(
+        '#tableTestForm_params_useColumns_1_value',
+        table1.entity?.columns[2].name
+      );
+      await page
+        .getByTitle(table1.entity?.columns[2].name, { exact: true })
+        .click();
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {
@@ -233,11 +249,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByPlaceholder('Enter a Threshold').fill('244');
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {
@@ -252,17 +264,17 @@ test('Custom SQL Query', async ({ page }) => {
 test('Column Values To Be Not Null', async ({ page }) => {
   test.slow();
 
+  await redirectToHomePage(page);
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
   const NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE = {
     name: 'id_column_values_to_be_not_null',
     displayName: 'ID Column Values To Be Not Null',
-    column: 'user_id',
+    column: table.entity?.columns[0].name,
     type: 'columnValuesToBeNotNull',
     label: 'Column Values To Be Not Null',
     description: 'New table test case for columnValuesToBeNotNull',
   };
-  await redirectToHomePage(page);
-  const { afterAction, apiContext } = await getApiContext(page);
-  const table = new TableClass();
   await table.create(apiContext);
 
   await visitDataQualityTab(page, table);
@@ -291,10 +303,9 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.click(
         `[data-testid="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`
       );
-      await page.fill(
-        descriptionBox,
-        NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.description
-      );
+      await page
+        .locator(descriptionBox)
+        .fill(NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.description);
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');
@@ -334,11 +345,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.keyboard.type(' update');
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {

@@ -34,15 +34,18 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
 } from '../../../utils/EntityUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   fetchEntityDetail,
   fetchOptions,
@@ -57,12 +60,12 @@ import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestDescription = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { t } = useTranslation();
   const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
@@ -120,6 +123,7 @@ const RequestDescription = () => {
   const onCreateTask: FormProps['onFinish'] = (value) => {
     setIsLoading(true);
     if (assignees.length) {
+      const suggestion = markdownRef.current?.getEditorContent?.();
       const data: CreateThread = {
         from: currentUser?.name as string,
         message: value.title || taskMessage,
@@ -129,12 +133,15 @@ const RequestDescription = () => {
             id: assignee.value,
             type: assignee.type,
           })),
-          suggestion: markdownRef.current?.getEditorContent(),
+          suggestion: isDescriptionContentEmpty(suggestion)
+            ? undefined
+            : suggestion,
           type: TaskType.RequestDescription,
           oldValue: '',
         },
         type: ThreadType.Task,
       };
+
       postThread(data)
         .then(() => {
           showSuccessToast(
@@ -181,7 +188,7 @@ const RequestDescription = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 700,
@@ -310,4 +317,4 @@ const RequestDescription = () => {
   );
 };
 
-export default RequestDescription;
+export default withPageLayout(i18n.t('label.task'))(RequestDescription);

@@ -10,43 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as setup } from '@playwright/test';
-import { JWT_EXPIRY_TIME_MAP } from '../constant/login';
+import { test as setup } from '@playwright/test';
 import { AdminClass } from '../support/user/AdminClass';
-import { getApiContext } from '../utils/common';
-import { updateJWTTokenExpiryTime } from '../utils/login';
-import {
-  updateDefaultDataConsumerPolicy,
-  updateDefaultOrganizationPolicy,
-} from '../utils/permission';
-import { removeOrganizationPolicyAndRole } from '../utils/team';
+import { loginAsAdmin } from '../utils/initialSetup';
 const adminFile = 'playwright/.auth/admin.json';
-
-const initialSetup = async (page: Page) => {
-  const { apiContext, afterAction } = await getApiContext(page);
-  // Update JWT expiry time to 4 hours
-  await updateJWTTokenExpiryTime(apiContext, JWT_EXPIRY_TIME_MAP['4 hours']);
-  // Remove organization policy and role
-  await removeOrganizationPolicyAndRole(apiContext);
-  // update default Organization policy
-  await updateDefaultOrganizationPolicy(apiContext);
-  // update default Data consumer policy
-  await updateDefaultDataConsumerPolicy(apiContext);
-
-  await afterAction();
-};
 
 setup('authenticate as admin', async ({ page }) => {
   const admin = new AdminClass();
 
   // login with admin user
-  await admin.login(page);
-  await page.waitForURL('**/my-data');
-  await initialSetup(page);
-  await admin.logout(page);
-  await page.waitForURL('**/signin');
-  await admin.login(page);
-  await page.waitForURL('**/my-data');
+  await loginAsAdmin(page, admin);
 
   // End of authentication steps.
   await page.context().storageState({ path: adminFile });

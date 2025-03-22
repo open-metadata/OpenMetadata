@@ -16,7 +16,7 @@ import { Button, Popover } from 'antd';
 import { groupBy, uniqueId } from 'lodash';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-reaction.svg';
+import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
@@ -105,31 +105,29 @@ const Reactions: FC<ReactionsProps> = ({
   return (
     <div className="d-flex items-center" data-testid="feed-reaction-container">
       {emojis}
-      {showAddEmoji && (
-        <Popover
-          arrowPointAtCenter
-          align={{ targetOffset: [0, -10] }}
-          content={reactionList}
-          open={visible}
-          overlayClassName="ant-popover-feed-reactions"
-          placement="topLeft"
-          trigger="click"
-          zIndex={9999}
-          onOpenChange={handleVisibleChange}>
-          <Button
-            className="flex-center p-0"
-            data-testid="add-reactions"
-            icon={<AddReactionIcon width={18} />}
-            shape="circle"
-            size="small"
-            title={t('label.add-entity', {
-              entity: t('label.reaction-lowercase-plural'),
-            })}
-            type="text"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </Popover>
-      )}
+      <Popover
+        arrowPointAtCenter
+        align={{ targetOffset: [0, -10] }}
+        content={reactionList}
+        open={visible}
+        overlayClassName="ant-popover-feed-reactions"
+        placement="topLeft"
+        trigger="click"
+        zIndex={9999}
+        onOpenChange={handleVisibleChange}>
+        <Button
+          className="flex-center p-0"
+          data-testid="add-reactions"
+          icon={<AddReactionIcon height={16} />}
+          shape="circle"
+          size="small"
+          title={t('label.add-entity', {
+            entity: t('label.reaction-lowercase-plural'),
+          })}
+          type="text"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </Popover>
     </div>
   );
 };
