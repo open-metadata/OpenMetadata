@@ -445,7 +445,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(database),
       })}>

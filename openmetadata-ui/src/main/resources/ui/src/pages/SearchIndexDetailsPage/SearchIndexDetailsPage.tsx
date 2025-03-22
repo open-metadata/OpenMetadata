@@ -521,7 +521,6 @@ function SearchIndexDetailsPage() {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.search-index'),
       })}
