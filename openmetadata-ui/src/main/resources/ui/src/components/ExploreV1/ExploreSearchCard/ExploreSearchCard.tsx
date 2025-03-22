@@ -65,6 +65,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       onCheckboxChange,
       searchValue,
       score,
+      classNameForBreadcrumb,
     },
     ref
   ) => {
@@ -209,6 +210,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
                   <TitleBreadcrumb
+                    className={classNameForBreadcrumb}
                     titleLinks={breadcrumbs}
                     widthDeductions={780}
                   />

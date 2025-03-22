@@ -34,8 +34,18 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
+import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
+import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
+import static org.openmetadata.service.search.SearchConstants.HITS;
+import static org.openmetadata.service.search.SearchConstants.ID;
+import static org.openmetadata.service.search.SearchConstants.PARENT;
+import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
+import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
+import static org.openmetadata.service.search.SearchConstants.TEST_SUITES;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
-import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
+import static org.openmetadata.service.search.models.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
@@ -134,7 +144,7 @@ public class SearchRepository {
 
   public static final String ELASTIC_SEARCH_EXTENSION = "service.eventPublisher";
 
-  private NLQService nlqService;
+  protected NLQService nlqService;
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
@@ -232,15 +242,15 @@ public class SearchRepository {
       return name;
     }
     return Arrays.stream(name.split(","))
-        .map(index -> clusterAlias + indexNameSeparator + index.trim())
+        .map(index -> clusterAlias + INDEX_NAME_SEPARATOR + index.trim())
         .collect(Collectors.joining(","));
   }
 
   public String getIndexNameWithoutAlias(String fullIndexName) {
     if (clusterAlias != null
         && !clusterAlias.isEmpty()
-        && fullIndexName.startsWith(clusterAlias + indexNameSeparator)) {
-      return fullIndexName.substring((clusterAlias + indexNameSeparator).length());
+        && fullIndexName.startsWith(clusterAlias + INDEX_NAME_SEPARATOR)) {
+      return fullIndexName.substring((clusterAlias + INDEX_NAME_SEPARATOR).length());
     }
     return fullIndexName;
   }
@@ -258,9 +268,8 @@ public class SearchRepository {
       }
     } catch (Exception e) {
       LOG.error(
-          String.format(
-              "Failed to Create Index for entity %s due to ",
-              indexMapping.getIndexName(clusterAlias)),
+          String.format(FAILED_TO_CREATE_INDEX_MESSAGE),
+          indexMapping.getIndexName(clusterAlias),
           e);
     }
   }
@@ -435,7 +444,7 @@ public class SearchRepository {
             entityType, entityId, changeDescription, indexMapping, entity);
         propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
         propagateCertificationTags(entityType, entity, changeDescription);
-        propagatetoRelatedEntities(entityType, entityId, changeDescription, indexMapping, entity);
+        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
       } catch (Exception ie) {
         LOG.error(
             "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -477,7 +486,7 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
             || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
-          parentMatch = new ImmutablePair<>("service.id", entityId);
+          parentMatch = new ImmutablePair<>(SERVICE_ID, entityId);
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
         }
@@ -513,7 +522,7 @@ public class SearchRepository {
       }
       searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
-          new ImmutablePair<>("tags.tagFQN", glossaryFQN),
+          new ImmutablePair<>(TAGS_FQN, glossaryFQN),
           new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
     }
   }
@@ -536,9 +545,8 @@ public class SearchRepository {
     }
   }
 
-  public void propagatetoRelatedEntities(
+  public void propagateToRelatedEntities(
       String entityType,
-      String entityId,
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
       EntityInterface entity) {
@@ -546,7 +554,7 @@ public class SearchRepository {
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
       String indexName = indexMapping.getIndexName();
       for (FieldChange field : changeDescription.getFieldsAdded()) {
-        if (field.getName().contains("parent")) {
+        if (field.getName().contains(PARENT)) {
           String oldParentFQN = entity.getName();
           String newParentFQN = entity.getFullyQualifiedName();
           // Propagate FQN updates to all subchildren
@@ -556,7 +564,7 @@ public class SearchRepository {
       }
 
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
-        if (field.getName().contains("parent")) {
+        if (field.getName().contains(PARENT)) {
           EntityReference entityReferenceBeforeUpdate =
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
           // Propagate FQN updates to all subchildren
@@ -570,7 +578,7 @@ public class SearchRepository {
       }
 
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
-        if (field.getName().contains("parent")) {
+        if (field.getName().contains(PARENT)) {
           EntityReference entityReferenceBeforeUpdate =
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
           // Propagate FQN updates to all subchildren
@@ -602,7 +610,7 @@ public class SearchRepository {
         }
 
         if (field.getName().contains(FIELD_NAME)) {
-          searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, "tags.tagFQN");
+          searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
 
         if (field.getName().equalsIgnoreCase(Entity.FIELD_DISPLAY_NAME)) {
@@ -612,7 +620,7 @@ public class SearchRepository {
           paramMap.put("updates", updates);
           searchClient.updateChildren(
               GLOBAL_SEARCH_ALIAS,
-              new ImmutablePair<>("tags.tagFQN", oldFQN),
+              new ImmutablePair<>(TAGS_FQN, oldFQN),
               new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
         }
       }
@@ -1009,10 +1017,10 @@ public class SearchRepository {
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
       }
-      if (fieldChange.getName().equalsIgnoreCase("testSuites")) {
+      if (fieldChange.getName().equalsIgnoreCase(TEST_SUITES)) {
         scriptTxt.append("ctx._source.testSuites = params.testSuites;");
         Map<String, Object> doc = JsonUtils.getMap(entity);
-        fieldAddParams.put("testSuites", doc.get("testSuites"));
+        fieldAddParams.put(TEST_SUITES, doc.get(TEST_SUITES));
       }
     }
     return scriptTxt.toString();
@@ -1213,12 +1221,13 @@ public class SearchRepository {
 
       // Extract hits from the response JSON and create entity references
       for (Iterator<JsonNode> it =
-              ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
+              ((ArrayNode) Objects.requireNonNull(JsonUtils.extractValue(json, HITS, HITS)))
+                  .elements();
           it.hasNext(); ) {
         JsonNode jsonNode = it.next();
-        String id = JsonUtils.extractValue(jsonNode, "_source", "id");
-        String fqn = JsonUtils.extractValue(jsonNode, "_source", "fullyQualifiedName");
-        String type = JsonUtils.extractValue(jsonNode, "_source", "entityType");
+        String id = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, ID);
+        String fqn = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, FULLY_QUALIFIED_NAME);
+        String type = JsonUtils.extractValue(jsonNode, SEARCH_SOURCE, ENTITY_TYPE);
         if (!nullOrEmpty(fqn) && !nullOrEmpty(type)) {
           fqns.add(
               new EntityReference()
@@ -1253,10 +1262,9 @@ public class SearchRepository {
 
   public void initializeNLQService(ElasticSearchConfiguration config) {
     try {
-      IndexMapping.initializeSchemaCache();
       NaturalLanguageSearchConfiguration nlqConfig = config.getNaturalLanguageSearch();
       if (nlqConfig != null && Boolean.TRUE.equals(nlqConfig.getEnabled())) {
-        nlqService = NLQServiceFactory.createNLQService(nlqConfig);
+        nlqService = NLQServiceFactory.createNLQService(config);
         LOG.info("Initialized NLQ service with provider: {}", nlqConfig.getProviderClass());
       } else {
         LOG.info("Natural language search is not enabled");

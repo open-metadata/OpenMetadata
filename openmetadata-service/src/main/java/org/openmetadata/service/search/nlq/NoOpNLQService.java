@@ -25,4 +25,7 @@ public class NoOpNLQService implements NLQService {
       throws IOException {
     return null;
   }
+
+  @Override
+  public void cacheQuery(String query, String transformedQuery) {}
 }
