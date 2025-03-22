@@ -35,6 +35,7 @@ import {
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import CertificationFeed from '../../ActivityFeedCardV2/FeedCardBody/CertificationFeed/CertificationFeed.component';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
 import './feed-card-body-v1.less';
@@ -78,6 +79,10 @@ const FeedCardBodyV1 = ({
 
       if (cardStyle === CardStyle.Tags) {
         return <TagsFeed feed={feed} />;
+      }
+
+      if (cardStyle === CardStyle.Certification) {
+        return <CertificationFeed feed={feed} />;
       }
 
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
