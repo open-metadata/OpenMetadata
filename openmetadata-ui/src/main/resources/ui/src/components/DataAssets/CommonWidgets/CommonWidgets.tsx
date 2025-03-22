@@ -142,6 +142,7 @@ export const CommonWidgets = ({
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -157,6 +158,7 @@ export const CommonWidgets = ({
   const glossaryWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -213,6 +215,7 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
       return (
         <DataProductsContainer
+          newLook
           activeDomain={domain}
           dataProducts={dataProducts ?? []}
           hasPermission={false}
@@ -228,6 +231,7 @@ export const CommonWidgets = ({
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
+          newLook
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}

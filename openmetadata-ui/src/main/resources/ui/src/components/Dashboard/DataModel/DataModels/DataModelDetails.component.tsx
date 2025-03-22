@@ -199,7 +199,6 @@ const DataModelDetails = ({
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.data-model'),
       })}

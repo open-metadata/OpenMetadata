@@ -766,7 +766,6 @@ const TableDetailsPageV1: React.FC = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.table'),
       })}
