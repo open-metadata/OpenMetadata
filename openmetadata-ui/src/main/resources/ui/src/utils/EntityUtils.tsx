@@ -1651,7 +1651,8 @@ export const getBreadcrumbForTable = (
             name: entity.name,
             url: getEntityLinkFromType(
               entity.fullyQualifiedName ?? '',
-              (entity as SourceType).entityType as EntityType
+              ((entity as SourceType).entityType as EntityType) ??
+                EntityType.TABLE
             ),
           },
         ]
@@ -1938,7 +1939,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE
           ),
         },
       ];
@@ -1975,7 +1977,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE_SCHEMA
           ),
         },
       ];
@@ -1989,6 +1992,17 @@ export const getEntityBreadcrumbs = (
             getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
           ),
         },
+        ...(includeCurrent
+          ? [
+              {
+                name: entity.name,
+                url: getServiceDetailsPath(
+                  entity?.name,
+                  ServiceCategory.DATABASE_SERVICES
+                ),
+              },
+            ]
+          : []),
       ];
 
     case EntityType.DASHBOARD_SERVICE:

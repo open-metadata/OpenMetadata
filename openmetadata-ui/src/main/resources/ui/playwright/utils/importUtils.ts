@@ -70,6 +70,8 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await page.waitForLoadState('networkidle');
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const userListResponse = page.waitForResponse(
     '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
   );
