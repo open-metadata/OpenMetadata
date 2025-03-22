@@ -23,6 +23,7 @@ import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-fi
 import { ROUTES } from '../../../constants/constants';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
@@ -40,6 +41,7 @@ const EntityHeaderTitle = ({
   isDisabled,
   className,
   showName = true,
+  showOnlyDisplayName = false,
   certification,
   excludeEntityService,
   isFollowing,
@@ -64,6 +66,19 @@ const EntityHeaderTitle = ({
   const isTourRoute = useMemo(
     () => location.pathname.includes(ROUTES.TOUR),
     [location.pathname]
+  );
+
+  const entityName = useMemo(
+    () =>
+      stringToHTML(
+        showOnlyDisplayName
+          ? getEntityName({
+              displayName,
+              name,
+            })
+          : name
+      ),
+    [showOnlyDisplayName, displayName, name]
   );
 
   const content = (
@@ -97,7 +112,7 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Tooltip placement="bottom" title={stringToHTML(name)}>
+          <Tooltip placement="bottom" title={entityName}>
             <Typography.Text
               className={classNames(displayNameClassName, 'm-b-0', {
                 'display-sm entity-header-name font-semibold': !displayName,
@@ -105,7 +120,7 @@ const EntityHeaderTitle = ({
               })}
               data-testid="entity-header-name"
               ellipsis={{ tooltip: true }}>
-              {stringToHTML(name)}
+              {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
                   className="anticon vertical-baseline m-l-xss"

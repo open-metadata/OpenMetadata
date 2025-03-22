@@ -94,6 +94,7 @@ const EntityInfoDrawer = ({
 
           <Col span={24}>
             <EntityHeaderTitle
+              showOnlyDisplayName
               className="w-max-350"
               deleted={selectedNode.deleted}
               displayName={selectedNode.displayName}
