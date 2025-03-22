@@ -14,12 +14,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Page, PageType } from '../generated/system/ui/page';
+import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useApplicationStore } from './useApplicationStore';
 
-export const useCustomPages = (pageType: PageType) => {
+export const useCustomPages = (pageType: PageType | 'Navigation') => {
   const { selectedPersona } = useApplicationStore();
   const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
+  const [navigation, setNavigation] = useState<NavigationItem[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDocument = useCallback(async () => {
@@ -29,6 +31,7 @@ export const useCustomPages = (pageType: PageType) => {
       setCustomizedPage(
         doc.data?.pages?.find((p: Page) => p.pageType === pageType)
       );
+      setNavigation(doc.data?.navigation);
     } catch (error) {
       // fail silent
     } finally {
@@ -46,6 +49,7 @@ export const useCustomPages = (pageType: PageType) => {
 
   return {
     customizedPage,
+    navigation,
     isLoading,
   };
 };

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
+import { kebabCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
@@ -46,22 +47,30 @@ function CustomizeGlossaryTermDetailPage({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
+  if (!currentPageType) {
+    return null;
+  }
+
   return (
     <PageLayoutV1
       mainContainerClassName="p-t-0"
-      pageContainerStyle={{
-        backgroundImage: `url(${gridBgImg})`,
-      }}
       pageTitle={t('label.customize-entity', {
-        entity: t('label.landing-page'),
+        entity: t('label.' + kebabCase(currentPageType)),
       })}>
-      <CustomizablePageHeader
-        personaName={getEntityName(personaDetails)}
-        onReset={handleReset}
-        onSave={handleSave}
-      />
-      <GlossaryHeaderWidget isGlossary={isGlossary} />
-      <CustomizeTabWidget />
+      <Row className="customize-details-page" gutter={[0, 20]}>
+        <Col span={24}>
+          <CustomizablePageHeader
+            personaName={getEntityName(personaDetails)}
+            onReset={handleReset}
+            onSave={handleSave}
+          />
+        </Col>
+        <Col span={24}>
+          <GlossaryHeaderWidget isGlossary={isGlossary} />
+        </Col>
+        {/* It will render cols inside the row */}
+        <CustomizeTabWidget />
+      </Row>
     </PageLayoutV1>
   );
 }

@@ -78,7 +78,7 @@ class DatabaseClassBase {
   public getDatabaseDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.SCHEMAS,
-      EntityTabs.ACTIVITY_FEEDS,
+      EntityTabs.ACTIVITY_FEED,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

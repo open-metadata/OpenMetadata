@@ -554,6 +554,7 @@ const DomainDetailsPage = ({
     subDomains,
     isSubDomainsLoading,
     queryFilter,
+    customizedPage?.tabs,
   ]);
 
   useEffect(() => {

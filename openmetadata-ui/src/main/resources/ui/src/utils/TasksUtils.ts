@@ -351,6 +351,7 @@ export const TASK_ENTITIES = [
   EntityType.PIPELINE,
   EntityType.MLMODEL,
   EntityType.CONTAINER,
+  EntityType.DATABASE,
   EntityType.DATABASE_SCHEMA,
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.STORED_PROCEDURE,

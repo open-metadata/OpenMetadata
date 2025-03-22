@@ -20,11 +20,11 @@ import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
-import { Page, PageType, Tab } from '../../../../generated/system/ui/page';
+import { PageType, Tab } from '../../../../generated/system/ui/page';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
+import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import customizeGlossaryTermPageClassBase from '../../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
@@ -53,9 +53,6 @@ type Props = {
 
 const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
-  const { currentPersonaDocStore } = useCustomizeStore();
-  // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
-  const { tab = EntityTabs.OVERVIEW } = useParams<{ tab: EntityTabs }>();
   const {
     data: selectedData,
     permissions,
@@ -63,24 +60,24 @@ const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
     isVersionView,
     type: entityType,
   } = useGenericContext<GlossaryTerm | Glossary>();
-
   const isGlossary = entityType === EntityType.GLOSSARY;
+  const { customizedPage } = useCustomPages(
+    isGlossary ? PageType.Glossary : PageType.GlossaryTerm
+  );
+  // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
+  const { tab = EntityTabs.OVERVIEW } = useParams<{ tab: EntityTabs }>();
 
   const layout = useMemo(() => {
-    if (!currentPersonaDocStore) {
+    if (!customizedPage) {
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     }
-    const pageType = isGlossary ? PageType.Glossary : PageType.GlossaryTerm;
-    const page = currentPersonaDocStore?.data?.pages?.find(
-      (p: Page) => p.pageType === pageType
-    );
 
-    if (page) {
-      return page.tabs.find((t: Tab) => t.id === tab)?.layout;
+    if (customizedPage) {
+      return customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout;
     } else {
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
     }
-  }, [currentPersonaDocStore, isGlossary, tab]);
+  }, [customizedPage, isGlossary, tab]);
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (selectedData.description !== updatedHTML) {
@@ -246,12 +243,12 @@ const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
       });
     };
 
-    return layout.map((widget: WidgetConfig) => (
+    return layout?.map((widget: WidgetConfig) => (
       <div
         data-grid={widget}
+        data-testid={widget.i}
         id={widget.i}
-        key={widget.i}
-        style={{ overflow: 'scroll' }}>
+        key={widget.i}>
         {getWidgetFromKeyInternal(widget)}
       </div>
     ));

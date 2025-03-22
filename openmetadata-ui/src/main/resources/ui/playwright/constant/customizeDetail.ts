@@ -109,14 +109,14 @@ export const CONTAINER_DEFAULT_TABS = [
 
 export const DATABASE_DEFAULT_TABS = [
   'Schemas',
-  'Activity Feeds',
+  'Activity Feeds & Tasks',
   'Custom Properties',
 ];
 
 export const DATABASE_SCHEMA_DEFAULT_TABS = [
   'Tables',
   'Stored Procedures',
-  'Activity Feeds',
+  'Activity Feeds & Tasks',
   'Custom Properties',
 ];
 

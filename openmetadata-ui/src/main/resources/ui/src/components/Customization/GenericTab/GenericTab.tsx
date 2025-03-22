@@ -14,10 +14,10 @@ import React, { useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
-import { Page, PageType, Tab } from '../../../generated/system/ui/page';
+import { PageType, Tab } from '../../../generated/system/ui/page';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import {
   getDefaultWidgetForTab,
   getWidgetsFromKey,
@@ -30,29 +30,25 @@ interface GenericTabProps {
 }
 
 export const GenericTab = ({ type }: GenericTabProps) => {
-  const { currentPersonaDocStore } = useCustomizeStore();
+  const { customizedPage } = useCustomPages(type);
   const { tab } = useParams<{ tab: EntityTabs }>();
 
   const layout = useMemo(() => {
-    if (!currentPersonaDocStore) {
+    if (!customizedPage) {
       return getDefaultWidgetForTab(type, tab);
     }
 
-    const page = currentPersonaDocStore?.data?.pages?.find(
-      (p: Page) => p.pageType === type
-    );
-
-    if (page) {
+    if (customizedPage) {
       return tab
-        ? page.tabs.find((t: Tab) => t.id === tab)?.layout
-        : page.tabs[0].layout;
+        ? customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout
+        : customizedPage.tabs?.[0].layout;
     } else {
       return getDefaultWidgetForTab(type, tab);
     }
-  }, [currentPersonaDocStore, tab, type]);
+  }, [customizedPage, tab, type]);
 
   const widgets = useMemo(() => {
-    return layout.map((widget: WidgetConfig) => {
+    return layout?.map((widget: WidgetConfig) => {
       return (
         <div
           className="overflow-auto-y"

@@ -136,6 +136,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await linkInColumn.click();
 
     await page.goBack();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(pageSizeDropdown).toHaveText('15 / Page');
   });
