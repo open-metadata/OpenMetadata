@@ -19,6 +19,7 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconFormatImage } from '../../../../assets/svg/ic-format-image.svg';
 import Loader from '../../../common/Loader/Loader';
+import { FileType } from '../../BlockEditor.interface';
 import imageClassBase from './ImageClassBase';
 import { ImagePopoverContentProps } from './ImageComponent.interface';
 
@@ -55,10 +56,9 @@ const ImageComponent: FC<NodeViewProps> = ({
 
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
 
-  const { imageSrc, isLoading } =
-    authenticatedImageUrl && needsAuthentication
-      ? authenticatedImageUrl(src)
-      : { imageSrc: src, isLoading: false };
+  const { imageSrc, isLoading } = authenticatedImageUrl
+    ? authenticatedImageUrl(src)
+    : { imageSrc: src, isLoading: false };
 
   // Reset states when src changes
   useEffect(() => {
@@ -148,6 +148,7 @@ const ImageComponent: FC<NodeViewProps> = ({
           content={
             <PopoverContent
               deleteNode={deleteNode}
+              fileType={FileType.IMAGE}
               isUploading={isUploading}
               isValidSource={isValidSource}
               src={imageSrc}

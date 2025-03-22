@@ -14,6 +14,7 @@ import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
 import { isEmpty } from 'lodash';
 import Showdown from 'showdown';
+import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
@@ -226,4 +227,39 @@ export const getTextFromHtmlString = (description?: string): string => {
   }
 
   return description.replace(/<[^>]{1,1000}>/g, '').trim();
+};
+
+export const getAcceptedFileTypes = (fileType: FileType) => {
+  switch (fileType) {
+    case FileType.IMAGE:
+      return 'image/*';
+    case FileType.VIDEO:
+      return 'video/*';
+    case FileType.AUDIO:
+      return 'audio/*';
+    case FileType.FILE:
+    default:
+      return '*/*';
+  }
+};
+
+/**
+ * Get the file type from the mime type
+ * @param mimeType The mime type
+ * @returns The file type
+ */
+export const getFileTypeFromMimeType = (mimeType: string) => {
+  if (mimeType.startsWith(FileType.IMAGE)) {
+    return FileType.IMAGE;
+  }
+
+  if (mimeType.startsWith(FileType.VIDEO)) {
+    return FileType.VIDEO;
+  }
+
+  if (mimeType.startsWith(FileType.AUDIO)) {
+    return FileType.AUDIO;
+  }
+
+  return FileType.FILE;
 };

@@ -10,71 +10,296 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+@import url('../../../../styles/variables.less');
+
 .file-attachment {
-  margin: 1em 0;
+  margin: 0.75em 0;
   position: relative;
-  border-radius: 4px;
+  border-radius: @border-radius-base;
   overflow: hidden;
+  background: @white;
+  border: 1px solid @border-color;
+  user-select: none;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-color: @border-color-2;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
 
   &.ProseMirror-selectednode {
     outline: none;
-    background: transparent;
+    background: @white;
+    border: 1px solid @primary-color;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
   }
 
   .file-content,
   .media-content {
-    padding: 8px 12px;
-    background: var(--background-default);
-    border: 1px solid var(--border-default);
-    border-radius: 4px;
+    padding: @padding-sm;
     transition: all 0.3s;
+    background: @white;
 
     &:hover {
-      background: var(--background-hover);
+      background: @grey-1;
+    }
+
+    &:focus,
+    &:focus-within {
+      outline: none;
+      background: @grey-1;
     }
   }
 
-  .file-link {
+  .file-link-container {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: var(--text-primary);
-    text-decoration: none;
+    justify-content: space-between;
+    width: 100%;
+    gap: @padding-sm;
+  }
 
-    &:hover {
+  .file-content-wrapper {
+    display: flex;
+    align-items: center;
+    gap: @padding-sm;
+    flex: 1;
+  }
+
+  .file-icon {
+    color: @grey-4;
+    font-size: 24px;
+    transition: all 0.3s;
+  }
+
+  .file-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .file-link {
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    max-width: 100%;
+    display: block;
+
+    &:hover,
+    &:focus,
+    &:active {
       text-decoration: none;
+      outline: none;
+    }
+
+    &:focus-visible {
+      outline: 2px solid @primary-color;
+      outline-offset: 2px;
+      border-radius: @border-radius-base;
     }
   }
 
   .file-name {
-    font-weight: 500;
+    font-weight: @font-medium;
+    color: @text-color;
+    font-size: @font-size-base;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.3s;
+
+    &:hover {
+      color: @primary-color;
+    }
+  }
+
+  .file-meta {
+    display: flex;
+    align-items: center;
+    gap: @padding-xss;
+    color: @grey-4;
+    font-size: @font-size-base - 1;
+  }
+
+  .separator {
+    color: @border-color;
   }
 
   .file-size {
-    color: var(--text-secondary);
-    font-size: 0.9em;
+    color: @grey-4;
+  }
+
+  .file-percentage {
+    color: @grey-4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: @padding-xss;
+    transition: all 0.3s;
+    border-radius: @border-radius-base;
+    width: 28px;
+    height: 28px;
+
+    &:hover {
+      color: @primary-color;
+      background: @primary-1;
+    }
+
+    .anticon {
+      font-size: @font-size-base + 2;
+    }
+  }
+
+  .delete-icon {
+    color: @grey-4;
+    font-size: @font-size-base + 2;
+    cursor: pointer;
+    padding: @padding-xss;
+    transition: all 0.3s;
+    border-radius: @border-radius-base;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      color: @error-color;
+      background: @error-bg-color;
+    }
   }
 
   // Styles for video and audio players
-  &.file-type-video,
-  &.file-type-audio {
+  &.file-type-video {
+    max-width: 800px;
+    margin: @margin-md auto;
+
     .media-content {
       padding: 0;
       overflow: hidden;
+      border-radius: @border-radius-base;
+      background: @grey-2;
 
-      .video-player,
+      .video-player {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        background: @black;
+        display: block;
+        outline: none;
+        transition: box-shadow 0.3s ease;
+
+        &:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        &::-webkit-media-controls-panel {
+          background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.8) 0%,
+            rgba(0, 0, 0, 0) 100%
+          );
+          padding: @padding-sm @padding-md;
+        }
+
+        &::-webkit-media-controls-timeline {
+          margin-bottom: 8px;
+          height: 4px;
+
+          &:hover {
+            height: 6px;
+          }
+        }
+
+        &::-webkit-media-controls-current-time-display,
+        &::-webkit-media-controls-time-remaining-display {
+          color: @white;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          padding: 0 @padding-xs;
+        }
+
+        &:focus-visible {
+          outline: 2px solid @primary-color;
+          outline-offset: 2px;
+        }
+      }
+    }
+  }
+
+  &.file-type-audio {
+    max-width: 600px;
+    margin: @margin-md auto;
+
+    .media-content {
+      padding: 0;
+      background: @grey-1;
+      border-radius: @border-radius-base;
+
       .audio-player {
         width: 100%;
-        max-width: 600px;
-        border-radius: 4px;
+        height: 56px;
+        padding: @padding-sm;
+        background: transparent;
         display: block;
-      }
+        outline: none;
 
-      .ant-spin {
-        min-height: 100px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        &::-webkit-media-controls-panel {
+          background: @white;
+          border: 1px solid @border-color;
+          border-radius: @border-radius-base;
+          padding: @padding-xs;
+        }
+
+        &::-webkit-media-controls-timeline {
+          height: 4px;
+          margin: 0 @padding-md;
+          transition: height 0.2s ease;
+
+          &:hover {
+            height: 6px;
+          }
+        }
+
+        &::-webkit-media-controls-volume-slider {
+          width: 80px;
+          height: 4px;
+          transition: height 0.2s ease;
+
+          &:hover {
+            height: 6px;
+          }
+        }
+
+        &::-webkit-media-controls-current-time-display,
+        &::-webkit-media-controls-time-remaining-display {
+          color: @text-color;
+          padding: 0 @padding-xs;
+        }
+
+        &:focus-visible {
+          outline: 2px solid @primary-color;
+          outline-offset: 2px;
+        }
+      }
+    }
+  }
+
+  .ant-spin {
+    min-height: 200px;
+    background: @grey-1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .ant-spin-dot {
+      transform: scale(1.2);
+
+      .ant-spin-dot-item {
+        background-color: @primary-color;
       }
     }
   }

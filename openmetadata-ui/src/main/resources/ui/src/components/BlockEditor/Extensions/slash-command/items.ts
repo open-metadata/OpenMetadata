@@ -27,6 +27,7 @@ import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
 import IconFormatImage from '../../../../assets/svg/ic-format-image.svg';
 import IconTable from '../../../../assets/svg/ic-format-table.svg';
 import MentionImage from '../../../../assets/svg/ic-mentions.svg';
+import { FileType } from '../../BlockEditor.interface';
 
 export enum SuggestionItemType {
   BASIC_BLOCKS = 'Basic',
@@ -45,6 +46,7 @@ export interface SuggestionItem {
   imgSrc: string;
   searchTerms: string[];
   command: (props: CommandProps) => void;
+  isFileCommand?: boolean;
 }
 
 export const getSuggestionItems = (props: {
@@ -197,6 +199,72 @@ export const getSuggestionItems = (props: {
       },
       imgSrc: IconFormatImage,
       searchTerms: ['image', 'media'],
+    },
+    {
+      title: 'Video',
+      description: 'Add a video',
+      type: SuggestionItemType.ADVANCED_BLOCKS,
+      command: ({ editor, range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setFile({
+            url: '',
+            fileName: '',
+            fileSize: null,
+            mimeType: FileType.VIDEO,
+            type: FileType.VIDEO,
+          })
+          .run();
+      },
+      imgSrc: IconFormatImage,
+      searchTerms: ['video', 'media', 'player'],
+      isFileCommand: true,
+    },
+    {
+      title: 'Audio',
+      description: 'Add audio',
+      type: SuggestionItemType.ADVANCED_BLOCKS,
+      command: ({ editor, range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setFile({
+            url: '',
+            fileName: '',
+            fileSize: null,
+            mimeType: FileType.AUDIO,
+            type: FileType.AUDIO,
+          })
+          .run();
+      },
+      imgSrc: IconFormatImage,
+      searchTerms: ['audio', 'sound', 'music'],
+      isFileCommand: true,
+    },
+    {
+      title: 'File',
+      description: 'Add a file attachment',
+      type: SuggestionItemType.ADVANCED_BLOCKS,
+      command: ({ editor, range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setFile({
+            url: '',
+            fileName: '',
+            fileSize: null,
+            mimeType: '',
+            type: FileType.FILE,
+          })
+          .run();
+      },
+      imgSrc: IconFormatImage,
+      searchTerms: ['file', 'attachment', 'document'],
+      isFileCommand: true,
     },
     {
       title: 'Task List',
