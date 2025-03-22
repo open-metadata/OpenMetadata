@@ -12,6 +12,7 @@
  */
 
 export enum SidebarItem {
+  HOME = 'my-data',
   EXPLORE = 'explore',
   OBSERVABILITY = 'observability',
   DATA_QUALITY = 'data-quality',

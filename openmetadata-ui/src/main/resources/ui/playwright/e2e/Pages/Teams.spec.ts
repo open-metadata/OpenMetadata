@@ -21,6 +21,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   descriptionBoxReadOnly,
@@ -397,7 +398,7 @@ test.describe('Teams Page', () => {
       'true'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });
@@ -423,7 +424,7 @@ test.describe('Teams Page', () => {
       'false'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });

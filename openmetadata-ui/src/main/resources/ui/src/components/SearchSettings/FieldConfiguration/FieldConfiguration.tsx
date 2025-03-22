@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Collapse, Divider, Slider, Switch, Typography } from 'antd';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';
@@ -24,6 +24,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   index,
   searchSettings,
   entityFields,
+  initialOpen,
   onHighlightFieldsChange,
   onFieldWeightChange,
   onDeleteSearchField,
@@ -37,6 +38,16 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
   const fieldDescription = entityFields.find(
     (entityField) => entityField.name === field.fieldName
   )?.description;
+
+  useEffect(() => {
+    // If initialOpen is true, open this panel automatically
+    if (initialOpen) {
+      setActiveFieldKeys((prevKeys) => ({
+        ...prevKeys,
+        [index]: [String(index)],
+      }));
+    }
+  }, [initialOpen, index]);
 
   const handleCollapseChange = (key: string | string[], index: number) => {
     setActiveFieldKeys((prevKeys) => ({
@@ -54,10 +65,12 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
     <Collapse
       activeKey={activeFieldKeys[index] || []}
       bordered={false}
+      data-field-name={field.fieldName}
       key={index}
       onChange={(key) => handleCollapseChange(key, index)}>
       <Collapse.Panel
         className=" custom-panel m-b-md"
+        data-testid={`field-configuration-panel-${field.fieldName}`}
         header={
           <div
             className="field-container-header"
@@ -82,7 +95,7 @@ const FieldConfiguration: React.FC<FieldConfigurationProps> = ({
               />
             </div>
 
-            <div className="d-flex items-center justify-between m-y-xss">
+            <div className="d-flex items-center justify-between gap-2 m-y-xss">
               <span className="text-grey-muted text-xs font-normal">
                 {fieldDescription}
               </span>

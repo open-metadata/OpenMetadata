@@ -81,50 +81,9 @@
   }
 }
 
-.search-setting-card {
-  border: 1px solid @grey-10;
-  background-color: @white;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-  cursor: pointer;
-
-  &:hover {
-    border: 1px solid @blue-15;
-  }
-
-  .search-setting-card-icon {
-    flex: 0 0 auto;
-
-    svg {
-      font-size: 90px;
-    }
-  }
-
-  .search-setting-card-content {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-
-    .ant-typography-ellipsis {
-      color: @grey-600;
-      margin-bottom: 0;
-    }
-  }
-
-  .search-setting-card-action {
-    flex: 0 0 auto;
-    margin-left: auto;
-  }
-}
-
 .field-value-boost-add-btn,
-.term-boost-add-btn {
+.term-boost-add-btn,
+.term-boost-save-btn {
   background-color: @blue-9;
   border: 1px solid @blue-9;
   color: @white;
@@ -134,32 +93,10 @@
     border-color: @blue-9;
     color: @white;
   }
-}
-
-.field-value-boost-card {
-  border: 1px solid @border-color-5;
-  border-radius: 8px;
-  transition: all 0.3s;
-
-  .edit-field-value-boost-btn {
-    opacity: 0.6;
-    transition: opacity 0.3s;
-
-    &:hover {
-      opacity: 1;
-    }
-  }
-
-  .delete-field-value-boost-btn {
-    color: @red-12;
-    background-color: 9;
-    border: 1px solid @red-13;
-    border-radius: 8px;
-    &:hover {
-      color: @red-12;
-      background-color: @red-9;
-      border: 1px solid @red-13;
-    }
+  &:disabled {
+    background-color: @grey-100;
+    border-color: @grey-300;
+    color: @grey-400;
   }
 }
 
@@ -232,22 +169,8 @@
       text-overflow: ellipsis;
     }
   }
+}
 
-  .edit-field-value-boost-btn {
-    background: transparent;
-
-    &:hover {
-      background-color: @blue-6;
-      border-radius: 8px;
-    }
-  }
-
-  .delete-field-value-boost-btn {
-    background: transparent;
-
-    &:hover {
-      background-color: @red-9;
-      border-radius: 8px;
-    }
-  }
+.settings-term-boost-card {
+  min-width: 300px;
 }
