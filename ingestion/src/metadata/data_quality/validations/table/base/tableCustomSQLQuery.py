@@ -24,6 +24,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.utils.helpers import evaluate_threshold
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -54,8 +55,8 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         threshold = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "threshold",
-            int,
-            default=0,
+            str,
+            default="0",
         )
 
         strategy = self.get_test_case_param_value(
@@ -65,7 +66,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         )
 
         sql_expression = cast(str, sql_expression)  # satisfy mypy
-        threshold = cast(int, threshold)  # satisfy mypy
+        threshold = cast(str, threshold)  # satisfy mypy
         strategy = cast(Strategy, strategy)  # satisfy mypy
 
         try:
@@ -81,7 +82,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
                 [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
             )
         len_rows = rows if isinstance(rows, int) else len(rows)
-        if len_rows <= threshold:
+        if evaluate_threshold(threshold, len_rows):
             status = TestCaseStatus.Success
             result_value = len_rows
         else:

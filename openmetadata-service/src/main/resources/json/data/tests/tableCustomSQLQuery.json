@@ -25,7 +25,7 @@
         "name": "threshold",
         "displayName": "Threshold",
         "description": "Threshold to use to determine if the test passes or fails (defaults to 0).",
-        "dataType": "NUMBER",
+        "dataType": "STRING",
         "required": false
       }
     ],
