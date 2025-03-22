@@ -65,11 +65,9 @@ export const DiffViewNew = ({
     checkHeight();
 
     const timer = setTimeout(checkHeight, 200);
-    window.addEventListener('resize', checkHeight);
 
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('resize', checkHeight);
     };
   }, [diffArr, showDescTitle]);
 
