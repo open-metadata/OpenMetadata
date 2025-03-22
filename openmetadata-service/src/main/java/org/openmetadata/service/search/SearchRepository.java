@@ -423,7 +423,7 @@ public class SearchRepository {
         ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
         ChangeDescription changeDescription;
 
-        if (isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
+        if (!isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
           changeDescription = incrementalChangeDescription;
         } else {
           changeDescription = entity.getChangeDescription();
