@@ -18,6 +18,7 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, {
   MutableRefObject,
   useCallback,
@@ -427,6 +428,10 @@ const BulkEntityImportPage = () => {
 
           handleImportWebsocketResponseWithActiveStep(importResults);
         }
+
+        if (websocketResponse.status === 'FAILED') {
+          setIsValidating(false);
+        }
       }
     },
     [
@@ -493,13 +498,15 @@ const BulkEntityImportPage = () => {
               {activeAsyncImportJob?.jobId && (
                 <Banner
                   className="border-radius"
-                  isLoading={!activeAsyncImportJob.error}
+                  isLoading={isEmpty(activeAsyncImportJob.error)}
                   message={
                     activeAsyncImportJob.error ??
                     activeAsyncImportJob.message ??
                     ''
                   }
-                  type={activeAsyncImportJob.error ? 'error' : 'success'}
+                  type={
+                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                  }
                 />
               )}
             </Col>
