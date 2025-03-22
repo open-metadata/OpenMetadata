@@ -11,22 +11,12 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import {
-  Button,
-  Checkbox,
-  Col,
-  Collapse,
-  Dropdown,
-  Row,
-  Select,
-  Typography,
-} from 'antd';
+import { Col, Collapse, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -37,6 +27,7 @@ import {
   AllowedSearchFields,
   BoostMode,
   Field,
+  FieldValueBoost,
   ScoreMode,
   SearchSettings,
   TermBoost,
@@ -46,6 +37,7 @@ import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 import {
+  getSettingsByType,
   restoreSettingsConfig,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
@@ -57,10 +49,13 @@ import {
   scoreModeOptions,
 } from '../../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CollapseHeader from '../../common/CollapseHeader/CollapseHeader';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import FieldConfiguration from '../FieldConfiguration/FieldConfiguration';
+import FieldValueBoostList from '../FieldValueBoostList/FieldValueBoostList';
+import FieldValueBoostModal from '../FieldValueBoostModal/FieldValueBoostModal';
 import SearchPreview from '../SearchPreview/SearchPreview';
 import TermBoostList from '../TermBoostList/TermBoostList';
 import './entity-search-settings.less';
@@ -92,8 +87,16 @@ const EntitySearchSettings = () => {
   const [previewSearchConfig, setPreviewSearchConfig] =
     useState<SearchSettings>(searchConfig ?? {});
   const [showNewTermBoost, setShowNewTermBoost] = useState<boolean>(false);
+  const [showNewFieldValueBoost, setShowNewFieldValueBoost] =
+    useState<boolean>(false);
+  const [selectedFieldValueBoost, setSelectedFieldValueBoost] = useState<
+    FieldValueBoost | undefined
+  >();
   const [allowedFields, setAllowedFields] = useState<AllowedSearchFields[]>([]);
   const [activeKey, setActiveKey] = useState<string>('1');
+  const [lastAddedSearchField, setLastAddedSearchField] = useState<
+    string | null
+  >(null);
 
   const entityType = useMemo(() => ENTITY_PATH[fqn], [fqn]);
 
@@ -131,12 +134,6 @@ const EntitySearchSettings = () => {
     []
   );
 
-  useEffect(() => {
-    if (searchConfig) {
-      setAllowedFields(searchConfig?.allowedFields ?? []);
-    }
-  }, [searchConfig]);
-
   const entityFields: Field[] = useMemo(() => {
     const currentEntityFields =
       allowedFields.find((field) => field.entityType === entityType)?.fields ??
@@ -148,26 +145,28 @@ const EntitySearchSettings = () => {
     }));
   }, [allowedFields, entityType]);
 
-  const menuItems = useMemo(
-    () => ({
-      items: entityFields.map((field) => ({
+  const menuItems = useMemo(() => {
+    return entityFields
+      .filter(
+        (field) =>
+          !searchSettings.searchFields?.some(
+            (searchField) => searchField.field === field.name
+          )
+      )
+      .map((field) => ({
         key: field.name,
-        label: (
-          <Checkbox
-            checked={searchSettings.searchFields?.some(
-              (searchField) => searchField.field === field.name
-            )}
-            onChange={() => handleFieldSelection(field.name)}>
-            {field.name}
-          </Checkbox>
-        ),
-      })),
-      className: 'menu-items',
-    }),
-    [entityFields, searchSettings.searchFields]
-  );
+        label: field.name,
+        onClick: (e: any) => {
+          e.domEvent.stopPropagation();
+          handleFieldSelection(field.name);
+        },
+      }));
+  }, [entityFields, searchSettings.searchFields]);
 
   const handleFieldSelection = (fieldName: string) => {
+    setActiveKey('1');
+    setLastAddedSearchField(fieldName);
+
     setSearchSettings((prev) => {
       const isFieldSelected = prev.searchFields?.some(
         (field) => field.field === fieldName
@@ -185,16 +184,31 @@ const EntitySearchSettings = () => {
         return {
           ...prev,
           searchFields: [
-            ...(prev.searchFields ?? []),
             {
               field: fieldName,
               boost: 0,
             },
+            ...(prev.searchFields ?? []),
           ],
           isUpdated: true,
         };
       }
     });
+  };
+
+  const fetchSearchConfig = async () => {
+    try {
+      if (searchConfig) {
+        return;
+      }
+      const configValue = await getSettingsByType(SettingType.SearchSettings);
+      setAppPreferences({
+        ...appPreferences,
+        searchConfig: configValue as SearchSettings,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   // Handle save changes - makes API call with all changes
@@ -324,6 +338,8 @@ const EntitySearchSettings = () => {
     }));
   };
 
+  // Term Boost
+
   const handleAddNewTermBoost = () => {
     setShowNewTermBoost(true);
     setActiveKey('2');
@@ -370,6 +386,50 @@ const EntitySearchSettings = () => {
     }));
   };
 
+  // Field Value Boost
+
+  const handleAddNewFieldValueBoost = () => {
+    setSelectedFieldValueBoost(undefined);
+    setShowNewFieldValueBoost(true);
+    setActiveKey('3');
+  };
+
+  const handleEditFieldValueBoost = (boost: FieldValueBoost) => {
+    setSelectedFieldValueBoost(boost);
+    setShowNewFieldValueBoost(true);
+  };
+
+  const handleSaveFieldValueBoost = async (values: FieldValueBoost) => {
+    const fieldValueBoosts = [...(searchSettings.fieldValueBoosts || [])];
+    const existingIndex = fieldValueBoosts.findIndex(
+      (boost) => boost.field === values.field
+    );
+
+    if (existingIndex >= 0) {
+      fieldValueBoosts[existingIndex] = values;
+    } else {
+      fieldValueBoosts.push(values);
+    }
+
+    setSearchSettings((prev) => ({
+      ...prev,
+      fieldValueBoosts,
+      isUpdated: true,
+    }));
+
+    setShowNewFieldValueBoost(false);
+    setSelectedFieldValueBoost(undefined);
+  };
+
+  const handleDeleteFieldValueBoost = (fieldName: string) => {
+    setSearchSettings((prev) => ({
+      ...prev,
+      fieldValueBoosts:
+        prev.fieldValueBoosts?.filter((fb) => fb.field !== fieldName) || [],
+      isUpdated: true,
+    }));
+  };
+
   const handleRestoreDefaults = async () => {
     try {
       const { data } = await restoreSettingsConfig(SettingType.SearchSettings);
@@ -401,6 +461,16 @@ const EntitySearchSettings = () => {
   };
 
   useEffect(() => {
+    fetchSearchConfig();
+  }, []);
+
+  useEffect(() => {
+    if (searchConfig) {
+      setAllowedFields(searchConfig?.allowedFields ?? []);
+    }
+  }, [searchConfig]);
+
+  useEffect(() => {
     if (getEntityConfiguration) {
       setSearchSettings({
         searchFields: getEntityConfiguration?.searchFields,
@@ -412,7 +482,7 @@ const EntitySearchSettings = () => {
         isUpdated: false,
       });
     }
-  }, [getEntityConfiguration, searchConfig]);
+  }, [getEntityConfiguration]);
 
   // Update preview config whenever searchSettings change
   useEffect(() => {
@@ -439,12 +509,19 @@ const EntitySearchSettings = () => {
       ),
     };
 
-    setPreviewSearchConfig(updatedConfig);
+    if (searchSettings.searchFields?.length) {
+      setPreviewSearchConfig((prev) =>
+        JSON.stringify(prev) !== JSON.stringify(updatedConfig)
+          ? updatedConfig
+          : prev
+      );
+    }
   }, [searchSettings, searchConfig, entityType]);
 
   return (
     <PageLayoutV1
       className="entity-search-settings"
+      mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
       <Row
         className="entity-search-settings-header bg-white m-b-lg p-box"
@@ -454,7 +531,7 @@ const EntitySearchSettings = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col className="flex items-center gap-4" span={24}>
-          <Icon component={entityData?.icon} style={{ fontSize: '55px' }} />
+          <Icon className="entity-icon" component={entityData?.icon} />
           <div
             className="page-header-container"
             data-testid="page-header-container">
@@ -484,42 +561,22 @@ const EntitySearchSettings = () => {
             onChange={handleCollapseChange}>
             <Collapse.Panel
               header={
-                <div className="d-flex items-center justify-between">
-                  <Typography.Text className="text-md font-semibold">
-                    {t('label.matching-fields')}
-                  </Typography.Text>
-                  <Dropdown
-                    getPopupContainer={(triggerNode) =>
-                      triggerNode.parentElement!
-                    }
-                    menu={menuItems}
-                    placement="bottomLeft"
-                    trigger={['click']}>
-                    <Button
-                      className="add-field-btn"
-                      data-testid="add-field-btn"
-                      icon={
-                        <Icon className="text-xs" component={PlusOutlined} />
-                      }
-                      type="primary"
-                      onClick={(e) => e.stopPropagation()}>
-                      {t('label.add')}
-                    </Button>
-                  </Dropdown>
-                </div>
+                <CollapseHeader
+                  dataTestId="add-field-btn"
+                  menuItems={menuItems}
+                  title={t('label.matching-fields')}
+                />
               }
               key="1">
               <div className="bg-white configuration-container">
-                <Row
-                  className="p-y-xs config-section overflow-y-auto"
-                  data-testid="field-configurations"
-                  style={{ maxHeight: '50vh' }}>
+                <Row className="p-y-xs " data-testid="field-configurations">
                   {entitySearchFields.map((field, index) => (
                     <Col className="m-b-sm" key={field.fieldName} span={24}>
                       <FieldConfiguration
                         entityFields={entityFields}
                         field={field}
                         index={index}
+                        initialOpen={field.fieldName === lastAddedSearchField}
                         key={field.fieldName}
                         searchSettings={searchSettings}
                         onDeleteSearchField={handleDeleteSearchField}
@@ -566,34 +623,42 @@ const EntitySearchSettings = () => {
             </Collapse.Panel>
             <Collapse.Panel
               header={
-                <div className="d-flex items-center justify-between">
-                  <Typography.Text className="text-md font-semibold">
-                    {t('label.term-boost')}
-                  </Typography.Text>
-                  <Button
-                    className="add-field-btn"
-                    data-testid="add-term-boost-btn"
-                    icon={<Icon className="text-xs" component={PlusOutlined} />}
-                    type="primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAddNewTermBoost();
-                    }}>
-                    {t('label.add')}
-                  </Button>
-                </div>
+                <CollapseHeader
+                  dataTestId="add-term-boost-btn"
+                  handleAddNewBoost={handleAddNewTermBoost}
+                  title={t('label.term-boost')}
+                />
               }
               key="2">
               <div className="bg-white border-radius-card p-box configuration-container">
-                <div className="overflow-y-auto" style={{ maxHeight: '50vh' }}>
-                  <TermBoostList
-                    className="p-box flex-column justify-center"
-                    handleDeleteTermBoost={handleDeleteTermBoost}
-                    handleTermBoostChange={handleTermBoostChange}
-                    showNewTermBoost={showNewTermBoost}
-                    termBoosts={searchSettings.termBoosts ?? []}
-                  />
-                </div>
+                <TermBoostList
+                  className="flex-column justify-center"
+                  handleDeleteTermBoost={handleDeleteTermBoost}
+                  handleTermBoostChange={handleTermBoostChange}
+                  showNewTermBoost={showNewTermBoost}
+                  termBoostCardClassName="term-boost-card"
+                  termBoosts={searchSettings.termBoosts ?? []}
+                />
+              </div>
+            </Collapse.Panel>
+            <Collapse.Panel
+              header={
+                <CollapseHeader
+                  dataTestId="add-field-value-boost-btn"
+                  handleAddNewBoost={handleAddNewFieldValueBoost}
+                  title={t('label.field-value-boost')}
+                />
+              }
+              key="3">
+              <div className="bg-white border-radius-card p-box configuration-container">
+                <FieldValueBoostList
+                  entitySearchSettingsPage
+                  dataTestId="entity-field-value-boost-table"
+                  fieldValueBoosts={searchSettings.fieldValueBoosts ?? []}
+                  handleDeleteFieldValueBoost={handleDeleteFieldValueBoost}
+                  handleEditFieldValueBoost={handleEditFieldValueBoost}
+                  isLoading={false}
+                />
               </div>
             </Collapse.Panel>
           </Collapse>
@@ -601,17 +666,26 @@ const EntitySearchSettings = () => {
         <Col
           className="bg-white border-radius-card p-box h-full d-flex flex-column preview-section"
           span={16}>
-          <div className="preview-content d-flex flex-column flex-1">
-            <SearchPreview
-              disabledSave={!searchSettings.isUpdated || isSaving}
-              handleRestoreDefaults={handleRestoreDefaults}
-              handleSaveChanges={handleSaveChanges}
-              isSaving={isSaving}
-              searchConfig={previewSearchConfig}
-            />
-          </div>
+          <SearchPreview
+            disabledSave={!searchSettings.isUpdated || isSaving}
+            handleRestoreDefaults={handleRestoreDefaults}
+            handleSaveChanges={handleSaveChanges}
+            isSaving={isSaving}
+            searchConfig={previewSearchConfig}
+          />
         </Col>
       </Row>
+
+      <FieldValueBoostModal
+        entityOptions={entityFields.map((field) => field.name)}
+        open={showNewFieldValueBoost}
+        selectedBoost={selectedFieldValueBoost}
+        onCancel={() => {
+          setShowNewFieldValueBoost(false);
+          setSelectedFieldValueBoost(undefined);
+        }}
+        onSave={handleSaveFieldValueBoost}
+      />
     </PageLayoutV1>
   );
 };

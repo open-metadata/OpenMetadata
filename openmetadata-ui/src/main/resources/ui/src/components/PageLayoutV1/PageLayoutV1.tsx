@@ -85,7 +85,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames('bg-white', className)}
+        className={className}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}>
         {leftPanel && (
