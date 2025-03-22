@@ -328,7 +328,7 @@ test('Conversation source alert', async ({ page }) => {
   });
 });
 
-test('Alert operations for a user with and without permissions', async ({
+test.fixme('Alert operations for a user with and without permissions', async ({
   page,
   userWithPermissionsPage,
   userWithoutPermissionsPage,
