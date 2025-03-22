@@ -70,7 +70,9 @@ export const addOwner = async ({
     const userListResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        matchRequestParams(response, 'POST', { index: 'user_search_index' })
+        matchRequestParams(response, 'POST', {
+          index: 'user_search_index',
+        })
     );
 
     await page.getByRole('tab', { name: type }).click();
@@ -90,7 +92,8 @@ export const addOwner = async ({
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
-        query: `*${encodeURIComponent(owner)}* AND teamType:Group`,
+        index: 'team_search_index',
+        query: `*${encodeURIComponent(owner)}*`,
       })
   );
 
@@ -439,6 +442,7 @@ export const assignTagToChildren = async ({
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       matchRequestParams(response, 'POST', {
+        index: 'tag_search_index',
         query: `*${encodeURIComponent(tag)}*`,
       })
   );
