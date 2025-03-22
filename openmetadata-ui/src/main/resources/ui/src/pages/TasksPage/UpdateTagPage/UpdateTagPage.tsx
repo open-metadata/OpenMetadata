@@ -325,7 +325,9 @@ const UpdateTag = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.update-entity', {
+        entity: i18n.t('label.tag'),
+      })}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -348,4 +350,8 @@ const UpdateTag = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.task'))(UpdateTag);
+export default withPageLayout(
+  i18n.t('label.update-entity', {
+    entity: i18n.t('label.tag'),
+  })
+)(UpdateTag);

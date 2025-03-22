@@ -270,7 +270,7 @@ const RequestTag = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.request-tag-plural')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -293,4 +293,4 @@ const RequestTag = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.task'))(RequestTag);
+export default withPageLayout(i18n.t('label.request-tag-plural'))(RequestTag);

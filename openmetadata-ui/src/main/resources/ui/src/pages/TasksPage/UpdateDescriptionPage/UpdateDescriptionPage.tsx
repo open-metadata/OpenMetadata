@@ -301,7 +301,7 @@ const UpdateDescription = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.update-description')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -324,4 +324,6 @@ const UpdateDescription = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.task'))(UpdateDescription);
+export default withPageLayout(i18n.t('label.update-description'))(
+  UpdateDescription
+);

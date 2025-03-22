@@ -34,7 +34,7 @@ export const BotsPageV1 = () => {
   return (
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.table'),
+        entity: t('label.bot'),
       })}
       title="Table details">
       <BotListV1
