@@ -424,6 +424,7 @@ export const TaskTabNew = ({
     (!hasGlossaryReviewer && isOwner) ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
+  const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
@@ -431,6 +432,7 @@ export const TaskTabNew = ({
         // Added block for sonar code smell
       })
       .finally(() => {
+        setHasAddedComment(true);
         editorRef.current?.clearEditorValue();
         setShowFeedEditor(false);
       });
@@ -454,7 +456,7 @@ export const TaskTabNew = ({
   };
 
   const onTaskReject = () => {
-    if (!isTaskGlossaryApproval && isEmpty(comment)) {
+    if (!isTaskGlossaryApproval && !hasAddedComment) {
       showErrorToast(t('server.task-closed-without-comment'));
 
       return;
@@ -1001,6 +1003,10 @@ export const TaskTabNew = ({
 
   useEffect(() => {
     closeFeedEditor();
+  }, [taskThread.id]);
+
+  useEffect(() => {
+    setHasAddedComment(false);
   }, [taskThread.id]);
 
   return (
