@@ -4096,6 +4096,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
+  protected String exportCsvRecursive(String entityName) throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/export").queryParam("recursive", "true");
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
   private String receiveCsvViaSocketIO(String entityName) throws Exception {
     UUID userId = getAdminUserId();
     String uri = String.format("http://localhost:%d", APP.getLocalPort());

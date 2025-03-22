@@ -21,6 +21,9 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.csv.CsvUtil.formatCsv;
 import static org.openmetadata.service.Entity.DATABASE;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
+import static org.openmetadata.service.Entity.TABLE;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -198,14 +201,16 @@ public class DatabaseServiceRepository
 
       if (DATABASE.equals(entityType)) {
         createDatabaseEntity(printer, csvRecord, entityFQN);
+      } else if (DATABASE_SCHEMA.equals(entityType)) {
+        createSchemaEntity(printer, csvRecord, entityFQN);
+      } else if (TABLE.equals(entityType)) {
+        createTableEntity(printer, csvRecord, entityFQN);
+      } else if (STORED_PROCEDURE.equals(entityType)) {
+        createStoredProcedureEntity(printer, csvRecord, entityFQN);
+      } else if ("column".equals(entityType)) {
+        createColumnEntity(printer, csvRecord, entityFQN);
       } else {
-        String[] parts = entityFQN.split("\\.");
-        if (parts.length >= 2) {
-          String dbFqn = service.getFullyQualifiedName() + "." + parts[1];
-          DatabaseRepository dbRepo = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
-          List<CSVRecord> subRecords = List.of(csvRecords.get(0), csvRecord);
-          dbRepo.importFromCsv(dbFqn, subRecords, !processRecord, importedBy);
-        }
+        LOG.warn("Unknown entity type: {}", entityType);
       }
     }
 

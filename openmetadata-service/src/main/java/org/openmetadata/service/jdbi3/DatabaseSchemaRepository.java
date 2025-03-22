@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -35,7 +34,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.csv.EntityCsv;
@@ -48,7 +46,6 @@ import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -228,9 +225,22 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
       throws IOException {
-    DatabaseSchema schema =
-        getByName(null, name, getFields("database,service")); // Validate database schema
-    return new DatabaseSchemaCsv(schema, user).importCsv(csv, dryRun);
+    DatabaseSchema schema = null;
+    try {
+      schema = getByName(null, name, getFields("database,service")); // Fetch with container context
+    } catch (EntityNotFoundException e) {
+      if (!dryRun) {
+        throw e;
+      } else {
+        LOG.warn(
+            "Dry run mode: DatabaseSchema '{}' not found. Skipping existence validation.", name);
+        schema = new DatabaseSchema().withName(name);
+      }
+    }
+
+    DatabaseSchemaCsv schemaCsv = new DatabaseSchemaCsv(schema, user);
+    List<CSVRecord> records = schemaCsv.parse(csv);
+    return schemaCsv.importCsv(records, dryRun);
   }
 
   public class DatabaseSchemaUpdater extends EntityUpdater {
@@ -374,105 +384,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         createColumnEntity(printer, csvRecord, entityFQN);
       } else {
         LOG.warn("Unsupported entity type in schema CSV: {}", entityType);
-      }
-    }
-
-    private void createTableEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
-        throws IOException {
-      // If FQN is not provided, construct it from schema FQN and table name
-      String tableFqn =
-          entityFQN != null
-              ? entityFQN
-              : FullyQualifiedName.add(schema.getFullyQualifiedName(), csvRecord.get(0));
-
-      Table table;
-      try {
-        table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
-      } catch (EntityNotFoundException ex) {
-        // Table not found, create a new one
-        LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
-        table =
-            new Table()
-                .withId(UUID.randomUUID())
-                .withFullyQualifiedName(tableFqn)
-                .withService(schema.getService())
-                .withDatabase(schema.getDatabase())
-                .withDatabaseSchema(schema.getEntityReference());
-      }
-
-      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers
-      // retentionPeriod, sourceUrl, domain
-      List<TagLabel> tagLabels =
-          getTagLabels(
-              printer,
-              csvRecord,
-              List.of(
-                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-      table
-          .withName(csvRecord.get(0))
-          .withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
-          .withTags(tagLabels)
-          .withRetentionPeriod(csvRecord.get(7))
-          .withSourceUrl(csvRecord.get(8))
-          .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10))
-          .withUpdatedAt(System.currentTimeMillis())
-          .withUpdatedBy(importedBy);
-
-      if (processRecord) {
-        createEntity(printer, csvRecord, table);
-      }
-    }
-
-    private void createStoredProcedureEntity(
-        CSVPrinter printer, CSVRecord csvRecord, String entityFQN) throws IOException {
-      // If FQN is not provided, construct it from schema FQN and stored procedure name
-      String spFqn =
-          entityFQN != null
-              ? entityFQN
-              : FullyQualifiedName.add(schema.getFullyQualifiedName(), csvRecord.get(0));
-
-      StoredProcedureRepository spRepository =
-          (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
-      StoredProcedure sp;
-
-      try {
-        sp = Entity.getEntityByName(STORED_PROCEDURE, spFqn, "*", Include.NON_DELETED);
-      } catch (Exception ex) {
-        LOG.warn("Stored procedure not found: {}, it will be created with Import.", spFqn);
-        sp =
-            new StoredProcedure()
-                .withName(csvRecord.get(0))
-                .withService(schema.getService())
-                .withDatabase(schema.getDatabase())
-                .withDatabaseSchema(schema.getEntityReference());
-      }
-
-      List<TagLabel> tagLabels =
-          getTagLabels(
-              printer,
-              csvRecord,
-              List.of(
-                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-
-      sp.withDisplayName(csvRecord.get(1))
-          .withDescription(csvRecord.get(2))
-          .withOwners(getOwners(printer, csvRecord, 3))
-          .withTags(tagLabels)
-          .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 10));
-
-      if (processRecord) {
-        // Use the SP repository to create/update the stored procedure
-        spRepository.createOrUpdate(null, sp);
       }
     }
 

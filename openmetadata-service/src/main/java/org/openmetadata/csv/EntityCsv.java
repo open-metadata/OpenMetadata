@@ -23,6 +23,9 @@ import static org.openmetadata.csv.CsvUtil.fieldToEntities;
 import static org.openmetadata.csv.CsvUtil.fieldToExtensionStrings;
 import static org.openmetadata.csv.CsvUtil.fieldToInternalArray;
 import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.service.Entity.DATABASE;
+import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 
@@ -63,6 +66,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -84,7 +90,9 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.ColumnUtil;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.StoredProcedureRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
@@ -678,9 +686,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public List<CSVRecord> parse(String csv) {
-    String processedCsv = preprocessCsv(csv); // Preprocess the CSV
     List<CSVRecord> records = new ArrayList<>();
-    Reader in = new StringReader(processedCsv);
+    Reader in = new StringReader(csv);
 
     try {
       CSVParser parser =
@@ -742,41 +749,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
     finalRecords.addAll(parser.getRecords());
 
     return finalRecords;
-  }
-
-  public String preprocessCsv(String csv) {
-    StringBuilder processedCsv = new StringBuilder();
-    String[] lines = csv.split("\n"); // Split CSV into lines
-
-    for (String line : lines) {
-      StringBuilder processedLine = new StringBuilder();
-      boolean insideQuotes = false;
-      StringBuilder field = new StringBuilder();
-
-      for (int i = 0; i < line.length(); i++) {
-        char c = line.charAt(i);
-
-        if (c == '"') {
-          // Toggle insideQuotes flag
-          insideQuotes = !insideQuotes;
-          field.append(c); // Add the quote to the field
-        } else if (c == ',' && !insideQuotes) {
-          // End of field, add it to the processed line
-          processedLine.append(field.toString()).append(",");
-          field.setLength(0); // Reset the field buffer
-        } else {
-          field.append(c); // Add the character to the field
-        }
-      }
-
-      // Add the last field in the line
-      processedLine.append(field.toString());
-
-      // Add the processed line to the result
-      processedCsv.append(processedLine).append("\n");
-    }
-
-    return processedCsv.toString().trim(); // Remove the last newline
   }
 
   private List<String> padOrTrimColumns(List<String> row) {
@@ -966,6 +938,220 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
   }
 
+  protected void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+      throws IOException {
+    // If FQN is not provided, construct it from database FQN and schema name
+    if (entityFQN == null) {
+      throw new IllegalArgumentException(
+          "Schema import requires fullyQualifiedName to determine the schema it belongs to");
+    }
+    String dbFQN = FullyQualifiedName.getParentFQN(entityFQN);
+
+    Database database;
+    try {
+      database = Entity.getEntityByName(DATABASE, dbFQN, "*", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
+      if (importResult.getDryRun()) {
+        // Dry run mode: Simulate a schema for validation without persisting it
+        database = new Database().withName(dbFQN).withService(null);
+      } else {
+        throw new IllegalArgumentException("Database not found: " + dbFQN);
+      }
+    }
+
+    DatabaseSchema schema;
+    DatabaseSchemaRepository databaseSchemaRepository =
+        (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+    String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
+    try {
+      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+    } catch (Exception ex) {
+      LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
+      schema =
+          new DatabaseSchema()
+              .withDatabase(database.getEntityReference())
+              .withService(database.getService());
+    }
+
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+    // sourceUrl, domain
+    List<TagLabel> tagLabels =
+        getTagLabels(
+            printer,
+            csvRecord,
+            List.of(
+                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+    schema
+        .withId(UUID.randomUUID())
+        .withName(csvRecord.get(0))
+        .withDisplayName(csvRecord.get(1))
+        .withFullyQualifiedName(schemaFqn)
+        .withDescription(csvRecord.get(2))
+        .withOwners(getOwners(printer, csvRecord, 3))
+        .withTags(tagLabels)
+        .withRetentionPeriod(csvRecord.get(7))
+        .withSourceUrl(csvRecord.get(8))
+        .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+        .withExtension(getExtension(printer, csvRecord, 10))
+        .withUpdatedAt(System.currentTimeMillis())
+        .withUpdatedBy(importedBy);
+    if (processRecord) {
+      PutResponse<DatabaseSchema> response = databaseSchemaRepository.createOrUpdate(null, schema);
+      importSuccess(printer, csvRecord, response.getChangeType().toString());
+    }
+  }
+
+  protected void createTableEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+      throws IOException {
+    if (entityFQN == null) {
+      throw new IllegalArgumentException(
+          "Table import requires fullyQualifiedName to determine the schema it belongs to");
+    }
+
+    // Get the schema
+    String schemaFQN = FullyQualifiedName.getParentFQN(entityFQN);
+
+    // Fetch Schema Entity
+    DatabaseSchema schema;
+    try {
+      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+      if (importResult.getDryRun()) {
+        // Dry run mode: Simulate a schema for validation without persisting it
+        schema = new DatabaseSchema().withName(schemaFQN).withDatabase(null).withService(null);
+      } else {
+        throw new IllegalArgumentException("Schema not found: " + schemaFQN);
+      }
+    }
+
+    String tableFqn = FullyQualifiedName.add(schemaFQN, csvRecord.get(0));
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+    Table table;
+
+    try {
+      table = Entity.getEntityByName(TABLE, tableFqn, "*", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      // Table not found, create a new one
+      LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
+      table =
+          new Table()
+              .withId(UUID.randomUUID())
+              .withName(csvRecord.get(0))
+              .withFullyQualifiedName(tableFqn)
+              .withService(schema.getService())
+              .withDatabase(schema.getDatabase())
+              .withDatabaseSchema(schema.getEntityReference())
+              .withColumns(new ArrayList<>());
+    }
+
+    // Extract and process tag labels
+    List<TagLabel> tagLabels =
+        getTagLabels(
+            printer,
+            csvRecord,
+            List.of(
+                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+    // Populate table attributes
+    table
+        .withDisplayName(csvRecord.get(1))
+        .withDescription(csvRecord.get(2))
+        .withOwners(getOwners(printer, csvRecord, 3))
+        .withTags(tagLabels)
+        .withRetentionPeriod(csvRecord.get(7))
+        .withSourceUrl(csvRecord.get(8))
+        .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+        .withExtension(getExtension(printer, csvRecord, 10))
+        .withUpdatedAt(System.currentTimeMillis())
+        .withUpdatedBy(importedBy);
+    if (processRecord) {
+      PutResponse<Table> response = tableRepository.createOrUpdate(null, table);
+      importSuccess(printer, csvRecord, response.getChangeType().toString());
+    }
+  }
+
+  protected void createStoredProcedureEntity(
+      CSVPrinter printer, CSVRecord csvRecord, String entityFQN) throws IOException {
+    // Implementation for creating a stored procedure entity from CSV
+    // Similar to createTableEntity but for stored procedures
+
+    String schemaFQN;
+    String spName = csvRecord.get(0);
+
+    if (entityFQN != null) {
+      // Extract schema FQN from SP FQN
+      schemaFQN = FullyQualifiedName.getParentFQN(entityFQN);
+    } else {
+      throw new IllegalArgumentException(
+          "Stored procedure import requires fullyQualifiedName to determine the schema it belongs to");
+    }
+
+    DatabaseSchema schema;
+    boolean schemaExists = true;
+
+    try {
+      schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+
+      if (importResult.getDryRun()) {
+        // Simulate a schema for dry run
+        schemaExists = false;
+        schema = new DatabaseSchema().withName(schemaFQN).withDatabase(null).withService(null);
+      } else {
+        throw new IllegalArgumentException("Schema not found: " + schemaFQN);
+      }
+    }
+
+    StoredProcedureRepository spRepository =
+        (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
+    StoredProcedure sp;
+
+    try {
+      sp = Entity.getEntityByName(STORED_PROCEDURE, entityFQN, "*", Include.NON_DELETED);
+    } catch (Exception ex) {
+      LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
+      sp =
+          new StoredProcedure()
+              .withName(spName)
+              .withService(schema.getService())
+              .withDatabase(schema.getDatabase())
+              .withDatabaseSchema(schemaExists ? schema.getEntityReference() : null);
+    }
+
+    List<TagLabel> tagLabels =
+        getTagLabels(
+            printer,
+            csvRecord,
+            List.of(
+                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+
+    sp.withDisplayName(csvRecord.get(1))
+        .withDescription(csvRecord.get(2))
+        .withOwners(getOwners(printer, csvRecord, 3))
+        .withTags(tagLabels)
+        .withSourceUrl(csvRecord.get(8))
+        .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+        .withExtension(getExtension(printer, csvRecord, 10));
+
+    if (processRecord && schemaExists) {
+      // Only create the stored procedure if the schema actually exists
+      PutResponse<StoredProcedure> response = spRepository.createOrUpdate(null, sp);
+      importSuccess(printer, csvRecord, response.getChangeType().toString());
+
+    } else if (importResult.getDryRun()) {
+      LOG.info("Dry run: Stored Procedure {} would be created under schema {}.", spName, schemaFQN);
+    }
+  }
+
   protected void createColumnEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
       throws IOException {
     if (entityFQN == null) {
@@ -1012,7 +1198,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     table.withColumns(columns);
 
     if (processRecord) {
-      tableRepository.createOrUpdate(null, table);
+      PutResponse<Table> response = tableRepository.createOrUpdate(null, table);
+      importSuccess(printer, csvRecord, response.getChangeType().toString());
     }
   }
 
