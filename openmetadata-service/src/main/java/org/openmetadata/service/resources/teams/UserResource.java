@@ -1437,7 +1437,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("team")
           String team) {
-    return exportCsvInternalAsync(securityContext, team);
+    return exportCsvInternalAsync(securityContext, team, false);
   }
 
   @GET
@@ -1465,7 +1465,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("team")
           String team)
       throws IOException {
-    return exportCsvInternal(securityContext, team);
+    return exportCsvInternal(securityContext, team, false);
   }
 
   @PUT

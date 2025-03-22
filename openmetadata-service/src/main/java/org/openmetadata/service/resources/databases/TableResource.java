@@ -486,7 +486,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return exportCsvInternalAsync(securityContext, name);
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -511,7 +511,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT

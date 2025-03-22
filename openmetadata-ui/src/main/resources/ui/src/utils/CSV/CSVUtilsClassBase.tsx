@@ -12,7 +12,7 @@
  */
 
 import { Form } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import Select, { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import { toString } from 'lodash';
 import React, { ReactNode } from 'react';
@@ -23,6 +23,7 @@ import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
@@ -307,6 +308,27 @@ class CSVUtilsClassBase {
               onCancel={props.onCancel}
               onSave={handleSave}
             />
+          );
+        };
+      case 'entityType*':
+        return ({ value, ...props }) => {
+          const handleChange = (typeValue: string) => {
+            props.onChange(typeValue);
+          };
+
+          return (
+            <InlineEdit
+              className="w-full"
+              onCancel={props.onCancel}
+              onSave={props.onComplete}>
+              <Select
+                options={ENTITY_TYPE_OPTIONS}
+                size="small"
+                style={{ width: '155px' }}
+                value={value}
+                onChange={handleChange}
+              />
+            </InlineEdit>
           );
         };
       default:

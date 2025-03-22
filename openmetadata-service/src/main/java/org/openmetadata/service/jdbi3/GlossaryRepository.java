@@ -153,7 +153,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   /** Export glossary as CSV */
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     Glossary glossary = getByName(null, name, Fields.EMPTY_FIELDS); // Validate glossary name
     GlossaryTermRepository repository =
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);

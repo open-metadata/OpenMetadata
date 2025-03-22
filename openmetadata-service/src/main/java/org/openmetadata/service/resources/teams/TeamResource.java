@@ -635,7 +635,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
-    return exportCsvInternalAsync(securityContext, name);
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -656,7 +656,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT

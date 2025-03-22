@@ -311,7 +311,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public String exportToCsv(String parentTeam, String user) throws IOException {
+  public String exportToCsv(String parentTeam, String user, boolean recursive) throws IOException {
     Team team = getByName(null, parentTeam, Fields.EMPTY_FIELDS); // Validate team name
     return new TeamCsv(team, user).exportCsv();
   }
