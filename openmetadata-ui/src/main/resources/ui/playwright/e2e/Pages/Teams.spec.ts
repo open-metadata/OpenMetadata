@@ -192,7 +192,7 @@ test.describe('Teams Page', () => {
         )
       ).toHaveClass(/active/);
 
-      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
+      const updateTeamResponse = page.waitForResponse('/api/v1/teams/name/**');
 
       // Update the team with the new user
       await page.locator('[data-testid="selectable-list-update-btn"]').click();
@@ -222,7 +222,7 @@ test.describe('Teams Page', () => {
         )
         .click();
 
-      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
+      const updateTeamResponse = page.waitForResponse('/api/v1/teams/name/**');
       await page.locator('[data-testid="selectable-list-update-btn"]').click();
       await updateTeamResponse;
 
@@ -644,7 +644,7 @@ test.describe('Teams Page', () => {
       )
     ).toHaveClass(/active/);
 
-    const updateTeamResponse = page.waitForResponse('/api/v1/users*');
+    const updateTeamResponse = page.waitForResponse('/api/v1/teams/name/**');
 
     // Update the team with the new user
     await page.locator('[data-testid="selectable-list-update-btn"]').click();
@@ -660,7 +660,7 @@ test.describe('Teams Page', () => {
       .getByTestId('remove-user-btn')
       .click();
 
-    const updatedTeamResponse = page.waitForResponse('api/v1/users*');
+    const updatedTeamResponse = page.waitForResponse('/api/v1/teams/name/**');
 
     await page.getByRole('button', { name: 'confirm' }).click();
     await updatedTeamResponse;

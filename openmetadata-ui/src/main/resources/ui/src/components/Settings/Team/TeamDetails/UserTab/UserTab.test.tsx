@@ -14,9 +14,9 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { Team } from '../../../../../generated/entity/teams/team';
+import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { MOCK_MARKETING_TEAM } from '../../../../../mocks/Teams.mock';
-import { getUsers } from '../../../../../rest/userAPI';
+import { getTeamUsers } from '../../../../../rest/userAPI';
 import { UserTab } from './UserTab.component';
 import { UserTabProps } from './UserTab.interface';
 
@@ -68,7 +68,7 @@ jest.mock('../../../../../utils/Users.util', () => ({
 }));
 
 jest.mock('../../../../../rest/userAPI', () => ({
-  getUsers: jest.fn().mockResolvedValue({
+  getTeamUsers: jest.fn().mockResolvedValue({
     data: [{ id: 'test', name: 'testing' }],
     paging: { total: 10 },
   }),
@@ -82,10 +82,9 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(getUsers).toHaveBeenCalledWith({
+    expect(getTeamUsers).toHaveBeenCalledWith('Marketing', {
       fields: 'roles',
       limit: 25,
-      team: 'Marketing',
     });
     expect(
       await screen.findByTestId('user-selectable-list')
@@ -96,7 +95,7 @@ describe('UserTab', () => {
   });
 
   it('Error placeholder should visible if there is no data', async () => {
-    (getUsers as jest.Mock).mockRejectedValueOnce({
+    (getTeamUsers as jest.Mock).mockRejectedValueOnce({
       data: [],
       paging: { total: 0 },
     });
@@ -127,7 +126,7 @@ describe('UserTab', () => {
   });
 
   it('Pagination should visible if total value is greater then 25', async () => {
-    (getUsers as jest.Mock).mockResolvedValueOnce({
+    (getTeamUsers as jest.Mock).mockResolvedValueOnce({
       data: [{ id: 'test', name: 'testing' }],
       paging: { total: 30 },
     });
@@ -139,4 +138,28 @@ describe('UserTab', () => {
 
     expect(await screen.findByText('NextPrevious')).toBeInTheDocument();
   });
+
+  [TeamType.BusinessUnit, TeamType.Department, TeamType.Division].forEach(
+    (teamType) => {
+      it(`Should not render searchbar and add user button in case of team type ${teamType}`, async () => {
+        render(
+          <BrowserRouter>
+            <UserTab
+              {...props}
+              currentTeam={
+                {
+                  ...MOCK_MARKETING_TEAM,
+                  teamType,
+                } as Team
+              }
+            />
+          </BrowserRouter>
+        );
+
+        expect(screen.queryByTestId('add-new-user')).not.toBeInTheDocument();
+        expect(screen.queryByText('Searchbar')).not.toBeInTheDocument();
+        expect(screen.queryByText('ManageButton')).not.toBeInTheDocument();
+      });
+    }
+  );
 });
