@@ -996,6 +996,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  const extraInfoData = useMemo(() => {
+    return serviceUtilClassBase.getServiceExtraInfo(serviceDetails);
+  }, [serviceDetails]);
+
   const testConnectionTab = useMemo(() => {
     return (
       <Row>
@@ -1053,6 +1057,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <Col className="p-x-lg" span={24}>
           <ServiceConnectionDetails
             connectionDetails={connectionDetails ?? {}}
+            extraInfo={extraInfoData}
             serviceCategory={serviceCategory}
             serviceFQN={serviceDetails?.serviceType || ''}
           />

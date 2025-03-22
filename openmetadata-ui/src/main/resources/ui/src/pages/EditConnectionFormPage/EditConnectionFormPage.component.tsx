@@ -75,15 +75,10 @@ function EditConnectionFormPage() {
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
 
   const handleConfigSave = (updatedData: ConfigData) => {
-    const configData: ServicesUpdateRequest = {
-      ...serviceDetails,
-      connection: {
-        config: {
-          ...serviceDetails?.connection?.config,
-          ...updatedData,
-        },
-      },
-    };
+    const configData = serviceUtilClassBase.getEditConfigData(
+      serviceDetails,
+      updatedData
+    );
 
     setServiceConfig(configData);
     setActiveServiceStep(2);
