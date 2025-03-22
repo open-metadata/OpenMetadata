@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
@@ -22,10 +22,15 @@ import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.sv
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
 import { SIZE } from '../../../enums/common.enum';
+import { DayOneExperienceWorkflowStages } from '../../../enums/DayOneWorkflow.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { WorkflowStatus } from '../../../generated/governance/workflows/workflowInstance';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
-import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
+import {
+  getAssetsByServiceType,
+  getStatusByWorkflowStage,
+} from '../../../utils/ServiceInsightsTabUtils';
 import {
   getReadableCountString,
   getServiceNameQueryFilter,
@@ -37,6 +42,7 @@ import './total-data-assets-widget.less';
 
 function TotalDataAssetsWidget({
   serviceName,
+  workflowStatesData,
 }: Readonly<ServiceInsightWidgetCommonProps>) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
@@ -52,6 +58,20 @@ function TotalDataAssetsWidget({
     useState<
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
     >();
+
+  const workflowStageStatus = getStatusByWorkflowStage(
+    workflowStatesData?.subInstanceStates ?? [],
+    DayOneExperienceWorkflowStages.RUN_METADATA_INGESTION
+  );
+
+  const showPlaceholder = useMemo(
+    () =>
+      (isEmpty(entityCounts) ||
+        entityCounts?.every((entity) => entity.value === 0)) &&
+      (isUndefined(workflowStageStatus) ||
+        workflowStageStatus === WorkflowStatus.Failure),
+    [entityCounts, workflowStageStatus]
+  );
 
   const totalCount =
     entityCounts?.reduce((sum, entity) => sum + entity.value, 0) ?? 0;
@@ -101,7 +121,7 @@ function TotalDataAssetsWidget({
         </Typography.Text>
       </div>
       <Skeleton loading={loadingCount > 0}>
-        {isEmpty(entityCounts) ? (
+        {showPlaceholder ? (
           <ErrorPlaceHolder
             placeholderText={t('message.no-entity-data-available', {
               entity: t('label.data-asset-lowercase-plural'),

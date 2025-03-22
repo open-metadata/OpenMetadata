@@ -10,15 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export interface WorkflowInstanceFromApplicationParams {
+  startTs: number;
+  endTs: number;
+  workflowDefinitionName: string;
+  entityLink: string;
+}
 
-import { SystemChartType } from '../enums/DataInsight.enum';
-
-export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
-  SystemChartType.DescriptionCoverage,
-  SystemChartType.PIICoverage,
-  SystemChartType.TierCoverage,
-  SystemChartType.OwnersCoverage,
-];
-
-export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME =
-  'DayOneExperienceWorkflow';
+export interface WorkflowInstanceStateParams {
+  startTs: number;
+  endTs: number;
+}

@@ -214,7 +214,7 @@ const OBSERVABILITY_CREATION_DETAILS = getObservabilityCreationDetails({
   tableName1: table1.entity.name,
   tableName2: table2.entity.name,
   testSuiteFQN: TEST_SUITE_NAME,
-  // @aniketkatkar97 please 
+  // @aniketkatkar97 please
   // testCaseName: TEST_CASE_NAME,
   ingestionPipelineName: INGESTION_PIPELINE_NAME,
   domainName: domain.data.name,
