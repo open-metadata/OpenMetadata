@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { mergeAttributes, Node } from '@tiptap/core';
-import { bytesToSize } from '../../../../utils/StringsUtils';
-import { FileType } from '../../BlockEditor.interface';
+import { ReactNodeViewRenderer } from '@tiptap/react';
 import { FileNodeAttrs, FileNodeOptions } from './FileNode.interface';
+import FileNodeView from './FileNodeView';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -78,68 +78,11 @@ const FileNode = Node.create<FileNodeOptions>({
       'data-mimetype': attrs.mimeType,
     };
 
-    switch (true) {
-      case attrs.mimeType.startsWith(FileType.VIDEO):
-        return [
-          'div',
-          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
-            class: 'file-attachment file-type-video',
-          }),
-          [
-            'video',
-            {
-              controls: 'true',
-              src: attrs.url,
-              class: 'video-player',
-            },
-          ],
-        ];
+    return ['div', mergeAttributes(this.options.HTMLAttributes, baseAttrs)];
+  },
 
-      case attrs.mimeType.startsWith(FileType.AUDIO):
-        return [
-          'div',
-          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
-            class: 'file-attachment file-type-audio',
-          }),
-          [
-            'audio',
-            {
-              controls: 'true',
-              src: attrs.url,
-              class: 'audio-player',
-            },
-          ],
-        ];
-
-      default:
-        return [
-          'div',
-          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
-            class: 'file-attachment file-type-file',
-          }),
-          [
-            'a',
-            {
-              href: attrs.url,
-              class: 'file-link',
-              target: '_blank',
-              rel: 'noopener noreferrer',
-            },
-            [
-              'span',
-              { class: 'file-name' },
-              attrs.fileName,
-              attrs.fileSize
-                ? [
-                    'span',
-                    { class: 'file-size' },
-                    ` (${bytesToSize(attrs.fileSize)})`,
-                  ]
-                : null,
-            ],
-          ],
-        ];
-    }
+  addNodeView() {
+    return ReactNodeViewRenderer(FileNodeView);
   },
 
   addCommands() {

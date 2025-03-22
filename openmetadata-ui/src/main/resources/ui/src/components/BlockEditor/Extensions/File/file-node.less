@@ -11,53 +11,71 @@
  *  limitations under the License.
  */
 .file-attachment {
-  padding: 12px;
-  margin: 8px 0;
-  border: 1px solid #e8e8e8;
+  margin: 1em 0;
+  position: relative;
   border-radius: 4px;
+  overflow: hidden;
 
-  &.file-type-file {
-    .file-link {
-      display: flex;
-      align-items: center;
-      color: inherit;
-      text-decoration: none;
+  &.ProseMirror-selectednode {
+    outline: none;
+    background: transparent;
+  }
 
-      .file-name {
-        margin-right: 8px;
-      }
+  .file-content,
+  .media-content {
+    padding: 8px 12px;
+    background: var(--background-default);
+    border: 1px solid var(--border-default);
+    border-radius: 4px;
+    transition: all 0.3s;
 
-      .file-size {
-        color: #666;
-        font-size: 12px;
-      }
+    &:hover {
+      background: var(--background-hover);
     }
   }
 
+  .file-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
+
+  .file-name {
+    font-weight: 500;
+  }
+
+  .file-size {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+  }
+
+  // Styles for video and audio players
   &.file-type-video,
   &.file-type-audio {
-    video,
-    audio {
-      width: 100%;
-      max-width: 600px;
-    }
-  }
+    .media-content {
+      padding: 0;
+      overflow: hidden;
 
-  .video-wrapper,
-  .audio-wrapper {
-    max-width: 100%;
-    margin: 8px 0;
+      .video-player,
+      .audio-player {
+        width: 100%;
+        max-width: 600px;
+        border-radius: 4px;
+        display: block;
+      }
 
-    video,
-    audio {
-      width: 100%;
-      max-width: 600px;
-      border-radius: 4px;
-    }
-
-    .video-fallback,
-    .audio-fallback {
-      display: none;
+      .ant-spin {
+        min-height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
     }
   }
 }
