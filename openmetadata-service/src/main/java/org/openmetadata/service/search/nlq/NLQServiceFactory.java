@@ -1,7 +1,7 @@
 package org.openmetadata.service.search.nlq;
 
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.util.ReflectionUtil;
 
 /**
@@ -12,13 +12,13 @@ public class NLQServiceFactory {
 
   private NLQServiceFactory() {}
 
-  public static NLQService createNLQService(NaturalLanguageSearchConfiguration config) {
-    if (config == null || !config.getEnabled()) {
+  public static NLQService createNLQService(ElasticSearchConfiguration config) {
+    if (config == null || !config.getNaturalLanguageSearch().getEnabled()) {
       LOG.info("Natural language search is disabled. Returning NoOpNLQService.");
       return new NoOpNLQService();
     }
 
-    String serviceClass = config.getProviderClass();
+    String serviceClass = config.getNaturalLanguageSearch().getProviderClass();
     if (serviceClass == null || serviceClass.isEmpty()) {
       LOG.warn("No provider class specified for NLQ service. Defaulting to NoOpNLQService.");
       return new NoOpNLQService();
@@ -34,9 +34,7 @@ public class NLQServiceFactory {
       }
 
       return (NLQService)
-          clazz
-              .getDeclaredConstructor(NaturalLanguageSearchConfiguration.class)
-              .newInstance(config);
+          clazz.getDeclaredConstructor(ElasticSearchConfiguration.class).newInstance(config);
     } catch (Exception e) {
       LOG.error(
           "Failed to initialize NLQ service with class {}: {}", serviceClass, e.getMessage(), e);
