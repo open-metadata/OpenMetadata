@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../../styles/variables.less');
+@import (reference) url('../../../../styles/variables.less');
 
 .file-attachment {
   margin: 0.75em 0;
@@ -351,17 +351,30 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 24px;
+    gap: 12px;
+    padding: 32px 24px;
     background-color: @grey-1;
     border: 1px dashed @border-color;
-    border-radius: 4px;
+    border-radius: @border-radius-base;
     cursor: pointer;
     transition: all 0.3s ease;
+    min-height: 160px;
 
     &:hover {
       border-color: @primary-color;
       background-color: @grey-2;
+    }
+
+    .anticon {
+      font-size: 32px;
+      color: @grey-4;
+    }
+
+    .ant-typography {
+      color: @grey-4;
+      font-size: 14px;
+      margin: 0;
+      text-align: center;
     }
 
     .upload-loading-container {
@@ -370,6 +383,10 @@
       align-items: center;
       gap: 8px;
       color: @grey-4;
+
+      .ant-typography {
+        margin: 0;
+      }
     }
   }
 

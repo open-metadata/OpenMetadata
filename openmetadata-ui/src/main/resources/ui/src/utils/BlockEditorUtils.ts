@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  AudioOutlined,
+  FileOutlined,
+  PictureOutlined,
+  PlayCircleOutlined,
+} from '@ant-design/icons';
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
 import { isEmpty } from 'lodash';
@@ -262,4 +268,17 @@ export const getFileTypeFromMimeType = (mimeType: string) => {
   }
 
   return FileType.FILE;
+};
+
+export const getFileIcon = (fileType: FileType) => {
+  switch (fileType) {
+    case FileType.IMAGE:
+      return PictureOutlined;
+    case FileType.VIDEO:
+      return PlayCircleOutlined;
+    case FileType.AUDIO:
+      return AudioOutlined;
+    default:
+      return FileOutlined;
+  }
 };

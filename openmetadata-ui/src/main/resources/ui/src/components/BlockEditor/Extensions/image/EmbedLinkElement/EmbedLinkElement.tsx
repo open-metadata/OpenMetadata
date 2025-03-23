@@ -56,7 +56,7 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
               data-testid="embed-input"
               placeholder={
                 t('label.paste-the-file-type-link', {
-                  fileType,
+                  fileType: t(`label.${fileType}`),
                 }) + ' ...'
               }
             />
