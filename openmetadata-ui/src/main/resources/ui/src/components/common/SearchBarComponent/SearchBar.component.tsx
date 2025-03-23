@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
+import './search-bar.less';
 
 type Props = {
   inputClassName?: string;
@@ -108,8 +109,8 @@ const Searchbar = ({
           placeholder={placeholder}
           prefix={
             <Icon
-              className={classNames('align-middle', {
-                'text-grey-3': isSearchBlur,
+              className={classNames('align-middle m-r-xss', {
+                'text-black': isSearchBlur,
                 'text-primary': !isSearchBlur,
               })}
               component={IconSearchV1}

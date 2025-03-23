@@ -15,13 +15,11 @@ import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
@@ -64,10 +62,8 @@ function SchemaTablesTab({
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
-  const pagingInfo = usePaging(PAGE_SIZE);
   const { data: databaseSchemaDetails, permissions: databaseSchemaPermission } =
     useGenericContext<DatabaseSchema>();
-
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
@@ -75,11 +71,13 @@ function SchemaTablesTab({
   const {
     paging,
     pageSize,
+    showPagination,
     handlePagingChange,
     currentPage,
+    handlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = pagingInfo;
+  } = usePaging(PAGE_SIZE);
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -245,6 +243,15 @@ function SchemaTablesTab({
         <TableAntd
           bordered
           columns={tableColumn}
+          customPaginationProps={{
+            showPagination,
+            currentPage,
+            isLoading: tableDataLoading,
+            pageSize,
+            paging,
+            pagingHandler: tablePaginationHandler,
+            onShowSizeChange: handlePageSizeChange,
+          }}
           data-testid="databaseSchema-tables"
           dataSource={tableData}
           extraTableFilters={
@@ -282,18 +289,6 @@ function SchemaTablesTab({
           size="small"
         />
       </Col>
-      {!isUndefined(pagingInfo) && pagingInfo.showPagination && (
-        <Col span={24}>
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={tableDataLoading}
-            pageSize={pagingInfo.pageSize}
-            paging={pagingInfo.paging}
-            pagingHandler={tablePaginationHandler}
-            onShowSizeChange={pagingInfo.handlePageSizeChange}
-          />
-        </Col>
-      )}
     </Row>
   );
 }

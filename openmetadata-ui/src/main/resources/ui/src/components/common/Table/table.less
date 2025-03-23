@@ -13,6 +13,11 @@
 @import (reference) url('../../../styles/variables.less');
 
 .table-container {
+  border-radius: 12px;
+  background-color: @white;
+  border: 1px solid @border-color-1;
+  overflow: hidden;
+
   .custom-column-dropdown-menu {
     margin-right: 10px;
     padding: 0;
@@ -32,5 +37,15 @@
       background-color: @white;
       color: inherit;
     }
+  }
+
+  .ant-table-wrapper {
+    height: 745px;
+    overflow-y: scroll;
+  }
+
+  .pagination-container {
+    border-top: 1px solid @border-color-1;
+    padding: 16px 0;
   }
 }

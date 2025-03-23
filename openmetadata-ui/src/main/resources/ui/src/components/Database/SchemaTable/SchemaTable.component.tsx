@@ -610,11 +610,11 @@ const SchemaTable = () => {
   );
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row gutter={[0, 16]}>
       <Col id="schemaDetails" span={24}>
         <Table
           bordered
-          className="m-b-sm align-table-filter-left"
+          className="align-table-filter-left"
           columns={columns}
           data-testid="entity-table"
           dataSource={data}

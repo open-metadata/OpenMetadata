@@ -58,7 +58,6 @@ import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -344,6 +343,16 @@ export const DatabaseSchemaTable = ({
         <Table
           bordered
           columns={schemaTableColumns}
+          customPaginationProps={{
+            currentPage,
+            showPagination,
+            isLoading,
+            isNumberBased: Boolean(searchValue),
+            pageSize,
+            paging,
+            pagingHandler: handleSchemaPageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
           data-testid="database-databaseSchemas"
           dataSource={schemas}
           defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
@@ -360,19 +369,6 @@ export const DatabaseSchemaTable = ({
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={Boolean(searchValue)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleSchemaPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );

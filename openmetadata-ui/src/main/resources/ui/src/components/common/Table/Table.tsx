@@ -36,12 +36,15 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { Paging } from '../../../generated/type/paging';
 import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
+import NextPrevious from '../NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../NextPrevious/NextPrevious.interface';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
@@ -58,10 +61,20 @@ type TableProps<T extends Record<string, unknown>> = TableComponentProps<T> & {
     value?: string;
     searchDebounceTime?: number;
   };
+  customPaginationProps?: {
+    showPagination: boolean;
+    isLoading: boolean;
+    currentPage: number;
+    isNumberBased?: boolean;
+    pageSize: number;
+    paging: Paging;
+    pagingHandler: (data: PagingHandlerParams) => void;
+    onShowSizeChange: (page: number) => void;
+  };
 };
 
 const Table = <T extends Record<string, unknown>>(
-  { loading, searchProps, ...rest }: TableProps<T>,
+  { loading, searchProps, customPaginationProps, ...rest }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
@@ -220,45 +233,50 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   return (
-    <Row className="table-container" gutter={[0, 16]}>
-      {searchProps ? (
-        <Col span={12}>
-          <Searchbar
-            removeMargin
-            placeholder={searchProps?.placeholder ?? t('label.search')}
-            searchValue={searchText}
-            typingInterval={searchProps?.searchDebounceTime ?? 500}
-            onSearch={handleSearchAction}
-          />
-        </Col>
-      ) : null}
-      {(rest.extraTableFilters || !isFullViewTable) && (
-        <Col
-          className={classNames(
-            'd-flex justify-end items-center gap-5',
-            rest.extraTableFiltersClassName
+    <Row className="table-container">
+      <Col className="p-y-md" span={24}>
+        <Row className="p-x-md">
+          {searchProps ? (
+            <Col span={12}>
+              <Searchbar
+                removeMargin
+                placeholder={searchProps?.placeholder ?? t('label.search')}
+                searchValue={searchText}
+                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                onSearch={handleSearchAction}
+              />
+            </Col>
+          ) : null}
+          {(rest.extraTableFilters || !isFullViewTable) && (
+            <Col
+              className={classNames(
+                'd-flex justify-end items-center gap-5',
+                rest.extraTableFiltersClassName
+              )}
+              span={searchProps ? 12 : 24}>
+              {rest.extraTableFilters}
+              {!isFullViewTable && (
+                <DndProvider backend={HTML5Backend}>
+                  <Dropdown
+                    className="custom-column-dropdown-menu"
+                    menu={menu}
+                    open={isDropdownVisible}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setIsDropdownVisible}>
+                    <Button
+                      data-testid="column-dropdown"
+                      icon={<Icon component={ColumnIcon} />}>
+                      {t('label.column-plural')}
+                    </Button>
+                  </Dropdown>
+                </DndProvider>
+              )}
+            </Col>
           )}
-          span={searchProps ? 12 : 24}>
-          {rest.extraTableFilters}
-          {!isFullViewTable && (
-            <DndProvider backend={HTML5Backend}>
-              <Dropdown
-                className="custom-column-dropdown-menu"
-                menu={menu}
-                open={isDropdownVisible}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setIsDropdownVisible}>
-                <Button
-                  data-testid="column-dropdown"
-                  icon={<Icon component={ColumnIcon} />}>
-                  {t('label.column-plural')}
-                </Button>
-              </Dropdown>
-            </DndProvider>
-          )}
-        </Col>
-      )}
+        </Row>
+      </Col>
+
       <Col span={24}>
         <AntdTable
           {...rest}
@@ -280,6 +298,19 @@ const Table = <T extends Record<string, unknown>>(
           {...resizingTableProps}
         />
       </Col>
+      {customPaginationProps && customPaginationProps.showPagination ? (
+        <Col span={24}>
+          <NextPrevious
+            currentPage={customPaginationProps.currentPage}
+            isLoading={isLoading}
+            isNumberBased={Boolean(searchProps?.value)}
+            pageSize={customPaginationProps.pageSize}
+            paging={customPaginationProps.paging}
+            pagingHandler={customPaginationProps.pagingHandler}
+            onShowSizeChange={customPaginationProps.onShowSizeChange}
+          />
+        </Col>
+      ) : null}
     </Row>
   );
 };
