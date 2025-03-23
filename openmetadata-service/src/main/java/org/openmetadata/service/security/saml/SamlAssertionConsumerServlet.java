@@ -136,6 +136,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
               jwtAuthMechanism.getJWTToken(),
               nameId,
               username);
+      Entity.updateUserLastLoginTime(user, System.currentTimeMillis());
       resp.sendRedirect(url);
     }
   }

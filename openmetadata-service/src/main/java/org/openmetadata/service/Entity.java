@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.json.JsonPatch;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -72,12 +74,15 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public final class Entity {
@@ -739,5 +744,14 @@ public final class Entity {
     }
 
     return allServices;
+  }
+
+  public static User updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
+    JsonPatch patch =
+        JsonUtils.getJsonPatch(orginalUser, orginalUser.withLastLoginTime(lastLoginTime));
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    RestUtil.PatchResponse<User> patchResponse =
+        userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+    return patchResponse.entity();
   }
 }
