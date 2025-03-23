@@ -40,31 +40,46 @@ export const DiffViewNew = ({
   useEffect(() => {
     const checkHeight = () => {
       if (contentRef.current) {
-        const lineHeight = parseInt(
-          window.getComputedStyle(contentRef.current).lineHeight,
-          10
-        );
-        const twoLinesHeight = lineHeight * 2;
+        const computedStyle = window.getComputedStyle(contentRef.current);
+        const lineHeight = parseInt(computedStyle.lineHeight, 10);
 
-        // Get the actual content height without restrictions
-        const clone = contentRef.current.cloneNode(true) as HTMLElement;
-        clone.style.maxHeight = 'none';
-        clone.style.position = 'absolute';
-        clone.style.visibility = 'hidden';
-        document.body.appendChild(clone);
-        const fullHeight = clone.scrollHeight;
-        document.body.removeChild(clone);
+        // Force the content to be unclamped temporarily for measurement
+        (contentRef.current.style as any)['-webkit-line-clamp'] = 'none';
+        contentRef.current.style.maxHeight = 'none';
 
-        // Compare the full height with two lines height
-        setShouldShowViewMore(fullHeight > twoLinesHeight);
+        // Get the full height
+        const fullHeight = contentRef.current.scrollHeight;
+
+        // Reset the styles
+        (contentRef.current.style as any)['-webkit-line-clamp'] = '';
+        contentRef.current.style.maxHeight = '';
+
+        // Calculate max height based on number of lines
+        const maxLines = showDescTitle ? 3 : 2;
+        const maxHeight = lineHeight * maxLines;
+
+        setShouldShowViewMore(fullHeight > maxHeight);
       }
     };
 
-    // Small delay to ensure content is rendered
-    const timer = setTimeout(checkHeight, 100);
+    checkHeight();
 
-    return () => clearTimeout(timer);
-  }, [diffArr]);
+    const timer = setTimeout(checkHeight, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [diffArr, showDescTitle]);
+
+  const contentClassName = useMemo(() => {
+    if (expanded) {
+      return '';
+    }
+
+    return showDescTitle
+      ? 'clamp-text-3 overflow-hidden'
+      : 'clamp-text-2 overflow-hidden';
+  }, [expanded, showDescTitle]);
 
   const getDiffKey = (diff: Change) => {
     if (diff.added) {
@@ -124,16 +139,6 @@ export const DiffViewNew = ({
     [diffArr]
   );
 
-  const getContentClassName = () => {
-    if (expanded) {
-      return '';
-    }
-
-    return showDescTitle
-      ? 'clamp-text-3 overflow-hidden'
-      : 'clamp-text-2 overflow-hidden';
-  };
-
   return (
     <div
       className={classNames('w-full overflow-y-auto p-md border-radius-xs', {
@@ -172,7 +177,7 @@ export const DiffViewNew = ({
         {diffArr.length ? (
           <>
             <div
-              className={classNames('relative', getContentClassName())}
+              className={classNames('relative', contentClassName)}
               ref={contentRef}>
               {elements}
             </div>
