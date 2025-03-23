@@ -141,7 +141,7 @@ function MetadataAgentsWidget({
   );
 
   const renderAddIngestionButton = useMemo(() => {
-    if (isFetchingStatus || isLoading) {
+    if (isFetchingStatus) {
       return <ButtonSkeleton size="default" />;
     }
 
@@ -159,7 +159,6 @@ function MetadataAgentsWidget({
 
     return null;
   }, [
-    isLoading,
     isFetchingStatus,
     showAddIngestionButton,
     ingestionPipelineList,

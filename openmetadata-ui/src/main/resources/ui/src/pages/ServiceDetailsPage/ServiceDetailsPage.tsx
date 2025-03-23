@@ -1031,6 +1031,23 @@ const ServiceDetailsPage: FunctionComponent = () => {
     };
   }, [collateAgentPaging, ingestionPaging]);
 
+  const refreshAgentsList = useCallback(
+    async (agentListType: ServiceAgentSubTabs) => {
+      if (agentListType === ServiceAgentSubTabs.COLLATE_AI) {
+        await fetchCollateAgentsList({
+          limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
+        });
+      } else {
+        setSearchText('');
+        await getAllIngestionWorkflows(
+          {},
+          ingestionPagingCursor?.pageSize ?? ingestionPageSize
+        );
+      }
+    },
+    [collateAgentPagingCursor, collateAgentPageSize]
+  );
+
   const ingestionTab = useMemo(
     () => (
       <Ingestion
@@ -1046,6 +1063,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         ingestionPipelineList={ingestionPipelines}
         isCollateAgentLoading={isCollateAgentLoading}
         isLoading={isIngestionPipelineLoading}
+        refreshAgentsList={refreshAgentsList}
         searchText={searchText}
         serviceDetails={serviceDetails}
         statusFilter={statusFilter}
@@ -1072,6 +1090,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       collateAgentPagingInfo,
       onCollateAgentPageChange,
       agentCounts,
+      refreshAgentsList,
     ]
   );
 

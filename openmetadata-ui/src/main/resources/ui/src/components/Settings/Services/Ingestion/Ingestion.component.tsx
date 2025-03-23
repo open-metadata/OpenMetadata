@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Col,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -54,6 +63,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   collateAgentPagingInfo,
   onCollateAgentPageChange,
   agentCounts,
+  refreshAgentsList,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -182,41 +192,54 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             )}
           </Col>
-          {!isCollateSubTabSelected && (
-            <Col className="flex items-center gap-2">
-              <SearchDropdown
-                hideCounts
-                label={t('label.status')}
-                options={statusFilters}
-                searchKey="status"
-                selectedKeys={statusFilter ?? []}
-                triggerButtonSize="large"
-                onChange={handleStatusFilterChange}
-                onSearch={handleStatusFilterSearch}
-              />
-              <SearchDropdown
-                hideCounts
-                label={t('label.type')}
-                options={typeFilters}
-                searchKey="status"
-                selectedKeys={typeFilter ?? []}
-                triggerButtonSize="large"
-                onChange={handleTypeFilterChange}
-                onSearch={handleTypeFilterSearch}
-              />
 
-              <div className="search-bar-container">
-                <Searchbar
-                  removeMargin
-                  inputClassName="p-x-sm p-y-xs border-radius-xs"
-                  placeholder={t('label.search')}
-                  searchValue={searchText}
-                  typingInterval={500}
-                  onSearch={handleSearchChange}
+          <Col className="flex items-center gap-2">
+            <Tooltip
+              title={t('label.refresh-entity', {
+                entity: t('label.agent-plural'),
+              })}>
+              <Button
+                icon={<ReloadOutlined className="reload-button-icon" />}
+                size="large"
+                onClick={() => refreshAgentsList(subTab as ServiceAgentSubTabs)}
+              />
+            </Tooltip>
+            {!isCollateSubTabSelected && (
+              <>
+                <SearchDropdown
+                  hideCounts
+                  label={t('label.status')}
+                  options={statusFilters}
+                  searchKey="status"
+                  selectedKeys={statusFilter ?? []}
+                  triggerButtonSize="large"
+                  onChange={handleStatusFilterChange}
+                  onSearch={handleStatusFilterSearch}
                 />
-              </div>
-            </Col>
-          )}
+                <SearchDropdown
+                  hideCounts
+                  label={t('label.type')}
+                  options={typeFilters}
+                  searchKey="status"
+                  selectedKeys={typeFilter ?? []}
+                  triggerButtonSize="large"
+                  onChange={handleTypeFilterChange}
+                  onSearch={handleTypeFilterSearch}
+                />
+
+                <div className="search-bar-container">
+                  <Searchbar
+                    removeMargin
+                    inputClassName="p-x-sm p-y-xs border-radius-xs"
+                    placeholder={t('label.search')}
+                    searchValue={searchText}
+                    typingInterval={500}
+                    onSearch={handleSearchChange}
+                  />
+                </div>
+              </>
+            )}
+          </Col>
         </Row>
       </Col>
       <Col span={24}>

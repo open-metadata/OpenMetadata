@@ -49,6 +49,7 @@ export interface IngestionProps {
   collateAgentPagingInfo?: UsePagingInterface;
   onCollateAgentPageChange?: (pagingHandlerParams: PagingHandlerParams) => void;
   agentCounts?: Record<ServiceAgentSubTabs, number>;
+  refreshAgentsList: (agentListType: ServiceAgentSubTabs) => Promise<void>;
 }
 
 export interface SelectedRowDetails {
