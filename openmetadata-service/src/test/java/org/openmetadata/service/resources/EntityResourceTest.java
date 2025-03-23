@@ -148,6 +148,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.connections.TestConnectionStepResult;
@@ -186,6 +187,7 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
@@ -4535,6 +4537,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected List<CsvHeader> getDatabaseCsvHeaders(Database db, boolean recursive) {
     return new DatabaseRepository.DatabaseCsv(db, "admin", recursive).HEADERS;
+  }
+
+  protected List<CsvHeader> getDatabaseServiceCsvHeaders(
+      DatabaseService dbService, boolean recursive) {
+    return new DatabaseServiceRepository.DatabaseServiceCsv(dbService, "admin", recursive).HEADERS;
   }
 
   protected List<CsvHeader> getDatabaseSchemaCsvHeaders(

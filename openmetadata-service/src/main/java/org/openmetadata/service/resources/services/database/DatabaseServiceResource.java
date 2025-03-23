@@ -575,7 +575,7 @@ public class DatabaseServiceResource
           @QueryParam("dryRun")
           boolean dryRun,
       @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
+          @DefaultValue("false")
           @QueryParam("recursive")
           boolean recursive,
       String csv) {

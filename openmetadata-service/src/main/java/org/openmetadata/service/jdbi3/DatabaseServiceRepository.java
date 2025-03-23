@@ -22,6 +22,7 @@ import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.csv.CsvUtil.formatCsv;
 import static org.openmetadata.service.Entity.DATABASE;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
+import static org.openmetadata.service.Entity.DATABASE_SERVICE;
 import static org.openmetadata.service.Entity.STORED_PROCEDURE;
 import static org.openmetadata.service.Entity.TABLE;
 
@@ -41,7 +42,6 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -79,7 +79,8 @@ public class DatabaseServiceRepository
             databaseService.getFullyQualifiedName());
 
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
-    return new DatabaseServiceCsv(databaseService, user).exportAllCsv(databases, recursive);
+    return new DatabaseServiceCsv(databaseService, user, recursive)
+        .exportAllCsv(databases, recursive);
   }
 
   @Override
@@ -88,31 +89,41 @@ public class DatabaseServiceRepository
     // Validate database service
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate glossary name
-    DatabaseServiceCsv databaseServiceCsv = new DatabaseServiceCsv(databaseService, user);
-    List<CSVRecord> records = databaseServiceCsv.parse(csv);
+    DatabaseServiceCsv databaseServiceCsv =
+        new DatabaseServiceCsv(databaseService, user, recursive);
+    List<CSVRecord> records;
+    if (recursive) {
+      records = databaseServiceCsv.parse(csv, recursive);
+    } else {
+      records = databaseServiceCsv.parse(csv);
+    }
     return databaseServiceCsv.importCsv(records, dryRun);
   }
 
   public static class DatabaseServiceCsv extends EntityCsv<Database> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(DATABASE, false);
-    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+    public final CsvDocumentation DOCUMENTATION;
+    public final List<CsvHeader> HEADERS;
     private final DatabaseService service;
+    private final boolean recursive;
 
-    DatabaseServiceCsv(DatabaseService service, String user) {
-      super(DATABASE, DOCUMENTATION.getHeaders(), user);
+    public DatabaseServiceCsv(DatabaseService service, String user, boolean recursive) {
+      super(DATABASE, getCsvDocumentation(DATABASE_SERVICE, recursive).getHeaders(), user);
       this.service = service;
+      this.DOCUMENTATION = getCsvDocumentation(DATABASE_SERVICE, recursive);
+      this.HEADERS = DOCUMENTATION.getHeaders();
+      this.recursive = recursive;
     }
 
     /**
      * Export all databases with their child entities (schema, tables, stored procedures, columns)
      */
     public String exportAllCsv(List<Database> databases, boolean recursive) throws IOException {
+      if (!recursive) {
+        return this.exportCsv(databases);
+      }
       CsvFile csvFile = new CsvFile().withHeaders(HEADERS);
       for (Database database : databases) {
         addEntityToCSV(csvFile, database, DATABASE);
-        if (!recursive) {
-          continue;
-        }
         DatabaseRepository databaseRepository =
             (DatabaseRepository) Entity.getEntityRepository(DATABASE);
         String dbCsv =
@@ -152,28 +163,28 @@ public class DatabaseServiceRepository
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
-      Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
-      Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
-      addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
-      addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
 
-      // Handle optional fields that may not exist in all entity types
-      Object domain = EntityUtil.getEntityField(entity, "domain");
-      String domainFqn = "";
-      if (domain != null) {
-        EntityReference domainRef = (EntityReference) domain;
-        domainFqn =
-            (domainRef == null || Boolean.TRUE.equals(domainRef.getInherited()))
-                ? ""
-                : domainRef.getFullyQualifiedName();
+      if (recursive) {
+        Object retentionPeriod = EntityUtil.getEntityField(entity, "retentionPeriod");
+        Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
+        addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
+        addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
       }
 
-      addField(recordList, domainFqn);
+      // Handle optional fields that may not exist in all entity types
+      String domain =
+          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
+              ? ""
+              : entity.getDomain().getFullyQualifiedName();
+
+      addField(recordList, domain);
       addExtension(recordList, entity.getExtension());
 
       // Add entityType and fullyQualifiedName
-      addField(recordList, entityType);
-      addField(recordList, entity.getFullyQualifiedName());
+      if (recursive) {
+        addField(recordList, entityType);
+        addField(recordList, entity.getFullyQualifiedName());
+      }
 
       addRecord(csvFile, recordList);
     }
@@ -193,6 +204,52 @@ public class DatabaseServiceRepository
 
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      if (recursive) {
+        createEntityWithRecursion(printer, csvRecords);
+      } else {
+        createEntityWithoutRecursion(printer, csvRecords);
+      }
+    }
+
+    protected void createEntityWithoutRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
+        throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      String databaseFqn =
+          FullyQualifiedName.add(service.getFullyQualifiedName(), csvRecord.get(0));
+      Database database;
+      try {
+        database = Entity.getEntityByName(DATABASE, databaseFqn, "*", Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        LOG.warn("Database not found: {}, it will be created with Import.", databaseFqn);
+        database = new Database().withService(service.getEntityReference());
+      }
+
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
+      // Field 1,2,3,6,7 - database service name, displayName, description
+      List<TagLabel> tagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+      database
+          .withName(csvRecord.get(0))
+          .withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
+          .withOwners(getOwners(printer, csvRecord, 3))
+          .withTags(tagLabels)
+          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 8));
+
+      if (processRecord) {
+        createEntity(printer, csvRecord, database);
+      }
+    }
+
+    protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
+        throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
 
       // Get entityType and fullyQualifiedName if provided
