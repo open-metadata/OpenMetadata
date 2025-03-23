@@ -59,16 +59,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @Path("/v1/search")
 @Tag(name = "Search", description = "APIs related to search and suggest.")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "elasticsearch")
+@Collection(name = "search")
 public class SearchResource {
-  private final Authorizer authorizer;
   private final SearchRepository searchRepository;
 
-  public static final String ELASTIC_SEARCH_ENTITY_FQN_STREAM =
-      "eventPublisher:ElasticSearch:STREAM";
-
   public SearchResource(Authorizer authorizer) {
-    this.authorizer = authorizer;
     this.searchRepository = Entity.getSearchRepository();
   }
 
@@ -321,7 +316,8 @@ public class SearchResource {
   @Operation(
       operationId = "searchEntitiesWithNLQ",
       summary = "Search entities using Natural Language Query (NLQ)",
-      description = "Search entities using Natural Language Queries (NLQ).",
+      description =
+          "Search entities using Natural Language Queries (NLQ) with full search capabilities.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -332,29 +328,90 @@ public class SearchResource {
                     schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response searchWithNLQ(
+      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "ElasticSearch/OpenSearch index name", required = true)
+      @Parameter(description = "NLQ query string in natural language") @QueryParam("q")
+          String nlqQuery,
+      @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
           @DefaultValue("table_search_index")
           @QueryParam("index")
           String index,
-      @Parameter(description = "NLQ query string in natural language") @QueryParam("q")
-          String nlqQuery,
-      @Parameter(description = "From offset for pagination") @DefaultValue("0") @QueryParam("from")
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @DefaultValue("false")
+          @QueryParam("deleted")
+          boolean deleted,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
           int from,
-      @Parameter(description = "Number of results to return")
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
           @QueryParam("size")
-          int size)
+          int size,
+      @Parameter(description = "When paginating, specify the search_after values")
+          @QueryParam("search_after")
+          String searchAfter,
+      @Parameter(description = "Sort the search results by field")
+          @DefaultValue("_score")
+          @QueryParam("sort_field")
+          String sortFieldParam,
+      @Parameter(
+              description = "Sort order asc for ascending or desc for descending, defaults to desc")
+          @DefaultValue("desc")
+          @QueryParam("sort_order")
+          String sortOrder,
+      @Parameter(description = "Track Total Hits")
+          @DefaultValue("false")
+          @QueryParam("track_total_hits")
+          boolean trackTotalHits,
+      @Parameter(description = "Additional filters to apply") @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Post-filters to apply") @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Get document body for each hit")
+          @DefaultValue("true")
+          @QueryParam("fetch_source")
+          boolean fetchSource,
+      @Parameter(description = "Get only selected fields of the document body")
+          @QueryParam("include_source_fields")
+          List<String> includeSourceFields,
+      @Parameter(description = "Fetch results in hierarchical order")
+          @DefaultValue("false")
+          @QueryParam("getHierarchy")
+          boolean getHierarchy,
+      @Parameter(description = "Explain the results of the query")
+          @DefaultValue("false")
+          @QueryParam("explain")
+          boolean explain)
       throws IOException {
 
+    // Add Domain Filter
+    List<EntityReference> domains = new ArrayList<>();
     SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
 
     SearchRequest request =
         new SearchRequest()
             .withQuery(nlqQuery)
             .withSize(size)
             .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-            .withFrom(from);
+            .withFrom(from)
+            .withQueryFilter(queryFilter)
+            .withPostFilter(postFilter)
+            .withFetchSource(fetchSource)
+            .withTrackTotalHits(trackTotalHits)
+            .withSortFieldParam(sortFieldParam)
+            .withDeleted(deleted)
+            .withSortOrder(sortOrder)
+            .withIncludeSourceFields(includeSourceFields)
+            .withIsHierarchy(getHierarchy)
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withSearchAfter(SearchUtils.searchAfter(searchAfter))
+            .withExplain(explain);
 
     return searchRepository.searchWithNLQ(request, subjectContext);
   }
@@ -542,7 +599,6 @@ public class SearchResource {
                       + "AND tags.tagFQN:user.address <br/>"
                       + "NOTE: logic operators such as AND, OR and NOT must be in uppercase ",
               required = true)
-          @DefaultValue("*")
           @QueryParam("q")
           String query,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")

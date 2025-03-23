@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
+import { kebabCase } from 'lodash';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
@@ -62,7 +63,7 @@ export const CustomizeDetailsPage = ({
     <PageLayoutV1
       className="bg-grey"
       pageTitle={t('label.customize-entity', {
-        entity: t('label.landing-page'),
+        entity: t('label.' + kebabCase(currentPageType)),
       })}>
       <Row className="customize-details-page" gutter={[0, 20]}>
         <Col span={24}>
