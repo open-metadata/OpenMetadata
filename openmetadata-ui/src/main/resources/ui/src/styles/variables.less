@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+// Colors
+
 @primary-color: ~'var(--ant-primary-color)';
 @success-color: ~'var(--ant-success-color)';
 @warning-color: ~'var(--ant-warning-color)';
@@ -19,7 +21,8 @@
 @link-color: ~'var(--ant-primary-color)';
 @primary-1: ~'var(--ant-primary-1)';
 @radio-button-checked-bg: ~'var(--ant-primary-1)';
-@left-nav-item-background: ~'var(--ant-primary-1)';
+@highlight-color: #f41111;
+
 @green-1: #28a744;
 @green-2: #ebf9f4;
 @green-3: #48ca9e;
@@ -105,9 +108,11 @@
 @grey-12: #e9eaeb;
 @grey-13: #71717a;
 @grey-14: #a4a7ae;
-@grey-15: #fafafa;
-@grey-16: #afb5d9;
-@grey-17: #363f72;
+@grey-15: #eaecf5;
+@grey-16: #f4f5f7;
+@grey-17: #fafafa;
+@grey-18: #afb5d9;
+@grey-19: #363f72;
 
 @text-grey-muted: @grey-4;
 @font-size-base: 14px;
@@ -238,12 +243,23 @@
 @warning-bg-color: rgb(from @warning-color r g b / 0.1);
 @info-bg-color: rgb(from @info-color r g b / 0.1);
 
-@card-radius: 12px;
+@card-radius: @border-radius-sm;
+@menu-radius: @border-radius-sm;
+
+// Layout
+
+@layout-body-background: #f8f9fc;
+@layout-header-background: #f8f9fc;
+@layout-header-height: 80px;
+@layout-header-padding: 20px 24px;
+
+@menu-bg: #f8f9fc;
 
 // Buttons
 
-@btn-border-radius-base: 8px;
-@btn-border-radius-sm: 8px;
+@btn-border-radius-base: @border-radius-xs;
+@btn-border-radius-sm: @border-radius-xs;
+
 //grey colors
 @grey-25: #fdfdfd;
 @grey-50: #fafafa;
