@@ -23,6 +23,8 @@ public interface NLQService {
   String transformNaturalLanguageQuery(SearchRequest request, String additionalContext)
       throws IOException;
 
+  void cacheQuery(String query, String transformedQuery);
+
   /**
    * Check if the service is ready to process queries.
    *
