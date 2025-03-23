@@ -12,15 +12,20 @@
  */
 import { Card, Col, Row, Skeleton, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as ArrowDown } from '../../../assets/svg/down-full-arrow.svg';
 import { ReactComponent as ArrowUp } from '../../../assets/svg/up-full-arrow.svg';
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { PLATFORM_INSIGHTS_CHART } from '../../../constants/ServiceInsightsTab.constants';
-import { getTitleByChartType } from '../../../utils/ServiceInsightsTabUtils';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import {
+  getServiceInsightsWidgetPlaceholderIcon,
+  getTitleByChartType,
+} from '../../../utils/ServiceInsightsTabUtils';
 import { getReadableCountString } from '../../../utils/ServiceUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TotalDataAssetsWidget from '../TotalDataAssetsWidget/TotalDataAssetsWidget';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
@@ -32,6 +37,10 @@ function PlatformInsightsWidget({
   workflowStatesData,
 }: Readonly<PlatformInsightsWidgetProps>) {
   const { t } = useTranslation();
+
+  const showPlaceholder = useMemo(() => {
+    return chartsData.every((chart) => chart.noRecords);
+  }, [chartsData]);
 
   return (
     <div className="service-insights-widget widget-flex-col platform-insights-card">
@@ -71,6 +80,10 @@ function PlatformInsightsWidget({
 
                 const showIcon = chart.percentageChange !== 0;
 
+                const PlaceholderIcon = getServiceInsightsWidgetPlaceholderIcon(
+                  chart.chartType
+                );
+
                 return (
                   <Card
                     className="widget-info-card other-charts-card"
@@ -78,76 +91,94 @@ function PlatformInsightsWidget({
                     <Typography.Text className="font-semibold text-md">
                       {getTitleByChartType(chart.chartType)}
                     </Typography.Text>
-                    <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
-                      <Col
-                        className="flex flex-col justify-between h-full"
-                        span={14}>
-                        <Typography.Title level={3}>
-                          {`${getReadableCountString(
-                            chart.currentPercentage
-                          )}%`}
-                        </Typography.Title>
-                        {!isUndefined(chart.percentageChange) && (
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {showIcon && icon}
-                            <Typography.Text
-                              className="font-medium text-sm"
-                              style={{
-                                color: chart.isIncreased ? GREEN_1 : RED_1,
-                              }}>
-                              {`${getReadableCountString(
-                                chart.percentageChange
-                              )}%`}
-                            </Typography.Text>
-                            <Typography.Text className="font-medium text-grey-muted text-sm">
-                              {t('label.vs-last-week-lowercase')}
-                            </Typography.Text>
-                          </div>
-                        )}
-                      </Col>
-                      <Col className="flex items-end h-full" span={10}>
-                        <ResponsiveContainer
-                          height="90%"
-                          minHeight={90}
-                          width="100%">
-                          <AreaChart data={chart.data}>
-                            <defs>
-                              {[GREEN_1, RED_1].map((color) => (
-                                <linearGradient
-                                  id={`color${color}`}
-                                  key={color}
-                                  x1="0"
-                                  x2="0"
-                                  y1="0"
-                                  y2="1">
-                                  <stop
-                                    offset="1%"
-                                    stopColor={color}
-                                    stopOpacity={0.3}
-                                  />
-                                  <stop
-                                    offset="100%"
-                                    stopColor={color}
-                                    stopOpacity={0.05}
-                                  />
-                                </linearGradient>
-                              ))}
-                            </defs>
-                            <Area
-                              dataKey="count"
-                              fill={
-                                chart.isIncreased
-                                  ? `url(#color${GREEN_1})`
-                                  : `url(#color${RED_1})`
-                              }
-                              stroke={chart.isIncreased ? GREEN_1 : RED_1}
-                              strokeWidth={2}
-                              type="monotone"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </Col>
-                    </Row>
+                    {showPlaceholder ? (
+                      <ErrorPlaceHolder
+                        className="m-t-lg"
+                        icon={
+                          <PlaceholderIcon
+                            className="text-grey-8"
+                            height={30}
+                            width={30}
+                          />
+                        }
+                        size={SIZE.X_SMALL}
+                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                        <Typography.Text>
+                          {t('server.no-records-found')}
+                        </Typography.Text>
+                      </ErrorPlaceHolder>
+                    ) : (
+                      <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
+                        <Col
+                          className="flex flex-col justify-between h-full"
+                          span={14}>
+                          <Typography.Title level={3}>
+                            {`${getReadableCountString(
+                              chart.currentPercentage
+                            )}%`}
+                          </Typography.Title>
+                          {!isUndefined(chart.percentageChange) && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {showIcon && icon}
+                              <Typography.Text
+                                className="font-medium text-sm"
+                                style={{
+                                  color: chart.isIncreased ? GREEN_1 : RED_1,
+                                }}>
+                                {`${getReadableCountString(
+                                  chart.percentageChange
+                                )}%`}
+                              </Typography.Text>
+                              <Typography.Text className="font-medium text-grey-muted text-sm">
+                                {t('label.vs-last-week-lowercase')}
+                              </Typography.Text>
+                            </div>
+                          )}
+                        </Col>
+                        <Col className="flex items-end h-full" span={10}>
+                          <ResponsiveContainer
+                            height="90%"
+                            minHeight={90}
+                            width="100%">
+                            <AreaChart data={chart.data}>
+                              <defs>
+                                {[GREEN_1, RED_1].map((color) => (
+                                  <linearGradient
+                                    id={`color${color}`}
+                                    key={color}
+                                    x1="0"
+                                    x2="0"
+                                    y1="0"
+                                    y2="1">
+                                    <stop
+                                      offset="1%"
+                                      stopColor={color}
+                                      stopOpacity={0.3}
+                                    />
+                                    <stop
+                                      offset="100%"
+                                      stopColor={color}
+                                      stopOpacity={0.05}
+                                    />
+                                  </linearGradient>
+                                ))}
+                              </defs>
+                              <Area
+                                dataKey="count"
+                                fill={
+                                  chart.isIncreased
+                                    ? `url(#color${GREEN_1})`
+                                    : `url(#color${RED_1})`
+                                }
+                                stroke={chart.isIncreased ? GREEN_1 : RED_1}
+                                strokeWidth={2}
+                                type="monotone"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </Col>
+                      </Row>
+                    )}
                   </Card>
                 );
               })}

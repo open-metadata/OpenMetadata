@@ -14,23 +14,19 @@ import { Card, Skeleton, Typography } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
+import { ReactComponent as NoRecordIcon } from '../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
-import { SIZE } from '../../../enums/common.enum';
-import { DayOneExperienceWorkflowStages } from '../../../enums/DayOneWorkflow.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { WorkflowStatus } from '../../../generated/governance/workflows/workflowInstance';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
-import {
-  getAssetsByServiceType,
-  getStatusByWorkflowStage,
-} from '../../../utils/ServiceInsightsTabUtils';
+import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
 import {
   getReadableCountString,
   getServiceNameQueryFilter,
@@ -42,7 +38,6 @@ import './total-data-assets-widget.less';
 
 function TotalDataAssetsWidget({
   serviceName,
-  workflowStatesData,
 }: Readonly<ServiceInsightWidgetCommonProps>) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
@@ -59,18 +54,11 @@ function TotalDataAssetsWidget({
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
     >();
 
-  const workflowStageStatus = getStatusByWorkflowStage(
-    workflowStatesData?.subInstanceStates ?? [],
-    DayOneExperienceWorkflowStages.RUN_METADATA_INGESTION
-  );
-
   const showPlaceholder = useMemo(
     () =>
-      (isEmpty(entityCounts) ||
-        entityCounts?.every((entity) => entity.value === 0)) &&
-      (isUndefined(workflowStageStatus) ||
-        workflowStageStatus === WorkflowStatus.Failure),
-    [entityCounts, workflowStageStatus]
+      isEmpty(entityCounts) ||
+      entityCounts?.every((entity) => entity.value === 0),
+    [entityCounts]
   );
 
   const totalCount =
@@ -123,11 +111,13 @@ function TotalDataAssetsWidget({
       <Skeleton loading={loadingCount > 0}>
         {showPlaceholder ? (
           <ErrorPlaceHolder
-            placeholderText={t('message.no-entity-data-available', {
-              entity: t('label.data-asset-lowercase-plural'),
-            })}
+            icon={
+              <NoRecordIcon className="text-grey-8" height={140} width={140} />
+            }
             size={SIZE.MEDIUM}
-          />
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography.Text>{t('server.no-records-found')}</Typography.Text>
+          </ErrorPlaceHolder>
         ) : (
           <div className="total-data-assets-info">
             <div className="assets-list-container">

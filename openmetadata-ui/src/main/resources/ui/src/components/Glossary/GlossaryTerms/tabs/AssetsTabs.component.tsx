@@ -442,7 +442,13 @@ const AssetsTabs = forwardRef(
       ) {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon height={140} width={140} />}>
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-8"
+                height={140}
+                width={140}
+              />
+            }>
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
                 <Typography.Paragraph>
@@ -455,7 +461,13 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon className="h-32 w-32" />}
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-8"
+                height={140}
+                width={140}
+              />
+            }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph>
               {noDataPlaceholder ??

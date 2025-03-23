@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { isUndefined, round } from 'lodash';
+import { isEmpty, isUndefined, round } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { FunctionComponent } from 'react';
+import { FunctionComponent, SVGProps } from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
+import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as LoadingIcon } from '../assets/svg/ic-loader.svg';
+import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
 import { ReactComponent as WarningIcon } from '../assets/svg/incident-icon.svg';
+import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.svg';
+import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
+import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DayOneExperienceWorkflowStages } from '../enums/DayOneWorkflow.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -127,6 +132,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
       isIncreased,
       percentageChange: percentageChangeInSevenDays,
       currentPercentage: round(currentData ?? 0, 2),
+      noRecords: summaryChartData.results.every((item) => isEmpty(item)),
     };
   };
 
@@ -183,4 +189,21 @@ export const getStatusIconFromStatusType = (status?: WorkflowStatus) => {
     message,
     description,
   };
+};
+
+export const getServiceInsightsWidgetPlaceholderIcon = (
+  chartType: SystemChartType
+): FunctionComponent<SVGProps<SVGSVGElement>> => {
+  switch (chartType) {
+    case SystemChartType.DescriptionCoverage:
+      return DescriptionPlaceholderIcon;
+    case SystemChartType.OwnersCoverage:
+      return OwnersPlaceholderIcon;
+    case SystemChartType.PIICoverage:
+      return PiiPlaceholderIcon;
+    case SystemChartType.TierCoverage:
+      return TierPlaceholderIcon;
+    default:
+      return NoDataPlaceholderIcon;
+  }
 };
