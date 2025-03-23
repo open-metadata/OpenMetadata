@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App } from '../../../../generated/entity/applications/app';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -47,6 +48,7 @@ export interface IngestionProps {
   collateAgentsList?: App[];
   collateAgentPagingInfo?: UsePagingInterface;
   onCollateAgentPageChange?: (pagingHandlerParams: PagingHandlerParams) => void;
+  agentCounts?: Record<ServiceAgentSubTabs, number>;
 }
 
 export interface SelectedRowDetails {

@@ -23,6 +23,7 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
+import { getCountBadge } from '../../../../utils/CommonUtils';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
@@ -52,6 +53,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   collateAgentsList,
   collateAgentPagingInfo,
   onCollateAgentPageChange,
+  agentCounts,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -126,13 +128,13 @@ const Ingestion: React.FC<IngestionProps> = ({
   );
 
   const subTabOptions = useMemo(() => {
-    return Object.values(ServiceAgentSubTabs).map((subTab) => {
+    return Object.values(ServiceAgentSubTabs).map((tabName) => {
       const Icon =
-        subTab === ServiceAgentSubTabs.COLLATE_AI
+        tabName === ServiceAgentSubTabs.COLLATE_AI
           ? CollateAI
           : MetadataAgentIcon;
       const label =
-        subTab === ServiceAgentSubTabs.COLLATE_AI
+        tabName === ServiceAgentSubTabs.COLLATE_AI
           ? t('label.collate-ai')
           : t('label.metadata');
 
@@ -140,15 +142,20 @@ const Ingestion: React.FC<IngestionProps> = ({
         label: (
           <div
             className="flex items-center gap-2"
-            data-testid={`${subTab}-sub-tab`}>
+            data-testid={`${tabName}-sub-tab`}>
             <Icon height={14} width={14} />
             <Typography.Text>{label}</Typography.Text>
+            {getCountBadge(
+              agentCounts?.[tabName],
+              'flex-center h-5',
+              subTab === tabName
+            )}
           </div>
         ),
-        value: subTab,
+        value: tabName,
       };
     });
-  }, []);
+  }, [subTab, agentCounts]);
 
   if (!isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;

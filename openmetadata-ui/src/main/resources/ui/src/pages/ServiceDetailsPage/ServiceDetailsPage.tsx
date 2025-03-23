@@ -1024,9 +1024,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [collateAgentPageSize]);
 
+  const agentCounts = useMemo(() => {
+    return {
+      [ServiceAgentSubTabs.COLLATE_AI]: collateAgentPaging.total,
+      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total,
+    };
+  }, [collateAgentPaging, ingestionPaging]);
+
   const ingestionTab = useMemo(
     () => (
       <Ingestion
+        agentCounts={agentCounts}
         airflowInformation={airflowInformation}
         collateAgentPagingInfo={collateAgentPagingInfo}
         collateAgentsList={collateAgentsList}
@@ -1063,6 +1071,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       isCollateAgentLoading,
       collateAgentPagingInfo,
       onCollateAgentPageChange,
+      agentCounts,
     ]
   );
 
