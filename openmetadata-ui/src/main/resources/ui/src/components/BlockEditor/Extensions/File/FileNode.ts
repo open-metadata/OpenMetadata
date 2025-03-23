@@ -40,6 +40,11 @@ const FileNode = Node.create<FileNodeOptions>({
       fileName: { default: '' },
       fileSize: { default: null },
       mimeType: { default: '' },
+      isUploading: { default: false },
+      uploadProgress: { default: 0 },
+      tempFile: { default: null },
+      isImage: { default: false },
+      alt: { default: null },
     };
   },
 
@@ -56,12 +61,22 @@ const FileNode = Node.create<FileNodeOptions>({
           const fileName = element.getAttribute('data-filename') || '';
           const fileSize = element.getAttribute('data-filesize');
           const mimeType = element.getAttribute('data-mimetype') || '';
+          const isUploading = element.getAttribute('data-uploading') === 'true';
+          const uploadProgress = element.getAttribute('data-upload-progress');
+          const tempFile = element.getAttribute('data-temp-file');
+          const isImage = element.getAttribute('data-is-image') === 'true';
+          const alt = element.getAttribute('data-alt');
 
           return {
             url,
             fileName,
             fileSize: fileSize ? parseInt(fileSize) : null,
             mimeType,
+            isUploading,
+            uploadProgress: uploadProgress ? parseInt(uploadProgress) : 0,
+            tempFile: tempFile ? JSON.parse(tempFile) : null,
+            isImage,
+            alt,
           };
         },
       },
@@ -76,6 +91,11 @@ const FileNode = Node.create<FileNodeOptions>({
       'data-filename': attrs.fileName,
       'data-filesize': attrs.fileSize?.toString(),
       'data-mimetype': attrs.mimeType,
+      'data-uploading': attrs.isUploading?.toString(),
+      'data-upload-progress': attrs.uploadProgress?.toString(),
+      'data-temp-file': attrs.tempFile ? JSON.stringify(attrs.tempFile) : null,
+      'data-is-image': attrs.isImage?.toString(),
+      'data-alt': attrs.alt,
     };
 
     return ['div', mergeAttributes(this.options.HTMLAttributes, baseAttrs)];

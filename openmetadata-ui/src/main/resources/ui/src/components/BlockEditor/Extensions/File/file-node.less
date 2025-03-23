@@ -35,11 +35,17 @@
     box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
   }
 
+  &.uploading {
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
   .file-content,
   .media-content {
     padding: @padding-sm;
     transition: all 0.3s;
     background: @white;
+    position: relative;
 
     &:hover {
       background: @grey-1;
@@ -65,6 +71,7 @@
     align-items: center;
     gap: @padding-sm;
     flex: 1;
+    position: relative;
   }
 
   .file-icon {
@@ -121,6 +128,22 @@
     gap: @padding-xss;
     color: @grey-4;
     font-size: @font-size-base - 1;
+
+    .upload-progress {
+      flex: 1;
+      height: 2px;
+      background-color: @grey-3;
+      border-radius: 1px;
+      overflow: hidden;
+
+      &::after {
+        content: '';
+        display: block;
+        height: 100%;
+        background-color: @primary-color;
+        transition: width 0.3s ease;
+      }
+    }
   }
 
   .separator {
@@ -288,6 +311,68 @@
     }
   }
 
+  .upload-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+
+    .upload-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: @text-color;
+
+      .upload-text {
+        font-size: 14px;
+      }
+    }
+  }
+
+  .upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background-color: @primary-color;
+    transition: width 0.3s ease;
+    z-index: 2;
+  }
+
+  .image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    background-color: @grey-1;
+    border: 1px dashed @border-color;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: @primary-color;
+      background-color: @grey-2;
+    }
+
+    .upload-loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: @grey-4;
+    }
+  }
+
   .ant-spin {
     min-height: 200px;
     background: @grey-1;
@@ -302,5 +387,77 @@
         background-color: @primary-color;
       }
     }
+  }
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 8px 0;
+
+  .image-container {
+    position: relative;
+    width: 100%;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f5f5f5;
+    border-radius: 4px;
+    overflow: hidden;
+
+    &.loading-state {
+      background: #fafafa;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 4px;
+    }
+  }
+
+  .upload-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+
+    .upload-spinner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+  }
+
+  .upload-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    background: #1890ff;
+    transition: width 0.3s ease;
   }
 }

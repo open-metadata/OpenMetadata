@@ -195,7 +195,19 @@ export const getSuggestionItems = (props: {
       description: 'Add an image',
       type: SuggestionItemType.ADVANCED_BLOCKS,
       command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setImage({ src: '' }).run();
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .setFile({
+            url: '',
+            fileName: '',
+            fileSize: null,
+            mimeType: FileType.IMAGE,
+            type: FileType.IMAGE,
+            isImage: true,
+          })
+          .run();
       },
       imgSrc: IconFormatImage,
       searchTerms: ['image', 'media'],

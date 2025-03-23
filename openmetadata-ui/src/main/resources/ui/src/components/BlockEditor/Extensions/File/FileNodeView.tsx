@@ -17,8 +17,9 @@ import {
 } from '@ant-design/icons';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import { Popover, Spin, Tabs, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconFormatImage } from '../../../../assets/svg/ic-format-image.svg';
 import { bytesToSize } from '../../../../utils/StringsUtils';
@@ -50,15 +51,27 @@ const FileNodeView: FC<NodeViewProps> = ({
   editor,
 }) => {
   const { t } = useTranslation();
-  const { url, fileName, fileSize, mimeType } = node.attrs;
-  const isValidSource = !isEmpty(url);
-  const isVideo = mimeType.startsWith(FileType.VIDEO);
-  const isAudio = mimeType.startsWith(FileType.AUDIO);
+  const {
+    url,
+    fileName,
+    fileSize,
+    mimeType,
+    isUploading,
+    uploadProgress,
+    tempFile,
+    isImage,
+    alt,
+  } = node.attrs;
+  const isValidSource = !isEmpty(url) || isUploading;
+  const isVideo = mimeType?.startsWith(FileType.VIDEO);
+  const isAudio = mimeType?.startsWith(FileType.AUDIO);
   const isMedia = isVideo || isAudio;
-  const isUploading = false;
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(!isValidSource);
-  const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
+  const [imageError, setImageError] = useState<boolean>(false);
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+  const needsAuthentication = url?.includes('/api/v1/attachments/');
 
+  const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
   const { imageSrc: mediaSrc, isLoading: isMediaLoading } =
     authenticatedImageUrl
       ? authenticatedImageUrl(url)
@@ -69,6 +82,35 @@ const FileNodeView: FC<NodeViewProps> = ({
     ? authenticatedFileUrl(url)
     : { downloadFile: noop, isLoading: false };
 
+  // Reset states when url changes
+  useEffect(() => {
+    setImageError(false);
+    setImageLoaded(false);
+  }, [url, mediaSrc]);
+
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(false);
+  };
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+    setImageError(false);
+  };
+
+  const handlePopoverVisibleChange = (visible: boolean) => {
+    // Only show the popover when the editor is in editable mode
+    setIsPopupVisible(visible && editor.isEditable);
+  };
+
+  const handleFileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading) {
+      downloadFile(fileName);
+    }
+  };
+
   const fileType = useMemo(() => {
     if (isVideo) {
       return FileType.VIDEO;
@@ -78,19 +120,12 @@ const FileNodeView: FC<NodeViewProps> = ({
       return FileType.AUDIO;
     }
 
+    if (isImage) {
+      return FileType.IMAGE;
+    }
+
     return FileType.FILE;
-  }, [isVideo, isAudio]);
-
-  const handleFileClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    downloadFile(fileName);
-  };
-
-  const handlePopoverVisibleChange = (visible: boolean) => {
-    // Only show the popover when the editor is in editable mode
-    setIsPopupVisible(visible && editor.isEditable);
-  };
+  }, [isVideo, isAudio, isImage]);
 
   const renderContent = () => {
     if (!isValidSource) {
@@ -103,12 +138,17 @@ const FileNodeView: FC<NodeViewProps> = ({
             <div className="upload-loading-container">
               <Loader size="small" />
               <Typography.Text>{t('label.uploading')}</Typography.Text>
+              {uploadProgress !== undefined && (
+                <Typography.Text>{` ${uploadProgress}%`}</Typography.Text>
+              )}
             </div>
           ) : (
             <>
               <IconFormatImage style={{ verticalAlign: 'middle' }} width={40} />
               <Typography>
-                {t('label.add-an-file-type', { fileType })}
+                {t('label.add-an-file-type', {
+                  fileType: isImage ? 'image' : 'file',
+                })}
               </Typography>
             </>
           )}
@@ -117,10 +157,74 @@ const FileNodeView: FC<NodeViewProps> = ({
     }
 
     if (isMedia) {
-      return isVideo ? (
-        <video controls className="video-player" src={mediaSrc} />
-      ) : (
-        <audio controls className="audio-player" src={mediaSrc} />
+      return (
+        <div className="media-wrapper">
+          {isVideo ? (
+            <video controls className="video-player" src={mediaSrc} />
+          ) : (
+            <audio controls className="audio-player" src={mediaSrc} />
+          )}
+          {isUploading && (
+            <>
+              <div className="upload-overlay">
+                <div className="upload-spinner">
+                  <Loader size="small" />
+                  <span className="upload-text">{t('label.uploading')}</span>
+                </div>
+              </div>
+              <div
+                className="upload-progress"
+                style={{ width: `${uploadProgress || 0}%` }}
+              />
+            </>
+          )}
+        </div>
+      );
+    }
+
+    if (isImage) {
+      const showLoadingOverlay =
+        isUploading ||
+        (needsAuthentication && (!imageLoaded || isMediaLoading));
+      const displaySrc =
+        needsAuthentication && !mediaSrc ? undefined : mediaSrc;
+
+      return (
+        <div className="image-wrapper">
+          <Spin
+            spinning={showLoadingOverlay}
+            tip={
+              isUploading
+                ? `${t('label.uploading')} ${
+                    uploadProgress !== undefined ? `${uploadProgress}%` : ''
+                  }`
+                : t('label.loading')
+            }>
+            <div
+              className={classNames('image-container', {
+                'loading-state': showLoadingOverlay || imageError,
+              })}>
+              {(showLoadingOverlay || imageError) && (
+                <div className="loading-overlay">
+                  <IconFormatImage style={{ opacity: 0.5 }} width={40} />
+                </div>
+              )}
+              {displaySrc && (
+                <img
+                  alt={alt ?? ''}
+                  data-testid="uploaded-image-node"
+                  src={displaySrc}
+                  style={{
+                    visibility: imageLoaded ? 'visible' : 'hidden',
+                    display: 'block',
+                  }}
+                  onError={handleImageError}
+                  onLoad={handleImageLoad}
+                />
+              )}
+            </div>
+          </Spin>
+        </div>
       );
     }
 
@@ -131,32 +235,53 @@ const FileNodeView: FC<NodeViewProps> = ({
           <div className="file-details">
             <a
               className="file-link"
-              data-filename={fileName}
-              data-filesize={fileSize?.toString()}
-              data-mimetype={mimeType}
+              data-filename={fileName || tempFile?.name}
+              data-filesize={(fileSize || tempFile?.size)?.toString()}
+              data-mimetype={mimeType || tempFile?.type}
               data-type="file-attachment"
               data-url={url}
               href="#"
               onClick={handleFileClick}>
-              <span className="file-name">{fileName}</span>
+              <span className="file-name">{fileName || tempFile?.name}</span>
             </a>
             <div className="file-meta">
-              <span className="file-size">{bytesToSize(fileSize)}</span>
-              <span className="separator">|</span>
-              <span className="file-percentage">
-                <DownloadOutlined onClick={handleFileClick} />
+              <span className="file-size">
+                {bytesToSize(fileSize || tempFile?.size)}
               </span>
+              {isUploading ? (
+                <div
+                  className="upload-progress"
+                  style={{ width: `${uploadProgress || 0}%` }}
+                />
+              ) : (
+                <>
+                  <span className="separator">|</span>
+                  <span className="file-percentage">
+                    <DownloadOutlined onClick={handleFileClick} />
+                  </span>
+                </>
+              )}
             </div>
           </div>
+          {isUploading && (
+            <div className="upload-overlay">
+              <div className="upload-spinner">
+                <Loader size="small" />
+                <span className="upload-text">{t('label.uploading')}</span>
+              </div>
+            </div>
+          )}
         </div>
-        <DeleteOutlined
-          className="delete-icon"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            deleteNode();
-          }}
-        />
+        {!isUploading && (
+          <DeleteOutlined
+            className="delete-icon"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              deleteNode();
+            }}
+          />
+        )}
       </div>
     );
   };
@@ -166,10 +291,10 @@ const FileNodeView: FC<NodeViewProps> = ({
       as="div"
       className={`file-attachment ${
         isVideo ? 'file-type-video' : isAudio ? 'file-type-audio' : ''
-      }`}
-      data-filename={fileName}
-      data-filesize={fileSize?.toString()}
-      data-mimetype={mimeType}
+      } ${isUploading ? 'uploading' : ''}`}
+      data-filename={fileName || tempFile?.name}
+      data-filesize={(fileSize || tempFile?.size)?.toString()}
+      data-mimetype={mimeType || tempFile?.type}
       data-type="file-attachment"
       data-url={url}>
       <div className={isMedia ? 'media-content' : 'file-content'}>
