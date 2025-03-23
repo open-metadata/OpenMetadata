@@ -77,9 +77,11 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
 
   useEffect(() => {
     if (alert && alert.type === 'error') {
-      resetAlert();
+      setTimeout(() => {
+        resetAlert();
+      }, 3000);
     }
-  }, [location.pathname]);
+  }, [location.pathname, resetAlert]);
 
   return (
     <Fragment>

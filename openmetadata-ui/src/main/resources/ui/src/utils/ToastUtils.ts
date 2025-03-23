@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ExclamationCircleOutlined,
+  InfoCircleOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
 import { AlertProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
-import { ReactComponent as ErrorIcon } from '../assets/svg/ic-alert-error.svg';
-import { ReactComponent as InfoIcon } from '../assets/svg/ic-alert-info.svg';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-alert-success.svg';
-import { ReactComponent as WarningIcon } from '../assets/svg/ic-alert-warning.svg';
 import { ClientErrors } from '../enums/Axios.enum';
 import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
@@ -27,7 +29,7 @@ export const getIconAndClassName = (type: AlertProps['type']) => {
   switch (type) {
     case 'info':
       return {
-        icon: InfoIcon,
+        icon: InfoCircleOutlined,
         className: 'info',
       };
 
@@ -39,13 +41,13 @@ export const getIconAndClassName = (type: AlertProps['type']) => {
 
     case 'warning':
       return {
-        icon: WarningIcon,
+        icon: WarningOutlined,
         className: 'warning',
       };
 
     case 'error':
       return {
-        icon: ErrorIcon,
+        icon: ExclamationCircleOutlined,
         className: 'error',
       };
 

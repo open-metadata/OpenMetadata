@@ -62,7 +62,14 @@ const AlertBar = ({
           )}
         </>
       }
-      icon={AlertIcon && <AlertIcon data-testid="alert-icon" />}
+      icon={
+        AlertIcon && (
+          <AlertIcon
+            data-testid="alert-icon"
+            id={type !== 'success' ? 'alert-icon' : ''}
+          />
+        )
+      }
       type={type}
     />
   );
