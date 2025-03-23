@@ -82,7 +82,6 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
-import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public final class Entity {
@@ -746,12 +745,11 @@ public final class Entity {
     return allServices;
   }
 
-  public static User updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
+  public static void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
+    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
     JsonPatch patch =
-        JsonUtils.getJsonPatch(orginalUser, orginalUser.withLastLoginTime(lastLoginTime));
+        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    RestUtil.PatchResponse<User> patchResponse =
-        userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
-    return patchResponse.entity();
+    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
   }
 }

@@ -25,6 +25,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -630,6 +631,13 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
+      recordChange(
+          "lastLoginTime",
+          original.getLastLoginTime(),
+          updated.getLastLoginTime(),
+          false,
+          objectMatch,
+          true);
 
       // Updates
       updateRoles(original, updated);
