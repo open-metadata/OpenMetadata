@@ -242,10 +242,10 @@ const GlossaryTermTab = ({
   );
 
   const updateGlossaryTermStatus = (
-    terms: any[],
+    terms: ModifiedGlossary[],
     targetFqn: string,
     newStatus: Status
-  ): any[] => {
+  ): ModifiedGlossary[] => {
     return terms.map((term) => {
       if (term.fullyQualifiedName === targetFqn && 'status' in term) {
         return {
@@ -258,10 +258,10 @@ const GlossaryTermTab = ({
         return {
           ...term,
           children: updateGlossaryTermStatus(
-            term.children,
+            term.children as ModifiedGlossary[],
             targetFqn,
             newStatus
-          ),
+          ) as ModifiedGlossaryTerm[],
         };
       }
 
@@ -287,7 +287,7 @@ const GlossaryTermTab = ({
             data.newValue === 'approved' ? Status.Approved : Status.Rejected;
 
           const updatedTerms = updateGlossaryTermStatus(
-            [...glossaryChildTerms],
+            glossaryChildTerms,
             glossaryTermFqn,
             newStatus
           );
@@ -296,7 +296,7 @@ const GlossaryTermTab = ({
 
           // remove resolved task from term task threads
           if (termTaskThreads[glossaryTermFqn]) {
-            const updatedThreads = { ...termTaskThreads };
+            const updatedThreads = termTaskThreads;
             updatedThreads[glossaryTermFqn] = updatedThreads[
               glossaryTermFqn
             ].filter(
