@@ -247,7 +247,7 @@ const GlossaryTermTab = ({
     newStatus: Status
   ): ModifiedGlossary[] => {
     return terms.map((term) => {
-      if (term.fullyQualifiedName === targetFqn && 'status' in term) {
+      if (term.fullyQualifiedName === targetFqn) {
         return {
           ...term,
           status: newStatus,
@@ -296,7 +296,7 @@ const GlossaryTermTab = ({
 
           // remove resolved task from term task threads
           if (termTaskThreads[glossaryTermFqn]) {
-            const updatedThreads = termTaskThreads;
+            const updatedThreads = { ...termTaskThreads };
             updatedThreads[glossaryTermFqn] = updatedThreads[
               glossaryTermFqn
             ].filter(
@@ -310,29 +310,24 @@ const GlossaryTermTab = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [
-      glossaryChildTerms,
-      termTaskThreads,
-      setGlossaryChildTerms,
-      expandedRowKeys,
-    ]
+    [expandedRowKeys, glossaryChildTerms, termTaskThreads]
   );
 
-  const handleApproveGlossaryTerm = (
-    taskId: string,
-    glossaryTermFqn: string
-  ) => {
-    const data = { newValue: 'approved' } as ResolveTask;
-    updateTaskData(data, taskId, glossaryTermFqn);
-  };
+  const handleApproveGlossaryTerm = useCallback(
+    (taskId: string, glossaryTermFqn: string) => {
+      const data = { newValue: 'approved' } as ResolveTask;
+      updateTaskData(data, taskId, glossaryTermFqn);
+    },
+    [updateTaskData]
+  );
 
-  const handleRejectGlossaryTerm = (
-    taskId: string,
-    glossaryTermFqn: string
-  ) => {
-    const data = { newValue: 'rejected' } as ResolveTask;
-    updateTaskData(data, taskId, glossaryTermFqn);
-  };
+  const handleRejectGlossaryTerm = useCallback(
+    (taskId: string, glossaryTermFqn: string) => {
+      const data = { newValue: 'rejected' } as ResolveTask;
+      updateTaskData(data, taskId, glossaryTermFqn);
+    },
+    [updateTaskData]
+  );
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
@@ -515,7 +510,13 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [permissions, tableColumnsWidth, termTaskThreads]);
+  }, [
+    permissions,
+    tableColumnsWidth,
+    termTaskThreads,
+    handleApproveGlossaryTerm,
+    handleRejectGlossaryTerm,
+  ]);
 
   const handleCheckboxChange = useCallback(
     (key: string, checked: boolean) => {
