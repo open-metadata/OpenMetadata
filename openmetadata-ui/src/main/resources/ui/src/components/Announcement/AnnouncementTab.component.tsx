@@ -19,7 +19,7 @@ import { noop } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import '../../components/ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import '../../components/Announcement/announcement.less';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import {
   AnnoucementStatus,
@@ -39,7 +39,7 @@ import AddAnnouncementModal from '../Modals/AnnouncementModal/AddAnnouncementMod
 interface AnnouncementTabProps {
   fqn: string;
   entityType: EntityType;
-  permissions: OperationPermission;
+  permissions: UIPermission;
 }
 
 const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
@@ -179,7 +179,10 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
                 data-testid="add-announcement-btn"
-                disabled={!permissions?.EditAll}
+                disabled={
+                  !permissions[entityType.slice(0, -1) as keyof UIPermission]
+                    ?.EditAll
+                }
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
                 {t('label.add')}
@@ -198,7 +201,10 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             emptyPlaceholderText={t('message.no-announcement-message')}
             feedList={threads}
             isLoading={false}
-            permissions={permissions?.EditAll}
+            permissions={
+              permissions[entityType.slice(0, -1) as keyof UIPermission]
+                ?.EditAll
+            }
             selectedThread={selectedAnnouncementThread}
             showThread={false}
             updateAnnouncementThreads={updateAnnouncementThreads}

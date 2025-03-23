@@ -55,7 +55,10 @@ import {
   SERVICE_INGESTION_PIPELINE_TYPES,
 } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  UIPermission,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
@@ -1146,7 +1149,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <AnnouncementTab
             entityType={entityType}
             fqn={decodedServiceFQN}
-            permissions={servicePermission}
+            permissions={servicePermission as unknown as UIPermission}
           />
         ),
       }

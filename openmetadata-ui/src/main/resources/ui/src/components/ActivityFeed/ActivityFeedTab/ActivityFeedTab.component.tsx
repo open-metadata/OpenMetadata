@@ -15,6 +15,7 @@ import {
   Dropdown,
   Menu,
   Segmented,
+  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -572,6 +573,27 @@ export const ActivityFeedTab = ({
     () => handleFilterClick(AnnoucementStatus.Inactive),
     [handleFilterClick]
   );
+  const getElementWithCountLoader = useCallback(
+    (element: any) => {
+      if (countData.loading) {
+        return <Skeleton.Button active className="count-loader" size="small" />;
+      }
+
+      return element;
+    },
+    [countData.loading]
+  );
+
+  const getSelectedKey = () => {
+    if (activeTab === ActivityFeedTabs.ALL) {
+      return ActivityFeedTabs.ALL;
+    }
+    if (activeTab === ActivityFeedTabs.ANNOUNCEMENTS) {
+      return 'announcements';
+    }
+
+    return ActivityFeedTabs.TASKS;
+  };
 
   return (
     <div className="activity-feed-tab">
@@ -656,11 +678,7 @@ export const ActivityFeedTab = ({
           ]}
           mode="inline"
           rootClassName="left-container"
-          selectedKeys={[
-            activeTab === ActivityFeedTabs.ALL
-              ? ActivityFeedTabs.ALL
-              : ActivityFeedTabs.TASKS,
-          ]}
+          selectedKeys={[getSelectedKey()]}
           onClick={(info) => handleTabChange(info.key)}
         />
       )}
@@ -695,7 +713,7 @@ export const ActivityFeedTab = ({
         {isAnnouncementActiveTab && (
           <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task justify-between">
             <div className="d-flex gap-4">
-              {/* {getElementWithCountLoader(
+              {getElementWithCountLoader(
                 <Typography.Text
                   className={classNames(
                     'cursor-pointer p-l-xss d-flex items-center',
@@ -708,8 +726,8 @@ export const ActivityFeedTab = ({
                   onClick={handleActiveClick}>
                   {countData.data.openTaskCount} {t('label.active')}
                 </Typography.Text>
-              )} */}
-              {/* {getElementWithCountLoader(
+              )}
+              {getElementWithCountLoader(
                 <Typography.Text
                   className={classNames('cursor-pointer d-flex items-center', {
                     'font-medium':
@@ -719,47 +737,7 @@ export const ActivityFeedTab = ({
                   onClick={handleInactiveClick}>
                   {countData.data.closedTaskCount} {t('label.inactive')}
                 </Typography.Text>
-              )} */}
-            </div>
-            <Tooltip title={t('message.no-permission-to-view')}>
-              <Button
-                data-testid="add-announcement-btn"
-                disabled={!permissions?.EditAll}
-                type="primary"
-                onClick={handleOpenAnnouncementModal}>
-                {t('label.add')}
-              </Button>
-            </Tooltip>
-          </div>
-        )}
-        {isAnnouncementActiveTab && (
-          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task justify-between">
-            <div className="d-flex gap-4">
-              {/* {getElementWithCountLoader(
-                <Typography.Text
-                  className={classNames(
-                    'cursor-pointer p-l-xss d-flex items-center',
-                    {
-                      'font-medium':
-                        announcementFilter === AnnoucementStatus.Active,
-                    }
-                  )}
-                  data-testid="active-announcement"
-                  onClick={handleActiveClick}>
-                  {countData.data.openTaskCount} {t('label.active')}
-                </Typography.Text>
-              )} */}
-              {/* {getElementWithCountLoader(
-                <Typography.Text
-                  className={classNames('cursor-pointer d-flex items-center', {
-                    'font-medium':
-                      announcementFilter === AnnoucementStatus.Inactive,
-                  })}
-                  data-testid="inactive-announcements"
-                  onClick={handleInactiveClick}>
-                  {countData.data.closedTaskCount} {t('label.inactive')}
-                </Typography.Text>
-              )} */}
+              )}
             </div>
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
@@ -782,7 +760,6 @@ export const ActivityFeedTab = ({
           isForFeedTab={false}
           isFullWidth={isFullWidth}
           isLoading={loading}
-          // permissions={permissions?.EditAll}
           selectedThread={selectedThread}
           showThread={false}
           onFeedClick={handleFeedClick}
