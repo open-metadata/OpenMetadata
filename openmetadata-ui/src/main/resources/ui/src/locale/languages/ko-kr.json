@@ -946,6 +946,7 @@
     "owner-lowercase": "소유자",
     "owner-lowercase-plural": "owners",
     "owner-plural": "소유자들",
+    "owner-plural-with-colon": "소유자들:",
     "ownership": "Ownership",
     "page": "Page",
     "page-not-found": "페이지를 찾을 수 없음",
