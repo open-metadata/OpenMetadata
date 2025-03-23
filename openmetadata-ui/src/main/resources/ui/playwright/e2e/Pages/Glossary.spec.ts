@@ -132,6 +132,20 @@ test.describe('Glossary tests', () => {
           glossary1.data.terms[0].data.name
         );
 
+        // Check reviewer's notifications before approval
+        await page1.getByTestId('task-notifications').click();
+        await page1.waitForSelector('.ant-dropdown');
+        const firstNotification = page1
+          .locator('.ant-list-items > .ant-list-item')
+          .first();
+
+        await expect(firstNotification).toContainText(
+          `Approval required for ${glossary1.data.terms[0].data.name}`
+        );
+        await expect(firstNotification).toContainText(
+          glossary1.data.fullyQualifiedName
+        );
+
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
         await redirectToHomePage(page1);
         await sidebarClick(page1, SidebarItem.GLOSSARY);

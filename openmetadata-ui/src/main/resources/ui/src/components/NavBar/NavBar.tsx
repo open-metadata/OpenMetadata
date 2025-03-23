@@ -464,7 +464,7 @@ const NavBar: React.FC = () => {
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
                     offset={[-3, 3]}>
-                    <IconBell width={20} />
+                    <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
                 size="large"
