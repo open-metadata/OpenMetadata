@@ -162,6 +162,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     ) {
       return (
         <Link
+          className="text-sm"
           to={entityUtilClassBase.getEntityLink(
             entityType,
             entityDetails.fullyQualifiedName,

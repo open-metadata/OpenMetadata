@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 export const DEFAULT_THEME = {
-  primaryColor: '#0968da',
+  primaryColor: '#175CD3',
   infoColor: '#2196f3',
   successColor: '#008376',
   warningColor: '#ffc34e',

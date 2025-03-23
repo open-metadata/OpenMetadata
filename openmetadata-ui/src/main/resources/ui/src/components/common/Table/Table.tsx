@@ -42,6 +42,7 @@ import {
 } from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
+import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
   TableColumnDropdownList,
@@ -49,9 +50,18 @@ import {
 } from './Table.interface';
 import './table.less';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
-const Table = <T extends object = any>(
-  { loading, ...rest }: TableComponentProps<T>,
+type TableProps<T extends Record<string, unknown>> = TableComponentProps<T> & {
+  searchProps?: {
+    onSearch?: (value: string) => void;
+    onClear?: () => void;
+    placeholder?: string;
+    value?: string;
+    searchDebounceTime?: number;
+  };
+};
+
+const Table = <T extends Record<string, unknown>>(
+  { loading, searchProps, ...rest }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
@@ -67,6 +77,8 @@ const Table = <T extends object = any>(
     () => ({ columns: propsColumns, minWidth: 150 }),
     [propsColumns]
   );
+
+  const [searchText, setSearchText] = useState(searchProps?.value ?? '');
 
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
@@ -172,6 +184,14 @@ const Table = <T extends object = any>(
       }
     : {};
 
+  const handleSearchAction = (value: string) => {
+    if (searchProps?.onSearch) {
+      searchProps.onSearch(value);
+    } else {
+      setSearchText(value);
+    }
+  };
+
   useEffect(() => {
     if (!isFullViewTable) {
       setDropdownColumnList(
@@ -201,13 +221,24 @@ const Table = <T extends object = any>(
 
   return (
     <Row className="table-container" gutter={[0, 16]}>
+      {searchProps ? (
+        <Col span={12}>
+          <Searchbar
+            removeMargin
+            placeholder={searchProps?.placeholder ?? t('label.search')}
+            searchValue={searchText}
+            typingInterval={searchProps?.searchDebounceTime ?? 500}
+            onSearch={handleSearchAction}
+          />
+        </Col>
+      ) : null}
       {(rest.extraTableFilters || !isFullViewTable) && (
         <Col
           className={classNames(
             'd-flex justify-end items-center gap-5',
             rest.extraTableFiltersClassName
           )}
-          span={24}>
+          span={searchProps ? 12 : 24}>
           {rest.extraTableFilters}
           {!isFullViewTable && (
             <DndProvider backend={HTML5Backend}>
@@ -232,7 +263,10 @@ const Table = <T extends object = any>(
         <AntdTable
           {...rest}
           columns={propsColumns}
-          expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
+          expandable={{
+            ...getTableExpandableConfig<T>(),
+            ...rest.expandable,
+          }}
           loading={{
             spinning: isLoading,
             indicator: <Loader />,
@@ -250,4 +284,4 @@ const Table = <T extends object = any>(
   );
 };
 
-export default forwardRef<HTMLDivElement, TableComponentProps<any>>(Table);
+export default forwardRef<HTMLDivElement, TableProps<any>>(Table);
