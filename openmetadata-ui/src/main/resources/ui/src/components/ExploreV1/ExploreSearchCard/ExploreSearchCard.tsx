@@ -206,7 +206,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
               <div className="d-flex gap-2 items-center">
-                {serviceIcon}
+                {breadcrumbs.length > 0 && serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
                   <TitleBreadcrumb
                     titleLinks={breadcrumbs}
