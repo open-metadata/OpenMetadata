@@ -59,10 +59,8 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const {
-    tab: activeTab = UserPageTabs.ACTIVITY,
-    subTab = ActivityFeedTabs.TASKS,
-  } = useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
+    useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
@@ -165,7 +163,10 @@ const Users = ({
     [previewAsset, assetCount, handleAssetClick, setPreviewAsset, currentTab]
   );
   useEffect(() => {
-    if (subTab === ActivityFeedTabs.MENTIONS) {
+    if (
+      subTab === ActivityFeedTabs.MENTIONS ||
+      subTab === ActivityFeedTabs.TASKS
+    ) {
       setCurrentTab(UserPageTabs.TASK);
     }
   }, [subTab]);

@@ -21,6 +21,7 @@ import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
@@ -52,6 +53,8 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
+  isForFeedTab?: boolean;
+  isOpenInDrawer?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -61,6 +64,8 @@ const ActivityFeedCardNew = ({
   showActivityFeedEditor,
   showThread,
   isActive,
+  isForFeedTab,
+  isOpenInDrawer = false,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -74,6 +79,10 @@ const ActivityFeedCardNew = ({
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const { updateFeed } = useActivityFeedProvider();
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: feed.createdBy ?? '',
+  });
 
   useEffect(() => {
     setShowFeedEditor(false);
@@ -207,7 +216,8 @@ const ActivityFeedCardNew = ({
       className={classNames(
         'relative activity-feed-card-new',
         {
-          'activity-feed-card-new-right-panel m-0 gap-0': showThread || isPost,
+          'activity-feed-card-new-right-panel m-0 gap-0':
+            showThread || isPost || isOpenInDrawer,
         },
         { 'activity-feed-reply-card': isPost },
         { 'active-card is-active': isActive }
@@ -246,7 +256,7 @@ const ActivityFeedCardNew = ({
                     })}
                     userName={feed.createdBy ?? ''}>
                     <Link to={getUserPath(feed.createdBy ?? '')}>
-                      {feed.createdBy}
+                      {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
                 </Typography.Text>
@@ -266,7 +276,9 @@ const ActivityFeedCardNew = ({
                       showThread &&
                       feed.entityRef?.type !== EntityType.CONTAINER,
                   })}>
-                  <Typography.Text className="card-style-feed-header text-sm">
+                  <Typography.Text
+                    className="card-style-feed-header text-sm"
+                    data-testid="headerText">
                     {feedHeaderText}
                   </Typography.Text>
 
@@ -279,6 +291,7 @@ const ActivityFeedCardNew = ({
           <FeedCardBodyNew
             feed={feed}
             isEditPost={isEditPost}
+            isForFeedTab={isForFeedTab}
             isPost={isPost}
             message={
               !isPost
@@ -291,13 +304,18 @@ const ActivityFeedCardNew = ({
           />
 
           {(isPost || (!showThread && !isPost)) && (
-            <FeedCardFooterNew feed={feed} isPost={isPost} post={post} />
+            <FeedCardFooterNew
+              feed={feed}
+              isForFeedTab={isForFeedTab}
+              isPost={isPost}
+              post={post}
+            />
           )}
         </Space>
       </Space>
-      {showThread && (
+      {(showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
-          {showActivityFeedEditor && (
+          {(showActivityFeedEditor || isOpenInDrawer) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">
               {t('label.comment-plural')}
             </Typography.Text>
@@ -307,7 +325,9 @@ const ActivityFeedCardNew = ({
               className={classNames(
                 'm-t-md feed-editor activity-feed-editor-container-new',
                 {
-                  'm-b-md': showActivityFeedEditor && feed?.posts?.length === 0,
+                  'm-b-md':
+                    (showActivityFeedEditor && feed?.posts?.length === 0) ||
+                    isOpenInDrawer,
                 }
               )}
               onSave={onSave}

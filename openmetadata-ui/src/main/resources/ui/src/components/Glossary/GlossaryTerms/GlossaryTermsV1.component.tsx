@@ -56,6 +56,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -266,6 +267,7 @@ const GlossaryTermsV1 = ({
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
+                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossaryTerm.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
