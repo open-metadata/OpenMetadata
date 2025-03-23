@@ -318,9 +318,7 @@ export const checkMustPaths = async (
   const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
   const queryFilter = requestBody.queryFilter;
 
-  expect(JSON.stringify(queryFilter)).toContain(
-    getEncodedFqn(searchData, true)
-  );
+  expect(JSON.stringify(queryFilter)).toContain(searchData);
 
   const json = await res.json();
 

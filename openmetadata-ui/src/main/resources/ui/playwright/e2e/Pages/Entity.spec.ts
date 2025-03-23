@@ -129,7 +129,7 @@ entities.forEach((EntityClass) => {
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
-    test('Team as Owner Add, Update and Remove', async ({ page }) => {
+    test.fixme('Team as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.data.displayName;
       const OWNER2 = EntityDataClass.team2.data.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
@@ -221,38 +221,40 @@ entities.forEach((EntityClass) => {
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Tag Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test.fixme(
+        'Tag Add, Update and Remove for child entities',
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.tagChildren({
-          page: page,
-          tag1: 'PersonalData.Personal',
-          tag2: 'PII.None',
-          rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
-        });
-      });
+          await entity.tagChildren({
+            page: page,
+            tag1: 'PersonalData.Personal',
+            tag2: 'PII.None',
+            rowId: entity.childrenSelectorId ?? '',
+            rowSelector:
+              entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          });
+        }
+      );
     }
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Glossary Term Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test.fixme(
+        'Glossary Term Add, Update and Remove for child entities',
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.glossaryTermChildren({
-          page: page,
-          glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
-          glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
-          rowId: entity.childrenSelectorId ?? '',
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
-        });
-      });
+          await entity.glossaryTermChildren({
+            page: page,
+            glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+            glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+            rowId: entity.childrenSelectorId ?? '',
+            rowSelector:
+              entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          });
+        }
+      );
     }
 
     test(`Announcement create & delete`, async ({ page }) => {

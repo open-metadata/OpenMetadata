@@ -143,16 +143,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       });
       await page.getByRole('menuitem', { name: 'Reassign' }).click();
 
-      // const searchUserResponse = page.waitForResponse(
-      //   `/api/v1/search/query?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user_search_index*`
-      // );
-
       const searchUserResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
           matchRequestParams(response, 'POST', {
             index: 'user_search_index,team_search_index',
-            // query: `*${user2.data.firstName}*${user2.data.lastName}*`,
           })
       );
 
@@ -187,10 +182,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
-
-        // const searchUserResponse = page.waitForResponse(
-        //   '/api/v1/search/query?q=*'
-        // );
 
         const searchUserResponse = page.waitForResponse('/api/v1/search/query');
 
