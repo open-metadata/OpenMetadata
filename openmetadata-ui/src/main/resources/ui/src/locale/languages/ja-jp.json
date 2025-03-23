@@ -1068,6 +1068,7 @@
     "recreate-index-plural": "インデックスを再作成",
     "reference-plural": "参照",
     "refresh": "Refresh",
+    "refresh-entity": "{{entity}}を更新",
     "refresh-log": "ログを更新",
     "regenerate-registration-token": "登録するトークンを作り直す",
     "region-name": "リージョン名",

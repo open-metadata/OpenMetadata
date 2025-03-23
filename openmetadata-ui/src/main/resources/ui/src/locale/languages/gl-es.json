@@ -1068,6 +1068,7 @@
     "recreate-index-plural": "Recrear índices",
     "reference-plural": "Referencias",
     "refresh": "Actualizar",
+    "refresh-entity": "Refrescar {{entity}}",
     "refresh-log": "Actualizar rexistro",
     "regenerate-registration-token": "Rexerar o token de rexistro",
     "region-name": "Nome da rexión",

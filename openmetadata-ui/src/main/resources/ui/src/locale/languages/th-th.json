@@ -1068,6 +1068,7 @@
     "recreate-index-plural": "สร้างดัชนีใหม่",
     "reference-plural": "การอ้างอิงหลายรายการ",
     "refresh": "รีเฟรช",
+    "refresh-entity": "รีเฟรช {{entity}}",
     "refresh-log": "รีเฟรชบันทึก",
     "regenerate-registration-token": "สร้างโทเค็นการลงทะเบียนใหม่",
     "region-name": "ชื่อภูมิภาค",

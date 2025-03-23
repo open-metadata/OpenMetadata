@@ -1068,6 +1068,7 @@
     "recreate-index-plural": "Recreate Indexes",
     "reference-plural": "References",
     "refresh": "Refresh",
+    "refresh-entity": "Refresh {{entity}}",
     "refresh-log": "Refresh log",
     "regenerate-registration-token": "Regenerate registration token",
     "region-name": "Region Name",

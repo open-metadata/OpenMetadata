@@ -1068,6 +1068,7 @@
     "recreate-index-plural": "Opnieuw creëren indexen",
     "reference-plural": "Verwijzingen",
     "refresh": "Refresh",
+    "refresh-entity": "{{entity}} vernieuwen",
     "refresh-log": "Vernieuw logboek",
     "regenerate-registration-token": "Opnieuw genereren registratietoken",
     "region-name": "Regionaam",
