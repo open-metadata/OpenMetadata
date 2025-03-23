@@ -669,6 +669,7 @@ const NavBar = ({
                 <Icon
                   className="align-middle"
                   component={IconBell}
+                  data-testid="task-notifications"
                   style={{ fontSize: '24px' }}
                 />
               </Badge>

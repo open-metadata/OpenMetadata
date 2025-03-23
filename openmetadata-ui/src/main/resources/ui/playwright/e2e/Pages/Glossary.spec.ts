@@ -132,6 +132,20 @@ test.describe('Glossary tests', () => {
           glossary1.data.terms[0].data.name
         );
 
+        // Check reviewer's notifications before approval
+        await page1.getByTestId('task-notifications').click();
+        await page1.waitForSelector('.ant-dropdown');
+        const firstNotification = page1
+          .locator('.ant-list-items > .ant-list-item')
+          .first();
+
+        await expect(firstNotification).toContainText(
+          `Approval required for ${glossary1.data.terms[0].data.name}`
+        );
+        await expect(firstNotification).toContainText(
+          glossary1.data.fullyQualifiedName
+        );
+
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
         await redirectToHomePage(page1);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
@@ -1234,6 +1248,38 @@ test.describe('Glossary tests', () => {
       await glossary1.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Reviewer should receive notification for assigned glossary term', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    await glossary1.create(apiContext);
+    await glossaryTerm1.create(apiContext);
+
+    // Click task notifications icon
+    await page.getByTestId('task-notifications').click();
+
+    // Wait for Ant Design dropdown to appear
+    await page.waitForSelector('.ant-dropdown');
+
+    // Get the first item from the list
+    const firstNotification = await page
+      .locator('.ant-list-items > .ant-list-item')
+      .first()
+      .innerText();
+
+    expect(firstNotification).toContain(
+      `Approval required for ${glossaryTerm1.data.name} of ${glossary1.data.name}`
+    );
+
+    // Cleanup
+    await glossaryTerm1.delete(apiContext);
+    await glossary1.delete(apiContext);
+    await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
