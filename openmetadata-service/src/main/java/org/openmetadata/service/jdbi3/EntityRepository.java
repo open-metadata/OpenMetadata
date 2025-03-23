@@ -2820,8 +2820,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Load CSV provided for bulk upload
    */
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 

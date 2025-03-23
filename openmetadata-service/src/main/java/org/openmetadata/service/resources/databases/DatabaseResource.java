@@ -541,12 +541,16 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
               description =
                   "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
               schema = @Schema(type = "boolean"))
-          @DefaultValue("false")
+          @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, resursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
@@ -580,8 +584,12 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT

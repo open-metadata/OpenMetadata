@@ -187,9 +187,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return CsvUtil.formatCsv(csvFile);
   }
 
-  public static CsvDocumentation getCsvDocumentation(String entityType) {
-    LOG.info("Initializing CSV documentation for entity {}", entityType);
-    String path = String.format(".*json/data/%s/%sCsvDocumentation.json$", entityType, entityType);
+  public static CsvDocumentation getCsvDocumentation(String entityType, boolean recursive) {
+    String effectiveEntityType = (recursive) ? "entity" : entityType;
+    LOG.info("Initializing CSV documentation for entity {}", effectiveEntityType);
+
+    String path =
+        String.format(
+            ".*json/data/%s/%sCsvDocumentation.json$", effectiveEntityType, effectiveEntityType);
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       String json =
@@ -199,7 +203,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } catch (IOException e) {
       LOG.error(
           "FATAL - Failed to load CSV documentation for entity {} from the path {}",
-          entityType,
+          effectiveEntityType,
           path);
     }
     return null;
@@ -686,6 +690,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public List<CSVRecord> parse(String csv) {
+    Reader in = new StringReader(csv);
+    try {
+      return CSVFormat.DEFAULT.parse(in).stream().toList();
+    } catch (IOException e) {
+      documentFailure(failed(e.getMessage(), CsvErrorType.PARSER_FAILURE));
+    }
+    return null;
+  }
+
+  public List<CSVRecord> parse(String csv, boolean recursive) {
     List<CSVRecord> records = new ArrayList<>();
     Reader in = new StringReader(csv);
 

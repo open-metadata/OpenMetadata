@@ -184,6 +184,8 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.DatabaseRepository;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
@@ -4091,6 +4093,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
+  public CsvImportResult importCsvRecursive(String entityName, String csv, boolean dryRun)
+      throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/import").queryParam("recursive", "true");
+    target = !dryRun ? target.queryParam("dryRun", false) : target;
+    return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
   protected String exportCsv(String entityName) throws HttpResponseException {
     WebTarget target = getResourceByName(entityName + "/export");
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
@@ -4522,6 +4531,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             actual.getUpdated().getAccessedByAProcess());
       }
     }
+  }
+
+  protected List<CsvHeader> getDatabaseCsvHeaders(Database db, boolean recursive) {
+    return new DatabaseRepository.DatabaseCsv(db, "admin", recursive).HEADERS;
+  }
+
+  protected List<CsvHeader> getDatabaseSchemaCsvHeaders(
+      DatabaseSchema dbSchema, boolean recursive) {
+    return new DatabaseSchemaRepository.DatabaseSchemaCsv(dbSchema, "admin", recursive).HEADERS;
   }
 
   public UpdateType getChangeType() {

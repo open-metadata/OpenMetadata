@@ -83,8 +83,8 @@ public class DatabaseServiceRepository
   }
 
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     // Validate database service
     DatabaseService databaseService =
         getByName(null, name, EntityUtil.Fields.EMPTY_FIELDS); // Validate glossary name
@@ -94,7 +94,7 @@ public class DatabaseServiceRepository
   }
 
   public static class DatabaseServiceCsv extends EntityCsv<Database> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(DATABASE);
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(DATABASE, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final DatabaseService service;
 

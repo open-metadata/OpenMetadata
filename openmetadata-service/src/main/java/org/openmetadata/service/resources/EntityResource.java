@@ -655,7 +655,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response importCsvInternalAsync(
-      SecurityContext securityContext, String name, String csv, boolean dryRun) {
+      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
@@ -664,7 +664,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     executorService.submit(
         () -> {
           try {
-            CsvImportResult result = importCsvInternal(securityContext, name, csv, dryRun);
+            CsvImportResult result =
+                importCsvInternal(securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -685,12 +686,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected CsvImportResult importCsvInternal(
-      SecurityContext securityContext, String name, String csv, boolean dryRun) throws IOException {
+      SecurityContext securityContext, String name, String csv, boolean dryRun, boolean recursive)
+      throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return repository.importFromCsv(
-        name, csv, dryRun, securityContext.getUserPrincipal().getName());
+        name, csv, dryRun, securityContext.getUserPrincipal().getName(), recursive);
   }
 
   protected ResourceContext<T> getResourceContext() {

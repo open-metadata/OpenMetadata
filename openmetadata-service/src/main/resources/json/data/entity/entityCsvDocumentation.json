@@ -1,10 +1,10 @@
 {
-  "summary": "Database CSV file is used for importing and exporting table metadata from and to an **existing** database.",
+  "summary": "Entity CSV file is used for importing and exporting metadata (database schemas, tables, stored procedures) from and to an **existing** database.",
   "headers": [
     {
       "name": "name",
       "required": true,
-      "description": "The name of the database schema being updated.",
+      "description": "The name of the entity being updated.",
       "examples": [
         "`users`, `customers`"
       ]
@@ -12,17 +12,18 @@
     {
       "name": "displayName",
       "required": false,
-      "description": "Display name for the table.",
+      "description": "Display name for the entity.",
       "examples": [
-        "`User Schema`, `Customer Schema`"
+        "`User Schema`, `Customer Schema`, `Customer Table`"
       ]
     },
     {
       "name": "description",
       "required": false,
-      "description": "Description for the database schema in Markdown format.",
+      "description": "Description for the entity in Markdown format.",
       "examples": [
-        "`Customer Schema` that contains all the tables related to customer entity."
+        "`Customer Schema` that contains all the tables related to customer entity.",
+        "`Customer Table` that contains all customer records."
       ]
     },
     {
@@ -100,6 +101,56 @@
         "`\"\"\"queryCp:select col,row from table where id ='30';\"\";stringcp:sample string content\"`",
         "`markdownCp:# Sample Markdown Text`",
         "\"\"\"tableCp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value\"\"\""
+      ]
+    },
+    {
+      "name": "entityType",
+      "required": true,
+      "description": "Type of entity being imported or exported. Used to determine how to process the record during import/export operations.",
+      "examples": [
+        "`database`", "`databaseSchema`", "`table`", "`storedProcedure`", "`column`"
+      ]
+    },
+    {
+      "name": "fullyQualifiedName",
+      "required": false,
+      "description": "The fully qualified name of the entity. If not provided, it will be constructed based on the hierarchy.",
+      "examples": [
+        "`service_name.database_name`",
+        "`service_name.database_name.schema_name`",
+        "`service_name.database_name.schema_name.table_name`"
+      ]
+    },
+    {
+      "name": "column.dataTypeDisplay",
+      "required": false,
+      "description": "Display name used for dataType. This is useful for complex types, such as `array<int>`, `map<int,string>`, `struct<>`, and union types.",
+      "examples": [
+        "array<int>", "map<int, string>"
+      ]
+    },
+    {
+      "name": "column.dataType",
+      "required": false,
+      "description": "Actual Column data type.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+    {
+      "name": "column.arrayDataType",
+      "required": false,
+      "description": "In case of data Type being Array, type of Array Data.",
+      "examples": [
+        "BLOB", "DATE"
+      ]
+    },
+    {
+      "name": "column.dataLength",
+      "required": false,
+      "description": "Data Length of Column in case of CHAR, VARCHAR, BINARY etc.",
+      "examples": [
+        "36"
       ]
     }
   ]
