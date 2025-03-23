@@ -179,8 +179,6 @@ export enum FqnPart {
 export enum EntityTabs {
   SCHEMA = 'schema',
   SCHEMAS = 'schemas',
-  // Just feed no Tasks, used in Database page
-  ACTIVITY_FEEDS = 'activity_feeds',
   ACTIVITY_FEED = 'activity_feed',
   SAMPLE_DATA = 'sample_data',
   TABLE_QUERIES = 'table_queries',
