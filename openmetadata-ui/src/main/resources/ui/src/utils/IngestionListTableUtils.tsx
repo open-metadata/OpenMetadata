@@ -56,7 +56,7 @@ export const renderTypeField =
 export const renderStatusField = (_: string, record: IngestionPipeline) => (
   <Tag
     className={classNames(
-      'ingestion-run-badge latest',
+      'ingestion-run-badge latest pipeline-status',
       record.enabled ? 'success' : 'paused'
     )}
     data-testid="pipeline-active-status">

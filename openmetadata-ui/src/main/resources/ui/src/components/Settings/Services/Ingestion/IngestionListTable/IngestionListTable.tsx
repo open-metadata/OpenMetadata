@@ -71,11 +71,6 @@ import { IngestionListTableProps } from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
 
-const queryParams = {
-  startTs: getEpochMillisForPastDays(1),
-  endTs: getCurrentMillis(),
-};
-
 function IngestionListTable({
   bordered = true,
   tableContainerClassName = '',
@@ -185,6 +180,10 @@ function IngestionListTable({
   const fetchIngestionPipelineExtraDetails = useCallback(async () => {
     try {
       setIsIngestionRunsLoading(true);
+      const queryParams = {
+        startTs: getEpochMillisForPastDays(1),
+        endTs: getCurrentMillis(),
+      };
       const permissionPromises = ingestionData.map((item) =>
         getEntityPermissionByFqn(
           ResourceEntity.INGESTION_PIPELINE,

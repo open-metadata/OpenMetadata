@@ -28,11 +28,6 @@ import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModa
 import './ingestion-recent-run.style.less';
 import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
 
-const queryParams = {
-  startTs: getEpochMillisForPastDays(1),
-  endTs: getCurrentMillis(),
-};
-
 export const IngestionRecentRuns = ({
   ingestion,
   classNames,
@@ -44,13 +39,17 @@ export const IngestionRecentRuns = ({
 }: Readonly<IngestionRecentRunsProps>) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(fetchStatus);
   const [selectedStatus, setSelectedStatus] = useState<PipelineStatus>();
 
   const fetchPipelineStatus = useCallback(async () => {
     setLoading(true);
     try {
-      if (fetchStatus && !isUndefined(ingestion?.fullyQualifiedName)) {
+      if (!isUndefined(ingestion?.fullyQualifiedName)) {
+        const queryParams = {
+          startTs: getEpochMillisForPastDays(1),
+          endTs: getCurrentMillis(),
+        };
         const response = await getRunHistoryForPipeline(
           ingestion?.fullyQualifiedName ?? '',
           queryParams
@@ -63,8 +62,6 @@ export const IngestionRecentRuns = ({
             ? [ingestion.pipelineStatuses]
             : runs
         );
-      } else {
-        setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
       }
     } finally {
       setLoading(false);
@@ -72,8 +69,16 @@ export const IngestionRecentRuns = ({
   }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {
-    fetchPipelineStatus();
-  }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
+    if (fetchStatus) {
+      fetchPipelineStatus();
+    }
+  }, [ingestion, ingestion?.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (!isEmpty(appRuns)) {
+      setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
+    }
+  }, [appRuns]);
 
   useEffect(() => {
     // To fetch pipeline status on demand
