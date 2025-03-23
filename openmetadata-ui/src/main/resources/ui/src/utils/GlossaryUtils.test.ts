@@ -364,7 +364,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
       name: 400,
       owners: 170,
       reviewers: 330,
-      status: 120,
+      status: 330,
       synonyms: 330,
     });
   });
@@ -377,7 +377,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
       name: 400,
       owners: 170,
       reviewers: 330,
-      status: 120,
+      status: 330,
       synonyms: 330,
     });
   });

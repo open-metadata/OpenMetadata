@@ -58,6 +58,7 @@ import {
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { TaskOperation } from '../../../constants/Feeds.constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
@@ -65,12 +66,21 @@ import {
 } from '../../../constants/Glossary.contant';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   EntityReference,
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import {
+  Thread,
+  ThreadTaskStatus,
+  ThreadType,
+} from '../../../generated/entity/feed/thread';
+import { User } from '../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
   getFirstLevelGlossaryTerms,
   getGlossaryTerms,
@@ -85,12 +95,14 @@ import {
   findExpandableKeysForArray,
   findItemByFqn,
   glossaryTermTableColumnsWidth,
+  permissionForApproveOrReject,
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
+import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
@@ -109,11 +121,15 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
+  const { currentUser } = useApplicationStore();
   const tableRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
   const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
     useGlossaryStore();
   const { t } = useTranslation();
+  const [termTaskThreads, setTermTaskThreads] = useState<
+    Record<string, Thread[]>
+  >({});
 
   const { glossaryTerms, expandableKeys } = useMemo(() => {
     const terms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
@@ -170,6 +186,48 @@ const GlossaryTermTab = ({
     setIsTableLoading(false);
   };
 
+  const fetchAllTasks = useCallback(async () => {
+    if (!activeGlossary?.fullyQualifiedName) {
+      return;
+    }
+
+    try {
+      const { data } = await getAllFeeds(
+        `<#E::${EntityType.GLOSSARY}::${activeGlossary.fullyQualifiedName}>`,
+        undefined,
+        ThreadType.Task,
+        undefined,
+        ThreadTaskStatus.Open,
+        undefined,
+        API_RES_MAX_SIZE
+      );
+
+      // Organize tasks by glossary term FQN
+      const tasksByTerm = data.reduce(
+        (acc: Record<string, Thread[]>, thread: Thread) => {
+          const termFQN = thread.about;
+          if (termFQN) {
+            if (!acc[termFQN]) {
+              acc[termFQN] = [];
+            }
+            acc[termFQN].push(thread);
+          }
+
+          return acc;
+        },
+        {}
+      );
+
+      setTermTaskThreads(tasksByTerm);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [activeGlossary?.fullyQualifiedName]);
+
+  useEffect(() => {
+    fetchAllTasks();
+  }, [fetchAllTasks]);
+
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
       return (activeGlossary as GlossaryTerm).status ?? Status.Approved;
@@ -181,6 +239,94 @@ const GlossaryTermTab = ({
   const tableColumnsWidth = useMemo(
     () => glossaryTermTableColumnsWidth(tableWidth, permissions.Create),
     [permissions.Create, tableWidth]
+  );
+
+  const updateGlossaryTermStatus = (
+    terms: ModifiedGlossary[],
+    targetFqn: string,
+    newStatus: Status
+  ): ModifiedGlossary[] => {
+    return terms.map((term) => {
+      if (term.fullyQualifiedName === targetFqn) {
+        return {
+          ...term,
+          status: newStatus,
+        };
+      }
+
+      if (term.children && term.children.length > 0) {
+        return {
+          ...term,
+          children: updateGlossaryTermStatus(
+            term.children as ModifiedGlossary[],
+            targetFqn,
+            newStatus
+          ) as ModifiedGlossaryTerm[],
+        };
+      }
+
+      return term;
+    });
+  };
+
+  const updateTaskData = useCallback(
+    async (data: ResolveTask, taskId: string, glossaryTermFqn: string) => {
+      try {
+        if (!taskId) {
+          return;
+        }
+
+        await updateTask(TaskOperation.RESOLVE, taskId + '', data);
+        showSuccessToast(t('server.task-resolved-successfully'));
+
+        const currentExpandedKeys = [...expandedRowKeys];
+        setExpandedRowKeys(currentExpandedKeys);
+
+        if (glossaryChildTerms && glossaryTermFqn) {
+          const newStatus =
+            data.newValue === 'approved' ? Status.Approved : Status.Rejected;
+
+          const updatedTerms = updateGlossaryTermStatus(
+            glossaryChildTerms,
+            glossaryTermFqn,
+            newStatus
+          );
+
+          setGlossaryChildTerms(updatedTerms);
+
+          // remove resolved task from term task threads
+          if (termTaskThreads[glossaryTermFqn]) {
+            const updatedThreads = { ...termTaskThreads };
+            updatedThreads[glossaryTermFqn] = updatedThreads[
+              glossaryTermFqn
+            ].filter(
+              (thread) => !(thread.id && thread.id.toString() === taskId)
+            );
+
+            setTermTaskThreads(updatedThreads);
+          }
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [expandedRowKeys, glossaryChildTerms, termTaskThreads]
+  );
+
+  const handleApproveGlossaryTerm = useCallback(
+    (taskId: string, glossaryTermFqn: string) => {
+      const data = { newValue: 'approved' } as ResolveTask;
+      updateTaskData(data, taskId, glossaryTermFqn);
+    },
+    [updateTaskData]
+  );
+
+  const handleRejectGlossaryTerm = useCallback(
+    (taskId: string, glossaryTermFqn: string) => {
+      const data = { newValue: 'rejected' } as ResolveTask;
+      updateTaskData(data, taskId, glossaryTermFqn);
+    },
+    [updateTaskData]
   );
 
   const columns = useMemo(() => {
@@ -285,13 +431,29 @@ const GlossaryTermTab = ({
         }),
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
+          const termFQN = record.fullyQualifiedName ?? '';
+          const { permission, taskId } = permissionForApproveOrReject(
+            record,
+            currentUser as User,
+            termTaskThreads
+          );
 
           return (
-            <StatusBadge
-              dataTestId={record.fullyQualifiedName + '-status'}
-              label={status}
-              status={StatusClass[status]}
-            />
+            <div>
+              {status === Status.InReview && permission ? (
+                <StatusAction
+                  dataTestId={record.name}
+                  onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
+                  onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
+                />
+              ) : (
+                <StatusBadge
+                  dataTestId={termFQN + '-status'}
+                  label={status}
+                  status={StatusClass[status]}
+                />
+              )}
+            </div>
           );
         },
         onFilter: (value, record) => record.status === value,
@@ -348,7 +510,13 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [permissions, tableColumnsWidth]);
+  }, [
+    permissions,
+    tableColumnsWidth,
+    termTaskThreads,
+    handleApproveGlossaryTerm,
+    handleRejectGlossaryTerm,
+  ]);
 
   const handleCheckboxChange = useCallback(
     (key: string, checked: boolean) => {
@@ -485,22 +653,6 @@ const GlossaryTermTab = ({
   const extraTableFilters = useMemo(() => {
     return (
       <>
-        <Button
-          className="text-primary"
-          data-testid="expand-collapse-all-button"
-          size="small"
-          type="text"
-          onClick={toggleExpandAll}>
-          <Space align="center" size={4}>
-            {isAllExpanded ? (
-              <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            ) : (
-              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            )}
-
-            {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
-          </Space>
-        </Button>
         <Dropdown
           className="custom-glossary-dropdown-menu status-dropdown"
           getPopupContainer={(trigger) => {
@@ -523,6 +675,22 @@ const GlossaryTermTab = ({
             </Space>
           </Button>
         </Dropdown>
+        <Button
+          className="text-primary"
+          data-testid="expand-collapse-all-button"
+          size="small"
+          type="text"
+          onClick={toggleExpandAll}>
+          <Space align="center" size={4}>
+            {isAllExpanded ? (
+              <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+            ) : (
+              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+            )}
+
+            {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
+          </Space>
+        </Button>
       </>
     );
   }, [isAllExpanded, isStatusDropdownVisible, statusDropdownMenu]);
