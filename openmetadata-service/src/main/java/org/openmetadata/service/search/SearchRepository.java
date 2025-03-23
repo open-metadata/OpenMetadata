@@ -36,6 +36,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENT
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -373,10 +374,7 @@ public class SearchRepository {
         ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
         ChangeDescription changeDescription;
 
-        if (incrementalChangeDescription != null
-            && (!incrementalChangeDescription.getFieldsAdded().isEmpty()
-                || !incrementalChangeDescription.getFieldsUpdated().isEmpty()
-                || !incrementalChangeDescription.getFieldsDeleted().isEmpty())) {
+        if (!isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
           changeDescription = incrementalChangeDescription;
         } else {
           changeDescription = entity.getChangeDescription();
@@ -900,10 +898,15 @@ public class SearchRepository {
             scriptTxt,
             List.of(new ImmutablePair<>("dashboards.id", docId)));
       }
-      default -> searchClient.softDeleteOrRestoreChildren(
-          indexMapping.getChildAliases(clusterAlias),
-          scriptTxt,
-          List.of(new ImmutablePair<>(entityType + ".id", docId)));
+      default -> {
+        List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
+        if (!indexNames.isEmpty()) {
+          searchClient.softDeleteOrRestoreChildren(
+              indexMapping.getChildAliases(clusterAlias),
+              scriptTxt,
+              List.of(new ImmutablePair<>(entityType + ".id", docId)));
+        }
+      }
     }
   }
 
