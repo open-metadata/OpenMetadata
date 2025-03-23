@@ -12,6 +12,7 @@
  */
 
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { App } from '../../../../generated/entity/applications/app';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
@@ -42,6 +43,10 @@ export interface IngestionProps {
   ) => void;
   statusFilter?: Array<{ key: string; label: string }>;
   typeFilter?: Array<{ key: string; label: string }>;
+  isCollateAgentLoading?: boolean;
+  collateAgentsList?: App[];
+  collateAgentPagingInfo?: UsePagingInterface;
+  onCollateAgentPageChange?: (pagingHandlerParams: PagingHandlerParams) => void;
 }
 
 export interface SelectedRowDetails {

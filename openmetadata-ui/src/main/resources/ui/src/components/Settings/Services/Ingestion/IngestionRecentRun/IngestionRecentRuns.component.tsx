@@ -40,6 +40,7 @@ export const IngestionRecentRuns = ({
   fetchStatus = true,
   pipelineIdToFetchStatus = '',
   handlePipelineIdToFetchStatus,
+  isAppRunsLoading = false,
 }: Readonly<IngestionRecentRunsProps>) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
@@ -89,8 +90,8 @@ export const IngestionRecentRuns = ({
 
   const handleModalCancel = () => setSelectedStatus(undefined);
 
-  if (loading) {
-    return <Skeleton.Input size="small" />;
+  if (isAppRunsLoading || loading) {
+    return <Skeleton.Input active size="small" />;
   }
 
   return (

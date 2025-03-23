@@ -19,6 +19,7 @@ export interface IngestionRecentRunsProps {
   ingestion?: IngestionPipeline;
   classNames?: string;
   appRuns?: PipelineStatus[];
+  isAppRunsLoading?: boolean;
   fetchStatus?: boolean;
   pipelineIdToFetchStatus?: string;
   handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;

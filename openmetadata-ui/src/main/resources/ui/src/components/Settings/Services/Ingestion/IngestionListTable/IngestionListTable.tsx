@@ -120,6 +120,7 @@ function IngestionListTable({
   const [recentRunStatuses, setRecentRunStatuses] = useState<
     Record<string, PipelineStatus[]>
   >({});
+  const [isIngestionRunsLoading, setIsIngestionRunsLoading] = useState(false);
 
   const handleDeleteSelection = useCallback((row: SelectedRowDetails) => {
     setDeleteSelection(row);
@@ -183,6 +184,7 @@ function IngestionListTable({
 
   const fetchIngestionPipelineExtraDetails = useCallback(async () => {
     try {
+      setIsIngestionRunsLoading(true);
       const permissionPromises = ingestionData.map((item) =>
         getEntityPermissionByFqn(
           ResourceEntity.INGESTION_PIPELINE,
@@ -231,6 +233,8 @@ function IngestionListTable({
       setRecentRunStatuses(recentRunStatusData);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsIngestionRunsLoading(false);
     }
   }, [ingestionData]);
 
@@ -373,6 +377,7 @@ function IngestionListTable({
             fetchStatus={false}
             handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
             ingestion={record}
+            isAppRunsLoading={isIngestionRunsLoading}
             pipelineIdToFetchStatus={pipelineIdToFetchStatus}
           />
         ),
@@ -404,6 +409,7 @@ function IngestionListTable({
       handlePipelineIdToFetchStatus,
       pipelineTypeColumnObj,
       recentRunStatuses,
+      isIngestionRunsLoading,
     ]
   );
 

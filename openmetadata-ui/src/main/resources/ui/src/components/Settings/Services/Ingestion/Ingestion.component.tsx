@@ -48,6 +48,10 @@ const Ingestion: React.FC<IngestionProps> = ({
   handleStatusFilterChange,
   statusFilter,
   typeFilter,
+  isCollateAgentLoading,
+  collateAgentsList,
+  collateAgentPagingInfo,
+  onCollateAgentPageChange,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -210,7 +214,13 @@ const Ingestion: React.FC<IngestionProps> = ({
       </Col>
       <Col span={24}>
         {isCollateSubTabSelected ? (
-          <CollateAIAgentsWidget serviceDetails={serviceDetails} />
+          <CollateAIAgentsWidget
+            collateAgentPagingInfo={collateAgentPagingInfo}
+            collateAgentsList={collateAgentsList}
+            isCollateAgentLoading={isCollateAgentLoading}
+            serviceDetails={serviceDetails}
+            onCollateAgentPageChange={onCollateAgentPageChange}
+          />
         ) : (
           <MetadataAgentsWidget
             airflowInformation={airflowInformation}
