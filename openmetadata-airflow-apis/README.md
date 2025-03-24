@@ -1,4 +1,3 @@
-∑
 # OpenMetadata Airflow Managed DAGS Api
 
 This is a plugin for Apache Airflow >= 1.10 and Airflow >=2.x that exposes REST APIs to deploy an

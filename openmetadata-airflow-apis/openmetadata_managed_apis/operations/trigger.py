@@ -23,8 +23,6 @@ from airflow.utils import timezone
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse
 
-logger = operations_logger()
-
 
 def trigger(
     dag_id: str, run_id: Optional[str], conf: Optional[dict] = None
