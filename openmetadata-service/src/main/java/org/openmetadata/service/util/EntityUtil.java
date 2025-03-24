@@ -751,4 +751,13 @@ public final class EntityUtil {
       return null;
     }
   }
+
+  public static boolean isNullOrEmptyChangeDescription(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return true;
+    }
+    return changeDescription.getFieldsAdded().isEmpty()
+        && changeDescription.getFieldsUpdated().isEmpty()
+        && changeDescription.getFieldsDeleted().isEmpty();
+  }
 }

@@ -71,6 +71,7 @@ public class TypeRepository extends EntityRepository<Type> {
         Entity.getCollectionDAO().typeEntityDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    Entity.setTypeRepository(this);
   }
 
   @Override

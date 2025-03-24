@@ -97,7 +97,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
     () =>
       Qs.parse(
         location.search.startsWith('?')
-          ? location.search.substr(1)
+          ? location.search.substring(1)
           : location.search
       ),
     [location.search]

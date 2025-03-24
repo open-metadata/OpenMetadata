@@ -19,8 +19,10 @@ import React, {
   Fragment,
   HTMLAttributes,
   ReactNode,
+  useEffect,
   useMemo,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
@@ -58,7 +60,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
-  const { alert } = useAlertStore();
+  const { alert, resetAlert } = useAlertStore();
+  const location = useLocation();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -72,11 +75,19 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
+  useEffect(() => {
+    if (alert && alert.type === 'error') {
+      setTimeout(() => {
+        resetAlert();
+      }, 3000);
+    }
+  }, [location.pathname, resetAlert]);
+
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames('bg-white', className)}
+        className={className}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}>
         {leftPanel && (

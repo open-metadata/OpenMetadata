@@ -12,8 +12,8 @@
  */
 export const DEFAULT_THEME = {
   primaryColor: '#0968da',
-  infoColor: '#2196f3',
-  successColor: '#008376',
-  warningColor: '#ffc34e',
-  errorColor: '#ff4c3b',
+  infoColor: '#84caff',
+  successColor: '#6ce9a6',
+  warningColor: '#fec84b',
+  errorColor: '#fda29b',
 };

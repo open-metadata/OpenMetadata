@@ -212,6 +212,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
+            triggerButtonSize="middle"
             onChange={(updatedValues) => {
               onFieldValueSelect({ ...field, value: updatedValues });
             }}
