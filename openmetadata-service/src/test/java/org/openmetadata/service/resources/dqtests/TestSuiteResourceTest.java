@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
@@ -42,8 +43,11 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -55,6 +59,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -113,10 +118,10 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TEST_SUITE_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CREATE_TEST_SUITE1 =
         createRequest(DATABASE_SCHEMA.getFullyQualifiedName() + "." + TEST_SUITE_TABLE_NAME1);
-    TEST_SUITE1 = createExecutableTestSuite(CREATE_TEST_SUITE1, ADMIN_AUTH_HEADERS);
+    TEST_SUITE1 = createBasicTestSuite(CREATE_TEST_SUITE1, ADMIN_AUTH_HEADERS);
     CREATE_TEST_SUITE2 =
         createRequest(DATABASE_SCHEMA.getFullyQualifiedName() + "." + TEST_SUITE_TABLE_NAME2);
-    TEST_SUITE2 = createExecutableTestSuite(CREATE_TEST_SUITE2, ADMIN_AUTH_HEADERS);
+    TEST_SUITE2 = createBasicTestSuite(CREATE_TEST_SUITE2, ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -169,7 +174,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         verifyTestCases(testSuite.getTests(), testCases1);
       }
     }
-    deleteExecutableTestSuite(TEST_SUITE1.getId(), true, false, ADMIN_AUTH_HEADERS);
+    deleteBasicTestSuite(TEST_SUITE1.getId(), true, false, ADMIN_AUTH_HEADERS);
     assertResponse(
         () -> getEntity(TEST_SUITE1.getId(), ADMIN_AUTH_HEADERS),
         NOT_FOUND,
@@ -180,6 +185,15 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         getEntity(TEST_SUITE1.getId(), queryParams, null, ADMIN_AUTH_HEADERS);
     assertEquals(TEST_SUITE1.getId(), deletedTestSuite.getId());
     assertEquals(true, deletedTestSuite.getDeleted());
+  }
+
+  @Test
+  void create_basicTestSuiteWithoutRef(TestInfo test) {
+    CreateTestSuite createTestSuite = createRequest(test);
+    assertResponse(
+        () -> createBasicEmptySuite(createTestSuite, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Cannot create a basic test suite without the BasicEntityReference field informed.");
   }
 
   @Test
@@ -200,7 +214,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                           .withDataLength(10)));
       Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
       CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
-      TestSuite testSuite = createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+      TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
       for (int j = 0; j < 3; j++) {
         CreateTestCase createTestCase =
             testCaseResourceTest
@@ -224,7 +238,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
-    createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+    createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
     testSuites.add(createTestSuite);
 
     ResultList<TestSuite> actualTestSuites =
@@ -276,7 +290,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
     assertOwners(testSuite.getOwners(), table.getOwners());
     Table updateTableOwner = table;
@@ -306,7 +320,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "domain", ADMIN_AUTH_HEADERS);
     assertEquals(DOMAIN1.getId(), testSuite.getDomain().getId());
     ResultList<TestSuite> testSuites =
@@ -349,7 +363,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     createExecutableTestSuite.withOwners(List.of(user1Ref));
     TestSuite executableTestSuite =
-        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     List<EntityReference> testCases1 = new ArrayList<>();
 
     // We'll create tests cases for testSuite1
@@ -399,7 +413,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         allEntities.getData().stream()
             .anyMatch(ts -> ts.getId().equals(finalExecutableTestSuite.getId())));
     // 2. List only executable test suites
-    queryParams.put("testSuiteType", "executable");
+    queryParams.put("testSuiteType", "basic");
     queryParams.put("fields", "tests");
     ResultList<TestSuite> executableTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
@@ -424,13 +438,26 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         nonEmptyTestSuites.getData().stream().anyMatch(ts -> !ts.getTests().isEmpty()));
     // 5. List test suite with a query
     queryParams.clear();
-    queryParams.put("q", logicalTestSuite.getFullyQualifiedName());
+    queryParams.put(
+        "queryString",
+        "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id%22%3A%20%22"
+            + logicalTestSuite.getId()
+            + "%22%7D%7D%7D");
     ResultList<TestSuite> queryTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     Assertions.assertTrue(
         queryTestSuites.getData().stream()
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
+
+    queryParams.clear();
+    queryParams.put("q", logicalTestSuite.getFullyQualifiedName());
+    queryTestSuites = listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        queryTestSuites.getData().stream()
+            .allMatch(
+                ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
+
     // 6. List test suites with a nested sort
     queryParams.clear();
     queryParams.put("fields", "tests");
@@ -489,7 +516,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
-    TestSuite testSuite = createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
     List<EntityReference> testCases1 = new ArrayList<>();
 
     // We'll create tests cases for testSuite1
@@ -511,14 +538,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                 executableTestSuite,
                 testCases1.stream().map(EntityReference::getId).collect(Collectors.toList())),
         BAD_REQUEST,
-        "You are trying to add test cases to an executable test suite.");
+        "You are trying to add test cases to a basic test suite.");
   }
 
   @Test
   void post_createExecTestSuiteNonExistingEntity_400(TestInfo test) {
     CreateTestSuite createTestSuite = createRequest(test);
     assertResponse(
-        () -> createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS),
+        () -> createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
         String.format("table instance for %s not found", createTestSuite.getName()));
   }
@@ -540,7 +567,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
-    TestSuite testSuite = createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     // We'll create tests cases for testSuite
     for (int i = 0; i < 5; i++) {
@@ -563,7 +590,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertEquals(5, tableTestSuite.getTests().size());
 
     // Soft delete entity
-    deleteExecutableTestSuite(tableTestSuite.getId(), true, false, ADMIN_AUTH_HEADERS);
+    deleteBasicTestSuite(tableTestSuite.getId(), true, false, ADMIN_AUTH_HEADERS);
     actualTable =
         tableResourceTest.getEntity(
             actualTable.getId(), queryParams, "testSuite", ADMIN_AUTH_HEADERS);
@@ -574,7 +601,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     assertEquals(true, tableTestSuite.getDeleted());
 
     // Hard delete entity
-    deleteExecutableTestSuite(tableTestSuite.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteBasicTestSuite(tableTestSuite.getId(), true, true, ADMIN_AUTH_HEADERS);
     actualTable = tableResourceTest.getEntity(table.getId(), "testSuite", ADMIN_AUTH_HEADERS);
     assertNull(actualTable.getTestSuite());
   }
@@ -596,7 +623,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
-    TestSuite testSuite = createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     HashMap<String, String> queryParams = new HashMap<>();
     queryParams.put("include", Include.ALL.value());
@@ -635,13 +662,13 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     ResultList<TestSuite> testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(10, testSuiteResultList.getData().size());
 
-    queryParams.put("testSuiteType", "executable");
+    queryParams.put("testSuiteType", "basic");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    testSuiteResultList.getData().forEach(ts -> assertEquals(true, ts.getExecutable()));
+    testSuiteResultList.getData().forEach(ts -> assertEquals(true, ts.getBasic()));
 
     queryParams.put("testSuiteType", "logical");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    testSuiteResultList.getData().forEach(ts -> assertEquals(false, ts.getExecutable()));
+    testSuiteResultList.getData().forEach(ts -> assertEquals(false, ts.getBasic()));
 
     queryParams.put("includeEmptyTestSuites", "false");
     testSuiteResultList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
@@ -691,7 +718,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     List<EntityReference> testCases = new ArrayList<>();
 
     // We'll create tests cases for testSuite1
@@ -718,6 +745,80 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite actualExecutableTestSuite =
         getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
     assertEquals(5, actualExecutableTestSuite.getTests().size());
+  }
+
+  @Test
+  void delete_logicalSuiteWithPipeline(TestInfo test) throws IOException {
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+    CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+        createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    List<EntityReference> testCases1 = new ArrayList<>();
+
+    // We'll create tests cases for testSuite1
+    for (int i = 0; i < 5; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
+              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+      TestCase testCase =
+          testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+      testCases1.add(testCase.getEntityReference());
+    }
+
+    // We'll create a logical test suite and associate the test cases to it
+    CreateTestSuite createTestSuite = createRequest(test);
+    TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+    addTestCasesToLogicalTestSuite(
+        testSuite, testCases1.stream().map(EntityReference::getId).collect(Collectors.toList()));
+    TestSuite logicalTestSuite = getEntity(testSuite.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    // Add ingestion pipeline to the database service
+    IngestionPipelineResourceTest ingestionPipelineResourceTest =
+        new IngestionPipelineResourceTest();
+    CreateIngestionPipeline createIngestionPipeline =
+        ingestionPipelineResourceTest
+            .createRequest(test)
+            .withService(logicalTestSuite.getEntityReference());
+
+    TestSuitePipeline testSuitePipeline = new TestSuitePipeline();
+
+    SourceConfig sourceConfig = new SourceConfig().withConfig(testSuitePipeline);
+    createIngestionPipeline.withSourceConfig(sourceConfig);
+    IngestionPipeline ingestionPipeline =
+        ingestionPipelineResourceTest.createEntity(createIngestionPipeline, ADMIN_AUTH_HEADERS);
+
+    // We can GET the Ingestion Pipeline now
+    IngestionPipeline actualIngestionPipeline =
+        ingestionPipelineResourceTest.getEntity(ingestionPipeline.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(actualIngestionPipeline);
+
+    // After deleting the test suite, we can't GET the Ingestion Pipeline
+    deleteEntity(logicalTestSuite.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    assertResponse(
+        () ->
+            ingestionPipelineResourceTest.getEntity(ingestionPipeline.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        String.format(
+            "ingestionPipeline instance for %s not found", actualIngestionPipeline.getId()));
+
+    // Test Cases are still there
+    TestCase testCaseInLogical =
+        testCaseResourceTest.getEntity(testCases1.get(0).getId(), "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(testCaseInLogical);
   }
 
   @Test
@@ -750,7 +851,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         CreateTestSuite createTestSuite =
             testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
         TestSuite testSuite =
-            testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+            testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
         testSuites.put(table.getFullyQualifiedName(), testSuite);
       }
       validateEntityListFromSearchWithPagination(new HashMap<>(), testSuites.size());
@@ -772,7 +873,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createTestSuite = createRequest(table.getFullyQualifiedName());
-    TestSuite testSuite = createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+    TestSuite testSuite = createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(Entity.TABLE);
     es.org.elasticsearch.client.Response response;
@@ -827,10 +928,16 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     return TestUtils.get(target, TestSuiteResource.TestSuiteList.class, authHeaders);
   }
 
-  public TestSuite createExecutableTestSuite(
+  public TestSuite createBasicTestSuite(
       CreateTestSuite createTestSuite, Map<String, String> authHeaders) throws IOException {
-    WebTarget target = getResource("dataQuality/testSuites/executable");
-    createTestSuite.setExecutableEntityReference(createTestSuite.getName());
+    WebTarget target = getResource("dataQuality/testSuites/basic");
+    createTestSuite.setBasicEntityReference(createTestSuite.getName());
+    return TestUtils.post(target, createTestSuite, TestSuite.class, authHeaders);
+  }
+
+  public TestSuite createBasicEmptySuite(
+      CreateTestSuite createTestSuite, Map<String, String> authHeaders) throws IOException {
+    WebTarget target = getResource("dataQuality/testSuites/basic");
     return TestUtils.post(target, createTestSuite, TestSuite.class, authHeaders);
   }
 
@@ -844,11 +951,10 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestUtils.put(target, createLogicalTestCases, Response.Status.OK, ADMIN_AUTH_HEADERS);
   }
 
-  public void deleteExecutableTestSuite(
+  public void deleteBasicTestSuite(
       UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
       throws IOException {
-    WebTarget target =
-        getResource(String.format("dataQuality/testSuites/executable/%s", id.toString()));
+    WebTarget target = getResource(String.format("dataQuality/testSuites/basic/%s", id.toString()));
     target = recursive ? target.queryParam("recursive", true) : target;
     target = hardDelete ? target.queryParam("hardDelete", true) : target;
     TestUtils.delete(target, TestSuite.class, authHeaders);

@@ -53,7 +53,7 @@ class AbstractTableMetricComputer(ABC):
         self._metrics = metrics
         self._conn_config = conn_config
         self._database = self._runner._session.get_bind().url.database
-        self._table = self._runner.table
+        self._table = self._runner.dataset
         self._entity = entity
 
     @property
@@ -91,8 +91,8 @@ class AbstractTableMetricComputer(ABC):
             table (DeclarativeMeta): _description_
         """
         try:
-            self._schema_name = self.table.__table_args__.get("schema")
-            self._table_name = self.table.__tablename__
+            self._schema_name = self.runner.schema_name
+            self._table_name = self.runner.table_name
         except AttributeError:
             raise AttributeError(ERROR_MSG)
 
@@ -119,10 +119,10 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(",".join(inspect(self.table).c.keys()), type_=String).label(
-            COLUMN_NAMES
-        )
-        col_count = literal(len(inspect(self.table).c)).label(COLUMN_COUNT)
+        col_names = literal(
+            ",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String
+        ).label(COLUMN_NAMES)
+        col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
     def _build_query(
@@ -147,7 +147,8 @@ class BaseTableMetricComputer(AbstractTableMetricComputer):
     """Base table computer"""
 
     def compute(self):
-        """Default compute behavior for table metrics"""
+        """Default compute behavior for table metrics. This method will use the raw table
+        to compute metrics and omit any sampling or partitioning logic."""
         return self.runner.select_first_from_table(
             *[metric().fn() for metric in self.metrics]
         )

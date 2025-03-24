@@ -14,18 +14,16 @@ import { Button, Form, FormProps, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useEffect, useMemo, useState } from 'react';
 
+import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
-  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -37,20 +35,29 @@ import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateQuery } from '../../generated/api/data/createQuery';
 import { Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { searchData } from '../../rest/miscAPI';
 import { postQuery } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
-import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityBreadcrumbs,
+  getEntityLabel,
+  getEntityName,
+} from '../../utils/EntityUtils';
+import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { fqn: datasetFQN } = useFqn();
+  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
@@ -102,8 +109,9 @@ const AddQueryPage = () => {
         SearchIndex.TABLE
       );
       const options = data.hits.hits.map((value) => ({
-        label: getEntityName(value._source),
+        label: getEntityLabel(value._source),
         value: value._source.id,
+        labelName: getEntityName(value._source),
       }));
 
       return table
@@ -167,7 +175,9 @@ const AddQueryPage = () => {
     try {
       await postQuery(updatedValues);
       showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.query') })
+        t('server.create-entity-success', {
+          entity: t('label.query'),
+        })
       );
       handleCancelClick();
     } catch (error) {
@@ -192,9 +202,29 @@ const AddQueryPage = () => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+        onTextChange: (value: string) => setDescription(value),
+      },
+    }),
+    []
+  );
+
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -204,7 +234,9 @@ const AddQueryPage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.query') })}
+                {t('label.add-new-entity', {
+                  entity: t('label.query'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="query-form"
@@ -234,17 +266,7 @@ const AddQueryPage = () => {
                     showCopyButton={false}
                   />
                 </Form.Item>
-                <Form.Item
-                  label={`${t('label.description')}:`}
-                  name="description">
-                  <RichTextEditor
-                    height="200px"
-                    initialValue={description}
-                    placeHolder={t('message.write-your-description')}
-                    style={{ margin: 0 }}
-                    onTextChange={(value) => setDescription(value)}
-                  />
-                </Form.Item>
+                {getField(descriptionField)}
                 <Form.Item
                   label={`${t('label.query-used-in')}:`}
                   name="queryUsedIn">
@@ -252,6 +274,7 @@ const AddQueryPage = () => {
                     api={fetchTableEntity}
                     data-testid="query-used-in"
                     mode="multiple"
+                    optionLabelProp="labelName"
                     options={initialOptions}
                     placeholder={t('label.please-select-entity', {
                       entity: t('label.query-used-in'),
@@ -311,4 +334,8 @@ const AddQueryPage = () => {
   );
 };
 
-export default AddQueryPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.query'),
+  })
+)(AddQueryPage);

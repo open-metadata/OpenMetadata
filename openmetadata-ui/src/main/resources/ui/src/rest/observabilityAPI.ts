@@ -17,6 +17,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
+import { EventsRecord } from '../generated/events/api/eventsRecord';
 import { EventSubscription } from '../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
@@ -43,6 +44,20 @@ export const getObservabilityAlertByFQN = async (
         include: 'all',
       },
     }
+  );
+
+  return response.data;
+};
+export const syncOffset = async (fqn: string) => {
+  const response = await axiosClient.put(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/syncOffset`
+  );
+
+  return response.data;
+};
+export const getDiagnosticInfo = async (fqn: string) => {
+  const response = await axiosClient.get(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/diagnosticInfo`
   );
 
   return response.data;
@@ -85,14 +100,6 @@ export const updateObservabilityAlert = async (
   return response.data;
 };
 
-export const updateObservabilityAlertWithPut = async (
-  alert: CreateEventSubscription
-) => {
-  const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
-
-  return response.data;
-};
-
 export const deleteObservabilityAlert = async (id: string) => {
   const response = await axiosClient.delete(`${BASE_URL}/${id}`);
 
@@ -111,6 +118,28 @@ export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
     PagingResponse<FilterResourceDescriptor[]>
   >(`${BASE_URL}/observability/resources`);
+
+  return response.data;
+};
+
+export const getAlertEventsDiagnosticsInfo = async ({
+  fqn,
+  params,
+  listCountOnly = false,
+}: {
+  fqn: string;
+  params?: ListParams;
+  listCountOnly?: boolean;
+}) => {
+  const response = await axiosClient.get<EventsRecord>(
+    `${BASE_URL}/name/${fqn}/eventsRecord`,
+    {
+      params: {
+        ...params,
+        listCountOnly,
+      },
+    }
+  );
 
   return response.data;
 };

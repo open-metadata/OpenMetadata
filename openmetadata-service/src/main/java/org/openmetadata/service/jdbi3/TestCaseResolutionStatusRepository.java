@@ -401,12 +401,6 @@ public class TestCaseResolutionStatusRepository
     incident.setSeverity(severity);
   }
 
-  public void deleteTestCaseFailedSamples(TestCaseResolutionStatus entity) {
-    TestCaseRepository testCaseRepository =
-        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    testCaseRepository.deleteTestCaseFailedRowsSample(entity.getTestCaseReference().getId());
-  }
-
   public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {
     // if originEntityFQN is present, we need to join with test_case table
     if (filter.getQueryParam("originEntityFQN") != null) {

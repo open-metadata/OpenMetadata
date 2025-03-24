@@ -24,6 +24,16 @@ Configure and schedule MicroStrategy metadata and profiler workflows from the Op
 
 To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or higher.
 
+When a service user is created, it is already provisioned with the necessary permissions.
+However, if the user still cannot access the APIs, the following should be checked as part of the troubleshooting process:
+- Required DSS Privileges for MicroStrategy REST/JSON API:
+- Web Services API: Essential for REST API usage.
+- Login to MicroStrategy: User authentication.
+- Use Project Sources: Access to project sources.
+- View Metadata: Metadata browsing and viewing.
+- Access Administration Objects: Global metadata access (connections, DB instances).
+- Browse Repository: Object navigation within projects/folders.
+
 ## Metadata Ingestion
 
 {% partial 
@@ -41,16 +51,18 @@ To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or h
 
 #### Connection Details
 
-- **Username**: Username to connect to Mstr, e.g., user@organization.com. This user should have access to relevant dashboards and charts in Mstr to fetch the metadata.
+- **Username**: Username to connect to MicroStrategy, e.g., user@organization.com. This user should have access to relevant dashboards and charts in MicroStrategy to fetch the metadata.
 
-- **Password**: Password of the user account to connect with Mstr.
+- **Password**: Password of the user account to connect with MicroStrategy.
 
-- **Host Port**: This parameter specifies the host and port of the Mstr instance. This should be specified as a URI string in the format http://hostname:port or https://hostname:port.
+- **Host Port**: This parameter specifies the host of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname or https://hostname.
 
-For example, you might set it to https://org.mstr.com:3000.
+For example, you might set it to https://demo.microstrategy.com.
 
-- **Project Name**: The name of the project within Mstr that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
+- **Project Name**: The name of the project within MicroStrategy that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
 
+- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`.
+If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
 {% /extraContent %}
 
 {% partial file="/v1.5/connectors/test-connection.md" /%}

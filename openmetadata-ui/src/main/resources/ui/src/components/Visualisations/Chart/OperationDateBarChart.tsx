@@ -30,7 +30,7 @@ import {
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
 import { CustomTooltip } from '../../../utils/DataInsightUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
@@ -73,7 +73,8 @@ const OperationDateBarChart = ({
         <Tooltip
           content={
             <CustomTooltip
-              dateTimeFormatter={formatDateTime}
+              customValueKey="data"
+              dateTimeFormatter={formatDateTimeLong}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value)}
             />

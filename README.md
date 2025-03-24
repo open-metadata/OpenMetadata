@@ -26,7 +26,7 @@ Contents:
 - [Features](#key-features-of-openmetadata)
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
-- [Roadmap](https://docs.open-metadata.org/v1.3.x/roadmap)
+- [Roadmap](https://docs.open-metadata.org/latest/roadmap)
 - [Documentation and Support](#documentation-and-support)
 - [Contributors](#contributors)
 

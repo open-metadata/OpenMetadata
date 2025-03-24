@@ -32,3 +32,22 @@ export enum TAG_START_WITH {
   PLUS = '+',
   SOURCE_ICON = 'source_icon',
 }
+
+export const queryFilterToRemoveSomeClassification = {
+  query: {
+    bool: {
+      must_not: [
+        {
+          prefix: {
+            fullyQualifiedName: 'Certification.',
+          },
+        },
+        {
+          prefix: {
+            fullyQualifiedName: 'Tier.',
+          },
+        },
+      ],
+    },
+  },
+};

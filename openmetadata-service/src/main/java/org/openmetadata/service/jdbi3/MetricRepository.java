@@ -21,6 +21,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -84,7 +85,8 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Metric original, Metric updated, Operation operation) {
+  public EntityRepository<Metric>.EntityUpdater getUpdater(
+      Metric original, Metric updated, Operation operation, ChangeSource changeSource) {
     return new MetricRepository.MetricUpdater(original, updated, operation);
   }
 
@@ -109,7 +111,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("granularity", original.getGranularity(), updated.getGranularity());
       recordChange("metricType", original.getMetricType(), updated.getMetricType());
       recordChange(

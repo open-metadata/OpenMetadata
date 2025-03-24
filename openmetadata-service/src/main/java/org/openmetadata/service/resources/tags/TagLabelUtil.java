@@ -52,6 +52,10 @@ public class TagLabelUtil {
     return Entity.getEntityByName(Entity.TAG, tagFqn, "", NON_DELETED);
   }
 
+  public static List<Tag> getTags(List<String> tagFQNs) {
+    return Entity.getEntityByNames(Entity.TAG, tagFQNs, "", NON_DELETED);
+  }
+
   public static Glossary getGlossary(String glossaryName) {
     return Entity.getEntityByName(Entity.GLOSSARY, glossaryName, "", NON_DELETED);
   }
@@ -179,6 +183,7 @@ public class TagLabelUtil {
         checkMutuallyExclusive(getUniqueTags(tempList));
       } catch (IllegalArgumentException ex) {
         failed = true;
+        tempList.removeAll(glossaryTags);
         errorMessage.append(
             String.format(
                 "Asset %s has a tag %s which is mutually exclusive with the one of the glossary tags %s. %n",

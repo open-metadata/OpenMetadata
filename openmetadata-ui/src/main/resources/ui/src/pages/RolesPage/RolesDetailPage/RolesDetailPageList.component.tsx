@@ -18,13 +18,13 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
-import { getUserPath } from '../../../constants/constants';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getPolicyWithFqnPath,
   getTeamsWithFqnPath,
+  getUserPath,
 } from '../../../utils/RouterUtils';
 
 const RolesDetailPageList = ({
@@ -78,7 +78,7 @@ const RolesDetailPageList = ({
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description || ''} />
+          <RichTextEditorPreviewerV1 markdown={record?.description || ''} />
         ),
       },
       {

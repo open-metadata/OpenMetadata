@@ -40,6 +40,7 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
         for query_list in self.get_queries() or []:
             queries = [
                 TableQuery(
+                    dialect=self.dialect.value,
                     query=query.Query,
                     startTime=query.Status.SubmissionDateTime.isoformat(
                         DATETIME_SEPARATOR, DATETIME_TIME_SPEC

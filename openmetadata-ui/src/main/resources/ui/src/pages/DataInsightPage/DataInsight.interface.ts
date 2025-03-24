@@ -17,13 +17,11 @@ import {
   SearchDropdownOption,
   SearchDropdownProps,
 } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { Tag } from '../../generated/entity/classification/tag';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import {
-  DataInsightCustomChartResult,
-  SystemChartType,
-} from '../../rest/DataInsightAPI';
+import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 
 export type TeamStateType = {
   defaultOptions: SearchDropdownOption[];

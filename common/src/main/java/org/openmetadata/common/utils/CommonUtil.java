@@ -24,22 +24,21 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.DateFormat;
-import java.text.ParseException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -121,42 +120,42 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(Date date, int days) {
-    Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-    calendar.setTime(date);
-    calendar.add(Calendar.DATE, days);
-    return calendar.getTime();
+  public static LocalDate getDateByOffset(LocalDate localDate, int days) {
+    return localDate.plusDays(days);
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static Date getDateByOffset(DateFormat dateFormat, String strDate, int days) {
-    Date date;
+  public static LocalDate getDateByOffset(DateTimeFormatter dateFormat, String strDate, int days) {
+    LocalDate localDate;
     try {
-      date = dateFormat.parse(strDate);
-    } catch (ParseException e) {
+      localDate = LocalDate.parse(strDate, dateFormat);
+    } catch (DateTimeParseException e) {
       throw new IllegalArgumentException("Failed to parse date " + strDate, e);
     }
-    return getDateByOffset(date, days);
+    return getDateByOffset(localDate, days);
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static String getDateStringByOffset(DateFormat dateFormat, String strDate, int days) {
-    return dateFormat.format(getDateByOffset(dateFormat, strDate, days));
+  public static String getDateStringByOffset(
+      DateTimeFormatter dateFormat, String strDate, int days) {
+    LocalDate localDate = getDateByOffset(dateFormat, strDate, days);
+    return localDate.format(dateFormat);
   }
 
   /** Check if given date is with in today - pastDays and today + futureDays */
   public static boolean dateInRange(
-      DateFormat dateFormat, String date, int futureDays, int pastDays) {
-    Date today = new Date();
-    Date startDate = getDateByOffset(today, -pastDays);
-    Date endDate = getDateByOffset(today, futureDays);
-    Date givenDate;
+      DateTimeFormatter dateFormat, String date, int futureDays, int pastDays) {
+    LocalDate today = LocalDate.now();
+    LocalDate startDate = getDateByOffset(today, -pastDays);
+    LocalDate endDate = getDateByOffset(today, futureDays);
+    LocalDate givenDate;
     try {
-      givenDate = dateFormat.parse(date);
-    } catch (ParseException e) {
+      givenDate = LocalDate.parse(date, dateFormat);
+    } catch (DateTimeParseException e) {
       throw new IllegalArgumentException("Failed to parse date " + date, e);
     }
-    return givenDate.after(startDate) && givenDate.before(endDate);
+    return (givenDate.isAfter(startDate) || givenDate.equals(startDate))
+        && (givenDate.isBefore(endDate) || givenDate.equals(endDate));
   }
 
   public static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
@@ -177,6 +176,10 @@ public final class CommonUtil {
 
   public static <T> List<T> listOrEmpty(List<T> list) {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
+  }
+
+  public static <K, V> Map<K, V> collectionOrEmpty(Map<K, V> input) {
+    return Optional.ofNullable(input).orElse(new HashMap<>());
   }
 
   public static <T> List<T> listOrEmptyMutable(List<T> list) {
@@ -208,6 +211,14 @@ public final class CommonUtil {
       return defaultValue;
     } else {
       return object;
+    }
+  }
+
+  public static <T> List<T> collectionOrDefault(List<T> c, List<T> defaultValue) {
+    if (nullOrEmpty(c)) {
+      return defaultValue;
+    } else {
+      return c;
     }
   }
 

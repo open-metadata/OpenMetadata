@@ -47,7 +47,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
       await screen.findByText('CustomAreaChart.component')
     ).toBeInTheDocument();
     expect((await screen.findByTestId('total-value')).textContent).toEqual(
-      '15'
+      '10'
     );
   });
 

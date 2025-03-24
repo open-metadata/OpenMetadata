@@ -32,6 +32,7 @@ export interface DeleteWidgetModalProps {
   entityType: EntityType;
   isAdminUser?: boolean;
   entityId?: string;
+  isAsyncDelete?: boolean;
   prepareType?: boolean;
   isRecursiveDelete?: boolean;
   successMessage?: string;
@@ -39,18 +40,6 @@ export interface DeleteWidgetModalProps {
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onDelete?: (data: DeleteWidgetFormFields) => void;
   isDeleting?: boolean;
-}
-
-export interface DeleteSectionProps {
-  allowSoftDelete?: boolean;
-  entityName: string;
-  entityType: string;
-  deletEntityMessage?: string;
-  hasPermission: boolean;
-  isAdminUser?: boolean;
-  entityId: string;
-  isRecursiveDelete?: boolean;
-  afterDeleteAction?: () => void;
 }
 
 export enum DeleteType {

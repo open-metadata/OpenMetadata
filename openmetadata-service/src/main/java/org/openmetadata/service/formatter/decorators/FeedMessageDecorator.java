@@ -14,6 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.formatter.util.FeedMessage;
@@ -26,13 +27,18 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
+  public String getBoldWithSpace() {
+    return "**%s** ";
+  }
+
+  @Override
   public String getLineBreak() {
     return " <br/> ";
   }
 
   @Override
   public String getAddMarker() {
-    return "<span class=\"diff-added\">";
+    return "<span data-diff='true' class=\"diff-added\">";
   }
 
   @Override
@@ -42,7 +48,7 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
 
   @Override
   public String getRemoveMarker() {
-    return "<span class=\"diff-removed\">";
+    return "<span data-diff='true' class=\"diff-removed\">";
   }
 
   @Override
@@ -52,11 +58,12 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
 
   @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn = encodeEntityFqn(fqn);
     return String.format(
         "[%s](/%s/%s%s)",
-        fqn,
-        prefix,
         fqn.trim(),
+        prefix,
+        encodedFqn,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 
@@ -66,7 +73,7 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
-  public FeedMessage buildTestMessage(String publisherName) {
+  public FeedMessage buildTestMessage() {
     return null;
   }
 

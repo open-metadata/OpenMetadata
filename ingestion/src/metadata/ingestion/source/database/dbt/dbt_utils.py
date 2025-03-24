@@ -44,6 +44,20 @@ def create_test_case_parameter_definitions(dbt_test):
                 }
             ]
             return test_case_param_definition
+        if hasattr(dbt_test, "freshness"):
+            test_case_param_definition = [
+                {
+                    "name": "warn_after",
+                    "displayName": "warn_after",
+                    "required": False,
+                },
+                {
+                    "name": "error_after",
+                    "displayName": "error_after",
+                    "required": False,
+                },
+            ]
+            return test_case_param_definition
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.error(
@@ -65,6 +79,21 @@ def create_test_case_parameter_values(dbt_test):
                 dbt_test_values = ",".join(str(value) for value in values)
             test_case_param_values = [
                 {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
+            ]
+            return test_case_param_values
+        if hasattr(manifest_node, "freshness"):
+            warn_after = manifest_node.freshness.warn_after
+            error_after = manifest_node.freshness.error_after
+
+            test_case_param_values = [
+                {
+                    "name": "error_after",
+                    "value": f"{error_after.count} {error_after.period.value}",
+                },
+                {
+                    "name": "warn_after",
+                    "value": f"{warn_after.count} {warn_after.period.value}",
+                },
             ]
             return test_case_param_values
     except Exception as err:  # pylint: disable=broad-except
@@ -113,7 +142,7 @@ def get_dbt_raw_query(mnode) -> Optional[str]:
         return mnode.raw_code
     if hasattr(mnode, RawQueriesEnum.RAW_SQL.value) and mnode.raw_sql:
         return mnode.raw_sql
-    logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
+    logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")
     return None
 
 

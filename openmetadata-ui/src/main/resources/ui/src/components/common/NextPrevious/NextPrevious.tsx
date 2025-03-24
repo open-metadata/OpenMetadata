@@ -17,6 +17,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
+import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -25,13 +26,11 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
+import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 
-const computeTotalPages = (pSize: number, total: number) => {
-  return Math.ceil(total / pSize);
-};
-
 const NextPrevious: FC<NextPreviousProps> = ({
+  className,
   paging,
   pagingHandler,
   pageSize,
@@ -87,7 +86,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
   };
 
   return (
-    <div className="flex-center gap-3" data-testid="pagination">
+    <div
+      className={classNames('flex-center gap-3', className)}
+      data-testid="pagination">
       <Button
         ghost
         className="hover-button text-sm flex-center"
@@ -101,7 +102,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
       <span data-testid="page-indicator">{`${currentPage}/${computeTotalPages(
         pageSize,
         paging.total
-      )} Page`}</span>
+      )} ${t('label.page')}`}</span>
       <Button
         ghost
         className="hover-button text-sm flex-center"
@@ -117,14 +118,16 @@ const NextPrevious: FC<NextPreviousProps> = ({
           disabled={isLoading}
           menu={{
             items: pageSizeOptions.map((size) => ({
-              label: `${size} / Page`,
+              label: `${size} / ${t('label.page')}`,
               value: size,
               key: size,
               onClick: () => onShowSizeChange(size),
             })),
           }}>
-          <Button onClick={(e) => e.preventDefault()}>
-            {`${pageSize} / Page`}
+          <Button
+            data-testid="page-size-selection-dropdown"
+            onClick={(e) => e.preventDefault()}>
+            {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>
         </Dropdown>

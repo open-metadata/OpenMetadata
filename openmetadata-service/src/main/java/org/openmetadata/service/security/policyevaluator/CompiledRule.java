@@ -89,7 +89,7 @@ public class CompiledRule extends Rule {
       return;
     }
 
-    List<MetadataOperation> operations = operationContext.getOperations();
+    List<MetadataOperation> operations = operationContext.getOperations(resourceContext);
     for (MetadataOperation operation : operations) {
       if (matchOperation(operation)) {
         LOG.debug(
@@ -127,7 +127,8 @@ public class CompiledRule extends Rule {
       return;
     }
 
-    Iterator<MetadataOperation> iterator = operationContext.getOperations().listIterator();
+    Iterator<MetadataOperation> iterator =
+        operationContext.getOperations(resourceContext).listIterator();
     while (iterator.hasNext()) {
       MetadataOperation operation = iterator.next();
       if (matchOperation(operation)
@@ -196,16 +197,17 @@ public class CompiledRule extends Rule {
   }
 
   private boolean matchOperation(MetadataOperation operation) {
-    if (getOperations().contains(MetadataOperation.ALL)) {
+    List<MetadataOperation> operations = getOperations();
+    if (operations.contains(MetadataOperation.ALL)) {
       LOG.debug("matched all operations");
       return true; // Match all operations
     }
-    if (getOperations().contains(MetadataOperation.EDIT_ALL)
+    if (operations.contains(MetadataOperation.EDIT_ALL)
         && OperationContext.isEditOperation(operation)) {
       LOG.debug("matched editAll operations");
       return true;
     }
-    if (getOperations().contains(MetadataOperation.VIEW_ALL)
+    if (operations.contains(MetadataOperation.VIEW_ALL)
         && OperationContext.isViewOperation(operation)) {
       LOG.debug("matched viewAll operations");
       return true;

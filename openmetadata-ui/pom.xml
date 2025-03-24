@@ -178,6 +178,15 @@
                   <filtering>true</filtering>
                 </resource>
               </resources>
+              <nonFilteredFileExtensions>
+                <nonFilteredFileExtension>gz</nonFilteredFileExtension>
+                <nonFilteredFileExtension>woff</nonFilteredFileExtension>
+                <nonFilteredFileExtension>woff2</nonFilteredFileExtension>
+                <nonFilteredFileExtension>ttf</nonFilteredFileExtension>
+                <nonFilteredFileExtension>eot</nonFilteredFileExtension>
+                <nonFilteredFileExtension>svg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>png</nonFilteredFileExtension>
+              </nonFilteredFileExtensions>
             </configuration>
           </execution>
         </executions>

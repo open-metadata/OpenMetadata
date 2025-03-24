@@ -27,6 +27,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -105,7 +106,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Chart original, Chart updated, Operation operation) {
+  public EntityRepository<Chart>.EntityUpdater getUpdater(
+      Chart original, Chart updated, Operation operation, ChangeSource changeSource) {
     return new ChartUpdater(original, updated, operation);
   }
 
@@ -127,7 +129,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("chartType", original.getChartType(), updated.getChartType());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());

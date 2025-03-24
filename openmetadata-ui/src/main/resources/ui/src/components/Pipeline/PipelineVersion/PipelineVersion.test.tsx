@@ -36,7 +36,7 @@ jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () =>
   jest.fn().mockImplementation(() => <div>TagsContainerV2</div>)
 );
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (

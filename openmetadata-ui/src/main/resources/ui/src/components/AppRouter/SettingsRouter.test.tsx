@@ -464,7 +464,8 @@ describe('SettingsRouter', () => {
 
   it('should render AlertDetailsPage component for alert details route', async () => {
     render(
-      <MemoryRouter initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS]}>
+      <MemoryRouter
+        initialEntries={[ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB]}>
         <SettingsRouter />
       </MemoryRouter>
     );

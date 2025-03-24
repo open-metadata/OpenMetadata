@@ -57,6 +57,7 @@ export enum EntityType {
   PERSONA = 'persona',
   DOC_STORE = 'docStore',
   PAGE = 'Page',
+  KNOWLEDGE_PAGE = 'page',
   knowledgePanels = 'KnowLedgePanels',
   GOVERN = 'govern',
   ALL = 'all',
@@ -74,6 +75,7 @@ export enum EntityType {
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
   METRIC = 'metric',
+  WORKFLOW_DEFINITION = 'workflowDefinition',
 }
 
 export enum EntityLineageDirection {
@@ -99,6 +101,7 @@ export enum TabSpecificField {
   FOLLOWERS = 'followers',
   JOINS = 'joins',
   TAGS = 'tags',
+  STATE = 'state',
   OWNERS = 'owners',
   DATAMODEL = 'dataModel',
   CHARTS = 'charts',
@@ -175,6 +178,7 @@ export enum FqnPart {
 
 export enum EntityTabs {
   SCHEMA = 'schema',
+  SCHEMAS = 'schemas',
   ACTIVITY_FEED = 'activity_feed',
   SAMPLE_DATA = 'sample_data',
   TABLE_QUERIES = 'table_queries',
@@ -195,7 +199,7 @@ export enum EntityTabs {
   TEST_CASES = 'test-cases',
   PIPELINE = 'pipeline',
   DATA_Model = 'data-model',
-  INGESTIONS = 'ingestions',
+  AGENTS = 'agents',
   CONNECTION = 'connection',
   SQL = 'sql',
   FIELDS = 'fields',
@@ -209,6 +213,12 @@ export enum EntityTabs {
   TERMS = 'terms',
   GLOSSARY_TERMS = 'glossary_terms',
   ASSETS = 'assets',
+  EXPRESSION = 'expression',
+  INSIGHTS = 'insights',
+  DASHBOARD = 'dashboard',
+  DOCUMENTATION = 'documentation',
+  DATA_PRODUCTS = 'data_products',
+  SUBDOMAINS = 'subdomains',
 }
 
 export enum EntityAction {

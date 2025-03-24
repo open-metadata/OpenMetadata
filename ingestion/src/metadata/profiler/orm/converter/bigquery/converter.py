@@ -22,7 +22,7 @@ from sqlalchemy.sql.sqltypes import TypeEngine
 from metadata.generated.schema.entity.data.database import databaseService
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.profiler.orm.converter.common import CommonMapTypes
-from metadata.profiler.source.bigquery.type_mapper import bigquery_type_mapper
+from metadata.profiler.source.database.bigquery.type_mapper import bigquery_type_mapper
 
 
 class BigqueryMapTypes(CommonMapTypes):

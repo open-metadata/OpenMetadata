@@ -62,7 +62,7 @@ Note that the location is a directory that will be cleaned at the end of the ing
 ```yaml {% isCodeBlock=true %}
 source:
   type: {% $connector %}-usage
-  serviceName: <service name>
+  serviceName: {% $connector %}
   sourceConfig:
     config:
       type: DatabaseUsage
@@ -100,7 +100,7 @@ bulkSink:
     filename: /tmp/athena_usage
 ```
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 {% /codePreview %}

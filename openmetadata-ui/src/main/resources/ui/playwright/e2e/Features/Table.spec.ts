@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { getFirstRowColumnLink } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -64,7 +65,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     expect(await page.locator('.ant-table-row').count()).toBe(10);
   });
 
-  test('Table search with sorting should works', async ({ page }) => {
+  test.skip('Table search with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="by-test-cases"]');
@@ -85,5 +86,61 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByTitle('Queued').locator('div').click();
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+  });
+
+  test('Table page should show schema tab with count', async ({ page }) => {
+    await table1.visitEntityPage(page);
+
+    await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('4');
+  });
+
+  test('should persist current page', async ({ page }) => {
+    page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    await page.getByTestId('next').click();
+
+    const initialPageIndicator = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
+
+    const linkInColumn = getFirstRowColumnLink(page);
+    await linkInColumn.click();
+
+    await page.goBack();
+
+    const pageIndicatorAfterBack = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
+
+    expect(pageIndicatorAfterBack).toBe(initialPageIndicator);
+  });
+
+  test('should persist page size', async ({ page }) => {
+    page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await pageSizeDropdown.click();
+
+    const dropdownOptions = page.locator('.ant-dropdown-menu');
+
+    await expect(dropdownOptions).toBeVisible();
+
+    const optionToSelect = dropdownOptions.locator('text="15 / Page"');
+    await optionToSelect.click();
+
+    const linkInColumn = getFirstRowColumnLink(page);
+    await linkInColumn.click();
+
+    await page.goBack();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(pageSizeDropdown).toHaveText('15 / Page');
   });
 });

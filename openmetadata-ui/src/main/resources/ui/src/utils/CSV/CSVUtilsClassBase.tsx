@@ -44,6 +44,8 @@ class CSVUtilsClassBase {
       'description',
       'glossaryTerms',
       'relatedTerms',
+      'column.description',
+      'column.glossaryTerms',
     ];
   }
 

@@ -14,7 +14,7 @@
 import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, {
   Fragment,
   useCallback,
@@ -43,6 +43,7 @@ import {
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import './custom-property-table.less';
 import {
@@ -54,18 +55,18 @@ import { ExtensionTable } from './ExtensionTable';
 import { PropertyValue } from './PropertyValue';
 
 export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
-  handleExtensionUpdate,
   entityType,
   hasEditAccess,
   className,
   isVersionView,
   hasPermission,
-  entityDetails,
   maxDataCap,
   isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const { data: entityDetails, onUpdate } =
+    useGenericContext<ExtentionEntities[T]>();
 
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
@@ -108,15 +109,15 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   const onExtensionUpdate = useCallback(
     async (updatedExtension: ExtentionEntities[T]) => {
-      if (!isUndefined(handleExtensionUpdate) && entityDetails) {
+      if (!isUndefined(onUpdate) && entityDetails) {
         const updatedData = {
           ...entityDetails,
           extension: updatedExtension,
         };
-        await handleExtensionUpdate(updatedData);
+        await onUpdate(updatedData);
       }
     },
-    [entityDetails, handleExtensionUpdate]
+    [entityDetails, onUpdate]
   );
 
   const extensionObject: {
@@ -156,7 +157,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     if (
       maxDataCap &&
       customProp.length >= maxDataCap &&
-      entityDetails.fullyQualifiedName
+      entityDetails?.fullyQualifiedName
     ) {
       return (
         <Link
@@ -228,7 +229,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           className={className}
           placeholderText={
             <Transi18next
-              i18nKey="message.no-custom-properties-table"
+              i18nKey="message.no-custom-properties-entity"
               renderElement={
                 <a
                   href={CUSTOM_PROPERTIES_DOCS}
@@ -239,6 +240,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
               }
               values={{
                 docs: t('label.doc-plural-lowercase'),
+                entity: startCase(entityType),
               }}
             />
           }

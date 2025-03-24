@@ -23,7 +23,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -164,12 +163,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(chart);
-    change = getChangeDescription(chart, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "description", "desc2");
-    fieldAdded(change, "chartType", type2);
-    fieldAdded(change, "sourceUrl", "url2");
+    change = getChangeDescription(chart, MINOR_UPDATE);
+    fieldUpdated(change, "description", "desc1", "desc2");
+    fieldUpdated(change, "chartType", type1, type2);
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
-    patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -209,7 +208,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
             ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
-    assertListNull(chart.getOwners(), chart.getFollowers(), chart.getTags());
+    assertListNull(chart.getOwners(), chart.getFollowers());
+    assertTrue(chart.getTags().isEmpty());
 
     // .../charts?fields=owners
     fields = "owners,followers,tags";
@@ -276,13 +276,12 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     // Update description, chartType and chart url and verify patch
     // Changes from this PATCH is consolidated with the previous changes
     originalJson = JsonUtils.pojoToJson(chart);
-    change = getChangeDescription(chart, CHANGE_CONSOLIDATED);
-    fieldAdded(change, "description", "desc2");
-    fieldAdded(change, "chartType", type2);
-    fieldAdded(change, "sourceUrl", "url2");
+    change = getChangeDescription(chart, MINOR_UPDATE);
+    fieldUpdated(change, "description", "desc1", "desc2");
+    fieldUpdated(change, "chartType", type1, type2);
+    fieldUpdated(change, "sourceUrl", "url1", "url2");
     chart.withChartType(type2).withSourceUrl("url2").withDescription("desc2");
-    patchEntityUsingFqnAndCheck(
-        chart, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityUsingFqnAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

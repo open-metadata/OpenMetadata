@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
@@ -20,23 +19,9 @@ import { UseAirflowStatusProps } from '../../../../hooks/useAirflowStatus';
 import { ServicesType } from '../../../../interface/service.interface';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 
-export interface ConnectorConfig {
-  username: string;
-  password: string;
-  host: string;
-  database: string;
-  includeFilterPattern: Array<string>;
-  excludeFilterPattern: Array<string>;
-  includeViews: boolean;
-  excludeDataProfiler?: boolean;
-  enableDataProfiler?: boolean;
-}
-
 export interface IngestionProps {
   ingestionPagingInfo: UsePagingInterface;
   serviceDetails: ServicesType;
-  serviceName: string;
-  serviceCategory: ServiceCategory;
   ingestionPipelineList: Array<IngestionPipeline>;
   pipelineType?: PipelineType;
   isLoading?: boolean;
@@ -51,6 +36,12 @@ export interface IngestionProps {
   ) => void;
   handleSearchChange: (searchValue: string) => void;
   onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;
+  handleTypeFilterChange: (type: Array<{ key: string; label: string }>) => void;
+  handleStatusFilterChange: (
+    status: Array<{ key: string; label: string }>
+  ) => void;
+  statusFilter?: Array<{ key: string; label: string }>;
+  typeFilter?: Array<{ key: string; label: string }>;
 }
 
 export interface SelectedRowDetails {

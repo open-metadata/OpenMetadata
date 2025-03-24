@@ -41,9 +41,11 @@ export interface ChartFilter {
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   isPercentage?: boolean;
   isTier?: boolean;
-  dateTimeFormatter?: (date?: number) => string;
+  dateTimeFormatter?: (date?: number, format?: string) => string;
   valueFormatter?: (value: number | string, key?: string) => string | number;
   timeStampKey?: string;
+  transformLabel?: boolean;
+  customValueKey?: string;
 }
 
 export interface UIKpiResult extends KpiResult {
@@ -66,17 +68,9 @@ export enum KpiDate {
   END_DATE = 'endDate',
 }
 
-export type KpiDates = {
-  [x in KpiDate]: string;
-};
-
 export type ChartValue = string | number | undefined;
 
 export type AggregatedCostAnalysisReportDataSearchSource = ReportData; // extends EntityInterface
-
-export type DataInsightSearchSourceMapping = {
-  [DataInsightIndex.AGGREGATED_COST_ANALYSIS_REPORT_DATA]: AggregatedCostAnalysisReportDataSearchSource;
-};
 
 export type DataInsightSearchRequest = {
   pageNumber?: number;

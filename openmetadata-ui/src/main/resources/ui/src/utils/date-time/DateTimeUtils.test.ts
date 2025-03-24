@@ -15,6 +15,7 @@ import {
   calculateInterval,
   convertMillisecondsToHumanReadableFormat,
   customFormatDateTime,
+  DATE_TIME_12_HOUR_FORMAT,
   formatDate,
   formatDateTime,
   formatDateTimeLong,
@@ -49,7 +50,9 @@ describe('DateTimeUtils tests', () => {
   });
 
   it(`formatDateShort should formate date and time both`, () => {
-    expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970, 12:00 AM`);
+    expect(formatDateTimeLong(0)).toBe(
+      `January 01, 1970, 12:00 AM (UTC+00:00)`
+    );
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
@@ -58,6 +61,9 @@ describe('DateTimeUtils tests', () => {
 
   it(`customFormatDateTime should formate date and time both`, () => {
     expect(customFormatDateTime(0, 'yyyy/MM/dd')).toBe(`1970/01/01`);
+    expect(customFormatDateTime(0, DATE_TIME_12_HOUR_FORMAT)).toBe(
+      `Jan 01, 1970, 12:00 AM`
+    );
   });
 });
 
@@ -151,4 +157,36 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
       expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
     });
   });
+
+  const testCasesWithLength = [
+    {
+      input: 7265000,
+      expected: '2h 1m 5s',
+      expectedWithLength: '2h 1m',
+      length: 2,
+    },
+    {
+      input: 3661000,
+      expected: '1h 1m 1s',
+      expectedWithLength: '1h',
+      length: 1,
+    },
+    {
+      input: 90061000,
+      expected: '1d 1h 1m 1s',
+      expectedWithLength: '1d 1h 1m',
+      length: 3,
+    },
+    { input: 3600000, expected: '1h', expectedWithLength: '1h', length: 4 }, // length > number of parts
+  ];
+  testCasesWithLength.forEach(
+    ({ input, expected, expectedWithLength, length }) => {
+      it(`should return "${expected}" for ${input} milliseconds`, () => {
+        expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
+        expect(convertMillisecondsToHumanReadableFormat(input, length)).toBe(
+          expectedWithLength
+        );
+      });
+    }
+  );
 });

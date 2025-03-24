@@ -41,7 +41,7 @@ class SnowflakeProfilerInterface(SQAProfilerInterface):
             session.bind.dialect.name
         ):
             logger.info(
-                f"Computing metrics without sum for {runner.table.__tablename__}.{column.name}"
+                f"Computing metrics without sum for {runner.table_name}.{column.name}"
             )
             return self._compute_static_metrics_wo_sum(metrics, runner, session, column)
         return None

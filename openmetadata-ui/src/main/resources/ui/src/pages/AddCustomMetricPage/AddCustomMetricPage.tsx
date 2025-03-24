@@ -25,7 +25,6 @@ import SingleColumnProfile from '../../components/Database/Profiler/TableProfile
 import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
-import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
 import {
   EntityTabs,
@@ -34,23 +33,26 @@ import {
 } from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getNameFromFQN } from '../../utils/CommonUtils';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
+import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddCustomMetricPage = () => {
   const { dashboardType } =
     useParams<{ dashboardType: ProfilerDashboardType }>();
   const { fqn } = useFqn();
+  const { t } = useTranslation();
 
   const history = useHistory();
   const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
-  const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
   const [table, setTable] = useState<Table>();
   const [isLoading, setIsLoading] = useState(true);
@@ -201,7 +203,7 @@ const AddCustomMetricPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -268,4 +270,8 @@ const AddCustomMetricPage = () => {
   );
 };
 
-export default AddCustomMetricPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.custom-metric'),
+  })
+)(AddCustomMetricPage);

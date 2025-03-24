@@ -20,6 +20,8 @@ import {
   mockOldState1,
 } from '../mocks/Schedular.mock';
 import {
+  checkDOWValidity,
+  cronValidator,
   getCronDefaultValue,
   getScheduleOptionsFromSchedules,
   getUpdatedStateFromFormState,
@@ -160,5 +162,86 @@ describe('getUpdatedStateFromFormState', () => {
       dow: '*',
       dom: '*',
     });
+  });
+});
+
+describe('checkDOWValidity', () => {
+  it('should not throw an error for valid day of week (0-6)', () => {
+    expect(() => checkDOWValidity('0')).not.toThrow();
+    expect(() => checkDOWValidity('3')).not.toThrow();
+    expect(() => checkDOWValidity('6')).not.toThrow();
+  });
+
+  it('should throw an error for invalid day of week is >6)', async () => {
+    await expect(checkDOWValidity('7')).rejects.toMatch(
+      'message.cron-dow-validation-failure'
+    );
+  });
+
+  it('should not throw an error for valid day of week range (0-6)', () => {
+    expect(() => checkDOWValidity('0-3')).not.toThrow();
+    expect(() => checkDOWValidity('4-6')).not.toThrow();
+  });
+
+  it('should throw an error for invalid day of week range is >6', async () => {
+    await expect(checkDOWValidity('7-9')).rejects.toMatch(
+      'message.cron-dow-validation-failure'
+    );
+  });
+
+  it('should throw an error for mixed valid and invalid day of week range', async () => {
+    await expect(checkDOWValidity('0-7')).rejects.toMatch(
+      'message.cron-dow-validation-failure'
+    );
+  });
+});
+
+describe('cronValidator', () => {
+  it('should resolve for valid cron expression', async () => {
+    await expect(cronValidator({}, '0 0 * * *')).resolves.toBeUndefined();
+  });
+
+  it('should reject for cron expression with frequency less than an hour', async () => {
+    await expect(cronValidator({}, '*/30 * * * *')).rejects.toMatch(
+      'message.cron-less-than-hour-message'
+    );
+  });
+
+  it('should reject for invalid day of week (<0 or >6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 7')).rejects.toMatch(
+      'message.cron-dow-validation-failure'
+    );
+    await expect(cronValidator({}, '0 0 * * -1')).rejects.toMatch(
+      'Error: DOW part must be >= 0 and <= 6'
+    );
+  });
+
+  it('should resolve for valid day of week (0-6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 0')).resolves.toBeUndefined();
+    await expect(cronValidator({}, '0 0 * * 3')).resolves.toBeUndefined();
+    await expect(cronValidator({}, '0 0 * * 6')).resolves.toBeUndefined();
+  });
+
+  it('should resolve for valid day of week range (0-6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 0-3')).resolves.toBeUndefined();
+    await expect(cronValidator({}, '0 0 * * 4-6')).resolves.toBeUndefined();
+  });
+
+  it('should reject for invalid day of week range (<0 or >6)', async () => {
+    await expect(cronValidator({}, '0 0 * * 4-7')).rejects.toMatch(
+      'message.cron-dow-validation-failure'
+    );
+    await expect(cronValidator({}, '0 0 * * -1-3')).rejects.toMatch(
+      'Error: DOW part must be >= 0 and <= 6'
+    );
+  });
+
+  it('should reject for mixed valid and invalid day of week range', async () => {
+    await expect(cronValidator({}, '0 0 * * 0-7')).rejects.toMatch(
+      'message.cron-dow-validation-failure'
+    );
+    await expect(cronValidator({}, '0 0 * * -1-6')).rejects.toMatch(
+      'Error: DOW part must be >= 0 and <= 6'
+    );
   });
 });

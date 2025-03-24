@@ -162,7 +162,7 @@ PROFILER_INGESTION_CONFIG_TEMPLATE = dedent(
             "serviceConnection": {{
                 "config": {service_config}
             }},
-            "sourceConfig": {{"config": {{"type":"Profiler", "generateSampleData": true}}}}
+            "sourceConfig": {{"config": {{"type":"Profiler", "profileSample": 100}}}}
         }},
         "processor": {{"type": "orm-profiler", "config": {{}}}},
         "sink": {{"type": "metadata-rest", "config": {{}}}},
@@ -371,7 +371,7 @@ def get_create_test_suite(
     return CreateTestSuiteRequest(
         name=TestSuiteEntityName(name),
         description=Markdown(description),
-        executableEntityReference=FullyQualifiedEntityName(executable_entity_reference),
+        basicEntityReference=FullyQualifiedEntityName(executable_entity_reference),
     )
 
 

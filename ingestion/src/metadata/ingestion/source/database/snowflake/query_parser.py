@@ -60,6 +60,9 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             end_time=end_time,
             result_limit=self.config.sourceConfig.config.resultLimit,
             filters=self.get_filters(),
+            account_usage=self.service_connection.accountUsageSchema,
+            credit_cost=self.service_connection.creditCost
+            * self.service_connection.creditCost,
         )
 
     def check_life_cycle_query(

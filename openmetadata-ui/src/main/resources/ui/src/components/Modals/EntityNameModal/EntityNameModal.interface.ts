@@ -13,7 +13,7 @@
 import { Rule } from 'antd/lib/form';
 import { Constraint } from '../../../generated/entity/data/table';
 
-export type EntityName = { name: string; displayName?: string };
+export type EntityName = { name: string; displayName?: string; id?: string };
 
 export type EntityNameWithAdditionFields = EntityName & {
   constraint: Constraint;

@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -89,7 +90,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
-    parent = true;
   }
 
   @Override
@@ -137,7 +137,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Glossary original, Glossary updated, Operation operation) {
+  public EntityRepository<Glossary>.EntityUpdater getUpdater(
+      Glossary original, Glossary updated, Operation operation, ChangeSource changeSource) {
     return new GlossaryUpdater(original, updated, operation);
   }
 
@@ -200,7 +201,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withTags(
               getTagLabels(
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
-          .withReviewers(getOwners(printer, csvRecord, 8))
+          .withReviewers(getReviewers(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
           .withStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
@@ -386,7 +387,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateName(original, updated);
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
@@ -440,7 +441,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.DRAFT)) {
+          if (term.getStatus().equals(Status.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }

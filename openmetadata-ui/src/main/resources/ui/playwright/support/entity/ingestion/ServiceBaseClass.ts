@@ -98,10 +98,10 @@ class ServiceBaseClass {
       await testConnection(page);
     }
 
-    await this.submitService(this.serviceName, page);
+    await this.submitService(page);
 
     if (this.shouldAddIngestion) {
-      await this.addIngestionPipeline(this.serviceName, page);
+      await this.addIngestionPipeline(page);
     }
   }
 
@@ -149,8 +149,24 @@ class ServiceBaseClass {
     // Handle validate ingestion details in respective service here
   }
 
-  async addIngestionPipeline(serviceName: string, page: Page) {
-    await page.click('[data-testid="add-ingestion-button"]');
+  async addIngestionPipeline(page: Page) {
+    await page.click('[role="tab"] [data-testid="agents"]');
+
+    const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab.isVisible()) {
+      await metadataTab.click();
+    }
+    await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="add-new-ingestion-button"]');
+
+    await page.click('[data-testid="add-new-ingestion-button"]');
+
+    await page.waitForSelector(
+      '.ant-dropdown:visible [data-menu-id*="metadata"]'
+    );
+
+    await page.click('.ant-dropdown:visible [data-menu-id*="metadata"]');
 
     // Add ingestion page
     await page.waitForSelector('[data-testid="add-ingestion-container"]');
@@ -170,10 +186,18 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.waitForSelector('[data-testid="data-assets-header"]');
-    await page.getByTestId('loader').waitFor({ state: 'detached' });
-    await page.getByTestId('ingestions').click();
     await page
-      .getByLabel('Ingestions')
+      .getByTestId('table-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+    await page.getByTestId('agents').click();
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
+    await page
+      .getByLabel('agents')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
@@ -183,6 +207,8 @@ class ServiceBaseClass {
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
+    await page.waitForLoadState('networkidle');
+
     await toastNotification(page, `Pipeline triggered successfully!`);
 
     // need manual wait to make sure we are awaiting on latest run results
@@ -191,15 +217,20 @@ class ServiceBaseClass {
     await this.handleIngestionRetry('metadata', page);
   }
 
-  async submitService(serviceName: string, page: Page) {
-    await page.click('[data-testid="submit-btn"]');
-    await page.waitForSelector('[data-testid="success-line"]', {
-      state: 'visible',
-    });
+  async submitService(page: Page) {
+    await page.getByTestId('submit-btn').getByText('Next').click();
 
-    await expect(page.getByTestId('success-line')).toContainText(
-      'has been created successfully'
+    const dayOneExperienceApplicationRequest = page.waitForRequest(
+      (request) =>
+        request
+          .url()
+          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.method() === 'POST'
     );
+
+    await page.getByTestId('submit-btn').getByText('Save').click();
+
+    await dayOneExperienceApplicationRequest;
   }
 
   async scheduleIngestion(page: Page) {
@@ -289,7 +320,7 @@ class ServiceBaseClass {
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for pipeline to be successful',
-          timeout: 600_000,
+          timeout: 750_000,
           intervals: [30_000, 15_000, 5_000],
         }
       )
@@ -311,8 +342,13 @@ class ServiceBaseClass {
 
     await statusPromise;
 
-    await page.waitForSelector('[data-testid="ingestions"]');
-    await page.click('[data-testid="ingestions"]');
+    await page.waitForSelector('[data-testid="agents"]');
+    await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
     await expect(
@@ -320,7 +356,7 @@ class ServiceBaseClass {
         .locator(`[data-row-key*="${workflowData.name}"]`)
         .getByTestId('pipeline-status')
         .last()
-    ).toContainText('SUCCESS');
+    ).toContainText('Success');
   };
 
   async updateService(page: Page) {
@@ -334,7 +370,12 @@ class ServiceBaseClass {
       false
     );
 
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
 
     // click and edit pipeline schedule for Hours
 
@@ -383,7 +424,14 @@ class ServiceBaseClass {
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
+
+    const getIngestionPipelines = page.waitForRequest(
+      `/api/v1/services/ingestionPipelines?**`
+    );
+
     await page.click('[data-testid="view-service-button"]');
+
+    await getIngestionPipelines;
 
     await expect(page.getByTestId('schedule-primary-details')).toHaveText(
       'At 04:04 AM'
@@ -474,7 +522,12 @@ class ServiceBaseClass {
     const ingestionResponse = page.waitForResponse(
       `/api/v1/services/ingestionPipelines/*/pipelineStatus?**`
     );
-    await page.click('[data-testid="ingestions"]');
+    await page.click('[data-testid="agents"]');
+    const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+    if (await metadataTab2.isVisible()) {
+      await metadataTab2.click();
+    }
+    await page.waitForLoadState('networkidle');
 
     await ingestionResponse;
     await page
@@ -504,11 +557,16 @@ class ServiceBaseClass {
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('entity-right-panel')).toBeVisible();
-
     await expect(page.getByTestId('markdown-parser').first()).toHaveText(
       description
     );
+
+    // Check for right side widgets visibility
+    await expect(page.getByTestId('KnowledgePanel.Tags')).toBeVisible();
+    await expect(
+      page.getByTestId('KnowledgePanel.GlossaryTerms')
+    ).toBeVisible();
+    await expect(page.getByTestId('KnowledgePanel.DataProducts')).toBeVisible();
   }
 
   async runAdditionalTests(

@@ -27,7 +27,7 @@ import { isEmpty, lowerCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
-import { WORKFLOWS_PROFILER_DOCS } from '../../../constants/docs.constants';
+import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
 import { mockDatasetData } from '../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -107,7 +107,7 @@ const SampleDataTable = ({
         dataIndex: column,
         key: column,
         accessor: column,
-        width: 210,
+        width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };
     });
@@ -203,14 +203,14 @@ const SampleDataTable = ({
             i18nKey="message.view-sample-data-entity"
             renderElement={
               <a
-                href={WORKFLOWS_PROFILER_DOCS}
+                href={AUTO_CLASSIFICATION_DOCS}
                 rel="noreferrer"
                 style={{ color: theme.primaryColor }}
                 target="_blank"
               />
             }
             values={{
-              entity: t('label.profiler-ingestion'),
+              entity: t('label.auto-classification'),
             }}
           />
         </Typography.Paragraph>

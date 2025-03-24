@@ -73,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "mlmodels")
 public class MlModelResource extends EntityResource<MlModel, MlModelRepository> {
   public static final String COLLECTION_PATH = "v1/mlmodels/";
+  private final MlModelMapper mapper = new MlModelMapper();
   static final String FIELDS =
       "owners,dashboard,followers,tags,usageSummary,extension,domain,sourceHash";
 
@@ -250,7 +251,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModel create) {
-    MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
+    MlModel mlModel = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, mlModel);
   }
 
@@ -331,7 +332,7 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModel create) {
-    MlModel mlModel = getMlModel(create, securityContext.getUserPrincipal().getName());
+    MlModel mlModel = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, mlModel);
   }
 
@@ -504,6 +505,29 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteMlModelAsync",
+      summary = "Asynchronously delete an ML model by Id",
+      description = "Asynchronously delete an ML model by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the ML Model", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteMlModelByFQN",
@@ -551,20 +575,5 @@ public class MlModelResource extends EntityResource<MlModel, MlModelRepository> 
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private MlModel getMlModel(CreateMlModel create, String user) {
-    return repository
-        .copy(new MlModel(), create, user)
-        .withService(getEntityReference(Entity.MLMODEL_SERVICE, create.getService()))
-        .withDashboard(getEntityReference(Entity.DASHBOARD, create.getDashboard()))
-        .withAlgorithm(create.getAlgorithm())
-        .withMlFeatures(create.getMlFeatures())
-        .withMlHyperParameters(create.getMlHyperParameters())
-        .withMlStore(create.getMlStore())
-        .withServer(create.getServer())
-        .withTarget(create.getTarget())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
   }
 }

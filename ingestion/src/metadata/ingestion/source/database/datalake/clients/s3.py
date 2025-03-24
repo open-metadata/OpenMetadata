@@ -25,9 +25,6 @@ from metadata.utils.s3_utils import list_s3_objects
 
 
 class DatalakeS3Client(DatalakeBaseClient):
-    def __init__(self, client):
-        self._client = client
-
     @classmethod
     def from_config(cls, config: S3Config) -> "DatalakeS3Client":
         if not config.securityConfig:

@@ -16,6 +16,5 @@ public class APIServiceRepository extends ServiceEntityRepository<ApiService, Ap
         "",
         ServiceType.API);
     supportsSearch = true;
-    parent = true;
   }
 }

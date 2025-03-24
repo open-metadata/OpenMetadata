@@ -62,6 +62,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "kpi")
 public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
+  private final KpiMapper mapper = new KpiMapper();
   static final String FIELDS = "owners,dataInsightChart,kpiResult";
 
   @Override
@@ -284,7 +285,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateKpiRequest create) {
-    Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
+    Kpi kpi = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     // TODO fix this
     //    dao.validateDataInsightChartOneToOneMapping(kpi.getDataInsightChart().getId());
     return create(uriInfo, securityContext, kpi);
@@ -365,7 +366,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateKpiRequest create) {
-    Kpi kpi = getKpi(create, securityContext.getUserPrincipal().getName());
+    Kpi kpi = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, kpi);
   }
 
@@ -417,6 +418,33 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteKpiAsync",
+      summary = "Asynchronously delete a KPI by Id",
+      description = "Asynchronously delete a KPI by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "KPI for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the KPI", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -506,17 +534,5 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @PathParam("name")
           String name) {
     return repository.getKpiResult(name);
-  }
-
-  private Kpi getKpi(CreateKpiRequest create, String user) {
-    return repository
-        .copy(new Kpi(), create, user)
-        .withStartDate(create.getStartDate())
-        .withEndDate(create.getEndDate())
-        .withTargetValue(create.getTargetValue())
-        .withDataInsightChart(
-            getEntityReference(
-                Entity.DATA_INSIGHT_CUSTOM_CHART, create.getDataInsightChart().value()))
-        .withMetricType(create.getMetricType());
   }
 }

@@ -39,7 +39,7 @@ class ColumnValueStdDevToBeBetweenValidator(
         """
         return self.get_column_name(
             self.test_case.entityLink.root,
-            inspect(self.runner.table).c,
+            inspect(self.runner.dataset).c,
         )
 
     def _run_results(self, metric: Metrics, column: Column) -> Optional[int]:

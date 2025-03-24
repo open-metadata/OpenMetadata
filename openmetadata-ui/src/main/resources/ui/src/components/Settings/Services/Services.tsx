@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
@@ -22,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import {
   DISABLED,
-  getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
@@ -33,6 +31,7 @@ import {
   OPEN_METADATA,
   servicesDisplayName,
 } from '../../../constants/Services.constant';
+import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -43,26 +42,30 @@ import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { getAddServicePath } from '../../../utils/RouterUtils';
+import {
+  getAddServicePath,
+  getServiceDetailsPath,
+} from '../../../utils/RouterUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -72,7 +75,6 @@ interface ServicesProps {
 }
 
 const Services = ({ serviceName }: ServicesProps) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
 
@@ -97,6 +99,14 @@ const Services = ({ serviceName }: ServicesProps) => {
   } = usePaging();
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
+
+  const filterString = useMemo(() => {
+    return serviceTypeFilter?.length
+      ? `(${serviceTypeFilter
+          .map((type) => `serviceType:${type}`)
+          .join(' OR ')})`
+      : undefined;
+  }, [serviceTypeFilter]);
 
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
@@ -133,7 +143,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       after,
       before,
       filters,
-      limit,
     }: {
       search?: string;
       limit?: number;
@@ -151,7 +160,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           } = await searchService({
             search,
             searchIndex,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             currentPage,
             filters,
             deleted,
@@ -164,7 +173,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         } else {
           const { data, paging } = await getServices({
             serviceName,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             after,
             before,
             include: deleted ? Include.Deleted : Include.NonDeleted,
@@ -192,29 +201,28 @@ const Services = ({ serviceName }: ServicesProps) => {
         setIsLoading(false);
       }
     },
-    [searchIndex, serviceName, deleted]
+    [searchIndex, serviceName, deleted, pageSize]
   );
 
   const handleServicePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (searchTerm) {
+      if (searchTerm || filterString) {
         handlePageChange(currentPage);
         getServiceDetails({
           currentPage,
           search: searchTerm,
           limit: pageSize,
-          filters: serviceTypeFilter?.length
-            ? `(${serviceTypeFilter
-                .map((type) => `serviceType:${type}`)
-                .join(' ')})`
-            : undefined,
+          filters: filterString,
         });
       } else if (cursorType) {
         handlePageChange(currentPage);
-        getServiceDetails({ [cursorType]: paging[cursorType] });
+        getServiceDetails({
+          [cursorType]: paging[cursorType],
+          filters: filterString,
+        });
       }
     },
-    [getServiceDetails, searchTerm, serviceTypeFilter, paging, pageSize]
+    [getServiceDetails, searchTerm, filterString, paging, pageSize]
   );
 
   const addServicePermission = useMemo(
@@ -259,11 +267,7 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [serviceName]);
 
   const noDataPlaceholder = useMemo(() => {
-    if (
-      addServicePermission &&
-      isEmpty(searchTerm) &&
-      isEmpty(serviceTypeFilter)
-    ) {
+    if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
           className="p-lg"
@@ -287,7 +291,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     servicesDisplayName,
     serviceName,
     searchTerm,
-    serviceTypeFilter,
+    filterString,
     addServicePermission,
     handleAddServiceClick,
   ]);
@@ -302,8 +306,8 @@ const Services = ({ serviceName }: ServicesProps) => {
   const columns: ColumnsType<ServicesType> = [
     {
       title: t('label.name'),
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: TABLE_COLUMNS_KEYS.NAME,
+      key: TABLE_COLUMNS_KEYS.NAME,
       width: 200,
       render: (name, record) => (
         <div className="d-flex gap-2 items-center">
@@ -315,22 +319,23 @@ const Services = ({ serviceName }: ServicesProps) => {
               record.fullyQualifiedName ?? record.name,
               serviceName
             )}>
-            {getEntityName(record)}
+            {stringToHTML(
+              highlightSearchText(getEntityName(record), searchTerm)
+            )}
           </Link>
         </div>
       ),
     },
     {
       title: t('label.description'),
-      dataIndex: 'description',
-      key: 'description',
+      dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+      key: TABLE_COLUMNS_KEYS.DESCRIPTION,
       width: 200,
       render: (description) =>
         description ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             className="max-two-lines"
-            enableSeeMoreVariant={false}
-            markdown={description}
+            markdown={highlightSearchText(description, searchTerm)}
           />
         ) : (
           <span className="text-grey-muted">{t('label.no-description')}</span>
@@ -338,28 +343,24 @@ const Services = ({ serviceName }: ServicesProps) => {
     },
     {
       title: t('label.type'),
-      dataIndex: 'serviceType',
-      key: 'serviceType',
+      dataIndex: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
+      key: TABLE_COLUMNS_KEYS.SERVICE_TYPE,
       width: 200,
       filterDropdown: ColumnFilter,
-      filterIcon: (filtered) => (
-        <FilterOutlined
-          style={{
-            color: filtered ? theme.primaryColor : undefined,
-          }}
-        />
-      ),
+      filterIcon: columnFilterIcon,
       filtered: !isEmpty(serviceTypeFilter),
       filteredValue: serviceTypeFilter,
       filters: serviceTypeFilters,
       render: (serviceType) => (
-        <span className="font-normal text-grey-body">{serviceType}</span>
+        <span className="font-normal text-grey-body">
+          {stringToHTML(highlightSearchText(serviceType, searchTerm))}
+        </span>
       ),
     },
     {
       title: t('label.owner-plural'),
-      dataIndex: 'owners',
-      key: 'owners',
+      dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
+      key: TABLE_COLUMNS_KEYS.OWNERS,
       width: 200,
       render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
     },
@@ -391,7 +392,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   className="p-t-xs text-grey-body break-all description-text"
                   data-testid="service-description">
                   {service.description ? (
-                    <RichTextEditorPreviewer
+                    <RichTextEditorPreviewerV1
                       className="max-two-lines"
                       enableSeeMoreVariant={false}
                       markdown={service.description}
@@ -437,20 +438,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
-      filters: serviceTypeFilter?.length
-        ? `(${serviceTypeFilter
-            .map((type) => `serviceType:${type}`)
-            .join(' ')})`
-        : undefined,
+      filters: filterString,
     });
-  }, [
-    searchIndex,
-    pageSize,
-    serviceName,
-    searchTerm,
-    serviceTypeFilter,
-    deleted,
-  ]);
+  }, [searchIndex, pageSize, serviceName, searchTerm, filterString, deleted]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
@@ -526,7 +516,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           <NextPrevious
             currentPage={currentPage}
             isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm)}
+            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}

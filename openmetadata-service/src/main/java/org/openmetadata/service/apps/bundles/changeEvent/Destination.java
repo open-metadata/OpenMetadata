@@ -17,9 +17,12 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
 
@@ -61,5 +64,25 @@ public interface Destination<T> {
         AlertUtil.buildSubscriptionStatus(
             status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
     getSubscriptionDestination().setStatusDetails(subStatus);
+  }
+
+  default void setStatusForTestDestination(
+      TestDestinationStatus.Status status, StatusContext statusContext) {
+    TestDestinationStatus subStatus = AlertUtil.buildTestDestinationStatus(status, statusContext);
+    getSubscriptionDestination().setStatusDetails(subStatus);
+  }
+
+  default void setStatusForTestDestination(
+      TestDestinationStatus.Status status, Integer statusCode, Long timestamp) {
+    TestDestinationStatus subStatus =
+        AlertUtil.buildTestDestinationStatus(status, statusCode, timestamp);
+    getSubscriptionDestination().setStatusDetails(subStatus);
+  }
+
+  default String getDisplayNameOrFqn(EventSubscription eventSubscription) {
+    String displayName = eventSubscription.getDisplayName();
+    return (CommonUtil.nullOrEmpty(displayName))
+        ? eventSubscription.getFullyQualifiedName()
+        : displayName;
   }
 }

@@ -40,6 +40,7 @@ import { AppScheduleProps } from './AppScheduleProps.interface';
 const AppSchedule = ({
   appData,
   loading: { isRunLoading, isDeployLoading },
+  jsonSchema,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -112,7 +113,11 @@ const AppSchedule = ({
 
   const onAppTrigger = async () => {
     await onDemandTrigger();
-    appRunsHistoryRef.current?.refreshAppHistory();
+
+    // Refresh the app history after 750ms to get the latest run as the run is triggered asynchronously
+    setTimeout(() => {
+      appRunsHistoryRef.current?.refreshAppHistory();
+    }, 750);
   };
 
   const appRunHistory = useMemo(() => {
@@ -123,6 +128,7 @@ const AppSchedule = ({
       return (
         <AppRunsHistory
           appData={appData}
+          jsonSchema={jsonSchema}
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}

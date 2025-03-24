@@ -13,10 +13,19 @@
 Datalake Base Client
 """
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 
 class DatalakeBaseClient(ABC):
+    """Base DL client implementation"""
+
+    def __init__(self, client: Any, **kwargs):
+        self._client = client
+
+    @property
+    def client(self) -> Any:
+        return self._client
+
     @classmethod
     @abstractmethod
     def from_config(cls, config) -> "DatalakeBaseClient":

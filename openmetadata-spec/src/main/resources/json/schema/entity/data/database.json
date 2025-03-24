@@ -40,7 +40,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -84,6 +84,10 @@
       "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
@@ -155,10 +159,15 @@
         "sampleDataStorageConfig": {
           "title": "Storage Config for Sample Data",
           "$ref": "../services/connections/connectionBasicType.json#/definitions/sampleDataStorageConfig"
+        },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": true
         }
       }
     }
   },
-  "required": ["name", "service"],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

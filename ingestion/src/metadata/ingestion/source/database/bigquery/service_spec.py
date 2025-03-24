@@ -4,6 +4,7 @@ from metadata.ingestion.source.database.bigquery.profiler.profiler import (
     BigQueryProfiler,
 )
 from metadata.ingestion.source.database.bigquery.usage import BigqueryUsageSource
+from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
@@ -11,4 +12,5 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=BigqueryLineageSource,
     usage_source_class=BigqueryUsageSource,
     profiler_class=BigQueryProfiler,
+    sampler_class=BigQuerySampler,
 )

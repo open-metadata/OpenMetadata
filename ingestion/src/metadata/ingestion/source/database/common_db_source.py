@@ -12,13 +12,10 @@
 Generic source to build SQL connectors.
 """
 import copy
-import math
-import time
 import traceback
 from abc import ABC
-from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -30,12 +27,10 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -64,9 +59,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
-from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
     get_connection,
@@ -79,13 +72,12 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.constraints import get_relationship_type
-from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.execution_time_tracker import (
-    ExecutionTimeTrackerContextMap,
     calculate_execution_time,
     calculate_execution_time_generator,
 )
 from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
@@ -117,6 +109,7 @@ class CommonDbSourceService(
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
     """
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -202,6 +195,12 @@ class CommonDbSourceService(
         by default there will be no schema description
         """
 
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+        """
+        Method to fetch the stored procedure description
+        by default there will be no stored procedure description
+        """
+
     @calculate_execution_time_generator()
     def yield_database(
         self, database_name: str
@@ -261,7 +260,11 @@ class CommonDbSourceService(
         )
         source_url = (
             SourceUrl(source_url)
-            if (source_url := self.get_source_url(database_name=schema_name))
+            if (
+                source_url := self.get_source_url(
+                    database_name=self.context.get().database, schema_name=schema_name
+                )
+            )
             else None
         )
 
@@ -483,13 +486,6 @@ class CommonDbSourceService(
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
 
-    @calculate_execution_time_generator()
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Not Implemented"""
-        yield from []
-
     def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
         """
         Method to fetch the location path of the table
@@ -618,106 +614,6 @@ class CommonDbSourceService(
                 )
             )
 
-    def multithread_process_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
-        """Multithread Processing of a Node"""
-
-        views_list = list(self.context.get().table_views or [])
-        views_length = len(views_list)
-
-        if views_length != 0:
-            chunksize = int(math.ceil(views_length / self.source_config.threads))
-            chunks = [
-                views_list[i : i + chunksize] for i in range(0, views_length, chunksize)
-            ]
-
-            thread_pool = ThreadPoolExecutor(max_workers=self.source_config.threads)
-            queue = Queue()
-
-            futures = [
-                thread_pool.submit(
-                    self._process_view_def_chunk,
-                    chunk,
-                    queue,
-                    self.context.get_current_thread_id(),
-                )
-                for chunk in chunks
-            ]
-
-            while True:
-                if queue.has_tasks():
-                    yield from queue.process()
-
-                else:
-                    if not futures:
-                        break
-
-                    for i, future in enumerate(futures):
-                        if future.done():
-                            future.result()
-                            futures.pop(i)
-
-                time.sleep(0.01)
-
-    def _process_view_def_chunk(
-        self, chunk: List[TableView], queue: Queue, thread_id: int
-    ) -> None:
-        """
-        Process a chunk of view definitions
-        """
-        self.context.copy_from(thread_id)
-        ExecutionTimeTrackerContextMap().copy_from_parent(thread_id)
-        for view in [v for v in chunk if v.view_definition is not None]:
-            for lineage in get_view_lineage(
-                view=view,
-                metadata=self.metadata,
-                service_name=self.context.get().database_service,
-                connection_type=self.service_connection.type.value,
-                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
-            ):
-                if lineage.right is not None:
-                    queue.put(
-                        Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage.right,
-                                override_lineage=self.source_config.overrideViewLineage,
-                            )
-                        )
-                    )
-                else:
-                    queue.put(lineage)
-
-    def _process_view_def_serial(self) -> Iterable[Either[OMetaLineageRequest]]:
-        """
-        Process view definitions serially
-        """
-        for view in [
-            v for v in self.context.get().table_views if v.view_definition is not None
-        ]:
-            for lineage in get_view_lineage(
-                view=view,
-                metadata=self.metadata,
-                service_name=self.context.get().database_service,
-                connection_type=self.service_connection.type.value,
-                timeout_seconds=self.source_config.queryParsingTimeoutLimit,
-            ):
-                if lineage.right is not None:
-                    yield Either(
-                        right=OMetaLineageRequest(
-                            lineage_request=lineage.right,
-                            override_lineage=self.source_config.overrideViewLineage,
-                        )
-                    )
-                else:
-                    yield lineage
-
-    @calculate_execution_time_generator()
-    def yield_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
-        logger.info("Processing Lineage for Views")
-        if self.source_config.threads > 1:
-            yield from self.multithread_process_view_lineage()
-        else:
-            yield from self._process_view_def_serial()
-
     def _prepare_foreign_constraints(  # pylint: disable=too-many-arguments, too-many-locals
         self,
         supports_database: bool,
@@ -797,7 +693,7 @@ class CommonDbSourceService(
             foreign_constraint = self._prepare_foreign_constraints(
                 supports_database, column, table_name, schema_name, db_name, columns
             )
-            if foreign_constraint:
+            if foreign_constraint and foreign_constraint not in foreign_constraints:
                 foreign_constraints.append(foreign_constraint)
 
         return foreign_constraints
@@ -821,7 +717,11 @@ class CommonDbSourceService(
         )
         if foreign_table_constraints:
             if table_constraints:
-                table_constraints.extend(foreign_table_constraints)
+                table_constraints.extend(
+                    constraint
+                    for constraint in foreign_table_constraints
+                    if constraint and constraint not in table_constraints
+                )
             else:
                 table_constraints = foreign_table_constraints
         return table_constraints

@@ -14,10 +14,10 @@
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -52,36 +52,39 @@ import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
+import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
 
-const teamsAndUsers = [GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS];
-
 const UserListPageV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
-
+  const { tab } = useParams<{ tab: GlobalSettingOptions }>();
   const history = useHistory();
-  const location = useCustomLocation();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
-
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
-  const [showDeletedUser, setShowDeletedUser] = useState<boolean>(false);
   const [userList, setUserList] = useState<User[]>([]);
-
   const [selectedUser, setSelectedUser] = useState<User>();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReactiveModal, setShowReactiveModal] = useState(false);
-  const showRestore = showDeletedUser && !isDataLoading;
+
   const [isLoading, setIsLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState<string>('');
+  const {
+    filters: { isDeleted, user: searchValue },
+    setFilters,
+  } = useTableFilters({
+    isDeleted: false,
+    user: '',
+  });
+  const showRestore = isDeleted && !isDataLoading;
+
   const { getResourceLimit } = useLimitStore();
   const {
     currentPage,
@@ -92,14 +95,6 @@ const UserListPageV1 = () => {
     paging,
     showPagination,
   } = usePaging(PAGE_SIZE_MEDIUM);
-
-  const initialSetup = () => {
-    setIsDataLoading(true);
-    setShowDeletedUser(false);
-    setSearchValue('');
-    handlePageChange(INITIAL_PAGING_VALUE);
-    handlePageSizeChange(PAGE_SIZE_MEDIUM);
-  };
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -123,7 +118,6 @@ const UserListPageV1 = () => {
         limit: pageSize,
         ...params,
       });
-
       setUserList(data);
       handlePagingChange(userPaging);
     } catch (error) {
@@ -137,20 +131,13 @@ const UserListPageV1 = () => {
     setIsDataLoading(false);
   };
 
-  const handleFetch = () => {
-    fetchUsersList({
-      isAdmin: isAdminPage,
-      include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
-    });
-  };
-
   const userQuerySearch = (
     text = WILD_CARD_CHAR,
     currentPage = 1,
     isAdmin = false,
     isDeleted = false
   ) => {
-    let filters = 'isBot:false';
+    let filters = 'isAdmin:false isBot:false';
     if (isAdmin) {
       filters = 'isAdmin:true isBot:false';
     }
@@ -188,7 +175,7 @@ const UserListPageV1 = () => {
   const getSearchedUsers = (value: string, pageNumber: number) => {
     setIsDataLoading(true);
 
-    userQuerySearch(value, pageNumber, isAdminPage, showDeletedUser).then(
+    userQuerySearch(value, pageNumber, isAdminPage, isDeleted).then(
       (resUsers) => {
         setUserList(resUsers);
         setIsDataLoading(false);
@@ -206,7 +193,7 @@ const UserListPageV1 = () => {
         fetchUsersList({
           isAdmin: isAdminPage,
           [cursorType]: paging[cursorType],
-          include: showDeletedUser ? Include.Deleted : Include.NonDeleted,
+          include: isDeleted ? Include.Deleted : Include.NonDeleted,
         });
       }
     },
@@ -214,66 +201,45 @@ const UserListPageV1 = () => {
       isAdminPage,
       paging,
       pageSize,
-      showDeletedUser,
+      setFilters,
       handlePageChange,
       fetchUsersList,
       getSearchedUsers,
+      isDeleted,
     ]
   );
 
   const handleShowDeletedUserChange = (value: boolean) => {
     handlePageChange(INITIAL_PAGING_VALUE);
-    setSearchValue('');
-    setShowDeletedUser(value);
-    fetchUsersList({
-      isAdmin: isAdminPage,
-      include: value ? Include.Deleted : Include.NonDeleted,
-      limit: pageSize,
-    });
+    handlePageSizeChange(PAGE_SIZE_MEDIUM);
+    // Clear search value, on Toggle delete
+    setFilters({ isDeleted: value || null, user: null });
   };
 
   const handleSearch = (value: string) => {
-    setSearchValue(value);
     handlePageChange(INITIAL_PAGING_VALUE);
-    const params = new URLSearchParams({ user: value });
-    // This function is called onChange in the search input with debouncing
-    // Hence using history.replace instead of history.push to avoid adding multiple routes in history
-    history.replace({
-      search: value && params.toString(),
-    });
-    if (value) {
-      getSearchedUsers(value, INITIAL_PAGING_VALUE);
-    } else {
-      handleFetch();
-    }
+
+    setFilters({ user: isEmpty(value) ? null : value });
   };
 
   useEffect(() => {
-    initialSetup();
-  }, [tab]);
+    // Perform reset
+    setFilters({});
+    setIsDataLoading(true);
+    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageSizeChange(PAGE_SIZE_MEDIUM);
+  }, [isAdminPage]);
 
   useEffect(() => {
-    if (teamsAndUsers.includes(tab)) {
-      // Checking if the path has search query present in it
-      // if present fetch userlist with the query
-      // else get list of all users
-      if (location.search) {
-        // Converting string to URLSearchParameter
-        const searchParameter = new URLSearchParams(location.search);
-        // Getting the searched name
-        const userSearchTerm = searchParameter.get('user') || '';
-        setSearchValue(userSearchTerm);
-        getSearchedUsers(userSearchTerm, 1);
-        setIsDataLoading(false);
-      } else {
-        fetchUsersList({
-          isAdmin: isAdminPage,
-        });
-      }
+    if (searchValue) {
+      getSearchedUsers(searchValue, 1);
     } else {
-      setIsDataLoading(false);
+      fetchUsersList({
+        isAdmin: isAdminPage,
+        include: isDeleted ? Include.Deleted : Include.NonDeleted,
+      });
     }
-  }, [pageSize, isAdminPage]);
+  }, [pageSize, isAdminPage, searchValue, isDeleted]);
 
   const handleAddNewUser = () => {
     history.push({
@@ -388,7 +354,7 @@ const UserListPageV1 = () => {
           <Col className="w-full d-flex justify-end">
             <span>
               <Switch
-                checked={showDeletedUser}
+                checked={isDeleted}
                 data-testid="show-deleted"
                 onClick={handleShowDeletedUserChange}
               />
@@ -406,10 +372,64 @@ const UserListPageV1 = () => {
         </Row>
       </PageLayoutV1>
     ),
-    [isAdminUser, showDeletedUser]
+    [isAdminUser, isDeleted]
   );
 
-  if (isEmpty(userList) && !showDeletedUser && !isDataLoading && !searchValue) {
+  const emptyPlaceHolderText = useMemo(() => {
+    if (searchValue) {
+      return (
+        <Transi18next
+          i18nKey={
+            isAdminPage
+              ? 'message.no-admin-available-with-name'
+              : 'message.no-user-available-with-name'
+          }
+          renderElement={
+            <Link
+              to={getSettingPath(
+                GlobalSettingsMenuCategory.MEMBERS,
+                isAdminPage
+                  ? GlobalSettingOptions.USERS
+                  : GlobalSettingOptions.ADMINS
+              )}
+            />
+          }
+          values={{
+            searchText: searchValue,
+          }}
+        />
+      );
+    }
+
+    return (
+      <Transi18next
+        i18nKey={
+          isAdminPage
+            ? 'message.no-admin-available-with-filters'
+            : 'message.no-user-available-with-filters'
+        }
+        renderElement={
+          <Link
+            to={getSettingPath(
+              GlobalSettingsMenuCategory.MEMBERS,
+              isAdminPage
+                ? GlobalSettingOptions.USERS
+                : GlobalSettingOptions.ADMINS
+            )}
+          />
+        }
+      />
+    );
+  }, [isAdminPage, searchValue]);
+
+  if (
+    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(tab)
+  ) {
+    // This component is not accessible for the given tab
+    return <Redirect to={ROUTES.NOT_FOUND} />;
+  }
+
+  if (isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue) {
     return errorPlaceHolder;
   }
 
@@ -431,7 +451,7 @@ const UserListPageV1 = () => {
           <Space align="center" className="w-full justify-end" size={16}>
             <span>
               <Switch
-                checked={showDeletedUser}
+                checked={isDeleted}
                 data-testid="show-deleted"
                 onClick={handleShowDeletedUserChange}
               />
@@ -459,7 +479,9 @@ const UserListPageV1 = () => {
               type: t('label.user'),
             })}...`}
             searchValue={searchValue}
-            onSearch={handleSearch}
+            typingInterval={400}
+            urlSearchKey="user"
+            onSearch={noop}
           />
         </Col>
 
@@ -472,7 +494,11 @@ const UserListPageV1 = () => {
             dataSource={userList}
             loading={isDataLoading}
             locale={{
-              emptyText: <FilterTablePlaceHolder />,
+              emptyText: (
+                <FilterTablePlaceHolder
+                  placeholderText={emptyPlaceHolderText}
+                />
+              ),
             }}
             pagination={false}
             rowKey="id"
@@ -524,7 +550,7 @@ const UserListPageV1 = () => {
             // Update current count when Create / Delete operation performed
             await getResourceLimit('user', true, true);
           }}
-          allowSoftDelete={!showDeletedUser}
+          allowSoftDelete={!isDeleted}
           entityId={selectedUser?.id || ''}
           entityName={getEntityName(selectedUser)}
           entityType={EntityType.USER}

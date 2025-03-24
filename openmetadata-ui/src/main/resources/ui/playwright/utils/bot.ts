@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import {
-  customFormatDateTime,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
   descriptionBox,
@@ -22,6 +18,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
@@ -220,4 +217,40 @@ export const redirectToBotPage = async (page: Page) => {
   const fetchResponse = page.waitForResponse('api/v1/bots?*');
   await settingClick(page, GlobalSettingOptions.BOTS);
   await fetchResponse;
+};
+
+export const resetTokenFromBotPage = async (
+  page: Page,
+  bot: {
+    name: string;
+    testId: string;
+  }
+) => {
+  const settingClickResponse = page.waitForResponse('api/v1/bots?*');
+  await settingClick(page, GlobalSettingOptions.BOTS);
+  await settingClickResponse;
+
+  await page.getByTestId('searchbar').click();
+  await page.getByTestId('searchbar').fill(bot.name);
+
+  await page.getByTestId(bot.testId).click();
+
+  await expect(page.getByTestId('revoke-button')).toBeVisible();
+
+  await page.getByTestId('revoke-button').click();
+
+  await expect(page.getByTestId('save-button')).toBeVisible();
+
+  await page.getByTestId('save-button').click();
+
+  await expect(page.getByTestId('token-expiry').locator('div')).toBeVisible();
+
+  await page.getByText('hr').click();
+  await page.getByText('Unlimited days').click();
+
+  await expect(page.getByTestId('save-edit')).toBeVisible();
+
+  await page.getByTestId('save-edit').click();
+
+  await redirectToHomePage(page);
 };
