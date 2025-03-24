@@ -20,5 +20,6 @@
     "type": "HelloPipelines",
     "sleep": 10,
     "echo": "hello pipelines"
-  }
+  },
+  "enabled": false
 }

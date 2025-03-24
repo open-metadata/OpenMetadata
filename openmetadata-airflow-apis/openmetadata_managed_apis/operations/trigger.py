@@ -13,12 +13,11 @@ Module containing the logic to trigger a DAG
 """
 from typing import Optional
 
-from openmetadata_managed_apis.utils.logger import operations_logger
-
 try:
     from airflow.api.common.trigger_dag import trigger_dag
 except ImportError:
     from airflow.api.common.experimental.trigger_dag import trigger_dag
+
 from airflow.utils import timezone
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse
