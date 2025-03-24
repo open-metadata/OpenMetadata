@@ -47,7 +47,6 @@ import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -547,13 +546,12 @@ export const DataAssetsHeader = ({
                         data-testid="source-url-button"
                         icon={
                           <Icon className="flex-center" component={LinkIcon} />
-                        }
-                        onClick={() => {
-                          window.open((dataAsset as Table).sourceUrl, '_blank');
-                        }}>
-                        <Typography.Text>
+                        }>
+                        <Typography.Link
+                          href={(dataAsset as Table).sourceUrl}
+                          target="_blank">
                           {t('label.source-url')}
-                        </Typography.Text>
+                        </Typography.Link>
                       </Button>
                     </Tooltip>
                   )}
@@ -716,7 +714,7 @@ export const DataAssetsHeader = ({
               />
             )}
 
-            {(dataAsset as Table).certification && (
+            {(dataAsset as Table)?.certification && (
               <>
                 <Divider
                   className="self-center vertical-divider"
@@ -727,10 +725,7 @@ export const DataAssetsHeader = ({
                   value={
                     <CertificationTag
                       showName
-                      certification={
-                        (dataAsset as Table).certification ??
-                        ({} as AssetCertification)
-                      }
+                      certification={(dataAsset as Table).certification!}
                     />
                   }
                 />
