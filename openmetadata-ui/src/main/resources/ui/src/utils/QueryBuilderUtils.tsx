@@ -39,12 +39,16 @@ export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
 ];
 
 export const resolveFieldType = (
-  fields: Fields,
+  fields: Fields | undefined,
   field: string
 ): string | undefined => {
+  if (!fields) {
+    return '';
+  }
+
   // Split the field into parts (e.g., "extension.expert")
   const fieldParts = field.split('.');
-  let currentField = fields[fieldParts[0]];
+  let currentField = fields?.[fieldParts[0]];
 
   // If the top-level field doesn't exist, return undefined
   if (!currentField) {
@@ -249,7 +253,7 @@ export const getJsonTreePropertyFromQueryFilter = (
         };
       } else if (!isUndefined(curr.term)) {
         const [field, value] = Object.entries(curr.term)[0];
-        const fieldType = fields ? resolveFieldType(fields, field) : '';
+        const fieldType = resolveFieldType(fields, field);
         const op = getOperator(fieldType, false);
 
         return {
@@ -266,7 +270,7 @@ export const getJsonTreePropertyFromQueryFilter = (
       ) {
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
         const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
-        const fieldType = fields ? resolveFieldType(fields, key) : '';
+        const fieldType = resolveFieldType(fields, key);
         const op = getOperator(fieldType, true);
 
         return {

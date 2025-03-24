@@ -147,4 +147,8 @@ describe('resolveFieldType', () => {
   ])('should resolve %s', (_, field: string, expectedType?: string) => {
     expect(resolveFieldType(mockFields, field)).toBe(expectedType);
   });
+
+  it('should return an empty string if the field is undefined', () => {
+    expect(resolveFieldType(undefined, 'name')).toBe('');
+  });
 });
