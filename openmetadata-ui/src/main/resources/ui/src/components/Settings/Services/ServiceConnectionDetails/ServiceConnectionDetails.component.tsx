@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Row } from 'antd';
+import { InfoCircleOutlined } from '@ant-design/icons';
+import { Col, Input, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
@@ -24,7 +26,10 @@ import { MlModelServiceType } from '../../../../generated/entity/services/mlmode
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
-import { ConfigData } from '../../../../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+} from '../../../../interface/service.interface';
 import { getKeyValues } from '../../../../utils/ServiceConnectionDetailsUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import './service-connection-details.less';
@@ -33,15 +38,18 @@ type ServiceConnectionDetailsProps = {
   connectionDetails: ConfigData;
   serviceCategory: string;
   serviceFQN: string;
+  extraInfo?: ExtraInfoType | null;
 };
 
 const ServiceConnectionDetails = ({
   connectionDetails,
   serviceCategory,
   serviceFQN,
+  extraInfo,
 }: Readonly<ServiceConnectionDetailsProps>) => {
   const [schema, setSchema] = useState<Record<string, any>>({});
   const [data, setData] = useState<ReactNode>();
+  const { t } = useTranslation();
 
   useEffect(() => {
     switch (serviceCategory.slice(0, -1)) {
@@ -134,13 +142,53 @@ const ServiceConnectionDetails = ({
   }, [schema]);
 
   return (
-    <div
-      className="service-connection-details"
-      data-testid="service-connection-details">
-      <Row className="w-full" gutter={[8, 8]}>
-        {data}
-      </Row>
-    </div>
+    <>
+      <div
+        className="service-connection-details"
+        data-testid="service-connection-details">
+        <Row className="w-full" gutter={[8, 8]}>
+          {data}
+        </Row>
+      </div>
+
+      {extraInfo && (
+        <div className="service-connection-details m-t-md m-y-lg">
+          <Row className="w-full" gutter={[8, 8]}>
+            <Col span={12}>
+              <Row>
+                <Col className="d-flex items-center" span={8}>
+                  <Space size={0}>
+                    <p className="text-grey-muted m-0">
+                      {t('label.extra-info-key')}
+                    </p>
+                    {extraInfo.description && (
+                      <Tooltip
+                        placement="bottom"
+                        title={extraInfo.description}
+                        trigger="hover">
+                        <InfoCircleOutlined
+                          className="m-x-xss"
+                          style={{ color: '#C4C4C4' }}
+                        />
+                      </Tooltip>
+                    )}
+                  </Space>
+                </Col>
+                <Col span={16}>
+                  <Input
+                    readOnly
+                    className="w-full border-none"
+                    data-testid="input-field"
+                    type="text"
+                    value={extraInfo.name}
+                  />
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+        </div>
+      )}
+    </>
   );
 };
 
