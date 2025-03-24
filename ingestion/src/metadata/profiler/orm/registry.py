@@ -28,6 +28,7 @@ from metadata.profiler.orm.types.custom_datetimerange import CustomDateTimeRange
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.profiler.orm.types.custom_ip import CustomIP
+from metadata.profiler.orm.types.custom_time import CustomTime
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
 from metadata.profiler.orm.types.undetermined_type import UndeterminedType
 from metadata.profiler.orm.types.uuid import UUIDString
@@ -44,6 +45,7 @@ class CustomTypes(TypeRegistry):
     IP = CustomIP
     SQADATETIMERANGE = CustomDateTimeRange
     UNDETERMINED = UndeterminedType
+    TIME = CustomTime
 
 
 class PythonDialects(Enum):
