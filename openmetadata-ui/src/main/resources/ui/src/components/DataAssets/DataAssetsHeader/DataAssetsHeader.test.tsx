@@ -228,7 +228,6 @@ describe('DataAssetsHeader component', () => {
 
   it('should render source URL button when sourceUrl is present', () => {
     const mockSourceUrl = 'http://test-source.com';
-    const windowSpy = jest.spyOn(window, 'open').mockImplementation();
 
     render(
       <DataAssetsHeader
@@ -242,15 +241,12 @@ describe('DataAssetsHeader component', () => {
 
     const sourceUrlButton = screen.getByTestId('source-url-button');
 
+    const sourceUrlLink = screen.getByRole('link');
+
     expect(sourceUrlButton).toBeInTheDocument();
+    expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
+    expect(sourceUrlLink).toHaveAttribute('target', '_blank');
     expect(screen.getByText('label.source-url')).toBeInTheDocument();
-
-    // Test click behavior
-    sourceUrlButton.click();
-
-    expect(windowSpy).toHaveBeenCalledWith(mockSourceUrl, '_blank');
-
-    windowSpy.mockRestore();
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {
