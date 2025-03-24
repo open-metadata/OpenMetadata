@@ -35,6 +35,9 @@ export const getStatusTypeForApplication = (status: Status) => {
     case Status.Started:
       return StatusType.Started;
 
+    case Status.Pending:
+      return StatusType.Pending;
+
     default:
       return StatusType.Stopped;
   }
