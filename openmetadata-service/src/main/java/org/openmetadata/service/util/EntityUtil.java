@@ -712,4 +712,13 @@ public final class EntityUtil {
   public static String encodeEntityFqn(String fqn) {
     return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
   }
+
+  public static boolean isNullOrEmptyChangeDescription(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return true;
+    }
+    return changeDescription.getFieldsAdded().isEmpty()
+        && changeDescription.getFieldsUpdated().isEmpty()
+        && changeDescription.getFieldsDeleted().isEmpty();
+  }
 }

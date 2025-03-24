@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,15 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { create } from 'zustand';
 
-export interface NavBarProps {
-  searchValue: string;
-  isTourRoute?: boolean;
-  pathname: string;
-  isSearchBoxOpen: boolean;
-  handleSearchBoxOpen: (value: boolean) => void;
-  handleSearchChange: (value: string) => void;
-  handleOnClick: () => void;
-  handleClear: () => void;
-  handleKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+interface SearchState {
+  // NLP flags
+  isNLPActive: boolean;
+  isNLPEnabled: boolean;
+
+  // Actions
+  setNLPActive: (active: boolean) => void;
+  setNLPEnabled: (enabled: boolean) => void;
 }
+
+export const useSearchStore = create<SearchState>((set) => ({
+  // NLP flags
+  isNLPActive: false,
+  isNLPEnabled: false,
+
+  // Actions to update the state
+  setNLPActive: (active) => set({ isNLPActive: active }),
+  setNLPEnabled: (enabled) => set({ isNLPEnabled: enabled }),
+}));

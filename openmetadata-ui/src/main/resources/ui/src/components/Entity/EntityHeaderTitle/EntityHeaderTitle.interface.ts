@@ -16,6 +16,7 @@ import { EntityType } from '../../../enums/entity.enum';
 export interface EntityHeaderTitleProps {
   className?: string;
   icon: React.ReactNode;
+  showOnlyDisplayName?: boolean;
   name: string;
   displayName?: string;
   link?: string;
