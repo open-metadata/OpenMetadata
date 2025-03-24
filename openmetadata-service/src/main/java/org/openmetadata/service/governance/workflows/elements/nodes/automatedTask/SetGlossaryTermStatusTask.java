@@ -11,6 +11,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetGlossaryTermStatusImpl;
@@ -25,7 +26,8 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public SetGlossaryTermStatusTask(SetGlossaryTermStatusTaskDefinition nodeDefinition) {
+  public SetGlossaryTermStatusTask(
+      SetGlossaryTermStatusTaskDefinition nodeDefinition, WorkflowConfiguration config) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -49,6 +51,10 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setGlossaryTermStatus.getId()));
     subProcess.addFlowElement(new SequenceFlow(setGlossaryTermStatus.getId(), endEvent.getId()));
 
+    if (config.getStoreStageStatus()) {
+      attachWorkflowInstanceStageListeners(subProcess);
+    }
+
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
   }
@@ -68,14 +74,12 @@ public class SetGlossaryTermStatusTask implements NodeInterface {
             .fieldValue(inputNamespaceMap)
             .build();
 
-    ServiceTask serviceTask =
-        new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
-            .implementation(SetGlossaryTermStatusImpl.class.getName())
-            .build();
-    serviceTask.getFieldExtensions().add(statusExpr);
-    serviceTask.getFieldExtensions().add(inputNamespaceMapExpr);
-    return serviceTask;
+    return new ServiceTaskBuilder()
+        .id(getFlowableElementId(subProcessId, "setGlossaryTermStatus"))
+        .implementation(SetGlossaryTermStatusImpl.class.getName())
+        .addFieldExtension(statusExpr)
+        .addFieldExtension(inputNamespaceMapExpr)
+        .build();
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

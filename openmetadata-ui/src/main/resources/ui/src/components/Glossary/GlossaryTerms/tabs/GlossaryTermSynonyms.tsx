@@ -32,7 +32,7 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import TagButton from '../../../common/TagButton/TagButton.component';
-import { useGenericContext } from '../../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
 const GlossaryTermSynonyms = () => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);

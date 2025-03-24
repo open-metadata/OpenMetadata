@@ -646,6 +646,8 @@ site_menu:
     url: /how-to-guides/data-discovery/openmetadata-extension/looking-up
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing tasks & add comment directly from the extension
     url: /how-to-guides/data-discovery/openmetadata-extension/viewing-tasks
+  - category: How-to Guides / Data Discovery / ER Diagrams
+    url: /how-to-guides/data-discovery/er-diagrams
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -691,6 +693,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/workflow
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
     url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
+    url: /how-to-guides/data-quality-observability/profiler/custom-metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
@@ -826,6 +830,8 @@ site_menu:
     url: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
   - category: How-to Guides / Data Governance / Workflows / How to Edit a Workflow
     url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
+  - category: How-to Guides / Data Governance / Metrics
+    url: /how-to-guides/data-governance/metrics
 
   - category: Enable Security
     url: /security
@@ -864,6 +870,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.5 Release
+    url: /releases/all-releases/#1.6.5-release
+  - category: Releases / All Releases / 1.6.4 Release
+    url: /releases/all-releases/#1.6.4-release
+  - category: Releases / All Releases / 1.6.3 Release
+    url: /releases/all-releases/#1.6.3-release
   - category: Releases / All Releases / 1.6.2 Release
     url: /releases/all-releases/#1.6.2-release
   - category: Releases / All Releases / 1.6.1 Release

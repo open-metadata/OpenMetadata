@@ -127,7 +127,7 @@ export class UserClass {
     await dataStewardTeam.create(apiContext);
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
     if (this.isUserDataSteward) {
       await dataStewardPolicy.delete(apiContext);
       await dataStewardRoles.delete(apiContext);
@@ -135,7 +135,7 @@ export class UserClass {
     }
 
     const response = await apiContext.delete(
-      `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=true`
+      `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=${hardDelete}`
     );
 
     return response.body;
@@ -171,7 +171,7 @@ export class UserClass {
   }
 
   async logout(page: Page) {
-    await page.getByTestId('app-bar-item-logout').click();
+    await page.getByRole('menuitem', { name: 'Logout' }).click();
     await page.getByTestId('confirm-logout').click();
   }
 }

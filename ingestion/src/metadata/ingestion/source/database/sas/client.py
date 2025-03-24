@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.services.connections.database.sasConnectio
     SASConnection,
 )
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -35,7 +36,7 @@ class SASClient:
             config.serverHost, config.username, config.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
-            base_url=str(config.serverHost),
+            base_url=clean_uri(config.serverHost),
             auth_header="Authorization",
             auth_token=self.get_auth_token,
             api_version="",

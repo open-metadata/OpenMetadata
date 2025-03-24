@@ -17,11 +17,14 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import LoginCarousel from '../LoginPage/LoginCarousel';
 import './../LoginPage/login.style.less';
@@ -38,6 +41,7 @@ const BasicSignUp = () => {
   const { t } = useTranslation();
   const { authConfig } = useApplicationStore();
   const { handleRegister } = useBasicAuth();
+  const { alert, resetAlert } = useAlertStore();
   const history = useHistory();
 
   const [form] = Form.useForm();
@@ -63,149 +67,167 @@ const BasicSignUp = () => {
     }
   };
 
-  const handleLogin = () => history.push(ROUTES.SIGNIN);
+  const handleLogin = () => {
+    history.push(ROUTES.SIGNIN);
+    resetAlert();
+  };
 
   return (
-    <Row className="h-full" data-testid="signin-page">
-      <Col className="bg-white" span={10}>
-        <div className="mt-4 text-center flex-center flex-col">
-          <BrandImage height="auto" width={200} />
-          <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
-            {t('message.om-description')}
-          </Typography.Text>
+    <>
+      <DocumentTitle title={t('label.sign-up')} />
+      <Row className="h-full" data-testid="signin-page">
+        <Col className="bg-white" span={10}>
+          <div className="mt-4 text-center flex-center flex-col">
+            <BrandImage height="auto" width={200} />
+            <Typography.Text className="mt-8 w-80 text-xl font-medium text-grey-muted">
+              {t('message.om-description')}
+            </Typography.Text>
 
-          {isAuthProviderBasic ? (
-            <div className="m-t-lg" style={{ width: '334px' }}>
-              <Form
-                autoComplete="off"
-                form={form}
-                layout="vertical"
-                validateMessages={VALIDATION_MESSAGES}
-                onFinish={handleSubmit}>
-                <Form.Item
-                  label={t('label.entity-name', {
-                    entity: t('label.first'),
-                  })}
-                  name="firstName"
-                  rules={[{ whitespace: true, required: true }]}>
-                  <Input
-                    autoFocus
-                    placeholder={t('label.enter-entity-name', {
-                      entity: t('label.first-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.entity-name', {
-                    entity: t('label.last'),
-                  })}
-                  name="lastName"
-                  rules={[{ whitespace: true, required: true }]}>
-                  <Input
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.last-name-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.email')}
-                  name="email"
-                  rules={[{ type: 'email', required: true }]}>
-                  <Input
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.email-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.password')}
-                  name="password"
-                  rules={[
-                    {
-                      required: true,
-                    },
-                    {
-                      pattern: passwordRegex,
-                      message: t('message.password-error-message'),
-                    },
-                  ]}>
-                  <Input.Password
-                    autoComplete="off"
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.password-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-                <Form.Item
-                  label={t('label.password-type', {
-                    type: t('label.confirm'),
-                  })}
-                  name="confirmPassword"
-                  rules={[
-                    {
-                      validator: (_, value) => {
-                        if (isEmpty(password)) {
-                          return Promise.reject(
-                            t('label.please-password-type-first')
-                          );
-                        }
-                        if (value !== password) {
-                          return Promise.reject(t('label.password-not-match'));
-                        }
+            {alert && (
+              <div className="login-alert">
+                <AlertBar
+                  defafultExpand
+                  message={alert?.message}
+                  type={alert?.type}
+                />
+              </div>
+            )}
 
-                        return Promise.resolve();
+            {isAuthProviderBasic ? (
+              <div className="login-form">
+                <Form
+                  autoComplete="off"
+                  form={form}
+                  layout="vertical"
+                  validateMessages={VALIDATION_MESSAGES}
+                  onFinish={handleSubmit}>
+                  <Form.Item
+                    label={t('label.entity-name', {
+                      entity: t('label.first'),
+                    })}
+                    name="firstName"
+                    rules={[{ whitespace: true, required: true }]}>
+                    <Input
+                      autoFocus
+                      placeholder={t('label.enter-entity-name', {
+                        entity: t('label.first-lowercase'),
+                      })}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label={t('label.entity-name', {
+                      entity: t('label.last'),
+                    })}
+                    name="lastName"
+                    rules={[{ whitespace: true, required: true }]}>
+                    <Input
+                      placeholder={t('label.enter-entity', {
+                        entity: t('label.last-name-lowercase'),
+                      })}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label={t('label.email')}
+                    name="email"
+                    rules={[{ type: 'email', required: true }]}>
+                    <Input
+                      placeholder={t('label.enter-entity', {
+                        entity: t('label.email-lowercase'),
+                      })}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label={t('label.password')}
+                    name="password"
+                    rules={[
+                      {
+                        required: true,
                       },
-                    },
-                  ]}>
-                  <Input.Password
-                    autoComplete="off"
-                    placeholder={t('label.confirm-password')}
-                  />
-                </Form.Item>
+                      {
+                        pattern: passwordRegex,
+                        message: t('message.password-error-message'),
+                      },
+                    ]}>
+                    <Input.Password
+                      autoComplete="off"
+                      placeholder={t('label.enter-entity', {
+                        entity: t('label.password-lowercase'),
+                      })}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    label={t('label.password-type', {
+                      type: t('label.confirm'),
+                    })}
+                    name="confirmPassword"
+                    rules={[
+                      {
+                        validator: (_, value) => {
+                          if (isEmpty(password)) {
+                            return Promise.reject({
+                              message: t('label.please-password-type-first'),
+                            });
+                          }
+                          if (value !== password) {
+                            return Promise.reject({
+                              message: t('label.password-not-match'),
+                            });
+                          }
 
-                <Button className="w-full" htmlType="submit" type="primary">
-                  {t('label.create-entity', {
-                    entity: t('label.account'),
-                  })}
-                </Button>
+                          return Promise.resolve();
+                        },
+                      },
+                    ]}>
+                    <Input.Password
+                      autoComplete="off"
+                      placeholder={t('label.confirm-password')}
+                    />
+                  </Form.Item>
 
-                <Divider className="w-min-0  mt-8 mb-12 justify-center">
-                  <Typography.Text type="secondary">
-                    {t('label.or-lowercase')}
-                  </Typography.Text>
-                </Divider>
-
-                <div className="mt-4 d-flex flex-center">
-                  <Typography.Text className="mr-4">
-                    {t('message.already-a-user')}
-                  </Typography.Text>
-                  <Button
-                    ghost
-                    data-testid="login"
-                    type="link"
-                    onClick={handleLogin}>
-                    {t('label.login')}
+                  <Button className="w-full" htmlType="submit" type="primary">
+                    {t('label.create-entity', {
+                      entity: t('label.account'),
+                    })}
                   </Button>
-                </div>
-              </Form>
-            </div>
-          ) : null}
-        </div>
-      </Col>
 
-      <Col className="relative" span={14}>
-        <div className="absolute inset-0">
-          <img
-            alt="bg-image"
-            className="w-full h-full"
-            data-testid="bg-image"
-            src={loginBG}
-          />
-        </div>
+                  <Divider className="w-min-0  mt-8 mb-12 justify-center">
+                    <Typography.Text type="secondary">
+                      {t('label.or-lowercase')}
+                    </Typography.Text>
+                  </Divider>
 
-        <LoginCarousel />
-      </Col>
-    </Row>
+                  <div className="mt-4 d-flex flex-center">
+                    <Typography.Text className="mr-4">
+                      {t('message.already-a-user')}
+                    </Typography.Text>
+                    <Button
+                      ghost
+                      data-testid="login"
+                      type="link"
+                      onClick={handleLogin}>
+                      {t('label.login')}
+                    </Button>
+                  </div>
+                </Form>
+              </div>
+            ) : null}
+          </div>
+        </Col>
+
+        <Col className="relative" span={14}>
+          <div className="absolute inset-0">
+            <img
+              alt="bg-image"
+              className="w-full h-full"
+              data-testid="bg-image"
+              src={loginBG}
+            />
+          </div>
+
+          <LoginCarousel />
+        </Col>
+      </Row>
+    </>
   );
 };
 

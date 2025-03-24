@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, Row, Select, Space } from 'antd';
+import { Button, Col, Form, Row, Select, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -18,11 +18,7 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  INITIAL_PAGING_VALUE,
-  ROUTES,
-} from '../../../../constants/constants';
+import { INITIAL_PAGING_VALUE, ROUTES } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -46,7 +42,10 @@ import {
   TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getTestSuitePath } from '../../../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getTestSuitePath,
+} from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
@@ -115,6 +114,7 @@ export const TestSuites = () => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
+        width: 600,
         sorter: (a, b) => {
           if (a.basic) {
             // Sort for basic test suites
@@ -133,28 +133,34 @@ export const TestSuites = () => {
         },
         sortDirections: ['ascend', 'descend'],
         render: (name, record) => {
-          return record.basic ? (
-            <Link
-              data-testid={name}
-              to={{
-                pathname: getEntityDetailsPath(
-                  EntityType.TABLE,
-                  record.basicEntityReference?.fullyQualifiedName ?? '',
-                  EntityTabs.PROFILER
-                ),
-                search: QueryString.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
-              {record.basicEntityReference?.fullyQualifiedName ??
-                record.basicEntityReference?.name}
-            </Link>
-          ) : (
-            <Link
-              data-testid={name}
-              to={getTestSuitePath(record.fullyQualifiedName ?? record.name)}>
-              {getEntityName(record)}
-            </Link>
+          return (
+            <Typography.Paragraph className="m-0" style={{ maxWidth: 580 }}>
+              {record.basic ? (
+                <Link
+                  data-testid={name}
+                  to={{
+                    pathname: getEntityDetailsPath(
+                      EntityType.TABLE,
+                      record.basicEntityReference?.fullyQualifiedName ?? '',
+                      EntityTabs.PROFILER
+                    ),
+                    search: QueryString.stringify({
+                      activeTab: TableProfilerTab.DATA_QUALITY,
+                    }),
+                  }}>
+                  {record.basicEntityReference?.fullyQualifiedName ??
+                    record.basicEntityReference?.name}
+                </Link>
+              ) : (
+                <Link
+                  data-testid={name}
+                  to={getTestSuitePath(
+                    record.fullyQualifiedName ?? record.name
+                  )}>
+                  {getEntityName(record)}
+                </Link>
+              )}
+            </Typography.Paragraph>
           );
         },
       },
@@ -167,6 +173,7 @@ export const TestSuites = () => {
       {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
+        width: 200,
         key: 'success',
         render: (value: TestSuite['summary']) => {
           const percent =

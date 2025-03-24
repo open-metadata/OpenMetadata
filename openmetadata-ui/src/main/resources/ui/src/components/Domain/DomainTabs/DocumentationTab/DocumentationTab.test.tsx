@@ -35,6 +35,16 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<>ProfilePicture</>)
 );
 
+jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: MOCK_DOMAIN,
+    permissions: {
+      ViewAll: true,
+      EditAll: true,
+    },
+  }),
+}));
+
 describe('DocumentationTab', () => {
   it('should render the initial content', () => {
     const { getByTestId } = render(<DocumentationTab {...defaultProps} />, {

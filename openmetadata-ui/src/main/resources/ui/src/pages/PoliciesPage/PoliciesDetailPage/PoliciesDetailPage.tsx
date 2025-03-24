@@ -87,7 +87,6 @@ const PoliciesDetailPage = () => {
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isloadingOnSave, setIsloadingOnSave] = useState(false);
-  const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
   const [policyPermission, setPolicyPermission] =
@@ -169,8 +168,6 @@ const PoliciesDetailPage = () => {
       setPolicy({ ...policy, description: data.description });
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setEditDescription(false);
     }
   };
 
@@ -383,7 +380,10 @@ const PoliciesDetailPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.policy-plural')}>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.policy'),
+      })}>
       <div className="page-container" data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
@@ -443,13 +443,9 @@ const PoliciesDetailPage = () => {
                 hasEditAccess
                 className="m-y-md"
                 description={policy.description || ''}
-                entityFqn={policy.fullyQualifiedName}
                 entityName={policyName}
                 entityType={EntityType.POLICY}
-                isEdit={editDescription}
                 showCommentsIcon={false}
-                onCancel={() => setEditDescription(false)}
-                onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 

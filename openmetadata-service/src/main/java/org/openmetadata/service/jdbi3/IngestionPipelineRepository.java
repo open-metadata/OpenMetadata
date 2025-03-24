@@ -40,6 +40,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -153,17 +154,22 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
-    addRelationship(
-        ingestionPipeline.getService().getId(),
-        ingestionPipeline.getId(),
-        ingestionPipeline.getService().getType(),
-        entityType,
-        Relationship.HAS);
+    if (ingestionPipeline.getIngestionAgent() != null) {
+      addRelationship(
+          ingestionPipeline.getId(),
+          ingestionPipeline.getIngestionAgent().getId(),
+          entityType,
+          ingestionPipeline.getIngestionAgent().getType(),
+          Relationship.USES);
+    }
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      IngestionPipeline original, IngestionPipeline updated, Operation operation) {
+  public EntityRepository<IngestionPipeline>.EntityUpdater getUpdater(
+      IngestionPipeline original,
+      IngestionPipeline updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new IngestionPipelineUpdater(original, updated, operation);
   }
 
@@ -277,6 +283,19 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         String.valueOf(startTs),
         String.valueOf(endTs),
         allPipelineStatusList.size());
+  }
+
+  /* Get the status of the external application by converting the configuration so that it can be
+   * served like an App configuration */
+  public ResultList<PipelineStatus> listExternalAppStatus(
+      String ingestionPipelineFQN, Long startTs, Long endTs) {
+    return listPipelineStatus(ingestionPipelineFQN, startTs, endTs)
+        .map(
+            pipelineStatus ->
+                pipelineStatus.withConfig(
+                    Optional.ofNullable(pipelineStatus.getConfig().getOrDefault("appConfig", null))
+                        .map(JsonUtils::getMap)
+                        .orElse(null)));
   }
 
   public PipelineStatus getLatestPipelineStatus(IngestionPipeline ingestionPipeline) {

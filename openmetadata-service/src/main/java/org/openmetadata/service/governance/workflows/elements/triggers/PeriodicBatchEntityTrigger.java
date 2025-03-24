@@ -22,7 +22,7 @@ import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.TimerEventDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
-import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.FetchEntitiesImpl;
@@ -121,12 +121,12 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .build();
 
     IOParameter inputParameter = new IOParameter();
-    inputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
+    inputParameter.setSource(RELATED_ENTITY_VARIABLE);
     inputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE));
 
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
-    outputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
+    outputParameter.setTarget(EXCEPTION_VARIABLE);
 
     workflowTrigger.setInParameters(List.of(inputParameter));
     workflowTrigger.setOutParameters(List.of(outputParameter));
@@ -144,7 +144,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .build();
 
     FieldExtension searchFilterExpr =
-        new FieldExtensionBuilder()
+        new FieldExtensionBuilder(false)
             .fieldName("searchFilterExpr")
             .fieldValue(triggerDefinition.getConfig().getFilters())
             .build();

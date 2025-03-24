@@ -71,6 +71,8 @@ public class AppScheduler {
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
   public static final String APP_NAME = "appName";
+  public static String APP_CONFIG_KEY = "configOverride";
+
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
@@ -95,7 +97,7 @@ public class AppScheduler {
     // Add OMJob Listener
     this.scheduler
         .getListenerManager()
-        .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
+        .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
     ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
     threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
@@ -249,7 +251,7 @@ public class AppScheduler {
     throw new IllegalArgumentException("Invalid Trigger Info for the scheduled application.");
   }
 
-  public void triggerOnDemandApplication(App application) {
+  public void triggerOnDemandApplication(App application, Map<String, Object> config) {
     if (application.getFullyQualifiedName() == null) {
       throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
     }
@@ -273,22 +275,22 @@ public class AppScheduler {
       }
 
       AppRuntime context = getAppRuntime(application);
-      if (Boolean.TRUE.equals(context.getEnabled())) {
-        JobDetail newJobDetail =
-            jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
-        newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
-        newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
-        Trigger trigger =
-            TriggerBuilder.newTrigger()
-                .withIdentity(
-                    String.format("%s-%s", application.getName(), ON_DEMAND_JOB),
-                    APPS_TRIGGER_GROUP)
-                .startNow()
-                .build();
-        scheduler.scheduleJob(newJobDetail, trigger);
-      } else {
+      if (Boolean.FALSE.equals(context.getEnabled())) {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");
+        return;
       }
+      JobDetail newJobDetail =
+          jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
+      newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
+      newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
+      newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
+      Trigger trigger =
+          TriggerBuilder.newTrigger()
+              .withIdentity(
+                  String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP)
+              .startNow()
+              .build();
+      scheduler.scheduleJob(newJobDetail, trigger);
     } catch (ObjectAlreadyExistsException ex) {
       throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {

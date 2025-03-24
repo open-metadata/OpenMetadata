@@ -1,7 +1,7 @@
-# 1.6.3 Release 🎉
+# 1.6.6 Release 🎉
 
 {% note noteType="Tip" %}
-**Jan 29th, 2025**
+**Mar 14th, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,77 +10,48 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.3!
+Learn how to upgrade your OpenMetadata instance to 1.6.6!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.3-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.6-release).
 
-- Fix: Adds percona server for postgresql support.
-- Fix: Inherited Ownership for Data Products.
-- Fix: Favicon not being updated in the browser tab.
-- Fix: Fix Search Index for ER Model.
-- Fix: dbt ingestion picks up wrong service to patch metadata.
-- Fix: Wrong team count displayed on team tab.
-- Fix: Tracing highlighter in lineage after edge clicked.
-- Fix: Api should not called after time out in Test connection.
-- Fix: Get only non-deleted entities in export.
-- Fix: The permissions call made for search service.
-- Fix: Kafkaconnect validation errors.
-- Fix: DI Filter not getting applied.
-- Fix: Redash Get Dashboards flow.
-- Fix: Description not rendered in Glossary Modal while edit.
-- Fix: The persona JSON schema is named Team.
-- Fix: Redirection issue on IDP initiated calls.
-- Fix: Async export csv not happening in lineage.
-- Fix: Description renderer having tags in glossary,team and user import.
-- Fix: RichTextEditor output in case on no data save.
-- Fix: s3 storage parquet structureFormat ingestion.
-- Fix: Data Insights index mapping.
-- Fix: Edit description permission for domain owner.
-- Fix: Model dump dict key names.
-- Fix: Broken looker lineage.
-- Fix: Refresh call concurrency for multiple browser tabs.
-- Fix: Infinite loading for refresh attempted on app visit.
-- Fix: Duplicate table constraints.
-- Fix: Updated MSSQL queries causing arithmetic overflow error.
-- Fix: PowerBI tables, datamodel metadata missing.
-- Fix: Wrong dataset and project id in filter of system metric query.
-- Fix: Data Insight fix custom property filter.
-- Fix: Entity Hierarchy Schema.
-- Fix: Salesforce column description with toggle api.
-- Fix: Update glossary term table upon new term added.
-- Fix: Remove unwanted spacing around the list in block editor.
-- Fix: Postgres parse json schema.
-- Fix: Optimize multithreading for lineage.
-- Fix: Fetch Stored Procedures from account usage .
-- Fix: Add MaterializedView & DynamicTable for lineage computation.
-- Fix: MariaDB Lineage Dialect Issue.
-- Minor: Optimize Snowflake SP Query.
-- Minor: Hide description tooltip for tag edit mode.
-- Minor: BigQuery Improvement, Hive Partitioned Tables, Nonetype issue resolved
-- Minor: Typo for datetime attribute.
-- Minor: Get missing dataProducts and pipeline properties in /customProperties api.
-- Minor: Improve cron expression validations.
-- Minor: Change log localization improvement.
-- Minor: Async test case result deletion.
-- Minor: Retention period 'Cancel' international display issue.
-- Improvement: Logout user on unsuccessful refresh attempt.
-- Improvement: Support for Domain hierarchy listing.
-- Improvement: Avoid usage of CONCAT in WHERE clause.
-- Improvement: Glossary column width sizes for the resizable columns.
-- Improvement: Move Recreate Out of executors.
-- Improvement: Supported the task filter on landing page feed widget.
-- Improvement: Implement Data Quality Dashboards (Incident Manager + Data Quality).
-- Improvement: Added loading state, and manage error notification in TestSuite.
-- Improvement: Enhance Kafka SSL configuration support with consumerConfigSSL.
-- Improvement: Add prometheus counter for search and database.
-- Improvement: Retention Application : Delete change_events, activity threads, versions based on admin retention policies.
-- Fix: DQ Dashboard: update order of the pie chart. (Collate)
-- Fix: Lineage Propagation when Entity doesn't have a given field. (Collate)
-- Minor: Added limits configuration in telemetry payload. (Collate)
-- Improvement: Show displayName for custom dashboards. (Collate)
-- Improvement: Support rename for custom dashboard and charts. (Collate)
-- Improvement: Improve Onboarding Application. (Collate)
+- Improvements:- Added loggedInAPI to show more specific error messages instead of generic ones
+- Added support for \`/logout\` path to perform logout from API redirect
+- Added displayName field in the \`createCustomProperty\` schema
+- Improved search relevancy for plural/singular words and partial matches
+- Introduced "clear sample" option in entity config to support explicit null
+- Made domain a required field for Data Product creation
+- Enabled showdown rendering options`,
+- Added support for datatype=array without type consistency
+- Added result_maker check for query share URL in Looker
+- Fixes:- Fixed Snowflake ARRAY column ingestion issues
+- Fixed Sigma workbook ingestion
+- Fixed tomcat-jdbc dependency
+- Fixed schema URL construction
+- Fixed Redshift view logging for no schema binding
+- Fixed OpenMetadata Operations
+- Supported request schema field for OpenAPI lineage when response field is absent
+- Fixed tour page clicking issues
+- Fixed duplicate activity feed providers
+- Fixed search query for non-admin pages
+- Fixed other columns visibility when testSuite name is large
+- Fixed task description viewer for diff creation
+- Fixed inherited owner not updating in Data Product list
+- Fixed user update roles
+- Fixed table constraint error
+- Fixed manual constraints deletion
+- Fixed deletion of entities
+- Fixed entity relation live indexing
+- Fixed service creation error display
+- Fixed external app logs
+- Fixed incremental lineage processing when processedLineage is null
+- Improved memory handling in temp table lineage
+- Enhanced Column Name Scanner
+- Improved pipeline service client exception handling
+- Updated Tableau documentation in Connectors
+- Optimized pipeline service client initialization
+- Implemented Incremental Lineage Processing
+- Don't overwrite query to execute
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.2-release...1.6.3-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.5-release...1.6.6-release)

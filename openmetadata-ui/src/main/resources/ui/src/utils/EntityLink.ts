@@ -13,8 +13,11 @@
 import antlr4 from 'antlr4';
 import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
 import EntityLinkSplitListener from '../antlr/EntityLinkSplitListener';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { FqnPart } from '../enums/entity.enum';
 import EntityLinkLexer from '../generated/antlr/EntityLinkLexer';
 import EntityLinkParser from '../generated/antlr/EntityLinkParser';
+import { getPartialNameFromTableFQN } from './CommonUtils';
 import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 
 export default class EntityLink {
@@ -84,6 +87,21 @@ export default class EntityLink {
    */
   static getTableColumnName(entityLink: string) {
     return this.split(entityLink)[3];
+  }
+
+  /**
+   *
+   * @param string columnFqn
+   * @returns column name for table entity
+   */
+  static getTableColumnNameFromColumnFqn(columnFqn: string) {
+    const columnName = getPartialNameFromTableFQN(columnFqn, [
+      FqnPart.NestedColumn,
+    ]);
+
+    return columnName.includes(FQN_SEPARATOR_CHAR)
+      ? `"${columnName}"`
+      : columnName;
   }
 
   /**

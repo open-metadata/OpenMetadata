@@ -62,6 +62,42 @@
         "previousVersion": {
           "description": "When a change did not result in change, this could be same as the current version.",
           "$ref": "#/definitions/entityVersion"
+        },
+        "changeSummary": {
+          "$ref": "./changeSummaryMap.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "incrementalChangeDescription": {
+      "description": "Description of the change.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ChangeDescription",
+      "properties": {
+        "fieldsAdded": {
+          "description": "Names of fields added during the version changes.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldChange"
+          }
+        },
+        "fieldsUpdated": {
+          "description": "Fields modified during the version changes with old and new values.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldChange"
+          }
+        },
+        "fieldsDeleted": {
+          "description": "Fields deleted during the version changes with old value before deleted.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldChange"
+          }
+        },
+        "previousVersion": {
+          "description": "When a change did not result in change, this could be same as the current version.",
+          "$ref": "#/definitions/entityVersion"
         }
       },
       "additionalProperties": false

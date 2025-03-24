@@ -1,0 +1,58 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/data/queryCostRecord.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryCostRecord",
+    "description": "Query Cost Record",
+    "javaType": "org.openmetadata.schema.entity.data.QueryCostRecord",
+    "javaInterfaces": [
+        "org.openmetadata.schema.EntityTimeSeriesInterface"
+    ],
+    "type": "object",
+    "properties": {
+        "id": {
+            "description": "Unique identifier of this failure instance",
+            "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "timestamp": {
+            "description": "Timestamp on which the failure was created.",
+            "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "jsonSchema": {
+            "description": "Json schema of the query",
+            "type": "string"
+        },
+        "queryReference": {
+            "description": "Query entity reference",
+            "$ref": "../../type/entityReference.json"
+        },
+        "cost": {
+            "description": "Avg query cost per execution",
+            "type": "number"
+        },
+        "updatedBy": {
+            "description": "User who updated the query cost record.",
+            "$ref": "../../type/entityReference.json",
+            "default": null
+        },
+        "updatedAt": {
+            "description": "Time when query cost record was updated.",
+            "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "count": {
+            "description": "Number of times the query was executed",
+            "type": "number"
+        },
+        "totalDuration": {
+            "description": "Total duration of the query",
+            "type": "number",
+            "default": 0
+        }
+    },
+    "required": [
+        "timestamp",
+        "queryReference",
+        "cost",
+        "count"
+    ],
+    "additionalProperties": false
+}

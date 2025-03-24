@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
@@ -42,8 +43,11 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -55,6 +59,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -433,13 +438,26 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         nonEmptyTestSuites.getData().stream().anyMatch(ts -> !ts.getTests().isEmpty()));
     // 5. List test suite with a query
     queryParams.clear();
-    queryParams.put("q", logicalTestSuite.getFullyQualifiedName());
+    queryParams.put(
+        "queryString",
+        "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id%22%3A%20%22"
+            + logicalTestSuite.getId()
+            + "%22%7D%7D%7D");
     ResultList<TestSuite> queryTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     Assertions.assertTrue(
         queryTestSuites.getData().stream()
             .allMatch(
                 ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
+
+    queryParams.clear();
+    queryParams.put("q", logicalTestSuite.getFullyQualifiedName());
+    queryTestSuites = listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    Assertions.assertTrue(
+        queryTestSuites.getData().stream()
+            .allMatch(
+                ts -> ts.getFullyQualifiedName().equals(logicalTestSuite.getFullyQualifiedName())));
+
     // 6. List test suites with a nested sort
     queryParams.clear();
     queryParams.put("fields", "tests");
@@ -727,6 +745,80 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     TestSuite actualExecutableTestSuite =
         getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
     assertEquals(5, actualExecutableTestSuite.getTests().size());
+  }
+
+  @Test
+  void delete_logicalSuiteWithPipeline(TestInfo test) throws IOException {
+    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
+    CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
+    TestSuite executableTestSuite =
+        createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+    List<EntityReference> testCases1 = new ArrayList<>();
+
+    // We'll create tests cases for testSuite1
+    for (int i = 0; i < 5; i++) {
+      CreateTestCase createTestCase =
+          testCaseResourceTest
+              .createRequest(String.format("test_testSuite_2_%s_", test.getDisplayName()) + i)
+              .withTestSuite(executableTestSuite.getFullyQualifiedName());
+      TestCase testCase =
+          testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+      testCases1.add(testCase.getEntityReference());
+    }
+
+    // We'll create a logical test suite and associate the test cases to it
+    CreateTestSuite createTestSuite = createRequest(test);
+    TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+    addTestCasesToLogicalTestSuite(
+        testSuite, testCases1.stream().map(EntityReference::getId).collect(Collectors.toList()));
+    TestSuite logicalTestSuite = getEntity(testSuite.getId(), "*", ADMIN_AUTH_HEADERS);
+
+    // Add ingestion pipeline to the database service
+    IngestionPipelineResourceTest ingestionPipelineResourceTest =
+        new IngestionPipelineResourceTest();
+    CreateIngestionPipeline createIngestionPipeline =
+        ingestionPipelineResourceTest
+            .createRequest(test)
+            .withService(logicalTestSuite.getEntityReference());
+
+    TestSuitePipeline testSuitePipeline = new TestSuitePipeline();
+
+    SourceConfig sourceConfig = new SourceConfig().withConfig(testSuitePipeline);
+    createIngestionPipeline.withSourceConfig(sourceConfig);
+    IngestionPipeline ingestionPipeline =
+        ingestionPipelineResourceTest.createEntity(createIngestionPipeline, ADMIN_AUTH_HEADERS);
+
+    // We can GET the Ingestion Pipeline now
+    IngestionPipeline actualIngestionPipeline =
+        ingestionPipelineResourceTest.getEntity(ingestionPipeline.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(actualIngestionPipeline);
+
+    // After deleting the test suite, we can't GET the Ingestion Pipeline
+    deleteEntity(logicalTestSuite.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    assertResponse(
+        () ->
+            ingestionPipelineResourceTest.getEntity(ingestionPipeline.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        String.format(
+            "ingestionPipeline instance for %s not found", actualIngestionPipeline.getId()));
+
+    // Test Cases are still there
+    TestCase testCaseInLogical =
+        testCaseResourceTest.getEntity(testCases1.get(0).getId(), "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(testCaseInLogical);
   }
 
   @Test

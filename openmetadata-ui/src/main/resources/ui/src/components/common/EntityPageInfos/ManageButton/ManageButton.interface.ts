@@ -29,6 +29,7 @@ export interface ManageButtonProps {
   softDeleteMessagePostFix?: string;
   hardDeleteMessagePostFix?: string;
   canDelete?: boolean;
+  isAsyncDelete?: boolean;
   extraDropdownContent?: ItemType[];
   onAnnouncementClick?: () => void;
   onRestoreEntity?: () => Promise<void>;

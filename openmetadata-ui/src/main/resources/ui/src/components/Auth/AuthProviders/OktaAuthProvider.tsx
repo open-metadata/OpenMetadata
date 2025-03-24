@@ -34,7 +34,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
 }: Props) => {
   const { authConfig } = useApplicationStore();
   const { clientId, issuer, redirectUri, scopes, pkce } =
-    authConfig as OktaAuthOptions;
+    authConfig as unknown as OktaAuthOptions;
 
   const oktaAuth = useMemo(
     () =>
@@ -47,6 +47,10 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         tokenManager: {
           autoRenew: false,
         },
+        cookies: {
+          secure: true,
+          sameSite: 'none',
+        },
       }),
     [clientId, issuer, redirectUri, scopes, pkce]
   );
@@ -55,43 +59,51 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
     await oktaAuth.signInWithRedirect();
   };
 
-  const restoreOriginalUri = useCallback(async (_oktaAuth: OktaAuth) => {
-    const idToken = _oktaAuth.getIdToken() ?? '';
-    const scopes =
-      _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-    setOidcToken(idToken);
-    _oktaAuth
-      .getUser()
-      .then((info) => {
-        const user = {
-          id_token: idToken,
-          scope: scopes,
-          profile: {
-            email: info.email ?? '',
-            name: info.name ?? '',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            picture: (info as any).imageUrl ?? '',
-            locale: info.locale ?? '',
-            sub: info.sub,
-          },
-        };
-        onLoginSuccess(user);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error(err);
-      });
-  }, []);
-
   const customAuthHandler = async () => {
     const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();
-    if (!previousAuthState || !previousAuthState.isAuthenticated) {
+    if (!previousAuthState?.isAuthenticated) {
+      // Clear storage before triggering login
+      oktaAuth.tokenManager.clear();
+      await oktaAuth.signOut();
       // App initialization stage
       await triggerLogin();
     } else {
       // Ask the user to trigger the login process during token autoRenew process
     }
   };
+
+  const restoreOriginalUri = useCallback(
+    async (_oktaAuth: OktaAuth) => {
+      const idToken = _oktaAuth.getIdToken() ?? '';
+      const scopes =
+        _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
+      setOidcToken(idToken);
+      _oktaAuth
+        .getUser()
+        .then((info) => {
+          const user = {
+            id_token: idToken,
+            scope: scopes,
+            profile: {
+              email: info.email ?? '',
+              name: info.name ?? '',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              picture: (info as any).imageUrl ?? '',
+              locale: info.locale ?? '',
+              sub: info.sub,
+            },
+          };
+          onLoginSuccess(user);
+        })
+        .catch(async (err) => {
+          // eslint-disable-next-line no-console
+          console.error(err);
+          // Redirect to login on error
+          await customAuthHandler();
+        });
+    },
+    [onLoginSuccess]
+  );
 
   return (
     <Security

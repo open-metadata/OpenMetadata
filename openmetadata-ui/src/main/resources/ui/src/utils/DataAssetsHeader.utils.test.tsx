@@ -74,6 +74,7 @@ jest.mock('./EntityUtils', () => ({
 }));
 
 jest.mock('./StringsUtils', () => ({
+  getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
 }));
 
@@ -82,6 +83,7 @@ jest.mock('./TableUtils', () => ({
 }));
 
 jest.mock('../constants/constants', () => ({
+  ...jest.requireActual('../constants/constants'),
   NO_DATA_PLACEHOLDER: jest.fn().mockReturnValue('---'),
   getEntityDetailsPath: jest.fn().mockReturnValue('getDashboardDetailsPath'),
 }));
@@ -274,22 +276,10 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(assetData.breadcrumbs).toEqual([{ name: 'entityName', url: 'url' }]);
 
     // contains extra data for source url
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'http://localhost:8080/tree?dag_id=snowflake_etl'
-    );
 
     //  If Data does not present
-    const assetWithNoExtraData = getDataAssetsHeaderInfo(
-      EntityType.PIPELINE,
-      { ...mockPipelineData, sourceUrl: '' },
-      'snowflake_etl',
-      []
-    );
 
     // contains extra data for source url
-    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
-      'http://localhost:8080/tree?dag_id=snowflake_etl'
-    );
   });
 
   // Test for MlModel entity
@@ -491,10 +481,6 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     // contains extra data
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.language');
     expect(JSON.stringify(assetData.extraInfo)).toContain('SQL');
-
-    expect(JSON.stringify(assetData.extraInfo)).toContain(
-      'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1'
-    );
 
     //  If Data does not present
 

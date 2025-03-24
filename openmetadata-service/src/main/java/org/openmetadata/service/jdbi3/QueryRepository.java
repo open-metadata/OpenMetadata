@@ -20,6 +20,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -116,7 +117,8 @@ public class QueryRepository extends EntityRepository<Query> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Query original, Query updated, Operation operation) {
+  public EntityRepository<Query>.EntityUpdater getUpdater(
+      Query original, Query updated, Operation operation, ChangeSource changeSource) {
     return new QueryUpdater(original, updated, operation);
   }
 
@@ -251,7 +253,7 @@ public class QueryRepository extends EntityRepository<Query> {
           "users",
           USER,
           original.getUsers(),
-          updated.getUsers(),
+          updated.getUsers() == null ? new ArrayList<>() : updated.getUsers(),
           Relationship.USES,
           Entity.QUERY,
           original.getId());

@@ -22,6 +22,7 @@ import {
   notification,
   Row,
   Skeleton,
+  Space,
   Tooltip,
   Typography,
 } from 'antd';
@@ -39,9 +40,9 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
+import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
@@ -91,6 +92,7 @@ import {
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -439,17 +441,20 @@ const AssetsTabs = forwardRef(
         !permissions.Create
       ) {
         return (
-          <ErrorPlaceHolder>
+          <ErrorPlaceHolderNew
+            icon={<AddPlaceHolderIcon height={140} width={140} />}>
             {isObject(noDataPlaceholder) && (
-              <Typography.Paragraph>
-                {noDataPlaceholder.message}
-              </Typography.Paragraph>
+              <div className="gap-4">
+                <Typography.Paragraph>
+                  {noDataPlaceholder.message}
+                </Typography.Paragraph>
+              </div>
             )}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolderNew>
         );
       } else {
         return (
-          <ErrorPlaceHolder
+          <ErrorPlaceHolderNew
             icon={<AddPlaceHolderIcon className="h-32 w-32" />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph>
@@ -496,7 +501,7 @@ const AssetsTabs = forwardRef(
                 </Button>
               </Tooltip>
             )}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolderNew>
         );
       }
     }, [
@@ -539,7 +544,7 @@ const AssetsTabs = forwardRef(
     const assetListing = useMemo(
       () =>
         data.length ? (
-          <div className="assets-data-container p-t-sm">
+          <div className="assets-data-container">
             {data.map(({ _source, _id = '' }) => (
               <ExploreSearchCard
                 showEntityIcon
@@ -642,8 +647,10 @@ const AssetsTabs = forwardRef(
 
     const assetsHeader = useMemo(() => {
       return (
-        <div className="w-full d-flex justify-between items-center p-l-sm">
-          {activeEntity && permissions.Create && data.length > 0 && (
+        activeEntity &&
+        permissions.Create &&
+        data.length > 0 && (
+          <div className="w-full d-flex justify-between items-center">
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -651,8 +658,8 @@ const AssetsTabs = forwardRef(
                 field: t('label.all'),
               })}
             </Checkbox>
-          )}
-        </div>
+          </div>
+        )
       );
     }, [
       activeFilter,
@@ -669,10 +676,10 @@ const AssetsTabs = forwardRef(
 
     const layout = useMemo(() => {
       return (
-        <>
+        <Col span={24}>
           {assetsHeader}
           {assetListing}
-        </>
+        </Col>
       );
     }, [assetsHeader, assetListing, selectedCard]);
 
@@ -753,12 +760,19 @@ const AssetsTabs = forwardRef(
       refreshAssets() {
         // Reset page to one and trigger fetchAssets
         handlePageChange(1);
+
+        const newFilter = getCombinedQueryFilterObject(
+          queryFilter as unknown as QueryFilterInterface,
+          quickFilterQuery as QueryFilterInterface
+        );
+
         // If current page is already 1 it won't trigger fetchAset from useEffect
         // Hence need to manually trigger it for this case
         currentPage === 1 &&
           fetchAssets({
             index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
             page: 1,
+            queryFilter: newFilter,
           });
       },
       closeSummaryPanel() {
@@ -781,23 +795,22 @@ const AssetsTabs = forwardRef(
     return (
       <>
         <div
-          className={classNames('assets-tab-container p-md relative')}
+          className={classNames(
+            'assets-tab-container relative bg-white p-box border-radius-card h-full'
+          )}
           data-testid="table-container"
           id="asset-tab">
-          {assetCount > 0 && (
-            <Row className="filters-row gap-2 p-l-lg">
-              <Col span={18}>
-                <div className="d-flex items-center gap-3">
+          <Row className="filters-row gap-2 " gutter={[0, 20]}>
+            {assetCount > 0 && (
+              <>
+                <Col className="d-flex items-center gap-3" span={24}>
                   <Dropdown
                     menu={{
                       items: filterMenu,
                       selectedKeys: selectedFilter,
                     }}
                     trigger={['click']}>
-                    <Button
-                      className="flex-center"
-                      icon={<FilterIcon height={16} />}
-                    />
+                    <TaskFilterIcon className="cursor-pointer" />
                   </Dropdown>
                   <div className="flex-1">
                     <Searchbar
@@ -810,43 +823,43 @@ const AssetsTabs = forwardRef(
                       onSearch={setSearchValue}
                     />
                   </div>
-                </div>
-              </Col>
-              <Col className="searched-data-container m-b-xs" span={24}>
-                <div className="d-flex justify-between">
-                  <ExploreQuickFilters
-                    aggregations={aggregations}
-                    fields={selectedQuickFilters}
-                    index={SearchIndex.ALL}
-                    showDeleted={false}
-                    onFieldValueSelect={handleQuickFiltersValueSelect}
-                  />
-                  {quickFilterQuery && (
-                    <Typography.Text
-                      className="text-primary self-center cursor-pointer"
-                      onClick={clearFilters}>
-                      {t('label.clear-entity', {
-                        entity: '',
-                      })}
-                    </Typography.Text>
-                  )}
-                </div>
-              </Col>
-            </Row>
-          )}
-
-          {isLoading ? (
-            <Row className="p-lg" gutter={[0, 16]}>
+                </Col>
+                {selectedFilter.length > 0 && (
+                  <Col className="searched-data-container" span={24}>
+                    <div className="d-flex justify-between">
+                      <ExploreQuickFilters
+                        aggregations={aggregations}
+                        fields={selectedQuickFilters}
+                        index={SearchIndex.ALL}
+                        showDeleted={false}
+                        onFieldValueSelect={handleQuickFiltersValueSelect}
+                      />
+                      {quickFilterQuery && (
+                        <Typography.Text
+                          className="text-primary self-center cursor-pointer"
+                          onClick={clearFilters}>
+                          {t('label.clear-entity', {
+                            entity: '',
+                          })}
+                        </Typography.Text>
+                      )}
+                    </div>
+                  </Col>
+                )}
+              </>
+            )}
+            {isLoading ? (
               <Col span={24}>
-                <Skeleton />
+                <Space direction="vertical" size={16}>
+                  <Skeleton />
+                  <Skeleton />
+                  <Skeleton />
+                </Space>
               </Col>
-              <Col span={24}>
-                <Skeleton />
-              </Col>
-            </Row>
-          ) : (
-            layout
-          )}
+            ) : (
+              layout
+            )}
+          </Row>
 
           <ConfirmationModal
             bodyText={t('message.are-you-sure-action-property', {
@@ -866,7 +879,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && (
+        {!isLoading && permissions?.EditAll && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

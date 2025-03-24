@@ -33,10 +33,10 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchAggregation;
-import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -367,7 +367,8 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       int limit,
       int offset,
       SearchSortFilter searchSortFilter,
-      String q)
+      String q,
+      String queryString)
       throws IOException {
     List<T> entityList = new ArrayList<>();
     long total;
@@ -375,9 +376,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     if (limit > 0) {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
@@ -387,9 +388,9 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       }
       return new ResultList<>(entityList, offset, limit, (int) total);
     } else {
-      SearchClient.SearchResultListMapper results =
+      SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, (int) total);
     }
@@ -443,7 +444,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     SearchSortFilter searchSortFilter = new SearchSortFilter("timestamp", "desc", null, null);
-    SearchClient.SearchResultListMapper results =
+    SearchResultListMapper results =
         searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
       T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);

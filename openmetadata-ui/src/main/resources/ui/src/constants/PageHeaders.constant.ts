@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import brandClassBase from '../utils/BrandData/BrandClassBase';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const PAGE_HEADERS = {
@@ -148,6 +149,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.stored-procedure-plural'),
     }),
   },
+  DOMAIN_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.domain-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.domain-plural'),
+    }),
+  },
   SEARCH_INDEX_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.search-index-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
@@ -192,13 +199,19 @@ export const PAGE_HEADERS = {
   },
   SETTING: {
     header: i18n.t('label.setting-plural'),
-    subHeader: i18n.t('message.page-sub-header-for-setting'),
+    subHeader: i18n.t('message.page-sub-header-for-setting', {
+      brandName: brandClassBase.getPageTitle(),
+    }),
   },
   LOGIN_CONFIGURATION: {
     header: i18n.t('label.login'),
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
   SEARCH_RBAC: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search-setting'),
+  },
+  SEARCH_SETTINGS: {
     header: i18n.t('label.search'),
     subHeader: i18n.t('message.page-sub-header-for-search-setting'),
   },
@@ -242,5 +255,9 @@ export const PAGE_HEADERS = {
     subHeader: i18n.t('message.define-custom-property-for-entity', {
       entity: i18n.t('label.metric-plural'),
     }),
+  },
+  PLATFORM_LINEAGE: {
+    header: i18n.t('label.lineage'),
+    subHeader: i18n.t('message.page-sub-header-for-platform-lineage'),
   },
 };
