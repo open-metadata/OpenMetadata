@@ -80,6 +80,9 @@ public interface NodeInterface {
     runtimeExceptionBoundaryEvent.addEventDefinition(runtimeExceptionDefinition);
 
     runtimeExceptionBoundaryEvent.setAttachedToRef(activity);
+    for (FlowableListener listener : getWorkflowInstanceStageListeners(List.of("end"))) {
+      runtimeExceptionBoundaryEvent.getExecutionListeners().add(listener);
+    }
     return runtimeExceptionBoundaryEvent;
   }
 }

@@ -12,6 +12,10 @@ ADD COLUMN status VARCHAR(20)
 GENERATED ALWAYS AS (json ->> 'status') STORED;
 
 ALTER TABLE workflow_instance_time_series
+ADD COLUMN exceptionStacktrace TEXT
+GENERATED ALWAYS AS (json ->> 'exception') STORED;
+
+ALTER TABLE workflow_instance_time_series
 ADD COLUMN entityLink VARCHAR(255) GENERATED ALWAYS AS
 ((json -> 'variables' ->> 'global_relatedEntity')) STORED;
 
@@ -19,6 +23,10 @@ ADD COLUMN entityLink VARCHAR(255) GENERATED ALWAYS AS
 ALTER TABLE workflow_instance_state_time_series
 ADD COLUMN status VARCHAR(20)
 GENERATED ALWAYS AS (json ->> 'status') STORED;
+
+ALTER TABLE workflow_instance_state_time_series
+ADD COLUMN exceptionStacktrace TEXT
+GENERATED ALWAYS AS (json ->> 'exception') STORED;
 
 -- Query Cost History Time Series
 CREATE TABLE query_cost_time_series (

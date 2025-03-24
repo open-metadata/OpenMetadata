@@ -1,6 +1,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.Map;
 import java.util.Optional;
@@ -53,8 +55,13 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     workflowInstance.setEndedAt(endedAt);
     workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.FINISHED);
 
-    if (Optional.ofNullable(variables.getOrDefault(EXCEPTION_VARIABLE, null)).isPresent()) {
-      workflowInstance.setException(true);
+    Optional<String> oException =
+        Optional.ofNullable(
+            (String)
+                variables.getOrDefault(
+                    getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE), null));
+    if (oException.isPresent()) {
+      workflowInstance.setException(oException.get());
       workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.EXCEPTION);
     }
 
