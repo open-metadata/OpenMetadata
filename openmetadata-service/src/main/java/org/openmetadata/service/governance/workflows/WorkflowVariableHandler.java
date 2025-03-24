@@ -56,7 +56,7 @@ public class WorkflowVariableHandler {
   private String getNodeNamespace() {
     if (varScope instanceof DelegateExecution) {
       return Optional.ofNullable(((DelegateExecution) varScope).getParent().getCurrentActivityId())
-          .orElseGet(() -> ((DelegateExecution) varScope).getCurrentActivityId());
+          .orElseGet(() -> ((DelegateExecution) varScope).getCurrentActivityId().split("\\.")[0]);
     } else if (varScope instanceof DelegateTask) {
       return WorkflowHandler.getInstance()
           .getParentActivityId(((DelegateTask) varScope).getExecutionId());
