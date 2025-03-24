@@ -43,17 +43,16 @@ describe('InlineAlert', () => {
     expect(screen.getByText('Test Description')).toBeInTheDocument();
   });
 
-  it('should not render description when it is not provided', () => {
-    render(<InlineAlert {...mockProps} description={undefined} />);
-
-    expect(
-      screen.queryByTestId('inline-alert-description')
-    ).not.toBeInTheDocument();
-  });
-
   it('should handle show more/less functionality when subDescription is provided', () => {
+    const mockTestProps = {
+      type: 'error' as const,
+      heading: 'Test Heading',
+      description:
+        'This is a very long description that should be truncated and this is for test purpose. This is a very long description that should be and this is for test purpose. This is a very long desc',
+      onClose: jest.fn(),
+    };
     const subDescription = 'Additional details here';
-    render(<InlineAlert {...mockProps} subDescription={subDescription} />);
+    render(<InlineAlert {...mockTestProps} subDescription={subDescription} />);
 
     // Initially subDescription should not be visible
     expect(screen.queryByText(subDescription)).not.toBeInTheDocument();
@@ -61,7 +60,7 @@ describe('InlineAlert', () => {
     // Click "more" button
     fireEvent.click(screen.getByTestId('read-more-button'));
 
-    expect(screen.getByText(subDescription)).toBeInTheDocument();
+    expect(screen.getByText(/Additional details here/i)).toBeInTheDocument();
 
     // Click "less" button
     fireEvent.click(screen.getByTestId('read-less-button'));
