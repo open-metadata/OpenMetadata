@@ -76,7 +76,7 @@
     "antd": "4.24.0",
     "antlr4": "4.9.2",
     "autoprefixer": "^10.0.0",
-    "axios": "1.8.2",
+    "axios": "1.8.3",
     "classnames": "^2.3.1",
     "codemirror": "^5.65.16",
     "cookie-storage": "^6.1.0",
