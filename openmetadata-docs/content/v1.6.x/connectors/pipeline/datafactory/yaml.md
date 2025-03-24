@@ -68,56 +68,7 @@ This is a sample config for Data Factory:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
-
-**clientId**: To get the Client ID (also known as application ID), follow these steps:
-
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
-2. Search for `App registrations` and select the `App registrations link`.
-3. Select the `Azure AD` app you're using for this connection.
-4. From the Overview section, copy the `Application (client) ID`.
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=2 %}
-
-**clientSecret**: To get the client secret, follow these steps:
-
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
-2. Search for `App registrations` and select the `App registrations link`.
-3. Select the `Azure AD` app you're using for this connection.
-4. Under `Manage`, select `Certificates & secrets`.
-5. Under `Client secrets`, select `New client secret`.
-6. In the `Add a client secret` pop-up window, provide a description for your application secret. Choose when the application should expire, and select `Add`.
-7. From the `Client secrets` section, copy the string in the `Value` column of the newly created application secret.
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=3 %}
-
-**tenantId**: To get the tenant ID, follow these steps:
-
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
-2. Search for `App registrations` and select the `App registrations link`.
-3. Select the `Azure AD` app you're using for Power BI.
-4. From the `Overview` section, copy the `Directory (tenant) ID`.
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=4 %}
-
-**accountName**: Here are the step-by-step instructions for finding the account name for an Azure Data Lake Storage account:
-
-1. Sign in to the Azure portal and navigate to the `Storage accounts` page.
-2. Find the Data Lake Storage account you want to access and click on its name.
-3. In the account overview page, locate the `Account name` field. This is the unique identifier for the Data Lake Storage account.
-4. You can use this account name to access and manage the resources associated with the account, such as creating and managing containers and directories.
-
-{% /codeInfo %}
-
+{% partial file="/v1.6/connectors/yaml/common/azure-config-def.md" /%}
 
 {% codeInfo srNumber=5 %}
 
@@ -167,18 +118,9 @@ source:
       type: DataFactory
       configSource: 
 ```
-```yaml {% srNumber=1 %}
-        clientId: client_id
-```
-```yaml {% srNumber=2 %}
-        clientSecret: client_secret
-```
-```yaml {% srNumber=3 %}
-        tenantId: tenant_id
-```
-```yaml {% srNumber=4 %}
-        accountName: account_name
-```
+
+{% partial file="/v1.6/connectors/yaml/common/azure-config.md" /%}
+
 ```yaml {% srNumber=5 %}
       subscription_id: subscription_id
 ```
