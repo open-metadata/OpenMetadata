@@ -144,7 +144,7 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     { input: 60000, expected: '1m' },
     { input: 3600000, expected: '1h' },
     { input: 7265000, expected: '2h 1m 5s' },
-    { input: 59999, expected: '59s' },
+    { input: 59999, expected: '59s 999ms' },
     { input: 61000, expected: '1m 1s' },
     { input: 3661000, expected: '1h 1m 1s' },
     { input: 86400000, expected: '1d' },

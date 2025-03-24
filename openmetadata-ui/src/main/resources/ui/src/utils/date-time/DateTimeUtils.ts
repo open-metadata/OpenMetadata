@@ -247,7 +247,7 @@ export const convertMillisecondsToHumanReadableFormat = (
   length?: number
 ): string => {
   if (ms <= 0) {
-    return '0ms';
+    return '0s';
   }
 
   const duration = Duration.fromMillis(ms);
