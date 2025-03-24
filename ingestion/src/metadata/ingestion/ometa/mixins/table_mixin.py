@@ -81,7 +81,7 @@ class OMetaTableMixin:
                             try:
                                 row[
                                     col_idx
-                                ] = f"[base64]{base64.b64encode(value).decode('ascii')}"
+                                ] = f"[base64]{base64.b64encode(value).decode('ascii', errors='ignore')}"
                             except Exception as _:
                                 row[col_idx] = f"[binary]{value}"
 
