@@ -12,6 +12,7 @@
  */
 import { TableProps } from 'antd/lib/table';
 import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
+import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
 
 export interface TableComponentProps<T> extends TableProps<T> {
   resizableColumns?: boolean;
@@ -22,11 +23,8 @@ export interface TableComponentProps<T> extends TableProps<T> {
   defaultVisibleColumns?: string[];
   /** Columns that will be statically visible in the Table and will not be Filtered */
   staticVisibleColumns?: string[];
-  searchProps?: {
-    onSearch?: (value: string) => void;
+  searchProps?: SearchBarProps & {
     onClear?: () => void;
-    typingInterval?: number;
-    placeholder?: string;
     value?: string;
     searchDebounceTime?: number;
   };

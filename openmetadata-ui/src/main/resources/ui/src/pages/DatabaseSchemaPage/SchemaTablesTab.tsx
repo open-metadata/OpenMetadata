@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -238,58 +238,54 @@ function SchemaTablesTab({
   }, [databaseSchemaDetails.deleted]);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <TableAntd
-          bordered
-          columns={tableColumn}
-          customPaginationProps={{
-            showPagination,
-            currentPage,
-            isLoading: tableDataLoading,
-            pageSize,
-            paging,
-            pagingHandler: tablePaginationHandler,
-            onShowSizeChange: handlePageSizeChange,
-          }}
-          data-testid="databaseSchema-tables"
-          dataSource={tableData}
-          extraTableFilters={
-            !isVersionView && (
-              <>
-                <span>
-                  <Switch
-                    checked={tableFilters.showDeletedTables}
-                    data-testid="show-deleted"
-                    onClick={handleShowDeletedTables}
-                  />
-                  <Typography.Text className="m-l-xs">
-                    {t('label.deleted')}
-                  </Typography.Text>
-                </span>
-
-                {getBulkEditButton(
-                  permissions.table.EditAll && !databaseSchemaDetails.deleted,
-                  handleEditTable
-                )}
-              </>
-            )
-          }
-          loading={tableDataLoading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                className="mt-0-important"
-                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+    <TableAntd
+      bordered
+      columns={tableColumn}
+      customPaginationProps={{
+        showPagination,
+        currentPage,
+        isLoading: tableDataLoading,
+        pageSize,
+        paging,
+        pagingHandler: tablePaginationHandler,
+        onShowSizeChange: handlePageSizeChange,
+      }}
+      data-testid="databaseSchema-tables"
+      dataSource={tableData}
+      extraTableFilters={
+        !isVersionView && (
+          <>
+            <span>
+              <Switch
+                checked={tableFilters.showDeletedTables}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedTables}
               />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-    </Row>
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>
+            </span>
+
+            {getBulkEditButton(
+              permissions.table.EditAll && !databaseSchemaDetails.deleted,
+              handleEditTable
+            )}
+          </>
+        )
+      }
+      loading={tableDataLoading}
+      locale={{
+        emptyText: (
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+          />
+        ),
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+    />
   );
 }
 

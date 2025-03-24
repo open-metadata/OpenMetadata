@@ -22,7 +22,7 @@ import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
 import './search-bar.less';
 
-type Props = {
+export type SearchBarProps = {
   inputClassName?: string;
   onSearch: (text: string) => void;
   searchValue?: string;
@@ -53,7 +53,7 @@ const Searchbar = ({
   searchBarDataTestId,
   inputProps,
   urlSearchKey,
-}: Props) => {
+}: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState('');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);

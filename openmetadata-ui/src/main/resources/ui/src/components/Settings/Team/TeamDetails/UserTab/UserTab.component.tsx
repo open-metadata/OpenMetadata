@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Modal, Row, Space, Tooltip } from 'antd';
+import { Button, Col, Modal, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
@@ -60,7 +60,6 @@ import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlace
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../../common/Table/Table';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -371,21 +370,25 @@ export const UserTab = ({
   }
 
   return (
-    <Row className="p-y-md" gutter={[0, 16]}>
-      <Col span={24}>
-        <Row justify="space-between">
-          <Col span={8}>
-            <Searchbar
-              removeMargin
-              placeholder={t('label.search-for-type', {
-                type: t('label.user-lowercase'),
-              })}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleUsersSearchAction}
-            />
-          </Col>
-          {!currentTeam.deleted && isGroupType && (
+    <div className="p-y-md">
+      <Table
+        bordered
+        className="teams-list-table"
+        columns={columns}
+        customPaginationProps={{
+          currentPage,
+          isLoading,
+          showPagination,
+          isNumberBased: Boolean(searchText),
+          pageSize,
+          paging,
+          pagingHandler: userPagingHandler,
+          onShowSizeChange: handlePageSizeChange,
+        }}
+        dataSource={sortedUser}
+        extraTableFilters={
+          !currentTeam.deleted &&
+          isGroupType && (
             <Col>
               <Space>
                 {users.length > 0 && editUserPermission && (
@@ -407,34 +410,24 @@ export const UserTab = ({
                 />
               </Space>
             </Col>
-          )}
-        </Row>
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          className="teams-list-table"
-          columns={columns}
-          customPaginationProps={{
-            currentPage,
-            isLoading,
-            showPagination,
-            isNumberBased: Boolean(searchText),
-            pageSize,
-            paging,
-            pagingHandler: userPagingHandler,
-            onShowSizeChange: handlePageSizeChange,
-          }}
-          dataSource={sortedUser}
-          loading={isLoading}
-          locale={{
-            emptyText: <FilterTablePlaceHolder />,
-          }}
-          pagination={false}
-          rowKey="name"
-          size="small"
-        />
-      </Col>
+          )
+        }
+        loading={isLoading}
+        locale={{
+          emptyText: <FilterTablePlaceHolder />,
+        }}
+        pagination={false}
+        rowKey="name"
+        searchProps={{
+          placeholder: t('label.search-for-type', {
+            type: t('label.user-lowercase'),
+          }),
+          value: searchText,
+          typingInterval: 500,
+          onSearch: handleUsersSearchAction,
+        }}
+        size="small"
+      />
       <Modal
         cancelText={t('label.cancel')}
         data-testid="confirmation-modal"
@@ -449,6 +442,6 @@ export const UserTab = ({
           }),
         })}
       </Modal>
-    </Row>
+    </div>
   );
 };

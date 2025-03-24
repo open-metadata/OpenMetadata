@@ -23,7 +23,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import Table from '../../components/common/Table/Table';
@@ -267,6 +266,18 @@ function ServiceMainTabContent({
                         <Table
                           bordered
                           columns={tableColumn}
+                          customPaginationProps={{
+                            currentPage,
+                            isLoading: isServiceLoading,
+                            showPagination:
+                              !isUndefined(pagingInfo) &&
+                              pagingInfo.showPagination,
+                            pageSize: pagingInfo.pageSize,
+                            paging,
+
+                            pagingHandler: pagingHandler,
+                            onShowSizeChange: pagingInfo.handlePageSizeChange,
+                          }}
                           data-testid="service-children-table"
                           dataSource={pageData}
                           defaultVisibleColumns={
@@ -304,17 +315,6 @@ function ServiceMainTabContent({
                           }
                         />
                       )}
-                      {!isUndefined(pagingInfo) &&
-                        pagingInfo.showPagination && (
-                          <NextPrevious
-                            currentPage={currentPage}
-                            isLoading={isServiceLoading}
-                            pageSize={pagingInfo.pageSize}
-                            paging={paging}
-                            pagingHandler={pagingHandler}
-                            onShowSizeChange={pagingInfo.handlePageSizeChange}
-                          />
-                        )}
                     </Space>
                   </Col>
                 </Row>

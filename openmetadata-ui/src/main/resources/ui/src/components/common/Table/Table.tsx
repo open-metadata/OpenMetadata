@@ -219,6 +219,7 @@ const Table = <T extends Record<string, unknown>>(
           {searchProps ? (
             <Col span={12}>
               <Searchbar
+                {...searchProps}
                 removeMargin
                 placeholder={searchProps?.placeholder ?? t('label.search')}
                 searchValue={searchText}

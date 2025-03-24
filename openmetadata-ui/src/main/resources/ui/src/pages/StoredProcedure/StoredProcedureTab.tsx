@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
@@ -18,7 +18,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../components/common/Table/Table';
@@ -127,45 +126,42 @@ const StoredProcedureTab = () => {
   }, [showDeleted, pageSize]);
 
   return (
-    <Row className="p-lg" data-testid="stored-procedure-table" gutter={[0, 16]}>
-      <Col className="d-flex justify-end" span={24}>
-        <Switch
-          checked={showDeleted}
-          data-testid="show-deleted-stored-procedure"
-          onClick={(checked) => setShowDeleted(checked)}
-        />
-        <Typography.Text className="m-l-xs">
-          {t('label.deleted')}
-        </Typography.Text>{' '}
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={tableColumn}
-          dataSource={storedProcedure}
-          loading={isLoading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={storedProcedurePagingHandler}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
-      </Col>
-    </Row>
+    <div className="p-lg">
+      <Table
+        bordered
+        columns={tableColumn}
+        customPaginationProps={{
+          currentPage,
+          isLoading,
+          showPagination,
+          pageSize,
+          paging,
+          pagingHandler: storedProcedurePagingHandler,
+          onShowSizeChange: handlePageSizeChange,
+        }}
+        data-testid="stored-procedure-table"
+        dataSource={storedProcedure}
+        extraTableFilters={
+          <span>
+            <Switch
+              checked={showDeleted}
+              data-testid="show-deleted-stored-procedure"
+              onClick={(checked) => setShowDeleted(checked)}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>
+          </span>
+        }
+        loading={isLoading}
+        locale={{
+          emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        }}
+        pagination={false}
+        rowKey="id"
+        size="small"
+      />
+    </div>
   );
 };
 

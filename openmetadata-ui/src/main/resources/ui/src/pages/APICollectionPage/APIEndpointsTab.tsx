@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
@@ -172,61 +171,54 @@ function APIEndpointsTab({
   }, [apiCollection]);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <TableAntd
-          bordered
-          columns={tableColumn}
-          data-testid="databaseSchema-tables"
-          dataSource={apiEndpoints}
-          defaultVisibleColumns={DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS}
-          extraTableFilters={
-            !isVersionView && (
-              <span>
-                <Switch
-                  checked={filters.showDeletedEndpoints}
-                  data-testid="show-deleted"
-                  onClick={() =>
-                    setFilters({
-                      ...filters,
-                      showDeletedEndpoints: !filters.showDeletedEndpoints,
-                    })
-                  }
-                />
-                <Typography.Text className="m-l-xs">
-                  {t('label.deleted')}
-                </Typography.Text>{' '}
-              </span>
-            )
-          }
-          loading={apiEndpointsLoading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                className="mt-0-important"
-                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-              />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-        />
-      </Col>
-      {showPagination && (
-        <Col span={24}>
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={apiEndpointsLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleEndpointsPagination}
-            onShowSizeChange={handlePageSizeChange}
+    <TableAntd
+      bordered
+      columns={tableColumn}
+      customPaginationProps={{
+        currentPage,
+        isLoading: apiEndpointsLoading,
+        showPagination,
+        pageSize,
+        paging,
+        pagingHandler: handleEndpointsPagination,
+        onShowSizeChange: handlePageSizeChange,
+      }}
+      data-testid="databaseSchema-tables"
+      dataSource={apiEndpoints}
+      defaultVisibleColumns={DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS}
+      extraTableFilters={
+        !isVersionView && (
+          <span>
+            <Switch
+              checked={filters.showDeletedEndpoints}
+              data-testid="show-deleted"
+              onClick={() =>
+                setFilters({
+                  ...filters,
+                  showDeletedEndpoints: !filters.showDeletedEndpoints,
+                })
+              }
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>{' '}
+          </span>
+        )
+      }
+      loading={apiEndpointsLoading}
+      locale={{
+        emptyText: (
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
-        </Col>
-      )}
-    </Row>
+        ),
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+    />
   );
 }
 

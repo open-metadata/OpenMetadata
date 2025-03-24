@@ -21,7 +21,6 @@ import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../components/common/Table/Table';
@@ -299,6 +298,15 @@ const RolesListPage = () => {
             bordered
             className="roles-list-table"
             columns={columns}
+            customPaginationProps={{
+              currentPage,
+              isLoading,
+              showPagination,
+              pageSize,
+              paging,
+              pagingHandler: handlePaging,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             data-testid="roles-list-table"
             dataSource={roles}
             loading={isLoading}
@@ -328,18 +336,6 @@ const RolesListPage = () => {
               entityType={EntityType.ROLE}
               visible={!isUndefined(selectedRole)}
               onCancel={() => setSelectedRole(undefined)}
-            />
-          )}
-        </Col>
-        <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={isLoading}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handlePaging}
-              onShowSizeChange={handlePageSizeChange}
             />
           )}
         </Col>
