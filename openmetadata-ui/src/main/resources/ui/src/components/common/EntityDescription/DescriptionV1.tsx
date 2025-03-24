@@ -22,7 +22,6 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { useFqn } from '../../../hooks/useFqn';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
@@ -113,7 +112,7 @@ const DescriptionV1 = ({
   const taskActionButton = useMemo(() => {
     const hasDescription = !isDescriptionContentEmpty(description.trim());
 
-    const isTaskEntity = TASK_ENTITIES.includes(entityType as EntityType);
+    const isTaskEntity = TASK_ENTITIES.includes(entityType);
 
     if (!isTaskEntity) {
       return null;
@@ -227,7 +226,10 @@ const DescriptionV1 = ({
         data-testid="asset-description-container"
         direction="vertical"
         size={16}>
-        <div className="d-flex justify-between flex-wrap">
+        <div
+          className={classNames('d-flex justify-between flex-wrap', {
+            'm-t-sm': suggestions?.length > 0,
+          })}>
           <div className="d-flex items-center gap-2">
             <Text className="right-panel-label">{t('label.description')}</Text>
             {showActions && actionButtons}

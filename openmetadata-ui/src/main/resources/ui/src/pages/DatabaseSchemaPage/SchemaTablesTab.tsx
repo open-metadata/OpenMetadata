@@ -261,7 +261,10 @@ function SchemaTablesTab({
                   </Typography.Text>
                 </span>
 
-                {getBulkEditButton(permissions.table.EditAll, handleEditTable)}
+                {getBulkEditButton(
+                  permissions.table.EditAll && !databaseSchemaDetails.deleted,
+                  handleEditTable
+                )}
               </>
             )
           }

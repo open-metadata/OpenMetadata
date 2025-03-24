@@ -20,6 +20,8 @@ site_menu:
 
   - category: Deployment
     url: /deployment
+  - category: Deployment / Minimum Requirements
+    url: /deployment/minimum-requirements
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
@@ -623,6 +625,10 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / OpenSearch
+    url: /connectors/search/opensearch
+  - category: Connectors / Search / OpenSearch / Run Externally
+    url: /connectors/search/opensearch/yaml
 
   - category: Connectors / Metadata
     url: /connectors/metadata

@@ -26,6 +26,7 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../../constants/constants';
+import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -249,6 +250,7 @@ export const UserTab = ({
       showModal({
         name: currentTeam.name,
         onExport: exportUserOfTeam,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [currentTeam, exportUserOfTeam]);

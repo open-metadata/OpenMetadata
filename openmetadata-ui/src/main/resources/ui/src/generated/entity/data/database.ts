@@ -381,6 +381,10 @@ export interface DatabaseProfilerConfig {
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
+    /**
      * Number of row of sample data to be generated
      */
     sampleDataCount?:         number;

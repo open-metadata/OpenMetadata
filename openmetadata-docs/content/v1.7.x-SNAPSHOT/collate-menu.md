@@ -443,6 +443,10 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / OpenSearch
+    url: /connectors/search/opensearch
+  - category: Connectors / Search / OpenSearch / Run Externally
+    url: /connectors/search/opensearch/yaml
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -524,6 +528,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects
   - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
     url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
+  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
+    url: /connectors/ingestion/workflows/reverse-metadata
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually

@@ -1243,6 +1243,12 @@ public interface CollectionDAO {
         @BindUUID("toId") UUID toId,
         @Bind("relation") int relation);
 
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship where relation = :relation ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getRecordWithOffset(
+        @Bind("relation") int relation, @Bind("offset") long offset, @Bind("limit") int limit);
+
     //
     // Delete Operations
     //
@@ -1692,6 +1698,26 @@ public interface CollectionDAO {
                 original = "toType",
                 parts = {":toType", ".%"})
             String toType);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(te.id) AS count "
+                + "FROM thread_entity te "
+                + "WHERE te.type = 'Announcement' "
+                + "  AND te.entityLink = :entityLink "
+                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
+                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(te.id) AS count "
+                + "FROM thread_entity te "
+                + "WHERE te.type = 'Announcement' "
+                + "  AND te.entityLink = :entityLink "
+                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
+                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
+        connectionType = POSTGRES)
+    int countActiveAnnouncement(@Bind("entityLink") String entityLink);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -3880,9 +3906,9 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT te.id "
             + "FROM team_entity te "
-            + "WHERE te.id NOT IN (SELECT :teamId) UNION "
+            + "WHERE te.id NOT IN ((SELECT :teamId) UNION "
             + "(SELECT toId FROM entity_relationship "
-            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team')")
+            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team'))")
     List<String> listTeamsUnderOrganization(
         @BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
   }

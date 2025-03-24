@@ -31,6 +31,7 @@ import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonW
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { ExportTypes } from '../../constants/Export.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
@@ -148,18 +149,19 @@ export const getDatabasePageBaseTabs = ({
   getEntityFeedCount,
   editCustomAttributePermission,
   getDetailsByFQN,
+  labelMap,
 }: DatabaseDetailPageTabProps): TabProps[] => {
   return [
     {
       label: (
         <TabsLabel
           count={schemaInstanceCount}
-          id={EntityTabs.SCHEMA}
-          isActive={activeTab === EntityTabs.SCHEMA}
-          name={t('label.schema-plural')}
+          id={EntityTabs.SCHEMAS}
+          isActive={activeTab === EntityTabs.SCHEMAS}
+          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.schema-plural')}
         />
       ),
-      key: EntityTabs.SCHEMA,
+      key: EntityTabs.SCHEMAS,
       children: <GenericTab type={PageType.Database} />,
     },
     {
@@ -168,7 +170,10 @@ export const getDatabasePageBaseTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-plural')}
+          name={
+            labelMap?.[EntityTabs.ACTIVITY_FEED] ??
+            t('label.activity-feed-and-task-plural')
+          }
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -189,7 +194,10 @@ export const getDatabasePageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={
+            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
+            t('label.custom-property-plural')
+          }
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
@@ -222,7 +230,8 @@ export const getDatabaseWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
 export const ExtraDatabaseDropdownOptions = (
   fqn: string,
-  permission: OperationPermission
+  permission: OperationPermission,
+  deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const history = useHistory();
@@ -230,7 +239,7 @@ export const ExtraDatabaseDropdownOptions = (
   const { ViewAll, EditAll } = permission;
 
   return [
-    ...(EditAll
+    ...(EditAll && !deleted
       ? [
           {
             label: (
@@ -252,7 +261,7 @@ export const ExtraDatabaseDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll
+    ...(ViewAll && !deleted
       ? [
           {
             label: (
@@ -267,6 +276,7 @@ export const ExtraDatabaseDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportDatabaseDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />

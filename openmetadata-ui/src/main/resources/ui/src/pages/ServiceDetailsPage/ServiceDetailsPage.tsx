@@ -239,7 +239,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       return EntityTabs.AGENTS;
     }
 
-    return getCountLabel(serviceCategory).toLowerCase();
+    return EntityTabs.INSIGHTS;
   }, [tab, serviceCategory, isMetadataService]);
 
   const handleSearchChange = useCallback(
@@ -264,9 +264,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
           ? EntityType.DATABASE_SERVICE
           : EntityType.ALL,
         decodedServiceFQN,
-        servicePermission
+        servicePermission,
+        serviceDetails?.deleted ?? false
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory]
+    [
+      servicePermission,
+      decodedServiceFQN,
+      serviceCategory,
+      serviceDetails?.deleted,
+    ]
   );
 
   const handleShowDeleted = useCallback(
@@ -990,6 +996,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  const extraInfoData = useMemo(() => {
+    return serviceUtilClassBase.getServiceExtraInfo(serviceDetails);
+  }, [serviceDetails]);
+
   const testConnectionTab = useMemo(() => {
     return (
       <Row>
@@ -1047,6 +1057,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <Col className="p-x-lg" span={24}>
           <ServiceConnectionDetails
             connectionDetails={connectionDetails ?? {}}
+            extraInfo={extraInfoData}
             serviceCategory={serviceCategory}
             serviceFQN={serviceDetails?.serviceType || ''}
           />

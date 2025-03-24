@@ -10,19 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Input, Modal, Tooltip } from 'antd';
-import { isEmpty, isNil, toString, uniqueId } from 'lodash';
+
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Input, Modal, Space } from 'antd';
+import { isEmpty, isNil, isUndefined, toString, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   CommonWidgetType,
   TAB_GRID_MAX_COLUMNS,
 } from '../../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../../enums/entity.enum';
-import { Document } from '../../../generated/entity/docStore/document';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
@@ -32,22 +33,22 @@ import {
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import {
-  getAddWidgetHandler,
   getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
 } from '../../../utils/CustomizableLandingPageUtils';
-
 import {
+  getAddWidgetHandler,
   getCustomizableWidgetByPage,
   getDefaultTabs,
   getDefaultWidgetForTab,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
-import { DraggableTabs } from '../../common/DraggableTabs/DraggableTabs';
+import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
+import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import { GenericWidget } from '../GenericWidget/GenericWidget';
 
 const ReactGridLayout = WidthProvider(RGL);
 
@@ -61,11 +62,13 @@ export const CustomizeTabWidget = () => {
   const items = useMemo(() => {
     return currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType);
   }, [currentPage, currentPageType, currentPage?.tabs]);
+  const [showAddTabModal, setShowAddTabModal] = useState<boolean>(false);
+  const { t } = useTranslation();
+  const [newTabName, setNewTabName] = useState<string>(t('label.new-tab'));
 
   const [activeKey, setActiveKey] = useState<string | null>(
     items.find((i) => i.editable)?.id ?? null
   );
-  const { t } = useTranslation();
 
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
   const [tabLayouts, setTabLayouts] = useState<WidgetConfig[]>(
@@ -109,21 +112,20 @@ export const CustomizeTabWidget = () => {
 
   const add = () => {
     const newActiveKey = uniqueId(`custom`);
+    const newTab = {
+      name: newTabName,
+      layout: [],
+      id: newActiveKey,
+      editable: true,
+    } as Tab;
 
     updateCurrentPage({
       ...currentPage,
-      tabs: [
-        ...items,
-        {
-          name: t('label.new-tab'),
-          layout: [],
-          id: newActiveKey,
-          editable: true,
-        } as Tab,
-      ],
+      tabs: [...items, newTab],
     } as Page);
 
     onChange(newActiveKey, false);
+    setShowAddTabModal(false);
   };
 
   const remove = (targetKey: TargetKey) => {
@@ -148,18 +150,8 @@ export const CustomizeTabWidget = () => {
       tabs: newPanes,
     } as Page);
 
-    newActiveKey !== activeKey && onChange(newActiveKey ?? EntityTabs.OVERVIEW);
-  };
-
-  const onEdit = (
-    targetKey: React.MouseEvent | React.KeyboardEvent | string,
-    action: 'add' | 'remove'
-  ) => {
-    if (action === 'add') {
-      add();
-    } else {
-      remove(targetKey);
-    }
+    newActiveKey !== activeKey &&
+      onChange(newActiveKey ?? EntityTabs.OVERVIEW, false);
   };
 
   const handleTabEditClick = (key: string) => {
@@ -201,17 +193,41 @@ export const CustomizeTabWidget = () => {
 
   const widgets = useMemo(
     () =>
-      tabLayouts.map((widget) => (
-        <div data-grid={widget} id={widget.i} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            handleOpenAddWidgetModal: handleOpenAddWidgetModal,
-            handlePlaceholderWidgetKey: handlePlaceholderWidgetKey,
-            handleRemoveWidget: handleRemoveWidget,
-            isEditView: true,
-          })}
-        </div>
-      )),
+      tabLayouts.map((widget) => {
+        let widgetComponent = null;
+
+        if (
+          widget.i.endsWith('.EmptyWidgetPlaceholder') &&
+          !isUndefined(handleOpenAddWidgetModal) &&
+          !isUndefined(handlePlaceholderWidgetKey) &&
+          !isUndefined(handleRemoveWidget)
+        ) {
+          widgetComponent = (
+            <EmptyWidgetPlaceholder
+              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+              handleRemoveWidget={handleRemoveWidget}
+              isEditable={widget.isDraggable}
+              widgetKey={widget.i}
+            />
+          );
+        } else {
+          widgetComponent = (
+            <GenericWidget
+              isEditView
+              handleRemoveWidget={handleRemoveWidget}
+              selectedGridSize={widget.w}
+              widgetKey={widget.i}
+            />
+          );
+        }
+
+        return (
+          <div data-grid={widget} id={widget.i} key={widget.i}>
+            {widgetComponent}
+          </div>
+        );
+      }),
     [tabLayouts]
   );
 
@@ -240,10 +256,11 @@ export const CustomizeTabWidget = () => {
     ) => {
       setTabLayouts(
         getAddWidgetHandler(
-          newWidgetData as unknown as Document,
+          newWidgetData,
           placeholderWidgetKey,
           widgetSize,
-          TAB_GRID_MAX_COLUMNS
+          TAB_GRID_MAX_COLUMNS,
+          currentPageType as PageType
         )
       );
       setIsWidgetModalOpen(false);
@@ -251,14 +268,13 @@ export const CustomizeTabWidget = () => {
     []
   );
 
-  const onTabPositionChange = (newOrder: React.Key[]) => {
-    const newItems = newOrder.map(
-      (key) => items.find((item) => item.id === key) as Tab
-    );
-    updateCurrentPage({
-      ...currentPage,
-      tabs: newItems,
-    } as Page);
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection();
+
+  const moveTab = (fromIndex: number, toIndex: number) => {
+    const newItems = [...items];
+    const [movedItem] = newItems.splice(fromIndex, 1);
+    newItems.splice(toIndex, 0, movedItem);
 
     updateCurrentPage({
       ...currentPage,
@@ -266,57 +282,70 @@ export const CustomizeTabWidget = () => {
     } as Page);
   };
 
-  // call the hook to set the direction of the grid layout
-  useGridLayoutDirection();
-
   return (
     <>
-      <DraggableTabs
-        activeKey={activeKey ?? undefined}
-        items={items.map((item) => ({
-          key: item.id,
-          label: (
+      <Col span={24}>
+        <Card
+          bordered={false}
+          data-testid="customize-tab-card"
+          extra={
             <Button
-              type="text"
-              onClick={(event) => {
-                event.stopPropagation();
-                item.editable && onChange(item.id);
-              }}>
-              <Tooltip
-                title={
-                  item.editable ? '' : t('message.no-customization-available')
-                }>
-                {getEntityName(item)}
-                <Icon
-                  className="m-l-xs "
-                  component={EditIcon}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleTabEditClick(item.id);
-                  }}
-                />
-              </Tooltip>
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setShowAddTabModal(true)}>
+              {t('label.add-entity', {
+                entity: t('label.tab'),
+              })}
             </Button>
-          ),
-          closable: true,
-        }))}
-        size="small"
-        tabBarGutter={2}
-        type="editable-card"
-        onChange={onChange}
-        onEdit={onEdit}
-        onTabChange={onTabPositionChange}
-      />
-
-      <ReactGridLayout
-        className="grid-container"
-        cols={TAB_GRID_MAX_COLUMNS}
-        draggableHandle=".drag-widget-icon"
-        margin={[16, 16]}
-        rowHeight={100}
-        onLayoutChange={handleLayoutUpdate}>
-        {widgets}
-      </ReactGridLayout>
+          }
+          title={t('label.customize-tab-plural')}>
+          <DndProvider backend={HTML5Backend}>
+            <Space wrap size={16}>
+              {items.map((item, index) => (
+                <TabItem
+                  index={index}
+                  item={item}
+                  key={item.id}
+                  moveTab={moveTab}
+                  onEdit={onChange}
+                  onRemove={remove}
+                  onRename={handleTabEditClick}
+                />
+              ))}
+            </Space>
+          </DndProvider>
+        </Card>
+      </Col>
+      <Col span={24}>
+        <Card
+          bodyStyle={{ padding: 0, paddingBottom: '20px' }}
+          bordered={false}
+          extra={
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={handleOpenAddWidgetModal}>
+              {t('label.add-entity', {
+                entity: t('label.widget'),
+              })}
+            </Button>
+          }
+          title={t('label.customize-entity-widget-plural', {
+            entity: getEntityName(
+              items.find((item) => item.id === activeKey) as Tab
+            ),
+          })}>
+          <ReactGridLayout
+            className="grid-container"
+            cols={TAB_GRID_MAX_COLUMNS}
+            draggableHandle=".drag-widget-icon"
+            margin={[16, 16]}
+            rowHeight={100}
+            onLayoutChange={handleLayoutUpdate}>
+            {widgets}
+          </ReactGridLayout>
+        </Card>
+      </Col>
 
       {currentPageType && (
         <AddDetailsPageWidgetModal
@@ -328,6 +357,25 @@ export const CustomizeTabWidget = () => {
           widgetsList={getCustomizableWidgetByPage(currentPageType)}
         />
       )}
+      {showAddTabModal && (
+        <Modal
+          closable
+          cancelText={t('label.cancel')}
+          closeIcon={null}
+          okText={t('label.add')}
+          open={showAddTabModal}
+          title={t('label.add-entity', {
+            entity: t('label.tab'),
+          })}
+          onCancel={() => setShowAddTabModal(false)}
+          onOk={add}>
+          <Input
+            autoFocus
+            value={newTabName}
+            onChange={(e) => setNewTabName(e.target.value)}
+          />
+        </Modal>
+      )}
       {editableItem && (
         <Modal
           maskClosable
@@ -336,6 +384,7 @@ export const CustomizeTabWidget = () => {
           onCancel={() => setEditableItem(null)}
           onOk={handleRenameSave}>
           <Input
+            autoFocus
             value={toString(getEntityName(editableItem))}
             onChange={handleChange}
           />

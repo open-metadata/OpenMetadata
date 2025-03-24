@@ -69,7 +69,7 @@ test.describe('API service', () => {
     await dayOneExperienceApplicationRequest;
 
     // step 3
-    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+    await expect(page.getByTestId('entity-header-name')).toHaveText(
       apiServiceConfig.name
     );
 
@@ -97,13 +97,13 @@ test.describe('API service', () => {
     await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
     const deleteResponse = page.waitForResponse(
-      '/api/v1/services/apiServices/*?hardDelete=true&recursive=true'
+      '/api/v1/services/apiServices/async/*?hardDelete=true&recursive=true'
     );
 
     await page.click('[data-testid="confirm-button"]');
 
     await deleteResponse;
 
-    await toastNotification(page, /deleted successfully!/);
+    await toastNotification(page, /Delete operation initiated for/);
   });
 });

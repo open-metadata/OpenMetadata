@@ -213,15 +213,9 @@ const Table = <T extends object = any>(
             <DndProvider backend={HTML5Backend}>
               <Dropdown
                 className="custom-column-dropdown-menu"
-                getPopupContainer={(trigger) => {
-                  const customContainer = trigger.closest(
-                    '.custom-column-dropdown-menu'
-                  );
-
-                  return customContainer as HTMLElement;
-                }}
                 menu={menu}
                 open={isDropdownVisible}
+                placement="bottomRight"
                 trigger={['click']}
                 onOpenChange={setIsDropdownVisible}>
                 <Button

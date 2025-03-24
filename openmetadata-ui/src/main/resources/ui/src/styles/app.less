@@ -22,6 +22,11 @@ body {
   font-feature-settings: normal !important;
 }
 
+.main-container {
+  display: flex;
+  height: 100vh;
+}
+
 ol,
 ul {
   list-style: none;
@@ -500,10 +505,10 @@ a[href].link-text-grey,
 
 .breadcrumb-item {
   max-width: 100%;
-  font-size: 12px;
+
   .link-title {
     font-size: inherit !important;
-    color: @text-grey-muted !important;
+    color: @navigation-text-color !important;
   }
   .link-title:hover {
     color: @primary-color !important;
@@ -799,13 +804,6 @@ a[href].link-text-grey,
   padding-right: 0.25rem;
 }
 
-.app-bar-user-profile-pic {
-  display: inline-block;
-  height: 36px;
-  width: 36px;
-  border-radius: 50%;
-}
-
 // Collapse able headers
 
 .header-collapse-custom-collapse .header-collapse-custom-panel {
@@ -902,11 +900,12 @@ a[href].link-text-grey,
   margin: auto;
 }
 .placeholder-text {
-  color: #1f1f1f;
+  color: @text-color-tertiary;
   text-align: center;
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
   letter-spacing: 0.25px;
+  width: 350px;
 }

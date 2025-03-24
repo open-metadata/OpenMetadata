@@ -62,6 +62,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
@@ -1310,6 +1311,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entity != null) {
       DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
       postDelete(response.entity());
+      deleteFromSearch(response.entity(), hardDelete);
       return response;
     } else {
       return new DeleteResponse<>(null, ENTITY_DELETED);
@@ -2624,7 +2626,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void createAndInsertChangeEvent(
       T original, T updated, ChangeDescription changeDescription, EventType eventType) {
-    if (changeDescription == null) {
+    if (isNullOrEmptyChangeDescription(changeDescription)) {
       return;
     }
 
@@ -2989,7 +2991,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateChangeSummary() {
-      if (changeDescription == null) {
+      if (isNullOrEmptyChangeDescription(changeDescription)) {
         return;
       }
       // build new change summary
@@ -3002,6 +3004,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .map(ChangeDescription::getChangeSummary)
               .map(changeSummaryMap -> JsonUtils.deepCopy(changeSummaryMap, ChangeSummaryMap.class))
               .orElse(new ChangeSummaryMap());
+      changeDescription.setChangeSummary(current);
 
       Map<String, ChangeSummary> addedSummaries =
           changeSummarizer.summarizeChanges(
@@ -3010,11 +3013,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               changeSource,
               updated.getUpdatedBy(),
               updated.getUpdatedAt());
-
-      if (!addedSummaries.isEmpty()) {
-        changeDescription.setChangeSummary(current);
-        changeDescription.getChangeSummary().getAdditionalProperties().putAll(addedSummaries);
-      }
+      changeDescription.getChangeSummary().getAdditionalProperties().putAll(addedSummaries);
 
       Set<String> keysToDelete =
           changeSummarizer
@@ -3115,7 +3114,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // delete operation
         if (!Objects.equals(updated.getDeleted(), original.getDeleted())
             && Boolean.TRUE.equals(updated.getDeleted())
-            && changeDescription != null) {
+            && isNullOrEmptyChangeDescription(changeDescription)
+            && (Objects.equals(original.getVersion(), updated.getVersion()))) {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
@@ -3998,7 +3998,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public static void validateColumn(Table table, String columnName) {
     boolean validColumn =
         table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
-    if (!validColumn) {
+    if (!validColumn && !columnName.equalsIgnoreCase("all")) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
     }
   }

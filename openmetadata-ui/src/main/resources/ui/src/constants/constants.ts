@@ -126,6 +126,8 @@ export const ROUTES = {
   FORBIDDEN: '/403',
   UNAUTHORISED: '/unauthorised',
   LOGOUT: '/logout',
+  PLATFORM_LINEAGE: '/lineage',
+  PLATFORM_LINEAGE_WITH_FQN: `/lineage/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -299,6 +301,7 @@ export const SOCKET_EVENTS = {
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
+  DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -327,6 +330,9 @@ export const ENTITY_PATH = {
   apiEndpoints: 'apiEndpoint',
   dataProducts: 'dataProduct',
   metrics: 'metric',
+  dataAssets: 'dataAsset',
+  query: 'query',
+  testCases: 'testCase',
   domains: 'domain',
 };
 
@@ -402,8 +408,12 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+  [Status.Pending]: 'Pending',
 };
 
 export const INITIAL_TABLE_FILTERS = {
   showDeletedTables: false,
 };
+
+export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
+export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;

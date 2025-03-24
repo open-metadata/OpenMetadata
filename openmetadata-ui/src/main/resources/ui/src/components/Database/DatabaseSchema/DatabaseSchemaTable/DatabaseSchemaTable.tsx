@@ -24,6 +24,7 @@ import {
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
 } from '../../../../constants/constants';
+import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
@@ -69,6 +70,7 @@ import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
 export const DatabaseSchemaTable = ({
   isVersionPage = false,
+  isCustomizationPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
@@ -300,8 +302,20 @@ export const DatabaseSchemaTable = ({
   };
 
   useEffect(() => {
+    if (isCustomizationPage) {
+      setSchemas(DATABASE_SCHEMAS_DUMMY_DATA);
+
+      return;
+    }
+
     fetchDatabaseSchema();
-  }, [decodedDatabaseFQN, pageSize, showDeletedSchemas, isDatabaseDeleted]);
+  }, [
+    decodedDatabaseFQN,
+    pageSize,
+    showDeletedSchemas,
+    isDatabaseDeleted,
+    isCustomizationPage,
+  ]);
 
   return (
     <Row gutter={[16, 16]}>
@@ -334,7 +348,7 @@ export const DatabaseSchemaTable = ({
           dataSource={schemas}
           defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
           extraTableFilters={getBulkEditButton(
-            permissions.databaseSchema.EditAll,
+            permissions.databaseSchema.EditAll && !isDatabaseDeleted,
             handleEditTable
           )}
           loading={isLoading}

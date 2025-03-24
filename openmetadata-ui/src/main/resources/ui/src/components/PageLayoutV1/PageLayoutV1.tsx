@@ -19,8 +19,10 @@ import React, {
   Fragment,
   HTMLAttributes,
   ReactNode,
+  useEffect,
   useMemo,
 } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
@@ -58,7 +60,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
-  const { alert } = useAlertStore();
+  const { alert, resetAlert } = useAlertStore();
+  const location = useLocation();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -72,11 +75,19 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     }
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
+  useEffect(() => {
+    if (alert && alert.type === 'error') {
+      setTimeout(() => {
+        resetAlert();
+      }, 3000);
+    }
+  }, [location.pathname, resetAlert]);
+
   return (
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={classNames('bg-white', className)}
+        className={className}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}>
         {leftPanel && (
@@ -89,11 +100,10 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll ${
-              !alert && 'p-t-sm'
-            }`,
+            `page-layout-v1-center page-layout-v1-vertical-scroll `,
             {
               'flex justify-center': center,
+              'p-t-sm': !alert,
             },
             mainContainerClassName
           )}
@@ -106,7 +116,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            <Col className={`${alert && 'p-t-sm'}`} span={24}>
+            <Col className={classNames({ 'p-t-sm': alert })} span={24}>
               {children}
             </Col>
           </Row>
