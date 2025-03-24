@@ -110,7 +110,7 @@ jest.mock('../../../utils/ContainerDetailUtils', () => ({
 }));
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
   () =>
     jest
       .fn()

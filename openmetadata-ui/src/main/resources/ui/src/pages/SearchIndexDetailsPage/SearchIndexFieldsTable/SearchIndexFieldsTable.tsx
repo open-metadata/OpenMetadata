@@ -77,7 +77,6 @@ const SearchIndexFieldsTable = ({
   isReadOnly = false,
   entityFqn,
   fieldAllRowKeys,
-  toggleExpandAll,
 }: SearchIndexFieldsTableProps) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<{
@@ -105,6 +104,14 @@ const SearchIndexFieldsTable = ({
       TagFilterOptions[]
     >;
   }, [data]);
+
+  const toggleExpandAll = useCallback(() => {
+    if (expandedRowKeys.length < fieldAllRowKeys.length) {
+      setExpandedRowKeys(fieldAllRowKeys);
+    } else {
+      setExpandedRowKeys([]);
+    }
+  }, [expandedRowKeys, fieldAllRowKeys]);
 
   const handleEditField = useCallback(
     (field: SearchIndexField, index: number) => {

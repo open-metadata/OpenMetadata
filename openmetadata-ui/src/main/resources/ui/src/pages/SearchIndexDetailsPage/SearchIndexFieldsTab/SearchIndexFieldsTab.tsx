@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import {
   SearchIndex,
@@ -22,7 +22,6 @@ import { getAllRowKeysByKeyName } from '../../../utils/TableUtils';
 import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
 
 function SearchIndexFieldsTab() {
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const { fqn: entityFqn } = useFqn();
   const { data, permissions, onUpdate } = useGenericContext<SearchIndex>();
   const { fields, deleted } = useMemo(() => data, [data.fields, data.deleted]);
@@ -49,14 +48,6 @@ function SearchIndexFieldsTab() {
     );
   }, [fields]);
 
-  const toggleExpandAll = useCallback(() => {
-    if (expandedRowKeys.length < fieldAllRowKeys.length) {
-      setExpandedRowKeys(fieldAllRowKeys);
-    } else {
-      setExpandedRowKeys([]);
-    }
-  }, [expandedRowKeys, fieldAllRowKeys]);
-
   const handleSearchIndexFieldsUpdate = useCallback(
     async (updatedFields: Array<SearchIndexField>) => {
       await onUpdate({
@@ -76,7 +67,6 @@ function SearchIndexFieldsTab() {
       hasTagEditAccess={hasTagEditAccess}
       isReadOnly={Boolean(deleted)}
       searchIndexFields={fields}
-      toggleExpandAll={toggleExpandAll}
       onUpdate={handleSearchIndexFieldsUpdate}
     />
   );

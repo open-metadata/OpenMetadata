@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
@@ -23,16 +23,13 @@ const mockOnThreadLinkSelect = jest.fn();
 
 const mockProps = {
   fieldAllRowKeys: [],
-  expandedRowKeys: [],
   toggleExpandAll: toggleExpandAll,
   searchIndexFields: MOCK_SEARCH_INDEX_FIELDS,
-  searchedFields: MOCK_SEARCH_INDEX_FIELDS,
   onUpdate: mockOnUpdate,
   hasDescriptionEditAccess: true,
   hasTagEditAccess: true,
   hasGlossaryTermEditAccess: true,
   onThreadLinkSelect: mockOnThreadLinkSelect,
-  expandableConfig: {},
   entityFqn: 'search_service.search_index_fqn',
 };
 
@@ -74,9 +71,23 @@ jest.mock(
       ))
 );
 
+jest.mock(
+  '../../../components/common/SearchBarComponent/SearchBar.component',
+  () => jest.fn().mockImplementation(() => <div>SearchBar</div>)
+);
+
+jest.mock('../../../utils/TableUtils', () => ({
+  searchInFields: jest.fn().mockReturnValue(MOCK_SEARCH_INDEX_FIELDS),
+  updateFieldDescription: jest.fn(),
+  updateFieldTags: jest.fn(),
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
+}));
+
 describe('SearchIndexFieldsTable component', () => {
   it('SearchIndexFieldsTable should render a table with proper data', async () => {
-    render(<SearchIndexFieldsTable {...mockProps} />);
+    await act(async () => {
+      render(<SearchIndexFieldsTable {...mockProps} />);
+    });
 
     expect(screen.getByText('testToggleExpandButton')).toBeInTheDocument();
     expect(screen.getByTestId('search-index-fields-table')).toBeInTheDocument();
@@ -84,27 +95,31 @@ describe('SearchIndexFieldsTable component', () => {
     expect(screen.getByText('columns')).toBeInTheDocument();
   });
 
-  it('SearchIndexFieldsTable should not display data if fields data is empty', () => {
-    render(
-      <SearchIndexFieldsTable
-        {...mockProps}
-        isReadOnly={false}
-        searchIndexFields={[]}
-      />
-    );
+  it('SearchIndexFieldsTable should not display data if fields data is empty', async () => {
+    await act(async () => {
+      render(
+        <SearchIndexFieldsTable
+          {...mockProps}
+          isReadOnly={false}
+          searchIndexFields={[]}
+        />
+      );
+    });
 
     expect(screen.getByTestId('search-index-fields-table')).toBeInTheDocument();
     expect(screen.queryByText('name')).toBeNull();
     expect(screen.queryByText('columns')).toBeNull();
   });
 
-  it('SearchIndexFieldsTable should only show relevant field rows according to the searchedFields data', () => {
-    render(
-      <SearchIndexFieldsTable
-        {...mockProps}
-        searchIndexFields={mockSearchedFields}
-      />
-    );
+  it('SearchIndexFieldsTable should only show relevant field rows according to the searchedFields data', async () => {
+    await act(async () => {
+      render(
+        <SearchIndexFieldsTable
+          {...mockProps}
+          searchIndexFields={mockSearchedFields}
+        />
+      );
+    });
 
     expect(screen.getByText('name')).toBeInTheDocument();
     expect(screen.queryByText('columns')).toBeNull();
@@ -112,25 +127,30 @@ describe('SearchIndexFieldsTable component', () => {
     expect(screen.queryByText('column_description')).toBeNull();
   });
 
-  it('SearchIndexFieldsTable should show value from dataType field when there is no dataTypeDisplay is present', () => {
-    render(
-      <SearchIndexFieldsTable
-        {...mockProps}
-        searchIndexFields={mockSearchedFields}
-      />
-    );
+  it('SearchIndexFieldsTable should show value from dataType field when there is no dataTypeDisplay is present', async () => {
+    await act(async () => {
+      render(
+        <SearchIndexFieldsTable
+          {...mockProps}
+          searchIndexFields={mockSearchedFields}
+        />
+      );
+    });
+
     const dataTypeFieldForColumnName = screen.getByTestId('name-data-type');
 
     expect(dataTypeFieldForColumnName).toHaveTextContent('text');
   });
 
-  it('should call toggleExpandAll when toggle button is clicked', () => {
-    render(
-      <SearchIndexFieldsTable
-        {...mockProps}
-        searchIndexFields={mockSearchedFields}
-      />
-    );
+  it('should call toggleExpandAll when toggle button is clicked', async () => {
+    await act(async () => {
+      render(
+        <SearchIndexFieldsTable
+          {...mockProps}
+          searchIndexFields={mockSearchedFields}
+        />
+      );
+    });
     const toggleExpandButton = screen.getByText('testToggleExpandButton');
 
     userEvent.click(toggleExpandButton);
