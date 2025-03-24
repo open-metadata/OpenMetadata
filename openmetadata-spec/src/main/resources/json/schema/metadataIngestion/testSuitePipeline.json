@@ -10,6 +10,21 @@
       "type": "string",
       "enum": ["TestSuite"],
       "default": "TestSuite"
+    },
+    "serviceConnections": {
+      "description": "Service connections available for the logical test suite.",
+      "type": "object",
+      "properties": {
+        "serviceName": {
+          "type": "string"
+        },
+        "serviceConnection": {
+          "description": "Connection configuration for the source. ex: mysql , tableau connection.",
+          "$ref": "../entity/services/connections/serviceConnection.json#/definitions/serviceConnection"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["serviceName", "serviceConnection"]
     }
   },
   "properties": {
@@ -19,8 +34,16 @@
       "default": "TestSuite"
     },
     "entityFullyQualifiedName": {
-      "description": "Fully qualified name of the entity to be tested.",
+      "description": "Fully qualified name of the entity to be tested, if we're working with a basic suite.",
       "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceConnections": {
+      "description": "Service connections to be used for the logical test suite.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/serviceConnections"
+      },
+      "default": null
     },
     "profileSample": {
       "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
@@ -45,6 +68,6 @@
       "default": null
     }
   },
-  "required": ["type", "entityFullyQualifiedName"],
+  "required": ["type"],
   "additionalProperties": false
 }

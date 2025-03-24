@@ -21,7 +21,9 @@ import 'codemirror/addon/fold/foldgutter.css';
 import 'codemirror/addon/fold/foldgutter.js';
 import 'codemirror/addon/selection/active-line';
 import 'codemirror/lib/codemirror.css';
+import 'codemirror/mode/clike/clike';
 import 'codemirror/mode/javascript/javascript';
+import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -46,6 +48,7 @@ const SchemaEditor = ({
   editorClass,
   showCopyButton = true,
   onChange,
+  onFocus,
 }: SchemaEditorProps) => {
   const { t } = useTranslation();
   const defaultOptions = {
@@ -115,6 +118,7 @@ const SchemaEditor = ({
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
         onChange={handleEditorInputChange}
+        {...(onFocus && { onFocus })}
       />
     </div>
   );

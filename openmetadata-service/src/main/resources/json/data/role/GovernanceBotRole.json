@@ -1,0 +1,13 @@
+{
+  "name": "GovernanceBotRole",
+  "displayName": "Governance Bot role",
+  "description": "Role corresponding to a Governance bot.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    }
+  ]
+}

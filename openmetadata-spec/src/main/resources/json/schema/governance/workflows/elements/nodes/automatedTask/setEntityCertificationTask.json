@@ -1,0 +1,92 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/setEntityCertificationTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SetEntityCertificationTaskDefinition",
+  "description": "Sets the Entity Certification to the configured value.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition",
+  "type": "object",
+  "definitions": {
+    "certificationEnum": {
+      "type": "string",
+      "enum": [
+        "",
+        "Certification.Gold",
+        "Certification.Silver",
+        "Certification.Bronze"
+      ],
+      "enumNames": [
+        "None",
+        "Gold",
+        "Silver",
+        "Bronze"
+      ]
+    },
+    "certificationConfiguration": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "certification": {
+          "title": "Certification",
+          "description": "Choose which Certification to apply to the Data Asset",
+          "$ref": "#/definitions/certificationEnum"
+        }
+      },
+      "required": ["certification"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "setEntityCertificationTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "$ref": "#/definitions/certificationConfiguration"
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity", "updatedBy"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
+          "type": "string",
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    }
+  }
+}

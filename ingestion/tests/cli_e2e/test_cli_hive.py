@@ -99,7 +99,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 3
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         # For the persons table
         return 6
 
@@ -107,7 +107,10 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         """view was created from `CREATE VIEW xyz AS (SELECT * FROM abc)`
         which does not propagate column lineage
         """
-        return None
+        return 3
+
+    def expected_lineage_node(self) -> str:
+        return "e2e_hive.default.e2e_cli_tests.view_persons"
 
     @staticmethod
     def fqn_created_table() -> str:

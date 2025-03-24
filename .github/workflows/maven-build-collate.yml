@@ -16,7 +16,6 @@ on:
   push:
     branches:
       - main
-      - '0.[0-9]+.[0-9]+'
     paths:
       - "openmetadata-service/**"
       - "openmetadata-ui/**"
@@ -28,6 +27,11 @@ on:
       - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
+  pull_request_target:
+    types: [opened, synchronize, labeled, ready_for_review]
+    paths:
+      - "openmetadata-service/**"
+      - "openmetadata-spec/src/main/resources/json/schema/**"
 
 permissions:
   contents: read
@@ -39,9 +43,10 @@ concurrency:
 jobs:
   maven-collate-ci:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -59,12 +64,12 @@ jobs:
           disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Trigger Collate build & wait
-        uses: aurelien-baudet/workflow-dispatch@v2
+        uses: the-actions-org/workflow-dispatch@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
@@ -74,4 +79,4 @@ jobs:
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
-          inputs: '{ "sha": "${{ env.SHA }}" }'
+          inputs: '{ "sha": "${{ env.SHA }}", "event": "${{ github.event_name }}" }'

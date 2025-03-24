@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { isEmpty, some } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, {
   ReactNode,
   useCallback,
@@ -25,8 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
   LIGHT_GREEN_COLOR,
   NO_DATA_PLACEHOLDER,
   TERM_ADMIN,
@@ -40,6 +38,10 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../../utils/ProfilerUtils';
+import {
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from '../../../../utils/RouterUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
@@ -311,19 +313,6 @@ export const UserProfileIcon = () => {
     ]
   );
 
-  useEffect(() => {
-    let defaultPersona = currentUser?.defaultPersona ?? ({} as EntityReference);
-    if (currentUser?.defaultPersona?.id) {
-      defaultPersona = some(
-        currentUser?.personas,
-        (persona) => persona.id === currentUser?.defaultPersona?.id
-      )
-        ? currentUser?.defaultPersona
-        : ({} as EntityReference);
-    }
-    updateSelectedPersona(defaultPersona);
-  }, [currentUser?.defaultPersona, currentUser?.personas]);
-
   return (
     <Dropdown
       menu={{
@@ -332,11 +321,13 @@ export const UserProfileIcon = () => {
         rootClassName: 'profile-dropdown',
       }}
       trigger={['click']}>
-      <div className="app-user-icon" data-testid="dropdown-profile">
-        <div className="d-flex gap-2 w-40 items-center">
-          {isImgUrlValid ? (
+      <Button
+        className="user-profile-btn flex-center"
+        data-testid="dropdown-profile"
+        icon={
+          isImgUrlValid ? (
             <img
-              alt="user"
+              alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"
               data-testid="app-bar-user-profile-pic"
               referrerPolicy="no-referrer"
@@ -344,26 +335,32 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <ProfilePicture name={currentUser?.name ?? ''} width="36" />
-          )}
-          <div className="d-flex flex-col">
-            <Tooltip title={getEntityName(currentUser)}>
-              <Typography.Text className="username truncate w-max-112">
-                {getEntityName(currentUser)}
-              </Typography.Text>
-            </Tooltip>
-            <Typography.Text
-              className="text-grey-muted text-xs w-28"
-              data-testid="default-persona"
-              ellipsis={{ tooltip: true }}>
-              {isEmpty(selectedPersona)
-                ? t('label.default')
-                : getEntityName(selectedPersona)}
+            <ProfilePicture
+              displayName={currentUser?.name}
+              name={currentUser?.name ?? ''}
+              width="40"
+            />
+          )
+        }
+        size="large"
+        type="text">
+        <div className="name-persona-container">
+          <Tooltip title={getEntityName(currentUser)}>
+            <Typography.Text className="font-semibold">
+              {getEntityName(currentUser)}
             </Typography.Text>
-          </div>
+          </Tooltip>
+
+          <Typography.Text
+            data-testid="default-persona"
+            ellipsis={{ tooltip: true }}>
+            {isEmpty(selectedPersona)
+              ? t('label.default')
+              : getEntityName(selectedPersona)}
+          </Typography.Text>
         </div>
-        <DropDownIcon width={16} />
-      </div>
+        <DropDownIcon width={20} />
+      </Button>
     </Dropdown>
   );
 };

@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Select, Space } from 'antd';
+import {
+  Button,
+  Form,
+  FormProps,
+  Input,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
@@ -21,10 +30,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
-import {
-  SUPPORTED_SERVICES_FOR_TABLE_DIFF,
-  TABLE_DIFF,
-} from '../../../../constants/TestSuite.constant';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { TestCase } from '../../../../generated/tests/testCase';
@@ -54,7 +59,6 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import {
   TestCaseFormProps,
   TestCaseFormType,
@@ -116,17 +120,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         testPlatform: TestPlatform.OpenMetadata,
         supportedDataType: columnType,
       });
-      const updatedData = data.filter((definition) => {
-        if (definition.fullyQualifiedName === TABLE_DIFF) {
-          return (
-            table.serviceType &&
-            SUPPORTED_SERVICES_FOR_TABLE_DIFF.includes(table.serviceType)
-          );
-        }
 
-        return true;
-      });
-      setTestDefinitions(updatedData);
+      setTestDefinitions(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -240,6 +235,24 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: initialValue?.description ?? '',
+        style: {
+          margin: 0,
+        },
+      },
+    }),
+    [initialValue?.description]
+  );
+
   useEffect(() => {
     const selectedColumn = table.columns.find(
       (column) => column.name === columnName
@@ -281,11 +294,21 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     });
   }, [activeColumnFqn]);
 
-  const testTypeOptions = useMemo(
+  const testTypeOptions: DefaultOptionType[] = useMemo(
     () =>
       testDefinitions.map((suite) => ({
-        label: getEntityName(suite),
+        label: (
+          <div data-testid={suite.fullyQualifiedName}>
+            <Typography.Paragraph className="m-b-0">
+              {getEntityName(suite)}
+            </Typography.Paragraph>
+            <Typography.Paragraph className="m-b-0 text-grey-muted text-xs">
+              {suite.description}
+            </Typography.Paragraph>
+          </div>
+        ),
         value: suite.fullyQualifiedName ?? '',
+        labelValue: getEntityName(suite),
       })),
 
     [testDefinitions]
@@ -378,6 +401,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           filterOption={filterSelectOptions}
           options={testTypeOptions}
           placeholder={t('label.select-field', { field: t('label.test-type') })}
+          popupClassName="no-wrap-option"
           onChange={handleTestDefinitionChange}
         />
       </Form.Item>
@@ -398,18 +422,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           getFieldValue('useDynamicAssertion') ? null : generateParamsField
         }
       </Form.Item>
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        trigger="onTextChange">
-        <RichTextEditor
-          height="200px"
-          initialValue={initialValue?.description || ''}
-          style={{
-            margin: 0,
-          }}
-        />
-      </Form.Item>
+
+      {generateFormFields([descriptionField])}
 
       {isComputeRowCountFieldVisible ? generateFormFields(formFields) : null}
 

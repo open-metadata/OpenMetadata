@@ -18,6 +18,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { env } from 'process';
+import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
   getApiContext,
   redirectToHomePage,
@@ -33,17 +34,19 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
+  defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
   profilerTable = 'alert_entity';
-  constructor() {
-    super(
-      Services.Database,
-      `pw-mysql-with-%-${uuid()}`,
-      'Mysql',
-      'bot_entity'
-    );
-    this.tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'];
+  constructor(tableFilter?: string[]) {
+    const serviceName = `pw-mysql-with-%-${uuid()}`;
+    super(Services.Database, serviceName, 'Mysql', 'bot_entity');
+    this.name = serviceName;
+    this.tableFilter = tableFilter ?? [
+      'bot_entity',
+      'alert_entity',
+      'chart_entity',
+    ];
   }
 
   async createService(page: Page) {
@@ -83,6 +86,13 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await test.step('Add Profiler ingestion', async () => {
       const { apiContext } = await getApiContext(page);
       await redirectToHomePage(page);
+
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, {
+        name: 'profiler',
+        testId: 'bot-link-ProfilerBot',
+      });
+
       await visitServiceDetailsPage(
         page,
         {
@@ -93,11 +103,20 @@ class MysqlIngestionClass extends ServiceBaseClass {
         true
       );
 
-      await page.click('[data-testid="ingestions"]');
+      await page.click('[data-testid="agents"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
-      await page.waitForTimeout(1000);
+
+      const metadataTab = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab.isVisible()) {
+        await metadataTab.click();
+      }
+      await page.waitForLoadState('networkidle');
       await page.click('[data-testid="add-new-ingestion-button"]');
-      await page.waitForTimeout(1000);
+
+      await page.waitForSelector(
+        '.ant-dropdown:visible [data-menu-id*="profiler"]'
+      );
+
       await page.click('[data-menu-id*="profiler"]');
 
       await page.waitForSelector('#root\\/profileSample');
@@ -111,9 +130,15 @@ class MysqlIngestionClass extends ServiceBaseClass {
       // Header available once page loads
       await page.waitForSelector('[data-testid="data-assets-header"]');
       await page.getByTestId('loader').waitFor({ state: 'detached' });
-      await page.getByTestId('ingestions').click();
+      await page.getByTestId('agents').click();
+      const metadataTab2 = page.locator('[data-testid="metadata-sub-tab"]');
+      if (await metadataTab2.isVisible()) {
+        await metadataTab2.click();
+      }
+      await page.waitForLoadState('networkidle');
+
       await page
-        .getByLabel('Ingestions')
+        .getByLabel('agents')
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
@@ -164,7 +189,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.tableFilter
+      this.defaultFilters.concat(this.tableFilter)
     );
   }
 }

@@ -19,11 +19,7 @@ import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
-import {
-  createNewPage,
-  getEntityTypeSearchIndexMapping,
-  redirectToHomePage,
-} from '../../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import { checkDataAssetWidget } from '../../../utils/entity';
 
 const entities = [
@@ -35,16 +31,6 @@ const entities = [
   MlModelClass,
   SearchIndexClass,
 ] as const;
-
-const menuLabel = {
-  Table: 'Tables',
-  Dashboard: 'Dashboards',
-  Pipeline: 'Pipelines',
-  Topic: 'Topics',
-  Container: 'Containers',
-  MlModel: 'ML Models',
-  SearchIndex: 'search Search Indexes',
-};
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -61,12 +47,7 @@ entities.forEach((EntityClass) => {
 
     test('Check Data Asset and Service Filtration', async ({ page }) => {
       await redirectToHomePage(page);
-      await checkDataAssetWidget(
-        page,
-        menuLabel[entity.type],
-        getEntityTypeSearchIndexMapping(entity.type),
-        toLower(entity.service.serviceType)
-      );
+      await checkDataAssetWidget(page, toLower(entity.service.serviceType));
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {

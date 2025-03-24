@@ -18,7 +18,6 @@ import {
   EntityTypeSearchIndex,
 } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
 import { Status } from '../generated/entity/applications/appRunRecord';
-import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export const getStatusTypeForApplication = (status: Status) => {
   switch (status) {
@@ -36,30 +35,29 @@ export const getStatusTypeForApplication = (status: Status) => {
     case Status.Started:
       return StatusType.Started;
 
+    case Status.Pending:
+      return StatusType.Pending;
+
     default:
       return StatusType.Stopped;
   }
 };
-
-export const getStatusFromPipelineState = (status: PipelineState) => {
-  if (status === PipelineState.Failed) {
-    return Status.Failed;
-  } else if (status === PipelineState.Success) {
-    return Status.Success;
-  } else if (
-    status === PipelineState.Running ||
-    status === PipelineState.PartialSuccess ||
-    status === PipelineState.Queued
-  ) {
-    return Status.Running;
-  }
-
-  return Status.Failed;
-};
-
 export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
-  return Object.keys(data).map((key) => ({
-    name: upperFirst(key),
-    ...data[key as EntityTypeSearchIndex],
-  }));
+  const filteredRow = ['failedRecords', 'totalRecords', 'successRecords'];
+
+  const result = Object.keys(data).reduce((acc, key) => {
+    if (filteredRow.includes(key)) {
+      return acc;
+    }
+
+    return [
+      ...acc,
+      {
+        name: upperFirst(key),
+        ...data[key as EntityTypeSearchIndex],
+      },
+    ];
+  }, [] as EntityStatsData[]);
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 };

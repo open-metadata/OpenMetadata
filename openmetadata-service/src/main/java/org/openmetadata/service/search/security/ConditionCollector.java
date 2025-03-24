@@ -14,6 +14,7 @@ public class ConditionCollector {
   private final List<OMQueryBuilder> shouldQueries = new ArrayList<>();
 
   @Getter @Setter private boolean matchNothing = false;
+  @Getter @Setter private OMQueryBuilder finalQuery; // New field to hold the final query
 
   public ConditionCollector(QueryBuilderFactory queryBuilderFactory) {
     this.queryBuilderFactory = queryBuilderFactory;
@@ -46,16 +47,21 @@ public class ConditionCollector {
   }
 
   public boolean isMatchAllQuery() {
-    if (mustQueries.size() == 1 && shouldQueries.isEmpty() && mustNotQueries.isEmpty()) {
-      OMQueryBuilder query = mustQueries.get(0);
-      return query.isMatchAll();
-    }
-    return false;
+    // If the collector has no clauses and is not set to match nothing, it represents a match_all
+    return !hasClauses() && !matchNothing;
+  }
+
+  public boolean hasClauses() {
+    return !mustQueries.isEmpty() || !shouldQueries.isEmpty() || !mustNotQueries.isEmpty();
   }
 
   public OMQueryBuilder buildFinalQuery() {
     if (matchNothing) {
       return queryBuilderFactory.matchNoneQuery();
+    }
+
+    if (finalQuery != null) {
+      return finalQuery;
     }
 
     if (mustQueries.size() == 1 && shouldQueries.isEmpty() && mustNotQueries.isEmpty()) {

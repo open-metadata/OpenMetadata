@@ -22,16 +22,16 @@ import domoDashboardConnection from '../jsons/connectionSchemas/connections/dash
 import lightdashConnection from '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
+import microStrategyConnection from '../jsons/connectionSchemas/connections/dashboard/microStrategyConnection.json';
 import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
-import mstrConnection from '../jsons/connectionSchemas/connections/dashboard/mstrConnection.json';
 import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
 import qlikcloudConnection from '../jsons/connectionSchemas/connections/dashboard/qlikCloudConnection.json';
 import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json';
 import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import sigmaConnection from '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json';
+import supersetConnection from '../jsons/connectionSchemas/connections/dashboard/supersetConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
-import supersetConnection from './ConnectionSchemas/SupersetConnection.json';
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
   return !isUndefined(config) && !isEmpty(config.hostPort)
@@ -118,8 +118,8 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
       break;
     }
 
-    case DashboardServiceType.Mstr: {
-      schema = mstrConnection;
+    case DashboardServiceType.MicroStrategy: {
+      schema = microStrategyConnection;
 
       break;
     }

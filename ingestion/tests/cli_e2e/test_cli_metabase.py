@@ -15,6 +15,8 @@ Test Metabase connector with CLI
 from pathlib import Path
 from typing import List
 
+import pytest
+
 from .base.test_cli import PATH_TO_RESOURCES
 from .common.test_cli_dashboard import CliCommonDashboard
 
@@ -64,7 +66,7 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
         return 6
 
     def expected_lineage(self) -> int:
-        return 7
+        return 8
 
     def expected_tags(self) -> int:
         return 0
@@ -73,7 +75,11 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
         return 4
 
     def expected_filtered_sink_mix(self) -> int:
-        return 7
+        return 8
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 0
+
+    @pytest.mark.order(11)
+    def test_lineage(self) -> None:
+        pytest.skip("Lineage not configured. Skipping Test")

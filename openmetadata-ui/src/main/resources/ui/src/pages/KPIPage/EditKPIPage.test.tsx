@@ -15,7 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import EditKPIPage from './EditKPIPage';
-import { DESCRIPTION_CHART, KPI_DATA } from './KPIMock.mock';
+import { KPI_DATA } from './KPIMock.mock';
 
 const mockPush = jest.fn();
 
@@ -26,15 +26,22 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ useParams: 'description-kpi' }),
 }));
 
-jest.mock('../../rest/DataInsightAPI', () => ({
-  getChartById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(DESCRIPTION_CHART)),
-}));
-
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
 
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',

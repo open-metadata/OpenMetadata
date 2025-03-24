@@ -5,6 +5,10 @@ public class EventSubscriptionJobException extends RuntimeException {
     super(message);
   }
 
+  public EventSubscriptionJobException(String message, Throwable throwable) {
+    super(message, throwable);
+  }
+
   public EventSubscriptionJobException(Throwable throwable) {
     super(throwable);
   }

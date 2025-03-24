@@ -31,7 +31,7 @@ export interface EsTermQuery {
 }
 
 export type EsTermsQuery = {
-  [property: string]: string;
+  [property: string]: string | string[];
 };
 
 export interface EsExistsQuery {
@@ -66,9 +66,4 @@ export interface EsTerm {
   term: {
     [key: string]: string | boolean;
   };
-}
-
-export enum ExploreSidebarTab {
-  ASSETS = 'assets',
-  TREE = 'tree',
 }

@@ -161,7 +161,9 @@ class DagsterSource(PipelineServiceSource):
                 )
             )
 
-    def yield_tag(self, *_, **__) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(
+        self, pipeline_details: DagsterPipeline
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
             tags=[self.context.get().repository_name],
             classification_name=DAGSTER_TAG_CATEGORY,

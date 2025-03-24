@@ -45,14 +45,6 @@ export const getListTestCaseIncidentStatus = async ({
   return response.data;
 };
 
-export const getTestCaseIncidentById = async (id: string) => {
-  const response = await APIClient.get<TestCaseResolutionStatus>(
-    `${testCaseIncidentUrl}/${id}`
-  );
-
-  return response.data;
-};
-
 export const getListTestCaseIncidentByStateId = async (
   stateId: string,
   params?: ListParams

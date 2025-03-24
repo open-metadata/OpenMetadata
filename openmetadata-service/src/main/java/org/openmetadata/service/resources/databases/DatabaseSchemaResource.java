@@ -75,6 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databaseSchemas")
 public class DatabaseSchemaResource
     extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
+  private final DatabaseSchemaMapper mapper = new DatabaseSchemaMapper();
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
   static final String FIELDS = "owners,tables,usageSummary,tags,extension,domain,sourceHash";
 
@@ -309,7 +310,8 @@ public class DatabaseSchemaResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
-    DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
+    DatabaseSchema schema =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, schema);
   }
 
@@ -390,7 +392,8 @@ public class DatabaseSchemaResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
-    DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
+    DatabaseSchema schema =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, schema);
   }
 
@@ -477,6 +480,40 @@ public class DatabaseSchemaResource
   }
 
   @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importDatabaseSchemaAsync",
+      summary =
+          "Import tables from CSV to update database schema asynchronously (no creation allowed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database schema", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
   @Path("/{id}/vote")
   @Operation(
       operationId = "updateVoteForEntity",
@@ -529,6 +566,35 @@ public class DatabaseSchemaResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDBSchemaAsync",
+      summary = "Asynchronously delete a schema by Id",
+      description =
+          "Asynchronously delete a schema by `Id`. Schema can only be deleted if it has no tables.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Schema for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -704,14 +770,5 @@ public class DatabaseSchemaResource
 
     return Entity.getSearchRepository()
         .searchSchemaEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-  }
-
-  private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
-    return repository
-        .copy(new DatabaseSchema(), create, user)
-        .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
-        .withSourceUrl(create.getSourceUrl())
-        .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
   }
 }

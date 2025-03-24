@@ -43,10 +43,12 @@ from metadata.ingestion.source.database.dbt.constants import (
     DBT_CATALOG_FILE_NAME,
     DBT_MANIFEST_FILE_NAME,
     DBT_RUN_RESULTS_FILE_NAME,
+    DBT_SOURCES_FILE_NAME,
 )
 from metadata.ingestion.source.database.dbt.models import DbtFiles
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils.credentials import set_google_credentials
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
 from metadata.utils.s3_utils import list_s3_objects
 
@@ -85,6 +87,7 @@ def _(config: DbtLocalConfig):
             config.dbtManifestFilePath,
             config.dbtCatalogFilePath,
             config.dbtRunResultsFilePath,
+            config.dbtSourcesFilePath,
         ]
         yield from download_dbt_files(
             blob_grouped_by_directory=blob_grouped_by_directory,
@@ -123,12 +126,22 @@ def _(config: DbtHttpConfig):
             dbt_catalog = requests.get(  # pylint: disable=missing-timeout
                 config.dbtCatalogHttpPath
             )
+
+        dbt_sources = None
+        if config.dbtSourcesHttpPath:
+            logger.debug(
+                f"Requesting [dbtSourcesHttpPath] to: {config.dbtSourcesHttpPath}"
+            )
+            dbt_sources = requests.get(  # pylint: disable=missing-timeout
+                config.dbtSourcesHttpPath
+            )
         if not dbt_manifest:
             raise DBTConfigException("Manifest file not found in file server")
         yield DbtFiles(
             dbt_catalog=dbt_catalog.json() if dbt_catalog else None,
             dbt_manifest=dbt_manifest.json(),
             dbt_run_results=[dbt_run_results.json()] if dbt_run_results else None,
+            dbt_sources=dbt_sources.json() if dbt_sources else None,
         )
     except DBTConfigException as exc:
         raise exc
@@ -151,7 +164,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         expiry = 0
         auth_token = config.dbtCloudAuthToken.get_secret_value(), expiry
         client_config = ClientConfig(
-            base_url=str(config.dbtCloudUrl),
+            base_url=clean_uri(config.dbtCloudUrl),
             api_version="api/v2",
             auth_token=lambda: auth_token,
             auth_header="Authorization",
@@ -164,7 +177,11 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         logger.debug(
             "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
         )
-        params_data = {"order_by": "-finished_at", "limit": "1", "status": "10"}
+        params_data = {
+            "order_by": "-finished_at",
+            "limit": "1",
+            "status__in": "[10,20]",
+        }
         if project_id:
             params_data["project_id"] = project_id
 
@@ -182,7 +199,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             last_run = runs_data[0]
             run_id = last_run["id"]
             logger.info(
-                f"Retrieved last successful run [{str(run_id)}]: "
+                f"Retrieved last completed run [{str(run_id)}]: "
                 f"Finished {str(last_run['finished_at_humanized'])} (duration: {str(last_run['duration_humanized'])})"
             )
             try:
@@ -238,11 +255,13 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
             DBT_MANIFEST_FILE_NAME == blob_file_name.lower()
             or DBT_CATALOG_FILE_NAME == blob_file_name.lower()
             or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower()
+            or DBT_SOURCES_FILE_NAME == blob_file_name.lower()
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
 
 
+# pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
     blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
 ) -> Iterable[DbtFiles]:
@@ -255,6 +274,7 @@ def download_dbt_files(
     ) in blob_grouped_by_directory.items():
         dbt_catalog = None
         dbt_manifest = None
+        dbt_sources = None
         dbt_run_results = []
         kwargs = {}
         if bucket_name:
@@ -285,12 +305,16 @@ def download_dbt_files(
                             logger.warning(
                                 f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}"
                             )
+                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():
+                        logger.debug(f"{DBT_SOURCES_FILE_NAME} found in {key}")
+                        dbt_sources = reader.read(path=blob, **kwargs)
             if not dbt_manifest:
                 raise DBTConfigException(f"Manifest file not found at: {key}")
             yield DbtFiles(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
                 dbt_manifest=json.loads(dbt_manifest),
                 dbt_run_results=dbt_run_results if dbt_run_results else None,
+                dbt_sources=json.loads(dbt_sources) if dbt_sources else None,
             )
         except DBTConfigException as exc:
             logger.warning(exc)
@@ -332,7 +356,9 @@ def _(config: DbtGcsConfig):
         bucket_name, prefix = get_dbt_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
-        set_google_credentials(gcp_credentials=config.dbtSecurityConfig)
+        set_google_credentials(
+            gcp_credentials=config.dbtSecurityConfig, single_project=True
+        )
 
         client = storage.Client()
         if not bucket_name:

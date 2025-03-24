@@ -13,29 +13,44 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -110,8 +125,120 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public BulkOperationResult bulkAddAndValidateTagsToAssets(
+      UUID classificationTagId, BulkAssetsRequestInterface request) {
+    AddTagToAssetsRequest addTagToAssetsRequest = (AddTagToAssetsRequest) request;
+    boolean dryRun = Boolean.TRUE.equals(addTagToAssetsRequest.getDryRun());
+
+    Tag tag = this.get(null, classificationTagId, getFields("id"));
+
+    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
+    List<BulkResponse> failures = new ArrayList<>();
+    List<BulkResponse> success = new ArrayList<>();
+
+    if (dryRun || nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result
+          .withStatus(ApiStatus.SUCCESS)
+          .withSuccessRequest(List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
+
+    // Validation for entityReferences
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    for (EntityReference ref : request.getAssets()) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+      EntityInterface asset =
+          entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
+
+      try {
+        Map<String, List<TagLabel>> allAssetTags =
+            daoCollection.tagUsageDAO().getTagsByPrefix(asset.getFullyQualifiedName(), "%", true);
+        checkMutuallyExclusiveForParentAndSubField(
+            asset.getFullyQualifiedName(),
+            FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
+            allAssetTags,
+            new ArrayList<>(Collections.singleton(tagLabel)),
+            false);
+        success.add(new BulkResponse().withRequest(ref));
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+      } catch (Exception ex) {
+        failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
+        result.withFailedRequest(failures);
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+      }
+      // Validate and Store Tags
+      if (nullOrEmpty(result.getFailedRequest())) {
+        List<TagLabel> tempList = new ArrayList<>(asset.getTags());
+        tempList.add(tagLabel);
+        // Apply Tags to Entities
+        entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+
+        searchRepository.updateEntity(ref);
+      }
+    }
+
+    // Add Failed And Suceess Request
+    result.withFailedRequest(failures).withSuccessRequest(success);
+
+    // Set Final Status
+    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
+      result.withStatus(ApiStatus.SUCCESS);
+    } else if (result.getNumberOfRowsPassed() > 1) {
+      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
+    } else {
+      result.withStatus(ApiStatus.FAILURE);
+    }
+
+    return result;
+  }
+
+  @Override
+  public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
+      UUID classificationTagId, BulkAssetsRequestInterface request) {
+    Tag tag = this.get(null, classificationTagId, getFields("id"));
+
+    BulkOperationResult result =
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+    List<BulkResponse> success = new ArrayList<>();
+
+    // Validation for entityReferences
+    EntityUtil.populateEntityReferences(request.getAssets());
+
+    for (EntityReference ref : request.getAssets()) {
+      // Update Result Processed
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
+      EntityInterface asset =
+          entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
+
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTagAndTargetEntity(
+              tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      success.add(new BulkResponse().withRequest(ref));
+      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+      // Update ES
+      searchRepository.updateEntity(ref);
+    }
+
+    return result.withSuccessRequest(success);
+  }
+
+  @Override
   public EntityRepository<Tag>.EntityUpdater getUpdater(
-      Tag original, Tag updated, Operation operation) {
+      Tag original, Tag updated, Operation operation, ChangeSource changeSource) {
     return new TagUpdater(original, updated, operation);
   }
 
@@ -181,7 +308,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());

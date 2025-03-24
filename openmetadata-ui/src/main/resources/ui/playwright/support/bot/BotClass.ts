@@ -42,7 +42,7 @@ export class BotClass {
   id = uuid();
   data: BotResponseDataType;
   userData: UserResponseDataType;
-  responseData: BotResponseDataType;
+  responseData: BotResponseDataType = {} as BotResponseDataType;
 
   constructor(data?: BotResponseDataType) {
     this.data = data ?? {

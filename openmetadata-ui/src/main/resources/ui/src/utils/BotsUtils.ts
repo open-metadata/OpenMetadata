@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import { AuthenticationMechanism } from '../generated/api/teams/createUser';
-import { AuthType, JWTTokenExpiry, User } from '../generated/entity/teams/user';
-import { formatDateTimeLong } from './date-time/DateTimeUtils';
+import { JWTTokenExpiry } from '../generated/entity/teams/user';
+import {
+  DATE_TIME_WEEKDAY_WITH_ORDINAL,
+  formatDateTimeLong,
+} from './date-time/DateTimeUtils';
 
 export const getJWTTokenExpiryOptions = () => {
   return Object.keys(JWTTokenExpiry).map((expiry) => {
@@ -26,13 +27,6 @@ export const getJWTTokenExpiryOptions = () => {
       value: expiryValue,
     };
   });
-};
-
-export const getJWTOption = () => {
-  return {
-    label: `${t('label.open-metadata')} ${t('label.jwt-uppercase')}`,
-    value: AuthType.Jwt,
-  };
 };
 
 /**
@@ -47,39 +41,7 @@ export const getTokenExpiry = (expiry: number) => {
   const isTokenExpired = currentTimeStamp >= expiry;
 
   return {
-    tokenExpiryDate: formatDateTimeLong(expiry),
+    tokenExpiryDate: formatDateTimeLong(expiry, DATE_TIME_WEEKDAY_WITH_ORDINAL),
     isTokenExpired,
-  };
-};
-
-export const getAuthMechanismFormInitialValues = (
-  authMechanism: AuthenticationMechanism,
-  botUser: User
-) => {
-  const authConfig = authMechanism.config?.authConfig;
-  const email = botUser.email;
-
-  return {
-    audience: authConfig?.audience,
-    secretKey: authConfig?.secretKey,
-
-    clientId: authConfig?.clientId,
-
-    oktaEmail: authConfig?.email,
-
-    orgURL: authConfig?.orgURL,
-
-    privateKey: authConfig?.privateKey,
-
-    scopes: authConfig?.scopes?.join(','),
-
-    domain: authConfig?.domain,
-
-    authority: authConfig?.authority,
-
-    clientSecret: authConfig?.clientSecret,
-
-    tokenEndpoint: authConfig?.tokenEndpoint,
-    email,
   };
 };

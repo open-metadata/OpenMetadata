@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray, isEmpty, isEqual, isNil, isString } from 'lodash';
+import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -21,78 +21,96 @@ import React, {
 } from 'react';
 import {
   Config,
+  Field,
   FieldGroup,
   ImmutableTree,
   JsonTree,
   Utils as QbUtils,
   ValueField,
+  ValueSource,
 } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
-import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
+import {
+  getTierOptions,
+  getTreeConfig,
+} from '../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
-import { UrlParams } from '../ExplorePage.interface';
+import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
+  SearchOutputType,
 } from './AdvanceSearchProvider.interface';
 
 const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
 );
 
+const getSearchIndexFromTabInfo = (
+  tabsInfo: Record<ExploreSearchIndex, TabsInfoData>,
+  tab: string
+) => {
+  const tabInfo = Object.entries(tabsInfo).find(
+    ([, tabInfo]) => tabInfo.path === tab
+  );
+  if (isNil(tabInfo)) {
+    return SearchIndex.DATA_ASSET;
+  }
+
+  return tabInfo[0] as SearchIndex;
+};
+
 export const AdvanceSearchProvider = ({
   children,
   isExplorePage = true,
   modalProps,
   updateURL = true,
+  fieldOverrides = [],
+  searchOutputType = SearchOutputType.ElasticSearch,
 }: AdvanceSearchProviderProps) => {
+  const tabsInfo = searchClassBase.getTabsInfo();
   const tierOptions = useMemo(getTierOptions, []);
-
-  const tabsInfo = useMemo(
-    () => searchClassBase.getTabsInfo(),
-    [searchClassBase]
-  );
   const location = useCustomLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
-  const getSearchIndexFromTabInfo = useCallback(() => {
-    const tabInfo = Object.entries(tabsInfo).find(
-      ([, tabInfo]) => tabInfo.path === tab
-    );
-    if (isNil(tabInfo)) {
-      return SearchIndex.DATA_ASSET;
-    }
+  const [isUpdating, setIsUpdating] = useState(false);
 
-    return tabInfo[0] as SearchIndex;
-  }, [tabsInfo, tab]);
+  const [customProps, setCustomProps] = useState<Record<
+    string,
+    ValueField
+  > | null>(null);
 
   const [searchIndex, setSearchIndex] = useState<
     SearchIndex | Array<SearchIndex>
-  >(getSearchIndexFromTabInfo());
+  >(getSearchIndexFromTabInfo(tabsInfo, tab));
 
   const changeSearchIndex = useCallback(
     (index: SearchIndex | Array<SearchIndex>) => {
+      setIsUpdating(true);
       setSearchIndex(index);
     },
     []
   );
 
   const [config, setConfig] = useState<Config>(
-    advancedSearchClassBase.getQbConfigs(
+    getTreeConfig({
+      searchIndex: searchIndex,
+      searchOutputType: searchOutputType,
+      isExplorePage,
       tierOptions,
-      isArray(searchIndex) ? searchIndex : [searchIndex],
-      isExplorePage
-    )
+    })
   );
+
   const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
@@ -143,11 +161,12 @@ export const AdvanceSearchProvider = ({
 
   useEffect(() => {
     setConfig(
-      advancedSearchClassBase.getQbConfigs(
+      getTreeConfig({
+        searchIndex: searchIndex,
+        searchOutputType: searchOutputType,
+        isExplorePage,
         tierOptions,
-        isArray(searchIndex) ? searchIndex : [searchIndex],
-        isExplorePage
-      )
+      })
     );
   }, [searchIndex, isExplorePage]);
 
@@ -183,10 +202,6 @@ export const AdvanceSearchProvider = ({
     setSQLQuery('');
   }, [config]);
 
-  const handleConfigUpdate = (updatedConfig: Config) => {
-    setConfig(updatedConfig);
-  };
-
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
@@ -202,18 +217,20 @@ export const AdvanceSearchProvider = ({
   }, [history, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
-    const subfields: Record<string, ValueField> = {};
+    const subfields: Record<string, Field> = {};
 
     try {
       const res = await getAllCustomProperties();
 
       Object.entries(res).forEach(([_, fields]) => {
         if (Array.isArray(fields) && fields.length > 0) {
-          fields.forEach((field: { name: string; type: string }) => {
+          fields.forEach((field) => {
             if (field.name && field.type) {
-              subfields[field.name] = {
-                type: 'text',
-                valueSources: ['value'],
+              const { subfieldsKey, dataObject } =
+                advancedSearchClassBase.getCustomPropertiesSubFields(field);
+              subfields[subfieldsKey] = {
+                ...dataObject,
+                valueSources: dataObject.valueSources as ValueSource[],
               };
             }
           });
@@ -227,21 +244,35 @@ export const AdvanceSearchProvider = ({
   };
 
   const loadData = async () => {
-    const actualConfig = advancedSearchClassBase.getQbConfigs(
+    const actualConfig = getTreeConfig({
+      searchIndex: searchIndex,
+      searchOutputType: searchOutputType,
+      isExplorePage,
       tierOptions,
-      isArray(searchIndex) ? searchIndex : [searchIndex],
-      isExplorePage
-    );
+    });
 
-    const extensionSubField = await fetchCustomPropertyType();
+    let extensionSubField = customProps;
+    if (extensionSubField === null) {
+      extensionSubField = await fetchCustomPropertyType();
+      setCustomProps(extensionSubField);
+    }
 
     if (!isEmpty(extensionSubField)) {
       (actualConfig.fields.extension as FieldGroup).subfields =
         extensionSubField;
     }
 
+    // Update field type if field override is provided
+    // For example type of extension is group but it is required as struct in some cases
+    fieldOverrides.forEach((fieldOverride: { field: string; type: string }) => {
+      if (actualConfig.fields[fieldOverride.field]) {
+        actualConfig.fields[fieldOverride.field].type = fieldOverride.type;
+      }
+    });
+
     setConfig(actualConfig);
     setInitialised(true);
+    setIsUpdating(false);
   };
 
   const loadTree = useCallback(
@@ -264,12 +295,12 @@ export const AdvanceSearchProvider = ({
   );
 
   useEffect(() => {
-    setSearchIndex(getSearchIndexFromTabInfo());
-  }, [tabsInfo, tab]);
+    setSearchIndex(getSearchIndexFromTabInfo(tabsInfo, tab));
+  }, [tab]);
 
   useEffect(() => {
     loadData();
-  }, [searchIndex]);
+  }, [searchOutputType, searchIndex]);
 
   useEffect(() => {
     if (!initialised) {
@@ -305,10 +336,10 @@ export const AdvanceSearchProvider = ({
       toggleModal,
       treeInternal,
       config,
+      isUpdating,
       searchIndex,
       onReset: handleReset,
       onResetAllFilters: handleResetAllFilters,
-      onUpdateConfig: handleConfigUpdate,
       onChangeSearchIndex: changeSearchIndex,
       onSubmit: handleSubmit,
       modalProps,
@@ -320,10 +351,10 @@ export const AdvanceSearchProvider = ({
       toggleModal,
       treeInternal,
       config,
+      isUpdating,
       searchIndex,
       handleReset,
       handleResetAllFilters,
-      handleConfigUpdate,
       changeSearchIndex,
       handleSubmit,
       modalProps,

@@ -28,7 +28,9 @@ import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPa
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
+import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
+import UrlConfigurationPage from '../../pages/Configuration/UrlConfiguration/UrlConfigurationPage';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import CustomPropertiesPageV1 from '../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1';
 import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfigPage.component';
@@ -49,7 +51,7 @@ import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/Pro
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
-import SearchRBACSettingsPage from '../../pages/SearchRBACSettingsPage/SearchRBACSettingsPage';
+import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
@@ -60,8 +62,13 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
+import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
+
+const NotificationAlertDetailsPage = () => (
+  <AlertDetailsPage isNotificationAlert />
+);
 
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -101,6 +108,13 @@ const SettingsRouter = () => {
 
       <AdminProtectedRoute
         exact
+        component={EditUrlConfigurationPage}
+        hasPermission={false}
+        path={ROUTES.SETTINGS_OM_URL_CONFIG}
+      />
+
+      <AdminProtectedRoute
+        exact
         component={EditLoginConfiguration}
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
@@ -111,19 +125,25 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={NotificationListPage}
-        hasPermission={false}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
       />
 
       <AdminProtectedRoute
         exact
-        component={() => <AlertDetailsPage isNotificationAlert />}
-        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
+        component={NotificationAlertDetailsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddNotificationPage}
-        hasPermission={false}
         path={[
           getSettingPath(
             GlobalSettingsMenuCategory.NOTIFICATIONS,
@@ -243,10 +263,20 @@ const SettingsRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={SearchRBACSettingsPage}
+        component={SearchSettingsPage}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.SEARCH_RBAC
+          GlobalSettingOptions.SEARCH_SETTINGS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EntitySearchSettings}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_SETTINGS,
+          true
         )}
       />
 
@@ -256,6 +286,15 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LINEAGE_CONFIG
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={UrlConfigurationPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.OM_URL_CONFIG
         )}
       />
 

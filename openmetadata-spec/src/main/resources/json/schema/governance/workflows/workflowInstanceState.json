@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/workflowInstanceState.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowInstanceState",
+  "description": "Defines a workflow instance.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governance.workflows.WorkflowInstanceState",
+  "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this workflow instance state.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowInstanceId": {
+      "description": "Workflow Instance ID.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowInstanceExecutionId": {
+      "description": "One WorkflowInstance might execute a flow multiple times. This ID groups together the States of one of those flows.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "workflowDefinitionId": {
+      "description": "Workflow Definition Reference.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "stage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "../../type/basic.json#/definitions/entityName"
+        },
+        "startedAt": {
+          "description": "Timestamp on which the workflow instance stage started.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "endedAt": {
+          "description": "Timestamp on which the workflow instance stage ended.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "../../type/basic.json#/definitions/uuid"
+          },
+          "default": []
+        },
+        "variables": {
+          "type": "object",
+          "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
+        }
+      },
+      "additionalProperties": false
+    },
+    "timestamp": {
+      "description": "Timestamp on which the workflow instance state was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "$ref": "workflowInstance.json#/definitions/workflowStatus"
+    },
+    "exception": {
+      "type": "string"
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

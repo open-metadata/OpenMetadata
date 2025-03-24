@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.TEST_CONNECTION_DEFINITION;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.services.connections.TestConnectionDefinition;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.connections.TestConnectionDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -66,8 +67,11 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      TestConnectionDefinition original, TestConnectionDefinition updated, Operation operation) {
+  public EntityRepository<TestConnectionDefinition>.EntityUpdater getUpdater(
+      TestConnectionDefinition original,
+      TestConnectionDefinition updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new TestConnectionDefinitionUpdater(original, updated, operation);
   }
 
@@ -79,7 +83,7 @@ public class TestConnectionDefinitionRepository extends EntityRepository<TestCon
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("steps", original.getSteps(), updated.getSteps(), true);
     }
   }

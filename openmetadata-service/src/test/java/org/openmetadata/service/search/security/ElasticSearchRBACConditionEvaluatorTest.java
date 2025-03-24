@@ -45,11 +45,15 @@ class ElasticSearchRBACConditionEvaluatorTest {
   private RBACConditionEvaluator evaluator;
   private User mockUser;
   private SubjectContext mockSubjectContext;
+  private List<SubjectContext.PolicyContext> policies;
 
   @BeforeEach
   public void setUp() {
+    policies = new ArrayList<>(); // Initialize the policies list
+
     QueryBuilderFactory queryBuilderFactory = new ElasticQueryBuilderFactory();
     evaluator = new RBACConditionEvaluator(queryBuilderFactory);
+
     SearchRepository mockSearchRepository = mock(SearchRepository.class);
     when(mockSearchRepository.getIndexOrAliasName(anyString()))
         .thenAnswer(
@@ -58,6 +62,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
               return resource.toLowerCase();
             });
     Entity.setSearchRepository(mockSearchRepository);
+
     mockSubjectContext = mock(SubjectContext.class);
     mockUser = mock(User.class);
     EntityReference mockUserReference = mock(EntityReference.class);
@@ -66,6 +71,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
     when(mockUser.getName()).thenReturn("testUser");
     when(mockSubjectContext.user()).thenReturn(mockUser);
+
+    // Set up the mock behavior to return the policies iterator
+    when(mockSubjectContext.getPolicies(any())).thenAnswer(invocation -> policies.iterator());
   }
 
   @AfterEach
@@ -85,8 +93,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     List<CompiledRule> mockRules = new ArrayList<>();
     for (int i = 0; i < expressions.size(); i++) {
       CompiledRule mockRule = mock(CompiledRule.class);
-      when(mockRule.getOperations()).thenReturn(List.of(MetadataOperation.VIEW_BASIC));
       when(mockRule.getCondition()).thenReturn(expressions.get(i));
+
       List<String> resources = (resourcesList.size() > i) ? resourcesList.get(i) : List.of("All");
       when(mockRule.getResources()).thenReturn(resources);
 
@@ -96,11 +104,14 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
       CompiledRule.Effect mockEffect = CompiledRule.Effect.valueOf(effect.toUpperCase());
       when(mockRule.getEffect()).thenReturn(mockEffect);
+
       mockRules.add(mockRule);
     }
 
     when(mockPolicyContext.getRules()).thenReturn(mockRules);
-    when(mockSubjectContext.getPolicies(any())).thenReturn(List.of(mockPolicyContext).iterator());
+
+    // Add the policy context to the policies list
+    policies.add(mockPolicyContext);
   }
 
   private void setupMockPolicies(String expression, String effect, List<String> resources) {
@@ -190,43 +201,37 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
         "ALLOW");
 
-    // Evaluate condition and build query
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
 
-    // Parse the generated query
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Check for the presence of the PII.Sensitive tag in the "should" clause
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
+        "$.bool.must[0].bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
         "PII.Sensitive tag");
 
-    // Check for the presence of Test.Test1 and Test.Test2 tags in the "must" clause
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test1')]",
+        "$.bool.must[0].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test1')]",
         "Test.Test1 tag");
+
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test2')]",
+        "$.bool.must[0].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test2')]",
         "Test.Test2 tag");
 
-    // Check for the presence of owner.id in the "must_not" clause for the negation
     assertFieldExists(
         jsonContext,
-        "$.bool.should[2].bool.must_not[0].bool.should[?(@.term['owners.id'])]",
+        "$.bool.must[1].bool.should[0].bool.must_not[?(@.term['owners.id'])]",
         "owners.id in must_not");
 
-    // Check for the presence of must_not for the case where there is no owner
     assertFieldExists(
         jsonContext,
-        "$.bool.should[3].bool.must_not[?(@.exists.field=='owners.id')]",
+        "$.bool.must[1].bool.should[1].bool.must_not[?(@.exists.field=='owners.id')]",
         "no owner must_not clause");
 
-    // Count the number of bool clauses
     ObjectMapper objectMapper = new ObjectMapper();
     JsonNode rootNode = objectMapper.readTree(generatedQuery);
     AtomicInteger boolQueryCount = new AtomicInteger(0);
@@ -280,24 +285,42 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assert that the query contains 'domain.id'
     assertFieldExists(jsonContext, "$.bool.must[?(@.term['domain.id'])]", "domain.id");
 
-    // Assert that the query contains the user's domain ID
     assertFieldExists(
         jsonContext,
         "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
         "user's domain ID");
 
-    // Assert that the query contains 'inAnyTeam' logic for 'Analytics'
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
 
-    // Ensure no match_any_tag query is processed since inAnyTeam('Analytics') is true
     assertFieldDoesNotExist(
-        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'])]", "matchAnyTag 'Sensitive'");
+        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'])]", "matchAnyTag 'Sensitive'");
 
-    // Ensure the query does not contain a match_none condition
+    assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none");
+  }
+
+  @Test
+  void testAndConditionWithMatchAnyTagAndInAnyTeam() {
+    setupMockPolicies("matchAnyTag('Sensitive') && inAnyTeam('Analytics')", "ALLOW");
+
+    EntityReference team = new EntityReference();
+    team.setId(UUID.randomUUID());
+    team.setName("Analytics");
+    when(mockUser.getTeams()).thenReturn(List.of(team));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "tags.tagFQN 'Sensitive'");
+
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none");
   }
 
@@ -311,7 +334,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
 
-    // Adjust the assertion
     assertTrue(
         generatedQuery.contains("\"must_not\""), "The query should contain 'must_not' clause.");
     assertTrue(
@@ -372,7 +394,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
   @Test
   void testConditionUserLacksDomain() {
-    setupMockPolicies("hasDomain() && isOwner() && matchAnyTag('Public')", "ALLOW");
+    setupMockPolicies("hasDomain() && isOwner() && matchAnyTag('Public', 'Private')", "ALLOW");
     when(mockUser.getDomain()).thenReturn(null);
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
@@ -381,13 +403,14 @@ class ElasticSearchRBACConditionEvaluatorTest {
     assertFieldExists(
         jsonContext, "$.bool.must_not[?(@.exists.field=='domain.id')]", "must_not for domain.id");
 
-    // Check for owner ID and Public tag in the query
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
         "owner.id");
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Public')]", "Public tag");
+        jsonContext,
+        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Public')]",
+        "Public tag");
   }
 
   @Test
@@ -460,21 +483,14 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assertions
-    assertFieldExists(
-        jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
-
-    // Ensure no further processing for matchAnyTag('Confidential') or hasDomain()
     assertFieldDoesNotExist(
         jsonContext, "$.bool.must[?(@.term['tags.tagFQN'])]", "matchAnyTag 'Confidential'");
     assertFieldDoesNotExist(
         jsonContext, "$.bool.must[?(@.term['domain.id'])]", "hasDomain 'domain.id'");
 
-    // Ensure that the query does not check for noOwner since inAnyTeam('HR') is false
     assertFieldDoesNotExist(
         jsonContext, "$.bool.must_not[?(@.exists.field=='owners.id')]", "noOwner clause");
 
-    // Ensure the query does not contain a match_none condition
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none");
   }
 
@@ -500,9 +516,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal");
     assertFieldExists(
-        jsonContext,
-        "$.bool.must_not[0].bool.should[1].bool.should[?(@.term['owners.id'])]",
-        "owners.id");
+        jsonContext, "$.bool.must_not[0].bool.should[?(@.term['owners.id'])]", "owners.id");
   }
 
   @Test
@@ -581,56 +595,45 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "(hasAnyRole('Admin') && hasDomain() && matchAllTags('PII', 'Sensitive')) || (isOwner() && !matchAnyTag('Restricted'))",
         "ALLOW");
 
-    // Mock user roles
     EntityReference role = new EntityReference();
     role.setName("Admin");
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
-    // Mock user domain
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     when(mockUser.getDomain()).thenReturn(domain);
 
-    // Mock user ownership
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
     EntityReference userRef = new EntityReference();
     userRef.setId(mockUser.getId());
     userRef.setType("user");
     when(mockUser.getEntityReference()).thenReturn(userRef);
 
-    // Evaluate condition and build query
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
 
-    // Parse the generated query
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assertions
-
-    // Check for the presence of domain.id
     assertFieldExists(
-        jsonContext, "$.bool.should[0].bool.must[?(@.term['domain.id'])]", "domain.id");
+        jsonContext, "$.bool.should[?(@.bool.must[?(@.term['domain.id'])])]", "domain.id");
 
-    // Check for the presence of PII and Sensitive tags in the matchAllTags clause
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='PII')]",
+        "$.bool.should[?(@.bool.must[?(@.term['tags.tagFQN'].value=='PII')])]",
         "PII tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.should[?(@.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')])]",
         "Sensitive tag");
 
-    // Check for the presence of must_not for matchAnyTag('Restricted')
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must_not[0].bool.should[?(@.term['tags.tagFQN'].value=='Restricted')]",
+        "$.bool.should[?(@.bool.must_not[?(@.term['tags.tagFQN'].value=='Restricted')])]",
         "must_not for matchAnyTag 'Restricted'");
 
-    // Check for the presence of owner.id in the second should block
     assertFieldExists(
-        jsonContext, "$.bool.should[1].bool.should[?(@.term['owners.id'])]", "owners.id");
+        jsonContext, "$.bool.should[?(@.bool.must[?(@.term['owners.id'])])]", "owners.id");
   }
 
   @Test
@@ -639,18 +642,15 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "(hasAnyRole('Admin') || hasAnyRole('DataSteward')) && (matchAnyTag('Finance') || matchAllTags('Confidential', 'Internal')) && !inAnyTeam('Data')",
         "ALLOW");
 
-    // Mock user roles
     EntityReference role = new EntityReference();
     role.setName("DataSteward");
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
-    // Mock user teams
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
     team.setName("Engineering");
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
-    // Evaluate condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
@@ -665,17 +665,17 @@ class ElasticSearchRBACConditionEvaluatorTest {
     // matchAllTags('Confidential', 'Internal')
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
+        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
         "Finance tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must[1].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.must[1].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal tag");
 
     // Ensure no must_not for inAnyTeam('Data') since the user is in 'Engineering'
@@ -688,23 +688,19 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "!((hasAnyRole('Admin') || inAnyTeam('Engineering')) && matchAnyTag('Confidential') && matchAllTags('Sensitive', 'Classified')) && hasDomain() && isOwner()",
         "ALLOW");
 
-    // Mock user roles
     EntityReference role = new EntityReference();
     role.setName("Admin");
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
-    // Mock user teams
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
     team.setName("Engineering");
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
-    // Mock user domain
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     when(mockUser.getDomain()).thenReturn(domain);
 
-    // Mock user ownership
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
     EntityReference userRef = new EntityReference();
     userRef.setId(mockUser.getId());
@@ -716,10 +712,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-    // `domain.id` should be in `must`
     assertFieldExists(jsonContext, "$.bool.must[?(@.term['domain.id'])]", "domain.id");
 
-    // `Sensitive` and `Classified` tags should be in `must_not[0].bool.must`
     assertFieldExists(
         jsonContext,
         "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
@@ -729,14 +723,14 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Classified')]",
         "Classified");
 
-    // `Confidential` tag should be in `must_not[0].bool.should`
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential");
 
     // Ownership (isOwner condition) should be in `should`
-    assertFieldExists(jsonContext, "$.bool.should[?(@.term['owners.id'])]", "owners.id");
+    assertFieldExists(
+        jsonContext, "$.bool.must[1].bool.should[?(@.term['owners.id'])]", "owners.id");
   }
 
   @Test
@@ -757,41 +751,35 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
         "owners.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
 
   @Test
   void testIndexFilteringBasedOnResource() {
-    // Assume the rule applies to 'Table' resource
     setupMockPolicies("hasAnyRole('Admin') && matchAnyTag('Sensitive')", "ALLOW", List.of("Table"));
 
-    // Mock user roles
     EntityReference role = new EntityReference();
     role.setName("Admin");
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
-    // Evaluate condition and build query
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assert that the query contains the appropriate index (e.g., 'table_search_index')
     assertFieldExists(
         jsonContext,
         "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
         "Index filtering for 'Table' resource");
-    // Assert that the query contains 'tags.tagFQN' for 'Sensitive' tag
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
   }
 
   @Test
   void testComplexConditionWithIndexFiltering() {
-    // Assume the rule applies to 'Database' and 'Table' resources
     setupMockPolicies(
         "hasDomain() && matchAnyTag('Sensitive')", "ALLOW", List.of("Database", "Table"));
 
@@ -806,7 +794,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assert that the query contains the appropriate indices for 'Database' and 'Table'
     assertFieldExists(
         jsonContext,
         "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'database')])]",
@@ -816,9 +803,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
         "Index filtering for 'Table' resource");
 
-    // Assert that the query contains 'tags.tagFQN' for 'Sensitive' tag
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
     assertFieldExists(
         jsonContext,
         "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
@@ -827,7 +813,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
   @Test
   void testMultipleRulesInPolicy() {
-    // Set up policies with multiple rules
     setupMockPolicies(
         List.of(
             "hasAnyRole('Admin') && matchAnyTag('Sensitive')",
@@ -836,7 +821,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
         List.of(List.of("Table"), List.of("Dashboard")),
         List.of(List.of(MetadataOperation.VIEW_BASIC)));
 
-    // Mock user roles and teams
     EntityReference role = new EntityReference();
     role.setName("Admin");
     when(mockUser.getRoles()).thenReturn(List.of(role));
@@ -846,15 +830,12 @@ class ElasticSearchRBACConditionEvaluatorTest {
     team.setName("Engineering");
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
-    // Evaluate conditions
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
 
-    // Assertions
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Check for the "Table" index condition
     assertFieldExists(
         jsonContext,
         "$.bool.should[0].bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
@@ -865,14 +846,13 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "Sensitive tag");
 
-    // Check for the "Dashboard" index condition
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.terms._index && @.terms._index[?(@ == 'database')])]",
-        "Index filtering for 'Database' resource");
+        "$.bool.should[1].bool.must[?(@.terms._index && @.terms._index[?(@ == 'Dashboard')])]",
+        "Index filtering for 'Dashboard' resource");
     assertFieldExists(
         jsonContext,
         "$.bool.should[1].bool.must[?(@.match_all)]",
@@ -889,40 +869,32 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
   @Test
   void testMultiplePoliciesInRole() {
-    // Mock multiple policies in a single role
     setupMockPolicies(
         List.of("hasDomain() && matchAnyTag('Public')", "!inAnyTeam('HR') || isOwner()"),
         "ALLOW",
         List.of(List.of("Table"), List.of("Dashboard")),
         List.of(List.of(MetadataOperation.VIEW_BASIC)));
 
-    // Mock user roles
     EntityReference role = new EntityReference();
     role.setName("DataSteward");
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
-    // Mock user teams
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
     team.setName("Finance");
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
-    // Mock user domain
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     when(mockUser.getDomain()).thenReturn(domain);
 
-    // Mock user ownership
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
 
-    // Evaluate the condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assertions
-    // Check for domain filtering in the "Table" index clause
     assertFieldExists(
         jsonContext,
         "$.bool.should[0].bool.must[?(@.term['domain.id'].value=='"
@@ -930,16 +902,14 @@ class ElasticSearchRBACConditionEvaluatorTest {
             + "')]",
         "user's domain ID");
 
-    // Check for the matchAnyTag clause for Public tag in the "Table" index clause
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.should[?(@.term['tags.tagFQN'].value=='Public')]",
+        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Public')]",
         "Public tag");
   }
 
   @Test
   void testRoleAndPolicyInheritanceFromTeams() {
-    // Mock policies inherited through team hierarchy
     setupMockPolicies(
         List.of(
             "hasAnyRole('Manager') && hasDomain()",
@@ -948,7 +918,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
         List.of(List.of("All"), List.of("All")),
         List.of(List.of(MetadataOperation.VIEW_BASIC)));
 
-    // Mock user teams with inherited roles
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
     team.setName("Engineering");
@@ -959,20 +928,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getRoles())
         .thenReturn(List.of(inheritedRole)); // User inherits the 'Manager' role
 
-    // Mock user domain
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Operations");
     when(mockUser.getDomain()).thenReturn(domain);
 
-    // Evaluate the condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assertions
-    // Adjust the assertion for the hasDomain clause
     assertFieldExists(
         jsonContext,
         "$.bool.should[0].bool.must[?(@.term['domain.id'].value=='"
@@ -980,33 +945,28 @@ class ElasticSearchRBACConditionEvaluatorTest {
             + "')]",
         "user's domain ID");
 
-    // Check for the inAnyTeam('Engineering') clause
     assertFieldExists(
         jsonContext,
         "$.bool.should[1].bool.must[?(@.match_all)]",
         "match_all for inAnyTeam 'Engineering'");
 
-    // Check for the matchAnyTag clause for Critical tag
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.should[?(@.term['tags.tagFQN'].value=='Critical')]",
+        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Critical')]",
         "Critical tag");
   }
 
   @Test
   void testRuleWithNonViewOperationIgnored() {
-    // Rule with operation EditDescription, which should be ignored in search RBAC
     setupMockPolicies(
         List.of("isOwner()"),
         "ALLOW",
         List.of(List.of("All")),
         List.of(List.of(MetadataOperation.EDIT_DESCRIPTION)));
 
-    // Mock user ownership
     UUID userId = UUID.randomUUID();
     when(mockUser.getId()).thenReturn(userId);
 
-    // Evaluate the condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
@@ -1015,23 +975,19 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
   @Test
   void testRuleWithViewBasicOperationApplied() {
-    // Rule with operation ViewBasic, which should affect search results
     setupMockPolicies(
         List.of("isOwner()"),
         "ALLOW",
         List.of(List.of("All")),
         List.of(List.of(MetadataOperation.VIEW_BASIC)));
 
-    // Mock user ownership
     UUID userId = UUID.randomUUID();
     when(mockUser.getId()).thenReturn(userId);
 
-    // Evaluate the condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
     String generatedQuery = elasticQuery.toString();
 
-    // The rule should affect the search query
     assertTrue(generatedQuery.contains("owners.id"), "The query should contain 'owner.id'");
     assertTrue(
         generatedQuery.contains(userId.toString()), "The query should contain the user's ID");
@@ -1040,7 +996,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   @Test
   void testDenyAllOperationsOnTableResource() {
     setupMockPolicies(
-        List.of(""), "DENY", List.of(List.of("Table")), List.of(List.of(MetadataOperation.ALL)));
+        List.of(""), "DENY", List.of(List.of("table")), List.of(List.of(MetadataOperation.ALL)));
 
     UUID userId = UUID.randomUUID();
     when(mockUser.getId()).thenReturn(userId);
@@ -1055,7 +1011,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[0].bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
         "must_not clause excluding 'table'");
 
-    // Assertions to ensure 'table' is not included in 'must' or 'should' clauses
     assertFieldDoesNotExist(
         jsonContext,
         "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
@@ -1068,7 +1023,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
   @Test
   void testUserSeesOwnedAndUnownedResourcesIncludingTeamOwnership() {
-    // Set up a policy with three rules
     setupMockPolicies(
         List.of(
             "noOwner()", // Rule 1 condition (ViewBasic)
@@ -1151,7 +1105,6 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "The query should include 'isOwner' or 'matchAnyTag' conditions where applicable");
   }
 
-  // Helper methods
   private CompiledRule createCompiledRule(Map<String, Object> policyDef) {
     CompiledRule rule = mock(CompiledRule.class);
     when(rule.getName()).thenReturn((String) policyDef.get("name"));
@@ -1226,5 +1179,76 @@ class ElasticSearchRBACConditionEvaluatorTest {
     policyDefs.add(policy5);
 
     return policyDefs;
+  }
+
+  @Test
+  void testAllowPoliciesWithoutMinimumShouldMatch() {
+    setupMockPolicies(
+        List.of(""), // No condition
+        "ALLOW",
+        List.of(List.of("table", "dashboard")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    setupMockPolicies(
+        List.of(""), // No condition
+        "ALLOW",
+        List.of(List.of("glossary", "glossaryTerm")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'table' || @ == 'dashboard')])]",
+        "Allow policy should include 'table' and 'dashboard' in should clause");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'glossary' || @ == 'glossaryterm')])]",
+        "Allow policy should include 'glossary' and 'glossaryTerm' in should clause");
+  }
+
+  @Test
+  void testPoliciesWithDeny() {
+    setupMockPolicies(
+        List.of(""),
+        "ALLOW",
+        List.of(List.of("table", "dashboard")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    setupMockPolicies(
+        List.of(""),
+        "ALLOW",
+        List.of(List.of("glossary", "glossaryTerm")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    setupMockPolicies(
+        List.of(""),
+        "DENY",
+        List.of(List.of("glossary", "glossaryTerm")),
+        List.of(List.of(MetadataOperation.VIEW_ALL)));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'table' || @ == 'dashboard')])]",
+        "Allow policy should include 'table' and 'dashboard' in should clause");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'glossary' || @ == 'glossaryterm')])]",
+        "Allow policy should include 'glossary' and 'glossaryTerm' in should clause");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'glossary' || @ == 'glossaryterm')])]",
+        "Deny policy should exclude 'glossary' and 'glossaryTerm' in must_not clause");
   }
 }

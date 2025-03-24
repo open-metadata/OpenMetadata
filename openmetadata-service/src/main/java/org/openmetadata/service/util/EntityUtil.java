@@ -17,16 +17,19 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -219,7 +222,7 @@ public final class EntityUtil {
               .withDailyStats(stats)
               .withWeeklyStats(stats)
               .withMonthlyStats(stats)
-              .withDate(RestUtil.DATE_FORMAT.format(new Date()));
+              .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
   }
@@ -305,7 +308,7 @@ public final class EntityUtil {
     }
 
     public Fields(Set<String> allowedFields, Set<String> fieldsParam) {
-      if (CommonUtil.nullOrEmpty(fieldsParam)) {
+      if (nullOrEmpty(fieldsParam)) {
         fieldList = new HashSet<>();
         return;
       }
@@ -688,18 +691,34 @@ public final class EntityUtil {
     return result.stream().toList();
   }
 
-  public static void addDomainQueryParam(SecurityContext securityContext, ListFilter filter) {
+  public static void addDomainQueryParam(
+      SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     // If the User is admin then no need to add domainId in the query param
     // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
       } else {
-        // TODO: Hack :(
-        filter.addQueryParam("domainId", "null");
+        filter.addQueryParam("domainId", NULL_PARAM);
+        filter.addQueryParam("entityType", entityType);
       }
     }
+  }
+
+  public static String encodeEntityFqn(String fqn) {
+    return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  public static boolean isNullOrEmptyChangeDescription(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return true;
+    }
+    return changeDescription.getFieldsAdded().isEmpty()
+        && changeDescription.getFieldsUpdated().isEmpty()
+        && changeDescription.getFieldsDeleted().isEmpty();
   }
 }

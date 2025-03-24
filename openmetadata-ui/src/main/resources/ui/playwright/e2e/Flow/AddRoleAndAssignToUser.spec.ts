@@ -53,7 +53,7 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.click('[data-testid="add-role"]');
 
     await page.fill('[data-testid="name"]', roleName);
-    await page.fill(descriptionBox, `description for ${roleName}`);
+    await page.locator(descriptionBox).fill(`description for ${roleName}`);
 
     await page.click('[data-testid="policies"]');
     await page.click('[title="Data Consumer Policy"]');
@@ -87,7 +87,7 @@ test.describe.serial('Add role and assign it to the user', () => {
 
     await page.fill('[data-testid="email"]', user.email);
     await page.fill('[data-testid="displayName"]', userDisplayName);
-    await page.fill(descriptionBox, 'Adding user');
+    await page.locator(descriptionBox).fill('Adding user');
     const generatePasswordResponse = page.waitForResponse(
       `/api/v1/users/generateRandomPwd`
     );
@@ -100,6 +100,10 @@ test.describe.serial('Add role and assign it to the user', () => {
 
     await clickOutside(page);
     const userResponse = page.waitForResponse(`/api/v1/users`);
+
+    await page.waitForSelector('[data-testid="save-user"]', {
+      state: 'visible',
+    });
     await page.click('[data-testid="save-user"]');
 
     await userResponse;
@@ -109,12 +113,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await visitUserProfilePage(page, userName);
 
     await page.waitForSelector('[data-testid="user-profile"]');
-    await page.click(
-      '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon'
-    );
 
-    await expect(
-      page.getByTestId('user-profile').getByTestId('user-profile-roles')
-    ).toContainText(roleName);
+    await expect(page.getByTestId('user-profile-roles')).toContainText(
+      roleName
+    );
   });
 });

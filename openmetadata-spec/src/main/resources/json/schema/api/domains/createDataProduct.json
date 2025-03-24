@@ -51,6 +51,14 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "tags": {
+      "description": "Tags for this Data Product.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
@@ -58,7 +66,8 @@
   },
   "required": [
     "name",
-    "description"
+    "description",
+    "domain"
   ],
   "additionalProperties": false
 }

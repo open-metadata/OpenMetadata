@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TeamAndUserSelectItemProps } from '../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem.interface';
+import { TeamAndUserSelectItemProps } from '../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem.interface';
 
 export const TEST_TEAM_OPTIONS = [
   {

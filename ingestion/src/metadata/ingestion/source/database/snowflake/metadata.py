@@ -27,7 +27,10 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedureCode,
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.data.table import (
     PartitionColumnDetails,
     PartitionIntervalTypes,
@@ -71,6 +74,7 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeStoredProcedure,
 )
 from metadata.ingestion.source.database.snowflake.queries import (
+    SNOWFLAKE_DESC_FUNCTION,
     SNOWFLAKE_DESC_STORED_PROCEDURE,
     SNOWFLAKE_FETCH_ALL_TAGS,
     SNOWFLAKE_GET_CLUSTER_KEY,
@@ -78,6 +82,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
+    SNOWFLAKE_GET_FUNCTIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_STORED_PROCEDURES,
@@ -110,6 +115,7 @@ from metadata.utils.tag_utils import get_ometa_tag_and_classification
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
+ischema_names["VECTOR"] = create_sqlalchemy_type("VECTOR")
 
 logger = ingestion_logger()
 
@@ -413,6 +419,7 @@ class SnowflakeSource(
                     SNOWFLAKE_FETCH_ALL_TAGS.format(
                         database_name=self.context.get().database,
                         schema_name=schema_name,
+                        account_usage=self.service_connection.accountUsageSchema,
                     )
                 )
 
@@ -426,6 +433,7 @@ class SnowflakeSource(
                         SNOWFLAKE_FETCH_ALL_TAGS.format(
                             database_name=f'"{self.context.get().database}"',
                             schema_name=f'"{self.context.get().database_schema}"',
+                            account_usage=self.service_connection.accountUsageSchema,
                         )
                     )
                 except Exception as inner_exc:
@@ -623,26 +631,35 @@ class SnowflakeSource(
 
         return views
 
+    def _get_stored_procedures_internal(
+        self, query: str
+    ) -> Iterable[SnowflakeStoredProcedure]:
+        results = self.engine.execute(
+            query.format(
+                database_name=self.context.get().database,
+                schema_name=self.context.get().database_schema,
+                account_usage=self.service_connection.accountUsageSchema,
+            )
+        ).all()
+        for row in results:
+            stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
+            if stored_procedure.definition is None:
+                logger.debug(
+                    f"Missing ownership permissions on procedure {stored_procedure.name}."
+                    " Trying to fetch description via DESCRIBE."
+                )
+                stored_procedure.definition = self.describe_procedure_definition(
+                    stored_procedure
+                )
+            yield stored_procedure
+
     def get_stored_procedures(self) -> Iterable[SnowflakeStoredProcedure]:
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(
-                SNOWFLAKE_GET_STORED_PROCEDURES.format(
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                )
-            ).all()
-            for row in results:
-                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
-                if stored_procedure.definition is None:
-                    logger.debug(
-                        f"Missing ownership permissions on procedure {stored_procedure.name}."
-                        " Trying to fetch description via DESCRIBE."
-                    )
-                    stored_procedure.definition = self.describe_procedure_definition(
-                        stored_procedure
-                    )
-                yield stored_procedure
+            yield from self._get_stored_procedures_internal(
+                SNOWFLAKE_GET_STORED_PROCEDURES
+            )
+            yield from self._get_stored_procedures_internal(SNOWFLAKE_GET_FUNCTIONS)
 
     def describe_procedure_definition(
         self, stored_procedure: SnowflakeStoredProcedure
@@ -654,8 +671,12 @@ class SnowflakeSource(
         Then, if the procedure is created with `EXECUTE AS CALLER`, we can still try to
         get the definition with a DESCRIBE.
         """
+        if stored_procedure.procedure_type == StoredProcedureType.StoredProcedure.value:
+            query = SNOWFLAKE_DESC_STORED_PROCEDURE
+        else:
+            query = SNOWFLAKE_DESC_FUNCTION
         res = self.engine.execute(
-            SNOWFLAKE_DESC_STORED_PROCEDURE.format(
+            query.format(
                 database_name=self.context.get().database,
                 schema_name=self.context.get().database_schema,
                 procedure_name=stored_procedure.name,
@@ -677,6 +698,8 @@ class SnowflakeSource(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,
                 ),
+                storedProcedureType=stored_procedure.procedure_type
+                or StoredProcedureType.StoredProcedure.value,
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
                     entity_type=DatabaseSchema,

@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/slackAppTokenConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SlackAppTokenConfiguration",
+  "description": "This schema defines the Slack App Token Configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.applications.configuration.SlackAppTokenConfiguration",
+  "properties": {
+    "userToken": {
+      "title": "User Token",
+      "description": "User Token",
+      "type": "string",
+      "format": "password"
+    },
+    "botToken": {
+      "title": "Bot Token",
+      "description": "Bot Token",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "userToken",
+    "botToken"
+  ]
+}

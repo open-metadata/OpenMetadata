@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Module that defines the TableDiffParamsSetter class."""
 from ast import literal_eval
-from typing import List, Optional
+from typing import List, Optional, Set
 from urllib.parse import urlparse
 
 from metadata.data_quality.validations import utils
@@ -75,9 +75,13 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             DatabaseService, table2.service.id, nullable=False
         )
         key_columns = self.get_key_columns(test_case)
-        extra_columns = self.get_extra_columns(key_columns, test_case)
+        extra_columns = self.get_extra_columns(
+            key_columns, test_case, self.table_entity.columns, table2.columns
+        )
         return TableDiffRuntimeParameters(
+            table_profile_config=self.table_entity.tableProfilerConfig,
             table1=TableParameter(
+                database_service_type=service1.serviceType,
                 path=self.get_data_diff_table_path(
                     self.table_entity.fullyQualifiedName.root
                 ),
@@ -94,6 +98,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                 ),
             ),
             table2=TableParameter(
+                database_service_type=service2.serviceType,
                 path=self.get_data_diff_table_path(table2_fqn),
                 serviceUrl=self.get_data_diff_url(
                     service2,
@@ -108,18 +113,19 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                     case_sensitive=case_sensitive_columns,
                 ),
             ),
-            keyColumns=key_columns,
-            extraColumns=extra_columns,
+            keyColumns=list(key_columns),
+            extraColumns=list(extra_columns),
             whereClause=self.build_where_clause(test_case),
         )
 
-    # pylint: disable=protected-access
     def build_where_clause(self, test_case) -> Optional[str]:
         param_where_clause = self.get_parameter(test_case, "where", None)
         partition_where_clause = (
             None
-            if not self.sampler._partition_details
-            or not self.sampler._partition_details.enablePartitioning
+            if not (
+                self.sampler.partition_details
+                and self.sampler.partition_details.enablePartitioning
+            )
             else self.sampler.get_partitioned_query().whereclause.compile(
                 compile_kwargs={"literal_binds": True}
             )
@@ -130,21 +136,25 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         return " AND ".join(where_clauses)
 
     def get_extra_columns(
-        self, key_columns: List[str], test_case
-    ) -> Optional[List[str]]:
+        self,
+        key_columns: Set[str],
+        test_case,
+        left_columns: List[Column],
+        right_columns: List[Column],
+    ) -> Optional[Set[str]]:
         extra_columns_param = self.get_parameter(test_case, "useColumns", None)
         if extra_columns_param is not None:
             extra_columns: List[str] = literal_eval(extra_columns_param)
             self.validate_columns(extra_columns)
-            return extra_columns
+            return set(extra_columns)
         if extra_columns_param is None:
             extra_columns_param = []
-            for column in self.table_entity.columns:
+            for column in left_columns + right_columns:
                 if column.name.root not in key_columns:
                     extra_columns_param.insert(0, column.name.root)
-        return extra_columns_param
+        return set(extra_columns_param)
 
-    def get_key_columns(self, test_case) -> List[str]:
+    def get_key_columns(self, test_case) -> Set[str]:
         key_columns_param = self.get_parameter(test_case, "keyColumns", "[]")
         key_columns: List[str] = literal_eval(key_columns_param)
         if key_columns:
@@ -163,13 +173,13 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                 "Could not find primary key or unique constraint columns.\n",
                 "Specify 'keyColumns' to explicitly set the columns to use as keys.",
             )
-        return key_columns
+        return set(key_columns)
 
     @staticmethod
     def filter_relevant_columns(
         columns: List[Column],
-        key_columns: List[str],
-        extra_columns: List[str],
+        key_columns: Set[str],
+        extra_columns: Set[str],
         case_sensitive: bool,
     ) -> List[Column]:
         validated_columns = (

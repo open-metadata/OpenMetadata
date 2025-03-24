@@ -1,6 +1,7 @@
 ---
 title: Data Quality Overview Section
 slug: /how-to-guides/data-quality-observability/quality/overview
+collate: true
 ---
 
 # Data Quality Overview Section

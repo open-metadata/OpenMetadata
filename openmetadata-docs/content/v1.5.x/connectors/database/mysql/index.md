@@ -7,8 +7,8 @@ slug: /connectors/database/mysql
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage"]
+unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
 In this section, we provide guides and references to use the MySQL connector.
@@ -42,6 +42,18 @@ GRANT SELECT ON world.* TO '<username>';
 
 -- Grant select on a specific object
 GRANT SELECT ON world.hello TO '<username>';
+```
+
+### Lineage & Usage 
+To extract lineage & usage you need to enable the query logging in mysql and the user used in the connection needs to have select access to the `mysql.general_log`.
+
+```sql
+-- Enable Logging 
+SET GLOBAL general_log='ON';
+set GLOBAL log_output='table';
+
+-- Grant SELECT on log table
+GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
 ```
 
 ### Profiler & Data Quality

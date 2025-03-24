@@ -172,13 +172,16 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(
             [q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q]
         )
 
     def view_column_lineage_count(self) -> int:
         return 2
+
+    def expected_lineage_node(self) -> str:
+        return "e2e_snowflake.E2E_DB.E2E_TEST.VIEW_PERSONS"
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -268,17 +271,17 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=1),
                         operation=DmlOperationType.INSERT,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=2),
                         operation=DmlOperationType.UPDATE,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=3),
                         operation=DmlOperationType.DELETE,
                         rowsAffected=1,
                     ),

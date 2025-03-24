@@ -1,3 +1,5 @@
+import { ExportTypes } from '../../../constants/Export.constants';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +32,21 @@ export type CSVExportJob = {
 export type ExportData = {
   name: string;
   title?: string;
+  documentSelector?: string;
+  exportTypes: ExportTypes[];
+  viewport?: ExportViewport;
   onExport: (name: string) => Promise<CSVExportResponse | string>;
 };
 export interface EntityExportModalContextProps {
+  csvExportData?: string;
+  clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
+  triggerExportForBulkEdit: (data: ExportData) => void;
   onUpdateCSVExportJob: (data: Partial<CSVExportWebsocketResponse>) => void;
+}
+
+export interface ExportViewport {
+  x: number;
+  y: number;
+  zoom: number;
 }

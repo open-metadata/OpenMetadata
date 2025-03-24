@@ -31,6 +31,7 @@ from metadata.generated.schema.dataInsight.dataInsightChartResult import (
 )
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.dataInsight.kpi.kpi import Kpi
+from metadata.ingestion.ometa.utils import quote
 
 
 class DataInsightMixin:
@@ -58,7 +59,7 @@ class DataInsightMixin:
             record (ReportData): report data
         """
 
-        resp = self.client.put(f"/kpi/{fqn}/kpiResult", record.model_dump_json())
+        resp = self.client.put(f"/kpi/{quote(fqn)}/kpiResult", record.model_dump_json())
 
         return resp
 
@@ -143,7 +144,7 @@ class DataInsightMixin:
         params = {"startTs": start_ts, "endTs": end_ts}
 
         resp = self.client.get(
-            f"/kpi/{fqn}/kpiResult",
+            f"/kpi/{quote(fqn)}/kpiResult",
             params,
         )
 

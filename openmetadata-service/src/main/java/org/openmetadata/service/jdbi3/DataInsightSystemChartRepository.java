@@ -5,7 +5,9 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.type.Include;
@@ -17,6 +19,28 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
+
+  public static final Set<String> dataAssetTypes =
+      Set.of(
+          "table",
+          "storedProcedure",
+          "databaseSchema",
+          "database",
+          "chart",
+          "dashboard",
+          "dashboardDataModel",
+          "pipeline",
+          "topic",
+          "container",
+          "searchIndex",
+          "mlmodel",
+          "dataProduct",
+          "glossaryTerm",
+          "tag",
+          "testCaseResult",
+          "testCaseResolutionStatus");
+
+  public static final String DI_SEARCH_INDEX_PREFIX = "di-data-assets";
 
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
@@ -33,6 +57,22 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
         Entity.getCollectionDAO().dataInsightCustomChartDAO(),
         "",
         "");
+  }
+
+  public static String getDataInsightsIndexPrefix() {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
+      return String.format("%s-%s", clusterAlias, DI_SEARCH_INDEX_PREFIX);
+    }
+    return DI_SEARCH_INDEX_PREFIX;
+  }
+
+  public static String getDataInsightsSearchIndex() {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    if (!(clusterAlias == null || clusterAlias.isEmpty())) {
+      return String.format("%s-%s", clusterAlias, DI_SEARCH_INDEX);
+    }
+    return DI_SEARCH_INDEX;
   }
 
   @Override
@@ -64,7 +104,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
       DataInsightCustomChart chart, long startTimestamp, long endTimestamp, String filter)
       throws IOException {
     if (chart.getChartDetails() != null && filter != null) {
-      ((LinkedHashMap<String, Object>) chart.getChartDetails()).put("filter", filter);
+      HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
+      if (chartDetails.get("metrics") != null) {
+        for (LinkedHashMap<String, Object> metrics :
+            (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
+          metrics.put("filter", filter);
+        }
+      }
     }
     return getPreviewData(chart, startTimestamp, endTimestamp);
   }
@@ -87,7 +133,13 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
 
       if (chart != null) {
         if (chart.getChartDetails() != null && filter != null) {
-          ((LinkedHashMap<String, Object>) chart.getChartDetails()).put("filter", filter);
+          HashMap chartDetails = (LinkedHashMap<String, Object>) chart.getChartDetails();
+          if (chartDetails.get("metrics") != null) {
+            for (LinkedHashMap<String, Object> metrics :
+                (List<LinkedHashMap<String, Object>>) chartDetails.get("metrics")) {
+              metrics.put("filter", filter);
+            }
+          }
         }
         DataInsightCustomChartResultList data =
             searchClient.buildDIChart(chart, startTimestamp, endTimestamp);

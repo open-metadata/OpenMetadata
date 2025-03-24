@@ -13,6 +13,9 @@
 import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 
+export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
+export const DATE_TIME_WITH_OFFSET_FORMAT = "MMMM dd, yyyy, h:mm a '(UTC'ZZ')'"; // e.g. Jan 01, 12:00 AM (UTC+05:30)
+export const DATE_TIME_WEEKDAY_WITH_ORDINAL = "ccc d'th' MMMM, yyyy, hh:mm a"; // e.g. Mon 1st January, 2025, 12:00 AM
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
@@ -47,10 +50,15 @@ export const formatDate = (date?: number, supportUTC = false) => {
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDateTimeLong = (timestamp: number, format?: string) =>
-  DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || "ccc d'th' MMMM, yyyy, hh:mm a"
+export const formatDateTimeLong = (timestamp?: number, format?: string) => {
+  if (isNil(timestamp)) {
+    return '';
+  }
+
+  return DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
+    format || DATE_TIME_WITH_OFFSET_FORMAT
   );
+};
 
 /**
  *
@@ -188,6 +196,18 @@ export const isValidDateFormat = (format: string) => {
   }
 };
 
+export const getIntervalInMilliseconds = (
+  startTime: number,
+  endTime: number
+) => {
+  const startDateTime = DateTime.fromMillis(startTime);
+  const endDateTime = DateTime.fromMillis(endTime);
+
+  const interval = endDateTime.diff(startDateTime);
+
+  return interval.milliseconds;
+};
+
 /**
  * Calculates the interval between two timestamps in milliseconds
  * and returns the result as a formatted string "X Days, Y Hours".
@@ -201,11 +221,12 @@ export const calculateInterval = (
   endTime: number
 ): string => {
   try {
-    const startDateTime = DateTime.fromMillis(startTime);
-    const endDateTime = DateTime.fromMillis(endTime);
+    const intervalInMilliseconds = getIntervalInMilliseconds(
+      startTime,
+      endTime
+    );
 
-    const interval = endDateTime.diff(startDateTime);
-    const duration = Duration.fromMillis(interval.milliseconds);
+    const duration = Duration.fromMillis(intervalInMilliseconds);
     const days = Math.floor(duration.as('days'));
     const hours = Math.floor(duration.as('hours')) % 24;
 
@@ -231,7 +252,8 @@ const intervals: [string, number][] = [
  * @returns A human-readable string representation of the time duration.
  */
 export const convertMillisecondsToHumanReadableFormat = (
-  milliseconds: number
+  milliseconds: number,
+  length?: number
 ): string => {
   if (milliseconds <= 0) {
     return '0s';
@@ -249,7 +271,28 @@ export const convertMillisecondsToHumanReadableFormat = (
     result.push(`${value}${name}`);
   }
 
+  if (length && result.length > length) {
+    return result.slice(0, length).join(' ');
+  }
+
   return result.join(' ');
+};
+
+export const formatDuration = (ms: number) => {
+  const seconds = ms / 1000;
+  const minutes = seconds / 60;
+  const hours = minutes / 60;
+
+  const pluralize = (value: number, unit: string) =>
+    `${value.toFixed(2)} ${unit}${value !== 1 ? 's' : ''}`;
+
+  if (seconds < 60) {
+    return pluralize(seconds, 'second');
+  } else if (minutes < 60) {
+    return pluralize(minutes, 'minute');
+  } else {
+    return pluralize(hours, 'hour');
+  }
 };
 
 export const getStartOfDayInMillis = (timestamp: number) =>
@@ -257,3 +300,18 @@ export const getStartOfDayInMillis = (timestamp: number) =>
 
 export const getEndOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().endOf('day').toMillis();
+
+export const getCurrentDayStartGMTinMillis = () =>
+  DateTime.now().setZone('GMT').startOf('day').toMillis();
+
+export const getDayAgoStartGMTinMillis = (days: number) =>
+  DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();
+
+export const getSevenDaysStartGMTArrayInMillis = () => {
+  const sevenDaysStartGMTArrayInMillis = [];
+  for (let i = 6; i >= 0; i--) {
+    sevenDaysStartGMTArrayInMillis.push(getDayAgoStartGMTinMillis(i));
+  }
+
+  return sevenDaysStartGMTArrayInMillis;
+};

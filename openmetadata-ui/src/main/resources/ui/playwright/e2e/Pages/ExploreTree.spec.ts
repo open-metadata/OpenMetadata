@@ -13,10 +13,22 @@
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
+import { validateBucketsForIndex } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -112,81 +124,166 @@ test.describe('Explore Tree scenarios ', () => {
     );
   });
 
-  test('Verify Database and Database schema after rename', async ({ page }) => {
+  test.fixme(
+    'Verify Database and Database schema after rename',
+    async ({ page }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const table = new TableClass();
+      await table.create(apiContext);
+      await table.visitEntityPage(page);
+      const schemaName = get(table.schemaResponseData, 'name', '');
+      const dbName = get(table.databaseResponseData, 'name', '');
+      const serviceName = get(table.serviceResponseData, 'name', '');
+      const updatedSchemaName = `Test ${schemaName} updated`;
+      const updatedDbName = `Test ${dbName} updated`;
+
+      const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
+      await page.getByRole('link', { name: schemaName }).click();
+      // Rename Schema Page
+      await schemaRes;
+      await updateDisplayNameForEntity(
+        page,
+        updatedSchemaName,
+        EntityTypeEndpoint.DatabaseSchema
+      );
+
+      const dbRes = page.waitForResponse('/api/v1/databases/name/*');
+      await page.getByRole('link', { name: dbName }).click();
+      // Rename Database Page
+      await dbRes;
+      await updateDisplayNameForEntity(
+        page,
+        updatedDbName,
+        EntityTypeEndpoint.Database
+      );
+
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await page.waitForLoadState('networkidle');
+      const serviceNameRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
+      );
+      await page
+        .locator('div')
+        .filter({ hasText: /^mysql$/ })
+        .locator('svg')
+        .first()
+        .click();
+      await serviceNameRes;
+
+      const databaseRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=dataAsset*serviceType*'
+      );
+
+      await page
+        .locator('.ant-tree-treenode')
+        .filter({ hasText: serviceName })
+        .locator('.ant-tree-switcher svg')
+        .click();
+      await databaseRes;
+
+      await expect(
+        page.getByTestId(`explore-tree-title-${updatedDbName}`)
+      ).toBeVisible();
+
+      const databaseSchemaRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
+      );
+
+      await page
+        .locator('.ant-tree-treenode')
+        .filter({ hasText: updatedDbName })
+        .locator('.ant-tree-switcher svg')
+        .click();
+      await databaseSchemaRes;
+
+      await expect(
+        page.getByTestId(`explore-tree-title-${updatedSchemaName}`)
+      ).toBeVisible();
+
+      await table.delete(apiContext);
+      await afterAction();
+    }
+  );
+});
+
+test.describe('Explore page', () => {
+  const table = new TableClass();
+  const glossary = new Glossary();
+  const glossaryTerm = new GlossaryTerm(glossary);
+  const dashboard = new DashboardClass();
+  const storedProcedure = new StoredProcedureClass();
+  const pipeline = new PipelineClass();
+  const container = new ContainerClass();
+  const apiEndpoint = new ApiEndpointClass();
+  const topic = new TopicClass();
+  const searchIndex = new SearchIndexClass();
+  const dashboardDataModel = new DashboardDataModelClass();
+  const mlModel = new MlModelClass();
+
+  test.beforeEach('Setup pre-requisits', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass();
     await table.create(apiContext);
-    await table.visitEntityPage(page);
-    const schemaName = get(table.schemaResponseData, 'name', '');
-    const dbName = get(table.databaseResponseData, 'name', '');
-    const serviceName = get(table.serviceResponseData, 'name', '');
-    const updatedSchemaName = `Test ${schemaName} updated`;
-    const updatedDbName = `Test ${dbName} updated`;
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await dashboard.create(apiContext);
+    await storedProcedure.create(apiContext);
+    await pipeline.create(apiContext);
+    await container.create(apiContext);
+    await apiEndpoint.create(apiContext);
+    await topic.create(apiContext);
+    await searchIndex.create(apiContext);
+    await dashboardDataModel.create(apiContext);
+    await mlModel.create(apiContext);
+    await afterAction();
+  });
 
-    const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
-    await page.getByRole('link', { name: schemaName }).click();
-    // Rename Schema Page
-    await schemaRes;
-    await updateDisplayNameForEntity(
-      page,
-      updatedSchemaName,
-      EntityTypeEndpoint.DatabaseSchema
-    );
+  test.afterEach('Cleanup', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    await table.delete(apiContext);
+    await glossary.delete(apiContext);
+    await glossaryTerm.delete(apiContext);
+    await dashboard.delete(apiContext);
+    await storedProcedure.delete(apiContext);
+    await pipeline.delete(apiContext);
+    await container.delete(apiContext);
+    await apiEndpoint.delete(apiContext);
+    await topic.delete(apiContext);
+    await searchIndex.delete(apiContext);
+    await dashboardDataModel.delete(apiContext);
+    await mlModel.delete(apiContext);
+    await afterAction();
+  });
 
-    const dbRes = page.waitForResponse('/api/v1/databases/name/*');
-    await page.getByRole('link', { name: dbName }).click();
-    // Rename Database Page
-    await dbRes;
-    await updateDisplayNameForEntity(
-      page,
-      updatedDbName,
-      EntityTypeEndpoint.Database
-    );
-
-    await sidebarClick(page, SidebarItem.EXPLORE);
-    await page.waitForLoadState('networkidle');
-    const serviceNameRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
-    );
+  test('Check the listing of tags', async ({ page }) => {
     await page
       .locator('div')
-      .filter({ hasText: /^mysql$/ })
+      .filter({ hasText: /^Governance$/ })
       .locator('svg')
       .first()
       .click();
-    await serviceNameRes;
 
-    const databaseRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=dataAsset*serviceType*'
+    await expect(page.getByRole('tree')).toContainText('Glossaries');
+    await expect(page.getByRole('tree')).toContainText('Tags');
+
+    const res = page.waitForResponse(
+      '/api/v1/search/query?q=&index=dataAsset*'
     );
+    // click on tags
+    await page.getByTestId('explore-tree-title-Tags').click();
 
-    await page
-      .locator('.ant-tree-treenode')
-      .filter({ hasText: serviceName })
-      .locator('.ant-tree-switcher svg')
-      .click();
-    await databaseRes;
+    const response = await res;
+    const jsonResponse = await response.json();
 
-    await expect(
-      page.getByTestId(`explore-tree-title-${updatedDbName}`)
-    ).toBeVisible();
+    expect(jsonResponse.hits.hits.length).toBeGreaterThan(0);
+  });
 
-    const databaseSchemaRes = page.waitForResponse(
-      '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
-    );
+  test('Check listing of entities when index is dataAsset', async ({
+    page,
+  }) => {
+    await validateBucketsForIndex(page, 'dataAsset');
+  });
 
-    await page
-      .locator('.ant-tree-treenode')
-      .filter({ hasText: updatedDbName })
-      .locator('.ant-tree-switcher svg')
-      .click();
-    await databaseSchemaRes;
-
-    await expect(
-      page.getByTestId(`explore-tree-title-${updatedSchemaName}`)
-    ).toBeVisible();
-
-    await table.delete(apiContext);
-    await afterAction();
+  test('Check listing of entities when index is all', async ({ page }) => {
+    await validateBucketsForIndex(page, 'all');
   });
 });

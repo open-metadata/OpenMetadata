@@ -76,11 +76,11 @@ class TrinoProfilerInterface(ProfilerWithStatistics, TrinoStoredStatisticsSource
                 return dict(row)
         except ProgrammingError as err:
             logger.info(
-                f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to {err}"
+                f"Skipping window metrics for {runner.table_name}.{column.name} due to {err}"
             )
             return None
 
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None

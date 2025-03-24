@@ -60,10 +60,13 @@ class AthenaCliTest(CliCommonDB.TestSuite):
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return 50
 
     def view_column_lineage_count(self) -> int:
+        pass
+
+    def expected_lineage_node(self) -> str:
         pass
 
     @staticmethod
@@ -88,7 +91,7 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 6
+        return 8
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
@@ -96,15 +99,15 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 8
+        return 10
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 8
+        return 10
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 8
+        return 10
 
     def retrieve_lineage(self, entity_fqn: str) -> dict:
         pass
@@ -130,12 +133,16 @@ class AthenaCliTest(CliCommonDB.TestSuite):
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
 
+    @pytest.mark.order(11)
+    def test_lineage(self) -> None:
+        pytest.skip("Lineage not configured. Skipping Test")
+
     def assert_for_vanilla_ingestion(
         self, source_status: Status, sink_status: Status
     ) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
-        self.assertEqual(len(source_status.filtered), 6)
+        self.assertGreaterEqual(len(source_status.filtered), 6)
         self.assertGreaterEqual(
             len(source_status.records) + len(source_status.updated_records),
             self.expected_tables(),

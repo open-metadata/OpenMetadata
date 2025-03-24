@@ -131,16 +131,32 @@ class EntityUtilTest {
     expected.put("fullyQualifiedFieldValue", "special!@#$%^&*()_+[]{};:\\'\",./?");
     verifyEntityLinkParser(expected);
 
-    // Invalid entity link
     expected.clear();
-    expected.put("entityLink", "<#E::table::special!@#$%^&*()_+[]{}|;:\\'\",./?>");
-    // EntityLink with `|` character will not be parsed correctly and everything after `|` will be
-    // ignored
+    expected.put("entityLink", "<#E::table::special!@#$%^&*()_+[]{}|;\\'\",./?>");
+    expected.put("entityType", "table");
+    expected.put("entityFQN", "special!@#$%^&*()_+[]{}|;\\'\",./?");
+    expected.put("linkType", "ENTITY");
+    expected.put("fullyQualifiedFieldType", "table");
+    expected.put("fullyQualifiedFieldValue", "special!@#$%^&*()_+[]{}|;\\'\",./?");
+    verifyEntityLinkParser(expected);
+
+    expected.clear();
+    expected.put("entityLink", "<#E::table::special!@:#$%^&*()_+[]{}|;\\'\",./?>");
+    expected.put("entityType", "table");
+    expected.put("entityFQN", "special!@:#$%^&*()_+[]{}|;\\'\",./?");
+    expected.put("linkType", "ENTITY");
+    expected.put("fullyQualifiedFieldType", "table");
+    expected.put("fullyQualifiedFieldValue", "special!@:#$%^&*()_+[]{}|;\\'\",./?");
+    verifyEntityLinkParser(expected);
+    expected.clear();
+
+    expected.put("entityLink", "<#E::table::spec::>ial!@:#$%^&*()_+[]{}|;\\'\",./?>");
+
     org.opentest4j.AssertionFailedError exception =
         assertThrows(
             org.opentest4j.AssertionFailedError.class, () -> verifyEntityLinkParser(expected));
     assertEquals(
-        "expected: <<#E::table::special!@#$%^&*()_+[]{}|;:\\'\",./?>> but was: <<#E::table::special!@#$%^&*()_+[]{}>>",
+        "expected: <<#E::table::spec::>ial!@:#$%^&*()_+[]{}|;\\'\",./?>> but was: <<#E::table::spec::>>",
         exception.getMessage());
 
     expected.clear();

@@ -74,6 +74,14 @@
         ]
       },
       {
+        "name": "pipelineDisplayName",
+        "required": false,
+        "description": "Diplaay Name of the pipeline involved in lineage",
+        "examples": [
+          "`Airflow.Test`"
+        ]
+      },
+      {
         "name": "columnLineage",
         "required": false,
         "description": "Columns involved in the lineage in format `fromCol1:toCol1;fromCol2:toCol2`.",

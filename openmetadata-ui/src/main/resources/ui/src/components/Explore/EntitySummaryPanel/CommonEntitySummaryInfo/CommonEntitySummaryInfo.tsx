@@ -28,7 +28,7 @@ function CommonEntitySummaryInfo({
   const { t } = useTranslation();
 
   return (
-    <Row gutter={[0, 4]}>
+    <Row className="text-sm" gutter={[0, 4]}>
       {entityInfo.map((info) => {
         const isOwner = info.name === t('label.owner-plural');
 
@@ -43,7 +43,7 @@ function CommonEntitySummaryInfo({
                 <>
                   <Col span={8}>
                     <Typography.Text
-                      className="summary-item-key text-grey-muted"
+                      className="summary-item-key"
                       data-testid={`${info.name}-label`}>
                       {info.name}
                     </Typography.Text>
@@ -54,7 +54,11 @@ function CommonEntitySummaryInfo({
                         component={Typography.Link}
                         data-testid={`${info.name}-value`}
                         target={info.isExternal ? '_blank' : '_self'}
-                        to={{ pathname: info.url }}>
+                        to={
+                          info.linkProps
+                            ? info.linkProps
+                            : { pathname: info.url }
+                        }>
                         {info.value}
                         {info.isExternal ? (
                           <Icon

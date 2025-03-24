@@ -37,7 +37,13 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
                 text(sql_expression)
             )
             if strategy == Strategy.COUNT:
-                return cursor.scalar()
+                result = cursor.scalar()
+                if not isinstance(result, int):
+                    raise ValueError(
+                        f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"
+                        "Example: SELECT COUNT(*) FROM table_name WHERE my_value IS NOT NULL"
+                    )
+                return result
             return cursor.fetchall()
         except Exception as exc:
             self.runner._session.rollback()  # pylint: disable=protected-access

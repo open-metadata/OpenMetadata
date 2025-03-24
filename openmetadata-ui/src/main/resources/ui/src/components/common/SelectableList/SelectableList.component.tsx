@@ -282,6 +282,7 @@ export const SelectableList = ({
           className="selectable-list-virtual-list"
           data={uniqueOptions}
           height={height}
+          itemHeight={40}
           itemKey="id"
           onScroll={onScroll}>
           {(item) => (

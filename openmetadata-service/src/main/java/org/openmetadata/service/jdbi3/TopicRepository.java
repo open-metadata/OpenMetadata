@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.service.Entity;
@@ -132,7 +133,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public TopicUpdater getUpdater(Topic original, Topic updated, Operation operation) {
+  public EntityRepository<Topic>.EntityUpdater getUpdater(
+      Topic original, Topic updated, Operation operation, ChangeSource changeSource) {
     return new TopicUpdater(original, updated, operation);
   }
 
@@ -379,7 +381,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "maximumMessageSize", original.getMaximumMessageSize(), updated.getMaximumMessageSize());
       recordChange(

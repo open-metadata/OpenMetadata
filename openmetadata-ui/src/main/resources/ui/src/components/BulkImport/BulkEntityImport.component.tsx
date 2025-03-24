@@ -18,7 +18,14 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { MutableRefObject, useCallback, useMemo, useState } from 'react';
+import React, {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 
@@ -27,6 +34,8 @@ import {
   ENTITY_IMPORT_STEPS,
   VALIDATION_STEP,
 } from '../../constants/BulkImport.constant';
+import { SOCKET_EVENTS } from '../../constants/constants';
+import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { CSVImportResult } from '../../generated/type/csvImportResult';
 import {
   getCSVStringFromColumnsAndDataSource,
@@ -34,11 +43,16 @@ import {
 } from '../../utils/CSV/CSV.utils';
 import csvUtilsClassBase from '../../utils/CSV/CSVUtilsClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Stepper from '../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { UploadFile } from '../UploadFile/UploadFile';
 import './bulk-entity-import.style.less';
-import { BulkImportProps } from './BulkEntityImport.interface';
+import {
+  BulkImportProps,
+  CSVImportAsyncWebsocketResponse,
+  CSVImportJobType,
+} from './BulkEntityImport.interface';
 
 let inEdit = false;
 
@@ -48,9 +62,17 @@ const BulkEntityImport = ({
   onValidateCsvString,
   onSuccess,
 }: BulkImportProps) => {
+  const { socket } = useWebSocketConnector();
+  const [activeAsyncImportJob, setActiveAsyncImportJob] =
+    useState<CSVImportJobType>();
+  const activeAsyncImportJobRef = useRef<CSVImportJobType>();
+
   const [activeStep, setActiveStep] = useState<VALIDATION_STEP>(
     VALIDATION_STEP.UPLOAD
   );
+
+  const activeStepRef = useRef<VALIDATION_STEP>(VALIDATION_STEP.UPLOAD);
+
   const { t } = useTranslation();
   const [isValidating, setIsValidating] = useState(false);
   const [validationData, setValidationData] = useState<CSVImportResult>();
@@ -80,6 +102,14 @@ const BulkEntityImport = ({
     });
   }, [setGridRef]);
 
+  const handleActiveStepChange = useCallback(
+    (step: VALIDATION_STEP) => {
+      setActiveStep(step);
+      activeStepRef.current = step;
+    },
+    [setActiveStep, activeStepRef]
+  );
+
   const onCSVReadComplete = useCallback(
     (results: { data: string[][] }) => {
       // results.data is returning data with unknown type
@@ -90,10 +120,10 @@ const BulkEntityImport = ({
       setDataSource(dataSource);
       setColumns(columns);
 
-      setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
+      handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
       setTimeout(focusToGrid, 500);
     },
-    [entityType, setDataSource, setColumns, setActiveStep, focusToGrid]
+    [entityType, setDataSource, setColumns, handleActiveStepChange, focusToGrid]
   );
 
   const handleLoadData = useCallback(
@@ -102,22 +132,14 @@ const BulkEntityImport = ({
         const result = e.target?.result as string;
 
         const validationResponse = await onValidateCsvString(result, true);
+        const jobData: CSVImportJobType = {
+          ...validationResponse,
+          type: 'initialLoad',
+          initialResult: result,
+        };
 
-        if (['failure', 'aborted'].includes(validationResponse?.status ?? '')) {
-          setValidationData(validationResponse);
-
-          setActiveStep(VALIDATION_STEP.UPLOAD);
-
-          return;
-        }
-
-        if (result) {
-          readString(result, {
-            worker: true,
-            skipEmptyLines: true,
-            complete: onCSVReadComplete,
-          });
-        }
+        setActiveAsyncImportJob(jobData);
+        activeAsyncImportJobRef.current = jobData;
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -137,9 +159,9 @@ const BulkEntityImport = ({
 
   const handleBack = () => {
     if (activeStep === VALIDATION_STEP.UPDATE) {
-      setActiveStep(VALIDATION_STEP.EDIT_VALIDATE);
+      handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     } else {
-      setActiveStep(VALIDATION_STEP.UPLOAD);
+      handleActiveStepChange(VALIDATION_STEP.UPLOAD);
     }
   };
 
@@ -155,52 +177,15 @@ const BulkEntityImport = ({
         activeStep === VALIDATION_STEP.EDIT_VALIDATE
       );
 
-      if (activeStep === VALIDATION_STEP.UPDATE) {
-        if (response?.status === 'failure') {
-          setValidationData(response);
-          readString(response?.importResultsCsv ?? '', {
-            worker: true,
-            skipEmptyLines: true,
-            complete: (results) => {
-              // results.data is returning data with unknown type
-              setValidateCSVData(
-                getEntityColumnsAndDataSourceFromCSV(
-                  results.data as string[][],
-                  entityType
-                )
-              );
-            },
-          });
-          setActiveStep(VALIDATION_STEP.UPDATE);
-        } else {
-          showSuccessToast(
-            t('message.entity-details-updated', {
-              entityType: capitalize(entityType),
-              fqn,
-            })
-          );
-          onSuccess();
-        }
-      } else if (activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
-        setValidationData(response);
-        setActiveStep(VALIDATION_STEP.UPDATE);
-        readString(response?.importResultsCsv ?? '', {
-          worker: true,
-          skipEmptyLines: true,
-          complete: (results) => {
-            // results.data is returning data with unknown type
-            setValidateCSVData(
-              getEntityColumnsAndDataSourceFromCSV(
-                results.data as string[][],
-                entityType
-              )
-            );
-          },
-        });
-      }
+      const jobData: CSVImportJobType = {
+        ...response,
+        type: 'onValidate',
+      };
+
+      setActiveAsyncImportJob(jobData);
+      activeAsyncImportJobRef.current = jobData;
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
       setIsValidating(false);
     }
   };
@@ -286,14 +271,179 @@ const BulkEntityImport = ({
   const handleRetryCsvUpload = () => {
     setValidationData(undefined);
 
-    setActiveStep(VALIDATION_STEP.UPLOAD);
+    handleActiveStepChange(VALIDATION_STEP.UPLOAD);
   };
 
+  const handleResetImportJob = useCallback(() => {
+    setActiveAsyncImportJob(undefined);
+    activeAsyncImportJobRef.current = undefined;
+  }, [setActiveAsyncImportJob, activeAsyncImportJobRef]);
+
+  const handleImportWebsocketResponseWithActiveStep = useCallback(
+    (importResults: CSVImportResult) => {
+      const activeStep = activeStepRef.current;
+
+      if (activeStep === VALIDATION_STEP.UPDATE) {
+        if (importResults?.status === 'failure') {
+          setValidationData(importResults);
+          readString(importResults?.importResultsCsv ?? '', {
+            worker: true,
+            skipEmptyLines: true,
+            complete: (results) => {
+              // results.data is returning data with unknown type
+              setValidateCSVData(
+                getEntityColumnsAndDataSourceFromCSV(
+                  results.data as string[][],
+                  entityType
+                )
+              );
+            },
+          });
+          handleActiveStepChange(VALIDATION_STEP.UPDATE);
+          setIsValidating(false);
+        } else {
+          showSuccessToast(
+            t('message.entity-details-updated', {
+              entityType: capitalize(entityType),
+              fqn,
+            })
+          );
+          onSuccess();
+          handleResetImportJob();
+          setIsValidating(false);
+        }
+      } else if (activeStep === VALIDATION_STEP.EDIT_VALIDATE) {
+        setValidationData(importResults);
+        handleActiveStepChange(VALIDATION_STEP.UPDATE);
+        readString(importResults?.importResultsCsv ?? '', {
+          worker: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            // results.data is returning data with unknown type
+            setValidateCSVData(
+              getEntityColumnsAndDataSourceFromCSV(
+                results.data as string[][],
+                entityType
+              )
+            );
+          },
+        });
+        handleResetImportJob();
+        setIsValidating(false);
+      }
+    },
+    [
+      activeStepRef,
+      entityType,
+      fqn,
+      onSuccess,
+      handleResetImportJob,
+      handleActiveStepChange,
+    ]
+  );
+
+  const handleImportWebsocketResponse = useCallback(
+    (websocketResponse: CSVImportAsyncWebsocketResponse) => {
+      if (!websocketResponse.jobId) {
+        return;
+      }
+
+      const activeImportJob = activeAsyncImportJobRef.current;
+
+      if (websocketResponse.jobId === activeImportJob?.jobId) {
+        setActiveAsyncImportJob((job) => {
+          if (!job) {
+            return;
+          }
+
+          return {
+            ...job,
+            ...websocketResponse,
+          };
+        });
+
+        if (websocketResponse.status === 'COMPLETED') {
+          const importResults = websocketResponse.result;
+
+          // If the job is complete and the status is either failure or aborted
+          // then reset the validation data and active step
+          if (['failure', 'aborted'].includes(importResults?.status ?? '')) {
+            setValidationData(importResults);
+
+            handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          // If the job is complete and the status is success
+          // and job was for initial load then check if the initial result is available
+          // and then read the initial result
+          if (
+            activeImportJob.type === 'initialLoad' &&
+            activeImportJob.initialResult
+          ) {
+            readString(activeImportJob.initialResult, {
+              worker: true,
+              skipEmptyLines: true,
+              complete: onCSVReadComplete,
+            });
+
+            handleResetImportJob();
+
+            return;
+          }
+
+          handleImportWebsocketResponseWithActiveStep(importResults);
+        }
+      }
+    },
+    [
+      activeStepRef,
+      activeAsyncImportJobRef,
+      onCSVReadComplete,
+      setActiveAsyncImportJob,
+      handleResetImportJob,
+      handleActiveStepChange,
+    ]
+  );
+
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, (importResponse) => {
+        if (importResponse) {
+          const importResponseData = JSON.parse(
+            importResponse
+          ) as CSVImportAsyncWebsocketResponse;
+
+          handleImportWebsocketResponse(importResponseData);
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.CSV_IMPORT_CHANNEL);
+    };
+  }, [socket]);
+
   return (
-    <Row className="p-x-lg" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       <Col span={24}>
         <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
       </Col>
+      {activeAsyncImportJob?.jobId && (
+        <Col span={24}>
+          <Banner
+            className="border-radius"
+            isLoading={!activeAsyncImportJob.error}
+            message={
+              activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
+            }
+            type={activeAsyncImportJob.error ? 'error' : 'success'}
+          />
+        </Col>
+      )}
       <Col span={24}>
         {activeStep === 0 && (
           <>
@@ -371,12 +521,14 @@ const BulkEntityImport = ({
           )}
           <div className="float-right import-footer">
             {activeStep > 0 && (
-              <Button onClick={handleBack}>{t('label.previous')}</Button>
+              <Button disabled={isValidating} onClick={handleBack}>
+                {t('label.previous')}
+              </Button>
             )}
             {activeStep < 3 && (
               <Button
                 className="m-l-sm"
-                loading={isValidating}
+                disabled={isValidating}
                 type="primary"
                 onClick={handleValidate}>
                 {activeStep === 2 ? t('label.update') : t('label.next')}

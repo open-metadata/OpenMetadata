@@ -71,22 +71,54 @@
   }
 }
 
-.glossary-header-edit-btn {
-  height: 16px;
-  width: 16px;
-}
-
 .glossary-name-column {
   white-space: nowrap;
   min-width: 300px;
 }
 
-.glossary-page-layout {
-  .ant-table-wrapper .ant-table-cell {
-    vertical-align: middle;
+.custom-glossary-dropdown-menu {
+  .ant-dropdown-menu {
+    background-color: @white;
+    border-color: @grey-4;
   }
-  .ant-table-row-indent {
-    float: none;
-    display: inline-block;
+
+  .ant-dropdown-menu-item {
+    padding-left: 0px;
+    padding-right: 0px;
   }
+  .ant-dropdown-menu-item:hover {
+    background-color: @white;
+    color: inherit;
+  }
+}
+
+.glossary-col-sel-checkbox-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: @white;
+  border-color: @grey-3;
+}
+.status-dropdown {
+  .ant-dropdown-menu-item {
+    padding-left: @padding-sm;
+    padding-right: @padding-xs;
+  }
+  .ant-checkbox-wrapper {
+    height: 33px;
+  }
+}
+
+.custom-status-dropdown-btn {
+  background-color: @white;
+  outline: 1px solid @grey-2;
+  color: @black;
+}
+
+.custom-glossary-dropdown-action-btn {
+  height: 26px;
+  width: 75px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }

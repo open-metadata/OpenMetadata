@@ -280,3 +280,18 @@ def filter_by_search_index(
     :return: True for filtering, False otherwise
     """
     return _filter(search_index_filter_pattern, search_index_name)
+
+
+def filter_by_classification(
+    classification_pattern: Optional[FilterPattern], classification_name: str
+) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param search_index_filter_pattern: Model defining search index filtering logic
+    :param search_index_name: search index name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(classification_pattern, classification_name)

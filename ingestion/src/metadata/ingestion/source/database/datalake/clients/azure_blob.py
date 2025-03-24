@@ -26,9 +26,6 @@ from metadata.utils.constants import DEFAULT_DATABASE
 
 
 class DatalakeAzureBlobClient(DatalakeBaseClient):
-    def __init__(self, client: BlobServiceClient):
-        self._client = client
-
     @classmethod
     def from_config(cls, config: AzureConfig) -> "DatalakeAzureBlobClient":
         try:

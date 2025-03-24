@@ -72,7 +72,6 @@ const ClassificationDetails = forwardRef(
     {
       currentClassification,
       handleAfterDeleteAction,
-      isEditClassification,
       classificationPermissions,
       handleUpdateClassification,
       handleEditTagClick,
@@ -80,10 +79,7 @@ const ClassificationDetails = forwardRef(
       isAddingTag,
       handleActionDeleteTag,
       handleAddNewTagClick,
-      handleEditDescriptionClick,
-      handleCancelEditDescription,
       disableEditButton,
-
       isVersionView = false,
     }: Readonly<ClassificationDetailsProps>,
     ref
@@ -459,10 +455,7 @@ const ClassificationDetails = forwardRef(
                       allowRename={!isSystemClassification}
                       allowSoftDelete={false}
                       canDelete={deletePermission && !isClassificationDisabled}
-                      displayName={
-                        currentClassification.displayName ??
-                        currentClassification.name
-                      }
+                      displayName={getEntityName(currentClassification)}
                       editDisplayNamePermission={
                         editDisplayNamePermission && !isClassificationDisabled
                       }
@@ -489,10 +482,7 @@ const ClassificationDetails = forwardRef(
             entityType={EntityType.CLASSIFICATION}
             hasEditAccess={editDescriptionPermission}
             isDescriptionExpanded={isEmpty(tags)}
-            isEdit={isEditClassification}
             showCommentsIcon={false}
-            onCancel={handleCancelEditDescription}
-            onDescriptionEdit={handleEditDescriptionClick}
             onDescriptionUpdate={handleUpdateDescription}
           />
         </div>

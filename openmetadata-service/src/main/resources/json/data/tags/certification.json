@@ -10,21 +10,24 @@
       "name": "Bronze",
       "description": "Bronze certified Data Asset.",
       "style": {
-        "color": "#CD7F32"
+        "color": "#C08329",
+        "iconURL": "BronzeCertification.svg"
       }
     },
     {
       "name": "Silver",
       "description": "Silver certified Data Asset.",
       "style": {
-        "color": "#C0C0C0"
+        "color": "#ADADAD",
+        "iconURL": "SilverCertification.svg"
       }
     },
     {
       "name": "Gold",
       "description": "Gold certified Data Asset.",
       "style": {
-        "color": "#FFD700"
+        "color": "#FFCE00",
+        "iconURL":"GoldCertification.svg"
       }
     }
   ]

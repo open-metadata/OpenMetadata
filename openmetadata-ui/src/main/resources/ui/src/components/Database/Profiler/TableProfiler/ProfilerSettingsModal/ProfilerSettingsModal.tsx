@@ -113,11 +113,20 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     []
   );
 
-  const selectOptions = useMemo(() => {
-    return columns.map(({ name }) => ({
+  const { columnOptions, columnWithAllOption } = useMemo(() => {
+    const columnOptions = columns.map(({ name }) => ({
       label: name,
       value: name,
     }));
+    const columnWithAllOption = [
+      {
+        label: t('label.all'),
+        value: 'all',
+      },
+      ...columnOptions,
+    ];
+
+    return { columnOptions, columnWithAllOption };
   }, [columns]);
   const metricsOptions = useMemo(() => {
     const metricsOptions = [
@@ -175,24 +184,23 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       sqlQuery: profileQuery ?? '',
       profileSample: profileSample,
       excludeCol: excludeColumns ?? [],
-      selectedProfileSampleType:
-        profileSampleType ?? ProfileSampleType.Percentage,
+      selectedProfileSampleType: profileSampleType,
       sampleDataCount,
     });
     form.setFieldsValue({
       sampleDataCount: sampleDataCount ?? initialState.sampleDataCount,
     });
 
-    const profileSampleTypeCheck =
-      profileSampleType === ProfileSampleType.Percentage;
     form.setFieldsValue({
       profileSampleType,
-      profileSamplePercentage: profileSampleTypeCheck
-        ? profileSample ?? 100
-        : 100,
-      profileSampleRows: !profileSampleTypeCheck
-        ? profileSample ?? 100
-        : undefined,
+      profileSamplePercentage:
+        profileSample && profileSampleType === ProfileSampleType.Percentage
+          ? profileSample
+          : undefined,
+      profileSampleRows:
+        profileSample && profileSampleType === ProfileSampleType.Rows
+          ? profileSample
+          : undefined,
     });
 
     if (includeColumns && includeColumns?.length > 0) {
@@ -287,11 +295,14 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       const profileConfig: TableProfilerConfig = {
         excludeColumns: excludeCol.length > 0 ? excludeCol : undefined,
         profileQuery: !isEmpty(sqlQuery) ? sqlQuery : undefined,
-        profileSample:
-          profileSampleType === ProfileSampleType.Percentage
+        profileSample: profileSampleType
+          ? profileSampleType === ProfileSampleType.Percentage
             ? profileSamplePercentage
-            : profileSampleRows,
-        profileSampleType: profileSampleType,
+            : profileSampleRows
+          : undefined,
+        profileSampleType: isUndefined(profileSampleType)
+          ? null
+          : profileSampleType,
         includeColumns: !isEqual(includeCol, DEFAULT_INCLUDE_PROFILE)
           ? getIncludesColumns()
           : undefined,
@@ -415,7 +426,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     } else {
       setIsDataLoading(false);
     }
-  }, []);
+  }, [tableId]);
 
   return (
     <Modal
@@ -461,31 +472,37 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                 })}
                 name="profileSampleType">
                 <Select
+                  allowClear
                   autoFocus
                   className="w-full"
                   data-testid="profile-sample"
                   options={PROFILE_SAMPLE_OPTIONS}
+                  placeholder={t('label.please-select-entity', {
+                    entity: t('label.profile-sample-type', {
+                      type: '',
+                    }),
+                  })}
                   onChange={handleProfileSampleType}
                 />
               </Form.Item>
 
               {state?.selectedProfileSampleType ===
-              ProfileSampleType.Percentage ? (
+                ProfileSampleType.Percentage && (
                 <Form.Item
-                  className="m-b-0"
                   label={t('label.profile-sample-type', {
                     type: t('label.value'),
                   })}
                   name="profileSamplePercentage">
                   <SliderWithInput
                     className="p-x-xs"
-                    value={state?.profileSample || 0}
+                    value={state?.profileSample}
                     onChange={handleProfileSample}
                   />
                 </Form.Item>
-              ) : (
+              )}
+
+              {state?.selectedProfileSampleType === ProfileSampleType.Rows && (
                 <Form.Item
-                  className="m-b-0"
                   label={t('label.profile-sample-type', {
                     type: t('label.value'),
                   })}
@@ -539,9 +556,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               allowClear
               className="w-full"
               data-testid="exclude-column-select"
-              dropdownStyle={{ maxHeight: 200 }}
+              dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
               mode="multiple"
-              options={selectOptions}
+              options={columnOptions}
               placeholder={t('label.select-column-plural-to-exclude')}
               size="middle"
               value={state?.excludeCol}
@@ -596,7 +613,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                                 showSearch
                                 className="w-full"
                                 data-testid="include-column-select"
-                                options={selectOptions}
+                                options={columnWithAllOption}
                                 placeholder={t(
                                   'label.select-column-plural-to-include'
                                 )}

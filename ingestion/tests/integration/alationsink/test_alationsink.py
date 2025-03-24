@@ -104,11 +104,21 @@ EXPECTED_SCHEMA_REQUEST = CreateSchemaRequest(
     description="This **mock** database contains schema related to shopify sales and orders with related dimension tables.",
 )
 
+
+BASE_DESC = "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address."
+
 EXPECTED_TABLES = [
+    CreateTableRequest(
+        key="34.shopify.dim_::>address",
+        title="dim_::>address",
+        description=BASE_DESC,
+        table_type="TABLE",
+        sql=None,
+    ),
     CreateTableRequest(
         key="34.shopify.dim_address",
         title="dim_address",
-        description="This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
+        description=BASE_DESC,
         table_type="TABLE",
         sql=None,
     ),
@@ -242,6 +252,48 @@ EXPECTED_TABLES = [
         key="34.shopify.магазин",
         title="магазин",
         description="This dimension table contains online shop information with weird characters.",
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.icemarketdata_global",
+        title="icemarketdata_global",
+        description=BASE_DESC,
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.global_market",
+        title="global_market",
+        description=BASE_DESC,
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.global",
+        title="global",
+        description=BASE_DESC,
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.ice_global",
+        title="ice_global",
+        description=BASE_DESC,
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.mortgage",
+        title="mortgage",
+        description=BASE_DESC,
+        table_type="TABLE",
+        sql=None,
+    ),
+    CreateTableRequest(
+        key="34.shopify.funds_closingprocessdocumentsrelationship",
+        title="funds_closingprocessdocumentsrelationship",
+        description=BASE_DESC,
         table_type="TABLE",
         sql=None,
     ),

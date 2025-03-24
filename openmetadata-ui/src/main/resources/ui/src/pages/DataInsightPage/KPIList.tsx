@@ -24,11 +24,10 @@ import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidget
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
-  getKpiPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
   pagingObject,
@@ -45,6 +44,7 @@ import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
+import { getKpiPath } from '../../utils/RouterUtils';
 
 const KPIList = () => {
   const history = useHistory();
@@ -104,7 +104,7 @@ const KPIList = () => {
         width: 300,
         render: (description: string | undefined) =>
           description ? (
-            <RichTextEditorPreviewer markdown={description} />
+            <RichTextEditorPreviewerV1 markdown={description} />
           ) : (
             <span data-testid="no-description">
               {t('label.no-entity', {

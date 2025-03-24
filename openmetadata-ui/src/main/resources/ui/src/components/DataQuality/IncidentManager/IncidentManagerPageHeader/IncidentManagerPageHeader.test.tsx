@@ -55,7 +55,6 @@ const mockFetchTaskCount = jest.fn();
 
 const mockProps: IncidentManagerPageHeaderProps = {
   onOwnerUpdate: mockOnOwnerUpdate,
-  testCaseData: MOCK_TEST_CASE_DATA,
   fetchTaskCount: mockFetchTaskCount,
 };
 
@@ -104,6 +103,9 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getColumnNameFromEntityLink: jest
+    .fn()
+    .mockReturnValue('getColumnNameFromEntityLink'),
 }));
 
 jest.mock('../../../../utils/FeedUtils', () => ({
@@ -155,6 +157,15 @@ jest.mock('../TestCaseStatus/TestCaseIncidentManagerStatus.component', () => {
     </div>
   ));
 });
+const mockUseTestCaseStore = {
+  testCase: { ...MOCK_TEST_CASE_DATA, incidentId: '123' },
+};
+jest.mock(
+  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
+  () => ({
+    useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
+  })
+);
 
 describe('Incident Manager Page Header component', () => {
   it('getFeedData should be call on mount', async () => {
@@ -270,5 +281,8 @@ describe('Incident Manager Page Header component', () => {
     // Test Type
     expect(screen.getByText('label.test-type:')).toBeInTheDocument();
     expect(screen.getByText('getEntityName')).toBeInTheDocument();
+    // If Column is present
+    expect(screen.getByText('label.column:')).toBeInTheDocument();
+    expect(screen.getByText('getColumnNameFromEntityLink')).toBeInTheDocument();
   });
 });

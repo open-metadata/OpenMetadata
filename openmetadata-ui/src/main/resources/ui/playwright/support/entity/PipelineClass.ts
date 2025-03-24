@@ -13,9 +13,14 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
@@ -34,7 +39,10 @@ export class PipelineClass extends EntityClass {
     },
   };
 
-  children = [{ name: 'snowflake_task' }];
+  children = [
+    { name: 'snowflake_task', displayName: 'Snowflake Task' },
+    { name: 'presto_task', displayName: 'Presto Task' },
+  ];
 
   entity = {
     name: this.pipelineName,
@@ -43,9 +51,10 @@ export class PipelineClass extends EntityClass {
     tasks: this.children,
   };
 
-  serviceResponseData: ResponseDataType;
-  entityResponseData: ResponseDataType;
-  ingestionPipelineResponseData: ResponseDataType;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  ingestionPipelineResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Pipeline);
@@ -54,6 +63,7 @@ export class PipelineClass extends EntityClass {
     this.childrenTabId = 'tasks';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Pipeline;
+    this.serviceType = ServiceTypes.PIPELINE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
