@@ -14,10 +14,7 @@
  * Defines a workflow instance.
  */
 export interface WorkflowInstanceState {
-    /**
-     * If the Workflow Instance has errors, 'True'. Else, 'False'.
-     */
-    exception?: boolean;
+    exception?: string;
     /**
      * Unique identifier of this workflow instance state.
      */
