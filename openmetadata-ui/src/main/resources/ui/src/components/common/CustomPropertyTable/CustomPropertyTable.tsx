@@ -208,7 +208,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [typePermission]);
 
   useEffect(() => {
-    if (isRenderedInRightPanel && isEmpty(entityTypeDetail.customProperties)) {
+    if (
+      isRenderedInRightPanel &&
+      isEmpty(entityTypeDetail.customProperties) &&
+      !isUndefined(entityDetails?.extension)
+    ) {
       filterWidgets([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
     }
   }, [isRenderedInRightPanel, entityTypeDetail.customProperties]);
@@ -259,6 +263,13 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         />
       </div>
     );
+  }
+
+  if (
+    isEmpty(entityTypeDetail.customProperties) &&
+    !isUndefined(entityDetails?.extension)
+  ) {
+    return <ExtensionTable extension={entityDetails?.extension} />;
   }
 
   if (isRenderedInRightPanel || newLook) {
@@ -323,13 +334,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         {propertyList}
       </>
     );
-  }
-
-  if (
-    isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails?.extension)
-  ) {
-    return <ExtensionTable extension={entityDetails?.extension} />;
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (

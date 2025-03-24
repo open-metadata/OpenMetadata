@@ -15,8 +15,9 @@ import { AxiosError } from 'axios';
 import React from 'react';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { PageType } from '../../../generated/system/ui/page';
 import { postThread } from '../../../rest/feedsAPI';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { GenericProvider, useGenericContext } from './GenericProvider';
@@ -25,6 +26,23 @@ import { GenericProvider, useGenericContext } from './GenericProvider';
 jest.mock('../../../rest/feedsAPI');
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockImplementation(() => ({
+    customizedPage: {
+      pageType: PageType.Table,
+      tabs: [],
+    },
+  })),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useParams: jest.fn().mockImplementation(() => ({ tab: EntityTabs.SCHEMA })),
+}));
+
+jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+  getDefaultWidgetForTab: jest.fn(),
 }));
 
 // Mock ActivityFeedProvider
