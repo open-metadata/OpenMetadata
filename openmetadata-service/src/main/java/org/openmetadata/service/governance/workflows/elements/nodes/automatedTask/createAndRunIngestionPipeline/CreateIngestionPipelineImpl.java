@@ -225,13 +225,13 @@ public class CreateIngestionPipelineImpl {
   }
 
   private AirflowConfig getAirflowConfig(PipelineType pipelineType) {
-    String scheduleInterval = "0 0 * * 0 0";
+    String scheduleInterval = "0 0 * * 0";
 
     if (List.of(PipelineType.LINEAGE, PipelineType.USAGE).contains(pipelineType)) {
-      scheduleInterval = "0 2 * * 0 0";
+      scheduleInterval = "0 2 * * 0";
     } else if (List.of(PipelineType.PROFILER, PipelineType.AUTO_CLASSIFICATION)
         .contains(pipelineType)) {
-      scheduleInterval = "0 4 * * 0 0";
+      scheduleInterval = "0 4 * * 0";
     }
 
     return new AirflowConfig()
