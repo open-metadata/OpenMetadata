@@ -303,6 +303,8 @@ class SqlColumnHandlerMixin:
                     om_column.children = [
                         process_column(children) for children in column.get("children")
                     ]
+                    if not arr_data_type:
+                        om_column.arrayDataType = DataType.UNKNOWN.value
                 if precision:
                     # Precision and scale must be integer values
                     om_column.precision = int(precision[0])
