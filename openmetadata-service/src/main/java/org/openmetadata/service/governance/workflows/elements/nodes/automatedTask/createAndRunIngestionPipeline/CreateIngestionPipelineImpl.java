@@ -210,9 +210,7 @@ public class CreateIngestionPipelineImpl {
     org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline create =
         new org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline()
             .withAirflowConfig(
-                new AirflowConfig()
-                    .withStartDate(getYesterdayDate())
-                    .withScheduleInterval("0 0 * * 0")) // Run every Sunday at midnight by default
+                getAirflowConfig(pipelineType)) // Run every Sunday at midnight by default
             .withLoggerLevel(LogLevels.INFO)
             .withName(UUID.randomUUID().toString())
             .withDisplayName(displayName)
@@ -224,6 +222,21 @@ public class CreateIngestionPipelineImpl {
     IngestionPipeline ingestionPipeline = mapper.createToEntity(create, "governance-bot");
 
     return repository.create(null, ingestionPipeline);
+  }
+
+  private AirflowConfig getAirflowConfig(PipelineType pipelineType) {
+    String scheduleInterval = "0 0 * * 0 0";
+
+    if (List.of(PipelineType.LINEAGE, PipelineType.USAGE).contains(pipelineType)) {
+      scheduleInterval = "0 2 * * 0 0";
+    } else if (List.of(PipelineType.PROFILER, PipelineType.AUTO_CLASSIFICATION)
+        .contains(pipelineType)) {
+      scheduleInterval = "0 4 * * 0 0";
+    }
+
+    return new AirflowConfig()
+        .withStartDate(getYesterdayDate())
+        .withScheduleInterval(scheduleInterval);
   }
 
   private IngestionPipeline getIngestionPipeline(
