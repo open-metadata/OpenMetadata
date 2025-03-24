@@ -13,9 +13,10 @@
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { FunctionComponent, SVGProps } from 'react';
+import React, { FunctionComponent } from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
+import { ReactComponent as CollateAIPlaceholderIcon } from '../assets/svg/ic-large-table.svg';
 import { ReactComponent as LoadingIcon } from '../assets/svg/ic-loader.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
 import { ReactComponent as WarningIcon } from '../assets/svg/incident-icon.svg';
@@ -191,19 +192,43 @@ export const getStatusIconFromStatusType = (status?: WorkflowStatus) => {
   };
 };
 
-export const getServiceInsightsWidgetPlaceholderIcon = (
-  chartType: SystemChartType
-): FunctionComponent<SVGProps<SVGSVGElement>> => {
+export const getServiceInsightsWidgetPlaceholderIcon = ({
+  chartType,
+  className = 'text-grey-14',
+  height = 60,
+  width = 60,
+}: {
+  chartType?: SystemChartType | string;
+  className?: string;
+  height?: number;
+  width?: number;
+}) => {
+  let Icon = NoDataPlaceholderIcon;
+
   switch (chartType) {
     case SystemChartType.DescriptionCoverage:
-      return DescriptionPlaceholderIcon;
+      Icon = DescriptionPlaceholderIcon;
+
+      break;
     case SystemChartType.OwnersCoverage:
-      return OwnersPlaceholderIcon;
+      Icon = OwnersPlaceholderIcon;
+
+      break;
     case SystemChartType.PIICoverage:
-      return PiiPlaceholderIcon;
+    case SystemChartType.PIIDistribution:
+      Icon = PiiPlaceholderIcon;
+
+      break;
     case SystemChartType.TierCoverage:
-      return TierPlaceholderIcon;
-    default:
-      return NoDataPlaceholderIcon;
+    case SystemChartType.TierDistribution:
+      Icon = TierPlaceholderIcon;
+
+      break;
+    case 'collateAIWidget':
+      Icon = CollateAIPlaceholderIcon;
+
+      break;
   }
+
+  return <Icon className={className} height={height} width={width} />;
 };

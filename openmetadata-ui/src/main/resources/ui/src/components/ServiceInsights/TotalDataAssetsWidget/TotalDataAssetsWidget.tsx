@@ -18,7 +18,6 @@ import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
-import { ReactComponent as NoRecordIcon } from '../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
@@ -26,7 +25,10 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
-import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
+import {
+  getAssetsByServiceType,
+  getServiceInsightsWidgetPlaceholderIcon,
+} from '../../../utils/ServiceInsightsTabUtils';
 import {
   getReadableCountString,
   getServiceNameQueryFilter,
@@ -93,6 +95,15 @@ function TotalDataAssetsWidget({
     }
   }, []);
 
+  const placeholderIcon = useMemo(
+    () =>
+      getServiceInsightsWidgetPlaceholderIcon({
+        height: 140,
+        width: 140,
+      }),
+    []
+  );
+
   useEffect(() => {
     getDataAssetsCount();
   }, []);
@@ -111,9 +122,7 @@ function TotalDataAssetsWidget({
       <Skeleton loading={loadingCount > 0}>
         {showPlaceholder ? (
           <ErrorPlaceHolder
-            icon={
-              <NoRecordIcon className="text-grey-8" height={140} width={140} />
-            }
+            icon={placeholderIcon}
             size={SIZE.MEDIUM}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Text>{t('server.no-records-found')}</Typography.Text>

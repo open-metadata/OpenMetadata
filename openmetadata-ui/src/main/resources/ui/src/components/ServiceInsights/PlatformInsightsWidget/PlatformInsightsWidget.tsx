@@ -80,8 +80,12 @@ function PlatformInsightsWidget({
 
                 const showIcon = chart.percentageChange !== 0;
 
-                const PlaceholderIcon = getServiceInsightsWidgetPlaceholderIcon(
-                  chart.chartType
+                const placeholderIcon = getServiceInsightsWidgetPlaceholderIcon(
+                  {
+                    chartType: chart.chartType,
+                    height: 30,
+                    width: 30,
+                  }
                 );
 
                 return (
@@ -94,13 +98,7 @@ function PlatformInsightsWidget({
                     {showPlaceholder ? (
                       <ErrorPlaceHolder
                         className="m-t-lg"
-                        icon={
-                          <PlaceholderIcon
-                            className="text-grey-8"
-                            height={30}
-                            width={30}
-                          />
-                        }
+                        icon={placeholderIcon}
                         size={SIZE.X_SMALL}
                         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
                         <Typography.Text>

@@ -444,7 +444,7 @@ const AssetsTabs = forwardRef(
           <ErrorPlaceHolderNew
             icon={
               <AddPlaceHolderIcon
-                className="text-grey-8"
+                className="text-grey-14"
                 height={140}
                 width={140}
               />
@@ -463,7 +463,7 @@ const AssetsTabs = forwardRef(
           <ErrorPlaceHolderNew
             icon={
               <AddPlaceHolderIcon
-                className="text-grey-8"
+                className="text-grey-14"
                 height={140}
                 width={140}
               />
