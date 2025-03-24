@@ -46,38 +46,7 @@ In this configuration we will be fetching the dbt `manifest.json`, `catalog.json
 - **dbtConfigType**: s3
 {% /codeInfo %}
 
-{% codeInfo srNumber=1 %}
-
-- **awsAccessKeyId** & **awsSecretAccessKey**: When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have
-  permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
-  authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
-
-Access keys consist of two parts: An **access key ID** (for example, `AKIAIOSFODNN7EXAMPLE`), and a **secret access key** (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
-
-You must use both the access key ID and secret access key together to authenticate your requests.
-
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html).
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=2 %}
-**awsSessionToken**: If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID
-and AWS Secrets Access Key. Also, these will include an AWS Session Token.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsRegion**: Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
-
-As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
-
-Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the
-services programmatically, there are different ways in which we can extract and use the rest of AWS configurations.
-
-You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
-
-{% /codeInfo %}
+{% partial file="/v1.6/connectors/yaml/common/aws-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/dbt/dbt-prefix-def.md" /%}
 
@@ -105,15 +74,9 @@ source:
 ```
 ```yaml {% srNumber=1 %}
         dbtSecurityConfig:
-          awsAccessKeyId: AWS_ACCESS_KEY_ID
-          awsSecretAccessKey: AWS_SECRET_ACCESS_KEY
 ```
-```yaml {% srNumber=2 %}
-          awsSessionToken: AWS_SESSION_TOKEN
-```
-```yaml {% srNumber=3 %}
-          awsRegion: AWS_REGION
-```
+
+{% partial file="/v1.6/connectors/yaml/common/aws-config.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/dbt/dbt-prefix.md" /%}
 

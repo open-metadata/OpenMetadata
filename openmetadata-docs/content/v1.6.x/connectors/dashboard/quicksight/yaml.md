@@ -103,16 +103,7 @@ This is a sample config for QuickSight:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
-
-**awsConfig**
-  - **AWS Access Key ID**: Enter your secure access key ID for your Glue connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
-  - **AWS Secret Access Key**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-  - **AWS Region**: Enter the location of the amazon cluster that your data and account are associated with.
-  - **AWS Session Token (optional)**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
-  - **Endpoint URL (optional)**: Your Glue connector will automatically determine the AWS QuickSight endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
-
-{% /codeInfo %}
+{% partial file="/v1.6/connectors/yaml/common/aws-config-def.md" /%}
 
 {% codeInfo srNumber=2 %}
 
@@ -150,13 +141,9 @@ source:
     config:
       type: QuickSight
 ```
-```yaml {% srNumber=1 %}
-      awsConfig:
-        awsAccessKeyId: KEY
-        awsSecretAccessKey: SECRET
-        awsRegion: us-east-2
-        awsSessionToken: Token
-```
+
+{% partial file="/v1.6/connectors/yaml/common/aws-config.md" /%}
+
 ```yaml {% srNumber=2 %}
       awsAccountId: <aws-account-id>
 ```
