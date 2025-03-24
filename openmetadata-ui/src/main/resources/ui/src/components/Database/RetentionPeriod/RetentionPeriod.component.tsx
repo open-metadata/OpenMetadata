@@ -118,7 +118,7 @@ const RetentionPeriod = ({
   return (
     <div className="d-flex items-start gap-1">
       <Space
-        className="d-flex align-start"
+        className="d-flex retention-period-container align-start"
         data-testid="retention-period-container">
         <div className="d-flex ">
           <Typography.Text className="text-sm d-flex flex-col gap-2">
