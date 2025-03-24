@@ -26,3 +26,11 @@ CREATE TABLE query_cost_time_series (
   INDEX (id, timestamp)
 
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+UPDATE workflow_definition_entity
+SET json = JSON_SET(json, '$.trigger.type', 'eventBasedEntity')
+WHERE JSON_EXTRACT(json, '$.trigger.type') in ('eventBasedEntityTrigger', 'eventBasedEntityWorkflow');
+
+UPDATE workflow_definition_entity
+SET json = JSON_SET(json, '$.trigger.type', 'periodicBatchEntity')
+WHERE JSON_EXTRACT(json, '$.trigger.type') in ('periodicBatchEntityTrigger', 'periodicBatchEntityWorkflow');

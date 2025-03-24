@@ -76,6 +76,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     [CollateAIAgentsWidget]
   );
 
+  const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
+
   const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
     [airflowInformation]
@@ -169,44 +171,46 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             )}
           </Col>
-          <Col className="flex items-center gap-2">
-            <SearchDropdown
-              hideCounts
-              label={t('label.status')}
-              options={statusFilters}
-              searchKey="status"
-              selectedKeys={statusFilter ?? []}
-              triggerButtonSize="large"
-              onChange={handleStatusFilterChange}
-              onSearch={handleStatusFilterSearch}
-            />
-            <SearchDropdown
-              hideCounts
-              label={t('label.type')}
-              options={typeFilters}
-              searchKey="status"
-              selectedKeys={typeFilter ?? []}
-              triggerButtonSize="large"
-              onChange={handleTypeFilterChange}
-              onSearch={handleTypeFilterSearch}
-            />
-
-            <div className="search-bar-container">
-              <Searchbar
-                removeMargin
-                inputClassName="p-x-sm p-y-xs border-radius-xs"
-                placeholder={t('label.search')}
-                searchValue={searchText}
-                typingInterval={500}
-                onSearch={handleSearchChange}
+          {!isCollateSubTabSelected && (
+            <Col className="flex items-center gap-2">
+              <SearchDropdown
+                hideCounts
+                label={t('label.status')}
+                options={statusFilters}
+                searchKey="status"
+                selectedKeys={statusFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleStatusFilterChange}
+                onSearch={handleStatusFilterSearch}
               />
-            </div>
-          </Col>
+              <SearchDropdown
+                hideCounts
+                label={t('label.type')}
+                options={typeFilters}
+                searchKey="status"
+                selectedKeys={typeFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleTypeFilterChange}
+                onSearch={handleTypeFilterSearch}
+              />
+
+              <div className="search-bar-container">
+                <Searchbar
+                  removeMargin
+                  inputClassName="p-x-sm p-y-xs border-radius-xs"
+                  placeholder={t('label.search')}
+                  searchValue={searchText}
+                  typingInterval={500}
+                  onSearch={handleSearchChange}
+                />
+              </div>
+            </Col>
+          )}
         </Row>
       </Col>
       <Col span={24}>
-        {subTab === ServiceAgentSubTabs.COLLATE_AI ? (
-          <CollateAIAgentsWidget />
+        {isCollateSubTabSelected ? (
+          <CollateAIAgentsWidget serviceDetails={serviceDetails} />
         ) : (
           <MetadataAgentsWidget
             airflowInformation={airflowInformation}

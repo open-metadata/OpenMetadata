@@ -56,11 +56,26 @@ export interface StoredProcedureDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
 }
 
+type StoredProcedureWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.STORED_PROCEDURE_CODE
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+
 class StoredProcedureClassBase {
-  tabs = [];
+  defaultWidgetHeight: Record<StoredProcedureWidgetKeys, number>;
 
   constructor() {
-    this.tabs = [];
+    this.defaultWidgetHeight = {
+      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
+      [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: 8,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1,
+      [DetailPageWidgetKeys.TAGS]: 1.5,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
   }
 
   public getStoredProcedureDetailPageTabs(
@@ -91,7 +106,7 @@ class StoredProcedureClassBase {
 
     return [
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
         i: DetailPageWidgetKeys.DESCRIPTION,
         w: 6,
         x: 0,
@@ -99,7 +114,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: 7,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.STORED_PROCEDURE_CODE],
         i: DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
         w: 6,
         x: 0,
@@ -107,7 +122,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -115,7 +130,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -123,7 +138,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -131,7 +146,7 @@ class StoredProcedureClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -154,7 +169,7 @@ class StoredProcedureClassBase {
       DESCRIPTION_WIDGET,
       {
         fullyQualifiedName: DetailPageWidgetKeys.STORED_PROCEDURE_CODE,
-        name: i18n.t('label.stored_procedure_code'),
+        name: i18n.t('label.code'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
@@ -168,6 +183,29 @@ class StoredProcedureClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getStoredProcedureWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.TABLE_SCHEMA:
+        return this.defaultWidgetHeight[
+          DetailPageWidgetKeys.STORED_PROCEDURE_CODE
+        ];
+      case DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

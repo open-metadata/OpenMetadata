@@ -244,18 +244,20 @@ export const PersonaDetailsPage = () => {
             activeKey={activeKey}
             items={tabItems}
             tabBarExtraContent={
-              <UserSelectableList
-                hasPermission
-                multiSelect
-                selectedUsers={personaDetails.users ?? []}
-                onUpdate={(users) => handlePersonaUpdate({ users })}>
-                <Button
-                  data-testid="add-persona-button"
-                  size="small"
-                  type="primary">
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              </UserSelectableList>
+              activeKey === 'users' && (
+                <UserSelectableList
+                  hasPermission
+                  multiSelect
+                  selectedUsers={personaDetails.users ?? []}
+                  onUpdate={(users) => handlePersonaUpdate({ users })}>
+                  <Button
+                    data-testid="add-persona-button"
+                    size="small"
+                    type="primary">
+                    {t('label.add-entity', { entity: t('label.user') })}
+                  </Button>
+                </UserSelectableList>
+              )
             }
             onChange={handleTabChange}
           />

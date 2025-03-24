@@ -44,7 +44,6 @@ import {
 } from '../../../enums/entity.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
-import { Metric } from '../../../generated/entity/data/metric';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -122,7 +121,7 @@ export const ExtraInfoLabel = ({
         className="whitespace-nowrap text-sm d-flex flex-col gap-2"
         data-testid={dataTestId}>
         {!isEmpty(label) && (
-          <span className="extra-info-label-heading">{`${label}: `}</span>
+          <span className="extra-info-label-heading">{label}</span>
         )}
         <span
           className={classNames('font-medium extra-info-value', {
@@ -153,7 +152,7 @@ export const ExtraInfoLink = ({
       'w-48': ellipsis,
     })}>
     {!isEmpty(label) && (
-      <span className="extra-info-label-heading  m-r-xss">{`${label}: `}</span>
+      <span className="extra-info-label-heading  m-r-xss">{label}</span>
     )}
     <div className="d-flex items-center gap-1">
       <Tooltip title={value}>
@@ -215,6 +214,7 @@ export const DataAssetsHeader = ({
 
     return serviceType ? (
       <img
+        alt={get(dataAsset, 'service.displayName', '')}
         className="header-icon"
         src={serviceUtilClassBase.getServiceTypeLogo(
           dataAsset as SearchSourceAlias
@@ -367,7 +367,7 @@ export const DataAssetsHeader = ({
       fetchActiveAnnouncement();
       fetchDQFailureCount();
     }
-    if (entityType === EntityType.CONTAINER) {
+    if (entityType === EntityType.CONTAINER && !isCustomizedView) {
       const asset = dataAsset as Container;
       fetchContainerParent(asset.parent?.fullyQualifiedName ?? '');
     }
@@ -481,7 +481,9 @@ export const DataAssetsHeader = ({
         <Col className="d-flex flex-col gap-3" span={24}>
           <TitleBreadcrumb
             loading={isBreadcrumbLoading}
-            titleLinks={breadcrumbs}
+            titleLinks={breadcrumbs.map((link) =>
+              isCustomizedView ? { ...link, url: '', noLink: true } : link
+            )}
           />
           <Row>
             <Col flex="auto">
@@ -495,6 +497,7 @@ export const DataAssetsHeader = ({
                 followers={followers}
                 handleFollowingClick={handleFollowingClick}
                 icon={icon}
+                isCustomizedView={isCustomizedView}
                 isFollowing={isFollowing}
                 isFollowingLoading={isFollowingLoading}
                 name={dataAsset?.name}
@@ -612,15 +615,14 @@ export const DataAssetsHeader = ({
                               entity: t('label.tier'),
                             })}>
                             <Button
-                              className="flex-center edit-tier-button"
+                              className="flex-center edit-tier-button p-0"
                               data-testid="edit-tier"
                               icon={
                                 <EditIcon
                                   color={DE_ACTIVE_COLOR}
-                                  width="14px"
+                                  width="12px"
                                 />
                               }
-                              size="small"
                               type="text"
                             />
                           </Tooltip>
@@ -647,15 +649,14 @@ export const DataAssetsHeader = ({
                               entity: t('label.tier'),
                             })}>
                             <Button
-                              className="flex-center edit-tier-button"
+                              className="flex-center edit-tier-button p-0"
                               data-testid="edit-tier"
                               icon={
                                 <EditIcon
                                   color={DE_ACTIVE_COLOR}
-                                  width="14px"
+                                  width="12px"
                                 />
                               }
-                              size="small"
                               type="text"
                             />
                           </Tooltip>
@@ -690,7 +691,7 @@ export const DataAssetsHeader = ({
 
             {entityType === EntityType.METRIC && onMetricUpdate && (
               <MetricHeaderInfo
-                metricDetails={dataAsset as Metric}
+                metricDetails={dataAsset}
                 metricPermissions={permissions}
                 onUpdateMetricDetails={onMetricUpdate}
               />

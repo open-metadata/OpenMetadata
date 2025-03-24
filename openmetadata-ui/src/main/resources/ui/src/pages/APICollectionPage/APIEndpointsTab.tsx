@@ -23,6 +23,7 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
 import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -47,10 +48,12 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 interface APIEndpointsTabProps {
   isVersionView?: boolean;
+  isCustomizationPage?: boolean;
 }
 
 function APIEndpointsTab({
   isVersionView = false,
+  isCustomizationPage = false,
 }: Readonly<APIEndpointsTabProps>) {
   const { t } = useTranslation();
   const { fqn: decodedAPICollectionFQN } = useFqn();
@@ -74,6 +77,10 @@ function APIEndpointsTab({
   const getAPICollectionEndpoints = useCallback(
     async (params?: Pick<GetApiEndPointsType, 'paging'>) => {
       if (!apiCollection) {
+        return;
+      } else if (isCustomizationPage) {
+        setAPIEndpoints(API_COLLECTION_API_ENDPOINTS);
+
         return;
       }
 
@@ -128,7 +135,7 @@ function APIEndpointsTab({
         key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return <Typography.Text>{requestMethod || NO_DATA}</Typography.Text>;
+          return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
         },
       },
       {

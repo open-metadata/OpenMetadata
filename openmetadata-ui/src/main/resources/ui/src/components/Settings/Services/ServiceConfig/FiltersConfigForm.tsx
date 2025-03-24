@@ -16,6 +16,7 @@ import validator from '@rjsf/validator-ajv8';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SERVICE_CONNECTION_UI_SCHEMA } from '../../../../constants/ServiceConnection.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -82,7 +83,7 @@ function FiltersConfigForm({
       schema={filteredSchema}
       serviceCategory={serviceCategory}
       status={status}
-      uiSchema={connSch.uiSchema}
+      uiSchema={SERVICE_CONNECTION_UI_SCHEMA}
       validator={validator}
       onCancel={onCancel}
       onFocus={onFocus}

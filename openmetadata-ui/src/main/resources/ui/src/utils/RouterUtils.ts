@@ -662,6 +662,10 @@ export const getServiceDetailsPath = (
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
 
+  if (subTab) {
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
+
   return path;
 };
 
