@@ -43,11 +43,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
             Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
     suggest.add(SearchSuggest.builder().input(testCase.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            testCase.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
+    doc.put("fqnParts", getFQNParts(testCase.getFullyQualifiedName()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
@@ -70,7 +66,9 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     }
     TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
     EntityReference entityReference = testSuite.getBasicEntityReference();
-    TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    if (entityReference != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

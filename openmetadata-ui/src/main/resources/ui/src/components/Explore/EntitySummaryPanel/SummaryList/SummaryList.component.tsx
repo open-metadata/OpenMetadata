@@ -33,7 +33,7 @@ export default function SummaryList({
     <Row align="middle" data-testid="summary-list">
       {isEmpty(formattedEntityData) ? (
         <div>
-          <Text className="text-grey-body">
+          <Text className="no-data-chip-placeholder">
             {emptyPlaceholderText ?? t('message.no-data-available')}
           </Text>
         </div>

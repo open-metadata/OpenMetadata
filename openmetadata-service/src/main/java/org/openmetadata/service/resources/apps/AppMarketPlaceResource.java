@@ -1,8 +1,5 @@
 package org.openmetadata.service.resources.apps;
 
-import static org.openmetadata.service.Entity.APPLICATION;
-import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
-
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -52,6 +48,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.AppMarketPlaceUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apps/marketplace")
@@ -65,30 +62,17 @@ import org.openmetadata.service.util.ResultList;
 public class AppMarketPlaceResource
     extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
-  private PipelineServiceClientInterface pipelineServiceClient;
   private AppMarketPlaceMapper mapper;
   static final String FIELDS = "owners,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
-      this.pipelineServiceClient =
+      PipelineServiceClientInterface pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(
               config.getPipelineServiceClientConfiguration());
-
       mapper = new AppMarketPlaceMapper(pipelineServiceClient);
-      // Initialize Default Installed Applications
-      List<CreateAppMarketPlaceDefinitionReq> createAppMarketPlaceDefinitionReqs =
-          getEntitiesFromSeedData(
-              APPLICATION,
-              String.format(".*json/data/%s/.*\\.json$", entityType),
-              CreateAppMarketPlaceDefinitionReq.class);
-      for (CreateAppMarketPlaceDefinitionReq definitionReq : createAppMarketPlaceDefinitionReqs) {
-        AppMarketPlaceDefinition definition = mapper.createToEntity(definitionReq, "admin");
-        // Update Fully Qualified Name
-        repository.setFullyQualifiedName(definition);
-        this.repository.createOrUpdate(null, definition);
-      }
+      AppMarketPlaceUtil.createAppMarketPlaceDefinitions(repository, mapper);
     } catch (Exception ex) {
       LOG.error("Failed in initializing App MarketPlace Resource", ex);
     }
@@ -433,6 +417,28 @@ public class AppMarketPlaceResource
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, true, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteAppAsync",
+      summary = "Asynchronously delete a App by Id",
+      description = "Asynchronously delete a App by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "App for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
   @PUT

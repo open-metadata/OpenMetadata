@@ -11,101 +11,102 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
-import { cloneDeep, includes, isEqual } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
-import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
-import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
-  Domain,
-  DomainType,
-} from '../../../../generated/entity/domains/domain';
-import { Operation } from '../../../../generated/entity/policies/policy';
-import {
-  ChangeDescription,
-  EntityReference,
-} from '../../../../generated/entity/type';
-import { domainTypeTooltipDataRender } from '../../../../utils/DomainUtils';
+  DataProduct,
+  TagLabel,
+  TagSource,
+} from '../../../../generated/entity/domains/dataProduct';
+import { Domain } from '../../../../generated/entity/domains/domain';
+import { ChangeDescription } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getOwnerVersionLabel,
 } from '../../../../utils/EntityVersionUtils';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
-import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import '../../domain.less';
+import { DomainExpertWidget } from '../../DomainExpertsWidget/DomainExpertWidget';
+import { DomainTypeWidget } from '../../DomainTypeWidget/DomainTypeWidget';
 import {
   DocumentationEntity,
   DocumentationTabProps,
 } from './DocumentationTab.interface';
 
 const DocumentationTab = ({
-  domain,
-  onUpdate,
-  onExtensionUpdate,
-  editCustomAttributePermission,
-  viewAllPermission,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
-  const [editDomainType, setEditDomainType] = useState(false);
   const resourceType =
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
+  const {
+    data: domain,
+    onUpdate,
+    permissions,
+  } = useGenericContext<Domain | DataProduct>();
 
-  const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
-    useMemo(() => {
-      if (isVersionsView) {
-        return {
-          editDescriptionPermission: false,
-          editOwnerPermission: false,
-          editAllPermission: false,
-        };
-      }
-
-      const editDescription = checkPermission(
-        Operation.EditDescription,
-        resourceType,
-        permissions
-      );
-
-      const editOwner = checkPermission(
-        Operation.EditOwners,
-        resourceType,
-        permissions
-      );
-
-      const editAll = checkPermission(
-        Operation.EditAll,
-        resourceType,
-        permissions
-      );
-
+  const {
+    editDescriptionPermission,
+    editOwnerPermission,
+    editAllPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+    editTagsPermission,
+    editGlossaryTermsPermission,
+  } = useMemo(() => {
+    if (isVersionsView) {
       return {
-        editDescriptionPermission: editDescription || editAll,
-        editOwnerPermission: editOwner || editAll,
-        editAllPermission: editAll,
+        editDescriptionPermission: false,
+        editOwnerPermission: false,
+        editAllPermission: false,
+        editCustomAttributePermission: false,
+        editTagsPermission: false,
+        editGlossaryTermsPermission: false,
       };
-    }, [permissions, isVersionsView, resourceType]);
+    }
+
+    const editDescription = permissions?.EditDescription;
+
+    const editOwner = permissions?.EditOwners;
+
+    const editAll = permissions?.EditAll;
+
+    const editCustomAttribute = permissions?.EditCustomFields;
+
+    const viewAll = permissions?.ViewAll;
+
+    const editTags = permissions?.EditTags;
+
+    const editGlossaryTerms = permissions?.EditGlossaryTerms;
+
+    return {
+      editDescriptionPermission: editAll || editDescription,
+      editOwnerPermission: editAll || editOwner,
+      editAllPermission: editAll,
+      editCustomAttributePermission: editAll || editCustomAttribute,
+      editTagsPermission: editAll || editTags,
+      editGlossaryTermsPermission: editAll || editGlossaryTerms,
+      viewAllPermission: viewAll,
+    };
+  }, [permissions, isVersionsView, resourceType]);
 
   const description = useMemo(
     () =>
@@ -120,6 +121,14 @@ const DocumentationTab = ({
     [domain, isVersionsView]
   );
 
+  const onTagsUpdate = async (updatedTags: TagLabel[]) => {
+    const updatedDomain = {
+      ...domain,
+      tags: updatedTags,
+    };
+    await onUpdate(updatedDomain);
+  };
+
   const onDescriptionUpdate = async (updatedHTML: string) => {
     if (domain.description !== updatedHTML) {
       const updatedTableDetails = {
@@ -127,9 +136,6 @@ const DocumentationTab = ({
         description: updatedHTML,
       };
       onUpdate(updatedTableDetails);
-      setIsDescriptionEditable(false);
-    } else {
-      setIsDescriptionEditable(false);
     }
   };
 
@@ -139,36 +145,6 @@ const DocumentationTab = ({
       owners: newOwners,
     };
     await onUpdate(updatedData as Domain | DataProduct);
-  };
-
-  const handleExpertsUpdate = async (data: Array<EntityReference>) => {
-    if (!isEqual(data, domain.experts)) {
-      let updatedDomain = cloneDeep(domain);
-      const oldExperts = data.filter((d) => includes(domain.experts, d));
-      const newExperts = data
-        .filter((d) => !includes(domain.experts, d))
-        .map((d) => ({
-          id: d.id,
-          type: d.type,
-          name: d.name,
-          displayName: d.displayName,
-        }));
-      updatedDomain = {
-        ...updatedDomain,
-        experts: [...oldExperts, ...newExperts],
-      };
-      await onUpdate(updatedDomain);
-    }
-  };
-
-  const handleDomainTypeUpdate = async (domainType: string) => {
-    let updatedDomain = cloneDeep(domain);
-    updatedDomain = {
-      ...updatedDomain,
-      domainType: domainType as DomainType,
-    };
-    await onUpdate(updatedDomain);
-    setEditDomainType(false);
   };
 
   return (
@@ -184,10 +160,7 @@ const DocumentationTab = ({
               entityName={getEntityName(domain)}
               entityType={EntityType.DOMAIN}
               hasEditAccess={editDescriptionPermission}
-              isEdit={isDescriptionEditable}
               showCommentsIcon={false}
-              onCancel={() => setIsDescriptionEditable(false)}
-              onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
             />
           </div>
@@ -202,26 +175,32 @@ const DocumentationTab = ({
                 <Typography.Text className="right-panel-label">
                   {t('label.owner-plural')}
                 </Typography.Text>
-                {editOwnerPermission && domain.owners && (
-                  <UserTeamSelectableList
-                    hasPermission
-                    multiple={{ team: false, user: true }}
-                    owner={domain.owners}
-                    onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
-                    <Tooltip
-                      title={t('label.edit-entity', {
-                        entity: t('label.owner-plural'),
-                      })}>
-                      <Button
-                        className="cursor-pointer flex-center m-l-xss"
-                        data-testid="edit-owner"
-                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                        size="small"
-                        type="text"
-                      />
-                    </Tooltip>
-                  </UserTeamSelectableList>
-                )}
+                {editOwnerPermission &&
+                  domain.owners &&
+                  domain.owners.length > 0 && (
+                    <UserTeamSelectableList
+                      hasPermission
+                      multiple={{ team: false, user: true }}
+                      owner={domain.owners}
+                      onUpdate={(updatedUser) =>
+                        handleUpdatedOwner(updatedUser)
+                      }>
+                      <Tooltip
+                        title={t('label.edit-entity', {
+                          entity: t('label.owner-plural'),
+                        })}>
+                        <Button
+                          className="cursor-pointer flex-center m-l-xss"
+                          data-testid="edit-owner"
+                          icon={
+                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                          }
+                          size="small"
+                          type="text"
+                        />
+                      </Tooltip>
+                    </UserTeamSelectableList>
+                  )}
               </div>
 
               <Space className="m-r-xss" size={4}>
@@ -232,7 +211,6 @@ const DocumentationTab = ({
                   editOwnerPermission || editAllPermission
                 )}
               </Space>
-
               {domain.owners?.length === 0 && editOwnerPermission && (
                 <UserTeamSelectableList
                   hasPermission
@@ -240,7 +218,7 @@ const DocumentationTab = ({
                   owner={domain.owners}
                   onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                   <TagButton
-                    className="tw-text-primary cursor-pointer"
+                    className="text-primary cursor-pointer"
                     icon={<PlusIcon height={16} name="plus" width={16} />}
                     label={t('label.add')}
                     tooltip=""
@@ -248,124 +226,46 @@ const DocumentationTab = ({
                 </UserTeamSelectableList>
               )}
             </Col>
-            <Col data-testid="domain-expert-name" span="24">
-              <div
-                className={`d-flex items-center ${
-                  domain.experts && domain.experts.length > 0 ? 'm-b-xss' : ''
-                }`}>
-                <Typography.Text
-                  className="right-panel-label"
-                  data-testid="domain-expert-heading-name">
-                  {t('label.expert-plural')}
-                </Typography.Text>
-                {editOwnerPermission &&
-                  domain.experts &&
-                  domain.experts.length > 0 && (
-                    <UserSelectableList
-                      hasPermission
-                      popoverProps={{ placement: 'topLeft' }}
-                      selectedUsers={domain.experts ?? []}
-                      onUpdate={handleExpertsUpdate}>
-                      <Tooltip
-                        title={t('label.edit-entity', {
-                          entity: t('label.expert-plural'),
-                        })}>
-                        <Button
-                          className="cursor-pointer flex-center m-l-xss"
-                          data-testid="edit-expert-button"
-                          icon={
-                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                          }
-                          size="small"
-                          type="text"
-                        />
-                      </Tooltip>
-                    </UserSelectableList>
-                  )}
-              </div>
-              <div>
-                {getOwnerVersionLabel(
-                  domain,
-                  isVersionsView ?? false,
-                  TabSpecificField.EXPERTS,
-                  editAllPermission
-                )}
-              </div>
 
-              <div>
-                {editOwnerPermission &&
-                  domain.experts &&
-                  domain.experts.length === 0 && (
-                    <UserSelectableList
-                      hasPermission={editOwnerPermission}
-                      popoverProps={{ placement: 'topLeft' }}
-                      selectedUsers={domain.experts ?? []}
-                      onUpdate={handleExpertsUpdate}>
-                      <TagButton
-                        className="tw-text-primary cursor-pointer"
-                        icon={<PlusIcon height={16} name="plus" width={16} />}
-                        label={t('label.add')}
-                        tooltip=""
-                      />
-                    </UserSelectableList>
-                  )}
-              </div>
+            <Col data-testid="domain-tags" span="24">
+              <TagsContainerV2
+                displayType={DisplayType.READ_MORE}
+                entityFqn={domain.fullyQualifiedName}
+                entityType={EntityType.DOMAIN}
+                permission={editTagsPermission}
+                selectedTags={domain.tags ?? []}
+                showTaskHandler={false}
+                tagType={TagSource.Classification}
+                onSelectionChange={async (updatedTags: TagLabel[]) =>
+                  await onTagsUpdate(updatedTags)
+                }
+              />
             </Col>
 
-            {type === DocumentationEntity.DOMAIN && (
-              <Col data-testid="domainType" span="24">
-                <div className="d-flex items-center m-b-xss">
-                  <Typography.Text
-                    className="right-panel-label"
-                    data-testid="domainType-heading-name">
-                    <FormItemLabel
-                      align={{ targetOffset: [18, 0] }}
-                      helperText={domainTypeTooltipDataRender()}
-                      label={t('label.domain-type')}
-                      overlayClassName="domain-type-tooltip-container"
-                      placement="topLeft"
-                    />
-                  </Typography.Text>
+            <Col data-testid="domain-glossary-terms" span="24">
+              <TagsContainerV2
+                displayType={DisplayType.READ_MORE}
+                entityFqn={domain.fullyQualifiedName}
+                entityType={EntityType.DOMAIN}
+                permission={editGlossaryTermsPermission}
+                selectedTags={domain.tags ?? []}
+                showTaskHandler={false}
+                tagType={TagSource.Glossary}
+                onSelectionChange={async (updatedTags: TagLabel[]) =>
+                  await onTagsUpdate(updatedTags)
+                }
+              />
+            </Col>
 
-                  {editAllPermission && (domain as Domain).domainType && (
-                    <Tooltip
-                      title={t('label.edit-entity', {
-                        entity: t('label.domain-type'),
-                      })}>
-                      <Button
-                        className="cursor-pointer flex-center m-l-xss"
-                        data-testid="edit-domainType-button"
-                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                        size="small"
-                        type="text"
-                        onClick={() => setEditDomainType(true)}
-                      />
-                    </Tooltip>
-                  )}
-                </div>
-                {!editDomainType && (
-                  <Space wrap data-testid="domain-type-label" size={6}>
-                    {(domain as Domain).domainType}
-                  </Space>
-                )}
+            <DomainExpertWidget />
 
-                {editDomainType && (
-                  <DomainTypeSelectForm
-                    defaultValue={(domain as Domain).domainType}
-                    onCancel={() => setEditDomainType(false)}
-                    onSubmit={handleDomainTypeUpdate}
-                  />
-                )}
-              </Col>
-            )}
+            {type === DocumentationEntity.DOMAIN && <DomainTypeWidget />}
 
             {domain && type === DocumentationEntity.DATA_PRODUCT && (
               <Col data-testid="custom-properties-right-panel" span="24">
                 <CustomPropertyTable<EntityType.DATA_PRODUCT>
                   isRenderedInRightPanel
-                  entityDetails={domain as DataProduct}
                   entityType={EntityType.DATA_PRODUCT}
-                  handleExtensionUpdate={onExtensionUpdate}
                   hasEditAccess={Boolean(editCustomAttributePermission)}
                   hasPermission={Boolean(viewAllPermission)}
                   maxDataCap={5}

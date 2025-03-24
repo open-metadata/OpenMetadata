@@ -80,6 +80,7 @@ import { PipelineState } from '../../generated/entity/services/ingestionPipeline
 import { User } from '../../generated/entity/teams/user';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
+import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
   ChangeEvent,
   Status,
@@ -1339,6 +1340,7 @@ export const getAlertExtraInfo = (
   return (
     <>
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="total-events-count"
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
@@ -1346,6 +1348,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.totalEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="pending-events-count"
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
@@ -1353,6 +1356,7 @@ export const getAlertExtraInfo = (
         value={alertEventCounts?.pendingEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        inlineLayout
         dataTestId="failed-events-count"
         label={t('label.failed-entity', {
           entity: t('label.event-plural'),
@@ -1412,3 +1416,38 @@ export const getModifiedAlertDataForForm = (
     }),
   };
 };
+
+export const getDiagnosticItems = (
+  diagnosticData: EventSubscriptionDiagnosticInfo | undefined
+) => [
+  {
+    key: t('label.latest-offset'),
+    value: diagnosticData?.latestOffset,
+    description: t('message.latest-offset-description'),
+  },
+  {
+    key: t('label.current-offset'),
+    value: diagnosticData?.currentOffset,
+    description: t('message.current-offset-description'),
+  },
+  {
+    key: t('label.starting-offset'),
+    value: diagnosticData?.startingOffset,
+    description: t('message.starting-offset-description'),
+  },
+  {
+    key: t('label.successful-event-plural'),
+    value: diagnosticData?.successfulEventsCount,
+    description: t('message.successful-events-description'),
+  },
+  {
+    key: t('label.failed-event-plural'),
+    value: diagnosticData?.failedEventsCount,
+    description: t('message.failed-events-description'),
+  },
+  {
+    key: t('label.processed-all-event-plural'),
+    value: diagnosticData?.hasProcessedAllEvents,
+    description: t('message.processed-all-events-description'),
+  },
+];

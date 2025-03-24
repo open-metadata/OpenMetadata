@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -367,10 +368,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Transaction
   @Override
-  protected void cleanup(TestCase entityInterface) {
-    super.cleanup(entityInterface);
+  protected void entitySpecificCleanup(TestCase entityInterface) {
     deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
   }
 
@@ -514,6 +513,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                         .withName("testSuites")
                         .withNewValue(updatedTestCase.getTestSuites())));
     updatedTestCase.setChangeDescription(change);
+
     postUpdate(testCase, updatedTestCase);
     updateLogicalTestSuite(testSuiteId);
     testCase.setTestSuite(updatedTestCase.getTestSuite());
@@ -522,7 +522,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public EntityUpdater getUpdater(TestCase original, TestCase updated, Operation operation) {
+  public EntityRepository<TestCase>.EntityUpdater getUpdater(
+      TestCase original, TestCase updated, Operation operation, ChangeSource changeSource) {
     return new TestUpdater(original, updated, operation);
   }
 
@@ -575,7 +576,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase updated =
         JsonUtils.readValue(JsonUtils.pojoToJson(original), TestCase.class)
             .withInspectionQuery(sql);
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH, null);
     entityUpdater.update();
     return updated;
   }

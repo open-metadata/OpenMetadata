@@ -30,9 +30,10 @@ public record StoredProcedureIndex(StoredProcedure storedProcedure) implements S
     ParseTags parseTags =
         new ParseTags(Entity.getEntityTags(Entity.STORED_PROCEDURE, storedProcedure));
     doc.put("tags", parseTags.getTags());
-    doc.put("lineage", SearchIndex.getLineageData(storedProcedure.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(storedProcedure.getEntityReference()));
     doc.put("tier", parseTags.getTierTag());
     doc.put("service", getEntityWithDisplayName(storedProcedure.getService()));
+    doc.put("processedLineage", storedProcedure.getProcessedLineage());
     return doc;
   }
 

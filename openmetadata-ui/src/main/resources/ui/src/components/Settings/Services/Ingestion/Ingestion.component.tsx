@@ -11,29 +11,28 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
-import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { Col, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DISABLED } from '../../../../constants/constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
+import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
 import {
-  deployIngestionPipelineById,
-  enableDisableIngestionPipelineById,
-  triggerIngestionPipelineById,
-} from '../../../../rest/ingestionPipelineAPI';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+  ServiceAgentSubTabs,
+  ServiceCategory,
+} from '../../../../enums/service.enum';
+import { useFqn } from '../../../../hooks/useFqn';
+import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import AddIngestionButton from './AddIngestionButton.component';
+import SearchDropdown from '../../../SearchDropdown/SearchDropdown';
 import { IngestionProps } from './ingestion.interface';
-import IngestionListTable from './IngestionListTable/IngestionListTable';
+import './ingestion.less';
 
 const Ingestion: React.FC<IngestionProps> = ({
-  serviceName,
-  serviceCategory,
   serviceDetails,
   ingestionPipelineList,
   ingestionPagingInfo,
@@ -45,160 +44,188 @@ const Ingestion: React.FC<IngestionProps> = ({
   handleSearchChange,
   onPageChange,
   airflowInformation,
+  handleTypeFilterChange,
+  handleStatusFilterChange,
+  statusFilter,
+  typeFilter,
 }: IngestionProps) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
-  const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
-    useState<string>();
+  const history = useHistory();
+  const { fqn: decodedServiceFQN } = useFqn();
+  const { serviceCategory, tab, subTab } = useParams<{
+    serviceCategory: ServiceCategory;
+    tab: string;
+    subTab: string;
+  }>();
 
-  const ingestionPermissions = useMemo(
-    () => permissions['ingestionPipeline'],
-    [permissions]
-  );
-
-  const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
-    setPipelineIdToFetchStatus(pipelineId);
-  }, []);
-
-  const handleEnableDisableIngestion = useCallback(async (id: string) => {
-    try {
-      const { data } = await enableDisableIngestionPipelineById(id);
-
-      if (data.id) {
-        handleIngestionListUpdate((list) =>
-          list.map((row) =>
-            row.id === id ? { ...row, enabled: data.enabled } : row
-          )
-        );
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  }, []);
-
-  const triggerIngestion = useCallback(
-    async (id: string, displayName: string) => {
-      try {
-        await triggerIngestionPipelineById(id);
-        showSuccessToast(
-          t('message.pipeline-action-success-message', {
-            action: t('label.triggered-lowercase'),
-          })
-        );
-
-        setPipelineIdToFetchStatus(id);
-      } catch (err) {
-        showErrorToast(
-          t('server.ingestion-workflow-operation-error', {
-            operation: t('label.triggering-lowercase'),
-            displayName,
-          })
-        );
-      }
-    },
+  const { typeMenuItems, statusMenuItems } = useMemo(
+    () => getTypeAndStatusMenuItems(),
     []
   );
+  const [statusFilters, setStatusFilters] =
+    useState<Array<{ key: string; label: string }>>(statusMenuItems);
+  const [typeFilters, setTypeFilters] =
+    useState<Array<{ key: string; label: string }>>(typeMenuItems);
 
-  const deployIngestion = useCallback(
-    async (id: string, displayName: string) => {
-      try {
-        await deployIngestionPipelineById(id);
-        showSuccessToast(
-          t('message.pipeline-action-success-message', {
-            action: t('label.deployed-lowercase'),
-          })
-        );
-
-        setTimeout(() => {
-          setPipelineIdToFetchStatus(id);
-        }, 500);
-      } catch (error) {
-        showErrorToast(
-          t('server.ingestion-workflow-operation-error', {
-            operation: t('label.deploying-lowercase'),
-            displayName,
-          })
-        );
-      }
-    },
-    []
+  const { CollateAIAgentsWidget, MetadataAgentsWidget } = useMemo(
+    () => serviceUtilClassBase.getAgentsTabWidgets(),
+    [serviceCategory]
+  );
+  const isCollateAIWidgetSupported = useMemo(
+    () => !isUndefined(CollateAIAgentsWidget),
+    [CollateAIAgentsWidget]
   );
 
-  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
+  const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
+
+  const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
 
-  const showAddIngestionButton = useMemo(
-    () => ingestionPermissions.Create && platform !== DISABLED,
-    [ingestionPermissions, platform]
+  const handleStatusFilterSearch = useCallback(
+    (searchValue: string) => {
+      setStatusFilters(
+        statusMenuItems.filter((item) =>
+          item.label.toLowerCase().includes(searchValue.toLowerCase())
+        )
+      );
+    },
+    [statusMenuItems]
   );
 
-  const renderAddIngestionButton = useMemo(() => {
-    if (isFetchingStatus || isLoading) {
-      return <ButtonSkeleton size="default" />;
-    }
-
-    if (showAddIngestionButton) {
-      return (
-        <AddIngestionButton
-          ingestionList={ingestionPipelineList}
-          pipelineType={pipelineType}
-          serviceCategory={serviceCategory}
-          serviceDetails={serviceDetails}
-          serviceName={serviceName}
-        />
+  const handleTypeFilterSearch = useCallback(
+    (searchValue: string) => {
+      setTypeFilters(
+        typeMenuItems.filter((item) =>
+          item.label.toLowerCase().includes(searchValue.toLowerCase())
+        )
       );
-    }
+    },
+    [typeMenuItems]
+  );
 
-    return null;
-  }, [
-    isLoading,
-    isFetchingStatus,
-    showAddIngestionButton,
-    ingestionPipelineList,
-    pipelineType,
-    serviceCategory,
-    serviceDetails,
-    serviceName,
-  ]);
+  const handleSubTabChange = useCallback(
+    (e: RadioChangeEvent) => {
+      const key = e.target.value;
+
+      history.replace({
+        pathname: getServiceDetailsPath(
+          decodedServiceFQN,
+          serviceCategory,
+          tab,
+          key
+        ),
+      });
+    },
+    [history, decodedServiceFQN, serviceCategory, tab]
+  );
+
+  const subTabOptions = useMemo(() => {
+    return Object.values(ServiceAgentSubTabs).map((subTab) => {
+      const Icon =
+        subTab === ServiceAgentSubTabs.COLLATE_AI
+          ? CollateAI
+          : MetadataAgentIcon;
+      const label =
+        subTab === ServiceAgentSubTabs.COLLATE_AI
+          ? t('label.collate-ai')
+          : t('label.metadata');
+
+      return {
+        label: (
+          <div
+            className="flex items-center gap-2"
+            data-testid={`${subTab}-sub-tab`}>
+            <Icon height={14} width={14} />
+            <Typography.Text>{label}</Typography.Text>
+          </div>
+        ),
+        value: subTab,
+      };
+    });
+  }, []);
 
   if (!isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;
   }
 
   return (
-    <Row className="mt-4" data-testid="ingestion-details-container">
-      <Col className="d-flex justify-between" span={24}>
-        <div className="w-max-400 w-full">
-          <Searchbar
-            placeholder={`${t('message.search-for-ingestion')}...`}
-            searchValue={searchText}
-            typingInterval={500}
-            onSearch={handleSearchChange}
-          />
-        </div>
-        <div className="relative">{renderAddIngestionButton}</div>
+    <Row
+      className="agents-tab"
+      data-testid="ingestion-details-container"
+      gutter={[16, 16]}>
+      <Col span={24}>
+        <Row justify="space-between">
+          <Col>
+            {isCollateAIWidgetSupported && (
+              <Radio.Group
+                buttonStyle="solid"
+                className="agents-sub-tabs-switch"
+                data-testid="agents-sub-tabs-switch"
+                optionType="button"
+                options={subTabOptions}
+                size="large"
+                value={subTab}
+                onChange={handleSubTabChange}
+              />
+            )}
+          </Col>
+          {!isCollateSubTabSelected && (
+            <Col className="flex items-center gap-2">
+              <SearchDropdown
+                hideCounts
+                label={t('label.status')}
+                options={statusFilters}
+                searchKey="status"
+                selectedKeys={statusFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleStatusFilterChange}
+                onSearch={handleStatusFilterSearch}
+              />
+              <SearchDropdown
+                hideCounts
+                label={t('label.type')}
+                options={typeFilters}
+                searchKey="status"
+                selectedKeys={typeFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleTypeFilterChange}
+                onSearch={handleTypeFilterSearch}
+              />
+
+              <div className="search-bar-container">
+                <Searchbar
+                  removeMargin
+                  inputClassName="p-x-sm p-y-xs border-radius-xs"
+                  placeholder={t('label.search')}
+                  searchValue={searchText}
+                  typingInterval={500}
+                  onSearch={handleSearchChange}
+                />
+              </div>
+            </Col>
+          )}
+        </Row>
       </Col>
       <Col span={24}>
-        <IngestionListTable
-          airflowInformation={airflowInformation}
-          deployIngestion={deployIngestion}
-          handleEnableDisableIngestion={handleEnableDisableIngestion}
-          handleIngestionListUpdate={handleIngestionListUpdate}
-          handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
-          ingestionData={ingestionPipelineList}
-          ingestionPagingInfo={ingestionPagingInfo}
-          isLoading={isLoading}
-          isNumberBasedPaging={!isEmpty(searchText)}
-          pipelineIdToFetchStatus={pipelineIdToFetchStatus}
-          pipelineType={pipelineType}
-          serviceCategory={serviceCategory}
-          serviceName={serviceName}
-          triggerIngestion={triggerIngestion}
-          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-          onPageChange={onPageChange}
-        />
+        {isCollateSubTabSelected ? (
+          <CollateAIAgentsWidget serviceDetails={serviceDetails} />
+        ) : (
+          <MetadataAgentsWidget
+            airflowInformation={airflowInformation}
+            handleIngestionListUpdate={handleIngestionListUpdate}
+            ingestionPagingInfo={ingestionPagingInfo}
+            ingestionPipelineList={ingestionPipelineList}
+            isLoading={isLoading}
+            pipelineType={pipelineType}
+            searchText={searchText}
+            serviceDetails={serviceDetails}
+            serviceName={decodedServiceFQN}
+            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+            onPageChange={onPageChange}
+          />
+        )}
       </Col>
     </Row>
   );

@@ -41,7 +41,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "keyword"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -82,7 +88,8 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer_jp"
+        "analyzer": "om_analyzer_jp",
+        "similarity": "boolean"
       },
       "version": {
         "type": "float"
@@ -277,7 +284,13 @@
                 "properties": {
                   "tagFQN": {
                     "type": "keyword",
-                    "normalizer": "lowercase_normalizer"
+                    "normalizer": "lowercase_normalizer",
+                    "fields": {
+                      "text": {
+                        "type": "text",
+                        "analyzer": "om_analyzer"
+                      }
+                    }
                   },
                   "labelType": {
                     "type": "keyword"
@@ -487,7 +500,13 @@
       "tier": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -560,7 +579,13 @@
             "properties": {
               "tagFQN": {
                 "type": "keyword",
-                "normalizer": "lowercase_normalizer"
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
               },
               "labelType": {
                 "type": "keyword"

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema defining a Typed Event with its status, data, and timestamp.
  */
 export interface TypedEvent {
@@ -82,6 +80,10 @@ export interface ChangeEvent {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Version of the entity before this change. Note that not all changes result in entity
      * version change. When entity version is not changed, `previousVersion` is same as
      * `currentVersion`.
@@ -121,8 +123,11 @@ export interface ChangeEvent {
  * null.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -139,6 +144,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -207,6 +235,10 @@ export interface ChangeEventClass {
      * Unique identifier for the event.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Version of the entity before this change. Note that not all changes result in entity
      * version change. When entity version is not changed, `previousVersion` is same as

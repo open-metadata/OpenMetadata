@@ -17,41 +17,45 @@ import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colore
 import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-colored.svg';
 import { ReactComponent as GovernIcon } from '../../assets/svg/governance.svg';
 import { ReactComponent as HomepageIcon } from '../../assets/svg/homepage.svg';
+import { ReactComponent as APICollectionIcon } from '../../assets/svg/ic-api-collection.svg';
+import { ReactComponent as APIEndpointIcon } from '../../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/ic-dashboard-data-model-colored.svg';
 import { ReactComponent as SchemaIcon } from '../../assets/svg/ic-database-schema-colored.svg';
 import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored.svg';
+import { ReactComponent as MetricColoredIcon } from '../../assets/svg/metric-colored.svg';
+import { ReactComponent as MlModelIcon } from '../../assets/svg/ml-model-colored.svg';
 import { ReactComponent as NavigationIcon } from '../../assets/svg/navigation.svg';
 import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-colored.svg';
 import { ReactComponent as SearchIcon } from '../../assets/svg/search-colored.svg';
 import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored.svg';
 import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedure-colored.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/table-colored.svg';
-
-import { EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { SettingMenuItem } from '../GlobalSettingsUtils';
 import i18n from '../i18next/LocalUtil';
 
 const ENTITY_ICONS: Record<string, SvgComponent> = {
-  [EntityType.TABLE]: TableIcon,
-  [EntityType.CONTAINER]: StorageIcon,
-  [EntityType.DASHBOARD]: DashboardIcon,
-  [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModelIcon,
-  [EntityType.DATABASE]: DatabaseIcon,
-  [EntityType.DATABASE_SCHEMA]: SchemaIcon,
-  [EntityType.DOMAIN]: SchemaIcon,
-  [EntityType.GLOSSARY]: GlossaryIcon,
-  [EntityType.GLOSSARY_TERM]: GlossaryIcon,
-  [EntityType.PIPELINE]: PipelineIcon,
-  [EntityType.SEARCH_INDEX]: SearchIcon,
-  [EntityType.STORED_PROCEDURE]: StoredProcedureIcon,
-  [EntityType.TOPIC]: MessagingIcon,
-  [EntityType.GOVERN]: GovernIcon,
+  [PageType.Table]: TableIcon,
+  [PageType.Container]: StorageIcon,
+  [PageType.Dashboard]: DashboardIcon,
+  [PageType.DashboardDataModel]: DashboardDataModelIcon,
+  [PageType.Database]: DatabaseIcon,
+  [PageType.DatabaseSchema]: SchemaIcon,
+  [PageType.Domain]: SchemaIcon,
+  [PageType.Glossary]: GlossaryIcon,
+  [PageType.GlossaryTerm]: GlossaryIcon,
+  [PageType.Pipeline]: PipelineIcon,
+  [PageType.SearchIndex]: SearchIcon,
+  [PageType.StoredProcedure]: StoredProcedureIcon,
+  [PageType.Topic]: MessagingIcon,
+  ['govern']: GovernIcon,
   ['dataAssets']: DataAssetsIcon,
   ['homepage']: HomepageIcon,
   ['navigation']: NavigationIcon,
-  ['governance']: GovernIcon,
-  [PageType.LandingPage]: MessagingIcon,
+  [PageType.APICollection]: APICollectionIcon,
+  [PageType.APIEndpoint]: APIEndpointIcon,
+  [PageType.MlModel]: MlModelIcon,
+  [PageType.Metric]: MetricColoredIcon,
 };
 
 export const getCustomizePageCategories = (): SettingMenuItem[] => {
@@ -59,25 +63,26 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'navigation',
       label: i18n.t('label.navigation'),
-      description: 'Navigation',
+      description: 'Customize left sidebar ',
       icon: ENTITY_ICONS[camelCase('Navigation')],
     },
     {
       key: PageType.LandingPage,
       label: i18n.t('label.homepage'),
-      description: 'Homepage',
+      description: 'Customize the My data page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('Homepage')],
     },
     {
       key: 'governance',
       label: i18n.t('label.governance'),
-      description: 'Governance',
+      description: 'Customize the Govern pages with widget of your preference',
       icon: ENTITY_ICONS[camelCase('GOVERN')],
     },
     {
       key: 'data-assets',
       label: i18n.t('label.data-asset-plural'),
-      description: 'Data assets',
+      description:
+        'Customize the entity detail page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('data-assets')],
     },
   ];
@@ -86,8 +91,10 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
 const generateSettingItems = (pageType: PageType): SettingMenuItem => ({
   key: pageType,
   label: startCase(pageType),
-  description: pageType,
-  icon: ENTITY_ICONS[camelCase(pageType)],
+  description: i18n.t('message.entity-customize-description', {
+    entity: startCase(pageType),
+  }),
+  icon: ENTITY_ICONS[pageType],
 });
 
 export const getCustomizePageOptions = (

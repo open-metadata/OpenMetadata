@@ -20,6 +20,8 @@ site_menu:
 
   - category: Deployment
     url: /deployment
+  - category: Deployment / Minimum Requirements
+    url: /deployment/minimum-requirements
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
@@ -75,7 +77,7 @@ site_menu:
     url: /deployment/security/ldap/docker
   - category: Deployment / Enable Security / Ldap Authentication / Bare Metal
     url: /deployment/security/ldap/bare-metal
-   - category: Deployment / Enable Security / Ldap Authentication / Kubernetes
+  - category: Deployment / Enable Security / Ldap Authentication / Kubernetes
     url: /deployment/security/ldap/kubernetes  
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
@@ -191,6 +193,10 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / How to enable Azure Auth
     url: /deployment/azure-auth
+  - category: Deployment / Azure - Enable Passwordless Database Backend Connection
+    url: /deployment/azure-passwordless-auth
+  - category: Deployment / Production-Ready Requirements
+    url: /deployment/requirements
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
   - category: Deployment / Database Connection Pooling
@@ -220,6 +226,9 @@ site_menu:
 
   - category: Deployment / Metrics
     url: /deployment/metrics
+  
+  - category: Deployment / OSS Security
+    url: /deployment/oss-security
 
   - category: Connectors
     url: /connectors
@@ -308,6 +317,10 @@ site_menu:
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / Exasol
+    url: /connectors/database/exasol
+  - category: Connectors / Database / Exasol / Run Externally
+    url: /connectors/database/exasol/yaml
   - category: Connectors / Database / GCS Datalake
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
@@ -362,11 +375,11 @@ site_menu:
     url: /connectors/database/pinotdb
   - category: Connectors / Database / PinotDB / Run Externally
     url: /connectors/database/pinotdb/yaml
-  - category: Connectors / Database / Postgres
+  - category: Connectors / Database / PostgreSQL
     url: /connectors/database/postgres
-  - category: Connectors / Database / Postgres / Run Externally
+  - category: Connectors / Database / PostgreSQL / Run Externally
     url: /connectors/database/postgres/yaml
-  - category: Connectors / Database / Postgres / Troubleshooting
+  - category: Connectors / Database / PostgreSQL / Troubleshooting
     url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
@@ -382,9 +395,9 @@ site_menu:
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
-  - category: Connectors / Database / SAP Hana
+  - category: Connectors / Database / SAP HANA
     url: /connectors/database/sap-hana
-  - category: Connectors / Database / SAP Hana / Run Externally
+  - category: Connectors / Database / SAP HANA / Run Externally
     url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAP ERP
     url: /connectors/database/sap-erp
@@ -612,6 +625,10 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / OpenSearch
+    url: /connectors/search/opensearch
+  - category: Connectors / Search / OpenSearch / Run Externally
+    url: /connectors/search/opensearch/yaml
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -801,6 +818,8 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
+  - category: How-to Guides / Data Discovery / Troubleshooting
+    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
     url: /how-to-guides/data-discovery/openmetadata-extension
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
@@ -857,6 +876,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/workflow
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
     url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
+    url: /how-to-guides/data-quality-observability/profiler/custom-metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
@@ -948,6 +969,8 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
+  - category: How-to Guides / Data Governance / Metrics
+    url: /how-to-guides/data-governance/metrics
 
   - category: Releases
     url: /releases
@@ -957,6 +980,16 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.5 Release
+    url: /releases/all-releases/#1.6.5-release
+  - category: Releases / All Releases / 1.6.4 Release
+    url: /releases/all-releases/#1.6.4-release
+  - category: Releases / All Releases / 1.6.3 Release
+    url: /releases/all-releases/#1.6.3-release
+  - category: Releases / All Releases / 1.6.2 Release
+    url: /releases/all-releases/#1.6.2-release
+  - category: Releases / All Releases / 1.6.1 Release
+    url: /releases/all-releases/#1.6.1-release
   - category: Releases / All Releases / 1.6.1 Release
     url: /releases/all-releases/#1.6.1-release
   - category: Releases / All Releases / 1.5.15 Release

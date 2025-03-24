@@ -17,6 +17,7 @@ import static java.lang.String.format;
 
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
+import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
@@ -47,8 +48,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -104,7 +103,7 @@ public abstract class OpenMetadataApplicationTest {
 
   private static String HOST;
   private static String PORT;
-  private static Client client;
+  protected static Client client;
 
   static {
     CollectionRegistry.addTestResource(webhookCallbackResource);
@@ -139,7 +138,17 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
+    sqlContainer.withPassword("password");
+    sqlContainer.withUsername("username");
     sqlContainer.start();
+
+    // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
+    DataSourceFactory dataSourceFactory = new DataSourceFactory();
+    dataSourceFactory.setUrl(sqlContainer.getJdbcUrl());
+    dataSourceFactory.setUser(sqlContainer.getUsername());
+    dataSourceFactory.setPassword(sqlContainer.getPassword());
+    dataSourceFactory.setDriverClass(sqlContainer.getDriverClassName());
+    config.setDataSourceFactory(dataSourceFactory);
 
     final String flyWayMigrationScriptsLocation =
         ResourceHelpers.resourceFilePath(
@@ -210,22 +219,18 @@ public abstract class OpenMetadataApplicationTest {
         ConnectionType.from(sqlContainer.getDriverClassName()),
         nativeMigrationScriptsLocation,
         extensionMigrationScripsLocation,
-        null,
-        null,
         false);
     createIndices();
     APP.before();
     createClient();
   }
 
-  public static void validateAndRunSystemDataMigrations(
+  public void validateAndRunSystemDataMigrations(
       Jdbi jdbi,
       OpenMetadataApplicationConfig config,
       ConnectionType connType,
       String nativeMigrationSQLPath,
       String extensionSQLScriptRootPath,
-      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
-      AuthenticationConfiguration authenticationConfiguration,
       boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
@@ -234,18 +239,21 @@ public abstract class OpenMetadataApplicationTest {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
-            pipelineServiceClientConfiguration,
-            authenticationConfiguration,
+            config,
             forceMigrations);
     // Initialize search repository
     SearchRepository searchRepository = new SearchRepository(getEsConfig());
     Entity.setSearchRepository(searchRepository);
-    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
     workflow.runMigrationWorkflows();
     Entity.cleanup();
+  }
+
+  protected CollectionDAO getDao(Jdbi jdbi) {
+    return jdbi.onDemand(CollectionDAO.class);
   }
 
   @NotNull

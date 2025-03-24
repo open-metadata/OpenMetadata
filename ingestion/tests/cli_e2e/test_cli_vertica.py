@@ -24,14 +24,14 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE vendor_dimension_new AS
+        CREATE TABLE IF NOT EXISTS vendor_dimension_new AS
             SELECT *
             FROM vendor_dimension
             WHERE 1=0;
     """
 
     create_view_query: str = """
-        CREATE VIEW vendor_dimension_v AS
+        CREATE OR REPLACE VIEW vendor_dimension_v AS
             SELECT vendor_key, vendor_name
             FROM public.vendor_dimension_new;
     """
@@ -67,7 +67,7 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def _expected_profiled_tables() -> int:
         return 12
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:

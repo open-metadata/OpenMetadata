@@ -43,7 +43,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
 
   @Override
   public String getResource() {
-    return entityLink.getEntityType();
+    return entity != null ? entity.getEntityReference().getType() : Entity.TEST_CASE;
   }
 
   @Override

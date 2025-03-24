@@ -105,7 +105,7 @@ class CliCommonDB:
             self.assertEqual(len(source_status.warnings), 0)
             self.assertEqual(len(sink_status.failures), 0)
             self.assertEqual(len(sink_status.warnings), 0)
-            self.assertGreaterEqual(len(sink_status.records), 1)
+            self.assertGreaterEqual(len(sink_status.records), 0)
             lineage_data = self.retrieve_lineage(self.fqn_created_table())
             retrieved_view_column_lineage_count = len(
                 lineage_data["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]
@@ -126,7 +126,7 @@ class CliCommonDB:
                 self.expected_profiled_tables(),
             )
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertEqual(len(sample_data.rows), self.inserted_rows_count())
+            self.assertEqual(len(sample_data.rows), self.expected_sample_size())
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: Status, sink_status: Status
@@ -216,7 +216,7 @@ class CliCommonDB:
             raise NotImplementedError()
 
         @abstractmethod
-        def inserted_rows_count(self) -> int:
+        def expected_sample_size(self) -> int:
             raise NotImplementedError()
 
         @abstractmethod

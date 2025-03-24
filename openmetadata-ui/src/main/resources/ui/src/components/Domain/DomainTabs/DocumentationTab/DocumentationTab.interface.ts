@@ -10,17 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../../generated/entity/domains/domain';
 
 export interface DocumentationTabProps {
-  domain: Domain | DataProduct;
-  onUpdate: (value: Domain | DataProduct) => Promise<void>;
   isVersionsView?: boolean;
   type?: DocumentationEntity;
-  onExtensionUpdate?: (updatedDataProduct: DataProduct) => Promise<void>;
-  editCustomAttributePermission?: boolean;
-  viewAllPermission?: boolean;
 }
 
 export enum DocumentationEntity {

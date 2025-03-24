@@ -31,4 +31,6 @@ public class EventMonitorConfiguration {
   private String[] pathPattern;
 
   private double[] latency;
+
+  private int servicesHealthCheckInterval = 300;
 }

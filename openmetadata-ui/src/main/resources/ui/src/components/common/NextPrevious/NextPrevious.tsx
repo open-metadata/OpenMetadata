@@ -17,6 +17,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
+import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -29,6 +30,7 @@ import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 
 const NextPrevious: FC<NextPreviousProps> = ({
+  className,
   paging,
   pagingHandler,
   pageSize,
@@ -84,7 +86,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
   };
 
   return (
-    <div className="flex-center gap-3" data-testid="pagination">
+    <div
+      className={classNames('flex-center gap-3', className)}
+      data-testid="pagination">
       <Button
         ghost
         className="hover-button text-sm flex-center"
@@ -120,7 +124,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
               onClick: () => onShowSizeChange(size),
             })),
           }}>
-          <Button onClick={(e) => e.preventDefault()}>
+          <Button
+            data-testid="page-size-selection-dropdown"
+            onClick={(e) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>
