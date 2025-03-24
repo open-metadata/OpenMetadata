@@ -17,6 +17,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { JoinedWith, Table } from '../../../generated/entity/data/table';
 import { getCountBadge } from '../../../utils/CommonUtils';
@@ -34,7 +35,7 @@ export const FrequentlyJoinedTables = ({
   newLook?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { data } = useGenericContext<Table>();
+  const { data, filterWidgets } = useGenericContext<Table>();
 
   const joinedTables = useMemo(
     () => getJoinsFromTableJoins(data?.joins),
@@ -42,6 +43,8 @@ export const FrequentlyJoinedTables = ({
   );
 
   if (isEmpty(joinedTables)) {
+    filterWidgets([DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]);
+
     return null;
   }
 

@@ -10,21 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
-import { useParams } from 'react-router-dom';
-import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../../enums/entity.enum';
-import { Table } from '../../../generated/entity/data/table';
-import { PageType, Tab } from '../../../generated/system/ui/page';
-import { useCustomPages } from '../../../hooks/useCustomPages';
+import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import {
-  getDefaultWidgetForTab,
-  getWidgetsFromKey,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { useGenericContext } from '../GenericProvider/GenericProvider';
 import './generic-tab.less';
 
@@ -35,67 +26,10 @@ interface GenericTabProps {
 }
 
 export const GenericTab = ({ type }: GenericTabProps) => {
-  const { customizedPage } = useCustomPages(type);
-  const { tab } = useParams<{ tab: EntityTabs }>();
-  const { data } = useGenericContext<Table>();
-
-  const layout = useMemo(() => {
-    if (!customizedPage) {
-      return getDefaultWidgetForTab(type, tab);
-    }
-
-    if (customizedPage) {
-      return tab
-        ? customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout
-        : customizedPage.tabs?.[0].layout;
-    } else {
-      return getDefaultWidgetForTab(type, tab);
-    }
-  }, [customizedPage, tab, type]);
-
-  const filteredLayout = useMemo(() => {
-    if (type !== PageType.Table) {
-      return layout;
-    }
-
-    const shouldRenderFrequentlyJoinedTables =
-      !isEmpty(data?.joins?.columnJoins) ||
-      !isEmpty(data?.joins?.directTableJoins);
-    const shouldRenderPartitionedKeys = !isEmpty(data?.tablePartition?.columns);
-    const shouldRenderTableConstraints = !isEmpty(data?.tableConstraints);
-
-    if (
-      shouldRenderFrequentlyJoinedTables &&
-      shouldRenderPartitionedKeys &&
-      shouldRenderTableConstraints
-    ) {
-      return layout;
-    }
-
-    return layout?.filter((widget: WidgetConfig) => {
-      if (widget.i === DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES) {
-        return shouldRenderFrequentlyJoinedTables;
-      }
-
-      if (widget.i === DetailPageWidgetKeys.PARTITIONED_KEYS) {
-        return shouldRenderPartitionedKeys;
-      }
-
-      if (widget.i === DetailPageWidgetKeys.TABLE_CONSTRAINTS) {
-        return shouldRenderTableConstraints;
-      }
-
-      return true;
-    });
-  }, [
-    layout,
-    data?.joins,
-    data?.tablePartition?.columns,
-    data?.tableConstraints,
-  ]);
+  const { layout } = useGenericContext();
 
   const widgets = useMemo(() => {
-    return filteredLayout?.map((widget: WidgetConfig) => {
+    return layout?.map((widget: WidgetConfig) => {
       return (
         <div
           className="overflow-auto-y"
@@ -106,7 +40,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
         </div>
       );
     });
-  }, [filteredLayout, type]);
+  }, [layout, type]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();

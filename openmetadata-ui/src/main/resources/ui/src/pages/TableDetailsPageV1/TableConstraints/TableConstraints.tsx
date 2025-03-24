@@ -20,6 +20,7 @@ import { EditIconButton } from '../../../components/common/IconButtons/EditIconB
 import TagButton from '../../../components/common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
@@ -32,7 +33,8 @@ import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal
 const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { data, permissions, onUpdate } = useGenericContext<Table>();
+  const { data, permissions, onUpdate, filterWidgets } =
+    useGenericContext<Table>();
 
   const { deleted } = data ?? {};
 
@@ -173,6 +175,12 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
       )}
     </Space>
   );
+
+  if (isEmpty(data?.tableConstraints)) {
+    filterWidgets([DetailPageWidgetKeys.TABLE_CONSTRAINTS]);
+
+    return null;
+  }
 
   if (newLook) {
     return (

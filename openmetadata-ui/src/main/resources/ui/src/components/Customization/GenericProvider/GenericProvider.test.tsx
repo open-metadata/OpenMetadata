@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React from 'react';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
@@ -70,7 +71,7 @@ describe('GenericProvider', () => {
 
   const defaultProps = {
     data: mockData,
-    type: EntityType.TABLE,
+    type: EntityType.TABLE as CustomizeEntityType,
     onUpdate: jest.fn(),
     permissions: {
       Create: true,

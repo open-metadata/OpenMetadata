@@ -32,6 +32,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -66,8 +67,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { data: entityDetails, onUpdate } =
-    useGenericContext<ExtentionEntities[T]>();
+  const {
+    data: entityDetails,
+    onUpdate,
+    filterWidgets,
+  } = useGenericContext<ExtentionEntities[T]>();
 
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
@@ -295,6 +299,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     );
 
     if (isEmpty(entityTypeDetail.customProperties)) {
+      filterWidgets([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
+
       // Noting should be shown in case of no properties
       return null;
     }

@@ -17,13 +17,14 @@ import { t } from 'i18next';
 import React, { useMemo } from 'react';
 import Table from '../../../components/common/Table/Table';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import {
   PartitionColumnDetails,
   Table as TableType,
 } from '../../../generated/entity/data/table';
 
 export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
-  const { data } = useGenericContext<TableType>();
+  const { data, filterWidgets } = useGenericContext<TableType>();
 
   const partitionColumnDetails = useMemo(
     () =>
@@ -59,6 +60,8 @@ export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
   }, []);
 
   if (!data?.tablePartition) {
+    filterWidgets([DetailPageWidgetKeys.PARTITIONED_KEYS]);
+
     return null;
   }
 

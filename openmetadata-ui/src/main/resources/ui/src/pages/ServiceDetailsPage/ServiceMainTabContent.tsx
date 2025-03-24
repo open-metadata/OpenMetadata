@@ -30,6 +30,7 @@ import Table from '../../components/common/Table/Table';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -326,7 +327,7 @@ function ServiceMainTabContent({
               <GenericProvider
                 data={serviceDetails}
                 permissions={servicePermission}
-                type={entityType}
+                type={entityType as CustomizeEntityType}
                 onUpdate={saveUpdatedServiceData}>
                 <div data-testid="entity-right-panel">
                   <EntityRightPanel
