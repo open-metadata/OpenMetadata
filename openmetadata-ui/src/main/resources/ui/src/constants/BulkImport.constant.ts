@@ -11,21 +11,14 @@
  *  limitations under the License.
  */
 import { startCase } from 'lodash';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import i18n from '../utils/i18next/LocalUtil';
 
-export const ENTITY_IMPORT_STEPS = [
-  {
-    name: startCase(i18n.t('label.upload-csv-uppercase-file')),
-    step: 0,
-  },
-  {
-    name: startCase(i18n.t('label.preview-and-edit')),
-    step: 1,
-  },
-  {
-    name: startCase(i18n.t('label.update')),
-    step: 2,
-  },
+export const SUPPORTED_BULK_IMPORT_EDIT_ENTITY = [
+  ResourceEntity.TABLE,
+  ResourceEntity.DATABASE_SERVICE,
+  ResourceEntity.DATABASE,
+  ResourceEntity.DATABASE_SCHEMA,
 ];
 
 export enum VALIDATION_STEP {
@@ -33,3 +26,18 @@ export enum VALIDATION_STEP {
   EDIT_VALIDATE = 1,
   UPDATE = 2,
 }
+
+export const ENTITY_IMPORT_STEPS = [
+  {
+    name: startCase(i18n.t('label.upload-csv-uppercase-file')),
+    step: VALIDATION_STEP.UPLOAD,
+  },
+  {
+    name: i18n.t('label.preview-and-edit'),
+    step: VALIDATION_STEP.EDIT_VALIDATE,
+  },
+  {
+    name: i18n.t('label.update'),
+    step: VALIDATION_STEP.UPDATE,
+  },
+];

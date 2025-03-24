@@ -11,6 +11,9 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
+import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
+import static org.openmetadata.service.search.SearchUtils.getAggregationKeyValue;
+import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.io.IOException;
@@ -19,10 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +44,7 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -48,11 +54,14 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
@@ -107,7 +116,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
-    parent = true;
   }
 
   @Override
@@ -185,19 +193,17 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
     List<ColumnTestSummaryDefinition> columnTestSummaries = new ArrayList<>();
     Optional<JsonObject> entityLinkAgg =
-        Optional.ofNullable(SearchClient.getAggregationObject(aggregation, "sterms#entityLinks"));
+        Optional.ofNullable(getAggregationObject(aggregation, "sterms#entityLinks"));
 
     return entityLinkAgg
         .map(
             entityLinkAggJson -> {
-              JsonArray entityLinkBuckets = SearchClient.getAggregationBuckets(entityLinkAggJson);
+              JsonArray entityLinkBuckets = getAggregationBuckets(entityLinkAggJson);
               for (JsonValue entityLinkBucket : entityLinkBuckets) {
                 JsonObject statusAgg =
-                    SearchClient.getAggregationObject(
-                        (JsonObject) entityLinkBucket, "sterms#status_counts");
-                JsonArray statusBuckets = SearchClient.getAggregationBuckets(statusAgg);
-                String entityLinkString =
-                    SearchClient.getAggregationKeyValue((JsonObject) entityLinkBucket);
+                    getAggregationObject((JsonObject) entityLinkBucket, "sterms#status_counts");
+                JsonArray statusBuckets = getAggregationBuckets(statusAgg);
+                String entityLinkString = getAggregationKeyValue((JsonObject) entityLinkBucket);
 
                 MessageParser.EntityLink entityLink =
                     entityLinkString != null
@@ -405,7 +411,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public EntityRepository<TestSuite>.EntityUpdater getUpdater(
-      TestSuite original, TestSuite updated, Operation operation) {
+      TestSuite original, TestSuite updated, Operation operation, ChangeSource changeSource) {
     return new TestSuiteUpdater(original, updated, operation);
   }
 
@@ -450,7 +456,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setDeleted(true);
-      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE);
+      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
@@ -477,6 +483,36 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     // Delete all the contained entities
     deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  public Response deleteLogicalTestSuiteAsync(
+      SecurityContext securityContext, TestSuite testSuite, boolean hardDelete) {
+    String jobId = UUID.randomUUID().toString();
+
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            RestUtil.DeleteResponse<TestSuite> deleteResponse =
+                deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
+            deleteFromSearch(deleteResponse.entity(), hardDelete);
+
+            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                jobId, securityContext, deleteResponse.entity());
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                jobId, securityContext, testSuite, e.getMessage());
+          }
+        });
+    return Response.accepted()
+        .entity(
+            new DeleteEntityResponse(
+                jobId,
+                "Delete operation initiated for " + testSuite.getName(),
+                testSuite.getName(),
+                hardDelete,
+                false))
+        .build();
   }
 
   private void updateTestSummaryFromBucket(JsonObject bucket, TestSummary testSummary) {

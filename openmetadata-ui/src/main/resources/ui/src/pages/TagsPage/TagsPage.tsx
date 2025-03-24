@@ -63,6 +63,7 @@ import {
 } from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -75,6 +76,7 @@ import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
+  const { t } = useTranslation();
   const history = useHistory();
   const { fqn: tagCategoryName } = useFqn();
   const [classifications, setClassifications] = useState<Array<Classification>>(
@@ -82,8 +84,6 @@ const TagsPage = () => {
   );
   const [currentClassification, setCurrentClassification] =
     useState<Classification>();
-  const [isEditClassification, setIsEditClassification] =
-    useState<boolean>(false);
   const [isAddingClassification, setIsAddingClassification] =
     useState<boolean>(false);
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
@@ -102,7 +102,6 @@ const TagsPage = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const { t } = useTranslation();
   const createClassificationPermission = useMemo(
     () =>
       checkPermission(
@@ -298,7 +297,9 @@ const TagsPage = () => {
     } catch (err) {
       showErrorToast(
         err as AxiosError,
-        t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+        t('server.delete-entity-error', {
+          entity: t('label.tag-lowercase'),
+        })
       );
     } finally {
       setDeleteTags({ data: undefined, state: false });
@@ -370,7 +371,6 @@ const TagsPage = () => {
             );
           }
         } finally {
-          setIsEditClassification(false);
           setIsUpdateLoading(false);
         }
       }
@@ -483,14 +483,6 @@ const TagsPage = () => {
 
   const handleAddNewTagClick = useCallback(() => {
     setIsAddingTag(true);
-  }, []);
-
-  const handleEditDescriptionClick = useCallback(() => {
-    setIsEditClassification(true);
-  }, []);
-
-  const handleCancelEditDescription = useCallback(() => {
-    setIsEditClassification(false);
   }, []);
 
   useEffect(() => {
@@ -737,12 +729,9 @@ const TagsPage = () => {
                   handleActionDeleteTag={handleActionDeleteTag}
                   handleAddNewTagClick={handleAddNewTagClick}
                   handleAfterDeleteAction={handleAfterDeleteAction}
-                  handleCancelEditDescription={handleCancelEditDescription}
-                  handleEditDescriptionClick={handleEditDescriptionClick}
                   handleEditTagClick={handleEditTagClick}
                   handleUpdateClassification={handleUpdateClassification}
                   isAddingTag={isAddingTag}
-                  isEditClassification={isEditClassification}
                   ref={classificationDetailsRef}
                 />
               )}
@@ -801,4 +790,4 @@ const TagsPage = () => {
   );
 };
 
-export default withPageLayout('tag-plural')(TagsPage);
+export default withPageLayout(i18n.t('label.tag-plural'))(TagsPage);

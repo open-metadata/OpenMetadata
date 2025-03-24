@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
@@ -115,7 +116,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   public EventSubscriptionOffset syncEventSubscriptionOffset(String eventSubscriptionName) {
-    EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("id"));
+    EventSubscription eventSubscription = getByName(null, eventSubscriptionName, getFields("*"));
     long latestOffset = daoCollection.changeEventDAO().getLatestOffset();
     long currentTime = System.currentTimeMillis();
     // Upsert Offset
@@ -133,6 +134,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
 
+    EventSubscriptionScheduler.getInstance().updateEventSubscription(eventSubscription);
     return eventSubscriptionOffset;
   }
 
@@ -147,8 +149,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
-  public EventSubscriptionUpdater getUpdater(
-      EventSubscription original, EventSubscription updated, Operation operation) {
+  public EntityRepository<EventSubscription>.EntityUpdater getUpdater(
+      EventSubscription original,
+      EventSubscription updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new EventSubscriptionUpdater(original, updated, operation);
   }
 
@@ -174,6 +179,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             objectMatch,
             false);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+        recordChange("config", original.getConfig(), updated.getConfig(), true);
       }
     }
   }

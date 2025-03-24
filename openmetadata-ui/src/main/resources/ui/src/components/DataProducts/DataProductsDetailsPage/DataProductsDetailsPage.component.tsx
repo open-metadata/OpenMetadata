@@ -32,11 +32,7 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import {
-  DE_ACTIVE_COLOR,
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -49,7 +45,6 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
@@ -63,7 +58,11 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import {
+  getDomainPath,
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -73,6 +72,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
 import DocumentationTab from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
@@ -409,14 +409,8 @@ const DataProductsDetailsPage = ({
         key: DataProductTabs.DOCUMENTATION,
         children: (
           <DocumentationTab
-            domain={dataProduct}
             isVersionsView={isVersionsView}
-            permissions={dataProductPermission}
             type={DocumentationEntity.DATA_PRODUCT}
-            onExtensionUpdate={handelExtensionUpdate}
-            onUpdate={(data: Domain | DataProduct) =>
-              onUpdate(data as DataProduct)
-            }
           />
         ),
       },
@@ -485,9 +479,7 @@ const DataProductsDetailsPage = ({
         children: (
           <div className="p-md">
             <CustomPropertyTable<EntityType.DATA_PRODUCT>
-              entityDetails={dataProduct}
               entityType={EntityType.DATA_PRODUCT}
-              handleExtensionUpdate={handelExtensionUpdate}
               hasEditAccess={
                 (dataProductPermission.EditAll ||
                   dataProductPermission.EditCustomFields) &&
@@ -623,16 +615,24 @@ const DataProductsDetailsPage = ({
           </div>
         </Col>
 
-        <Col span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-            className="domain-details-page-tabs"
-            data-testid="tabs"
-            items={tabs}
-            onChange={handleTabChange}
-          />
-        </Col>
+        <GenericProvider<DataProduct>
+          currentVersionData={dataProduct}
+          data={dataProduct}
+          isVersionView={isVersionsView}
+          permissions={dataProductPermission}
+          type={EntityType.DATA_PRODUCT}
+          onUpdate={onUpdate}>
+          <Col span={24}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+              className="domain-details-page-tabs"
+              data-testid="tabs"
+              items={tabs}
+              onChange={handleTabChange}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
 
       <EntityNameModal<DataProduct>

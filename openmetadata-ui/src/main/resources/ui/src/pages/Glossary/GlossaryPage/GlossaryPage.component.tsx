@@ -61,15 +61,16 @@ import {
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
-  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
+  const { t } = useTranslation();
   const history = useHistory();
   const { action } = useParams<{ action: EntityAction }>();
   const [initialised, setInitialised] = useState(false);
@@ -79,7 +80,8 @@ const GlossaryPage = () => {
     useState<boolean>(false);
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
-    rootMargin: '10px',
+    root: document.querySelector('#panel-container'),
+    rootMargin: '0px 0px 2px 0px',
   });
   const { paging, pageSize, handlePagingChange } = usePaging();
 
@@ -459,26 +461,22 @@ const GlossaryPage = () => {
     );
   }
 
-  const glossaryElement = (
-    <div className="p-t-sm">
-      {isRightPanelLoading ? (
-        <Loader />
-      ) : (
-        <GlossaryV1
-          isGlossaryActive={isGlossaryActive}
-          isSummaryPanelOpen={Boolean(previewAsset)}
-          isVersionsView={false}
-          refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
-          selectedData={activeGlossary as Glossary}
-          updateGlossary={updateGlossary}
-          updateVote={updateVote}
-          onAssetClick={handleAssetClick}
-          onGlossaryDelete={handleGlossaryDelete}
-          onGlossaryTermDelete={handleGlossaryTermDelete}
-          onGlossaryTermUpdate={handleGlossaryTermUpdate}
-        />
-      )}
-    </div>
+  const glossaryElement = isRightPanelLoading ? (
+    <Loader />
+  ) : (
+    <GlossaryV1
+      isGlossaryActive={isGlossaryActive}
+      isSummaryPanelOpen={Boolean(previewAsset)}
+      isVersionsView={false}
+      refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
+      selectedData={activeGlossary as Glossary}
+      updateGlossary={updateGlossary}
+      updateVote={updateVote}
+      onAssetClick={handleAssetClick}
+      onGlossaryDelete={handleGlossaryDelete}
+      onGlossaryTermDelete={handleGlossaryTermDelete}
+      onGlossaryTermUpdate={handleGlossaryTermUpdate}
+    />
   );
 
   const resizableLayout = isGlossaryActive ? (
@@ -492,8 +490,9 @@ const GlossaryPage = () => {
           <>
             <GlossaryLeftPanel glossaries={glossaries} />
             <div
-              className="h-[1px] w-full"
+              className="w-full"
               data-testid="glossary-left-panel-scroller"
+              id="observer-element"
               ref={elementRef as RefObject<HTMLDivElement>}
             />
             {isMoreGlossaryLoading && <Loader />}
@@ -539,4 +538,4 @@ const GlossaryPage = () => {
   return <div className="m--t-sm">{resizableLayout}</div>;
 };
 
-export default withPageLayout('glossary')(GlossaryPage);
+export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);

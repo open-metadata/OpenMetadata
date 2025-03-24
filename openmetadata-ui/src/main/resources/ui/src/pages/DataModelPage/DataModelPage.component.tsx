@@ -14,7 +14,6 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import { EntityTags } from 'Models';
 import {
   default as React,
   useCallback,
@@ -23,7 +22,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -38,7 +36,6 @@ import {
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Include } from '../../generated/type/include';
@@ -51,13 +48,10 @@ import {
   removeDataModelFollower,
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
-import { getSortedDataModelColumnTags } from '../../utils/DataModelsUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
@@ -87,7 +81,7 @@ const DataModelsPage = () => {
     };
   }, [dataModelPermissions]);
 
-  const { tier, isUserFollowing } = useMemo(() => {
+  const { isUserFollowing } = useMemo(() => {
     return {
       tier: getTierTags(dataModelData?.tags ?? []),
       isUserFollowing: dataModelData?.followers?.some(
@@ -115,18 +109,6 @@ const DataModelsPage = () => {
     }
   };
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
   const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
     setIsLoading(true);
     try {
@@ -162,24 +144,6 @@ const DataModelsPage = () => {
     return patchDataModelDetails(dataModelData?.id ?? '', jsonPatch);
   };
 
-  const handleUpdateDescription = async (updatedDescription: string) => {
-    try {
-      const { description: newDescription, version } =
-        await handleUpdateDataModelData({
-          ...(dataModelData as DashboardDataModel),
-          description: updatedDescription,
-        });
-
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        description: newDescription,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const handleFollowDataModel = async () => {
     const followerId = currentUser?.id ?? '';
     const dataModelId = dataModelData?.id ?? '';
@@ -203,23 +167,6 @@ const DataModelsPage = () => {
           followers: [...(dataModelData?.followers ?? []), ...newValue],
         }));
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleUpdateTags = async (selectedTags: Array<EntityTags> = []) => {
-    try {
-      const { tags: newTags, version } = await handleUpdateDataModelData({
-        ...(dataModelData as DashboardDataModel),
-        tags: [...(tier ? [tier] : []), ...selectedTags],
-      });
-
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        tags: sortTagsCaseInsensitive(newTags ?? []),
-        version,
-      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -263,36 +210,17 @@ const DataModelsPage = () => {
     }
   };
 
-  const handleColumnUpdateDataModel = async (
-    updatedDataModel: DashboardDataModel['columns']
-  ) => {
-    try {
-      const { columns: newColumns, version } = await handleUpdateDataModelData({
-        ...(dataModelData as DashboardDataModel),
-        columns: updatedDataModel,
-      });
-
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        columns: getSortedDataModelColumnTags(newColumns),
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const handleUpdateDataModel = async (
     updatedDataModel: DashboardDataModel,
-    key: keyof DashboardDataModel
+    key?: keyof DashboardDataModel
   ) => {
     try {
       const response = await handleUpdateDataModelData(updatedDataModel);
 
       setDataModelData((prev) => ({
         ...prev,
-        [key]: response[key],
-        version: response.version,
+        ...response,
+        ...(key && { [key]: response[key] }),
       }));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -375,16 +303,12 @@ const DataModelsPage = () => {
 
   return (
     <DataModelDetails
-      createThread={createThread}
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
       fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
-      handleColumnUpdateDataModel={handleColumnUpdateDataModel}
       handleFollowDataModel={handleFollowDataModel}
       handleToggleDelete={handleToggleDelete}
-      handleUpdateDescription={handleUpdateDescription}
       handleUpdateOwner={handleUpdateOwner}
-      handleUpdateTags={handleUpdateTags}
       handleUpdateTier={handleUpdateTier}
       updateDataModelDetailsState={updateDataModelDetailsState}
       onUpdateDataModel={handleUpdateDataModel}

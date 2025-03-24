@@ -87,6 +87,10 @@ export interface Table {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Details of other tables this table is frequently joined with.
      */
     joins?: TableJoins;
@@ -110,6 +114,10 @@ export interface Table {
      * Owners of this table.
      */
     owners?: EntityReference[];
+    /**
+     * Processed lineage for the table
+     */
+    processedLineage?: boolean;
     /**
      * Latest Data profile for a table.
      */
@@ -293,6 +301,7 @@ export interface Style {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -309,6 +318,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -454,6 +486,8 @@ export enum DataType {
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -1153,6 +1187,10 @@ export interface TableProfilerConfig {
      */
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
+    /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
     /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */

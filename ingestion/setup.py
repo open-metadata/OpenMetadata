@@ -19,7 +19,7 @@ from setuptools import setup
 
 # Add here versions required for multiple plugins
 VERSIONS = {
-    "airflow": "apache-airflow==2.9.3",
+    "airflow": "apache-airflow==2.10.5",
     "adlfs": "adlfs>=2023.1.0",
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
@@ -59,6 +59,7 @@ VERSIONS = {
     "teradata": "teradatasqlalchemy==20.0.0.2",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
+    "opensearch": "opensearch-py~=2.4.0",
     "pydoris": "pydoris==1.0.2",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
@@ -226,8 +227,6 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "datalake-s3": {
-        # vendoring 'boto3' to keep all dependencies aligned (s3fs, boto3, botocore, aiobotocore)
-        "s3fs[boto3]",
         *COMMONS["datalake"],
     },
     "deltalake": {
@@ -242,7 +241,9 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
+        "httpx>=0.23.0",
     },  # also requires requests-aws4auth which is in base
+    "opensearch": {VERSIONS["opensearch"]},
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},

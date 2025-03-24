@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenMetadata Ingestion Framework definition.
  */
 export interface Workflow {
@@ -338,6 +336,10 @@ export interface ServiceConnection {
  */
 export interface ConfigClass {
     /**
+     * Regex to only fetch api collections with names matching the pattern.
+     */
+    apiCollectionFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * Open API Schema URL.
      */
     openAPISchemaURL?: string;
@@ -382,6 +384,10 @@ export interface ConfigClass {
      */
     type?: RESTType;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * User's Client ID. This user should have privileges to read all the metadata in Looker.
      *
      * client_id for PowerBI.
@@ -399,6 +405,14 @@ export interface ConfigClass {
      * clientSecret for Sigma.
      */
     clientSecret?: string;
+    /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: DatabaseFilterPatternClass;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
@@ -511,6 +525,10 @@ export interface ConfigClass {
      * Host and port of the OpenSearch service.
      */
     hostPort?: string;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Password to connect to Metabase.
      *
@@ -738,7 +756,7 @@ export interface ConfigClass {
      *
      * Matillion Auth Configuration
      */
-    connection?: ConnectionObject;
+    connection?: ConfigConnection;
     /**
      * Tableau API version.
      *
@@ -888,12 +906,24 @@ export interface ConfigClass {
      */
     connectionArguments?: { [key: string]: any };
     /**
+     * Cost per TiB for BigQuery usage
+     */
+    costPerTB?: number;
+    /**
      * GCP Credentials
      *
      * Azure Credentials
      */
-    credentials?:             GCPCredentials;
+    credentials?: GCPCredentials;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?:   ConfigDatabaseFilterPatternObject;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: ConfigSchemaFilterPatternObject;
     /**
      * SQLAlchemy driver scheme options.
      *
@@ -903,10 +933,11 @@ export interface ConfigClass {
      *
      * Http/Https connection scheme
      */
-    scheme?:                string;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
-    supportsDBTExtraction?: boolean;
+    scheme?:                                string;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
@@ -918,6 +949,10 @@ export interface ConfigClass {
      * Supports Usage Extraction.
      */
     supportsUsageExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Taxonomy location used to fetch policy tags
      */
@@ -1049,6 +1084,10 @@ export interface ConfigClass {
      */
     httpPath?: string;
     /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
      * License to connect to DB2.
      */
     license?: string;
@@ -1150,10 +1189,18 @@ export interface ConfigClass {
      */
     account?: string;
     /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
+    /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
      */
     clientSessionKeepAlive?: boolean;
+    /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
@@ -1274,6 +1321,11 @@ export interface ConfigClass {
      */
     consumerConfig?: { [key: string]: any };
     /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: ConsumerConfigSSLClass;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;
@@ -1296,7 +1348,7 @@ export interface ConfigClass {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: SchemaRegistrySSLClass;
+    schemaRegistrySSL?: ConsumerConfigSSLClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -1314,6 +1366,10 @@ export interface ConfigClass {
      * Kafka security protocol config
      */
     securityProtocol?: KafkaSecurityProtocol;
+    /**
+     * Regex to only fetch topics that matches the pattern.
+     */
+    topicFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Enable encryption for the Amundsen Neo4j Connection.
      */
@@ -1496,6 +1552,10 @@ export interface ConfigClass {
      */
     numberOfStatus?: number;
     /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -1586,6 +1646,10 @@ export interface ConfigClass {
      */
     subscription_id?: string;
     /**
+     * Regex to only fetch MlModels with names matching the pattern.
+     */
+    mlModelFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * Mlflow Model registry backend. E.g.,
      * mysql+pymysql://mlflow:password@localhost:3307/experiments
      */
@@ -1603,9 +1667,17 @@ export interface ConfigClass {
      */
     bucketNames?: string[];
     /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
+    /**
+     * Regex to only fetch search indexes that matches the pattern.
+     */
+    searchIndexFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Keep Alive Timeout in Seconds
      */
@@ -1638,6 +1710,55 @@ export interface UsernamePasswordAuthentication {
      * KafkaConnect user to authenticate to the API.
      */
     username?: string;
+}
+
+/**
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+ * pattern.
+ */
+export interface DatabaseFilterPatternClass {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -2112,7 +2233,7 @@ export interface SSLCertificatesByPath {
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate
      */
@@ -2133,6 +2254,9 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -2140,7 +2264,7 @@ export interface QlikCertificatesBy {
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface SchemaRegistrySSLClass {
+export interface ConsumerConfigSSLClass {
     /**
      * The CA certificate used for SSL validation.
      */
@@ -2188,7 +2312,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: ConnectionClass;
+    connection?: ConfigSourceConnection;
     /**
      * Bucket Name of the data source.
      */
@@ -2231,7 +2355,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface ConnectionClass {
+export interface ConfigSourceConnection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -2482,9 +2606,9 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  */
-export interface ConnectionObject {
+export interface ConfigConnection {
     /**
      * Password for Superset.
      *
@@ -2542,6 +2666,10 @@ export interface ConnectionObject {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: ConnectionDatabaseFilterPatternObject;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -2560,6 +2688,10 @@ export interface ConnectionObject {
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: ConnectionSchemaFilterPatternObject;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?:                     ConnectionScheme;
@@ -2572,6 +2704,10 @@ export interface ConnectionObject {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Service Type
      */
@@ -2597,11 +2733,14 @@ export interface ConnectionObject {
      */
     userKey?: string;
     /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -2620,6 +2759,56 @@ export interface AuthConfigurationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+}
+
+/**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+ * pattern.
+ */
+export interface ConnectionDatabaseFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -2711,6 +2900,56 @@ export interface AwsCredentials {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+ * pattern.
+ */
+export interface ConnectionSchemaFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum ConnectionScheme {
@@ -2726,6 +2965,9 @@ export enum ConnectionScheme {
  * OpenMetadata Client configured to validate SSL certificates.
  *
  * SSL Configuration details.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
@@ -2839,6 +3081,56 @@ export interface GCPCredentials {
 }
 
 /**
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+ * pattern.
+ */
+export interface ConfigDatabaseFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ConfigElasticsSearch {
@@ -2938,6 +3230,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: ConnectionDatabaseFilterPatternObject;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -2950,13 +3246,17 @@ export interface HiveMetastoreConnectionDetails {
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?: HiveMetastoreConnectionDetailsScheme;
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  SchemaRegistrySSLClass;
+    sslConfig?:                  ConsumerConfigSSLClass;
     sslMode?:                    SSLMode;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
@@ -2966,6 +3266,10 @@ export interface HiveMetastoreConnectionDetails {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Service Type
      */
@@ -2992,6 +3296,15 @@ export interface HiveMetastoreConnectionDetails {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DefaultSchemaFilterPattern {
+    excludes?: string[];
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum HiveMetastoreConnectionDetailsScheme {
@@ -3013,9 +3326,9 @@ export enum HiveMetastoreConnectionDetailsType {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -3164,6 +3477,56 @@ export enum SaslMechanismType {
 }
 
 /**
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+ * pattern.
+ */
+export interface ConfigSchemaFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * Recreate Indexes with updated Language
  *
  * This schema defines the language options available for search index mappings.
@@ -3232,6 +3595,9 @@ export enum KafkaSecurityProtocol {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
@@ -3538,12 +3904,16 @@ export interface SourceConfig {
  * Application Pipeline Configuration.
  *
  * ApiService Metadata Pipeline Configuration.
+ *
+ * Apply a set of operations on a service
  */
 export interface Pipeline {
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     *
      * Regex to only fetch databases that matches the pattern.
      */
-    databaseFilterPattern?: FilterPattern;
+    databaseFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Optional configuration to toggle the DDL Statements ingestion.
      */
@@ -3617,13 +3987,17 @@ export interface Pipeline {
      */
     queryParsingTimeoutLimit?: number;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     *
      * Regex to only fetch tables or databases that matches the pattern.
      */
-    schemaFilterPattern?: FilterPattern;
+    schemaFilterPattern?: DatabaseFilterPatternClass;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     *
      * Regex exclude tables or databases that matches the pattern.
      */
-    tableFilterPattern?: FilterPattern;
+    tableFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Number of Threads to use in order to parallelize Table ingestion.
      *
@@ -3644,6 +4018,10 @@ export interface Pipeline {
      */
     filterCondition?: string;
     /**
+     * Configuration to process query cost
+     */
+    processQueryCostAnalysis?: boolean;
+    /**
      * Configuration to set the file path for query logs
      */
     queryLogFilePath?: string;
@@ -3660,6 +4038,15 @@ export interface Pipeline {
      * Set 'Cross Database Service Names' to process lineage with the database.
      */
     crossDatabaseServiceNames?: string[];
+    /**
+     * Handle Lineage for Snowflake Temporary and Transient Tables.
+     */
+    enableTempTableLineage?: boolean;
+    /**
+     * Set the 'Incremental Lineage Processing' toggle to control whether to process lineage
+     * incrementally.
+     */
+    incrementalLineageProcessing?: boolean;
     /**
      * Set the 'Override View Lineage' toggle to control whether to override the existing view
      * lineage.
@@ -3690,15 +4077,15 @@ export interface Pipeline {
     /**
      * Regex exclude or include charts that matches the pattern.
      */
-    chartFilterPattern?: FilterPattern;
+    chartFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Regex to exclude or include dashboards that matches the pattern.
      */
-    dashboardFilterPattern?: FilterPattern;
+    dashboardFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Regex exclude or include data models that matches the pattern.
      */
-    dataModelFilterPattern?: FilterPattern;
+    dataModelFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Optional configuration to toggle the ingestion of data models.
      */
@@ -3731,7 +4118,7 @@ export interface Pipeline {
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?: FilterPattern;
+    projectFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Option to turn on/off generating sample data during metadata extraction.
      */
@@ -3745,12 +4132,12 @@ export interface Pipeline {
     /**
      * Regex to only fetch topics that matches the pattern.
      */
-    topicFilterPattern?: FilterPattern;
+    topicFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
      * pattern.
      */
-    classificationFilterPattern?: FilterPattern;
+    classificationFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Option to turn on/off column metric computation. If enabled, profiler will compute column
      * level metrics.
@@ -3827,7 +4214,7 @@ export interface Pipeline {
     /**
      * Regex exclude pipelines.
      */
-    pipelineFilterPattern?: FilterPattern;
+    pipelineFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are
      * deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc.,
@@ -3837,11 +4224,11 @@ export interface Pipeline {
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
-    mlModelFilterPattern?: FilterPattern;
+    mlModelFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Regex to only fetch containers that matches the pattern.
      */
-    containerFilterPattern?: FilterPattern;
+    containerFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Optional configuration to soft delete containers in OpenMetadata if the source containers
      * are deleted. Also, if the topic is deleted, all the associated entities with that
@@ -3870,7 +4257,7 @@ export interface Pipeline {
     /**
      * Regex to only fetch search indexes that matches the pattern.
      */
-    searchIndexFilterPattern?: FilterPattern;
+    searchIndexFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Fully qualified name of the entity to be tested, if we're working with a basic suite.
      */
@@ -3955,56 +4342,21 @@ export interface Pipeline {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
-    apiCollectionFilterPattern?: FilterPattern;
+    apiCollectionFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Optional configuration to soft delete api collections in OpenMetadata if the source
      * collections are deleted. Also, if the collection is deleted, all the associated entities
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
-}
-
-/**
- * Regex to only fetch databases that matches the pattern.
- *
- * Regex to only fetch dashboards or charts that matches the pattern.
- *
- * Regex to only fetch tables or databases that matches the pattern.
- *
- * Regex exclude tables or databases that matches the pattern.
- *
- * Regex exclude or include charts that matches the pattern.
- *
- * Regex to exclude or include dashboards that matches the pattern.
- *
- * Regex exclude or include data models that matches the pattern.
- *
- * Regex to exclude or include projects that matches the pattern.
- *
- * Regex to only fetch topics that matches the pattern.
- *
- * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
- * pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to only fetch MlModels with names matching the pattern.
- *
- * Regex to only fetch containers that matches the pattern.
- *
- * Regex to only fetch search indexes that matches the pattern.
- *
- * Regex to only fetch api collections with names matching the pattern.
- */
-export interface FilterPattern {
     /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
+     * List of operations to be performed on the service
      */
-    excludes?: string[];
+    operations?: Operation[];
     /**
-     * List of strings/regex patterns to match and include only database entities that match.
+     * Service to be modified
      */
-    includes?: string[];
+    service?: EntityReference;
 }
 
 /**
@@ -4020,6 +4372,8 @@ export interface FilterPattern {
  * Search Indexing App.
  *
  * Configuration for the Collate AI Quality Agent.
+ *
+ * Configuration for the Day One Experience Flow.
  */
 export interface CollateAIAppConfig {
     /**
@@ -4059,7 +4413,8 @@ export interface CollateAIAppConfig {
      *
      * Maximum number of events sent in a batch (Default 100).
      */
-    batchSize?: number;
+    batchSize?:           number;
+    moduleConfiguration?: ModuleConfiguration;
     /**
      * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
      * Type and are facing errors. Bear in mind that recreating the index will delete your
@@ -4114,6 +4469,8 @@ export interface CollateAIAppConfig {
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
      * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the Day One Experience flow should be active or not.
      */
     active?: boolean;
     /**
@@ -4121,6 +4478,10 @@ export interface CollateAIAppConfig {
      * one month).
      */
     changeEventRetentionPeriod?: number;
+    /**
+     * Service Entity Link for which to trigger the application.
+     */
+    entityLink?: string;
 }
 
 /**
@@ -4137,9 +4498,17 @@ export interface CollateAIAppConfig {
  *
  * Add a Custom Property to the selected assets.
  *
+ * Add Test Cases to the selected assets.
+ *
+ * Remove Test Cases Action Type
+ *
  * Add owners to the selected assets.
  *
  * Remove Custom Properties Action Type
+ *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
  *
  * Propagate description, tags and glossary terms via lineage
  *
@@ -4150,14 +4519,18 @@ export interface Action {
      * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
      * tasks, topic fields,...
      *
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
-     * Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
+     *
+     * Add tests to the selected table columns
+     *
+     * Remove tests to the selected table columns
      */
     applyToChildren?: string[];
     /**
@@ -4176,8 +4549,15 @@ export interface Action {
      * Update the tier even if it is defined in the asset. By default, we will only apply the
      * tier to assets without tier.
      *
+     * Update the test even if it is defined in the asset. By default, we will only apply the
+     * test to assets without the existing test already existing.
+     *
      * Update the owners even if it is defined in the asset. By default, we will only apply the
      * owners to assets without owner.
+     *
+     * Update the Data Product even if the asset belongs to a different Domain. By default, we
+     * will only add the Data Product if the asset has no Domain, or it belongs to the same
+     * domain as the Data Product.
      *
      * Update descriptions, tags and Glossary Terms via lineage even if they are already defined
      * in the asset. By default, descriptions are only updated if they are not already defined
@@ -4194,6 +4574,16 @@ export interface Action {
      * Application Type
      */
     type: ActionType;
+    /**
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
     /**
      * Domain to apply
      */
@@ -4213,9 +4603,27 @@ export interface Action {
      */
     tier?: TagLabel;
     /**
+     * Test Cases to apply
+     */
+    testCases?: TestCaseDefinitions[];
+    /**
+     * Remove all test cases
+     */
+    removeAll?: boolean;
+    /**
+     * Test Cases to remove
+     */
+    testCaseDefinitions?: string[];
+    /**
      * Owners to apply
      */
     owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -4260,6 +4668,8 @@ export interface Action {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Service to be modified
  */
 export interface EntityReference {
     /**
@@ -4305,6 +4715,15 @@ export interface EntityReference {
 }
 
 /**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
@@ -4329,7 +4748,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -4354,7 +4773,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Manual = "Manual",
@@ -4394,6 +4813,42 @@ export interface Style {
 }
 
 /**
+ * Minimum set of requirements to get a Test Case request ready
+ */
+export interface TestCaseDefinitions {
+    /**
+     * Compute the passed and failed row count for the test case.
+     */
+    computePassedFailedRowCount?: boolean;
+    parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Fully qualified name of the test definition.
+     */
+    testDefinition?: string;
+    /**
+     * If the test definition supports it, use dynamic assertion to evaluate the test case.
+     */
+    useDynamicAssertion?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * This schema defines the parameter values that can be passed for a Test Case.
+ */
+export interface TestCaseParameterValue {
+    /**
+     * name of the parameter. Must match the parameter names in testCaseParameterDefinition
+     */
+    name?: string;
+    /**
+     * value to be passed for the Parameters. These are input from Users. We capture this in
+     * string and convert during the runtime.
+     */
+    value?: string;
+    [property: string]: any;
+}
+
+/**
  * Application Type
  *
  * Add Tags action type.
@@ -4414,9 +4869,17 @@ export interface Style {
  *
  * Remove Tier Action Type
  *
+ * Add Test Case Action Type.
+ *
+ * Remove Test Case Action Type
+ *
  * Remove Owner Action Type
  *
  * Remove Custom Properties Action Type.
+ *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
  *
  * Lineage propagation action type.
  *
@@ -4424,18 +4887,22 @@ export interface Style {
  */
 export enum ActionType {
     AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
     RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
 
@@ -4456,6 +4923,83 @@ export interface BackfillConfiguration {
      */
     startDate?: Date;
     [property: string]: any;
+}
+
+/**
+ * Different Module Configurations
+ */
+export interface ModuleConfiguration {
+    /**
+     * App Analytics Module configuration
+     */
+    appAnalytics: AppAnalyticsConfig;
+    /**
+     * Cost Analysis Insights Module configuration
+     */
+    costAnalysis: CostAnalysisConfig;
+    /**
+     * Data Assets Insights Module configuration
+     */
+    dataAssets: DataAssetsConfig;
+    /**
+     * Data Quality Insights Module configuration
+     */
+    dataQuality: DataQualityConfig;
+}
+
+/**
+ * App Analytics Module configuration
+ */
+export interface AppAnalyticsConfig {
+    /**
+     * If Enabled, App Analytics insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Cost Analysis Insights Module configuration
+ */
+export interface CostAnalysisConfig {
+    /**
+     * If Enabled, Cost Analysis insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Data Assets Insights Module configuration
+ */
+export interface DataAssetsConfig {
+    /**
+     * If Enabled, Data Asset insights will be populated when the App runs.
+     */
+    enabled: boolean;
+    /**
+     * List of Entities to Reindex
+     */
+    entities?: string[];
+    /**
+     * Defines the number of days the Data Assets Insights information will be kept. After it
+     * they will be deleted.
+     */
+    retention?:     number;
+    serviceFilter?: ServiceFilter;
+}
+
+export interface ServiceFilter {
+    serviceName?: string;
+    serviceType?: string;
+}
+
+/**
+ * Data Quality Insights Module configuration
+ */
+export interface DataQualityConfig {
+    /**
+     * If Enabled, Data Quality insights will be populated when the App runs.
+     */
+    enabled: boolean;
 }
 
 /**
@@ -4486,13 +5030,14 @@ export enum CollateAIAppConfigType {
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    DayOneExperienceApplication = "DayOneExperienceApplication",
     SearchIndexing = "SearchIndexing",
 }
 
 /**
  * Application private configuration
  *
- * PRivate Configuration for the CollateAI External Application.
+ * Private Configuration for the CollateAI External Application.
  */
 export interface PrivateConfig {
     /**
@@ -4503,7 +5048,7 @@ export interface PrivateConfig {
     /**
      * Limits for the CollateAI Application.
      */
-    limits: CollateAILimits;
+    limits: AppLimitsConfig;
     /**
      * WAII API Token
      */
@@ -4516,21 +5061,18 @@ export interface PrivateConfig {
 
 /**
  * Limits for the CollateAI Application.
+ *
+ * Private Configuration for the App Limits.
  */
-export interface CollateAILimits {
+export interface AppLimitsConfig {
     /**
-     * Start of the billing cycle.
+     * The records of the limits.
      */
-    billingCycleStart?: Date;
+    actions: { [key: string]: number };
     /**
-     * Maximum number of descriptions generated by the CollateAI
+     * The start of this limit cycle.
      */
-    descriptions?: number;
-    /**
-     * Maximum number of queries generated by CollateAI.
-     */
-    queries?: number;
-    [property: string]: any;
+    billingCycleStart: Date;
 }
 
 /**
@@ -4680,6 +5222,78 @@ export interface LineageInformation {
 }
 
 /**
+ * Operation to be performed on the entity
+ */
+export interface Operation {
+    /**
+     * Entity to be modified
+     */
+    entityLink: string;
+    /**
+     * The id of the operation
+     */
+    id: string;
+    /**
+     * The configuration for the operation to be applied
+     */
+    parameters: ReverseIngestionConfig;
+    /**
+     * Templated SQL command to be used for the operation. Context parameters will be populated
+     * based on the event type.
+     */
+    SQLTemplate?: string;
+    /**
+     * Type of operation to perform
+     */
+    type: Type;
+}
+
+/**
+ * The configuration for the operation to be applied
+ *
+ * Configuration for updating descriptions
+ *
+ * Configuration for updating owners
+ *
+ * Configuration for updating tags
+ */
+export interface ReverseIngestionConfig {
+    /**
+     * New description of the service
+     */
+    newDescription?: string;
+    /**
+     * Previous description of the service
+     */
+    previousDescription?: string;
+    /**
+     * Added owners to be applied
+     */
+    addedOwners?: EntityReference[];
+    /**
+     * Removed owners from the entity
+     */
+    removedOwners?: EntityReference[];
+    /**
+     * Added tags to be applied
+     */
+    addedTags?: TagLabel[];
+    /**
+     * Removed tags of the entity
+     */
+    removedTags?: TagLabel[];
+}
+
+/**
+ * Type of operation to perform
+ */
+export enum Type {
+    UpdateDescription = "UPDATE_DESCRIPTION",
+    UpdateOwner = "UPDATE_OWNER",
+    UpdateTags = "UPDATE_TAGS",
+}
+
+/**
  * Type of Profile Sample (percentage or rows)
  */
 export enum ProfileSampleType {
@@ -4773,6 +5387,8 @@ export interface StorageMetadataBucketDetails {
  * Pipeline Source Config For Application Pipeline type. Nothing is required.
  *
  * Api Source Config Metadata Pipeline type
+ *
+ * Reverse Ingestion Config Pipeline type
  */
 export enum ConfigType {
     APIMetadata = "ApiMetadata",
@@ -4789,6 +5405,7 @@ export enum ConfigType {
     MlModelMetadata = "MlModelMetadata",
     PipelineMetadata = "PipelineMetadata",
     Profiler = "Profiler",
+    ReverseIngestion = "ReverseIngestion",
     SearchMetadata = "SearchMetadata",
     StorageMetadata = "StorageMetadata",
     TestSuite = "TestSuite",
@@ -4845,6 +5462,10 @@ export interface OpenMetadataConnection {
      * Cluster name to differentiate OpenMetadata Server instance
      */
     clusterName?: string;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
      */
@@ -4919,6 +5540,10 @@ export interface OpenMetadataConnection {
      */
     limitRecords?: number;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: DatabaseFilterPatternClass;
+    /**
      * Secrets Manager Loader for the Pipeline Service Client.
      */
     secretsManagerLoader?: SecretsManagerClientLoader;
@@ -4933,7 +5558,7 @@ export interface OpenMetadataConnection {
     /**
      * SSL Configuration for OpenMetadata Server
      */
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * If set to true, when creating a service during the ingestion we will store its Service
      * Connection. Otherwise, the ingestion will create a bare service without connection
@@ -4948,6 +5573,10 @@ export interface OpenMetadataConnection {
      * Flag to enable ElasticSearch Reindexing Extraction
      */
     supportsElasticSearchReindexingExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: DatabaseFilterPatternClass;
     /**
      * Service Type
      */

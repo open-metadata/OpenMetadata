@@ -473,6 +473,33 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteContainerAsync",
+      summary = "Asynchronously delete a Container",
+      description = "Asynchronously delete a Container by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "container for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Container Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
   @PUT
   @Path("/{id}/vote")
   @Operation(
@@ -545,5 +572,40 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @GET
+  @Path("/name/{fqn}/children")
+  @Operation(
+      operationId = "listContainerChildren",
+      summary = "List children containers",
+      description = "Get a list of children containers with pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of children containers",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContainerList.class)))
+      })
+  public ResultList<Container> listChildren(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fully qualified name of the container") @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description = "Limit the number of children returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          Integer limit,
+      @Parameter(description = "Returns list of children after the given offset")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          Integer offset) {
+    return repository.listChildren(fqn, limit, offset);
   }
 }

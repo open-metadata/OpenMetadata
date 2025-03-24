@@ -33,6 +33,7 @@ import {
   getDomainList,
   patchDomains,
 } from '../../rest/domainAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -43,8 +44,8 @@ import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 
 const DomainPage = () => {
-  const { t } = useTranslation();
   const { fqn: domainFqn } = useFqn();
+  const { t } = useTranslation();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
   const { domains, updateDomains, domainLoading, updateDomainLoading } =
@@ -134,6 +135,7 @@ const DomainPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.PARENT,
           TabSpecificField.EXPERTS,
+          TabSpecificField.TAGS,
         ],
       });
       setActiveDomain(data);
@@ -234,4 +236,4 @@ const DomainPage = () => {
   );
 };
 
-export default withPageLayout('domain')(DomainPage);
+export default withPageLayout(i18n.t('label.domain'))(DomainPage);

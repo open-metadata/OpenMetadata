@@ -66,7 +66,18 @@
       "$ref": "./app.json#/definitions/appSchedule"
     },
     "config": {
-      "descripton": "The configuration used for this application run. It's type will be based on the application type. Old runs might not be compatible with schema of app configuration.",
+      "description": "The configuration used for this application run. It's type will be based on the application type. Old runs might not be compatible with schema of app configuration.",
+      "$ref": "../../type/basic.json#/definitions/map"
+    },
+    "services": {
+      "description": "Services configured in the application run. This information is generated based on the given configuration.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
+    },
+    "properties": {
+      "description": "Arbitrary metadata that will be attached to the report.",
       "$ref": "../../type/basic.json#/definitions/map"
     }
   },

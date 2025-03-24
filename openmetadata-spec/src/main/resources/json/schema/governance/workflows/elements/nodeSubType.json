@@ -12,8 +12,8 @@
     "setGlossaryTermStatusTask",
     "endEvent",
     "startEvent",
-    "createIngestionPipelineTask",
-    "runIngestionPipelineTask",
+    "createAndRunIngestionPipelineTask",
+    "runAppTask",
     "parallelGateway"
   ]
 }

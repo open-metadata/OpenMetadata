@@ -185,6 +185,7 @@ class LineageSource(QueryParserSource, ABC):
                 for row in rows:
                     query_dict = dict(row)
                     try:
+                        query_dict.update({k.lower(): v for k, v in query_dict.items()})
                         yield TableQuery(
                             dialect=self.dialect.value,
                             query=query_dict["query_text"],
@@ -277,11 +278,22 @@ class LineageSource(QueryParserSource, ABC):
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                 ):
                     if lineage.right is not None:
+                        view_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            service_name=self.service_name,
+                            database_name=view.db_name,
+                            schema_name=view.schema_name,
+                            table_name=view.table_name,
+                            skip_es_search=True,
+                        )
                         queue.put(
                             Either(
                                 right=OMetaLineageRequest(
                                     lineage_request=lineage.right,
                                     override_lineage=self.source_config.overrideViewLineage,
+                                    entity_fqn=view_fqn,
+                                    entity=Table,
                                 )
                             )
                         )
@@ -293,7 +305,11 @@ class LineageSource(QueryParserSource, ABC):
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
-        producer_fn = partial(self.metadata.yield_es_view_def, self.config.serviceName)
+        producer_fn = partial(
+            self.metadata.yield_es_view_def,
+            self.config.serviceName,
+            self.source_config.incrementalLineageProcessing,
+        )
         processor_fn = self.view_lineage_generator
         yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
 
@@ -377,7 +393,9 @@ class LineageSource(QueryParserSource, ABC):
         if self.source_config.processQueryLineage:
             if hasattr(self.service_connection, "supportsLineageExtraction"):
                 yield from self.yield_query_lineage() or []
-                yield from get_lineage_by_graph(graph=self.graph)
+                yield from get_lineage_by_graph(
+                    graph=self.graph, metadata=self.metadata
+                )
             else:
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"

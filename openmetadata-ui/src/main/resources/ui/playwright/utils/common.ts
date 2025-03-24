@@ -47,6 +47,8 @@ export const getToken = async (page: Page) => {
 
 export const getAuthContext = async (token: string) => {
   return await request.newContext({
+    // Default timeout is 30s making it to 1m for AUTs
+    timeout: 60000,
     extraHTTPHeaders: {
       Authorization: `Bearer ${token}`,
     },
@@ -162,7 +164,6 @@ export const assignDomain = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -191,7 +192,6 @@ export const updateDomain = async (
   await searchDomain;
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -206,7 +206,6 @@ export const removeDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
-  await page.getByTestId('saveAssociatedTag').click();
 
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };

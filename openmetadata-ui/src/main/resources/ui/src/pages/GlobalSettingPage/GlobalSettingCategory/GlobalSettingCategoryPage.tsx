@@ -37,6 +37,7 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import '../global-setting-page.style.less';
 
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();
@@ -114,10 +115,11 @@ const GlobalSettingCategoryPage = () => {
         </Col>
 
         <Col span={24}>
-          <Row gutter={[20, 20]}>
+          <Row className={settingCategoryData?.key} gutter={[20, 20]}>
             {settingCategoryData?.items?.map((category) => (
-              <Col key={category?.key} span={6}>
+              <Col key={category?.key} span={8}>
                 <SettingItemCard
+                  className="global-setting-card"
                   data={category}
                   onClick={handleSettingItemClick}
                 />

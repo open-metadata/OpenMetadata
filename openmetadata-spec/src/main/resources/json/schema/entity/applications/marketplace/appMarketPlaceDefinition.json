@@ -56,6 +56,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -96,6 +100,10 @@
     "appType": {
       "description": "This schema defines the type of application.",
       "$ref": "../app.json#/definitions/appType"
+    },
+    "agentType": {
+      "description": "This schema defines the type of the agent.",
+      "$ref": "../app.json#/definitions/agentType"
     },
     "scheduleType": {
       "description": "This schema defines the Schedule Type of Application.",

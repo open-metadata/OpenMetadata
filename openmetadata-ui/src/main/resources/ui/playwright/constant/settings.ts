@@ -88,6 +88,8 @@ export enum GlobalSettingOptions {
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
+  SEARCH_SETTINGS = 'search-settings',
+  DOMAINS = 'domains',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -214,6 +216,10 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
   ],
+  [GlobalSettingOptions.SEARCH_SETTINGS]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
+  ],
 };
 
 export const SETTING_CUSTOM_PROPERTIES_PATH = {
@@ -272,6 +278,10 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.DATA_PRODUCTS]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATA_PRODUCTS}`,
+  ],
+  [GlobalSettingOptions.DOMAINS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DOMAINS}`,
   ],
   [GlobalSettingOptions.DASHBOARD_DATA_MODEL]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,

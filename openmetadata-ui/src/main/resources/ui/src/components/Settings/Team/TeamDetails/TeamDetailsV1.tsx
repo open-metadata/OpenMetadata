@@ -39,14 +39,15 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
+import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
-import { ReactComponent as IconTeams } from '../../../../assets/svg/teams.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
   ROLE_DOCS,
   TEAMS_DOCS,
 } from '../../../../constants/docs.constants';
+import { ExportTypes } from '../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -115,14 +116,12 @@ import { UserTab } from './UserTab/UserTab.component';
 const TeamDetailsV1 = ({
   assetsCount,
   currentTeam,
-  isDescriptionEditable,
   isTeamMemberLoading,
   childTeams,
   onTeamExpand,
   handleAddTeam,
   updateTeamHandler,
   onDescriptionUpdate,
-  descriptionHandler,
   showDeletedTeam,
   onShowDeletedTeamChange,
   handleJoinTeamClick,
@@ -493,6 +492,7 @@ const TeamDetailsV1 = ({
       showModal({
         name: currentTeam?.name,
         onExport: exportTeam,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [currentTeam]);
@@ -1162,10 +1162,7 @@ const TeamDetailsV1 = ({
                       entityName={getEntityName(currentTeam)}
                       entityType={EntityType.TEAM}
                       hasEditAccess={editDescriptionPermission}
-                      isEdit={isDescriptionEditable}
                       showCommentsIcon={false}
-                      onCancel={() => descriptionHandler(false)}
-                      onDescriptionEdit={() => descriptionHandler(true)}
                       onDescriptionUpdate={onDescriptionUpdate}
                     />
                   </Card>

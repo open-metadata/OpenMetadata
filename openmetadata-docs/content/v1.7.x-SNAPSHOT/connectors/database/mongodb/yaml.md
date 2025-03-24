@@ -7,7 +7,7 @@ slug: /connectors/database/mongodb/yaml
 name="MongoDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler",]
+availableFeatures=["Metadata", "Data Profiler", "Sample Data"]
 unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 
@@ -351,7 +351,7 @@ Here we are also importing all the basic requirements to parse YAMLs, handle dat
 import yaml
 from datetime import timedelta
 from airflow import DAG
-from metadata.profiler.api.workflow import ProfilerWorkflow
+from metadata.workflow.profiler import ProfilerWorkflow
 
 try:
    from airflow.operators.python import PythonOperator

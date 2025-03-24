@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
@@ -70,6 +71,7 @@ public class TypeRepository extends EntityRepository<Type> {
         Entity.getCollectionDAO().typeEntityDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
+    Entity.setTypeRepository(this);
   }
 
   @Override
@@ -121,7 +123,8 @@ public class TypeRepository extends EntityRepository<Type> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Type original, Type updated, Operation operation) {
+  public EntityRepository<Type>.EntityUpdater getUpdater(
+      Type original, Type updated, Operation operation, ChangeSource changeSource) {
     return new TypeUpdater(original, updated, operation);
   }
 
