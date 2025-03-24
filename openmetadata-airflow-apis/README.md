@@ -12,7 +12,7 @@ the airflow server deployed by the quick-start and development compose files.
 You ca run the following command to start the development environment:
 
 ```bash
-export AIRFLOW_HOME=$(pwd)/development/airflow
+export AIRFLOW_HOME=$(pwd)/openmetadata-airflow-managed-api/development/airflow
 airflow webserver
 ```
 
