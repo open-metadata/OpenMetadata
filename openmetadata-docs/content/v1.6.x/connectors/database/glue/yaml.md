@@ -58,35 +58,7 @@ This is a sample config for Glue:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
-
-**awsAccessKeyId**: Enter your secure access key ID for your Glue connection. The specified key ID should be authorized to read all databases you want to include in the metadata ingestion workflow.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=2 %}
-
-**awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsRegion**: Enter the location of the amazon cluster that your data and account are associated with.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=4 %}
-
-**endPointURL**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You may override this behavior by entering a value to the endpoint URL.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=5 %}
-
-**awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary session token.
-
-{% /codeInfo %}
+{% partial file="/v1.6/connectors/yaml/common/aws-config-def.md" /%}
 
 {% codeInfo srNumber=6 %}
 
@@ -130,21 +102,9 @@ source:
       type: Glue
       awsConfig:
 ```
-```yaml {% srNumber=1 %}
-        awsAccessKeyId: KEY
-```
-```yaml {% srNumber=2 %}
-        awsSecretAccessKey: SECRET
-```
-```yaml {% srNumber=3 %}
-        awsRegion: us-east-2
-```
-```yaml {% srNumber=4 %}
-        # endPointURL: https://glue.us-east-2.amazonaws.com/
-```
-```yaml {% srNumber=5 %}
-        # awsSessionToken: TOKEN
-```
+
+{% partial file="/v1.6/connectors/yaml/common/aws-config.md" /%}
+
 ```yaml {% srNumber=6 %}
       databaseName: database_name
 ```
