@@ -36,7 +36,6 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
-import { Paging } from '../../../generated/type/paging';
 import {
   getCustomizeColumnDetails,
   getReorderedColumns,
@@ -44,7 +43,6 @@ import {
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../NextPrevious/NextPrevious.interface';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
@@ -53,25 +51,7 @@ import {
 } from './Table.interface';
 import './table.less';
 
-type TableProps<T extends Record<string, unknown>> = TableComponentProps<T> & {
-  searchProps?: {
-    onSearch?: (value: string) => void;
-    onClear?: () => void;
-    placeholder?: string;
-    value?: string;
-    searchDebounceTime?: number;
-  };
-  customPaginationProps?: {
-    showPagination: boolean;
-    isLoading: boolean;
-    currentPage: number;
-    isNumberBased?: boolean;
-    pageSize: number;
-    paging: Paging;
-    pagingHandler: (data: PagingHandlerParams) => void;
-    onShowSizeChange: (page: number) => void;
-  };
-};
+type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
 
 const Table = <T extends Record<string, unknown>>(
   { loading, searchProps, customPaginationProps, ...rest }: TableProps<T>,
@@ -300,15 +280,7 @@ const Table = <T extends Record<string, unknown>>(
       </Col>
       {customPaginationProps && customPaginationProps.showPagination ? (
         <Col span={24}>
-          <NextPrevious
-            currentPage={customPaginationProps.currentPage}
-            isLoading={isLoading}
-            isNumberBased={Boolean(searchProps?.value)}
-            pageSize={customPaginationProps.pageSize}
-            paging={customPaginationProps.paging}
-            pagingHandler={customPaginationProps.pagingHandler}
-            onShowSizeChange={customPaginationProps.onShowSizeChange}
-          />
+          <NextPrevious {...customPaginationProps} />
         </Col>
       ) : null}
     </Row>

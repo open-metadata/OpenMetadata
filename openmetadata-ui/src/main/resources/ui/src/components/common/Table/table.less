@@ -13,6 +13,7 @@
 @import (reference) url('../../../styles/variables.less');
 
 .table-container {
+  height: auto !important;
   border-radius: 12px;
   background-color: @white;
   border: 1px solid @border-color-1;
@@ -40,7 +41,8 @@
   }
 
   .ant-table-wrapper {
-    height: 745px;
+    height: auto;
+    max-height: 745px;
     overflow-y: scroll;
   }
 

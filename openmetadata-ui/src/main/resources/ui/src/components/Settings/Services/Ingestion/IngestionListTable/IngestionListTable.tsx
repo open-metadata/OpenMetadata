@@ -60,7 +60,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
@@ -433,6 +432,19 @@ function IngestionListTable({
             bordered={bordered}
             className={tableClassName}
             columns={tableColumn}
+            {...(!isUndefined(ingestionPagingInfo) &&
+            ingestionPagingInfo.showPagination &&
+            onPageChange
+              ? {
+                  customPaginationProps: {
+                    ...ingestionPagingInfo,
+                    isLoading,
+                    isNumberBased: isNumberBasedPaging,
+                    pagingHandler: onPageChange,
+                    showPagination: true,
+                  },
+                }
+              : {})}
             data-testid="ingestion-list-table"
             dataSource={ingestionData}
             loading={isLoading}
@@ -453,23 +465,6 @@ function IngestionListTable({
             {...extraTableProps}
           />
         </Col>
-
-        {!isUndefined(ingestionPagingInfo) &&
-          ingestionPagingInfo.showPagination &&
-          onPageChange && (
-            <Col span={24}>
-              <NextPrevious
-                className="m-b-sm"
-                currentPage={ingestionPagingInfo.currentPage}
-                isLoading={isLoading}
-                isNumberBased={isNumberBasedPaging}
-                pageSize={ingestionPagingInfo.pageSize}
-                paging={ingestionPagingInfo.paging}
-                pagingHandler={onPageChange}
-                onShowSizeChange={ingestionPagingInfo.handlePageSizeChange}
-              />
-            </Col>
-          )}
       </Row>
 
       <EntityDeleteModal

@@ -389,16 +389,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Radio.Group value={viewType} onChange={handleViewChange}>
-          <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
-            {t('label.request')}
-          </Radio.Button>
-          <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
-            {t('label.response')}
-          </Radio.Button>
-        </Radio.Group>
-      </Col>
-      <Col span={24}>
         <Table
           bordered
           className={classNames('align-table-filter-left')}
@@ -415,11 +405,21 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             expandedRowKeys,
           }}
           extraTableFilters={
-            <ToggleExpandButton
-              allRowKeys={schemaAllRowKeys}
-              expandedRowKeys={expandedRowKeys}
-              toggleExpandAll={handleToggleExpandAll}
-            />
+            <div className="d-flex justify-between items-center w-full">
+              <Radio.Group value={viewType} onChange={handleViewChange}>
+                <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
+                  {t('label.request')}
+                </Radio.Button>
+                <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
+                  {t('label.response')}
+                </Radio.Button>
+              </Radio.Group>
+              <ToggleExpandButton
+                allRowKeys={schemaAllRowKeys}
+                expandedRowKeys={expandedRowKeys}
+                toggleExpandAll={handleToggleExpandAll}
+              />
+            </div>
           }
           key={viewType}
           pagination={false}

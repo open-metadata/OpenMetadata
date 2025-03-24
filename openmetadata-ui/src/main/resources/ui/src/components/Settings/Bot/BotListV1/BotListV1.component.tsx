@@ -44,7 +44,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
@@ -314,6 +313,15 @@ const BotListV1 = ({
         <Table
           bordered
           columns={columns}
+          customPaginationProps={{
+            currentPage,
+            isLoading: loading,
+            pageSize,
+            paging,
+            pagingHandler: handleBotPageChange,
+            onShowSizeChange: handlePageSizeChange,
+            showPagination,
+          }}
           dataSource={searchedData}
           loading={loading}
           locale={{
@@ -323,18 +331,6 @@ const BotListV1 = ({
           rowKey="name"
           size="small"
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={loading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleBotPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
 
       <DeleteWidgetModal

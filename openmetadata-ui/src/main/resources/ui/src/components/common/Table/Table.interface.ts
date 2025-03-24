@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TableProps } from 'antd/lib/table';
+import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
 
 export interface TableComponentProps<T> extends TableProps<T> {
   resizableColumns?: boolean;
@@ -21,6 +22,17 @@ export interface TableComponentProps<T> extends TableProps<T> {
   defaultVisibleColumns?: string[];
   /** Columns that will be statically visible in the Table and will not be Filtered */
   staticVisibleColumns?: string[];
+  searchProps?: {
+    onSearch?: (value: string) => void;
+    onClear?: () => void;
+    typingInterval?: number;
+    placeholder?: string;
+    value?: string;
+    searchDebounceTime?: number;
+  };
+  customPaginationProps?: NextPreviousProps & {
+    showPagination: boolean;
+  };
 }
 
 export interface TableColumnDropdownList {

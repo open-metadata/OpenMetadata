@@ -49,7 +49,6 @@ import {
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
@@ -337,6 +336,16 @@ export const TestSuites = () => {
         <Table
           bordered
           columns={columns}
+          customPaginationProps={{
+            currentPage,
+            isLoading,
+            pageSize,
+            isNumberBased: true,
+            paging,
+            pagingHandler: handleTestSuitesPageChange,
+            onShowSizeChange: handlePageSizeChange,
+            showPagination,
+          }}
           data-testid="test-suite-table"
           dataSource={testSuites}
           loading={isLoading}
@@ -346,19 +355,6 @@ export const TestSuites = () => {
           pagination={false}
           size="small"
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            isNumberBased
-            currentPage={currentPage}
-            isLoading={isLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleTestSuitesPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );

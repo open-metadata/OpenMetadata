@@ -54,7 +54,6 @@ import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -399,6 +398,16 @@ const AppRunsHistory = forwardRef(
             <Table
               bordered
               columns={tableColumn}
+              customPaginationProps={{
+                isNumberBased: true,
+                showPagination: showPagination && paginationVisible,
+                currentPage,
+                isLoading,
+                pageSize,
+                paging,
+                pagingHandler: handleAppHistoryPageChange,
+                onShowSizeChange: handlePageSizeChange,
+              }}
               data-testid="app-run-history-table"
               dataSource={appRunsHistoryData}
               expandable={{
@@ -420,19 +429,6 @@ const AppRunsHistory = forwardRef(
               rowKey="id"
               size="small"
             />
-          </Col>
-          <Col span={24}>
-            {showPagination && paginationVisible && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
           </Col>
         </Row>
         {isStopModalOpen && (

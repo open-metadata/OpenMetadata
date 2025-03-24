@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -39,7 +39,6 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../common/Table/Table';
@@ -153,50 +152,43 @@ const DataModelTable = () => {
   }, [pageSize, showDeleted]);
 
   return (
-    <Row className="p-t-sm" gutter={[0, 16]}>
-      <Col className="p-x-lg" data-testid="table-container" span={24}>
-        <Table
-          bordered
-          className="mt-4 table-shadow"
-          columns={tableColumn}
-          data-testid="data-models-table"
-          dataSource={dataModels}
-          defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
-          extraTableFilters={
-            <span>
-              <Switch
-                checked={showDeleted}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedChange}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
-            </span>
-          }
-          loading={isLoading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-        />
-      </Col>
-      <Col className="p-b-sm" span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleDataModelPageChange}
-            onShowSizeChange={handlePageSizeChange}
+    <Table
+      bordered
+      className="mt-4 table-shadow"
+      columns={tableColumn}
+      customPaginationProps={{
+        currentPage,
+        isLoading,
+        pageSize,
+        paging,
+        pagingHandler: handleDataModelPageChange,
+        onShowSizeChange: handlePageSizeChange,
+        showPagination,
+      }}
+      data-testid="data-models-table"
+      dataSource={dataModels}
+      defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
+      extraTableFilters={
+        <span>
+          <Switch
+            checked={showDeleted}
+            data-testid="show-deleted"
+            onClick={handleShowDeletedChange}
           />
-        )}
-      </Col>
-    </Row>
+          <Typography.Text className="m-l-xs">
+            {t('label.deleted')}
+          </Typography.Text>
+        </span>
+      }
+      loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+    />
   );
 };
 

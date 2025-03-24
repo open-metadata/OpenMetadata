@@ -58,7 +58,6 @@ import AppBadge from '../../../common/Badge/Badge.component';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../common/LastRunGraph/LastRunGraph.component';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import Table from '../../../common/Table/Table';
 import EditTestCaseModal from '../../../DataQuality/AddDataQualityTest/EditTestCaseModal';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
@@ -501,6 +500,14 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           bordered
           className="test-case-table-container"
           columns={columns}
+          {...(pagingData && showPagination
+            ? {
+                customPaginationProps: {
+                  ...pagingData,
+                  showPagination,
+                },
+              }
+            : {})}
           data-testid="test-case-table"
           dataSource={sortedData}
           loading={isLoading}
@@ -531,9 +538,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           size="small"
           onChange={handleTableChange}
         />
-      </Col>
-      <Col span={24}>
-        {pagingData && showPagination && <NextPrevious {...pagingData} />}
       </Col>
       <Col>
         <EditTestCaseModal

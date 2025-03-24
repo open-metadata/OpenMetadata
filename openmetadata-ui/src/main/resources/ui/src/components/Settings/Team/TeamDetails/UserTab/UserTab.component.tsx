@@ -59,7 +59,6 @@ import ManageButton from '../../../../common/EntityPageInfos/ManageButton/Manage
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { ManageButtonItemLabel } from '../../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../../common/Table/Table';
@@ -416,6 +415,16 @@ export const UserTab = ({
           bordered
           className="teams-list-table"
           columns={columns}
+          customPaginationProps={{
+            currentPage,
+            isLoading,
+            showPagination,
+            isNumberBased: Boolean(searchText),
+            pageSize,
+            paging,
+            pagingHandler: userPagingHandler,
+            onShowSizeChange: handlePageSizeChange,
+          }}
           dataSource={sortedUser}
           loading={isLoading}
           locale={{
@@ -426,20 +435,6 @@ export const UserTab = ({
           size="small"
         />
       </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={Boolean(searchText)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={userPagingHandler}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
-      </Col>
-
       <Modal
         cancelText={t('label.cancel')}
         data-testid="confirmation-modal"

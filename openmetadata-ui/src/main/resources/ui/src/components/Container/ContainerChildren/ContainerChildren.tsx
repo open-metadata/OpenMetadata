@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
@@ -26,7 +26,6 @@ import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
@@ -131,36 +130,29 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
   }, [pageSize, isReadOnly]);
 
   return (
-    <Row className="m-b-md" gutter={[0, 16]}>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={columns}
-          data-testid="container-list-table"
-          dataSource={containerChildrenData}
-          loading={isChildrenLoading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="p-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            isNumberBased
-            currentPage={currentPage}
-            isLoading={isChildrenLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleChildrenPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
-      </Col>
-    </Row>
+    <Table
+      bordered
+      columns={columns}
+      customPaginationProps={{
+        currentPage,
+        isNumberBased: true,
+        isLoading: isChildrenLoading,
+        pageSize,
+        paging,
+        pagingHandler: handleChildrenPageChange,
+        onShowSizeChange: handlePageSizeChange,
+        showPagination,
+      }}
+      data-testid="container-list-table"
+      dataSource={containerChildrenData}
+      loading={isChildrenLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+    />
   );
 };
 

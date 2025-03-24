@@ -64,7 +64,6 @@ import {
 } from '../../../../../utils/TableUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
 import { SummaryCardProps } from '../../../../common/SummaryCard/SummaryCard.interface';
 import Table from '../../../../common/Table/Table';
@@ -500,15 +499,6 @@ const ColumnProfileTable = () => {
       </Col>
       {isEmpty(activeColumnFqn) ? (
         <Col span={24}>
-          <div className="w-max-400">
-            <Searchbar
-              placeholder={t('message.find-in-table')}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleSearchAction}
-            />
-          </div>
-
           <Table
             bordered
             columns={tableColumn}
@@ -521,6 +511,12 @@ const ColumnProfileTable = () => {
             pagination={false}
             rowKey="name"
             scroll={{ x: true }}
+            searchProps={{
+              placeholder: t('message.find-in-table'),
+              value: searchText,
+              typingInterval: 500,
+              onSearch: handleSearchAction,
+            }}
             size="small"
           />
         </Col>
