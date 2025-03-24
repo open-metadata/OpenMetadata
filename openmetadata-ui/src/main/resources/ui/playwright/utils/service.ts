@@ -46,9 +46,7 @@ export const visitServiceDetailsPage = async (
   await page.waitForLoadState('networkidle');
 
   if (verifyHeader) {
-    const text = await page.textContent(
-      `[data-testid="entity-header-display-name"]`
-    );
+    const text = await page.textContent(`[data-testid="entity-header-name"]`);
 
     expect(text).toBe(service.displayName);
   }

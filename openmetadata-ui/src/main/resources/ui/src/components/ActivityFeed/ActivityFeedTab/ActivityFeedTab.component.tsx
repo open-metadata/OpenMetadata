@@ -540,9 +540,7 @@ export const ActivityFeedTab = ({
         })}
         id="center-container">
         {(isTaskActiveTab || isMentionTabSelected) && (
-          <div
-            className="d-flex gap-4  p-b-xs justify-between items-center"
-            style={{ marginTop: '6px' }}>
+          <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
             <Dropdown
               disabled={isMentionTabSelected}
               menu={{
@@ -552,9 +550,10 @@ export const ActivityFeedTab = ({
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
               <TaskFilterIcon
-                className={`task-filter-icon ${
-                  isMentionTabSelected ? 'cursor-not-allowed' : 'cursor-pointer'
-                }`}
+                className={classNames('task-filter-icon', {
+                  'cursor-pointer': !isMentionTabSelected,
+                  disabled: isMentionTabSelected,
+                })}
                 data-testid="user-profile-page-task-filter-icon"
               />
             </Dropdown>
@@ -568,7 +567,7 @@ export const ActivityFeedTab = ({
           emptyPlaceholderText={placeholderText}
           feedList={entityThread}
           handlePanelResize={handlePanelResize}
-          isForFeedTab={isForFeedTab}
+          isForFeedTab={false}
           isFullWidth={isFullWidth}
           isLoading={loading}
           selectedThread={selectedThread}
@@ -595,7 +594,8 @@ export const ActivityFeedTab = ({
         {loader}
         {selectedThread &&
           !loading &&
-          (activeTab !== ActivityFeedTabs.TASKS ? (
+          (activeTab !== ActivityFeedTabs.TASKS &&
+          selectedThread?.type !== ThreadType.Task ? (
             <div id="feed-panel">
               <div>
                 <FeedPanelBodyV1New
@@ -609,7 +609,6 @@ export const ActivityFeedTab = ({
                   feed={selectedThread}
                   handlePanelResize={handlePanelResize}
                   hidePopover={false}
-                  isForFeedTab={isForFeedTab}
                   isFullWidth={isFullWidth}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}

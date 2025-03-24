@@ -12,9 +12,15 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import { TableClass } from '../../support/entity/TableClass';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import {
   mockEntitySearchSettings,
+  restoreDefaultSearchSettings,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
@@ -43,14 +49,14 @@ test.describe('Search Settings Tests', () => {
     );
     await globalSettingEditIcon.click();
 
-    await page.getByTestId('value-input').fill('15000');
+    await page.getByTestId('value-input').fill('2000');
 
     await page.getByTestId('inline-save-btn').click();
     await toastNotification(page, /Search Settings updated successfully/);
 
     await expect(
       page.getByTestId(`global-setting-value-Max Aggregate Size`)
-    ).toHaveText('15000');
+    ).toHaveText('2000');
   });
 
   test('Update entity search settings', async ({ page }) => {
@@ -58,7 +64,7 @@ test.describe('Search Settings Tests', () => {
 
     const tableCard = page.getByTestId(mockEntitySearchSettings.key);
 
-    await tableCard.getByTestId('view-detail-button').click();
+    await tableCard.click();
 
     await expect(page).toHaveURL(
       new RegExp(mockEntitySearchSettings.url + '$')
@@ -82,23 +88,110 @@ test.describe('Search Settings Tests', () => {
     // Score Mode
     const scoreModeSelect = page.getByTestId('score-mode-select');
     await scoreModeSelect.click();
-    await page.getByTitle('max').click();
+    await page.getByTitle('Max').click();
 
     // Boost Mode
     const boostModeSelect = page.getByTestId('boost-mode-select');
     await boostModeSelect.click();
-    await page.getByTitle('replace').click();
+    await page.getByTitle('Replace').click();
 
     // Save
     await page.getByTestId('save-btn').click();
 
     await toastNotification(page, /Search Settings updated successfully/);
 
-    await expect(scoreModeSelect).toHaveText('max');
-    await expect(boostModeSelect).toHaveText('replace');
+    await expect(scoreModeSelect).toHaveText('Max');
+    await expect(boostModeSelect).toHaveText('Replace');
+  });
 
-    // Restore Defaults
-    await page.getByTestId('restore-defaults-btn').click();
-    await toastNotification(page, /Search Settings updated successfully/);
+  test('Restore default search settings', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+    const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+
+    await tableCard.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(mockEntitySearchSettings.url + '$')
+    );
+
+    const restoreDefaultsBtn = page.getByTestId('restore-defaults-btn');
+    await restoreDefaultsBtn.click();
+
+    await restoreDefaultSearchSettings(page);
+
+    await toastNotification(page, /Search Settings restored successfully/);
+  });
+});
+
+test.describe('Search Preview test', () => {
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+  // Override properties to include "Searchable" keyword
+  table1.entity.name = `pw-table-Searchable-${
+    table1.entity.name.split('pw-table-')[1]
+  }`;
+  table1.entity.displayName = `Searchable Table ${
+    table1.entity.displayName.split('pw table ')[1]
+  }`;
+  table2.entity.description =
+    'This is a Searchable test table for search settings verification';
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    // Create tables with the customized properties
+    await table1.create(apiContext);
+    await table2.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Search preview for searchable table', async ({ page }) => {
+    await redirectToHomePage(page);
+    await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+    const tableCard = page.getByTestId(mockEntitySearchSettings.key);
+    await tableCard.click();
+
+    await expect(page).toHaveURL(
+      new RegExp(mockEntitySearchSettings.url + '$')
+    );
+
+    const searchInput = page.getByTestId('searchbar');
+    await searchInput.fill('Searchable');
+
+    const descriptionField = page.getByTestId(
+      `field-configuration-panel-description`
+    );
+    await descriptionField.click();
+    await setSliderValue(page, 'field-weight-slider', 68);
+    await descriptionField.click();
+
+    await page.waitForLoadState('networkidle');
+
+    const searchResultsContainer = page.locator('.search-results-container');
+
+    // Get the search result cards
+    const searchCards = searchResultsContainer.locator('.search-card');
+
+    // Check the first card has table1's display name using data-testid
+    const firstCard = searchCards.nth(0);
+
+    await expect(
+      firstCard.getByTestId('entity-header-display-name')
+    ).toHaveText(table1.entity.displayName);
+
+    // Check the second card has table2's description using data-testid
+    const secondCard = searchCards.nth(1);
+
+    await expect(secondCard.getByTestId('description-text')).toContainText(
+      table2.entity.description
+    );
   });
 });

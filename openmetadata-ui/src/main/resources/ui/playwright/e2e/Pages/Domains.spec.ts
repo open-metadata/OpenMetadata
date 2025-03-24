@@ -273,7 +273,6 @@ test.describe('Domains', () => {
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
-    await page.getByTestId('saveAssociatedTag').click();
 
     await page.waitForLoadState('networkidle');
 
@@ -610,11 +609,8 @@ test.describe('Domains Rbac', () => {
     await page.locator('input[role="combobox"]').nth(1).click();
     await page.waitForSelector('[data-testid="profile-edit-roles-select"]');
     await page.getByText('Domain Only Access Role').click();
-    await page.click('body');
     const patchRes = page.waitForResponse('/api/v1/users/*');
-    await page
-      .locator('[data-testid="user-profile-edit-roles-save-button"]')
-      .click();
+    await page.getByTestId('user-profile-edit-roles-save-button').click();
     await patchRes;
     await afterAction();
   });

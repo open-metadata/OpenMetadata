@@ -18,7 +18,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 - Improvements:- Added loggedInAPI to show more specific error messages instead of generic ones
 - Added support for \`/logout\` path to perform logout from API redirect
-- Added displayName field in the \`createCustomProperty\` schema
+- Added displayName field in the \`createCustomProperty\` schema    
 - Improved search relevancy for plural/singular words and partial matches
 - Introduced "clear sample" option in entity config to support explicit null
 - Made domain a required field for Data Product creation
@@ -54,4 +54,4 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Implemented Incremental Lineage Processing
 - Don't overwrite query to execute
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.5-release...1.6.6-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.5-release...1.6.6-release)

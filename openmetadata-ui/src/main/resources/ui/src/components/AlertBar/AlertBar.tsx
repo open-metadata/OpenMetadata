@@ -22,10 +22,10 @@ import { AlertBarProps } from './AlertBar.interface';
 const AlertBar = ({
   type,
   message,
-  isUnauthenticated,
+  defafultExpand,
 }: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
-  const [expanded, setExpanded] = useState(isUnauthenticated);
+  const [expanded, setExpanded] = useState(defafultExpand);
 
   const { icon: AlertIcon, className } = useMemo(() => {
     return getIconAndClassName(type);
@@ -62,7 +62,14 @@ const AlertBar = ({
           )}
         </>
       }
-      icon={AlertIcon && <AlertIcon data-testid="alert-icon" />}
+      icon={
+        AlertIcon && (
+          <AlertIcon
+            data-testid="alert-icon"
+            id={type !== 'success' ? 'alert-icon' : ''}
+          />
+        )
+      }
       type={type}
     />
   );
