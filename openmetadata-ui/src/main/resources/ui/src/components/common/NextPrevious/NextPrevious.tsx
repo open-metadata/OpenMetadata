@@ -26,7 +26,6 @@ import {
 } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
-import './next-previous.less';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
 
 const NextPrevious: FC<NextPreviousProps> = ({

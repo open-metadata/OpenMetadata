@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Table, Typography } from 'antd';
+import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -18,10 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import Table from '../../../components/common/Table/Table';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -269,6 +269,15 @@ const MetricListPage = () => {
           <Table
             bordered
             columns={columns}
+            customPaginationProps={{
+              showPagination,
+              currentPage,
+              isLoading: loadingMore,
+              pageSize,
+              paging,
+              pagingHandler: onPageChange,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             dataSource={metrics}
             loading={loadingMore}
             locale={{
@@ -286,18 +295,6 @@ const MetricListPage = () => {
             rowKey="id"
             size="small"
           />
-        </Col>
-        <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={loadingMore}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={onPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
         </Col>
       </Row>
     </PageLayoutV1>
