@@ -5,4 +5,10 @@ slug: /main-concepts/metadata-standard/schemas/datainsight/kpi
 
 # Kpi
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**Kpi**](/main-concepts/metadata-standard/schemas/datainsight/kpi/kpi)
+- [**Basic**](/main-concepts/metadata-standard/schemas/datainsight/kpi/basic)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

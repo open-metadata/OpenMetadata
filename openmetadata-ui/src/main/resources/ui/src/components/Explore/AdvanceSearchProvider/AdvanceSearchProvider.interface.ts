@@ -49,3 +49,8 @@ export interface AdvanceSearchContext {
     subTitle?: string;
   };
 }
+
+export interface CustomPropertyEnumConfig {
+  multiSelect: boolean;
+  values: string[];
+}

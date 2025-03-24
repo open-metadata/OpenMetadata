@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService Profiler Pipeline Configuration.
  */
 export interface DatabaseServiceProfilerPipeline {
@@ -50,9 +48,9 @@ export interface DatabaseServiceProfilerPipeline {
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     * Whether to randomize the sample data or not.
      */
-    sampleDataCount?:    number;
+    randomizedSample?:   boolean;
     samplingMethodType?: SamplingMethodType;
     /**
      * Regex to only fetch tables or databases that matches the pattern.
@@ -92,7 +90,7 @@ export interface DatabaseServiceProfilerPipeline {
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only fetch databases that matches the pattern.
  *

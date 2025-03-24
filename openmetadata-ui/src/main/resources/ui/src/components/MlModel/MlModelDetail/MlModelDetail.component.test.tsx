@@ -22,7 +22,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Paging } from '../../../generated/type/paging';
-import { LeafNodes } from '../../Entity/EntityLineage/EntityLineage.interface';
 import MlModelDetailComponent from './MlModelDetail.component';
 
 const mockData = {
@@ -157,7 +156,6 @@ const mockProp = {
     entityLineageHandler: jest.fn(),
     isLineageLoading: false,
     entityLineage: { entity: { id: 'test', type: 'mlmodel' } },
-    lineageLeafNodes: {} as LeafNodes,
     isNodeLoading: { id: undefined, state: false },
   },
   onExtensionUpdate: jest.fn(),
@@ -168,7 +166,7 @@ const mockProp = {
   fetchFeedHandler: jest.fn(),
   postFeedHandler: jest.fn(),
   deletePostHandler: jest.fn(),
-
+  onMlModelUpdate: jest.fn(),
   updateThreadHandler: jest.fn(),
   entityFieldThreadCount: [],
   entityFieldTaskCount: [],

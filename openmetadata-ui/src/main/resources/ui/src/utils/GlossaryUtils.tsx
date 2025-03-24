@@ -35,6 +35,9 @@ import {
   Status,
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
+import { Domain } from '../generated/entity/domains/domain';
+import { User } from '../generated/entity/teams/user';
+import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
@@ -190,23 +193,28 @@ export const updateGlossaryTermByFqn = (
 // This function finds and gives you the glossary term you're looking for.
 // You can then use this term or update its information in the Glossary or Term with it's reference created
 // Reference will only be created if withReference is true
-export const findGlossaryTermByFqn = (
-  list: ModifiedGlossaryTerm[],
+export const findItemByFqn = (
+  list: ModifiedGlossaryTerm[] | Domain[],
   fullyQualifiedName: string,
   withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | null => {
+): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
   for (const item of list) {
-    if ((item.fullyQualifiedName ?? item.value) === fullyQualifiedName) {
+    if (
+      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
+      fullyQualifiedName
+    ) {
       return withReference
         ? item
         : {
             ...item,
-            fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
-            ...(item.data ?? {}),
+            fullyQualifiedName:
+              item.fullyQualifiedName ??
+              (item as ModifiedGlossaryTerm).data?.tagFQN,
+            ...((item as ModifiedGlossaryTerm).data ?? {}),
           };
     }
     if (item.children) {
-      const found = findGlossaryTermByFqn(
+      const found = findItemByFqn(
         item.children as ModifiedGlossaryTerm[],
         fullyQualifiedName
       );
@@ -393,4 +401,78 @@ export const renderReferenceElement = (
       </Tooltip>
     </Tag>
   );
+};
+
+export const findAndUpdateNested = (
+  terms: ModifiedGlossary[],
+  newTerm: GlossaryTerm
+): ModifiedGlossary[] => {
+  // If new term has no parent, it's a top level term
+  // So just update 0 level terms no need to iterate over it
+  if (!newTerm.parent) {
+    return [...terms, newTerm as ModifiedGlossary];
+  }
+
+  // If parent is there means term is  created within a term
+  // So we need to find the parent term and update it's children
+  return terms.map((term) => {
+    if (term.fullyQualifiedName === newTerm.parent?.fullyQualifiedName) {
+      const children = [...(term.children || []), newTerm] as GlossaryTerm[];
+
+      return {
+        ...term,
+        children,
+        // Need to update childrenCount in case of 0 to update expand / collapse icon
+        childrenCount: children.length,
+      } as ModifiedGlossary;
+    } else if ('children' in term && term.children?.length) {
+      return {
+        ...term,
+        children: findAndUpdateNested(
+          term.children as ModifiedGlossary[],
+          newTerm
+        ),
+      } as ModifiedGlossary;
+    }
+
+    return term;
+  });
+};
+
+export const glossaryTermTableColumnsWidth = (
+  tableWidth: number,
+  havingCreatePermission: boolean
+) => ({
+  name: calculatePercentageFromValue(tableWidth, 40),
+  description: calculatePercentageFromValue(
+    tableWidth,
+    havingCreatePermission ? 21 : 33
+  ),
+  reviewers: calculatePercentageFromValue(tableWidth, 33),
+  synonyms: calculatePercentageFromValue(tableWidth, 33),
+  owners: calculatePercentageFromValue(tableWidth, 17),
+  status: calculatePercentageFromValue(tableWidth, 33),
+});
+
+export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
+  `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
+
+export const permissionForApproveOrReject = (
+  record: ModifiedGlossaryTerm,
+  currentUser: User,
+  termTaskThreads: Record<string, Array<any>>
+) => {
+  const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
+  const taskThread = termTaskThreads[entityLink]?.find(
+    (thread) => thread.about === entityLink
+  );
+
+  const isReviewer = record.reviewers?.some(
+    (reviewer) => reviewer.id === currentUser?.id
+  );
+
+  return {
+    permission: taskThread && isReviewer,
+    taskId: taskThread?.task?.id,
+  };
 };

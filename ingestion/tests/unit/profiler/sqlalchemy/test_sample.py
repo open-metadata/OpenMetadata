@@ -104,7 +104,7 @@ class SampleTest(TestCase):
                 service_connection_config=cls.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profile_sample=50.0),
+                sample_config=SampleConfig(profileSample=50.0),
             )
         cls.dataset = cls.sampler.get_dataset()
         cls.sqa_profiler_interface = SQAProfilerInterface(
@@ -361,7 +361,7 @@ class SampleTest(TestCase):
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
                 entity=None,
-                sample_config=SampleConfig(profile_sample=50.0),
+                sample_config=SampleConfig(profileSample=50.0),
                 sample_query=stmt,
             )
         sample_data = sampler.fetch_sample_data()

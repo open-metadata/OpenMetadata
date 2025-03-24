@@ -12,7 +12,12 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 const apiServiceConfig = {
@@ -40,7 +45,7 @@ test.describe('API service', () => {
 
     // step 1
     await page.getByTestId('service-name').fill(apiServiceConfig.name);
-    await page.fill(descriptionBox, apiServiceConfig.description);
+    await page.locator(descriptionBox).fill(apiServiceConfig.description);
     await page.getByTestId('next-button').click();
 
     // step 2
@@ -51,10 +56,20 @@ test.describe('API service', () => {
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
     await page.getByTestId('submit-btn').click();
 
-    // step 3
-    await page.getByTestId('view-service-button').click();
+    const dayOneExperienceApplicationRequest = page.waitForRequest(
+      (request) =>
+        request
+          .url()
+          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.method() === 'POST'
+    );
 
-    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+    await page.getByTestId('submit-btn').getByText('Save').click();
+
+    await dayOneExperienceApplicationRequest;
+
+    // step 3
+    await expect(page.getByTestId('entity-header-name')).toHaveText(
       apiServiceConfig.name
     );
 
@@ -82,17 +97,13 @@ test.describe('API service', () => {
     await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
     const deleteResponse = page.waitForResponse(
-      '/api/v1/services/apiServices/*?hardDelete=true&recursive=true'
+      '/api/v1/services/apiServices/async/*?hardDelete=true&recursive=true'
     );
 
     await page.click('[data-testid="confirm-button"]');
 
     await deleteResponse;
 
-    await expect(page.locator('.Toastify__toast-body')).toHaveText(
-      /deleted successfully!/
-    );
-
-    await page.click('.Toastify__close-button');
+    await toastNotification(page, /Delete operation initiated for/);
   });
 });

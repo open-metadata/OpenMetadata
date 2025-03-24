@@ -64,6 +64,10 @@
       "description": "This schema defines the type of application.",
       "$ref": "../app.json#/definitions/appType"
     },
+    "agentType": {
+      "description": "This schema defines the type of the agent.",
+      "$ref": "../app.json#/definitions/agentType"
+    },
     "scheduleType": {
       "description": "This schema defines the Schedule Type of Application.",
       "$ref": "../app.json#/definitions/scheduleType"
@@ -111,6 +115,14 @@
       "description": "If the app run can be interrupted as part of the execution.",
       "type": "boolean",
       "default": false
+    },
+    "eventSubscriptions": {
+      "description": "Event subscriptions that will be created when the application is installed.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "../../../events/api/createEventSubscription.json"
+      }
     }
   },
   "additionalProperties": false,

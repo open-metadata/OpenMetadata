@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService Query Usage Pipeline Configuration.
  */
 export interface DatabaseServiceQueryUsagePipeline {
@@ -20,6 +18,10 @@ export interface DatabaseServiceQueryUsagePipeline {
      * Configuration the condition to filter the query history.
      */
     filterCondition?: string;
+    /**
+     * Configuration to process query cost
+     */
+    processQueryCostAnalysis?: boolean;
     /**
      * Configuration to tune how far we want to look back in query logs to process usage data.
      */

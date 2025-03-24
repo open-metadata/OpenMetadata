@@ -45,6 +45,13 @@ Admin permissions are required to register the application on the Azure portal.
 - Provide a redirect URL as a `Single Page Application`.
 - Click on `Register`.
 
+## Choose Your Authentication Flow
+
+After creating the account, choose the authentication flow you want to use:
+
+- [Implicit Flow](/deployment/security/azure/implicit-flow) (Public)
+- [Auth Code Flow](/deployment/security/azure/auth-code-flow) (Confidential)
+
 {% note %}
 
 - **SPA (Single Page Application):**  
@@ -62,19 +69,4 @@ Admin permissions are required to register the application on the Azure portal.
 
 {% /note %}
 
-{% image src="/images/v1.6/deployment/security/azure/create-app-3.png" alt="create-app" /%}
 
-### Step 3: Where to Find the Credentials
-
-- The `Client ID` and the `Tenant ID` are displayed in the Overview section of the registered application.
-
-{% image src="/images/v1.6/deployment/security/azure/where-to-find-credentials.png" alt="create-app" /%}
-
-- When passing the details for `authority`, the `Tenant ID` is added to the URL as shown in the example
-  below. `https://login.microsoftonline.com/TenantID`
-
-```commandline
-"authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
-```
-
-{% partial file="/v1.6/deployment/configure-ingestion.md" /%}

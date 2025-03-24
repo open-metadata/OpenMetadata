@@ -7,7 +7,7 @@ slug: /connectors/database/azuresql/yaml
 name="AzureSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Stored Procedures", "Owners", "Tags"]
 / %}
 
@@ -18,6 +18,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
@@ -201,6 +202,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "azuresql"} /%}
 

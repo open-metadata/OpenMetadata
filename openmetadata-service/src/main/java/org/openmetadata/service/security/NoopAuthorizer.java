@@ -65,6 +65,12 @@ public class NoopAuthorizer implements Authorizer {
     /* Always authorize */
   }
 
+  @Override
+  public void authorizeRequests(
+      SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic) {
+    /* Always authorize */
+  }
+
   private void addAnonymousUser() {
     String username = "anonymous";
     try {
@@ -93,6 +99,11 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public void authorizeAdmin(SecurityContext securityContext) {
+    /* Always authorize */
+  }
+
+  @Override
+  public void authorizeAdmin(String adminName) {
     /* Always authorize */
   }
 

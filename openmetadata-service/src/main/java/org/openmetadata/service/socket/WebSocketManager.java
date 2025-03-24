@@ -26,12 +26,15 @@ public class WebSocketManager {
   public static final String TASK_BROADCAST_CHANNEL = "taskChannel";
   public static final String SEARCH_INDEX_JOB_BROADCAST_CHANNEL = "searchIndexJobStatus";
   public static final String DATA_INSIGHTS_JOB_BROADCAST_CHANNEL = "dataInsightsJobStatus";
+  public static final String BACKGROUND_JOB_CHANNEL = "backgroundJobStatus";
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
   public static final String CSV_EXPORT_CHANNEL = "csvExportChannel";
   public static final String CSV_IMPORT_CHANNEL = "csvImportChannel";
 
   public static final String BULK_ASSETS_CHANNEL = "bulkAssetsChannel";
+
+  public static final String DELETE_ENTITY_CHANNEL = "deleteEntityChannel";
 
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =

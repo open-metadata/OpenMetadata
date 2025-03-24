@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -61,6 +62,7 @@ export class DatabaseSchemaClass extends EntityClass {
     super(EntityTypeEndpoint.DatabaseSchema);
     this.service.name = name ?? this.service.name;
     this.type = 'Database Schema';
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {

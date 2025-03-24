@@ -8,4 +8,8 @@
       # includes:
       #   - topic1
       # generateSampleData: true
+      # generateSampleData: false # true
+      # markDeletedTopics: true # false
+      # overrideMetadata:  false # true
+
 ```

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the EntityRelationship type used for establishing relationship
  * between two entities. EntityRelationship is used for capturing relationships from one
  * entity to another. For example, a database contains tables.
@@ -81,6 +79,7 @@ export enum RelationshipType {
     ParentOf = "parentOf",
     ReactedTo = "reactedTo",
     RelatedTo = "relatedTo",
+    RelatesTo = "relatesTo",
     RepliedTo = "repliedTo",
     Reviews = "reviews",
     TestedBy = "testedBy",

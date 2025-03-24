@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/type/jdbcconnection
 
 ## Properties
 
-- **`driverClass`**: JDBC driver class. Refer to *#/definitions/driverClass*.
-- **`connectionUrl`**: JDBC connection URL. Refer to *#/definitions/connectionUrl*.
+- **`driverClass`**: JDBC driver class. Refer to *[#/definitions/driverClass](#definitions/driverClass)*.
+- **`connectionUrl`**: JDBC connection URL. Refer to *[#/definitions/connectionUrl](#definitions/connectionUrl)*.
 - **`userName`** *(string)*: Login user name.
 - **`password`** *(string)*: Login password.
 ## Definitions
@@ -18,8 +18,8 @@ slug: /main-concepts/metadata-standard/schemas/type/jdbcconnection
 - **`driverClass`** *(string)*: Type used for JDBC driver class.
 - **`connectionUrl`** *(string)*: Type used for JDBC connection URL of format `url_scheme://<username>:<password>@<host>:<port>/<db_name>`.
 - **`jdbcInfo`** *(object)*: Type for capturing JDBC connector information. Cannot contain additional properties.
-  - **`driverClass`**: Refer to *#/definitions/driverClass*.
-  - **`connectionUrl`**: Refer to *#/definitions/connectionUrl*.
+  - **`driverClass`**: Refer to *[#/definitions/driverClass](#definitions/driverClass)*.
+  - **`connectionUrl`**: Refer to *[#/definitions/connectionUrl](#definitions/connectionUrl)*.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

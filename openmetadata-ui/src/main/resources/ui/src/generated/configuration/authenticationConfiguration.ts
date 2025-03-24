@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Authentication Configuration.
  */
 export interface AuthenticationConfiguration {
@@ -69,6 +67,10 @@ export interface AuthenticationConfiguration {
      * Saml Configuration that is applicable only when the provider is Saml
      */
     samlConfiguration?: SamlSSOClientConfig;
+    /**
+     * Token Validation Algorithm to use.
+     */
+    tokenValidationAlgorithm?: TokenValidationAlgorithm;
 }
 
 /**
@@ -491,4 +493,13 @@ export interface SP {
      * X509 Certificate
      */
     spX509Certificate?: string;
+}
+
+/**
+ * Token Validation Algorithm to use.
+ */
+export enum TokenValidationAlgorithm {
+    Rs256 = "RS256",
+    Rs384 = "RS384",
+    Rs512 = "RS512",
 }

@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Fields } from 'react-awesome-query-builder';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import { getJsonTreeFromQueryFilter } from './QueryBuilderUtils';
+import {
+  getJsonTreeFromQueryFilter,
+  resolveFieldType,
+} from './QueryBuilderUtils';
 
 jest.mock('./StringsUtils', () => ({
   generateUUID: jest.fn(),
@@ -99,5 +103,52 @@ describe('getJsonTreeFromQueryFilter', () => {
     const result = getJsonTreeFromQueryFilter(queryFilter);
 
     expect(result).toEqual({});
+  });
+});
+
+describe('resolveFieldType', () => {
+  const mockFields: Fields = {
+    name: {
+      type: 'text',
+    },
+    extension: {
+      type: '!group',
+      subfields: {
+        expert: {
+          type: 'text',
+        },
+        'expert.name': {
+          // Direct path field
+          type: 'string',
+        },
+        'expert.level': {
+          type: 'number',
+        },
+        settings: {
+          type: '!group',
+          subfields: {
+            enabled: {
+              type: 'boolean',
+            },
+          },
+        },
+      },
+    },
+  };
+
+  it.each([
+    ['simple top-level field', 'name', 'text'],
+    ['direct path in subfields', 'extension.expert.name', 'string'],
+    ['nested field through normal traversal', 'extension.expert', 'text'],
+    ['deeply nested field', 'extension.settings.enabled', 'boolean'],
+    ['non-existent field', 'nonexistent', undefined],
+    ['non-existent nested field', 'extension.nonexistent', undefined],
+    ['invalid nested path', 'name.invalid.path', undefined],
+  ])('should resolve %s', (_, field: string, expectedType?: string) => {
+    expect(resolveFieldType(mockFields, field)).toBe(expectedType);
+  });
+
+  it('should return an empty string if the field is undefined', () => {
+    expect(resolveFieldType(undefined, 'name')).toBe('');
   });
 });

@@ -57,6 +57,43 @@ Again, this information will be added on top of the inferred schema from the dat
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+**Automated Container Ingestion**: Registering all the data paths one by one can be a time consuming job, 
+to make the automated structure container ingestion you can provide the depth at which all the data is available.
+
+Let us understand this with the example, suppose following is the file hierarchy within my bucket.
+
+```
+
+# prefix/depth1/depth2/depth3
+athena_service/my_database_a/my_schema_a/table_a/date=01-01-2025/data.parquet
+athena_service/my_database_a/my_schema_a/table_a/date=02-01-2025/data.parquet
+athena_service/my_database_a/my_schema_a/table_b/date=01-01-2025/data.parquet
+athena_service/my_database_a/my_schema_a/table_b/date=02-01-2025/data.parquet
+
+athena_service/my_database_b/my_schema_a/table_a/date=01-01-2025/data.parquet
+athena_service/my_database_b/my_schema_a/table_a/date=02-01-2025/data.parquet
+athena_service/my_database_b/my_schema_a/table_b/date=01-01-2025/data.parquet
+athena_service/my_database_b/my_schema_a/table_b/date=02-01-2025/data.parquet
+
+```
+
+all my tables folders which contains the actual data are available at depth 3, hence when you specify the `depth: 3` in 
+manifest entry all following path will get registered as container in OpenMetadata with this single entry 
+
+```
+athena_service/my_database_a/my_schema_a/table_a
+athena_service/my_database_a/my_schema_a/table_b
+athena_service/my_database_b/my_schema_a/table_a
+athena_service/my_database_b/my_schema_a/table_b
+```
+
+saving efforts to add 4 individual entries compared to 1
+
+{% /codeInfo %}
+
+
 {% codeInfo srNumber=6 %}
 
 **Unstructured Container**: OpenMetadata supports ingesting unstructured files like images, pdf's etc. We support fetching the file names, size and tags associates to such files.
@@ -122,6 +159,14 @@ In case you want to ingest all unstructured files with irrespective of their fil
                     "dataType": "STRING"
                 }
             ]
+        }
+```
+```json {% srNumber=7 %}
+        {
+            "dataPath": "athena_service",
+            "structureFormat": "parquet",
+            "isPartitioned": true,
+            "depth": 2
         }
 ```
 ```json {% srNumber=6 %}

@@ -7,7 +7,7 @@ slug: /connectors/database/mariadb/yaml
 name="MariaDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Sample Data"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -16,6 +16,7 @@ In this section, we provide guides and references to use the MariaDB connector.
 Configure and schedule MariaDB metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
@@ -154,6 +155,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "mariadb"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "mariadb"} /%}
 

@@ -9,7 +9,7 @@ The profiler in OpenMetadata helps to understand the shape of your data and to q
 
 Watch the video to understand OpenMetadata’s native Data Profiler and Data Quality tests.
 
-{%  youtube videoId="gLdTOF81YpI" start="0:00" end="1:08:10" width="560px" height="315px" /%}
+{%  youtube videoId="gLdTOF81YpI" start="0:00" end="1:08:10" width="800px" height="450px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout
@@ -42,11 +42,5 @@ Watch the video to understand OpenMetadata’s native Data Profiler and Data Qua
     bold="External Workflow"
     href="/how-to-guides/data-quality-observability/profiler/external-workflow"%}
     Run a single workflow profiler for the entire source externally.
- {%/inlineCallout%}
- {%inlineCallout
-    icon="MdOutlinePersonPin"
-    bold="Auto PII Tagging"
-    href="/how-to-guides/data-quality-observability/profiler/auto-pii-tagging"%}
-    Auto tag data as PII Sensitive/NonSensitive at the column level.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}

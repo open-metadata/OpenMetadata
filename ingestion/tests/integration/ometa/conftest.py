@@ -20,8 +20,11 @@ from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -36,6 +39,7 @@ from ..containers import MySqlContainerConfigs, get_mysql_container
 from ..integration_base import (
     METADATA_INGESTION_CONFIG_TEMPLATE,
     generate_name,
+    get_create_entity,
     get_create_service,
 )
 
@@ -66,6 +70,26 @@ def service(metadata):
     )
 
 
+@pytest.fixture
+def tables(service, metadata):
+    database: Database = metadata.create_or_update(
+        data=get_create_entity(entity=Database, reference=service.name.root)
+    )
+    db_schema: DatabaseSchema = metadata.create_or_update(
+        data=get_create_entity(
+            entity=DatabaseSchema, reference=database.fullyQualifiedName
+        )
+    )
+    tables = [
+        metadata.create_or_update(
+            data=get_create_entity(entity=Table, reference=db_schema.fullyQualifiedName)
+        )
+        for _ in range(10)
+    ]
+
+    return tables
+
+
 @pytest.fixture(scope="module")
 def workflow(metadata, service, mysql_container):
     service_name = service.name.root
@@ -80,7 +104,7 @@ def workflow(metadata, service, mysql_container):
                     password=mysql_container.password,
                 ),
                 hostPort=f"localhost:{mysql_container.get_exposed_port(3306)}",
-            ).model_dump_json(),
+            ).model_dump_json(mask_secrets=False),
             source_config={},
         )
     )

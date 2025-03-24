@@ -37,7 +37,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { getEntityDisplayName } from './entity';
+import { getEntityDisplayName, getTextFromHtmlString } from './entity';
 import { validateFormNameFieldInput } from './form';
 import {
   addFilterWithUsersListInput,
@@ -274,7 +274,6 @@ export const addOwnerFilter = async ({
 
   // Search and select owner
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.waitForSelector('.ant-select-dropdown:visible');
   await page.fill(
     '[data-testid="owner-name-select"] [role="combobox"]',
     ownerName,
@@ -502,9 +501,9 @@ export const verifyAlertDetails = async ({
   );
 
   if (description) {
-    // Check alert name
-    await expect(page.getByTestId('alert-description')).toContainText(
-      description
+    // Check alert description
+    await expect(page.getByTestId('markdown-parser')).toContainText(
+      getTextFromHtmlString(description)
     );
   }
 

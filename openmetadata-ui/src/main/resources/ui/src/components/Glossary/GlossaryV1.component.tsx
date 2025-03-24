@@ -19,21 +19,15 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
-import { getGlossaryTermDetailsPath } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityAction, EntityTabs } from '../../enums/entity.enum';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../generated/api/feed/createThread';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addGlossaryTerm,
   getFirstLevelGlossaryTerms,
@@ -43,9 +37,8 @@ import {
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import Loader from '../common/Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
@@ -75,11 +68,6 @@ const GlossaryV1 = ({
     useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
 
   const history = useHistory();
-  const [threadLink, setThreadLink] = useState<string>('');
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
     useState<GlossaryTerm | null>(null);
   const { getEntityPermission } = usePermissionProvider();
@@ -99,8 +87,12 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    insertNewGlossaryTermToChildTerms,
+  } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -108,17 +100,6 @@ const GlossaryV1 = ({
     () => action === EntityAction.IMPORT,
     [action]
   );
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
-  };
-
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
 
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
@@ -129,11 +110,9 @@ const GlossaryV1 = ({
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
       );
-      const children = data.map((data) =>
-        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
-      );
-
-      setGlossaryChildTerms(children as ModifiedGlossary[]);
+      // We are considering childrenCount fot expand collapse state
+      // Hence don't need any intervention to list response here
+      setGlossaryChildTerms(data as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -162,19 +141,6 @@ const GlossaryV1 = ({
       setGlossaryTermPermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    }
-  };
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
     }
   };
 
@@ -232,7 +198,11 @@ const GlossaryV1 = ({
           entity: t('label.glossary-term'),
         });
       } else {
-        updateGlossaryTermInStore(response);
+        updateGlossaryTermInStore({
+          ...response,
+          // Since patch didn't respond with childrenCount preserve it from currentData
+          childrenCount: currentData.childrenCount,
+        });
         setIsEditModalOpen(false);
       }
     } catch (error) {
@@ -257,29 +227,38 @@ const GlossaryV1 = ({
     }
   };
 
-  const onTermModalSuccess = useCallback(() => {
-    loadGlossaryTerms(true);
-    if (!isGlossaryActive && tab !== 'terms') {
-      history.push(
-        getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
-          EntityTabs.TERMS
-        )
-      );
-    }
-    setIsEditModalOpen(false);
-  }, [isGlossaryActive, tab, selectedData]);
+  const onTermModalSuccess = useCallback(
+    (term: GlossaryTerm) => {
+      // Setting loading so that nested terms are rendered again on table with change
+      setIsTermsLoading(true);
+      // Update store with newly created term
+      insertNewGlossaryTermToChildTerms(term);
+      if (!isGlossaryActive && tab !== 'terms') {
+        history.push(
+          getGlossaryTermDetailsPath(
+            selectedData.fullyQualifiedName || '',
+            EntityTabs.TERMS
+          )
+        );
+      }
+      // Close modal and set loading to false
+      setIsEditModalOpen(false);
+      setIsTermsLoading(false);
+    },
+    [isGlossaryActive, tab, selectedData]
+  );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
     try {
-      await addGlossaryTerm({
+      const term = await addGlossaryTerm({
         ...formData,
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
-      onTermModalSuccess();
+
+      onTermModalSuccess(term);
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -401,7 +380,6 @@ const GlossaryV1 = ({
             onEditGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(true, term ?? null)
             }
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ) : (
           <GlossaryTermsV1
@@ -422,7 +400,6 @@ const GlossaryV1 = ({
             onEditGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(true, term)
             }
-            onThreadLinkSelect={onThreadLinkSelect}
           />
         ))}
 
@@ -446,19 +423,6 @@ const GlossaryV1 = ({
           onSave={handleGlossaryTermSave}
         />
       )}
-
-      {threadLink ? (
-        <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
-          open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
-          threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
-          onCancel={onThreadPanelClose}
-        />
-      ) : null}
     </>
   );
 };

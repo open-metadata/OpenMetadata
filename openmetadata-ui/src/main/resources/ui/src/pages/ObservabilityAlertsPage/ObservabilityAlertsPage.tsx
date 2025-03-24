@@ -22,6 +22,7 @@ import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidget
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -221,7 +222,7 @@ const ObservabilityAlertsPage = () => {
               })}
             </Typography.Text>
           ) : (
-            description
+            <RichTextEditorPreviewerV1 markdown={description} />
           ),
       },
       {
@@ -291,7 +292,7 @@ const ObservabilityAlertsPage = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+    <PageLayoutV1 pageTitle={t('label.observability-alert')}>
       <Row className="p-x-lg p-t-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">

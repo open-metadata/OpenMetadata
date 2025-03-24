@@ -83,9 +83,9 @@ import org.openmetadata.service.util.ResultList;
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owners";
-
+  private WorkflowMapper mapper;
   private PipelineServiceClientInterface pipelineServiceClient;
-  private OpenMetadataApplicationConfig openMetadataApplicationConfig;
+  private OpenMetadataConnectionBuilder openMetadataConnectionBuilder;
 
   public WorkflowResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW, authorizer, limits);
@@ -93,11 +93,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    this.openMetadataApplicationConfig = config;
-
+    this.mapper = new WorkflowMapper();
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
+    openMetadataConnectionBuilder = new OpenMetadataConnectionBuilder(config);
   }
 
   public static class WorkflowList extends ResultList<Workflow> {
@@ -331,7 +331,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
-    Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
+    Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, unmask(workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -359,8 +359,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext) {
     EntityUtil.Fields fields = getFields(FIELD_OWNERS);
     Workflow workflow = repository.get(uriInfo, id, fields);
-    workflow.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());
+    workflow.setOpenMetadataServerConnection(openMetadataConnectionBuilder.build());
     /*
      We will send the encrypted Workflow to the Pipeline Service Client
      It will be fetched from the API from there, since we are
@@ -452,7 +451,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
-    Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
+    Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     workflow = unmask(workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
@@ -484,6 +483,30 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteWorkflowAsync",
+      summary = "Asynchronously delete a Workflow",
+      description = "Asynchronously delete a Workflow by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Workflow for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -539,21 +562,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         .build();
   }
 
-  private Workflow getWorkflow(CreateWorkflow create, String user) {
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-    return repository
-        .copy(new Workflow(), create, user)
-        .withDescription(create.getDescription())
-        .withRequest(create.getRequest())
-        .withWorkflowType(create.getWorkflowType())
-        .withDisplayName(create.getDisplayName())
-        .withResponse(create.getResponse())
-        .withStatus(create.getStatus())
-        .withOpenMetadataServerConnection(openMetadataServerConnection)
-        .withName(create.getName());
-  }
-
   private Workflow unmask(Workflow workflow) {
     repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
@@ -586,8 +594,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       return workflowConverted;
     }
     Workflow workflowDecrypted = secretsManager.decryptWorkflow(workflow);
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+    OpenMetadataConnection openMetadataServerConnection = openMetadataConnectionBuilder.build();
     workflowDecrypted.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext)) {

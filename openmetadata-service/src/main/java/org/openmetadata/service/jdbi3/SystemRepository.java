@@ -15,7 +15,11 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -40,7 +44,9 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
@@ -105,6 +111,12 @@ public class SystemRepository {
         return null;
       }
 
+      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+        emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+        fetchedSettings.setConfigValue(emailConfig);
+      }
+
       return fetchedSettings;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
@@ -121,6 +133,17 @@ public class SystemRepository {
         .orElse(null);
   }
 
+  public AssetCertificationSettings getAssetCertificationSettingOrDefault() {
+    AssetCertificationSettings assetCertificationSettings = getAssetCertificationSettings();
+    if (assetCertificationSettings == null) {
+      assetCertificationSettings =
+          new AssetCertificationSettings()
+              .withAllowedClassification("Certification")
+              .withValidityPeriod("P30D");
+    }
+    return assetCertificationSettings;
+  }
+
   public WorkflowSettings getWorkflowSettings() {
     Optional<Settings> oWorkflowSettings =
         Optional.ofNullable(getConfigWithKey(SettingsType.WORKFLOW_SETTINGS.value()));
@@ -128,6 +151,17 @@ public class SystemRepository {
     return oWorkflowSettings
         .map(settings -> (WorkflowSettings) settings.getConfigValue())
         .orElse(null);
+  }
+
+  public WorkflowSettings getWorkflowSettingsOrDefault() {
+    WorkflowSettings workflowSettings = getWorkflowSettings();
+    if (workflowSettings == null) {
+      workflowSettings =
+          new WorkflowSettings()
+              .withExecutorConfiguration(new ExecutorConfiguration())
+              .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration());
+    }
+    return workflowSettings;
   }
 
   public Settings getEmailConfigInternal() {
@@ -139,6 +173,22 @@ public class SystemRepository {
       return setting;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getOMBaseUrlConfigInternal() {
+    try {
+      Settings setting =
+          dao.getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
+      OpenMetadataBaseUrlConfiguration urlConfiguration =
+          (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();
+      setting.setConfigValue(urlConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error(
+          "Error while trying to fetch OpenMetadataBaseUrlConfiguration Settings {}",
+          ex.getMessage());
     }
     return null;
   }
@@ -225,6 +275,10 @@ public class SystemRepository {
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.initializeNewProcessEngine(workflowHandler.getProcessEngineConfiguration());
     }
+
+    if (settingsType == SettingsType.LOGIN_CONFIGURATION) {
+      LoginAttemptCache.updateLoginConfiguration();
+    }
   }
 
   public void updateSetting(Settings setting) {
@@ -233,6 +287,11 @@ public class SystemRepository {
         SmtpSettings emailConfig =
             JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
         setting.setConfigValue(encryptEmailSetting(emailConfig));
+      } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
+        OpenMetadataBaseUrlConfiguration omBaseUrl =
+            JsonUtils.convertValue(
+                setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+        setting.setConfigValue(omBaseUrl);
       } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
@@ -248,6 +307,8 @@ public class SystemRepository {
         setting.setConfigValue(encryptSlackStateSetting(slackState));
       } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
         JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
+      } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));

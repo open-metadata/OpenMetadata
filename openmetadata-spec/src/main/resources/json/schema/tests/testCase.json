@@ -56,11 +56,12 @@
       "type": "string"
     },
     "testSuite": {
-      "description": "Test Suite that this test case belongs to.",
+      "description": "Basic Test Suite that this test case belongs to.",
       "$ref": "../type/entityReference.json"
     },
     "testSuites": {
       "type": "array",
+      "description": "Basic and Logical Test Suites this test case belongs to",
       "items": {
         "$ref": "./testSuite.json"
       }
@@ -88,6 +89,10 @@
       "$ref": "../type/entityReferenceList.json",
       "default": null
     },
+    "createdBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
       "$ref": "../type/basic.json#/definitions/timestamp"
@@ -101,6 +106,10 @@
       "$ref": "../type/basic.json#/definitions/href"
     },
     "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
     },

@@ -92,6 +92,7 @@ test('Query Entity', async ({ page }) => {
     await page
       .locator('div')
       .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
+      .first()
       .click();
 
     await clickOutside(page);
@@ -105,7 +106,9 @@ test('Query Entity', async ({ page }) => {
   });
 
   await test.step('Update owner, description and tag', async () => {
-    const ownerListResponse = page.waitForResponse('/api/v1/users?*');
+    const ownerListResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    );
     await page
       .getByTestId(
         'entity-summary-resizable-right-panel-container entity-resizable-panel-container'
@@ -140,7 +143,7 @@ test('Query Entity', async ({ page }) => {
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
-    await page.fill(descriptionBox, 'updated description');
+    await page.locator(descriptionBox).fill('updated description');
     const updateDescriptionResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
@@ -178,7 +181,11 @@ test('Query Entity', async ({ page }) => {
     );
     await page.keyboard.type(queryData.queryUsedIn.table2);
     await tableSearchResponse;
-    await page.click(`[title="${queryData.queryUsedIn.table2}"]`);
+    await page
+      .locator('div')
+      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table2}$`) })
+      .first()
+      .click();
     await clickOutside(page);
     const updateQueryResponse = page.waitForResponse(
       (response) =>

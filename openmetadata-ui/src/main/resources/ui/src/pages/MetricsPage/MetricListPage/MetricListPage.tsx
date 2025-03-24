@@ -21,11 +21,11 @@ import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -43,6 +43,7 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { getMetrics } from '../../../rest/metricsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -169,7 +170,7 @@ const MetricListPage = () => {
               })}
             </Typography.Text>
           ) : (
-            <RichTextEditorPreviewer markdown={description} />
+            <RichTextEditorPreviewerV1 markdown={description} />
           ),
       },
       {
@@ -189,7 +190,6 @@ const MetricListPage = () => {
             record={record}
             tags={tags}
             type={TagSource.Classification}
-            onThreadLinkSelect={noop}
           />
         ),
       },
@@ -210,7 +210,6 @@ const MetricListPage = () => {
             record={record}
             tags={tags}
             type={TagSource.Glossary}
-            onThreadLinkSelect={noop}
           />
         ),
       },

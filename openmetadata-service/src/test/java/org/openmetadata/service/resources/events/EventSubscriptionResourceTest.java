@@ -2289,4 +2289,16 @@ public class EventSubscriptionResourceTest
           actualListCopy.get(i).getOldValue());
     }
   }
+
+  public EventSubscription updateEventSubscriptionPollInterval(String fqn, int pollInterval)
+      throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription originalSub =
+        eventSubscriptionResourceTest.getEntityByName(fqn, ADMIN_AUTH_HEADERS);
+    EventSubscription updatedSub =
+        JsonUtils.deepCopy(originalSub, EventSubscription.class).withPollInterval(pollInterval);
+    return eventSubscriptionResourceTest.patchEntityUsingFqn(
+        fqn, JsonUtils.pojoToJson(originalSub), updatedSub, ADMIN_AUTH_HEADERS);
+  }
 }

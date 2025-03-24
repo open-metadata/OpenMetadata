@@ -37,7 +37,7 @@ $$
 $$section
 ### Pinot Controller Host $(id="pinotControllerHost")
 
-Pinot Controller Host and Port of the data source.
+Pinot Controller Host and Port of the data source. Unlike broker host, prefix http:// or https:// must be added to contoller host. For example, you can set it to `http://localhost:9000`
 $$
 
 $$section

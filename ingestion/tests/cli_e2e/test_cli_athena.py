@@ -60,10 +60,13 @@ class AthenaCliTest(CliCommonDB.TestSuite):
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return 50
 
     def view_column_lineage_count(self) -> int:
+        pass
+
+    def expected_lineage_node(self) -> str:
         pass
 
     @staticmethod
@@ -129,6 +132,10 @@ class AthenaCliTest(CliCommonDB.TestSuite):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
+
+    @pytest.mark.order(11)
+    def test_lineage(self) -> None:
+        pytest.skip("Lineage not configured. Skipping Test")
 
     def assert_for_vanilla_ingestion(
         self, source_status: Status, sink_status: Status

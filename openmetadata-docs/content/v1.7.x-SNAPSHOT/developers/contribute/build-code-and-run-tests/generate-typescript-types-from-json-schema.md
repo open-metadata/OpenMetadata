@@ -8,18 +8,54 @@ This step-by-step guide will help you to generate typescript types from JSON sch
 
 We are using [quicktype](https://quicktype.io/) to generate types from JSON Schema.
 
-Make sure you have `quicktype` installed if not then install it using command given below from `openmetadata` root folder.
+## Prerequisites
 
-```python
+Ensure you have `quicktype` installed. If not, install it using the commands below.
+
+## Steps to Generate TypeScript Types
+
+### Step 1: Install Dependencies
+
+Navigate to the `openmetadata-ui` directory and install dependencies:
+
+```bash
+cd openmetadata-ui/src/main/resources/ui
 yarn install
 ```
 
-Now go to the UI folder openmetadata-ui/src/main/resources/ui and from there run the command given below.
+### Step 2: Option A - Generate Types for Staged Files
 
-```python
-yarn run json2ts
+Return to the root folder, add the relevant files to the staging area, and execute the following command:
+
+```bash
+changed_files=$(git diff --cached --name-only --diff-filter=ACM | grep 'openmetadata-spec/src/main/resources/json/schema/')
 ```
 
-The above command will take some time to execute and generate types.
+This command identifies all staged files located in the `openmetadata-spec/src/main/resources/json/schema/` path and stores the file paths in the changed_files variable.
 
-After that, you can go to the generated `openmetadata-ui/src/main/resources/ui/src/generated/*` folder and see all generated types.
+### Step 2: Option B - Generate Types for Specific JSON File
+
+From the OpenMetadata root folder, you can generate types for a specific JSON schema file using:
+
+```bash
+./generate_ts.sh <relative path of json file>
+```
+
+Examples:
+```bash
+./generate_ts.sh openmetadata-spec/src/main/resources/json/schema/entity/services/ingestionPipelines/ingestionPipeline.json
+```
+
+Note: The path should be relative to the OpenMetadata directory.
+
+### Step 3: Generate TypeScript Types
+
+If using Option A, run the following script to generate TypeScript types for the identified JSON schema files:
+
+```bash
+./openmetadata-ui/src/main/resources/ui/json2ts.sh $changed_files
+```
+
+This script processes the staged JSON schema files and generates the corresponding TypeScript types.
+
+The generated TypeScript types will be available in the appropriate location within the UI project structure.

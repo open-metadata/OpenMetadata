@@ -248,6 +248,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
     return (
       <TagsV1
+        isEditTags
         size={props.size}
         startWith={TAG_START_WITH.SOURCE_ICON}
         tag={tag}

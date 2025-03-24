@@ -7,7 +7,7 @@ slug: /connectors/database/presto
 name="Presto"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
 / %}
 

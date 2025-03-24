@@ -35,6 +35,11 @@ public final class PipelineServiceClientFactory {
       return pipelineServiceClient;
     }
 
+    if (Boolean.FALSE.equals(config.getEnabled())) {
+      LOG.debug("Pipeline Service Client is disabled. Skipping initialization.");
+      return null;
+    }
+
     String pipelineServiceClientClass = config.getClassName();
     LOG.debug("Registering PipelineServiceClient: {}", pipelineServiceClientClass);
 
@@ -53,7 +58,8 @@ public final class PipelineServiceClientFactory {
         | IllegalAccessException e) {
       throw new PipelineServiceClientException(
           String.format(
-              "Error trying to load PipelineServiceClient %s: %s", pipelineServiceClientClass, e));
+              "Error trying to load PipelineServiceClient %s: %s",
+              pipelineServiceClientClass, e.getCause()));
     }
   }
 }

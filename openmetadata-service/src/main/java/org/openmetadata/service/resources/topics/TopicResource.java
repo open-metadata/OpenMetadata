@@ -77,6 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
+  private final TopicMapper mapper = new TopicMapper();
   static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
@@ -302,7 +303,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTopic create) {
-    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
+    Topic topic = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, topic);
   }
 
@@ -381,7 +382,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTopic create) {
-    Topic topic = getTopic(create, securityContext.getUserPrincipal().getName());
+    Topic topic = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, topic);
   }
 
@@ -552,6 +553,28 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTopicAsync",
+      summary = "Asynchronously delete a topic by id",
+      description = "Asynchronously delete a topic by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteTopicByFQN",
@@ -596,22 +619,5 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Topic getTopic(CreateTopic create, String user) {
-    return repository
-        .copy(new Topic(), create, user)
-        .withService(getEntityReference(Entity.MESSAGING_SERVICE, create.getService()))
-        .withPartitions(create.getPartitions())
-        .withMessageSchema(create.getMessageSchema())
-        .withCleanupPolicies(create.getCleanupPolicies())
-        .withMaximumMessageSize(create.getMaximumMessageSize())
-        .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-        .withRetentionSize(create.getRetentionSize())
-        .withRetentionTime(create.getRetentionTime())
-        .withReplicationFactor(create.getReplicationFactor())
-        .withTopicConfig(create.getTopicConfig())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
   }
 }

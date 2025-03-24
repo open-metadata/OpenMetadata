@@ -46,7 +46,7 @@ This is a sample config for OpenAPI:
 
 {% codeInfo srNumber=1 %}
 
-**OpenAPI Schema URL**: 
+**OpenAPI Schema URL**:
 An OpenAPI schema URL typically refers to the URL where the OpenAPI Specification (OAS) document of a web service is hosted. The document defines the service's API, including available endpoints, request/response formats, authentication methods, etc. It is usually in JSON format. for e.g. `https://petstore3.swagger.io/api/v3/openapi.json`
 
 **Token**: An authentication token to connect to an OpenAPI schema URL. It is only required if the API schema is protected or secured.
@@ -63,7 +63,7 @@ source:
   serviceName: openapi_rest
   serviceConnection:
     config:
-      type: REST
+      type: ApiMetadata
 ```
 ```yaml {% srNumber=1 %}
       openAPISchemaURL: https://docs.open-metadata.org/swagger.json
@@ -71,7 +71,7 @@ source:
 ```
 
 
-{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/api/source-config.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 

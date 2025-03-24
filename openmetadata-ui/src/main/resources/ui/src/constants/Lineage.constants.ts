@@ -91,6 +91,7 @@ export const LINEAGE_DEFAULT_QUICK_FILTERS = [
 ];
 
 export const LINEAGE_SOURCE: { [key in Source]: string } = {
+  [Source.ChildAssets]: 'Child Assets',
   [Source.DashboardLineage]: 'Dashboard Lineage',
   [Source.DbtLineage]: 'dbt Lineage',
   [Source.Manual]: 'Manual',

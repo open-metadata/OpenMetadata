@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * TestSuite is a set of test cases grouped together to capture data quality tests against
  * data entities.
  */
 export interface TestSuite {
+    /**
+     * Indicates if the test suite is basic, i.e., the parent suite of a test and linked to an
+     * entity. Set on the backend.
+     */
+    basic?: boolean;
+    /**
+     * Entity reference the test suite needs to execute the test against. Only applicable if the
+     * test suite is basic.
+     */
+    basicEntityReference?: EntityReference;
     /**
      * Change that lead to this version of the entity.
      */
@@ -43,12 +51,11 @@ export interface TestSuite {
      */
     domain?: EntityReference;
     /**
-     * Indicates if the test suite is executable. Set on the backend.
+     * DEPRECATED in 1.6.2: Use 'basic'
      */
     executable?: boolean;
     /**
-     * Entity reference the test suite is executed against. Only applicable if the test suite is
-     * executable.
+     * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
      */
     executableEntityReference?: EntityReference;
     /**
@@ -64,6 +71,10 @@ export interface TestSuite {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Indicates if the test suite is inherited from a parent entity.
      */
     inherited?: boolean;
@@ -76,8 +87,7 @@ export interface TestSuite {
      */
     owners?: EntityReference[];
     /**
-     * References to pipelines deployed for this database service to extract metadata, usage,
-     * lineage etc..
+     * References to pipelines deployed for this Test Suite to execute the tests.
      */
     pipelines?: EntityReference[];
     /**
@@ -118,65 +128,18 @@ export interface TestSuite {
 }
 
 /**
- * Change that lead to this version of the entity.
- *
- * Description of the change.
- */
-export interface ChangeDescription {
-    /**
-     * Names of fields added during the version changes.
-     */
-    fieldsAdded?: FieldChange[];
-    /**
-     * Fields deleted during the version changes with old value before deleted.
-     */
-    fieldsDeleted?: FieldChange[];
-    /**
-     * Fields modified during the version changes with old and new values.
-     */
-    fieldsUpdated?: FieldChange[];
-    /**
-     * When a change did not result in change, this could be same as the current version.
-     */
-    previousVersion?: number;
-}
-
-export interface FieldChange {
-    /**
-     * Name of the entity field that changed.
-     */
-    name?: string;
-    /**
-     * New value of the field. Note that this is a JSON string and use the corresponding field
-     * type to deserialize it.
-     */
-    newValue?: any;
-    /**
-     * Previous value of the field. Note that this is a JSON string and use the corresponding
-     * field type to deserialize it.
-     */
-    oldValue?: any;
-}
-
-/**
- * TestSuite mock connection, since it needs to implement a Service.
- */
-export interface TestSuiteConnection {
-    config?: null;
-    [property: string]: any;
-}
-
-/**
- * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
- * the table it belongs to.
+ * Entity reference the test suite needs to execute the test against. Only applicable if the
+ * test suite is basic.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Entity reference the test suite is executed against. Only applicable if the test suite is
- * executable.
+ * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
+ * the table it belongs to.
+ *
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  *
  * Owners of this TestCase definition.
  *
@@ -226,6 +189,79 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
+    /**
+     * Names of fields added during the version changes.
+     */
+    fieldsAdded?: FieldChange[];
+    /**
+     * Fields deleted during the version changes with old value before deleted.
+     */
+    fieldsDeleted?: FieldChange[];
+    /**
+     * Fields modified during the version changes with old and new values.
+     */
+    fieldsUpdated?: FieldChange[];
+    /**
+     * When a change did not result in change, this could be same as the current version.
+     */
+    previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
+export interface FieldChange {
+    /**
+     * Name of the entity field that changed.
+     */
+    name?: string;
+    /**
+     * New value of the field. Note that this is a JSON string and use the corresponding field
+     * type to deserialize it.
+     */
+    newValue?: any;
+    /**
+     * Previous value of the field. Note that this is a JSON string and use the corresponding
+     * field type to deserialize it.
+     */
+    oldValue?: any;
+}
+
+/**
+ * TestSuite mock connection, since it needs to implement a Service.
+ */
+export interface TestSuiteConnection {
+    config?: null;
+    [property: string]: any;
 }
 
 /**

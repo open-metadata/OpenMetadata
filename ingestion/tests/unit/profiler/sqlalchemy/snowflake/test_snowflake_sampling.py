@@ -80,14 +80,14 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
+                profileSampleType=ProfileSampleType.PERCENTAGE, profileSample=50.0
             ),
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users_1.id AS id \n"
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE bernoulli(50.0))\n "
-            "SELECT users_rnd.id \nFROM users_rnd"
+            'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert (
             expected_query.casefold()
@@ -107,16 +107,16 @@ class SampleTest(TestCase):
                 ometa_client=None,
                 entity=self.table_entity,
                 sample_config=SampleConfig(
-                    profile_sample_type=ProfileSampleType.PERCENTAGE,
-                    profile_sample=50.0,
-                    sampling_method_type=sampling_method_type,
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=50.0,
+                    samplingMethodType=sampling_method_type,
                 ),
             )
             query: CTE = sampler.get_sample_query()
             expected_query = (
-                "WITH users_rnd AS \n(SELECT users_1.id AS id \n"
+                'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
                 f"FROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0))\n "
-                "SELECT users_rnd.id \nFROM users_rnd"
+                'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
             )
             assert (
                 expected_query.casefold()
@@ -132,14 +132,14 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.ROWS, profile_sample=50
+                profileSampleType=ProfileSampleType.ROWS, profileSample=50
             ),
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users_1.id AS id "
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id '
             "\nFROM users AS users_1 TABLESAMPLE ROW(50 ROWS))\n "
-            "SELECT users_rnd.id \nFROM users_rnd"
+            'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert (
             expected_query.casefold()
@@ -155,8 +155,8 @@ class SampleTest(TestCase):
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
-                profile_sample_type=ProfileSampleType.PERCENTAGE,
-                profile_sample=50.0,
+                profileSampleType=ProfileSampleType.PERCENTAGE,
+                profileSample=50.0,
             ),
             partition_details=PartitionProfilerConfig(
                 enablePartitioning=True,
@@ -167,9 +167,10 @@ class SampleTest(TestCase):
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
-            "WITH users_rnd AS \n(SELECT users_1.id AS id \n"
+            'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id \n'
             "FROM users AS users_1 TABLESAMPLE bernoulli(50.0) "
-            "\nWHERE id IN ('1', '2'))\n SELECT users_rnd.id \nFROM users_rnd"
+            "\nWHERE id IN ('1', '2'))\n SELECT \"9bc65c2abec141778ffaa729489f3e87_rnd\".id "
+            '\nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert (
             expected_query.casefold()

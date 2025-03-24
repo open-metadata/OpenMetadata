@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Pipeline service entity request
  */
 export interface CreatePipelineService {
@@ -33,6 +31,10 @@ export interface CreatePipelineService {
      * Fully qualified name of the domain the Pipeline Service belongs to.
      */
     domain?: string;
+    /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionAgent?: EntityReference;
     /**
      * Life Cycle of the entity
      */
@@ -127,7 +129,11 @@ export interface Connection {
     /**
      * Pipeline Service Number Of Status
      */
-    numberOfStatus?:             number;
+    numberOfStatus?: number;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -136,6 +142,10 @@ export interface Connection {
      */
     type?:      PipelineServiceType;
     awsConfig?: AWSCredentials;
+    /**
+     * Airbyte API version.
+     */
+    apiVersion?: string;
     /**
      * Password to connect to Airbyte.
      */
@@ -411,9 +421,13 @@ export interface AzureCredentials {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  */
 export interface MetadataDatabaseConnection {
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -424,6 +438,10 @@ export interface MetadataDatabaseConnection {
     authType?:            AuthConfigurationType;
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: DatabaseFilterPatternObject;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -447,6 +465,10 @@ export interface MetadataDatabaseConnection {
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: SchemaFilterPatternObject;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?: Scheme;
@@ -461,6 +483,10 @@ export interface MetadataDatabaseConnection {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Username to connect to MySQL. This user should have privileges to read all the metadata
      * in Mysql.
@@ -502,7 +528,6 @@ export interface MetadataDatabaseConnection {
      */
     password?:                      string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -521,6 +546,51 @@ export interface AuthConfigurationType {
     password?:    string;
     awsConfig?:   AWSCredentials;
     azureConfig?: AzureCredentials;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface DatabaseFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -602,6 +672,29 @@ export interface AwsCredentials {
 }
 
 /**
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ */
+export interface SchemaFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
@@ -669,9 +762,9 @@ export enum InitialConsumerOffsets {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -782,56 +875,14 @@ export enum VerifySSL {
 }
 
 /**
- * Life Cycle of the entity
- *
- * This schema defines Life Cycle Properties.
- */
-export interface LifeCycle {
-    /**
-     * Access Details about accessed aspect of the data asset
-     */
-    accessed?: AccessDetails;
-    /**
-     * Access Details about created aspect of the data asset
-     */
-    created?: AccessDetails;
-    /**
-     * Access Details about updated aspect of the data asset
-     */
-    updated?: AccessDetails;
-}
-
-/**
- * Access Details about accessed aspect of the data asset
- *
- * Access details of an entity
- *
- * Access Details about created aspect of the data asset
- *
- * Access Details about updated aspect of the data asset
- */
-export interface AccessDetails {
-    /**
-     * User, Pipeline, Query that created,updated or accessed the data asset
-     */
-    accessedBy?: EntityReference;
-    /**
-     * Any process that accessed the data asset that is not captured in OpenMetadata.
-     */
-    accessedByAProcess?: string;
-    /**
-     * Timestamp of data asset accessed for creation, update, read.
-     */
-    timestamp: number;
-}
-
-/**
- * User, Pipeline, Query that created,updated or accessed the data asset
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Owners of this pipeline service.
  *
@@ -881,6 +932,50 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Life Cycle of the entity
+ *
+ * This schema defines Life Cycle Properties.
+ */
+export interface LifeCycle {
+    /**
+     * Access Details about accessed aspect of the data asset
+     */
+    accessed?: AccessDetails;
+    /**
+     * Access Details about created aspect of the data asset
+     */
+    created?: AccessDetails;
+    /**
+     * Access Details about updated aspect of the data asset
+     */
+    updated?: AccessDetails;
+}
+
+/**
+ * Access Details about accessed aspect of the data asset
+ *
+ * Access details of an entity
+ *
+ * Access Details about created aspect of the data asset
+ *
+ * Access Details about updated aspect of the data asset
+ */
+export interface AccessDetails {
+    /**
+     * User, Pipeline, Query that created,updated or accessed the data asset
+     */
+    accessedBy?: EntityReference;
+    /**
+     * Any process that accessed the data asset that is not captured in OpenMetadata.
+     */
+    accessedByAProcess?: string;
+    /**
+     * Timestamp of data asset accessed for creation, update, read.
+     */
+    timestamp: number;
 }
 
 /**

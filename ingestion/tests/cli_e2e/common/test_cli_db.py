@@ -12,7 +12,6 @@
 """
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
-import json
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -101,6 +100,23 @@ class CliCommonDB:
             # of https://github.com/open-metadata/OpenMetadata/pull/18558
             # we need to introduce Lineage E2E base and add view lineage check there.
 
+        def assert_for_test_lineage(self, source_status: Status, sink_status: Status):
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertEqual(len(source_status.warnings), 0)
+            self.assertEqual(len(sink_status.failures), 0)
+            self.assertEqual(len(sink_status.warnings), 0)
+            self.assertGreaterEqual(len(sink_status.records), 0)
+            lineage_data = self.retrieve_lineage(self.fqn_created_table())
+            retrieved_view_column_lineage_count = len(
+                lineage_data["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]
+            )
+            self.assertEqual(
+                retrieved_view_column_lineage_count, self.view_column_lineage_count()
+            )
+
+            retrieved_lineage_node = lineage_data["nodes"][0]["fullyQualifiedName"]
+            self.assertEqual(retrieved_lineage_node, self.expected_lineage_node())
+
         def assert_auto_classification_sample_data(
             self, source_status: Status, sink_status: Status
         ):
@@ -110,7 +126,7 @@ class CliCommonDB:
                 self.expected_profiled_tables(),
             )
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertEqual(len(sample_data.rows), self.inserted_rows_count())
+            self.assertEqual(len(sample_data.rows), self.expected_sample_size())
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: Status, sink_status: Status
@@ -152,10 +168,6 @@ class CliCommonDB:
                             self.assertEqual(
                                 column_profile[key], expected_column_profile[key]
                             )
-                if sample_data:
-                    self.assertGreater(
-                        len(json.loads(sample_data.json()).get("rows")), 0
-                    )
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: Status, sink_status: Status
@@ -204,11 +216,15 @@ class CliCommonDB:
             raise NotImplementedError()
 
         @abstractmethod
-        def inserted_rows_count(self) -> int:
+        def expected_sample_size(self) -> int:
             raise NotImplementedError()
 
         @abstractmethod
         def view_column_lineage_count(self) -> int:
+            raise NotImplementedError()
+
+        @abstractmethod
+        def expected_lineage_node(self) -> str:
             raise NotImplementedError()
 
         @staticmethod

@@ -541,7 +541,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE];
+    return [EntityType.TEST_CASE, EntityType.DOMAIN];
   }
 
   public getEntityBreadcrumbs(
@@ -557,7 +557,7 @@ class SearchClassBase {
   ): string | { pathname: string } {
     if (entity.entityType === EntityType.TEST_SUITE) {
       return getTestSuiteDetailsPath({
-        isExecutableTestSuite: (entity as TestSuite).executable,
+        isExecutableTestSuite: (entity as TestSuite).basic,
         fullyQualifiedName: entity.fullyQualifiedName ?? '',
       });
     }

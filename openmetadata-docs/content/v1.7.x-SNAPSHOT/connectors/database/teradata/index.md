@@ -7,7 +7,7 @@ slug: /connectors/database/teradata
 name="Teradata"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "View Lineage", "View Column-level Lineage"]
+availableFeatures=["Metadata", "Data Profiler", "View Lineage", "View Column-level Lineage", "Sample Data"]
 unavailableFeatures=["Query Usage", "Data Quality", "Owners", "Tags", "Stored Procedures", "dbt"]
 / %}
 
@@ -18,6 +18,7 @@ Configure and schedule Teradata metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/greenplum/yaml"} /%}

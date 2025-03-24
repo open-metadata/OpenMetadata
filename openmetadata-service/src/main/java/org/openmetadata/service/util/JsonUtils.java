@@ -17,8 +17,10 @@ import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -39,6 +41,7 @@ import java.io.StringReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +81,7 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final ObjectMapper OBJECT_MAPPER_LENIENT;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
   private static final ObjectMapper MASKER_OBJECT_MAPPER;
   private static final JsonSchemaFactory schemaFactory =
@@ -86,10 +90,18 @@ public final class JsonUtils {
 
   static {
     OBJECT_MAPPER = new ObjectMapper();
+    OBJECT_MAPPER
+        .getFactory()
+        .setStreamReadConstraints(
+            StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build());
     // Ensure the date-time fields are serialized in ISO-8601 format
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     OBJECT_MAPPER.setDateFormat(DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
+
+    // Lenient ObjectMapper to ignore unknown properties
+    OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
+    OBJECT_MAPPER_LENIENT.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
   static {
@@ -149,6 +161,10 @@ public final class JsonUtils {
     return obj instanceof String str ? readValue(str, clz) : convertValue(obj, clz);
   }
 
+  public static <T> T readOrConvertValueLenient(Object obj, Class<T> clz) {
+    return obj instanceof String str ? readValueLenient(str, clz) : convertValueLenient(obj, clz);
+  }
+
   public static <T> List<T> readOrConvertValues(Object obj, Class<T> clz) {
     if (obj instanceof String str) {
       return readObjects(str, clz);
@@ -181,6 +197,17 @@ public final class JsonUtils {
     }
     try {
       return OBJECT_MAPPER.readValue(json, clz);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  public static <T> T readValueLenient(String json, Class<T> clz) {
+    if (json == null) {
+      return null;
+    }
+    try {
+      return OBJECT_MAPPER_LENIENT.readValue(json, clz);
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
@@ -233,6 +260,10 @@ public final class JsonUtils {
 
   public static <T> T convertValue(Object object, Class<T> clz) {
     return object == null ? null : OBJECT_MAPPER.convertValue(object, clz);
+  }
+
+  public static <T> T convertValueLenient(Object object, Class<T> clz) {
+    return object == null ? null : OBJECT_MAPPER_LENIENT.convertValue(object, clz);
   }
 
   public static <T> T convertValue(Object object, TypeReference<T> toValueTypeRef) {
@@ -638,6 +669,24 @@ public final class JsonUtils {
       LOG.error("Failed to convert POJO to JsonNode", e);
       throw new RuntimeException("POJO to JsonNode conversion failed", e);
     }
+  }
+
+  @SuppressWarnings("unused")
+  public static Map<String, Object> getMapFromJson(String json) {
+    return (Map<String, Object>) (JsonUtils.readValue(json, Map.class));
+  }
+
+  @SuppressWarnings("unused")
+  public static <T> T convertObjectWithFilteredFields(
+      Object input, Set<String> fields, Class<T> clazz) {
+    Map<String, Object> inputMap = JsonUtils.getMap(input);
+    Map<String, Object> result = new HashMap<>();
+    for (String field : fields) {
+      if (inputMap.containsKey(field)) {
+        result.put(field, inputMap.get(field));
+      }
+    }
+    return JsonUtils.convertValue(result, clazz);
   }
 
   public static JsonPatch convertFgeToJavax(com.github.fge.jsonpatch.JsonPatch fgeJsonPatch) {

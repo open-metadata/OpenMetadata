@@ -47,7 +47,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
 );
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 

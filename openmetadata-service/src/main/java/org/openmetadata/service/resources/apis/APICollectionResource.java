@@ -73,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "apiCollections")
 public class APICollectionResource extends EntityResource<APICollection, APICollectionRepository> {
   public static final String COLLECTION_PATH = "v1/apiCollections/";
+  private final APICollectionMapper mapper = new APICollectionMapper();
   static final String FIELDS = "owners,apiEndpoints,tags,extension,domain,sourceHash";
 
   @Override
@@ -310,7 +311,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
-        getAPICollection(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, apiCollection);
   }
 
@@ -392,7 +393,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid CreateAPICollection create) {
     APICollection apiCollection =
-        getAPICollection(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, apiCollection);
   }
 
@@ -425,6 +426,37 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteAPICollectionAsync",
+      summary = "Asynchronously delete a API Collection by Id",
+      description =
+          "Asynchronously delete a API Collection by `Id`. API Collection can only be deleted if it has no tables.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "API Collection for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the APICollection", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @PUT
@@ -509,14 +541,5 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private APICollection getAPICollection(CreateAPICollection create, String user) {
-    return repository
-        .copy(new APICollection(), create, user)
-        .withService(getEntityReference(Entity.API_SERVICE, create.getService()))
-        .withEndpointURL(create.getEndpointURL())
-        .withApiEndpoints(getEntityReferences(Entity.API_ENDPOINT, create.getApiEndpoints()))
-        .withSourceHash(create.getSourceHash());
   }
 }

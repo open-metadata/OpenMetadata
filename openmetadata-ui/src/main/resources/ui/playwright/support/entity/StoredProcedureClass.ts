@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -71,6 +72,7 @@ export class StoredProcedureClass extends EntityClass {
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
     this.type = 'Store Procedure';
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {

@@ -287,15 +287,15 @@ export const userMentionItemWithAvatar = (
   return wrapper;
 };
 
-const getMentionList = (message: string) => {
+export const getMentionList = (message: string) => {
   return message.match(mentionRegEx);
 };
 
-const getHashTagList = (message: string) => {
+export const getHashTagList = (message: string) => {
   return message.match(hashtagRegEx);
 };
 
-const getEntityDetail = (item: string) => {
+export const getEntityDetail = (item: string) => {
   if (item.includes('teams')) {
     return item.match(teamsLinkRegEx);
   }
@@ -304,7 +304,7 @@ const getEntityDetail = (item: string) => {
 };
 
 const getEntityLinkList = (message: string) => {
-  return message.match(entityLinkRegEx);
+  return message?.match(entityLinkRegEx);
 };
 
 const getEntityLinkDetail = (item: string) => {
@@ -778,7 +778,12 @@ export const getFeedHeaderTextFromCardStyle = (
       return (
         <Transi18next
           i18nKey="message.feed-field-action-entity-header"
-          renderElement={<Typography.Text className="font-bold" />}
+          renderElement={
+            <Typography.Text
+              className="font-bold"
+              style={{ fontSize: '14px' }}
+            />
+          }
           values={{
             field: i18next.t(
               `label.${cardStyle === CardStyle.Tags ? 'tag-plural' : cardStyle}`

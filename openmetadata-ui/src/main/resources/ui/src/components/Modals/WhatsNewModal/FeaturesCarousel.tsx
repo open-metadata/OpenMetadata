@@ -14,7 +14,7 @@
 import { Carousel } from 'antd';
 import { uniqueId } from 'lodash';
 import React from 'react';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FeaturesCarouselProps } from './FeaturesCarousel.interface';
 
 const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
@@ -25,7 +25,7 @@ const FeaturesCarousel = ({ data }: FeaturesCarouselProps) => {
           <div className="p-x-xss" key={uniqueId()}>
             <p className="text-sm font-medium mb-2">{d.title}</p>
             <div className="text-sm m-b-xs">
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 enableSeeMoreVariant={false}
                 markdown={d.description}
               />

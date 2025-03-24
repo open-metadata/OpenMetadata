@@ -29,6 +29,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.RestUtil;
@@ -96,9 +97,17 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
+      EntityDAO<?> entityDAO = entityRepository.getDao();
       result =
-          entityRepository.listAfterWithSkipFailure(
-              null, Entity.getFields(entityType, fields), filter, batchSize, cursor);
+          entityRepository.listWithOffset(
+              entityDAO::listAfter,
+              entityDAO::listCount,
+              filter,
+              batchSize,
+              cursor,
+              true,
+              Entity.getFields(entityType, fields),
+              null);
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor.get();
         if (result.getPaging().getAfter() == null) {
@@ -154,9 +163,17 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
+      EntityDAO<?> entityDAO = entityRepository.getDao();
       result =
-          entityRepository.listAfterWithSkipFailure(
-              null, Entity.getFields(entityType, fields), filter, batchSize, currentCursor);
+          entityRepository.listWithOffset(
+              entityDAO::listAfter,
+              entityDAO::listCount,
+              filter,
+              batchSize,
+              currentCursor,
+              true,
+              Entity.getFields(entityType, fields),
+              null);
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());

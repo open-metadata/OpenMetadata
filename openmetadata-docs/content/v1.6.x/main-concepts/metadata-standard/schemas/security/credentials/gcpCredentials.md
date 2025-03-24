@@ -10,13 +10,20 @@ slug: /main-concepts/metadata-standard/schemas/security/credentials/gcpcredentia
 ## Properties
 
 - **`gcpConfig`**: We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path.
-- **`gcpImpersonateServiceAccount`**: we enable the authenticated service account to impersonate another service account. Refer to *#/definitions/GCPImpersonateServiceAccountValues*.
+  - **One of**
+    - : Refer to *[gcpValues.json](#pValues.json)*.
+    - : Refer to *[#/definitions/gcpCredentialsPath](#definitions/gcpCredentialsPath)*.
+    - : Refer to *[gcpExternalAccount.json](#pExternalAccount.json)*.
+- **`gcpImpersonateServiceAccount`**: we enable the authenticated service account to impersonate another service account. Refer to *[#/definitions/GCPImpersonateServiceAccountValues](#definitions/GCPImpersonateServiceAccountValues)*.
 ## Definitions
 
-- **`gcpCredentialsPath`** *(string)*: Pass the path of file containing the GCP credentials info.
+- **`gcpCredentialsPath`** *(object)*: Pass the path of file containing the GCP credentials info.
+  - **`type`** *(string)*: Google Cloud Platform account type. Default: `"gcp_credential_path"`.
+  - **`path`** *(string)*: Path of the file containing the GCP credentials info.
+  - **`projectId`** *(string)*: GCP Project ID to parse metadata from. Default: `null`.
 - **`GCPImpersonateServiceAccountValues`** *(object)*: Pass the values to impersonate a service account of Google Cloud.
   - **`impersonateServiceAccount`** *(string)*: The impersonated service account email.
   - **`lifetime`** *(integer)*: Number of seconds the delegated credential should be valid. Default: `3600`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

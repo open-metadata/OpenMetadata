@@ -7,7 +7,7 @@ slug: /connectors/pipeline/glue-pipeline/yaml
 name="Glue"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status"]
+availableFeatures=["Pipelines", "Pipeline Status", "Usage"]
 unavailableFeatures=["Owners", "Tags", "Lineage"]
 / %}
 
@@ -17,7 +17,7 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -32,7 +32,7 @@ The user must have the following permissions for the ingestion to run successful
 
 ### Python Requirements
 
-{% partial file="/v1.7/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the Glue ingestion, you will need to install:
 
@@ -63,48 +63,13 @@ This is a sample config for Glue:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
+{% partial file="/v1.7/connectors/yaml/common/aws-config-def.md" /%}
 
+{% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
 
-**awsAccessKeyId**: Enter your secure access key ID for your Glue connection. The specified key ID should be
-  authorized to read all databases you want to include in the metadata ingestion workflow.
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% /codeInfo %}
-
-{% codeInfo srNumber=2 %}
-
-**awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsRegion**: Enter the location of the amazon cluster that your data and account are associated with.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=4 %}
-
-**awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary
-  session token.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=5 %}
-
-**endPointURL**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You
-  may override this behavior by entering a value to the endpoint URL.
-
-
-{% /codeInfo %}
-
-
-{% partial file="/v1.7/connectors/yaml/pipeline/source-config-def.md" /%}
-
-{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
-
-{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -119,30 +84,16 @@ source:
       type: GluePipeline
       awsConfig:
 ```
-```yaml {% srNumber=1 %}
-        awsAccessKeyId: KEY
-```
-```yaml {% srNumber=2 %}
-        awsSecretAccessKey: SECRET
-```
-```yaml {% srNumber=3 %}
-        awsRegion: us-east-2
-```
-```yaml {% srNumber=4 %}
-        # awsSessionToken: TOKEN
-```
-```yaml {% srNumber=5 %}
-        # endPointURL: https://glue.us-east-2.amazonaws.com/
-```
+{% partial file="/v1.7/connectors/yaml/common/aws-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}

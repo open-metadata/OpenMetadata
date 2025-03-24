@@ -42,6 +42,8 @@ class WorkbookDetails(BaseModel):
 
 class WorkBookResponseDetails(BaseModel):
     entries: Optional[List[Workbook]] = []
+    total: int
+    nextPage: Optional[str] = None
 
 
 class OwnerDetails(BaseModel):
@@ -55,6 +57,8 @@ class WorkBookPage(BaseModel):
 
 class WorkBookPageResponse(BaseModel):
     entries: Optional[List[WorkBookPage]] = []
+    total: int
+    nextPage: Optional[str] = None
 
 
 class Elements(BaseModel):
@@ -66,6 +70,8 @@ class Elements(BaseModel):
 
 class ElementsResponse(BaseModel):
     entries: Optional[List[Elements]] = []
+    total: int
+    nextPage: Optional[str] = None
 
 
 class EdgeSource(BaseModel):

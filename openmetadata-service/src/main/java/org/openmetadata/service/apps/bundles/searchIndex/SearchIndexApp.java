@@ -1,50 +1,12 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.API_COLLCECTION;
-import static org.openmetadata.service.Entity.API_ENDPOINT;
-import static org.openmetadata.service.Entity.API_SERVICE;
-import static org.openmetadata.service.Entity.CHART;
-import static org.openmetadata.service.Entity.CLASSIFICATION;
-import static org.openmetadata.service.Entity.CONTAINER;
-import static org.openmetadata.service.Entity.DASHBOARD;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
-import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
-import static org.openmetadata.service.Entity.DATABASE;
-import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.DATABASE_SERVICE;
-import static org.openmetadata.service.Entity.DATA_PRODUCT;
-import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
-import static org.openmetadata.service.Entity.GLOSSARY;
-import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
-import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
-import static org.openmetadata.service.Entity.METADATA_SERVICE;
-import static org.openmetadata.service.Entity.METRIC;
-import static org.openmetadata.service.Entity.MLMODEL;
-import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
-import static org.openmetadata.service.Entity.PIPELINE;
-import static org.openmetadata.service.Entity.PIPELINE_SERVICE;
-import static org.openmetadata.service.Entity.QUERY;
-import static org.openmetadata.service.Entity.SEARCH_INDEX;
-import static org.openmetadata.service.Entity.SEARCH_SERVICE;
-import static org.openmetadata.service.Entity.STORAGE_SERVICE;
-import static org.openmetadata.service.Entity.STORED_PROCEDURE;
-import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
 import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
-import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.TOPIC;
-import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
-import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
-import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
@@ -62,6 +24,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -80,6 +43,7 @@ import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -99,52 +63,7 @@ import org.quartz.JobExecutionContext;
 
 @Slf4j
 public class SearchIndexApp extends AbstractNativeApplication {
-
   private static final String ALL = "all";
-
-  public static final Set<String> ALL_ENTITIES =
-      Set.of(
-          TABLE,
-          DASHBOARD,
-          TOPIC,
-          PIPELINE,
-          INGESTION_PIPELINE,
-          SEARCH_INDEX,
-          USER,
-          TEAM,
-          GLOSSARY,
-          GLOSSARY_TERM,
-          MLMODEL,
-          TAG,
-          CLASSIFICATION,
-          QUERY,
-          CONTAINER,
-          DATABASE,
-          DATABASE_SCHEMA,
-          TEST_CASE,
-          TEST_SUITE,
-          CHART,
-          DASHBOARD_DATA_MODEL,
-          DATABASE_SERVICE,
-          MESSAGING_SERVICE,
-          DASHBOARD_SERVICE,
-          PIPELINE_SERVICE,
-          MLMODEL_SERVICE,
-          STORAGE_SERVICE,
-          METADATA_SERVICE,
-          SEARCH_SERVICE,
-          ENTITY_REPORT_DATA,
-          WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
-          WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
-          DOMAIN,
-          STORED_PROCEDURE,
-          DATA_PRODUCT,
-          TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT,
-          API_SERVICE,
-          API_ENDPOINT,
-          API_COLLCECTION,
-          METRIC);
 
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
@@ -154,7 +73,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
           ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
           ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
           TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT);
+          TEST_CASE_RESULT,
+          QUERY_COST_RECORD);
 
   // Constants to replace magic numbers
   private BulkSink searchIndexSink;
@@ -180,8 +100,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
             .withStats(new Stats());
 
-    if (request.getEntities().contains(ALL)) {
-      request.setEntities(ALL_ENTITIES);
+    if (request.getEntities().size() == 1 && request.getEntities().contains(ALL)) {
+      SearchRepository searchRepo = Entity.getSearchRepo();
+      request.setEntities(searchRepo.getSearchEntities());
     }
 
     jobData = request;
@@ -199,6 +120,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         jobData.setRecreateIndex(false);
       }
 
+      reCreateIndexes(jobData.getEntities());
       performReindex(jobExecutionContext);
     } catch (InterruptedException ex) {
       Thread.currentThread().interrupt();
@@ -326,7 +248,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobExecutor.submit(
           () -> {
             try {
-              reCreateIndexes(entityType);
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
@@ -517,20 +438,22 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void reCreateIndexes(String entityType) throws SearchIndexException {
-    if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
-      LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
-      return;
-    }
+  private void reCreateIndexes(Set<String> entities) throws SearchIndexException {
+    for (String entityType : entities) {
+      if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
+        LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
+        return;
+      }
 
-    try {
-      IndexMapping indexType = searchRepository.getIndexMapping(entityType);
-      searchRepository.deleteIndex(indexType);
-      searchRepository.createIndex(indexType);
-      LOG.info("Recreated index for entityType '{}'.", entityType);
-    } catch (Exception e) {
-      LOG.error("Failed to recreate index for entityType '{}'.", entityType, e);
-      throw new SearchIndexException(e);
+      try {
+        IndexMapping indexType = searchRepository.getIndexMapping(entityType);
+        searchRepository.deleteIndex(indexType);
+        searchRepository.createIndex(indexType);
+        LOG.info("Recreated index for entityType '{}'.", entityType);
+      } catch (Exception e) {
+        LOG.error("Failed to recreate index for entityType '{}'.", entityType, e);
+        throw new SearchIndexException(e);
+      }
     }
   }
 
@@ -546,6 +469,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
     LOG.info("Stopped reindexing job.");
     jobData.setStatus(EventPublisherJob.Status.STOPPED);
     sendUpdates(jobExecutionContext);
+  }
+
+  @Override
+  protected void validateConfig(Map<String, Object> appConfig) {
+    try {
+      JsonUtils.convertValue(appConfig, EventPublisherJob.class);
+    } catch (IllegalArgumentException e) {
+      throw AppException.byMessage(
+          Response.Status.BAD_REQUEST, "Invalid App Configuration: " + e.getMessage());
+    }
   }
 
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {

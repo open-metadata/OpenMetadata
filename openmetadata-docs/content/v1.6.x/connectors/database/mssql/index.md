@@ -7,7 +7,7 @@ slug: /connectors/database/mssql
 name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data"]
 unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 
@@ -15,7 +15,7 @@ In this section, we provide guides and references to use the MSSQL connector.
 
 Configure and schedule MSSQL metadata and profiler workflows from the OpenMetadata UI:
 
-- [Remote-Connection]() 
+- [Remote-Connection](#for-remote-connection)
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
