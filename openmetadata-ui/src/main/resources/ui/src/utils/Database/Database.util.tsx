@@ -23,7 +23,7 @@ import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFe
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
@@ -107,7 +107,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
     key: 'description',
     render: (text: string) =>
       text?.trim() ? (
-        <RichTextEditorPreviewerV1 markdown={text} />
+        <RichTextEditorPreviewerNew markdown={text} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', { entity: t('label.description') })}

@@ -40,7 +40,7 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 
 const DataModelTable = () => {
@@ -90,7 +90,7 @@ const DataModelTable = () => {
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         render: (description: ServicePageData['description']) =>
           !isUndefined(description) && description.trim() ? (
-            <RichTextEditorPreviewerV1 markdown={description} />
+            <RichTextEditorPreviewerNew markdown={description} />
           ) : (
             <span className="text-grey-muted">
               {t('label.no-entity', {
@@ -154,7 +154,6 @@ const DataModelTable = () => {
   return (
     <Table
       bordered
-      className="mt-4 table-shadow"
       columns={tableColumn}
       customPaginationProps={{
         currentPage,

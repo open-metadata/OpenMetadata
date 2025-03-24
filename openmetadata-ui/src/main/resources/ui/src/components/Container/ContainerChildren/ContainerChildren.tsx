@@ -27,7 +27,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
@@ -82,7 +82,7 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
         render: (description: EntityReference['description']) => (
           <>
             {description ? (
-              <RichTextEditorPreviewerV1 markdown={description} />
+              <RichTextEditorPreviewerNew markdown={description} />
             ) : (
               <Typography.Text className="text-grey-muted">
                 {t('label.no-entity', {

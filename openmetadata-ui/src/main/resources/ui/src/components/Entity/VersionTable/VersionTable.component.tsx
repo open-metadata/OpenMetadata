@@ -33,6 +33,7 @@ import {
 } from '../../../utils/TableUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { VersionTableProps } from './VersionTable.interfaces';
@@ -183,7 +184,7 @@ function VersionTable<T extends Column | SearchIndexField>({
         render: (description: T['description']) =>
           description ? (
             <>
-              <RichTextEditorPreviewerV1 markdown={description} />
+              <RichTextEditorPreviewerNew markdown={description} />
               {getFrequentlyJoinedColumns(
                 columnName,
                 joins ?? [],

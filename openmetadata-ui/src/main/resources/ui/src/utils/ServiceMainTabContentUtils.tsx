@@ -19,7 +19,7 @@ import { ServiceTypes } from 'Models';
 import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -71,7 +71,7 @@ export const getServiceMainTabColumns = (
     width: 300,
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewerV1 markdown={description} />
+        <RichTextEditorPreviewerNew markdown={description} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {

@@ -49,7 +49,6 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -102,6 +101,7 @@ import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
@@ -369,7 +369,7 @@ const GlossaryTermTab = ({
         width: tableColumnsWidth.description,
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
               maxLength={120}

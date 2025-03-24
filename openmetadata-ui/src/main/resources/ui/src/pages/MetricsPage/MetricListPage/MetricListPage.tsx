@@ -20,7 +20,7 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -170,7 +170,7 @@ const MetricListPage = () => {
               })}
             </Typography.Text>
           ) : (
-            <RichTextEditorPreviewerV1 markdown={description} />
+            <RichTextEditorPreviewerNew markdown={description} />
           ),
       },
       {

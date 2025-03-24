@@ -66,6 +66,7 @@ import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -333,7 +334,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       render: (description) =>
         description ? (
-          <RichTextEditorPreviewerV1
+          <RichTextEditorPreviewerNew
             className="max-two-lines"
             markdown={highlightSearchText(description, searchTerm)}
           />

@@ -45,7 +45,7 @@ import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -138,7 +138,7 @@ const BotListV1 = ({
         key: 'description',
         render: (_, record) =>
           record?.description ? (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               markdown={highlightSearchText(
                 record?.description || '',
                 searchTerm

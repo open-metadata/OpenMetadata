@@ -23,7 +23,7 @@ import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
@@ -103,7 +103,7 @@ const KPIList = () => {
         width: 300,
         render: (description: string | undefined) =>
           description ? (
-            <RichTextEditorPreviewerV1 markdown={description} />
+            <RichTextEditorPreviewerNew markdown={description} />
           ) : (
             <span data-testid="no-description">
               {t('label.no-entity', {

@@ -26,7 +26,7 @@ import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
 const SubDomainsTable = ({
@@ -63,10 +63,9 @@ const SubDomainsTable = ({
         key: 'description',
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
-              maxLength={120}
             />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
