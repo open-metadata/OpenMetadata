@@ -128,3 +128,7 @@ ingestion/tests/cli_e2e/**/*test.yaml
 
 # Tests
 **/metastore_db/
+
+# Cursor rules
+.cursorrules
+.cursor/

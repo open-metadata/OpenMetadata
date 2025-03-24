@@ -247,73 +247,81 @@ class SqlColumnHandlerMixin:
         table_columns = []
 
         columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
-        for column in columns:
-            try:
-                children = None
-                (
-                    data_type_display,
-                    arr_data_type,
-                    parsed_string,
-                ) = self._process_col_type(column, schema_name)
-                self.process_additional_table_constraints(
-                    column=column, table_constraints=table_constraints
-                )
-                if parsed_string is None:
-                    col_type = ColumnTypeParser.get_column_type(column["type"])
-                    col_constraint = self._get_column_constraints(
-                        column, pk_columns, column_level_unique_constraints
-                    )
-                    col_data_length = self._check_col_length(col_type, column["type"])
-                    precision = ColumnTypeParser.check_col_precision(
-                        col_type, column["type"]
-                    )
-                    if col_type is None:
-                        col_type = DataType.UNKNOWN.name
-                        data_type_display = col_type.lower()
-                        logger.warning(
-                            f"Unknown type {repr(column['type'])}: {column['name']}"
-                        )
-                    data_type_display = self._get_display_datatype(
-                        data_type_display,
-                        col_type,
-                        col_data_length,
-                        arr_data_type,
-                        precision,
-                    )
-                    col_data_length = 1 if col_data_length is None else col_data_length
 
-                    om_column = Column(
-                        name=ColumnName(
-                            root=column["name"]
+        def process_column(column: dict):
+            (
+                data_type_display,
+                arr_data_type,
+                parsed_string,
+            ) = self._process_col_type(column, schema_name)
+            self.process_additional_table_constraints(
+                column=column, table_constraints=table_constraints
+            )
+            if parsed_string is None:
+                col_type = ColumnTypeParser.get_column_type(column["type"])
+                col_constraint = self._get_column_constraints(
+                    column, pk_columns, column_level_unique_constraints
+                )
+                col_data_length = self._check_col_length(col_type, column["type"])
+                precision = ColumnTypeParser.check_col_precision(
+                    col_type, column["type"]
+                )
+                if col_type is None:
+                    col_type = DataType.UNKNOWN.name
+                    data_type_display = col_type.lower()
+                    logger.warning(
+                        f"Unknown type {repr(column['type'])}: {column['name']}"
+                    )
+                data_type_display = self._get_display_datatype(
+                    data_type_display,
+                    col_type,
+                    col_data_length,
+                    arr_data_type,
+                    precision,
+                )
+                col_data_length = 1 if col_data_length is None else col_data_length
+
+                om_column = Column(
+                    name=ColumnName(
+                        root=(
+                            column["name"]
                             # Passing whitespace if column name is an empty string
                             # since pydantic doesn't accept empty string
                             if column["name"]
                             else " "
-                        ),
-                        description=column.get("comment"),
-                        dataType=col_type,
-                        dataTypeDisplay=column.get(
-                            "system_data_type", data_type_display
-                        ),
-                        dataLength=col_data_length,
-                        constraint=col_constraint,
-                        children=children,
-                        arrayDataType=arr_data_type,
-                        ordinalPosition=column.get("ordinalPosition"),
-                    )
-                    if precision:
-                        # Precision and scale must be integer values
-                        om_column.precision = int(precision[0])
-                        om_column.scale = int(precision[1])
-
-                else:
-                    col_obj = self._process_complex_col_type(
-                        column=column, parsed_string=parsed_string
-                    )
-                    om_column = col_obj
-                om_column.tags = self.get_column_tag_labels(
-                    table_name=table_name, column=column
+                        )
+                    ),
+                    description=column.get("comment"),
+                    dataType=col_type,
+                    dataTypeDisplay=column.get("system_data_type", data_type_display),
+                    dataLength=col_data_length,
+                    constraint=col_constraint,
+                    arrayDataType=arr_data_type,
+                    ordinalPosition=column.get("ordinalPosition"),
                 )
+                if column.get("children"):
+                    om_column.children = [
+                        process_column(children) for children in column.get("children")
+                    ]
+                    if not arr_data_type:
+                        om_column.arrayDataType = DataType.UNKNOWN.value
+                if precision:
+                    # Precision and scale must be integer values
+                    om_column.precision = int(precision[0])
+                    om_column.scale = int(precision[1])
+            else:
+                col_obj = self._process_complex_col_type(
+                    column=column, parsed_string=parsed_string
+                )
+                om_column = col_obj
+            om_column.tags = self.get_column_tag_labels(
+                table_name=table_name, column=column
+            )
+            return om_column
+
+        for column in columns:
+            try:
+                om_column = process_column(column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
