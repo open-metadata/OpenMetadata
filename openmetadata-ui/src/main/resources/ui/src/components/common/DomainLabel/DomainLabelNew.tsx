@@ -159,9 +159,7 @@ export const DomainLabelNew = ({
     } else {
       return (
         <Typography.Text
-          className={classNames('text-sm no-data-chip-placeholder', {
-            'text-xs': !showDomainHeading,
-          })}
+          className={classNames('text-sm no-data-chip-placeholder')}
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain') })}
         </Typography.Text>

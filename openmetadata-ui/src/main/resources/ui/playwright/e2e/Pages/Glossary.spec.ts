@@ -132,6 +132,20 @@ test.describe('Glossary tests', () => {
           glossary1.data.terms[0].data.name
         );
 
+        // Check reviewer's notifications before approval
+        await page1.getByTestId('task-notifications').click();
+        await page1.waitForSelector('.ant-dropdown');
+        const firstNotification = page1
+          .locator('.ant-list-items > .ant-list-item')
+          .first();
+
+        await expect(firstNotification).toContainText(
+          `Approval required for ${glossary1.data.terms[0].data.name}`
+        );
+        await expect(firstNotification).toContainText(
+          glossary1.data.fullyQualifiedName
+        );
+
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
         await redirectToHomePage(page1);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
@@ -372,6 +386,80 @@ test.describe('Glossary tests', () => {
       await reviewer1.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Approve and reject glossary term from Glossary Listing', async ({
+    browser,
+  }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user3);
+    const glossary1 = new Glossary();
+
+    glossary1.data.owners = [{ name: 'admin', type: 'user' }];
+    glossary1.data.mutuallyExclusive = true;
+    glossary1.data.reviewers = [
+      { name: `${user3.data.firstName}${user3.data.lastName}`, type: 'user' },
+    ];
+    glossary1.data.terms = [
+      new GlossaryTerm(glossary1),
+      new GlossaryTerm(glossary1),
+    ];
+
+    await test.step('Create Glossary and Terms', async () => {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await createGlossary(page, glossary1.data, false);
+      await verifyGlossaryDetails(page, glossary1.data);
+      await createGlossaryTerms(page, glossary1.data);
+    });
+
+    await test.step('Approve and Reject Glossary Term', async () => {
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+      await verifyTaskCreated(
+        page1,
+        glossary1.data.fullyQualifiedName,
+        glossary1.data.terms[0].data.name
+      );
+      await verifyTaskCreated(
+        page1,
+        glossary1.data.fullyQualifiedName,
+        glossary1.data.terms[1].data.name
+      );
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+
+      const taskResolve = page1.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      await page1
+        .getByTestId(`${glossary1.data.terms[0].data.name}-approve-btn`)
+        .click();
+      await taskResolve;
+      await toastNotification(page1, /Task resolved successfully/);
+
+      await validateGlossaryTerm(
+        page1,
+        glossary1.data.terms[0].data,
+        'Approved'
+      );
+
+      await page1
+        .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
+        .click();
+      await taskResolve;
+
+      await expect(
+        page1.getByTestId(`${glossary1.data.terms[1].data.name}`)
+      ).not.toBeVisible();
+
+      await afterActionUser1();
+    });
+
+    await glossary1.delete(apiContext);
+    await afterAction();
   });
 
   test('Add and Remove Assets', async ({ browser }) => {

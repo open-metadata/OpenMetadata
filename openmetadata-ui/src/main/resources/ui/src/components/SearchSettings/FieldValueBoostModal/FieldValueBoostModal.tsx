@@ -22,8 +22,7 @@ import { modifierOptions } from '../../../utils/SearchSettingsUtils';
 
 interface FieldValueBoostModalProps {
   open: boolean;
-  entityOptions: { label: string; value: string }[];
-  fieldOptionsByEntity: Record<string, { label: string; value: string }[]>;
+  entityOptions: string[];
   selectedBoost?: FieldValueBoost;
   onSave: (values: FieldValueBoost) => void;
   onCancel: () => void;
@@ -32,7 +31,6 @@ interface FieldValueBoostModalProps {
 const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
   open,
   entityOptions,
-  fieldOptionsByEntity,
   selectedBoost,
   onSave,
   onCancel,
@@ -40,27 +38,10 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
   const { t } = useTranslation();
   const [form] = useForm();
   const [factor, setFactor] = useState<number>(selectedBoost?.factor ?? 0);
-  const [selectedEntityType, setSelectedEntityType] = useState<string>('');
-  const [availableFields, setAvailableFields] = useState<
-    { label: string; value: string }[]
-  >([]);
 
   useEffect(() => {
     if (selectedBoost) {
-      for (const [entityType, fields] of Object.entries(fieldOptionsByEntity)) {
-        const fieldExists = fields.some(
-          (field) => field.value === selectedBoost.field
-        );
-        if (fieldExists) {
-          setSelectedEntityType(entityType);
-          setAvailableFields(fieldOptionsByEntity[entityType] || []);
-
-          break;
-        }
-      }
-
       form.setFieldsValue({
-        entityType: selectedEntityType,
         field: selectedBoost.field,
         factor: selectedBoost.factor,
         modifier: selectedBoost.modifier,
@@ -71,20 +52,12 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
     } else {
       form.resetFields();
       setFactor(0);
-      setSelectedEntityType('');
-      setAvailableFields([]);
     }
-  }, [selectedBoost, open, fieldOptionsByEntity]);
+  }, [selectedBoost, open]);
 
   const handleFactorChange = (value: number) => {
     setFactor(value);
     form.setFieldValue('factor', value);
-  };
-
-  const handleEntityTypeChange = (value: string) => {
-    setSelectedEntityType(value);
-    setAvailableFields(fieldOptionsByEntity[value] || []);
-    form.setFieldValue('field', undefined); // Reset field when entity type changes
   };
 
   const handleSubmit = () => {
@@ -151,37 +124,22 @@ const FieldValueBoostModal: React.FC<FieldValueBoostModalProps> = ({
         }}
         layout="vertical">
         <Form.Item
-          data-testid="entity-type"
-          label={t('label.entity-type')}
-          name="entityType"
-          rules={[{ required: true, message: t('message.field-required') }]}>
-          <Select
-            showSearch
-            filterOption={(input, option) =>
-              (option?.label as string)
-                .toLowerCase()
-                .includes(input.toLowerCase())
-            }
-            options={entityOptions}
-            placeholder={t('label.select-entity-type')}
-            onChange={handleEntityTypeChange}
-          />
-        </Form.Item>
-
-        <Form.Item
           data-testid="field"
           label={t('label.field')}
           name="field"
           rules={[{ required: true, message: t('message.field-required') }]}>
           <Select
             showSearch
-            disabled={!selectedEntityType}
+            disabled={!!selectedBoost?.field}
             filterOption={(input, option) =>
               (option?.label as string)
                 .toLowerCase()
                 .includes(input.toLowerCase())
             }
-            options={availableFields}
+            options={entityOptions.map((field) => ({
+              label: field,
+              value: field,
+            }))}
             placeholder={t('label.select-field')}
           />
         </Form.Item>
