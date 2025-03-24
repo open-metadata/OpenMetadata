@@ -90,11 +90,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
       return {
         className: toLower(status.testCaseResolutionStatusType),
         title: (
-          <div>
+          <div className="incident-title">
             <Typography.Paragraph className="m-b-0">
               {status.testCaseResolutionStatusType}
             </Typography.Paragraph>
-            <Typography.Paragraph className="m-b-0">
+            <Typography.Paragraph className="m-b-0 incident-details">
               {details}
               {status.updatedAt && (
                 <Typography.Text className="text-grey-muted text-xss">
