@@ -23,6 +23,7 @@ import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-fi
 import { ROUTES } from '../../../constants/constants';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
@@ -40,6 +41,7 @@ const EntityHeaderTitle = ({
   isDisabled,
   className,
   showName = true,
+  showOnlyDisplayName = false,
   certification,
   excludeEntityService,
   isFollowing,
@@ -66,6 +68,19 @@ const EntityHeaderTitle = ({
     [location.pathname]
   );
 
+  const entityName = useMemo(
+    () =>
+      stringToHTML(
+        showOnlyDisplayName
+          ? getEntityName({
+              displayName,
+              name,
+            })
+          : name
+      ),
+    [showOnlyDisplayName, displayName, name]
+  );
+
   const content = (
     <Row
       align="middle"
@@ -87,7 +102,7 @@ const EntityHeaderTitle = ({
                 nameClassName,
                 'm-b-0 d-block display-sm font-semibold'
               )}
-              data-testid="entity-header-name"
+              data-testid="entity-header-display-name"
               ellipsis={{ tooltip: true }}>
               {stringToHTML(displayName ?? name)}
             </Typography.Text>
@@ -97,15 +112,15 @@ const EntityHeaderTitle = ({
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Tooltip placement="bottom" title={stringToHTML(name)}>
+          <Tooltip placement="bottom" title={entityName}>
             <Typography.Text
               className={classNames(displayNameClassName, 'm-b-0', {
                 'display-sm entity-header-name font-semibold': !displayName,
                 'text-md entity-header-display-name font-medium': displayName,
               })}
-              data-testid="entity-header-display-name"
+              data-testid="entity-header-name"
               ellipsis={{ tooltip: true }}>
-              {stringToHTML(name)}
+              {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
                   className="anticon vertical-baseline m-l-xss"

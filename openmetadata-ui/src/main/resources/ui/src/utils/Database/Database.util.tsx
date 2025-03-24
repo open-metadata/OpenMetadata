@@ -31,6 +31,7 @@ import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonW
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { ExportTypes } from '../../constants/Export.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
@@ -148,6 +149,7 @@ export const getDatabasePageBaseTabs = ({
   getEntityFeedCount,
   editCustomAttributePermission,
   getDetailsByFQN,
+  labelMap,
 }: DatabaseDetailPageTabProps): TabProps[] => {
   return [
     {
@@ -156,7 +158,7 @@ export const getDatabasePageBaseTabs = ({
           count={schemaInstanceCount}
           id={EntityTabs.SCHEMAS}
           isActive={activeTab === EntityTabs.SCHEMAS}
-          name={t('label.schema-plural')}
+          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.schema-plural')}
         />
       ),
       key: EntityTabs.SCHEMAS,
@@ -166,12 +168,15 @@ export const getDatabasePageBaseTabs = ({
       label: (
         <TabsLabel
           count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEEDS}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEEDS}
-          name={t('label.activity-feed-plural')}
+          id={EntityTabs.ACTIVITY_FEED}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          name={
+            labelMap?.[EntityTabs.ACTIVITY_FEED] ??
+            t('label.activity-feed-and-task-plural')
+          }
         />
       ),
-      key: EntityTabs.ACTIVITY_FEEDS,
+      key: EntityTabs.ACTIVITY_FEED,
       children: (
         <ActivityFeedTab
           refetchFeed
@@ -189,7 +194,10 @@ export const getDatabasePageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={
+            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
+            t('label.custom-property-plural')
+          }
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
@@ -268,6 +276,7 @@ export const ExtraDatabaseDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportDatabaseDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />

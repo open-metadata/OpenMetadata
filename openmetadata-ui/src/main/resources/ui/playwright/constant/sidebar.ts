@@ -21,7 +21,7 @@ export enum SidebarItem {
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
   TAGS = 'tags',
-  INSIGHTS = 'insights',
+  INSIGHTS = 'data-insight',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
   METRICS = 'metrics',
