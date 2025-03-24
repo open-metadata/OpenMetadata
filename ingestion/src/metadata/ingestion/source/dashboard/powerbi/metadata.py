@@ -69,7 +69,6 @@ from metadata.utils.filters import (
     filter_by_dashboard,
     filter_by_datamodel,
 )
-from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -763,15 +762,17 @@ class PowerbiSource(DashboardServiceSource):
         """
         try:
             table_info = self._parse_table_info_from_source_exp(table)
-            fqn_search_string = build_es_fqn_search_string(
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=db_service_name or "*",
                 database_name=table_info.get("database"),
                 schema_name=table_info.get("schema"),
-                service_name=db_service_name or "*",
                 table_name=table_info.get("table") or table.name,
             )
-            table_entity = self.metadata.search_in_any_service(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
+            table_entity = self.metadata.get_by_name(
+                entity=Table,
+                fqn=table_fqn,
             )
             if table_entity and datamodel_entity:
                 columns_list = [column.name for column in table.columns]
