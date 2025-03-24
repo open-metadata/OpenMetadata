@@ -37,6 +37,12 @@ public class S3Configuration {
   @JsonProperty("cloudFrontUrl")
   private String cloudFrontUrl;
 
+  @JsonProperty("cloudFrontKeyId")
+  private String cloudFrontKeyPairId;
+
+  @JsonProperty("cloudFrontPrivateKeyPath")
+  private String cloudFrontPrivateKeyPath;
+
   @AssertTrue(
       message = "Either useIamRole must be true or both accessKey and secretKey must be provided")
   public boolean isValidCredentials() {
