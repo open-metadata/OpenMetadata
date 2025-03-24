@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { mergeAttributes, Node } from '@tiptap/core';
-import { bytesToSize } from '../../../../utils/StringsUtils';
-import { FileType } from '../../BlockEditor.interface';
+import { ReactNodeViewRenderer } from '@tiptap/react';
 import { FileNodeAttrs, FileNodeOptions } from './FileNode.interface';
+import FileNodeView from './FileNodeView';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -40,6 +40,11 @@ const FileNode = Node.create<FileNodeOptions>({
       fileName: { default: '' },
       fileSize: { default: null },
       mimeType: { default: '' },
+      isUploading: { default: false },
+      uploadProgress: { default: 0 },
+      tempFile: { default: null },
+      isImage: { default: false },
+      alt: { default: null },
     };
   },
 
@@ -56,12 +61,22 @@ const FileNode = Node.create<FileNodeOptions>({
           const fileName = element.getAttribute('data-filename') || '';
           const fileSize = element.getAttribute('data-filesize');
           const mimeType = element.getAttribute('data-mimetype') || '';
+          const isUploading = element.getAttribute('data-uploading') === 'true';
+          const uploadProgress = element.getAttribute('data-upload-progress');
+          const tempFile = element.getAttribute('data-temp-file');
+          const isImage = element.getAttribute('data-is-image') === 'true';
+          const alt = element.getAttribute('data-alt');
 
           return {
             url,
             fileName,
             fileSize: fileSize ? parseInt(fileSize) : null,
             mimeType,
+            isUploading,
+            uploadProgress: uploadProgress ? parseInt(uploadProgress) : 0,
+            tempFile: tempFile ? JSON.parse(tempFile) : null,
+            isImage,
+            alt,
           };
         },
       },
@@ -76,70 +91,18 @@ const FileNode = Node.create<FileNodeOptions>({
       'data-filename': attrs.fileName,
       'data-filesize': attrs.fileSize?.toString(),
       'data-mimetype': attrs.mimeType,
+      'data-uploading': attrs.isUploading?.toString(),
+      'data-upload-progress': attrs.uploadProgress?.toString(),
+      'data-temp-file': attrs.tempFile ? JSON.stringify(attrs.tempFile) : null,
+      'data-is-image': attrs.isImage?.toString(),
+      'data-alt': attrs.alt,
     };
 
-    switch (true) {
-      case attrs.mimeType.startsWith(FileType.VIDEO):
-        return [
-          'div',
-          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
-            class: 'file-attachment file-type-video',
-          }),
-          [
-            'video',
-            {
-              controls: 'true',
-              src: attrs.url,
-              class: 'video-player',
-            },
-          ],
-        ];
+    return ['div', mergeAttributes(this.options.HTMLAttributes, baseAttrs)];
+  },
 
-      case attrs.mimeType.startsWith(FileType.AUDIO):
-        return [
-          'div',
-          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
-            class: 'file-attachment file-type-audio',
-          }),
-          [
-            'audio',
-            {
-              controls: 'true',
-              src: attrs.url,
-              class: 'audio-player',
-            },
-          ],
-        ];
-
-      default:
-        return [
-          'div',
-          mergeAttributes(this.options.HTMLAttributes, baseAttrs, {
-            class: 'file-attachment file-type-file',
-          }),
-          [
-            'a',
-            {
-              href: attrs.url,
-              class: 'file-link',
-              target: '_blank',
-              rel: 'noopener noreferrer',
-            },
-            [
-              'span',
-              { class: 'file-name' },
-              attrs.fileName,
-              attrs.fileSize
-                ? [
-                    'span',
-                    { class: 'file-size' },
-                    ` (${bytesToSize(attrs.fileSize)})`,
-                  ]
-                : null,
-            ],
-          ],
-        ];
-    }
+  addNodeView() {
+    return ReactNodeViewRenderer(FileNodeView);
   },
 
   addCommands() {

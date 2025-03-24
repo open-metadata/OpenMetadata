@@ -14,6 +14,16 @@ import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockEditorAttachmentProps } from '../../BlockEditor.interface';
 import EmbedLinkElement from './EmbedLinkElement/EmbedLinkElement';
 
+export type AuthenticatedImageUrl = (src: string) => {
+  imageSrc: string;
+  isLoading: boolean;
+};
+
+export type AuthenticatedFileUrl = (url: string) => {
+  downloadFile: (fileName: string) => void;
+  isLoading: boolean;
+};
+
 class ImageClassBase {
   public getImageComponentPopoverTab() {
     return [
@@ -28,6 +38,14 @@ class ImageClassBase {
   public getBlockEditorAttachmentProps():
     | BlockEditorAttachmentProps
     | undefined {
+    return undefined;
+  }
+
+  public getAuthenticatedImageUrl(): AuthenticatedImageUrl | undefined {
+    return undefined;
+  }
+
+  public getAuthenticatedFileUrl(): AuthenticatedFileUrl | undefined {
     return undefined;
   }
 }

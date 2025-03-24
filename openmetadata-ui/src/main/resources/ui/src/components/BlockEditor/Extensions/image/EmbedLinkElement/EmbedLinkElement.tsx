@@ -21,6 +21,7 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
   onUploadingChange,
   src,
   deleteNode,
+  fileType,
 }) => {
   const { t } = useTranslation();
 
@@ -53,7 +54,11 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
             <Input
               autoFocus
               data-testid="embed-input"
-              placeholder={t('label.paste-the-image-link') + ' ...'}
+              placeholder={
+                t('label.paste-the-file-type-link', {
+                  fileType: t(`label.${fileType}`),
+                }) + ' ...'
+              }
             />
           </Form.Item>
         </Col>
@@ -69,7 +74,7 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
             </Button>
           </Space>
           <Button htmlType="submit" type="primary">
-            {t('label.embed-image')}
+            {t('label.embed-file-type', { fileType })}
           </Button>
         </Col>
       </Row>

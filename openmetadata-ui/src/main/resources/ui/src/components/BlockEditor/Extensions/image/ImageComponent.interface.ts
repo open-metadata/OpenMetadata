@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { NodeViewProps } from '@tiptap/react';
+import { FileType } from '../../BlockEditor.interface';
 
 export interface ImagePopoverContentProps {
   updateAttributes: NodeViewProps['updateAttributes'];
@@ -20,4 +21,5 @@ export interface ImagePopoverContentProps {
   src: string;
   onPopupVisibleChange: (value: boolean) => void;
   onUploadingChange: (value: boolean) => void;
+  fileType: FileType;
 }
