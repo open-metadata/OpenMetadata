@@ -214,7 +214,11 @@ const Table = <T extends Record<string, unknown>>(
 
   return (
     <Row className="table-container">
-      <Col className="p-y-md" span={24}>
+      <Col
+        className={classNames({
+          'p-y-md': searchProps || rest.extraTableFilters || !isFullViewTable,
+        })}
+        span={24}>
         <Row className="p-x-md">
           {searchProps ? (
             <Col span={12}>
