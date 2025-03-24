@@ -252,7 +252,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <Col span={24}>
+          <Col className="p-x-lg" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

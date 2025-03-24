@@ -288,7 +288,7 @@ const IncidentManagerDetailPage = () => {
             onOwnerUpdate={handleOwnerChange}
           />
         </Col>
-        <Col span={24}>
+        <Col className="p-x-lg" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}

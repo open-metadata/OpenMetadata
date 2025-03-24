@@ -297,7 +297,7 @@ function DatabaseVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col span={24}>
+                <Col className="p-x-lg" span={24}>
                   <Tabs
                     className="tabs-new"
                     data-testid="tabs"

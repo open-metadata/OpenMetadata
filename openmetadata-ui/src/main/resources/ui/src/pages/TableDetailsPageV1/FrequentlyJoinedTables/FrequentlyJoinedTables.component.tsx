@@ -13,7 +13,7 @@
 import { Card, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
@@ -42,9 +42,13 @@ export const FrequentlyJoinedTables = ({
     [data?.joins]
   );
 
-  if (isEmpty(joinedTables)) {
-    filterWidgets([DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]);
+  useEffect(() => {
+    if (isEmpty(joinedTables)) {
+      filterWidgets([DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]);
+    }
+  }, [joinedTables]);
 
+  if (isEmpty(joinedTables)) {
     return null;
   }
 

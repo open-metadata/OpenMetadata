@@ -12,7 +12,7 @@
  */
 import { Card, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, map } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
@@ -176,9 +176,13 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
     </Space>
   );
 
-  if (isEmpty(data?.tableConstraints)) {
-    filterWidgets([DetailPageWidgetKeys.TABLE_CONSTRAINTS]);
+  useEffect(() => {
+    if (isEmpty(data?.tableConstraints)) {
+      filterWidgets([DetailPageWidgetKeys.TABLE_CONSTRAINTS]);
+    }
+  }, [data?.tableConstraints]);
 
+  if (!data?.tableConstraints) {
     return null;
   }
 

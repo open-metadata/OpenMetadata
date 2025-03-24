@@ -208,6 +208,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [typePermission]);
 
   useEffect(() => {
+    if (isRenderedInRightPanel && isEmpty(entityTypeDetail.customProperties)) {
+      filterWidgets([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
+    }
+  }, [isRenderedInRightPanel, entityTypeDetail.customProperties]);
+
+  useEffect(() => {
     fetchResourcePermission(entityType);
   }, [entityType]);
 
@@ -299,8 +305,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     );
 
     if (isEmpty(entityTypeDetail.customProperties)) {
-      filterWidgets([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
-
       // Noting should be shown in case of no properties
       return null;
     }

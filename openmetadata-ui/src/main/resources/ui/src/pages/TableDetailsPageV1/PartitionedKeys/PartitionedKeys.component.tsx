@@ -14,7 +14,8 @@ import { Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import React, { useMemo } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useEffect, useMemo } from 'react';
 import Table from '../../../components/common/Table/Table';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -59,9 +60,13 @@ export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
     return data;
   }, []);
 
-  if (!data?.tablePartition) {
-    filterWidgets([DetailPageWidgetKeys.PARTITIONED_KEYS]);
+  useEffect(() => {
+    if (isEmpty(partitionColumnDetails)) {
+      filterWidgets([DetailPageWidgetKeys.PARTITIONED_KEYS]);
+    }
+  }, [partitionColumnDetails]);
 
+  if (!data?.tablePartition) {
     return null;
   }
 

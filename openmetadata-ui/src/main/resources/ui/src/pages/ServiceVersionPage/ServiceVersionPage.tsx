@@ -476,7 +476,7 @@ function ServiceVersionPage() {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
+              <Col className="p-x-lg" span={24}>
                 <Tabs className="tabs-new" data-testid="tabs" items={tabs} />
               </Col>
             </Row>

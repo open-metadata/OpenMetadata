@@ -38,6 +38,7 @@ import { getDefaultWidgetForTab } from '../../../utils/CustomizePage/CustomizePa
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import Loader from '../../common/Loader/Loader';
 
 interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   children?: React.ReactNode;
@@ -82,7 +83,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const pageType = ENTITY_PAGE_TYPE_MAP[type];
-  const { customizedPage } = useCustomPages(pageType);
+  const { customizedPage, isLoading } = useCustomPages(pageType);
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [layout, setLayout] = useState<WidgetConfig[]>(() => {
     if (!customizedPage) {
@@ -101,6 +102,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   useEffect(() => {
     if (!customizedPage) {
       setLayout(getDefaultWidgetForTab(pageType, tab));
+
+      return;
     }
 
     if (customizedPage?.tabs && customizedPage.tabs.length > 0) {
@@ -138,12 +141,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }
   };
 
-  const filterWidgets = useCallback(
-    (widgets: string[]) => {
-      setLayout((prev) => prev.filter((widget) => !widgets.includes(widget.i)));
-    },
-    [setLayout]
-  );
+  const filterWidgets = useCallback((widgets: string[]) => {
+    setLayout((prev) => prev.filter((widget) => !widgets.includes(widget.i)));
+  }, []);
 
   const values = useMemo(
     () => ({
@@ -169,6 +169,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       filterWidgets,
     ]
   );
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <GenericContext.Provider value={values}>

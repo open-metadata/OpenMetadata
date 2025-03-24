@@ -29,11 +29,12 @@ type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 interface TabItemProps {
   item: Tab;
   index: number;
-  moveTab: (fromIndex: number, toIndex: number) => void;
+  moveTab?: (fromIndex: number, toIndex: number) => void;
   onEdit?: (key: string) => void;
   onRename?: (key: string) => void;
   onRemove?: (targetKey: TargetKey) => void;
   onItemClick?: (key: string) => void;
+  shouldHide?: boolean;
 }
 
 export const TabItem = ({
@@ -44,6 +45,7 @@ export const TabItem = ({
   onRename,
   onRemove,
   onItemClick,
+  shouldHide,
 }: TabItemProps) => {
   const [{ isDragging }, drag] = useDrag({
     type: 'TAB',
@@ -69,7 +71,7 @@ export const TabItem = ({
       icon: <EditOutlined />,
     },
     {
-      label: 'Delete',
+      label: shouldHide ? 'Hide' : 'Delete',
       key: 'delete',
       icon: <CloseCircleOutlined />,
     },
@@ -96,7 +98,7 @@ export const TabItem = ({
     accept: 'TAB',
     hover: (draggedItem: { index: number }) => {
       if (draggedItem.index !== index) {
-        moveTab(draggedItem.index, index);
+        moveTab?.(draggedItem.index, index);
         draggedItem.index = index;
       }
     },

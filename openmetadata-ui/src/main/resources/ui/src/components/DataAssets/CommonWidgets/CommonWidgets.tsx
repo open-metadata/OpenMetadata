@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
+import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
@@ -31,6 +32,7 @@ import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -246,8 +248,16 @@ export const CommonWidgets = ({
       return <ReviewerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <OwnerLabelV2<GenericEntity> />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+      return (
+        <LeftPanelContainer
+          isEditView={false}
+          layout={widgetConfig.children ?? []}
+          type={ENTITY_PAGE_TYPE_MAP[type]}
+          onUpdate={noop}
+        />
+      );
     }
-
     const Widget =
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 

@@ -340,7 +340,7 @@ const PipelineDetails = ({
           permissions={pipelinePermissions}
           type={EntityType.PIPELINE}
           onUpdate={settingsUpdateHandler}>
-          <Col span={24}>
+          <Col className="p-x-lg" span={24}>
             <Tabs
               activeKey={tab}
               className="tabs-new"

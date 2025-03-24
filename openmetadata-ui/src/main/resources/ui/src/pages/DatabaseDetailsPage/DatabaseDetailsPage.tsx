@@ -478,7 +478,7 @@ const DatabaseDetails: FunctionComponent = () => {
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
-            <Col span={24}>
+            <Col className="p-x-lg" span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"
