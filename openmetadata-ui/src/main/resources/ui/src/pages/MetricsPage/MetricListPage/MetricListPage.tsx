@@ -19,7 +19,6 @@ import { Link, useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
@@ -34,7 +33,6 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
-import { EntityReference } from '../../../generated/type/entityReference';
 import { Include } from '../../../generated/type/include';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
@@ -45,6 +43,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const MetricListPage = () => {
@@ -213,13 +212,7 @@ const MetricListPage = () => {
           />
         ),
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        width: 200,
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<Metric>(),
     ],
     []
   );

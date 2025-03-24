@@ -38,14 +38,16 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
-import { columnFilterIcon } from '../../../utils/TableColumn.util';
+import {
+  columnFilterIcon,
+  ownerTableObject,
+} from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -232,14 +234,7 @@ export const PipelineTaskTab = () => {
           />
         ),
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-        key: TABLE_COLUMNS_KEYS.OWNERS,
-        width: 120,
-        filterIcon: columnFilterIcon,
-        render: (owner) => <OwnerLabel hasPermission={false} owners={owner} />,
-      },
+      ...ownerTableObject<Task>(),
       {
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,

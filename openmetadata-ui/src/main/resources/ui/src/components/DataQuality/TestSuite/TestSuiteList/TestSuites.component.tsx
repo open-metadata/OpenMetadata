@@ -46,11 +46,11 @@ import {
   getEntityDetailsPath,
   getTestSuitePath,
 } from '../../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -186,12 +186,7 @@ export const TestSuites = () => {
           );
         },
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<TestSuite>(),
     ];
 
     return data;

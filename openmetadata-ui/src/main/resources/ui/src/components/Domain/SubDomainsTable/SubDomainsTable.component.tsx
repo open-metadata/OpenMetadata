@@ -17,15 +17,12 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import {
-  Domain,
-  EntityReference,
-} from '../../../generated/entity/domains/domain';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
@@ -71,12 +68,7 @@ const SubDomainsTable = ({
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<Domain>(),
     ];
 
     return data;

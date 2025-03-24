@@ -18,7 +18,6 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
@@ -37,6 +36,7 @@ import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
 import { getLinkForFqn } from './ServiceUtils';
+import { ownerTableObject } from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
@@ -96,18 +96,7 @@ export const getServiceMainTabColumns = (
         },
       ]
     : []),
-  {
-    title: t('label.owner-plural'),
-    dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-    key: TABLE_COLUMNS_KEYS.OWNERS,
-    width: 200,
-    render: (owners: ServicePageData['owners']) =>
-      !isUndefined(owners) && owners.length > 0 ? (
-        <OwnerLabel owners={owners} />
-      ) : (
-        <Typography.Text data-testid="no-owner-text">--</Typography.Text>
-      ),
-  },
+  ...ownerTableObject<ServicePageData>(),
   {
     title: t('label.tag-plural'),
     dataIndex: TABLE_COLUMNS_KEYS.TAGS,

@@ -21,6 +21,7 @@ import { NoOwnerFoundProps } from './NoOwnerFound.interface';
 
 export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
   isCompactView,
+  showLabel = true,
   placeHolder,
   owners,
   hasPermission,
@@ -45,20 +46,22 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
             />
           </div>
         )}
-        <Typography.Text
-          className={classNames(
-            'no-owner',
-            isCompactView ? 'text-xs' : 'font-medium text-sm',
-            className
-          )}
-          data-testid="owner-link">
-          {placeHolder ??
-            (!isCompactView
-              ? t('label.owner-plural')
-              : t('label.no-entity', {
-                  entity: t('label.owner-plural'),
-                }))}
-        </Typography.Text>
+        {showLabel && (
+          <Typography.Text
+            className={classNames(
+              'no-owner',
+              isCompactView ? 'text-xs' : 'font-medium text-sm',
+              className
+            )}
+            data-testid="owner-link">
+            {placeHolder ??
+              (!isCompactView
+                ? t('label.owner-plural')
+                : t('label.no-entity', {
+                    entity: t('label.owner-plural'),
+                  }))}
+          </Typography.Text>
+        )}
         {onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}

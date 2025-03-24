@@ -89,7 +89,7 @@ describe('SearchIndexFieldsTable component', () => {
       <SearchIndexFieldsTable
         {...mockProps}
         isReadOnly={false}
-        searchedFields={[]}
+        searchIndexFields={[]}
       />
     );
 
@@ -102,7 +102,7 @@ describe('SearchIndexFieldsTable component', () => {
     render(
       <SearchIndexFieldsTable
         {...mockProps}
-        searchedFields={mockSearchedFields}
+        searchIndexFields={mockSearchedFields}
       />
     );
 
@@ -116,7 +116,7 @@ describe('SearchIndexFieldsTable component', () => {
     render(
       <SearchIndexFieldsTable
         {...mockProps}
-        searchedFields={mockSearchedFields}
+        searchIndexFields={mockSearchedFields}
       />
     );
     const dataTypeFieldForColumnName = screen.getByTestId('name-data-type');
@@ -128,7 +128,7 @@ describe('SearchIndexFieldsTable component', () => {
     render(
       <SearchIndexFieldsTable
         {...mockProps}
-        searchedFields={mockSearchedFields}
+        searchIndexFields={mockSearchedFields}
       />
     );
     const toggleExpandButton = screen.getByText('testToggleExpandButton');

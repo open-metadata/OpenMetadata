@@ -21,7 +21,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
-  NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
@@ -35,7 +34,6 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
-import { EntityReference } from '../../../../generated/entity/type';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -54,12 +52,12 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
+import { ownerTableObject } from '../../../../utils/TableColumn.util';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
@@ -267,20 +265,7 @@ export const DatabaseSchemaTable = ({
             </span>
           ),
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-        key: TABLE_COLUMNS_KEYS.OWNERS,
-        width: 120,
-        render: (owners: EntityReference[]) =>
-          !isEmpty(owners) && owners.length > 0 ? (
-            <OwnerLabel owners={owners} />
-          ) : (
-            <Typography.Text data-testid="no-owner-text">
-              {NO_DATA_PLACEHOLDER}
-            </Typography.Text>
-          ),
-      },
+      ...ownerTableObject<DatabaseSchema>(),
       {
         title: t('label.usage'),
         dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,

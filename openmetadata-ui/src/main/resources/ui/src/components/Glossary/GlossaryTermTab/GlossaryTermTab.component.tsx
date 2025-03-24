@@ -98,6 +98,7 @@ import {
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
@@ -413,13 +414,7 @@ const GlossaryTermTab = ({
           );
         },
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        width: tableColumnsWidth.owners,
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<ModifiedGlossaryTerm>(),
       {
         title: t('label.status'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
