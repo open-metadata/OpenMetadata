@@ -1188,6 +1188,21 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<Column> columns = table.getColumns() == null ? new ArrayList<>() : table.getColumns();
 
     ColumnDataType dataType = ColumnDataType.fromValue(csvRecord.get(14));
+
+    ColumnDataType arrayDataType = null;
+    if (dataType == ColumnDataType.ARRAY) {
+      try {
+        arrayDataType = ColumnDataType.fromValue(csvRecord.get(15).toUpperCase());
+      } catch (IllegalArgumentException e) {
+        importFailure(
+            printer,
+            String.format(
+                "Invalid arrayDataType '%s' for column '%s'", csvRecord.get(15), csvRecord.get(0)),
+            csvRecord);
+        return;
+      }
+    }
+
     // Handle data length safely
     Integer dataLength = parseDataLength(csvRecord.get(16), dataType, csvRecord.get(0));
     // Create new column object
@@ -1197,15 +1212,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
             .withFullyQualifiedName(entityFQN)
             .withDisplayName(csvRecord.get(1))
             .withDescription(csvRecord.get(2))
+            .withDataTypeDisplay(csvRecord.get(13))
             .withDataType(dataType)
+            .withArrayDataType(arrayDataType)
             .withDataLength(dataLength);
 
     if (dataType == ColumnDataType.STRUCT) {
       newColumn.withChildren(new ArrayList<>());
-    }
-
-    if (dataType == ColumnDataType.ARRAY) {
-      newColumn.withArrayDataType(ColumnDataType.fromValue(csvRecord.get(15).toUpperCase()));
     }
 
     ColumnUtil.addOrUpdateColumn(columns, newColumn);

@@ -135,7 +135,9 @@ public final class ColumnUtil {
       col.withDisplayName(newColumn.getDisplayName())
           .withDescription(newColumn.getDescription())
           .withDataType(newColumn.getDataType())
-          .withDataLength(newColumn.getDataLength());
+          .withDataTypeDisplay(newColumn.getDataTypeDisplay())
+          .withDataLength(newColumn.getDataLength())
+          .withArrayDataType(newColumn.getArrayDataType());
     } else {
       // Add new column
       columns.add(newColumn);

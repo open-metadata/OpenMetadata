@@ -845,14 +845,20 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Column data type fields - these should be added at the end
     addField(recordList, column.getDataTypeDisplay()); // column.dataTypeDisplay
-    addField(
-        recordList,
-        column.getDataType() == null ? null : column.getDataType().value()); // column.dataType
-    addField(
-        recordList,
-        column.getArrayDataType() == null
-            ? null
-            : column.getArrayDataType().value()); // column.arrayDataType
+
+    String dataTypeValue = column.getDataType() == null ? null : column.getDataType().value();
+    String arrayDataTypeValue =
+        column.getArrayDataType() == null ? null : column.getArrayDataType().value();
+
+    if (ColumnDataType.ARRAY.value().equals(dataTypeValue) && arrayDataTypeValue == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Column %s has dataType=ARRAY but missing arrayDataType",
+              column.getFullyQualifiedName()));
+    }
+
+    addField(recordList, dataTypeValue); // column.dataType
+    addField(recordList, arrayDataTypeValue);
     addField(
         recordList,
         column.getDataLength() == null
