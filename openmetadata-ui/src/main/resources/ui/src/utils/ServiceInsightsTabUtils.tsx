@@ -11,26 +11,33 @@
  *  limitations under the License.
  */
 import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { Typography } from 'antd';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
-import { ReactComponent as CollateAIPlaceholderIcon } from '../assets/svg/ic-large-table.svg';
+import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
 import { ReactComponent as LoadingIcon } from '../assets/svg/ic-loader.svg';
 import { ReactComponent as NoDataPlaceholderIcon } from '../assets/svg/ic-no-records.svg';
 import { ReactComponent as WarningIcon } from '../assets/svg/incident-icon.svg';
 import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.svg';
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
+import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DayOneExperienceWorkflowStages } from '../enums/DayOneWorkflow.enum';
 import { EntityType } from '../enums/entity.enum';
+import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
+import { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
 import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../generated/governance/workflows/workflowInstanceState';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
+import { Transi18next } from './CommonUtils';
 import { getSevenDaysStartGMTArrayInMillis } from './date-time/DateTimeUtils';
+import documentationLinksClassBase from './DocumentationLinksClassBase';
 
 const { t } = i18n;
 
@@ -192,43 +199,94 @@ export const getStatusIconFromStatusType = (status?: WorkflowStatus) => {
   };
 };
 
-export const getServiceInsightsWidgetPlaceholderIcon = ({
+export const getServiceInsightsWidgetPlaceholder = ({
   chartType,
-  className = 'text-grey-14',
+  iconClassName = 'text-grey-14',
+  placeholderClassName = '',
   height = 60,
   width = 60,
+  theme,
 }: {
-  chartType?: SystemChartType | string;
-  className?: string;
+  chartType?: SystemChartType | ServiceInsightsWidgetType;
+  iconClassName?: string;
+  placeholderClassName?: string;
   height?: number;
   width?: number;
+  theme: ThemeConfiguration;
 }) => {
   let Icon = NoDataPlaceholderIcon;
+  let localizationKey = `server.no-records-found`;
 
   switch (chartType) {
+    case ServiceInsightsWidgetType.TOTAL_DATA_ASSETS:
+      Icon = NoDataPlaceholderIcon;
+      localizationKey = 'message.total-data-assets-widget-description';
+
+      break;
     case SystemChartType.DescriptionCoverage:
       Icon = DescriptionPlaceholderIcon;
+      localizationKey = 'message.description-coverage-widget-description';
 
       break;
     case SystemChartType.OwnersCoverage:
       Icon = OwnersPlaceholderIcon;
+      localizationKey = 'message.owners-coverage-widget-description';
 
       break;
     case SystemChartType.PIICoverage:
+      Icon = PiiPlaceholderIcon;
+      localizationKey = 'message.pii-coverage-widget-description';
+
+      break;
     case SystemChartType.PIIDistribution:
       Icon = PiiPlaceholderIcon;
+      localizationKey = 'message.pii-distribution-widget-description';
 
       break;
     case SystemChartType.TierCoverage:
+      Icon = TierPlaceholderIcon;
+      localizationKey = 'message.tier-coverage-widget-description';
+
+      break;
     case SystemChartType.TierDistribution:
       Icon = TierPlaceholderIcon;
+      localizationKey = 'message.tier-distribution-widget-description';
 
       break;
-    case 'collateAIWidget':
-      Icon = CollateAIPlaceholderIcon;
+    case ServiceInsightsWidgetType.COLLATE_AI:
+      Icon = TablePlaceholderIcon;
+      localizationKey = 'message.collate-ai-widget-description';
 
       break;
+    case ServiceInsightsWidgetType.MOST_USED_ASSETS:
+      Icon = TablePlaceholderIcon;
+      localizationKey = 'message.most-used-assets-widget-description';
+
+      break;
+    case ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES:
+      Icon = TablePlaceholderIcon;
+      localizationKey = 'message.most-expensive-queries-widget-description';
   }
 
-  return <Icon className={className} height={height} width={width} />;
+  return (
+    <ErrorPlaceHolder
+      className={placeholderClassName}
+      icon={<Icon className={iconClassName} height={height} width={width} />}
+      size={SIZE.MEDIUM}
+      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <Typography.Paragraph className="w-max-350">
+        <Transi18next
+          i18nKey={localizationKey}
+          renderElement={
+            <a
+              href={documentationLinksClassBase.getDocsBaseURL()}
+              rel="noreferrer"
+              style={{ color: theme.primaryColor }}
+              target="_blank"
+            />
+          }
+        />
+      </Typography.Paragraph>
+    </ErrorPlaceHolder>
+  );
 };

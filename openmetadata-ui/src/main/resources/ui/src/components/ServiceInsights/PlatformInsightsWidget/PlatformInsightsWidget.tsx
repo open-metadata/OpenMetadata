@@ -19,13 +19,12 @@ import { ReactComponent as ArrowDown } from '../../../assets/svg/down-full-arrow
 import { ReactComponent as ArrowUp } from '../../../assets/svg/up-full-arrow.svg';
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { PLATFORM_INSIGHTS_CHART } from '../../../constants/ServiceInsightsTab.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  getServiceInsightsWidgetPlaceholderIcon,
+  getServiceInsightsWidgetPlaceholder,
   getTitleByChartType,
 } from '../../../utils/ServiceInsightsTabUtils';
 import { getReadableCountString } from '../../../utils/ServiceUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TotalDataAssetsWidget from '../TotalDataAssetsWidget/TotalDataAssetsWidget';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
@@ -37,6 +36,7 @@ function PlatformInsightsWidget({
   workflowStatesData,
 }: Readonly<PlatformInsightsWidgetProps>) {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
 
   const showPlaceholder = useMemo(() => {
     return chartsData.every((chart) => chart.noRecords);
@@ -80,13 +80,13 @@ function PlatformInsightsWidget({
 
                 const showIcon = chart.percentageChange !== 0;
 
-                const placeholderIcon = getServiceInsightsWidgetPlaceholderIcon(
-                  {
-                    chartType: chart.chartType,
-                    height: 30,
-                    width: 30,
-                  }
-                );
+                const errorPlaceholder = getServiceInsightsWidgetPlaceholder({
+                  chartType: chart.chartType,
+                  height: 30,
+                  width: 30,
+                  theme,
+                  placeholderClassName: 'm-t-lg',
+                });
 
                 return (
                   <Card
@@ -96,15 +96,7 @@ function PlatformInsightsWidget({
                       {getTitleByChartType(chart.chartType)}
                     </Typography.Text>
                     {showPlaceholder ? (
-                      <ErrorPlaceHolder
-                        className="m-t-lg"
-                        icon={placeholderIcon}
-                        size={SIZE.X_SMALL}
-                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                        <Typography.Text>
-                          {t('server.no-records-found')}
-                        </Typography.Text>
-                      </ErrorPlaceHolder>
+                      errorPlaceholder
                     ) : (
                       <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
                         <Col

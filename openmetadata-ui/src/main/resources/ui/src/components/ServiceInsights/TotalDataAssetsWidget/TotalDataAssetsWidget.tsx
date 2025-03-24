@@ -21,20 +21,20 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import {
   getAssetsByServiceType,
-  getServiceInsightsWidgetPlaceholderIcon,
+  getServiceInsightsWidgetPlaceholder,
 } from '../../../utils/ServiceInsightsTabUtils';
 import {
   getReadableCountString,
   getServiceNameQueryFilter,
 } from '../../../utils/ServiceUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 import './total-data-assets-widget.less';
 
@@ -42,6 +42,7 @@ function TotalDataAssetsWidget({
   serviceName,
 }: Readonly<ServiceInsightWidgetCommonProps>) {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
@@ -95,11 +96,13 @@ function TotalDataAssetsWidget({
     }
   }, []);
 
-  const placeholderIcon = useMemo(
+  const errorPlaceholder = useMemo(
     () =>
-      getServiceInsightsWidgetPlaceholderIcon({
+      getServiceInsightsWidgetPlaceholder({
         height: 140,
         width: 140,
+        chartType: ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
+        theme,
       }),
     []
   );
@@ -121,12 +124,7 @@ function TotalDataAssetsWidget({
       </div>
       <Skeleton loading={loadingCount > 0}>
         {showPlaceholder ? (
-          <ErrorPlaceHolder
-            icon={placeholderIcon}
-            size={SIZE.MEDIUM}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Text>{t('server.no-records-found')}</Typography.Text>
-          </ErrorPlaceHolder>
+          errorPlaceholder
         ) : (
           <div className="total-data-assets-info">
             <div className="assets-list-container">
