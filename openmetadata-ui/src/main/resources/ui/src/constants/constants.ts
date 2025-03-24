@@ -408,6 +408,7 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+  [Status.Pending]: 'Pending',
 };
 
 export const INITIAL_TABLE_FILTERS = {

@@ -18,6 +18,7 @@ export enum StatusType {
   Running = 'running',
   Started = 'started',
   Stopped = 'stopped',
+  Pending = 'pending',
 }
 
 export interface StatusBadgeProps {

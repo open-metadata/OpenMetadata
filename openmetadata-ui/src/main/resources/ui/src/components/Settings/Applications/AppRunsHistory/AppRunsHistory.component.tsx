@@ -156,48 +156,41 @@ const AppRunsHistory = forwardRef(
     };
 
     const getActionButton = useCallback(
-      (record: AppRunRecordWithId, index: number) => {
-        if (
-          appData?.appType === AppType.Internal ||
-          (isExternalApp && index === 0)
-        ) {
-          return (
-            <>
-              <Button
-                className="p-0"
-                data-testid="logs"
-                disabled={showLogAction(record)}
-                size="small"
-                type="link"
-                onClick={() => handleRowExpandable(record.id)}>
-                {t('label.log-plural')}
-              </Button>
-              <Button
-                className="m-l-xs p-0"
-                data-testid="app-historical-config"
-                size="small"
-                type="link"
-                onClick={() => showAppRunConfig(record)}>
-                {t('label.config')}
-              </Button>
-              {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
-              {(record.status === Status.Running ||
-                record.status === Status.ActiveError) &&
-                Boolean(appData?.supportsInterrupt) && (
-                  <Button
-                    className="m-l-xs p-0"
-                    data-testid="stop-button"
-                    size="small"
-                    type="link"
-                    onClick={() => setIsStopModalOpen(true)}>
-                    {t('label.stop')}
-                  </Button>
-                )}
-            </>
-          );
-        } else {
-          return NO_DATA_PLACEHOLDER;
-        }
+      (record: AppRunRecordWithId) => {
+        return (
+          <>
+            <Button
+              className="p-0"
+              data-testid="logs"
+              disabled={showLogAction(record)}
+              size="small"
+              type="link"
+              onClick={() => handleRowExpandable(record.id)}>
+              {t('label.log-plural')}
+            </Button>
+            <Button
+              className="m-l-xs p-0"
+              data-testid="app-historical-config"
+              size="small"
+              type="link"
+              onClick={() => showAppRunConfig(record)}>
+              {t('label.config')}
+            </Button>
+            {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
+            {(record.status === Status.Running ||
+              record.status === Status.ActiveError) &&
+              Boolean(appData?.supportsInterrupt) && (
+                <Button
+                  className="m-l-xs p-0"
+                  data-testid="stop-button"
+                  size="small"
+                  type="link"
+                  onClick={() => setIsStopModalOpen(true)}>
+                  {t('label.stop')}
+                </Button>
+              )}
+          </>
+        );
       },
       [showLogAction, appData, isExternalApp, handleRowExpandable]
     );
@@ -209,8 +202,8 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'timestamp',
           key: 'timestamp',
           render: (_, record) => {
-            return isExternalApp && record.executionTime
-              ? formatDateTime(record.executionTime)
+            return isExternalApp
+              ? formatDateTime(record.startTime)
               : formatDateTime(record.timestamp);
           },
         },
@@ -228,12 +221,7 @@ const AppRunsHistory = forwardRef(
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
             if (isExternalApp && record.executionTime) {
-              const ms = getIntervalInMilliseconds(
-                record.executionTime,
-                record.endTime ?? Date.now()
-              );
-
-              return formatDuration(ms);
+              return formatDuration(record.executionTime);
             }
 
             if (record.startTime) {
@@ -242,7 +230,7 @@ const AppRunsHistory = forwardRef(
 
               return formatDuration(ms);
             } else {
-              return '-';
+              return NO_DATA_PLACEHOLDER;
             }
           },
         },
@@ -270,7 +258,7 @@ const AppRunsHistory = forwardRef(
           title: t('label.action-plural'),
           dataIndex: 'actions',
           key: 'actions',
-          render: (_, record, index) => getActionButton(record, index),
+          render: (_, record) => getActionButton(record),
         },
       ],
       [
@@ -296,6 +284,7 @@ const AppRunsHistory = forwardRef(
             const { data } = await getApplicationRuns(fqn, {
               startTs: startDay,
               endTs: currentTime,
+              limit: maxRecords ?? pageSize,
             });
 
             setAppRunsHistoryData(

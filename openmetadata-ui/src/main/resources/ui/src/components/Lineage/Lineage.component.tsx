@@ -193,7 +193,7 @@ const Lineage = ({
               onNodesChange={onNodesChange}
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
-              <MiniMap position="bottom-right" />
+              <MiniMap pannable zoomable position="bottom-right" />
 
               <Panel position="bottom-left">
                 <LineageLayers entityType={entityType} />
