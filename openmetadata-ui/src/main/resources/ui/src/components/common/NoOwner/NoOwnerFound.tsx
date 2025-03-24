@@ -33,7 +33,11 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
 
   return (
     <div
-      className="d-flex justify-center flex-col gap-2"
+      className={classNames(
+        'd-flex justify-start flex-col gap-2',
+        { 'owner-label-container': !isCompactView },
+        className
+      )}
       data-testid="owner-label">
       <div className="d-flex items-center gap-1">
         {isCompactView && (

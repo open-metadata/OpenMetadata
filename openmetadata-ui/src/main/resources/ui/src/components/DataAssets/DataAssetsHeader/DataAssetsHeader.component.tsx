@@ -25,6 +25,7 @@ import { ReactComponent as IconExternalLink } from '../../../assets/svg/external
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/link-icon-with-bg.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
@@ -67,6 +68,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -94,7 +96,7 @@ export const ExtraInfoLabel = ({
   inlineLayout = false,
 }: {
   label: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   dataTestId?: string;
   showAsATag?: boolean;
   inlineLayout?: boolean;
@@ -116,19 +118,19 @@ export const ExtraInfoLabel = ({
   }
 
   return (
-    <div className="d-flex align-start ">
+    <div className="d-flex align-start extra-info-container">
       <Typography.Text
         className="whitespace-nowrap text-sm d-flex flex-col gap-2"
         data-testid={dataTestId}>
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <span
+        <div
           className={classNames('font-medium extra-info-value', {
             showAsATag: showAsATag,
           })}>
           {value}
-        </span>
+        </div>
       </Typography.Text>
     </div>
   );
@@ -489,7 +491,6 @@ export const DataAssetsHeader = ({
             <Col flex="auto">
               <EntityHeaderTitle
                 badge={alertBadge}
-                certification={(dataAsset as Table)?.certification}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
                 entityType={entityType}
@@ -538,6 +539,22 @@ export const DataAssetsHeader = ({
                     </Button>
                   </Tooltip>
 
+                  {(dataAsset as Table).sourceUrl && (
+                    <Tooltip title={t('label.source-url')}>
+                      <Button
+                        className="source-url-button font-semibold"
+                        data-testid="source-url-button"
+                        icon={
+                          <Icon className="flex-center" component={LinkIcon} />
+                        }>
+                        <Typography.Link
+                          href={(dataAsset as Table).sourceUrl}
+                          target="_blank">
+                          {t('label.source-url')}
+                        </Typography.Link>
+                      </Button>
+                    </Tooltip>
+                  )}
                   <ManageButton
                     isAsyncDelete
                     afterDeleteAction={afterDeleteAction}
@@ -600,10 +617,10 @@ export const DataAssetsHeader = ({
             {tierSuggestionRender ?? (
               <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                 <Space
-                  className="d-flex align-start"
+                  className="d-flex tier-container align-start"
                   data-testid="header-tier-container">
                   {tier ? (
-                    <div className="d-flex items-center flex-col gap-2">
+                    <div className="d-flex flex-col gap-2">
                       <div className="d-flex items-center gap-1">
                         <span className="entity-no-tier ">
                           {t('label.tier')}
@@ -695,6 +712,24 @@ export const DataAssetsHeader = ({
                 metricPermissions={permissions}
                 onUpdateMetricDetails={onMetricUpdate}
               />
+            )}
+
+            {(dataAsset as Table)?.certification && (
+              <>
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+                <ExtraInfoLabel
+                  label={t('label.certification')}
+                  value={
+                    <CertificationTag
+                      showName
+                      certification={(dataAsset as Table).certification!}
+                    />
+                  }
+                />
+              </>
             )}
             {extraInfo}
           </div>
