@@ -656,6 +656,22 @@ public final class EntityUtil {
                     CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 
+  public static Column findColumnWithChildren(List<Column> columns, String columnName) {
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName().equals(columnName)) {
+        return column;
+      }
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        Column childMatch = findColumnWithChildren(column.getChildren(), columnName);
+        if (childMatch != null) {
+          return childMatch;
+        }
+      }
+    }
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidFieldName("column", columnName));
+  }
+
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
     List<T> flattenedFields = new ArrayList<>();
     fields.forEach(column -> flattenEntityField(column, flattenedFields));
