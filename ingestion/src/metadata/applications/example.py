@@ -28,23 +28,15 @@ logger = app_logger()
 
 class HelloPipelines(AppRunner):
     """
-    CollateAIApp Application
+    Example external application that sleeps for a given time and then echoes a message.
     You can execute it with `metadata app -c <path-to-yaml>`
     with a YAML file like:
 
-    sourcePythonClass: metadata.applications.collateai.app.CollateAIApp
+    sourcePythonClass: metadata.applications.example.HelloPipelines
     appConfig:
-      type: CollateAI
-      filters: ...
-    appPrivateConfig:
-      token: "token"
-      collateURL: "https://sandbox-beta.open-metadata.org"
-      waiiInstance: "https://tweakit-dev.waii.ai/api/"
-      limits:
-        billingCycleStart: 2024-10-23
-        actions:
-          descriptions: 10
-          queries: 5
+      type: HelloPipelines
+      sleep: 5
+      echo: this will be echoed
     workflowConfig:
       loggerLevel: INFO
       openMetadataServerConfig:
