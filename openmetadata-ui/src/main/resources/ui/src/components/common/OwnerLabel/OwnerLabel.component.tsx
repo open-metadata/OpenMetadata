@@ -35,7 +35,7 @@ export const OwnerLabel = ({
     team: false,
   },
   tooltipText,
-  isCompactView = true,
+  isCompactView = true, // renders owner profile followed by its name
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -69,7 +69,9 @@ export const OwnerLabel = ({
 
     return (
       <div
-        className="d-flex owner-label-heading gap-2 items-center"
+        className={classNames('d-flex owner-label-heading gap-2 items-center', {
+          'owner-label-container': !isCompactView,
+        })}
         data-testid="owner-label">
         <div
           className={classNames(
