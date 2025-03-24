@@ -36,4 +36,5 @@ export interface FeedPanelBodyPropV1 {
   onUpdateEntityDetails?: any;
   handlePanelResize?: (isFullWidth: boolean) => void;
   isFullWidth?: boolean;
+  onSave?: (message: string) => void;
 }

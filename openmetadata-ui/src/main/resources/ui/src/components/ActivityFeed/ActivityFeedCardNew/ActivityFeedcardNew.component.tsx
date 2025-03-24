@@ -55,6 +55,9 @@ interface ActivityFeedCardNewProps {
   showThread?: boolean;
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
+  onSave?: (message: string) => void;
+  updateAnnouncementThreads?: () => void;
+  isAnnouncementTab?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -66,6 +69,9 @@ const ActivityFeedCardNew = ({
   isActive,
   isForFeedTab,
   isOpenInDrawer = false,
+  onSave: onSaveAnnouncement,
+  updateAnnouncementThreads,
+  isAnnouncementTab,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -89,7 +95,7 @@ const ActivityFeedCardNew = ({
   }, [feed.id]);
 
   const onSave = (message: string) => {
-    postFeed(message, selectedThread?.id ?? '').catch(() => {
+    postFeed(message, feed?.id ?? '').catch(() => {
       // ignore since error is displayed in toast in the parent promise.
       // Added block for sonar code smell
     });
@@ -330,7 +336,7 @@ const ActivityFeedCardNew = ({
                     isOpenInDrawer,
                 }
               )}
-              onSave={onSave}
+              onSave={isAnnouncementTab ? onSaveAnnouncement : onSave}
             />
           ) : (
             <div className="d-flex gap-2">
@@ -361,9 +367,11 @@ const ActivityFeedCardNew = ({
                   <CommentCard
                     closeFeedEditor={closeFeedEditor}
                     feed={feed}
+                    isAnnouncementTab={isAnnouncementTab}
                     isLastReply={index === arr.length - 1}
                     key={reply.id}
                     post={reply}
+                    updateAnnouncementThreads={updateAnnouncementThreads}
                   />
                 ))}
             </Col>

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Avatar, Col, Row } from 'antd';
+import { Avatar, Col, Input, Row } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
+import { t } from 'i18next';
 import _, { isEmpty, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -22,12 +23,15 @@ import {
   GeneratedBy,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { updatePost } from '../../../rest/feedsAPI';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { updateThreadData } from '../../../utils/FeedUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
+import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
 import EditAnnouncementModal from '../../Modals/AnnouncementModal/EditAnnouncementModal';
 import FeedCardBodyV1 from '../ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
+import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './activity-feed-card-v2.less';
@@ -50,12 +54,14 @@ const ActivityFeedCardV2 = ({
   isAnnouncementTab = false,
   updateAnnouncementThreads,
   permissions,
+  onSave,
 }: Readonly<ActivityFeedCardV2Props>) => {
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
   const { updateFeed, fetchUpdatedThread } = useActivityFeedProvider();
   const [isEditAnnouncement, setIsEditAnnouncement] = useState<boolean>(false);
-
+  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
+  const { currentUser } = useApplicationStore();
   const postLength = useMemo(
     () => feed?.posts?.length ?? 0,
     [feed?.posts?.length]
@@ -77,14 +83,14 @@ const ActivityFeedCardV2 = ({
   const onUpdate = (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
-    if (isAnnouncementTab) {
-      // update post in announcement tab
-      updatePost(feed.id, post.id, patch);
-      updateAnnouncementThreads && updateAnnouncementThreads();
-    } else {
-      updateFeed(feed.id, post.id, !isPost, patch);
-    }
-
+    // if (isAnnouncementTab) {
+    //   // update post in announcement tab
+    //   updatePost(feed.id, post.id, patch);
+    //   updateAnnouncementThreads && updateAnnouncementThreads();
+    // } else {
+    //   updateFeed(feed.id, post.id, !isPost, patch);
+    // }
+    updateFeed(feed.id, post.id, !isPost, patch);
     setIsEditPost(!isEditPost);
   };
 
@@ -255,6 +261,34 @@ const ActivityFeedCardV2 = ({
               />
             )}
         </Col>
+        {showFeedEditor && showThread ? (
+          <ActivityFeedEditorNew
+            className={classNames(
+              'm-t-md feed-editor activity-feed-editor-container-new'
+            )}
+            onSave={onSave}
+          />
+        ) : (
+          showThread && (
+            <div className="d-flex gap-2">
+              <div>
+                <ProfilePictureNew
+                  avatarType="outlined"
+                  key={feed.id}
+                  name={getEntityName(currentUser)}
+                  size={32}
+                />
+              </div>
+
+              <Input
+                className="comments-input-field"
+                data-testid="comments-input-field"
+                placeholder={t('message.input-placeholder')}
+                onClick={() => setShowFeedEditor(true)}
+              />
+            </div>
+          )
+        )}
         {showThread && postLength > 0 && (
           <Col className="feed-replies" data-testid="feed-replies" span={24}>
             {feed?.posts?.map((reply) => (

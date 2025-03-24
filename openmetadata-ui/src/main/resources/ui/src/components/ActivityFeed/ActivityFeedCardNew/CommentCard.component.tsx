@@ -21,8 +21,9 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { updatePost } from '../../../rest/feedsAPI';
 import {
   formatDateTime,
   getRelativeTime,
@@ -46,6 +47,8 @@ interface CommentCardInterface {
   post: any;
   isLastReply: boolean;
   closeFeedEditor: () => void;
+  updateAnnouncementThreads?: () => void;
+  isAnnouncementTab?: boolean;
 }
 
 const CommentCard = ({
@@ -53,6 +56,8 @@ const CommentCard = ({
   post,
   isLastReply,
   closeFeedEditor,
+  updateAnnouncementThreads,
+  isAnnouncementTab,
 }: CommentCardInterface) => {
   const { updateFeed } = useActivityFeedProvider();
   const [isHovered, setIsHovered] = useState(false);
@@ -92,7 +97,12 @@ const CommentCard = ({
   const onUpdate = async (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
-    updateFeed(feed.id, post.id, false, patch);
+    if (feed.type === ThreadType.Announcement) {
+      updatePost(feed.id, post.id, patch);
+      updateAnnouncementThreads && updateAnnouncementThreads();
+    } else {
+      updateFeed(feed.id, post.id, false, patch);
+    }
     setIsEditPost(!isEditPost);
   };
 
@@ -180,7 +190,9 @@ const CommentCard = ({
         <ActivityFeedActions
           isPost
           feed={feed}
+          isAnnouncementTab={isAnnouncementTab}
           post={post}
+          updateAnnouncementThreads={updateAnnouncementThreads}
           onEditPost={onEditPost}
         />
       )}

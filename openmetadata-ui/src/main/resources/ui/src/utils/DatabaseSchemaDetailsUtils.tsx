@@ -87,7 +87,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          count={feedCount.totalCount}
+          count={feedCount.totalCount + feedCount.activeAnnouncementCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={

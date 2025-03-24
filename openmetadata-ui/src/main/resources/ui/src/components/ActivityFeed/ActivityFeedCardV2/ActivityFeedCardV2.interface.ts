@@ -28,4 +28,5 @@ export interface ActivityFeedCardV2Props {
   isAnnouncementTab?: boolean;
   updateAnnouncementThreads?: () => void;
   permissions?: boolean;
+  onSave?: (message: string) => void;
 }

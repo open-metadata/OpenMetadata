@@ -38,6 +38,7 @@ interface ActivityFeedListV1Props {
   isAnnouncementTab?: boolean;
   updateAnnouncementThreads?: () => void;
   permissions?: boolean;
+  onSave?: (message: string) => void;
 }
 
 const ActivityFeedListV1 = ({
@@ -57,6 +58,7 @@ const ActivityFeedListV1 = ({
   isAnnouncementTab,
   updateAnnouncementThreads,
   permissions,
+  onSave,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -78,6 +80,7 @@ const ActivityFeedListV1 = ({
     () =>
       entityThread.map((feed) => (
         <FeedPanelBodyV1
+          className="activity-feed-announcement"
           componentsVisibility={componentsVisibility}
           feed={feed}
           hidePopover={hidePopover}
@@ -89,6 +92,7 @@ const ActivityFeedListV1 = ({
           showThread={showThread}
           updateAnnouncementThreads={updateAnnouncementThreads}
           onFeedClick={onFeedClick}
+          onSave={onSave}
         />
       )),
     [

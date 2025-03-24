@@ -20,6 +20,7 @@ import { ENTITY_LINK_SEPARATOR } from '../../../utils/EntityUtils';
 import { getEntityType } from '../../../utils/FeedUtils';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
+import ActivityFeedCardV2 from '../ActivityFeedCardV2/ActivityFeedCardV2';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import TaskFeedCard from '../TaskFeedCard/TaskFeedCard.component';
 import './feed-panel-body-v1.less';
@@ -38,6 +39,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isAnnouncementTab,
   updateAnnouncementThreads,
   permissions,
+  onSave,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -96,14 +98,27 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       );
     }
 
-    return (
+    return feed.type !== ThreadType.Announcement ? (
       <ActivityFeedCardNew
         isForFeedTab
         isOpenInDrawer
         feed={feed}
         isActive={isActive}
+        isAnnouncementTab={isAnnouncementTab}
         post={mainFeed}
         showThread={showThread}
+      />
+    ) : (
+      <ActivityFeedCardV2
+        feed={feed}
+        isActive={isActive}
+        isAnnouncementTab={isAnnouncementTab}
+        isOpenInDrawer={isOpenInDrawer}
+        permissions={permissions}
+        post={mainFeed}
+        showThread={showThread}
+        updateAnnouncementThreads={updateAnnouncementThreads}
+        onSave={onSave}
       />
     );
   };

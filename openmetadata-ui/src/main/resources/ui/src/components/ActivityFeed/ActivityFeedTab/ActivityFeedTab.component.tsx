@@ -41,6 +41,7 @@ import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-fi
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
+import { noop } from 'lodash';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as AnnouncementsIcon } from '../../../assets/svg/announcements-v1.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
@@ -80,6 +81,7 @@ import Loader from '../../common/Loader/Loader';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import AddAnnouncementModal from '../../Modals/AnnouncementModal/AddAnnouncementModal';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
+import ActivityFeedListV1 from '../ActivityFeedList/ActivityFeedListV1.component';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
@@ -256,6 +258,9 @@ export const ActivityFeedTab = ({
             closedTaskCount: res[0].closedTaskCount ?? 0,
             totalCount: res[0].conversationCount ?? 0 + res[0].totalTaskCount,
             mentionCount: res[0].mentionCount ?? 0,
+            activeAnnouncementCount: res[0].activeAnnouncementCount ?? 0,
+            inactiveAnnouncementCount: res[0].inactiveAnnouncementCount ?? 0,
+            totalAnnouncementCount: res[0].totalAnnouncementCount ?? 0,
           },
         }));
       } catch (err) {
@@ -595,6 +600,93 @@ export const ActivityFeedTab = ({
     return ActivityFeedTabs.TASKS;
   };
 
+  const announcementFilterOptions = useMemo(
+    () => [
+      {
+        key: AnnoucementStatus.Active,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: announcementFilter === AnnoucementStatus.Active }
+            )}
+            data-testid="active-announcements">
+            <div className="flex items-center space-x-2">
+              {announcementFilter === AnnoucementStatus.Active ? (
+                <TaskOpenIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: announcementFilter === AnnoucementStatus.Active,
+                })}>
+                {t('label.active')}
+              </span>
+            </div>
+            <span
+              className={classNames('task-count-container d-flex flex-center', {
+                active: announcementFilter === AnnoucementStatus.Active,
+              })}>
+              <span className="task-count-text">
+                {countData.data.activeAnnouncementCount}
+              </span>
+            </span>
+          </div>
+        ),
+        onClick: () => {
+          handleFilterClick(AnnoucementStatus.Active);
+        },
+      },
+      {
+        key: AnnoucementStatus.Inactive,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: announcementFilter === AnnoucementStatus.Inactive }
+            )}
+            data-testid="inactive-announcements">
+            <div className="flex items-center space-x-2">
+              {announcementFilter === AnnoucementStatus.Inactive ? (
+                <TaskCloseIconBlue
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskCloseIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: announcementFilter === AnnoucementStatus.Inactive,
+                })}>
+                {t('label.inactive')}
+              </span>
+            </div>
+            <span
+              className={classNames('task-count-container d-flex flex-center', {
+                active: announcementFilter === AnnoucementStatus.Inactive,
+              })}>
+              <span className="task-count-text">
+                {countData.data.inactiveAnnouncementCount}
+              </span>
+            </span>
+          </div>
+        ),
+        onClick: () => {
+          handleFilterClick(AnnoucementStatus.Inactive);
+        },
+      },
+    ],
+    [announcementFilter, countData.data, handleFilterClick]
+  );
+
   return (
     <div className="activity-feed-tab">
       {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
@@ -664,7 +756,7 @@ export const ActivityFeedTab = ({
                         <span>
                           {!isUserEntity &&
                             getCountBadge(
-                              countData.data.conversationCount,
+                              countData.data.totalAnnouncementCount,
                               '',
                               activeTab === ActivityFeedTabs.ANNOUNCEMENTS
                             )}
@@ -713,31 +805,18 @@ export const ActivityFeedTab = ({
         {isAnnouncementActiveTab && (
           <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task justify-between">
             <div className="d-flex gap-4">
-              {getElementWithCountLoader(
-                <Typography.Text
-                  className={classNames(
-                    'cursor-pointer p-l-xss d-flex items-center',
-                    {
-                      'font-medium':
-                        announcementFilter === AnnoucementStatus.Active,
-                    }
-                  )}
-                  data-testid="active-announcement"
-                  onClick={handleActiveClick}>
-                  {countData.data.openTaskCount} {t('label.active')}
-                </Typography.Text>
-              )}
-              {getElementWithCountLoader(
-                <Typography.Text
-                  className={classNames('cursor-pointer d-flex items-center', {
-                    'font-medium':
-                      announcementFilter === AnnoucementStatus.Inactive,
-                  })}
-                  data-testid="inactive-announcements"
-                  onClick={handleInactiveClick}>
-                  {countData.data.closedTaskCount} {t('label.inactive')}
-                </Typography.Text>
-              )}
+              <Dropdown
+                menu={{
+                  items: announcementFilterOptions,
+                  selectedKeys: [...announcementFilter],
+                }}
+                overlayClassName="task-tab-custom-dropdown"
+                trigger={['click']}>
+                <TaskFilterIcon
+                  className="task-filter-icon cursor-pointer"
+                  data-testid="announcement-filter-icon"
+                />
+              </Dropdown>
             </div>
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
@@ -750,20 +829,39 @@ export const ActivityFeedTab = ({
             </Tooltip>
           </div>
         )}
-        <ActivityFeedListV1New
-          hidePopover
-          activeFeedId={selectedThread?.id}
-          componentsVisibility={componentsVisibility}
-          emptyPlaceholderText={placeholderText}
-          feedList={entityThread}
-          handlePanelResize={handlePanelResize}
-          isForFeedTab={false}
-          isFullWidth={isFullWidth}
-          isLoading={loading}
-          selectedThread={selectedThread}
-          showThread={false}
-          onFeedClick={handleFeedClick}
-        />
+        {!isAnnouncementActiveTab ? (
+          <ActivityFeedListV1New
+            hidePopover
+            activeFeedId={selectedThread?.id}
+            componentsVisibility={componentsVisibility}
+            emptyPlaceholderText={placeholderText}
+            feedList={entityThread}
+            handlePanelResize={handlePanelResize}
+            isForFeedTab={isForFeedTab}
+            isFullWidth={isFullWidth}
+            isLoading={loading}
+            selectedThread={selectedThread}
+            showThread={false}
+            onFeedClick={handleFeedClick}
+          />
+        ) : (
+          <ActivityFeedListV1
+            hidePopover
+            activeFeedId={selectedThread?.id}
+            componentsVisibility={componentsVisibility}
+            emptyPlaceholderText={placeholderText}
+            feedList={entityThread}
+            isForFeedTab={isForFeedTab}
+            isLoading={loading}
+            permissions={permissions?.EditAll}
+            selectedThread={selectedThread}
+            showThread={false}
+            updateAnnouncementThreads={
+              isAnnouncementActiveTab ? refetchAnnouncements : noop
+            }
+            onFeedClick={handleFeedClick}
+          />
+        )}
         {loader}
         <div
           className="w-full"
@@ -800,6 +898,7 @@ export const ActivityFeedTab = ({
                   handlePanelResize={handlePanelResize}
                   hidePopover={false}
                   isFullWidth={isFullWidth}
+                  updateAnnouncementThreads={refetchAnnouncements}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
                 />

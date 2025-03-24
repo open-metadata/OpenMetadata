@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import { Button, Col, Dropdown, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { noop } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactComponent as TaskCloseIcon } from '../../assets/svg/ic-check-circle-new.svg';
+import { ReactComponent as TaskCloseIconBlue } from '../../assets/svg/ic-close-task.svg';
+import { ReactComponent as TaskOpenIcon } from '../../assets/svg/ic-open-task.svg';
+import { ReactComponent as TaskFilterIcon } from '../../assets/svg/ic-task-filter-button.svg';
+import { ReactComponent as TaskIcon } from '../../assets/svg/ic-task-new.svg';
 import '../../components/ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import '../../components/Announcement/announcement.less';
-import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import {
   AnnoucementStatus,
@@ -28,18 +35,23 @@ import {
   ThreadType,
 } from '../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { getAnnouncements, postFeedById } from '../../rest/feedsAPI';
+import { FeedCounts } from '../../interface/feed.interface';
+import {
+  getAnnouncements,
+  getFeedCount,
+  postFeedById,
+} from '../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ActivityFeedEditor from '../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
-import FeedPanelBodyV1 from '../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1';
+import FeedPanelBodyV1New from '../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
 import FeedPanelHeader from '../ActivityFeed/ActivityFeedPanel/FeedPanelHeader';
 import AddAnnouncementModal from '../Modals/AnnouncementModal/AddAnnouncementModal';
+
 interface AnnouncementTabProps {
   fqn: string;
   entityType: EntityType;
-  permissions: UIPermission;
+  permissions: OperationPermission;
 }
 
 const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
@@ -54,7 +66,15 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   const [threads, setThreads] = useState<any[]>([]);
   const [selectedAnnouncementThread, setSelectedAnnouncementThread] =
     useState<Thread>();
+  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const { currentUser } = useApplicationStore();
+  const [countData, setCountData] = useState<{
+    loading: boolean;
+    data: FeedCounts;
+  }>({
+    loading: false,
+    data: FEED_COUNT_INITIAL_DATA,
+  });
 
   const getThreads = async () => {
     try {
@@ -97,7 +117,8 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   const handleSaveAnnouncement = useCallback(() => {
     handleCloseAnnouncementModal();
     getThreads();
-  }, [announcementFilter]);
+    fetchFeedsCount();
+  }, []);
 
   // reply on announcements
   const postFeed = useCallback(async (value: string, id: string) => {
@@ -134,55 +155,169 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   }, []);
 
   const onSave = (message: string) => {
-    postFeed(message, selectedAnnouncementThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
+    postFeed(message, selectedAnnouncementThread?.id ?? '')
+      .then(() => {
+        setShowFeedEditor(false);
+      })
+      .catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+        // Added block for sonar code smell
+      });
   };
 
   const updateAnnouncementThreads = useCallback(() => {
     getThreads();
   }, [getThreads]);
 
+  const fetchFeedsCount = async () => {
+    setCountData((prev) => ({ ...prev, loading: true }));
+    try {
+      const res = await getFeedCount(getEntityFeedLink(entityType, fqn));
+      setCountData((prev) => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          activeAnnouncementCount: res[0].activeAnnouncementCount ?? 0,
+          inactiveAnnouncementCount: res[0].inactiveAnnouncementCount ?? 0,
+          totalAnnouncementCount: res[0].totalAnnouncementCount ?? 0,
+        },
+      }));
+    } catch (err) {
+      showErrorToast(err as AxiosError, t('server.entity-feed-count-error'));
+    }
+    setCountData((prev) => ({ ...prev, loading: false }));
+  };
+
+  useEffect(() => {
+    fetchFeedsCount();
+  }, []);
+
+  const announcementFilterOptions = useMemo(
+    () => [
+      {
+        key: AnnoucementStatus.Active,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: announcementFilter === AnnoucementStatus.Active }
+            )}
+            data-testid="active-announcements">
+            <div className="flex items-center space-x-2">
+              {announcementFilter === AnnoucementStatus.Active ? (
+                <TaskOpenIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: announcementFilter === AnnoucementStatus.Active,
+                })}>
+                {t('label.active')}
+              </span>
+            </div>
+            <span
+              className={classNames('task-count-container d-flex flex-center', {
+                active: announcementFilter === AnnoucementStatus.Active,
+              })}>
+              <span className="task-count-text">
+                {countData.loading ? (
+                  <Skeleton.Button
+                    active
+                    className="count-loader"
+                    size="small"
+                  />
+                ) : (
+                  countData.data.activeAnnouncementCount
+                )}
+              </span>
+            </span>
+          </div>
+        ),
+        onClick: () => {
+          handleUpdateAnnouncementFilter(AnnoucementStatus.Active);
+        },
+      },
+      {
+        key: AnnoucementStatus.Inactive,
+        label: (
+          <div
+            className={classNames(
+              'flex items-center justify-between px-4 py-2 gap-2',
+              { active: announcementFilter === AnnoucementStatus.Inactive }
+            )}
+            data-testid="inactive-announcements">
+            <div className="flex items-center space-x-2">
+              {announcementFilter === AnnoucementStatus.Inactive ? (
+                <TaskCloseIconBlue
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              ) : (
+                <TaskCloseIcon
+                  className="m-r-xs"
+                  {...ICON_DIMENSION_USER_PAGE}
+                />
+              )}
+              <span
+                className={classNames('task-tab-filter-item', {
+                  selected: announcementFilter === AnnoucementStatus.Inactive,
+                })}>
+                {t('label.inactive')}
+              </span>
+            </div>
+            <span
+              className={classNames('task-count-container d-flex flex-center', {
+                active: announcementFilter === AnnoucementStatus.Inactive,
+              })}>
+              <span className="task-count-text">
+                {countData.loading ? (
+                  <Skeleton.Button
+                    active
+                    className="count-loader"
+                    size="small"
+                  />
+                ) : (
+                  countData.data.inactiveAnnouncementCount
+                )}
+              </span>
+            </span>
+          </div>
+        ),
+        onClick: () => {
+          handleUpdateAnnouncementFilter(AnnoucementStatus.Inactive);
+        },
+      },
+    ],
+    [announcementFilter, countData, handleUpdateAnnouncementFilter]
+  );
+
   return (
     <div className="two-column-layout">
       <Row gutter={[0, 16]} style={{ height: '100%' }}>
         <Col className="left-column" md={12} xs={24}>
-          <div className="d-flex p-sm p-x-lg justify-between activity-feed-task @grey-1">
+          <div className="d-flex p-sm p-x-lg justify-between activity-feed-task">
             <div className="d-flex gap-4">
-              <Typography.Text
-                className={classNames(
-                  'cursor-pointer p-l-xss d-flex items-center',
-                  {
-                    'font-medium':
-                      announcementFilter === AnnoucementStatus.Active,
-                  }
-                )}
-                data-testid="active-announcement"
-                onClick={() => {
-                  handleUpdateAnnouncementFilter(AnnoucementStatus.Active);
-                }}>
-                {0} {t('label.active')}
-              </Typography.Text>
-              <Typography.Text
-                className={classNames('cursor-pointer d-flex items-center', {
-                  'font-medium':
-                    announcementFilter === AnnoucementStatus.Inactive,
-                })}
-                data-testid="inactive-announcements"
-                onClick={() => {
-                  handleUpdateAnnouncementFilter(AnnoucementStatus.Inactive);
-                }}>
-                {0} {t('label.inactive')}
-              </Typography.Text>
+              <Dropdown
+                menu={{
+                  items: announcementFilterOptions,
+                  selectedKeys: [...announcementFilter],
+                }}
+                overlayClassName="task-tab-custom-dropdown"
+                trigger={['click']}>
+                <TaskFilterIcon
+                  className="task-filter-icon cursor-pointer"
+                  data-testid="announcement-filter-icon"
+                />
+              </Dropdown>
             </div>
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
                 data-testid="add-announcement-btn"
-                disabled={
-                  !permissions[entityType.slice(0, -1) as keyof UIPermission]
-                    ?.EditAll
-                }
+                disabled={!permissions?.EditAll}
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
                 {t('label.add')}
@@ -201,14 +336,12 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             emptyPlaceholderText={t('message.no-announcement-message')}
             feedList={threads}
             isLoading={false}
-            permissions={
-              permissions[entityType.slice(0, -1) as keyof UIPermission]
-                ?.EditAll
-            }
+            permissions={permissions?.EditAll}
             selectedThread={selectedAnnouncementThread}
             showThread={false}
             updateAnnouncementThreads={updateAnnouncementThreads}
             onFeedClick={updateSelectedThread}
+            onSave={onSave}
           />
         </Col>
 
@@ -229,7 +362,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
               </div>
 
               <div className="m-md">
-                <FeedPanelBodyV1
+                <FeedPanelBodyV1New
                   isAnnouncementCard
                   isAnnouncementTab
                   isForFeedTab
@@ -242,9 +375,6 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                   feed={selectedAnnouncementThread}
                   hidePopover={false}
                   updateAnnouncementThreads={updateAnnouncementThreads}
-                />
-                <ActivityFeedEditor
-                  className="m-t-md feed-editor"
                   onSave={onSave}
                 />
               </div>
