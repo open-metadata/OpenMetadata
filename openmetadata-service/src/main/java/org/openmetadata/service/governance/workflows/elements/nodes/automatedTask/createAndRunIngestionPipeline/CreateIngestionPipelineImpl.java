@@ -50,6 +50,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class CreateIngestionPipelineImpl {
+  private static final List<String> DEFAULT_TIERS_TO_PROCESS = List.of("Tier1", "Tier2");
   private static final Map<PipelineType, String> SUPPORT_FEATURE_MAP = new HashMap<>();
 
   static {
@@ -303,7 +304,9 @@ public class CreateIngestionPipelineImpl {
     return new DatabaseServiceProfilerPipeline()
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
-        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withClassificationFilterPattern(
+            new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS));
   }
 
   private static DatabaseServiceAutoClassificationPipeline
@@ -311,7 +314,9 @@ public class CreateIngestionPipelineImpl {
     return new DatabaseServiceAutoClassificationPipeline()
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
-        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withClassificationFilterPattern(new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS))
+        .withEnableAutoClassification(true);
   }
 
   // Other Services Metadata Pipelines
