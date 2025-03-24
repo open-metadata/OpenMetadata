@@ -16,6 +16,18 @@ Security requirements for your **production** environment:
 
 {% /note %}
 
+{% note %}
+
+## Key Notes on SAML Configuration
+
+1. **Set `AUTHENTICATION_PROVIDER` to `saml` (lowercase):**  
+   Ensure the `AUTHENTICATION_PROVIDER` field in your environment variables is explicitly set to `saml` for SAML authentication to function correctly. Without this, SAML integration will not work.
+
+2. **Routing to IDP:**  
+   Users will only be routed to the IDP upon sign-in if `AUTHENTICATION_PROVIDER` is set to `saml`.
+
+{% /note %}
+
 ## Create OpenMetadata application
 
 ### Step 1: Configure a new Application in Microsoft Entra ID
@@ -80,12 +92,14 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
 
 - Open the downloaded metadata xml file, and populate the following properties in `openmetadata.yml`
 ```yaml
+  authenticationConfiguration:
+    provider: ${AUTHENTICATION_PROVIDER:-saml}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
       entityId: ${SAML_IDP_ENTITY_ID:-"https://mocksaml.com/api/saml/sso"}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-"https://saml.example.com/entityid"}
-      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""} #Pass the certificate as a string
       authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}
     sp:
@@ -108,7 +122,9 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
       keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
 ```
 
-- Populate the above config from xml metadata
+- Populate the above config from [xml metadata](/deployment/security/saml/xml_file)
+
+ {% image src="/images/v1.6/deployment/security/saml/aws/saml-aws-8.png" alt="populate-metadata" /%}
 
 - IDP Config         
     `entityID` -> Populate it from Metadata XML Entity ID
@@ -150,4 +166,4 @@ Security requirements for your **production** environment:
 
 ### Step 4: Start the server
 
-- Set up for SAML is done, you should be routed to your IDP on trying to Sign-in.
+- Start the OpenMetadata server. With `AUTHENTICATION_PROVIDER` set to saml, you should be routed to the IDP upon sign-in.

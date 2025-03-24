@@ -27,6 +27,10 @@ const mockSelectServiceTypeProps: SelectServiceTypeProps = {
   onNext: jest.fn(),
 };
 
+jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>Searchbar</div>)
+);
+
 describe('Test SelectServiceType component', () => {
   it('SelectServiceType component should render', async () => {
     const { container } = render(

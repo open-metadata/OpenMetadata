@@ -43,6 +43,7 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withSupportEmail(marketPlaceDefinition.getSupportEmail())
             .withClassName(marketPlaceDefinition.getClassName())
             .withAppType(marketPlaceDefinition.getAppType())
+            .withAgentType(marketPlaceDefinition.getAgentType())
             .withScheduleType(marketPlaceDefinition.getScheduleType())
             .withAppConfiguration(createAppRequest.getAppConfiguration())
             .withRuntime(marketPlaceDefinition.getRuntime())
@@ -54,7 +55,8 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
             .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
             .withSystem(marketPlaceDefinition.getSystem())
-            .withSupportsInterrupt(marketPlaceDefinition.getSupportsInterrupt());
+            .withSupportsInterrupt(marketPlaceDefinition.getSupportsInterrupt())
+            .withFullyQualifiedName(marketPlaceDefinition.getFullyQualifiedName());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());

@@ -159,5 +159,5 @@ class SaphanaLineageSource(Source):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(self.engine)
+        result = test_connection_fn(self.metadata, self.engine, self.service_connection)
         raise_test_connection_exception(result)

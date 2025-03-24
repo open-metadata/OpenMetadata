@@ -13,16 +13,17 @@
 
 import Icon from '@ant-design/icons';
 import { Button, Col, Drawer, Row, Space, Tooltip, Typography } from 'antd';
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
-import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -40,8 +41,6 @@ const TableQueryRightPanel = ({
   const { t } = useTranslation();
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
-  const [isEditDescription, setIsEditDescription] = useState(false);
-
   const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
       ...query,
@@ -56,7 +55,6 @@ const TableQueryRightPanel = ({
       description,
     };
     await onQueryUpdate(updatedData, 'description');
-    setIsEditDescription(false);
   };
   const handleTagSelection = async (tags?: TagLabel[]) => {
     if (tags) {
@@ -119,12 +117,10 @@ const TableQueryRightPanel = ({
             <Space direction="vertical" size={4}>
               <DescriptionV1
                 description={query?.description || ''}
+                entityFullyQualifiedName={query?.fullyQualifiedName}
                 entityType={EntityType.QUERY}
                 hasEditAccess={EditDescription || EditAll}
-                isEdit={isEditDescription}
                 showCommentsIcon={false}
-                onCancel={() => setIsEditDescription(false)}
-                onDescriptionEdit={() => setIsEditDescription(true)}
                 onDescriptionUpdate={onDescriptionUpdate}
               />
             </Space>

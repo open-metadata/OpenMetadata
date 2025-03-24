@@ -29,15 +29,13 @@ import {
   DEFAULT_SELECTED_RANGE,
 } from '../../constants/profiler.constant';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { Tag } from '../../generated/entity/classification/tag';
 import { ChartFilter } from '../../interface/data-insight.interface';
-import {
-  DataInsightCustomChartResult,
-  SystemChartType,
-} from '../../rest/DataInsightAPI';
+import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTags } from '../../rest/tagAPI';

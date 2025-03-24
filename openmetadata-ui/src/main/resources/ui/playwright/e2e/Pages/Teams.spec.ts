@@ -21,6 +21,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   descriptionBoxReadOnly,
@@ -34,6 +35,7 @@ import { settingClick } from '../../utils/sidebar';
 import {
   addTeamOwnerToEntity,
   addUserInTeam,
+  checkTeamTabCount,
   createTeam,
   hardDeleteTeam,
   searchTeam,
@@ -113,7 +115,7 @@ test.describe('Teams Page', () => {
 
   test('Teams Page Flow', async ({ page }) => {
     await test.step('Create a new team', async () => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await checkTeamTabCount(page);
       await page.waitForLoadState('networkidle');
 
       await page.waitForSelector('[data-testid="add-team"]');
@@ -396,7 +398,7 @@ test.describe('Teams Page', () => {
       'true'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });
@@ -422,7 +424,7 @@ test.describe('Teams Page', () => {
       'false'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });

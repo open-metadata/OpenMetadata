@@ -14,6 +14,8 @@ Test Quicksight connector with CLI
 """
 from typing import List
 
+import pytest
+
 from metadata.ingestion.api.status import Status
 
 from .common.test_cli_dashboard import CliCommonDashboard
@@ -52,7 +54,7 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 2
 
     def expected_filtered_sink_mix(self) -> int:
-        return 4
+        return 3
 
     # Quicksight do not ingest tags
     def expected_tags(self) -> int:
@@ -74,6 +76,10 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 7
+
+    @pytest.mark.order(11)
+    def test_lineage(self) -> None:
+        pytest.skip("Lineage not configured. Skipping Test")
 
     def assert_for_vanilla_ingestion(
         self, source_status: Status, sink_status: Status

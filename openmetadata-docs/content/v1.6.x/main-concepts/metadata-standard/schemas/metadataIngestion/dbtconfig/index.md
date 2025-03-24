@@ -5,4 +5,15 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig
 
 # Dbtconfig
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**DbtHttpConfig**](/main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbthttpconfig)
+- [**DbtBucketDetails**](/main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtbucketdetails)
+- [**DbtGCSConfig**](/main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtgcsconfig)
+- [**DbtCloudConfig**](/main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtcloudconfig)
+- [**DbtS3Config**](/main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbts3config)
+- [**DbtAzureConfig**](/main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtazureconfig)
+- [**DbtLocalConfig**](/main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtlocalconfig)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

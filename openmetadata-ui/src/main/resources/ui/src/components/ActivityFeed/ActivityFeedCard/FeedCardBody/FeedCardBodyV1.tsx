@@ -83,7 +83,7 @@ const FeedCardBodyV1 = ({
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
-          entityType === EntityType.TEST_SUITE && entityInfo.executable;
+          entityType === EntityType.TEST_SUITE && entityInfo.basic;
         const isObservabilityAlert =
           entityType === EntityType.EVENT_SUBSCRIPTION &&
           (entityInfo as EventSubscription).alertType ===
@@ -164,10 +164,7 @@ const FeedCardBodyV1 = ({
 
   return (
     <div
-      className={classNames(
-        'feed-card-body bg-grey-5 p-sm rounded-6',
-        isEditPost ? '' : className
-      )}>
+      className={classNames('p-y-sm rounded-6', isEditPost ? '' : className)}>
       <div className="feed-message">
         {!isUndefined(announcement) ? (
           <>

@@ -165,6 +165,7 @@ class Profiler(Generic[TMetric]):
                 column
                 for column in self.profiler_interface.get_columns()
                 if column.name in self._get_included_columns()
+                or self._get_included_columns() == {"all"}
             ]
 
         if not self._get_included_columns():
@@ -550,12 +551,12 @@ class Profiler(Generic[TMetric]):
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(
-                    self.profiler_interface.sampler.sample_config.profile_sample
+                    self.profiler_interface.sampler.sample_config.profileSample
                     if self.profiler_interface.sampler.sample_config
                     else None
                 ),
                 profileSampleType=(
-                    self.profiler_interface.sampler.sample_config.profile_sample_type
+                    self.profiler_interface.sampler.sample_config.profileSampleType
                     if self.profiler_interface.sampler.sample_config
                     else None
                 ),

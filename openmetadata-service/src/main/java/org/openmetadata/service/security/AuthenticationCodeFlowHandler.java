@@ -349,7 +349,7 @@ public class AuthenticationCodeFlowHandler {
       if (session != null) {
         LOG.debug("Invalidating the session for logout");
         session.invalidate();
-        httpServletResponse.sendRedirect(serverUrl);
+        httpServletResponse.sendRedirect(serverUrl + "/logout");
       } else {
         LOG.error("No session store available for this web context");
       }
@@ -642,6 +642,7 @@ public class AuthenticationCodeFlowHandler {
 
   @SneakyThrows
   public static void getErrorMessage(HttpServletResponse resp, Exception e) {
+    resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     resp.setContentType("text/html; charset=UTF-8");
     LOG.error("[Auth Callback Servlet] Failed in Auth Login : {}", e.getMessage());
     resp.getOutputStream()

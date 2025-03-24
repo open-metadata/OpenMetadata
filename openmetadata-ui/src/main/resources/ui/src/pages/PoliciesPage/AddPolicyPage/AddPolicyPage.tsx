@@ -13,12 +13,11 @@
 
 import { Button, Divider, Form, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { trim } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
@@ -28,8 +27,12 @@ import {
   Effect,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
+import { withPageLayout } from '../../../hoc/withPageLayout';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getField } from '../../../utils/formUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import {
   getPath,
   getPolicyWithFqnPath,
@@ -42,21 +45,22 @@ const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
 const breadcrumb = [
   {
-    name: t('label.setting-plural'),
+    name: i18n.t('label.setting-plural'),
     url: getSettingPath(),
   },
   {
-    name: t('label.policy-plural'),
+    name: i18n.t('label.policy-plural'),
     url: policiesPath,
   },
   {
-    name: t('label.add-new-entity', { entity: t('label.policy') }),
+    name: i18n.t('label.add-new-entity', { entity: i18n.t('label.policy') }),
     url: '',
   },
 ];
 
 const AddPolicyPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
 
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -106,9 +110,29 @@ const AddPolicyPage = () => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+        onTextChange: (value: string) => setDescription(value),
+      },
+    }),
+    []
+  );
+
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -120,7 +144,9 @@ const AddPolicyPage = () => {
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.policy') })}
+                {t('label.add-new-entity', {
+                  entity: t('label.policy'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="policy-form"
@@ -143,16 +169,7 @@ const AddPolicyPage = () => {
                   />
                 </Form.Item>
 
-                <Form.Item
-                  label={`${t('label.description')}:`}
-                  name="description">
-                  <RichTextEditor
-                    initialValue={description}
-                    placeHolder={t('message.write-your-description')}
-                    style={{ margin: 0 }}
-                    onTextChange={(value) => setDescription(value)}
-                  />
-                </Form.Item>
+                {getField(descriptionField)}
 
                 <Divider data-testid="add-rule-divider">
                   {t('label.add-entity', {
@@ -204,4 +221,8 @@ const AddPolicyPage = () => {
   );
 };
 
-export default AddPolicyPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.policy'),
+  })
+)(AddPolicyPage);

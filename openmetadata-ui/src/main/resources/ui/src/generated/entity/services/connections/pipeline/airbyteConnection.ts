@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Airbyte Metadata Database Connection Config
  */
 export interface AirbyteConnection {
+    /**
+     * Airbyte API version.
+     */
+    apiVersion?: string;
     /**
      * Pipeline Service Management/UI URL.
      */
@@ -23,7 +25,11 @@ export interface AirbyteConnection {
     /**
      * Password to connect to Airbyte.
      */
-    password?:                   string;
+    password?: string;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -33,6 +39,22 @@ export interface AirbyteConnection {
      * Username to connect to Airbyte.
      */
     username?: string;
+}
+
+/**
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**

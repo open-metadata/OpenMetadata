@@ -5,4 +5,13 @@ slug: /main-concepts/metadata-standard/schemas/system/ui
 
 # Ui
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**Tab**](/main-concepts/metadata-standard/schemas/system/ui/tab)
+- [**NavigationItem**](/main-concepts/metadata-standard/schemas/system/ui/navigationitem)
+- [**KnowledgePanel**](/main-concepts/metadata-standard/schemas/system/ui/knowledgepanel)
+- [**UiCustomization**](/main-concepts/metadata-standard/schemas/system/ui/uicustomization)
+- [**Page**](/main-concepts/metadata-standard/schemas/system/ui/page)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

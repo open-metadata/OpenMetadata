@@ -20,6 +20,12 @@
   overflow-x: hidden;
 }
 
+#page-alert {
+  position: sticky;
+  top: 0px;
+  z-index: 20;
+}
+
 .page-layout-v1-left-panel {
   border: @global-border;
   border-radius: @border-radius-base;
@@ -49,4 +55,28 @@
   width: 700px;
   margin: 16px auto 0 auto;
   padding: 0;
+}
+
+.overflow-scroll {
+  overflow: scroll;
+}
+
+.overflow-scroll-y {
+  overflow-y: scroll;
+}
+
+.overflow-scroll-x {
+  overflow-x: scroll;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.overflow-auto-y {
+  overflow-y: auto;
+}
+
+.overflow-auto-x {
+  overflow-x: auto;
 }

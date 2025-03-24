@@ -157,12 +157,12 @@
       border-radius: @border-radius;
       margin-top: 10px;
       max-width: 100%;
+      display: block;
     }
 
     p {
       margin-top: 10px;
       margin-bottom: 0px;
-      color: @text-color;
       word-break: break-word;
       line-height: 20px;
       &:first-child {
@@ -197,6 +197,33 @@
         }
       }
     }
+
+    &.drag-over {
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px dashed @primary-color;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+
+      * {
+        cursor: copy;
+      }
+    }
+
+    // For block movement
+    &.is-dragging {
+      * {
+        cursor: grabbing;
+      }
+    }
   }
 
   // Custom CSS for Tippy
@@ -207,11 +234,17 @@
   &.block-editor-wrapper--bar-menu {
     border: 1px solid #dadde6;
     border-radius: 4px;
+
+    // do not show drag handle and block handle in bar menu mode
+    .om-drag-handle,
+    .om-block-handle {
+      display: none;
+    }
     .om-block-editor {
       max-height: 300px;
       overflow: auto;
-      padding-left: 50px;
-      padding-right: 50px;
+      padding-left: 24px;
+      padding-right: 24px;
       padding-top: 8px;
       &:focus-visible {
         outline: none;

@@ -36,6 +36,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -49,6 +50,7 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -57,8 +59,8 @@ import {
 } from './AddObservabilityPage.interface';
 
 function AddObservabilityPage() {
-  const { t } = useTranslation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
@@ -243,11 +245,10 @@ function AddObservabilityPage() {
                         label={t('label.description')}
                         labelCol={{ span: 24 }}
                         name="description"
-                        trigger="onTextChange"
-                        valuePropName="initialValue">
+                        trigger="onTextChange">
                         <RichTextEditor
                           data-testid="description"
-                          initialValue=""
+                          initialValue={alert?.description}
                         />
                       </Form.Item>
                     </Col>
@@ -333,7 +334,9 @@ function AddObservabilityPage() {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.alert'),
+      })}
       secondPanel={{
         children: <></>,
         minWidth: 0,
@@ -343,4 +346,8 @@ function AddObservabilityPage() {
   );
 }
 
-export default AddObservabilityPage;
+export default withPageLayout(
+  i18n.t('label.entity-detail-plural', {
+    entity: i18n.t('label.alert'),
+  })
+)(AddObservabilityPage);

@@ -13,7 +13,6 @@
 import { isEmpty } from 'lodash';
 import { TabSpecificField } from '../enums/entity.enum';
 import { Column } from '../generated/entity/data/dashboardDataModel';
-import { sortTagsCaseInsensitive } from './CommonUtils';
 
 export const updateDataModelColumnDescription = (
   containerColumns: Column[] = [],
@@ -39,9 +38,3 @@ export const updateDataModelColumnDescription = (
 };
 
 export const defaultFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
-
-export const getSortedDataModelColumnTags = (column: Column[]): Column[] =>
-  column.map((item) => ({
-    ...item,
-    tags: sortTagsCaseInsensitive(item.tags ?? []),
-  }));

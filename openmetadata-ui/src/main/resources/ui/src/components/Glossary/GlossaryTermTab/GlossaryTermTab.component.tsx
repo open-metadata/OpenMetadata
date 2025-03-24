@@ -24,16 +24,18 @@ import {
   TableProps,
   Tooltip,
 } from 'antd';
-import {
-  ColumnsType,
-  ColumnType,
-  ExpandableConfig,
-} from 'antd/lib/table/interface';
+import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -56,6 +58,11 @@ import {
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import {
+  DEFAULT_VISIBLE_COLUMNS,
+  GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
+  STATIC_VISIBLE_COLUMNS,
+} from '../../../constants/Glossary.contant';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -76,7 +83,8 @@ import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   findExpandableKeysForArray,
-  findGlossaryTermByFqn,
+  findItemByFqn,
+  glossaryTermTableColumnsWidth,
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -85,7 +93,6 @@ import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowPr
 import Loader from '../../common/Loader/Loader';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
-import DraggableMenuItem from '../GlossaryColumnsSelectionDropdown/DraggableMenuItem.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -102,14 +109,20 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [tableWidth, setTableWidth] = useState(0);
   const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
     useGlossaryStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = useMemo(
-    () => (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [],
-    [glossaryChildTerms]
-  );
+  const { glossaryTerms, expandableKeys } = useMemo(() => {
+    const terms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+
+    return {
+      expandableKeys: findExpandableKeysForArray(terms),
+      glossaryTerms: terms,
+    };
+  }, [glossaryChildTerms]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -117,10 +130,6 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const listOfVisibleColumns = useMemo(() => {
-    return ['name', 'description', 'owners', 'status', 'new-term'];
-  }, []);
-
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
   const statusOptions = useMemo(
@@ -135,6 +144,32 @@ const GlossaryTermTab = ({
     ...statusDropdownSelection,
   ]);
 
+  const fetchAllTerms = async () => {
+    setIsTableLoading(true);
+    const key = isGlossary ? 'glossary' : 'parent';
+    const { data } = await getGlossaryTerms({
+      [key]: activeGlossary?.id || '',
+      limit: API_RES_MAX_SIZE,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
+    });
+    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
+    const keys = data.reduce((prev, curr) => {
+      if (curr.children?.length) {
+        prev.push(curr.fullyQualifiedName ?? '');
+      }
+
+      return prev;
+    }, [] as string[]);
+
+    setExpandedRowKeys(keys);
+
+    setIsTableLoading(false);
+  };
+
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
       return (activeGlossary as GlossaryTerm).status ?? Status.Approved;
@@ -143,19 +178,20 @@ const GlossaryTermTab = ({
     return null;
   }, [isGlossary, activeGlossary]);
 
-  const expandableKeys = useMemo(() => {
-    return findExpandableKeysForArray(glossaryTerms);
-  }, [glossaryTerms]);
+  const tableColumnsWidth = useMemo(
+    () => glossaryTermTableColumnsWidth(tableWidth, permissions.Create),
+    [permissions.Create, tableWidth]
+  );
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
         title: t('label.term-plural'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
         className: 'glossary-name-column',
         ellipsis: true,
-        width: '40%',
+        width: tableColumnsWidth.name,
         render: (_, record) => {
           const name = getEntityName(record);
 
@@ -182,9 +218,9 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: permissions.Create ? '21%' : '33%',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
+        width: tableColumnsWidth.description,
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewerV1
@@ -198,9 +234,9 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.reviewer'),
-        dataIndex: 'reviewers',
-        key: 'reviewers',
-        width: '33%',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
+        width: tableColumnsWidth.reviewers,
         render: (reviewers: EntityReference[]) => (
           <OwnerLabel
             owners={reviewers}
@@ -212,9 +248,9 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.synonym-plural'),
-        dataIndex: 'synonyms',
-        key: 'synonyms',
-        width: '33%',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
+        width: tableColumnsWidth.synonyms,
         render: (synonyms: string[]) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
@@ -233,16 +269,20 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        width: '17%',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
+        width: tableColumnsWidth.owners,
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
-        dataIndex: 'status',
-        key: 'status',
-        width: '12%',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
+        // this check is added to the width, since the last column is optional and to maintain
+        // the re-sizing of the column should not be affected the others columns width sizes.
+        ...(permissions.Create && {
+          width: tableColumnsWidth.status,
+        }),
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
 
@@ -260,8 +300,8 @@ const GlossaryTermTab = ({
     if (permissions.Create) {
       data.push({
         title: t('label.action-plural'),
-        key: 'new-term',
-        width: '10%',
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -308,109 +348,25 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [permissions]);
+  }, [permissions, tableColumnsWidth]);
 
-  const defaultCheckedList = useMemo(
-    () =>
-      columns.reduce<string[]>(
-        (acc, column) =>
-          listOfVisibleColumns.includes(column.key as string)
-            ? [...acc, column.key as string]
-            : acc,
-        []
-      ),
-    [columns, listOfVisibleColumns]
-  );
-
-  const [selectedColumns, setSelectedColumns] =
-    useState<string[]>(defaultCheckedList);
-  const [columnDropdownSelections, setColumnDropdownSelections] = useState<
-    string[]
-  >([...selectedColumns]);
-
-  const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
-
-  const [options, setOptions] = useState<{ value: string; label: string }[]>(
-    columns.reduce<{ value: string; label: string }[]>(
-      (acc, { key, title }) =>
-        key !== 'name'
-          ? [...acc, { label: title as string, value: key as string }]
-          : acc,
-      []
-    )
-  );
-
-  const newColumns = useMemo(() => {
-    return columns.map((item) => ({
-      ...item,
-      hidden: !selectedColumns.includes(item.key as string),
-    }));
-  }, [columns, selectedColumns]);
-
-  const rearrangedColumns = useMemo(
-    () =>
-      newColumns
-        .filter((column) => !column.hidden)
-        .sort((a, b) => {
-          const aIndex = options.findIndex(
-            (option: { value: string; label: string }) => option.value === a.key
-          );
-          const bIndex = options.findIndex(
-            (option: { value: string; label: string }) => option.value === b.key
-          );
-
-          return aIndex - bIndex;
-        }),
-    [newColumns]
-  );
-
-  const handleColumnSelectionDropdownSave = useCallback(() => {
-    setSelectedColumns(columnDropdownSelections);
-    setIsDropdownVisible(false);
-  }, [columnDropdownSelections]);
-
-  const handleColumnSelectionDropdownCancel = useCallback(() => {
-    setColumnDropdownSelections(selectedColumns);
-    setIsDropdownVisible(false);
-  }, [selectedColumns]);
-
-  const handleMoveItem = (updatedList: { value: string; label: string }[]) => {
-    setOptions(updatedList);
-    setColumnDropdownSelections((prevCheckedList) => {
-      const updatedCheckedList = prevCheckedList.map((item) => {
-        const index = updatedList.findIndex((option) => option.value === item);
-
-        return updatedList[index]?.value || item;
-      });
-
-      return updatedCheckedList;
-    });
-  };
   const handleCheckboxChange = useCallback(
-    (key: string, checked: boolean, type: 'columns' | 'status') => {
-      const setCheckedList =
-        type === 'columns'
-          ? setColumnDropdownSelections
-          : setStatusDropdownSelections;
+    (key: string, checked: boolean) => {
+      const setCheckedList = setStatusDropdownSelections;
 
-      const optionsToUse =
-        type === 'columns'
-          ? (columns as ColumnType<ModifiedGlossaryTerm>[])
-          : (statusOptions as { value: string }[]);
+      const optionsToUse = statusOptions as { value: string }[];
 
       if (key === 'all') {
         if (checked) {
           const newCheckedList = [
             'all',
             ...optionsToUse.map((option) => {
-              return type === 'columns'
-                ? String((option as ColumnType<ModifiedGlossaryTerm>).key)
-                : (option as { value: string }).value ?? '';
+              return (option as { value: string }).value ?? '';
             }),
           ];
           setCheckedList(newCheckedList);
         } else {
-          type === 'columns' ? setCheckedList(['name']) : setCheckedList([]);
+          setCheckedList([]);
         }
       } else {
         setCheckedList((prev: string[]) => {
@@ -418,14 +374,9 @@ const GlossaryTermTab = ({
             ? [...prev, key]
             : prev.filter((item) => item !== key);
 
-          const allChecked =
-            type === 'columns'
-              ? (optionsToUse as ColumnType<ModifiedGlossaryTerm>[]).every(
-                  (opt) => newCheckedList.includes(String(opt.key))
-                )
-              : (optionsToUse as { value: string }[]).every((opt) =>
-                  newCheckedList.includes(opt.value ?? '')
-                );
+          const allChecked = (optionsToUse as { value: string }[]).every(
+            (opt) => newCheckedList.includes(opt.value ?? '')
+          );
 
           if (allChecked) {
             return ['all', ...newCheckedList];
@@ -435,103 +386,9 @@ const GlossaryTermTab = ({
         });
       }
     },
-    [
-      columns,
-      statusOptions,
-      setColumnDropdownSelections,
-      setStatusDropdownSelections,
-    ]
+    [columns, statusOptions, setStatusDropdownSelections]
   );
 
-  const menu = useMemo(
-    () => ({
-      items: [
-        {
-          key: 'addColumn',
-          label: (
-            <div className="glossary-col-sel-dropdown-title">
-              <p className="m-l-md">{t('label.add-column')}</p>
-              <Checkbox.Group
-                className="glossary-col-sel-checkbox-group"
-                value={columnDropdownSelections}>
-                <Checkbox
-                  checked={columns
-                    .filter((col) => col.key === 'name')
-                    .every(({ key }) =>
-                      columnDropdownSelections.includes(key as string)
-                    )}
-                  className={classNames(
-                    'd-flex',
-                    'items-center',
-                    'm-b-xss',
-                    'custom-glossary-col-sel-checkbox',
-                    'select-all-checkbox'
-                  )}
-                  key="all"
-                  value="all"
-                  onChange={(e) =>
-                    handleCheckboxChange('all', e.target.checked, 'columns')
-                  }>
-                  <p className="m-l-xs m-t-sm">{t('label.all')}</p>
-                </Checkbox>
-                {options.map(
-                  (option: { value: string; label: string }, index: number) => (
-                    <div
-                      className="d-flex justify-start items-center"
-                      key={option.value}>
-                      <DraggableMenuItem
-                        index={index}
-                        option={option}
-                        options={options}
-                        selectedOptions={columnDropdownSelections}
-                        onMoveItem={handleMoveItem}
-                        onSelect={handleCheckboxChange}
-                      />
-                    </div>
-                  )
-                )}
-              </Checkbox.Group>
-            </div>
-          ),
-        },
-        {
-          key: 'divider',
-          type: 'divider',
-          className: 'm-b-xs',
-        },
-        {
-          key: 'actions',
-          label: (
-            <div className="flex-center">
-              <Space>
-                <Button
-                  className="custom-glossary-dropdown-action-btn"
-                  data-testid="glossary-col-dropdown-save"
-                  type="primary"
-                  onClick={handleColumnSelectionDropdownSave}>
-                  {t('label.save')}
-                </Button>
-                <Button
-                  className="custom-glossary-dropdown-action-btn"
-                  type="default"
-                  onClick={handleColumnSelectionDropdownCancel}>
-                  {t('label.cancel')}
-                </Button>
-              </Space>
-            </div>
-          ),
-        },
-      ],
-    }),
-    [
-      columnDropdownSelections,
-      columns,
-      options,
-      handleCheckboxChange,
-      handleColumnSelectionDropdownSave,
-      handleColumnSelectionDropdownCancel,
-    ]
-  );
   const handleStatusSelectionDropdownSave = () => {
     setSelectedStatus(statusDropdownSelection);
     setIsStatusDropdownVisible(false);
@@ -541,6 +398,19 @@ const GlossaryTermTab = ({
     setStatusDropdownSelections(selectedStatus);
     setIsStatusDropdownVisible(false);
   };
+
+  const toggleExpandAll = () => {
+    if (expandedRowKeys.length === expandableKeys.length) {
+      setExpandedRowKeys([]);
+    } else {
+      fetchAllTerms();
+    }
+  };
+
+  const isAllExpanded = useMemo(() => {
+    return expandedRowKeys.length === expandableKeys.length;
+  }, [expandedRowKeys, expandableKeys]);
+
   const statusDropdownMenu = useMemo(
     () => ({
       items: [
@@ -556,7 +426,7 @@ const GlossaryTermTab = ({
                   key="all"
                   value="all"
                   onChange={(e) =>
-                    handleCheckboxChange('all', e.target.checked, 'status')
+                    handleCheckboxChange('all', e.target.checked)
                   }>
                   <p className="glossary-dropdown-label">{t('label.all')}</p>
                 </Checkbox>
@@ -566,11 +436,7 @@ const GlossaryTermTab = ({
                       className="custom-glossary-col-sel-checkbox"
                       value={option.value}
                       onChange={(e) =>
-                        handleCheckboxChange(
-                          option.value,
-                          e.target.checked,
-                          'status'
-                        )
+                        handleCheckboxChange(option.value, e.target.checked)
                       }>
                       <p className="glossary-dropdown-label">{option.label}</p>
                     </Checkbox>
@@ -616,6 +482,51 @@ const GlossaryTermTab = ({
     ]
   );
 
+  const extraTableFilters = useMemo(() => {
+    return (
+      <>
+        <Button
+          className="text-primary"
+          data-testid="expand-collapse-all-button"
+          size="small"
+          type="text"
+          onClick={toggleExpandAll}>
+          <Space align="center" size={4}>
+            {isAllExpanded ? (
+              <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+            ) : (
+              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
+            )}
+
+            {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
+          </Space>
+        </Button>
+        <Dropdown
+          className="custom-glossary-dropdown-menu status-dropdown"
+          getPopupContainer={(trigger) => {
+            const customContainer = trigger.closest(
+              '.custom-glossary-dropdown-menu.status-dropdown'
+            );
+
+            return customContainer as HTMLElement;
+          }}
+          menu={statusDropdownMenu}
+          open={isStatusDropdownVisible}
+          trigger={['click']}
+          onOpenChange={setIsStatusDropdownVisible}>
+          <Button
+            className="custom-status-dropdown-btn"
+            data-testid="glossary-status-dropdown">
+            <Space>
+              {t('label.status')}
+              <DownOutlined />
+            </Space>
+          </Button>
+        </Dropdown>
+      </>
+    );
+  }, [isAllExpanded, isStatusDropdownVisible, statusDropdownMenu]);
+
   const handleAddGlossaryTermClick = () => {
     onAddGlossaryTerm(
       !isGlossary ? (activeGlossary as GlossaryTerm) : undefined
@@ -655,10 +566,7 @@ const GlossaryTermTab = ({
             );
             const terms = cloneDeep(glossaryTerms) ?? [];
 
-            const item = findGlossaryTermByFqn(
-              terms,
-              record.fullyQualifiedName ?? ''
-            );
+            const item = findItemByFqn(terms, record.fullyQualifiedName ?? '');
 
             (item as ModifiedGlossary).children = data;
 
@@ -755,43 +663,11 @@ const GlossaryTermTab = ({
     setIsTableHovered(false);
   }, []);
 
-  const fetchAllTerms = async () => {
-    setIsTableLoading(true);
-    const key = isGlossary ? 'glossary' : 'parent';
-    const { data } = await getGlossaryTerms({
-      [key]: activeGlossary?.id || '',
-      limit: API_RES_MAX_SIZE,
-      fields: [
-        TabSpecificField.OWNERS,
-        TabSpecificField.PARENT,
-        TabSpecificField.CHILDREN,
-      ],
-    });
-    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
-    const keys = data.reduce((prev, curr) => {
-      if (curr.children?.length) {
-        prev.push(curr.fullyQualifiedName ?? '');
-      }
-
-      return prev;
-    }, [] as string[]);
-
-    setExpandedRowKeys(keys);
-
-    setIsTableLoading(false);
-  };
-
-  const toggleExpandAll = () => {
-    if (expandedRowKeys.length === expandableKeys.length) {
-      setExpandedRowKeys([]);
-    } else {
-      fetchAllTerms();
+  useEffect(() => {
+    if (tableRef.current) {
+      setTableWidth(tableRef.current.offsetWidth);
     }
-  };
-
-  const isAllExpanded = useMemo(() => {
-    return expandedRowKeys.length === expandableKeys.length;
-  }, [expandedRowKeys, expandableKeys]);
+  }, []);
 
   if (termsLoading) {
     return <Loader />;
@@ -815,93 +691,34 @@ const GlossaryTermTab = ({
     );
   }
 
+  const filteredGlossaryTerms = glossaryTerms.filter((term) =>
+    selectedStatus.includes(term.status as string)
+  );
+
   return (
     <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
-        <div className="d-flex justify-end items-center gap-5">
-          <Button
-            className="text-primary mb-4 m-r-xss"
-            data-testid="expand-collapse-all-button"
-            size="small"
-            type="text"
-            onClick={toggleExpandAll}>
-            <Space align="center" size={4}>
-              {isAllExpanded ? (
-                <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-              ) : (
-                <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-              )}
-
-              {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
-            </Space>
-          </Button>
-          <Dropdown
-            className="mb-4  custom-glossary-dropdown-menu status-dropdown"
-            getPopupContainer={(trigger) => {
-              const customContainer = trigger.closest(
-                '.custom-glossary-dropdown-menu.status-dropdown'
-              );
-
-              return customContainer as HTMLElement;
-            }}
-            menu={statusDropdownMenu}
-            open={isStatusDropdownVisible}
-            trigger={['click']}
-            onOpenChange={setIsStatusDropdownVisible}>
-            <Button
-              className="custom-status-dropdown-btn m-r-sm"
-              data-testid="glossary-status-dropdown">
-              <Space>
-                {t('label.status')}
-                <DownOutlined />
-              </Space>
-            </Button>
-          </Dropdown>
-          <DndProvider backend={HTML5Backend}>
-            <Dropdown
-              className="mb-4 custom-glossary-dropdown-menu"
-              getPopupContainer={(trigger) => {
-                const customContainer = trigger.closest(
-                  '.custom-glossary-dropdown-menu'
-                );
-
-                return customContainer as HTMLElement;
-              }}
-              menu={menu}
-              open={isDropdownVisible}
-              trigger={['click']}
-              onOpenChange={setIsDropdownVisible}>
-              <Button
-                className="custom-status-dropdown-btn m-r-xs"
-                data-testid="glossary-column-dropdown">
-                <Space>
-                  {t('label.column-plural')}
-                  <DownOutlined />
-                </Space>
-              </Button>
-            </Dropdown>
-          </DndProvider>
-        </div>
-
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
               bordered
+              resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
               })}
-              columns={rearrangedColumns.filter((col) => !col.hidden)}
+              columns={columns}
               components={TABLE_CONSTANTS}
               data-testid="glossary-terms-table"
-              dataSource={glossaryTerms.filter((term) =>
-                selectedStatus.includes(term.status as string)
-              )}
+              dataSource={filteredGlossaryTerms}
+              defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
+              extraTableFilters={extraTableFilters}
               loading={isTableLoading}
               pagination={false}
+              ref={tableRef}
               rowKey="fullyQualifiedName"
               size="small"
-              tableLayout="fixed"
+              staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               onHeaderRow={onTableHeader}
               onRow={onTableRow}
             />

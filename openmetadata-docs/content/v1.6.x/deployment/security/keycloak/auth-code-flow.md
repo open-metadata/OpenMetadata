@@ -43,3 +43,40 @@ Note: Scopes `openid`, `email` & `profile` are required to fetch the user detail
 - You will find your `Client Secret` related to the Client id "open-metadata"
 
 {% image src="/images/v1.6/deployment/security/keycloak/keycloak-step-6.png" alt="client-credentials" /%}
+
+
+After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="celebration"
+    bold="Docker Security"
+    href="/deployment/security/keycloak/docker" %}
+    Configure Keycloak SSO for your Docker Deployment.
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="storage"
+    bold="Bare Metal Security"
+    href="/deployment/security/keycloak/bare-metal" %}
+    Configure Keycloak SSO for your Bare Metal Deployment.
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="fit_screen"
+    bold="Kubernetes Security"
+    href="/deployment/security/keycloak/kubernetes" %}
+    Configure Keycloak SSO for your Kubernetes Deployment.
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="KeyCloak"
+    href="/deployment/security/keycloak" %}
+    Go to KeyCloak Configuration
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

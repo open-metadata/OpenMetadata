@@ -12,6 +12,7 @@
 Helper module to handle data sampling
 for the profiler
 """
+import hashlib
 import traceback
 from typing import List, Optional, Union, cast
 
@@ -32,6 +33,7 @@ from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.processor.handle_partition import build_partition_predicate
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
 
@@ -109,27 +111,43 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             query = self.get_partitioned_query(query)
         return query
 
+    def get_sampler_table_name(self) -> str:
+        """Get the base name of the SQA table for sampling.
+        We use MD5 as a hashing algorithm to generate a unique name for the table
+        keeping its length controlled. Otherwise, we ended up having issues
+        with names getting truncated when we add the suffixes to the identifiers
+        such as _sample, or _rnd.
+        """
+        encoded_name = self.raw_dataset.__tablename__.encode(UTF_8)
+        hash_object = hashlib.md5(encoded_name)
+        return hash_object.hexdigest()
+
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             rnd = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-            ).cte(f"{self.raw_dataset.__tablename__}_rnd")
+            ).cte(f"{self.get_sampler_table_name()}_rnd")
             session_query = self.client.query(rnd)
             return session_query.where(
-                rnd.c.random <= self.sample_config.profile_sample
-            ).cte(f"{self.raw_dataset.__tablename__}_sample")
+                rnd.c.random <= self.sample_config.profileSample
+            ).cte(f"{self.get_sampler_table_name()}_sample")
 
         table_query = self.client.query(self.raw_dataset)
         session_query = self._base_sample_query(
             column,
-            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
+            (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL)
+            if self.sample_config.randomizedSample
+            else None,
         )
-        return (
+        query = (
             session_query.order_by(RANDOM_LABEL)
-            .limit(self.sample_config.profile_sample)
-            .cte(f"{self.raw_dataset.__tablename__}_rnd")
+            if self.sample_config.randomizedSample
+            else session_query
+        )
+        return query.limit(self.sample_config.profileSample).cte(
+            f"{self.get_sampler_table_name()}_rnd"
         )
 
     def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
@@ -140,13 +158,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.sample_config.profile_sample or (
-            int(self.sample_config.profile_sample) == 100
-            and self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
+        if not self.sample_config.profileSample or (
+            self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE
+            and self.sample_config.profileSample == 100
         ):
             if self.partition_details:
                 partitioned = self._partitioned_table()
-                return partitioned.cte(f"{self.raw_dataset.__tablename__}_partitioned")
+                return partitioned.cte(f"{self.get_sampler_table_name()}_partitioned")
 
             return self.raw_dataset
 
@@ -165,23 +183,23 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
-        rnd = self.get_sample_query()
+        ds = self.get_dataset()
         if not columns:
-            sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
+            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL]
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
-                for col in inspect(rnd).c
+                for col in inspect(ds).c
                 if col.name != RANDOM_LABEL and col.name in names
             ]
 
         try:
             sqa_sample = (
                 self.client.query(*sqa_columns)
-                .select_from(rnd)
+                .select_from(ds)
                 .limit(self.sample_limit)
                 .all()
             )
@@ -227,7 +245,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
 
         return self.client.query(stmt.subquery()).cte(
-            f"{self.raw_dataset.__tablename__}_user_sampled"
+            f"{self.get_sampler_table_name()}_user_sampled"
         )
 
     def _partitioned_table(self) -> Query:

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Definition of the properties contained by an object store container template config file
  */
 export interface ContainerMetadataConfig {
@@ -31,6 +29,10 @@ export interface MetadataEntry {
      * The path where the data resides in the container, excluding the bucket name
      */
     dataPath: string;
+    /**
+     * Depth of the data path in the container
+     */
+    depth?: number;
     /**
      * Flag indicating whether the container's data is partitioned
      */
@@ -180,6 +182,8 @@ export enum DataType {
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",

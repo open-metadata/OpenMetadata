@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
@@ -29,6 +28,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { generateFormFields } from '../../../utils/formUtils';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
@@ -125,6 +126,36 @@ export const TestCaseStatusModal = ({
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: ['testCaseResolutionStatusDetails', 'testCaseFailureComment'],
+      required: true,
+      label: t('label.comment'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      rules: [
+        {
+          required: true,
+        },
+      ],
+      props: {
+        'data-testid': 'description',
+        initialValue:
+          data?.testCaseResolutionStatusDetails?.testCaseFailureComment ?? '',
+        placeHolder: t('message.write-your-text', {
+          text: t('label.comment'),
+        }),
+
+        onTextChange: (value: string) =>
+          form.setFieldValue(
+            ['testCaseResolutionStatusDetails', 'testCaseFailureComment'],
+            value
+          ),
+      },
+    }),
+    [data?.testCaseResolutionStatusDetails?.testCaseFailureComment]
+  );
+
   useEffect(() => {
     const assignee = data?.testCaseResolutionStatusDetails?.assignee;
     if (
@@ -202,36 +233,7 @@ export const TestCaseStatusModal = ({
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item
-              label={t('label.comment')}
-              name={[
-                'testCaseResolutionStatusDetails',
-                'testCaseFailureComment',
-              ]}
-              rules={[
-                {
-                  required: true,
-                },
-              ]}>
-              <RichTextEditor
-                initialValue={
-                  data?.testCaseResolutionStatusDetails
-                    ?.testCaseFailureComment ?? ''
-                }
-                placeHolder={t('message.write-your-text', {
-                  text: t('label.comment'),
-                })}
-                onTextChange={(value) =>
-                  form.setFieldValue(
-                    [
-                      'testCaseResolutionStatusDetails',
-                      'testCaseFailureComment',
-                    ],
-                    value
-                  )
-                }
-              />
-            </Form.Item>
+            {generateFormFields([descriptionField])}
           </>
         )}
         {statusType === TestCaseResolutionStatusTypes.Assigned && (

@@ -70,6 +70,10 @@ This is a sample config for Dagster:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=3 %}
+**timeout** : Connection Time Limit Between OM and Dagster Graphql API in second
+{% /codeInfo %}
+
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
 
@@ -95,6 +99,9 @@ source:
 ```
 ```yaml {% srNumber=2 %}
         token: token
+```
+```yaml {% srNumber=3 %}
+        # timeout: 1000
 ```
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}

@@ -18,7 +18,6 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
-    BasicAuthentication,
     NifiConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
@@ -34,22 +33,8 @@ def get_connection(connection: NifiConnection) -> NifiClient:
     """
     Create connection
     """
-    if isinstance(connection.nifiConfig, BasicAuthentication):
-        return NifiClient(
-            host_port=connection.hostPort,
-            username=connection.nifiConfig.username,
-            password=connection.nifiConfig.password.get_secret_value()
-            if connection.nifiConfig.password
-            else None,
-            verify=connection.nifiConfig.verifySSL,
-        )
 
-    return NifiClient(
-        host_port=connection.hostPort,
-        ca_file_path=connection.nifiConfig.certificateAuthorityPath,
-        client_cert_path=connection.nifiConfig.clientCertificatePath,
-        client_key_path=connection.nifiConfig.clientkeyPath,
-    )
+    return NifiClient(connection=connection)
 
 
 def test_connection(

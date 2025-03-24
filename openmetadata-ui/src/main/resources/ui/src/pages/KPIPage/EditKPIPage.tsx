@@ -34,22 +34,26 @@ import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
+import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getKPIByName, patchKPI } from '../../rest/KpiAPI';
 import {
   getDataInsightPathWithFqn,
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
+import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getKPIChartType,
   KPIChartOptions,
@@ -62,7 +66,6 @@ import { KPIFormValues } from './KPIPage.interface';
 const EditKPIPage = () => {
   const { isAdminUser } = useAuth();
   const { fqn: kpiName } = useFqn();
-
   const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm<KPIFormValues>();
@@ -192,6 +195,25 @@ const EditKPIPage = () => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: kpiData?.description,
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+      },
+    }),
+    [kpiData?.description]
+  );
+
   useEffect(() => {
     fetchKPI();
   }, [kpiName]);
@@ -202,7 +224,7 @@ const EditKPIPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel m--t-sm"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -213,7 +235,9 @@ const EditKPIPage = () => {
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
-              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+              {t('label.edit-entity', {
+                entity: t('label.kpi-uppercase'),
+              })}
             </Typography.Paragraph>
             <Form
               data-testid="kpi-form"
@@ -384,18 +408,11 @@ const EditKPIPage = () => {
                   </Form.Item>
                 </Col>
               </Row>
-
-              <Form.Item
-                label={t('label.description')}
-                name="description"
-                trigger="onTextChange"
-                valuePropName="initialValue">
-                <RichTextEditor
-                  placeHolder={t('message.write-your-description')}
-                  style={{ margin: 0 }}
-                />
-              </Form.Item>
-
+              <EntityAttachmentProvider
+                entityFqn={kpiData?.fullyQualifiedName}
+                entityType={EntityType.KPI}>
+                {getField(descriptionField)}
+              </EntityAttachmentProvider>
               <Space align="center" className="w-full justify-end">
                 <Button
                   data-testid="cancel-btn"
@@ -421,12 +438,16 @@ const EditKPIPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.kpi-uppercase'),
+      })}
       secondPanel={{
         children: (
           <div data-testid="right-panel">
             <Typography.Paragraph className="text-base font-medium">
-              {t('label.edit-entity', { entity: t('label.kpi-uppercase') })}
+              {t('label.edit-entity', {
+                entity: t('label.kpi-uppercase'),
+              })}
             </Typography.Paragraph>
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </div>
@@ -439,4 +460,8 @@ const EditKPIPage = () => {
   );
 };
 
-export default EditKPIPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.kpi-uppercase'),
+  })
+)(EditKPIPage);

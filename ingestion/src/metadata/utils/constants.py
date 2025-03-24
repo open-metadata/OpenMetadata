@@ -47,12 +47,6 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseType,
 )
-from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
-    DorisType,
-)
-from metadata.generated.schema.entity.services.connections.database.druidConnection import (
-    DruidType,
-)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBType,
 )
@@ -74,9 +68,6 @@ from metadata.generated.schema.entity.services.connections.database.sapErpConnec
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
     SasType,
 )
-from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
-    DatabricksType,
-)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -94,6 +85,7 @@ THREE_MIN = 3 * 60
 UTF_8 = "utf-8"
 CHUNKSIZE = 200000
 DEFAULT_DATABASE = "default"
+DEFAULT_DASHBAORD = "default"
 BUILDER_PASSWORD_ATTR = "password"
 TIMEDELTA = "timedelta"
 COMPLEX_COLUMN_SEPARATOR = "_##"
@@ -172,11 +164,8 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DatalakeType.Datalake.value,
     BigtableType.BigTable.value,
     CouchbaseType.Couchbase.value,
-    DatabricksType.UnityCatalog.value,
     DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
-    DorisType.Doris.value,
-    DruidType.Druid.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
     IcebergType.Iceberg.value,

@@ -33,6 +33,19 @@ caption="Add Complex Queries using Advanced Search"
 For example, we can set up a complex query as follows:
 - Group one set of conditions together by defining the `Owner`. You can add multiple conditions to define different owners and use the `OR` condition to ensure that the owner is any one among them.
 
+{% note noteType="Tip" %} 
+### Note on Custom Properties in Elasticsearch Search
+
+Elasticsearch does not support searching for custom properties with the following formats: 
+
+- **Time**
+- **DateTime**
+- Any date formats other than `yyyy-MM-dd`
+
+Please ensure that custom properties adhere to these constraints for compatibility with Elasticsearch search functionality.
+
+{% /note %}
+
 {% image
 src="/images/v1.6/how-to-guides/discovery/adv3.png"
 alt="Grouped Condition based on the Owner of the Data Assets"

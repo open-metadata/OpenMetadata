@@ -14,7 +14,12 @@ import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
-import { getTestSuiteByName } from '../../rest/testAPI';
+import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
+import {
+  getListTestCaseBySearch,
+  getTestSuiteByName,
+  updateTestSuiteById,
+} from '../../rest/testAPI';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
@@ -73,11 +78,14 @@ jest.mock('../../hooks/useApplicationStore', () => {
       .mockImplementation(() => ({ isAuthDisabled: true })),
   };
 });
-
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => {
   return {
     useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),
     useParams: jest.fn().mockImplementation(() => ({ fqn: 'testSuiteFQN' })),
+    useLocation: jest.fn().mockImplementation(() => ({
+      pathname: mockLocationPathname,
+    })),
   };
 });
 jest.mock('../../rest/testAPI', () => {
@@ -87,10 +95,10 @@ jest.mock('../../rest/testAPI', () => {
     addTestCaseToLogicalTestSuite: jest
       .fn()
       .mockImplementation(() => Promise.resolve()),
-    getListTestCase: jest
+    getListTestCaseBySearch: jest
       .fn()
       .mockImplementation(() => Promise.resolve({ data: [] })),
-    ListTestCaseParams: jest
+    ListTestCaseParamsBySearch: jest
       .fn()
       .mockImplementation(() => Promise.resolve({ data: [] })),
   };
@@ -102,6 +110,43 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       .mockImplementation(() => Promise.resolve(mockEntityPermissions)),
   })),
 }));
+jest.mock(
+  '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>EntityHeaderTitle.component</div>);
+  }
+);
+jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => {
+  return {
+    DomainLabel: jest
+      .fn()
+      .mockImplementation(() => <div>DomainLabel.component</div>),
+  };
+});
+jest.mock('../../rest/ingestionPipelineAPI', () => ({
+  getIngestionPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+      paging: { total: 0 },
+    })
+  ),
+}));
+jest.mock('../../components/common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="owner-label">OwnerLabel.component</div>
+    )),
+}));
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(({ id, name }) => (
+    <div className="w-full tabs-label-container" data-testid={id}>
+      <div className="d-flex justify-between gap-2">{name}</div>
+    </div>
+  ));
+});
 
 describe('TestSuiteDetailsPage component', () => {
   it('component should render', async () => {
@@ -109,6 +154,12 @@ describe('TestSuiteDetailsPage component', () => {
 
     expect(
       await screen.findByText('TitleBreadcrumb.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('EntityHeaderTitle.component')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('DomainLabel.component')
     ).toBeInTheDocument();
     expect(
       await screen.findByText('ManageButton.component')
@@ -129,7 +180,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-      fields: 'owners',
+      fields: ['owners', 'domain'],
       include: 'all',
     });
   });
@@ -152,5 +203,124 @@ describe('TestSuiteDetailsPage component', () => {
     expect(
       await screen.findByText('ErrorPlaceHolder.component')
     ).toBeInTheDocument();
+  });
+
+  it('should handle domain update', async () => {
+    const mockUpdateTestSuite = jest.fn().mockResolvedValue({
+      id: '123',
+      name: 'test-suite',
+      domain: { id: 'domain-id', name: 'domain-name', type: 'domain' },
+    });
+
+    (updateTestSuiteById as jest.Mock).mockImplementationOnce(
+      mockUpdateTestSuite
+    );
+
+    await act(async () => {
+      render(<TestSuiteDetailsPage />);
+    });
+
+    expect(
+      await screen.findByText('DomainLabel.component')
+    ).toBeInTheDocument();
+  });
+
+  it('should handle description update', async () => {
+    const mockUpdateTestSuite = jest.fn().mockResolvedValue({
+      id: '123',
+      name: 'test-suite',
+      description: 'Updated description',
+    });
+
+    (updateTestSuiteById as jest.Mock).mockImplementationOnce(
+      mockUpdateTestSuite
+    );
+
+    await act(async () => {
+      render(<TestSuiteDetailsPage />);
+    });
+
+    expect(
+      await screen.findByText('Description.component')
+    ).toBeInTheDocument();
+  });
+
+  it('should handle test case pagination', async () => {
+    const mockGetListTestCase = jest.fn().mockResolvedValue({
+      data: [],
+      paging: { total: 10 },
+    });
+
+    (getListTestCaseBySearch as jest.Mock).mockImplementationOnce(
+      mockGetListTestCase
+    );
+
+    (getTestSuiteByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        id: 'test-suite-id',
+        name: 'test-suite',
+      })
+    );
+
+    await act(async () => {
+      render(<TestSuiteDetailsPage />);
+    });
+
+    await screen.findByTestId('test-cases');
+
+    expect(mockGetListTestCase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fields: ['testCaseResult', 'testDefinition', 'testSuite', 'incidentId'],
+        testSuiteId: 'test-suite-id',
+      })
+    );
+  });
+
+  it('should handle add test case modal', async () => {
+    await act(async () => {
+      render(<TestSuiteDetailsPage />);
+    });
+
+    const addButton = await screen.findByTestId('add-test-case-btn');
+
+    expect(addButton).toBeInTheDocument();
+
+    await act(async () => {
+      addButton.click();
+    });
+
+    // Modal should be visible after clicking add button
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('should handle ingestion pipeline count', async () => {
+    const mockGetIngestionPipelines = getIngestionPipelines as jest.Mock;
+    mockGetIngestionPipelines.mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [],
+        paging: { total: 5 },
+      })
+    );
+
+    (getTestSuiteByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        id: 'test-suite-id',
+        name: 'test-suite',
+        fullyQualifiedName: 'testSuiteFQN',
+      })
+    );
+
+    await act(async () => {
+      render(<TestSuiteDetailsPage />);
+    });
+
+    expect(mockGetIngestionPipelines).toHaveBeenCalledWith(
+      expect.objectContaining({
+        testSuite: 'testSuiteFQN',
+        pipelineType: ['TestSuite'],
+        arrQueryFields: [],
+        limit: 0,
+      })
+    );
   });
 });

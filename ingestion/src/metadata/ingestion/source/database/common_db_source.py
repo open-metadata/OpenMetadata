@@ -77,6 +77,7 @@ from metadata.utils.execution_time_tracker import (
     calculate_execution_time_generator,
 )
 from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
@@ -108,6 +109,7 @@ class CommonDbSourceService(
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
     """
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -193,6 +195,12 @@ class CommonDbSourceService(
         by default there will be no schema description
         """
 
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+        """
+        Method to fetch the stored procedure description
+        by default there will be no stored procedure description
+        """
+
     @calculate_execution_time_generator()
     def yield_database(
         self, database_name: str
@@ -252,7 +260,11 @@ class CommonDbSourceService(
         )
         source_url = (
             SourceUrl(source_url)
-            if (source_url := self.get_source_url(database_name=schema_name))
+            if (
+                source_url := self.get_source_url(
+                    database_name=self.context.get().database, schema_name=schema_name
+                )
+            )
             else None
         )
 
@@ -681,7 +693,7 @@ class CommonDbSourceService(
             foreign_constraint = self._prepare_foreign_constraints(
                 supports_database, column, table_name, schema_name, db_name, columns
             )
-            if foreign_constraint:
+            if foreign_constraint and foreign_constraint not in foreign_constraints:
                 foreign_constraints.append(foreign_constraint)
 
         return foreign_constraints
@@ -705,7 +717,11 @@ class CommonDbSourceService(
         )
         if foreign_table_constraints:
             if table_constraints:
-                table_constraints.extend(foreign_table_constraints)
+                table_constraints.extend(
+                    constraint
+                    for constraint in foreign_table_constraints
+                    if constraint and constraint not in table_constraints
+                )
             else:
                 table_constraints = foreign_table_constraints
         return table_constraints

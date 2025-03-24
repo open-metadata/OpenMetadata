@@ -29,7 +29,6 @@ const InlineEdit = ({
 }: InlineEditProps) => {
   return (
     <Space
-      wrap
       className={classNames(className, 'inline-edit-container')}
       data-testid="inline-edit-container"
       direction={direction}

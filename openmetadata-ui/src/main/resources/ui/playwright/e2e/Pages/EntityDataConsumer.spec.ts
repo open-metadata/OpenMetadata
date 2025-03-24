@@ -75,22 +75,25 @@ entities.forEach((EntityClass) => {
       await entity.visitEntityPage(page);
     });
 
-    test('User as Owner Add, Update and Remove', async ({ page }) => {
-      test.slow(true);
+    // Running following 2 tests serially since they are dependent on each other
+    test.describe.serial('Owner permission tests', () => {
+      test('User as Owner Add, Update and Remove', async ({ page }) => {
+        test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserName();
-      const OWNER2 = EntityDataClass.user2.getUserName();
-      const OWNER3 = EntityDataClass.user3.getUserName();
-      await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
-    });
-
-    test('No edit owner permission', async ({ page }) => {
-      await page.reload();
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
+        const OWNER1 = EntityDataClass.user1.getUserName();
+        const OWNER2 = EntityDataClass.user2.getUserName();
+        const OWNER3 = EntityDataClass.user3.getUserName();
+        await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
       });
 
-      await expect(page.getByTestId('edit-owner')).not.toBeAttached();
+      test('No edit owner permission', async ({ page }) => {
+        await page.reload();
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(page.getByTestId('edit-owner')).not.toBeAttached();
+      });
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
@@ -164,6 +167,8 @@ entities.forEach((EntityClass) => {
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
+      test.slow();
+
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);

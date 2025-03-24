@@ -25,6 +25,7 @@ import {
   UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
+import { UserClass } from '../support/user/UserClass';
 import {
   clickOutside,
   closeFirstPopupAlert,
@@ -48,10 +49,8 @@ type TaskEntity = {
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
-export const checkDisplayName = async (page: Page, displayName: string) => {
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName
-  );
+export const checkName = async (page: Page, name: string) => {
+  await expect(page.getByTestId('entity-header-name')).toHaveText(name);
 };
 
 export const selectActiveGlossary = async (
@@ -62,11 +61,14 @@ export const selectActiveGlossary = async (
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
-
   if (!isSelected) {
     const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
     await menuItem.click();
     await glossaryResponse;
+  } else {
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
   }
 };
 
@@ -162,7 +164,7 @@ export const validateForm = async (page: Page) => {
   );
 
   // Max length validation
-  await page.locator('[data-testid="name"]').type(INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('name').fill(INVALID_NAMES.MAX_LENGTH);
 
   await expect(page.locator('#name_help')).toHaveText(
     NAME_MAX_LENGTH_VALIDATION_ERROR
@@ -170,9 +172,7 @@ export const validateForm = async (page: Page) => {
 
   // With special char validation
   await page.locator('[data-testid="name"]').clear();
-  await page
-    .locator('[data-testid="name"]')
-    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page.getByTestId('name').fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
 
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
@@ -297,7 +297,7 @@ export const createGlossary = async (
 
   await expect(page).toHaveURL(/\/glossary\//);
 
-  await checkDisplayName(page, glossaryData.name);
+  await checkName(page, glossaryData.name);
 };
 
 export const verifyGlossaryDetails = async (
@@ -309,7 +309,7 @@ export const verifyGlossaryDetails = async (
     .locator('span')
     .click();
 
-  await checkDisplayName(page, glossaryDetails.name);
+  await checkName(page, glossaryDetails.name);
 
   const viewerContainerText = await page.textContent(
     '[data-testid="viewer-container"]'
@@ -388,12 +388,18 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
 export const fillGlossaryTermDetails = async (
   page: Page,
   term: GlossaryTermData,
-  validateCreateForm = true
+  validateCreateForm = true,
+  isGlossaryTerm = false
 ) => {
   // Safety check to close potential glossary not found alert
   // Arrived due to parallel testing
   await closeFirstPopupAlert(page);
-  await page.click('[data-testid="add-new-tag-button-header"]');
+
+  if (isGlossaryTerm) {
+    await page.click('[data-testid="add-placeholder-button"]');
+  } else {
+    await page.click('[data-testid="add-new-tag-button-header"]');
+  }
 
   await page.waitForSelector('[role="dialog"].edit-glossary-modal');
 
@@ -545,7 +551,7 @@ export const approveGlossaryTermTask = async (
 ) => {
   await validateGlossaryTermTask(page, term);
   const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-  await page.getByRole('button', { name: 'Approve' }).click();
+  await page.getByTestId('approve-button').click();
   await taskResolve;
 
   // Display toast notification
@@ -586,28 +592,39 @@ export const updateGlossaryTermDataFromTree = async (
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
-  status: 'Draft' | 'Approved'
+  status: 'Draft' | 'Approved',
+  isGlossaryTermPage = false
 ) => {
   // eslint-disable-next-line no-useless-escape
   const escapedFqn = term.fullyQualifiedName.replace(/\"/g, '\\"');
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
-  await expect(page.locator(termSelector)).toContainText(term.name);
-  await expect(page.locator(statusSelector)).toContainText(status);
+  if (isGlossaryTermPage) {
+    await expect(page.getByTestId(term.name)).toBeVisible();
+  } else {
+    await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toContainText(status);
+  }
 };
 
 export const createGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
   status: 'Draft' | 'Approved',
-  validateCreateForm = true
+  validateCreateForm = true,
+  isGlossaryTermPage = false
 ) => {
-  await fillGlossaryTermDetails(page, term, validateCreateForm);
+  await fillGlossaryTermDetails(
+    page,
+    term,
+    validateCreateForm,
+    isGlossaryTermPage
+  );
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms');
   await page.click('[data-testid="save-glossary-term"]');
   await glossaryTermResponse;
-  await validateGlossaryTerm(page, term, status);
+  await validateGlossaryTerm(page, term, status, isGlossaryTermPage);
 };
 
 export const createGlossaryTerms = async (
@@ -880,7 +897,7 @@ export const assignTagToGlossaryTerm = async (
   page: Page,
   tag: string,
   action: 'Add' | 'Edit' = 'Add',
-  parentTestId = 'entity-right-panel'
+  parentTestId = 'KnowledgePanel.GlossaryTerms'
 ) => {
   await page
     .getByTestId(parentTestId)
@@ -1073,6 +1090,7 @@ export const approveTagsTask = async (
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryTermsResponse;
   await selectActiveGlossary(page, entity.data.displayName);
+  await page.waitForLoadState('networkidle');
 
   const tagVisibility = await page.isVisible(
     `[data-testid="tag-${value.tag}"]`
@@ -1082,14 +1100,14 @@ export const approveTagsTask = async (
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
-  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+  const dropdownButton = page.getByTestId('column-dropdown');
 
   await expect(dropdownButton).toBeVisible();
 
   await dropdownButton.click();
 
   await page.waitForSelector(
-    '.ant-dropdown [role="menu"] .glossary-col-sel-dropdown-title',
+    '.ant-dropdown [role="menu"] [data-testid="column-dropdown-title"]',
     {
       state: 'visible',
     }
@@ -1101,11 +1119,12 @@ export async function selectColumns(
   checkboxLabels: string[]
 ): Promise<void> {
   for (const label of checkboxLabels) {
-    const checkbox = page.locator('.glossary-dropdown-label', {
+    const checkbox = page.locator('.draggable-menu-item-button', {
       hasText: label,
     });
     await checkbox.click();
   }
+  await clickOutside(page);
 }
 
 export async function deselectColumns(
@@ -1113,25 +1132,12 @@ export async function deselectColumns(
   checkboxLabels: string[]
 ): Promise<void> {
   for (const label of checkboxLabels) {
-    const checkbox = page.locator('.glossary-dropdown-label', {
+    const checkbox = page.locator('.draggable-menu-item-button', {
       hasText: label,
     });
     await checkbox.click();
   }
-}
-
-export async function clickSaveButton(page: Page): Promise<void> {
-  // Adding manual wait to avoid flakiness for the operations performed in the
-  // dropdown like selection or drag and drop
-  await page.waitForTimeout(500);
-
-  const saveButton = page.locator(
-    '[data-testid="glossary-col-dropdown-save"]',
-    {
-      hasText: 'Save',
-    }
-  );
-  await saveButton.click();
+  await clickOutside(page);
 }
 
 export async function verifyColumnsVisibility(
@@ -1155,24 +1161,25 @@ export async function verifyColumnsVisibility(
   }
 }
 
-export async function toggleAllColumnsSelection(
+export async function toggleBulkActionColumnsSelection(
   page: Page,
-  isSelected: boolean
+  isViewAllSelected: boolean
 ): Promise<void> {
-  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+  await openColumnDropdown(page);
 
-  await expect(dropdownButton).toBeVisible();
+  const button = page.getByTestId('column-dropdown-action-button');
 
-  await dropdownButton.click();
+  if (isViewAllSelected) {
+    await expect(button).toHaveText('Hide All');
 
-  const checkboxLabel = 'All';
-  const checkbox = page.locator('.custom-glossary-col-sel-checkbox', {
-    hasText: checkboxLabel,
-  });
-  if (isSelected) {
-    await checkbox.click();
+    await button.click();
+  } else {
+    await expect(button).toHaveText('View All');
+
+    await button.click();
   }
-  await clickSaveButton(page);
+
+  await clickOutside(page);
 }
 
 export async function verifyAllColumns(
@@ -1221,7 +1228,11 @@ export const filterStatus = async (
   await saveButton.click();
 
   const glossaryTermsTable = page.getByTestId('glossary-terms-table');
-  const rows = glossaryTermsTable.locator('tbody tr');
+  // will select all <tr> elements inside the <tbody> but exclude those with aria-hidden="true"
+  // since we have added re-sizeable columns, that one <tr> entry is present in the tbody
+  const rows = glossaryTermsTable.locator(
+    'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
+  );
   const statusColumnIndex = 3;
 
   for (let i = 0; i < (await rows.count()); i++) {
@@ -1410,4 +1421,29 @@ export const updateGlossaryTermReviewers = async (
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByTestId('save-glossary-term').click();
   await glossaryTermResponse;
+};
+
+export const checkGlossaryTermDetails = async (
+  page: Page,
+  term: GlossaryTermData,
+  owner: UserClass,
+  reviewer: UserClass
+) => {
+  await openEditGlossaryTermModal(page, term);
+
+  await expect(page.locator('[data-testid="name"]')).toHaveValue(term.name);
+  await expect(page.locator('[data-testid="display-name"]')).toHaveValue(
+    term.displayName
+  );
+  await expect(page.getByTestId('editor')).toContainText(term.description);
+
+  await expect(
+    page.locator('[data-testid="owner-container"] [data-testid="owner-link"]')
+  ).toContainText(owner.responseData.displayName);
+
+  await expect(
+    page.locator(
+      '[data-testid="reviewers-container"] [data-testid="owner-link"]'
+    )
+  ).toContainText(reviewer.responseData.displayName);
 };

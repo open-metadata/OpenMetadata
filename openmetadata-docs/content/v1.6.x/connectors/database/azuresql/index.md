@@ -7,7 +7,7 @@ slug: /connectors/database/azuresql
 name="AzureSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Stored Procedures", "Owners", "Tags"]
 / %}
 
@@ -20,6 +20,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
     - [Service Name](#service-name)
     - [Connection Options](#connection-options)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Data Lineage](/how-to-guides/data-lineage/workflow)
 - [Troubleshooting](#troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)

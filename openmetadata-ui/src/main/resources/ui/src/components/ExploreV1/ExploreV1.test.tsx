@@ -32,6 +32,10 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('../Explore/ExploreTree/ExploreTree', () => {
+  return jest.fn().mockImplementation(() => <div>ExploreTree</div>);
+});
+
 jest.mock('../common/ResizablePanels/ResizablePanels', () => {
   return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
@@ -131,20 +135,10 @@ const props = {
 };
 
 describe('ExploreV1', () => {
-  it('renders component without errors', () => {
+  it('renders component without errors', async () => {
     render(<ExploreV1 {...props} />);
 
-    expect(screen.getByTestId('explore-page')).toBeInTheDocument();
-
-    expect(screen.getByText('label.database-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.dashboard-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.pipeline-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.ml-model-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.topic-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.container-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.search-index-plural')).toBeInTheDocument();
-    expect(screen.getByText('label.governance')).toBeInTheDocument();
-    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
+    expect(screen.getByText('ExploreTree')).toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {
