@@ -265,6 +265,7 @@ const Table = <T extends Record<string, unknown>>(
       <Col span={24}>
         <AntdTable
           {...rest}
+          bordered={false}
           columns={propsColumns}
           expandable={{
             ...getTableExpandableConfig<T>(),
@@ -281,6 +282,10 @@ const Table = <T extends Record<string, unknown>>(
           ref={ref}
           tableLayout="fixed"
           {...resizingTableProps}
+          scroll={{
+            y: 740,
+            x: resizingTableProps.scroll?.x || rest.scroll?.x,
+          }}
         />
       </Col>
       {customPaginationProps && customPaginationProps.showPagination ? (

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Col, Radio, Row, Typography } from 'antd';
+import { Card, Radio, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -293,38 +293,34 @@ export const PipelineTaskTab = () => {
   );
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col span={24}>
-        <Radio.Group
-          buttonStyle="solid"
-          className="radio-switch"
-          data-testid="pipeline-task-switch"
-          optionType="button"
-          options={Object.values(PIPELINE_TASK_TABS)}
-          value={activeTab}
-          onChange={(e) => setActiveTab(e.target.value)}
-        />
-      </Col>
+    <div>
+      <Radio.Group
+        buttonStyle="solid"
+        className="radio-switch m-b-md"
+        data-testid="pipeline-task-switch"
+        optionType="button"
+        options={Object.values(PIPELINE_TASK_TABS)}
+        value={activeTab}
+        onChange={(e) => setActiveTab(e.target.value)}
+      />
 
-      <Col span={24}>
-        {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
-          <Table
-            bordered
-            className="align-table-filter-left"
-            columns={taskColumns}
-            data-testid="task-table"
-            dataSource={tasksInternal}
-            defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
-            pagination={false}
-            rowKey="name"
-            scroll={{ x: 1200 }}
-            size="small"
-            staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-          />
-        ) : (
-          tasksDAGView
-        )}
-      </Col>
+      {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+        <Table
+          bordered
+          className="align-table-filter-left"
+          columns={taskColumns}
+          data-testid="task-table"
+          dataSource={tasksInternal}
+          defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: 1200 }}
+          size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        />
+      ) : (
+        tasksDAGView
+      )}
 
       {editTask && (
         <EntityAttachmentProvider
@@ -344,6 +340,6 @@ export const PipelineTaskTab = () => {
           />
         </EntityAttachmentProvider>
       )}
-    </Row>
+    </div>
   );
 };
