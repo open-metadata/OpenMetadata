@@ -47,6 +47,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
+    SNOWFLAKE_TEST_GET_STREAMS,
     SNOWFLAKE_TEST_GET_TABLES,
     SNOWFLAKE_TEST_GET_VIEWS,
 )
@@ -190,6 +191,11 @@ def test_connection(
         "GetViews": partial(
             test_table_query,
             statement=SNOWFLAKE_TEST_GET_VIEWS,
+            engine_wrapper=engine_wrapper,
+        ),
+        "GetStreams": partial(
+            test_table_query,
+            statement=SNOWFLAKE_TEST_GET_STREAMS,
             engine_wrapper=engine_wrapper,
         ),
         "GetQueries": partial(

@@ -35,6 +35,12 @@
         "mandatory": false
       },
       {
+        "name": "GetStreams",
+        "description": "From a given schema, list the streams belonging to that schema. If no schema is specified, we'll list the streams of a random schema.",
+        "errorMessage": "Failed to fetch streams, please validate if the user has enough privilege to fetch streams.",
+        "mandatory": false
+      },
+      {
         "name": "GetTags",
         "description": "Check if we can access the snowflake.account_usage.tag_references table to list all available tags.",
         "errorMessage": "Failed to fetch tags, please validate if the user has at least select privileges for snowflake.account_usage.tag_references table.",
