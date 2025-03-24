@@ -15,5 +15,5 @@ import { AlertProps } from 'antd';
 export interface AlertBarProps {
   type: AlertProps['type'];
   message: string | JSX.Element;
-  isUnauthenticated?: boolean;
+  defafultExpand?: boolean;
 }

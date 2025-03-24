@@ -34,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ADD_KPI_BREADCRUMB } from '../../constants/Breadcrumb.constants';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -45,10 +46,7 @@ import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
-import {
-  getDataInsightPathWithFqn,
-  getDisabledDates,
-} from '../../utils/DataInsightUtils';
+import { getDisabledDates } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
 import i18n from '../../utils/i18next/LocalUtil';
 import {
@@ -59,24 +57,6 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
-
-const breadcrumb = [
-  {
-    name: i18n.t('label.data-insight'),
-    url: getDataInsightPathWithFqn(),
-  },
-  {
-    name: i18n.t('label.kpi-list'),
-    url: ROUTES.KPI_LIST,
-  },
-  {
-    name: i18n.t('label.add-new-entity', {
-      entity: i18n.t('label.kpi-uppercase'),
-    }),
-    url: '',
-    activeTitle: true,
-  },
-];
 
 const AddKPIPage = () => {
   const history = useHistory();
@@ -202,7 +182,7 @@ const AddKPIPage = () => {
           <div
             className="max-width-md w-9/10 service-form-container"
             data-testid="add-kpi-container">
-            <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
+            <TitleBreadcrumb className="my-4" titleLinks={ADD_KPI_BREADCRUMB} />
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">

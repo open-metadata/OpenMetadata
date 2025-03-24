@@ -334,8 +334,8 @@ function AddObservabilityPage() {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.alert'),
+      pageTitle={t('label.add-entity', {
+        entity: t('label.observability'),
       })}
       secondPanel={{
         children: <></>,
@@ -347,7 +347,7 @@ function AddObservabilityPage() {
 }
 
 export default withPageLayout(
-  i18n.t('label.entity-detail-plural', {
-    entity: i18n.t('label.alert'),
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.observability'),
   })
 )(AddObservabilityPage);

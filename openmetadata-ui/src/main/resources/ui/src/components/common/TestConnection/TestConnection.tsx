@@ -357,7 +357,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         });
       } else {
         setErrorMessage({
-          subDescription: getErrorText(
+          description: getErrorText(
             error as AxiosError,
             t('server.unexpected-error')
           ),

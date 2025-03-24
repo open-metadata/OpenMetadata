@@ -222,7 +222,7 @@ const EditLoginConfiguration = () => {
         className: 'content-resizable-panel-container',
       }}
       pageTitle={t('label.edit-entity', {
-        entity: t('label.service'),
+        entity: t('label.login-configuration'),
       })}
       secondPanel={{
         children: secondPanelChildren,
@@ -236,6 +236,6 @@ const EditLoginConfiguration = () => {
 
 export default withPageLayout(
   i18n.t('label.edit-entity', {
-    entity: i18n.t('label.service'),
+    entity: i18n.t('label.login-configuration'),
   })
 )(EditLoginConfiguration);

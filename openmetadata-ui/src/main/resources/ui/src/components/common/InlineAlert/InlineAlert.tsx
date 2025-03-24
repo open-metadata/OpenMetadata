@@ -47,7 +47,9 @@ function InlineAlert({
 
   const handleToggleShowMore = useCallback(() => {
     setShowMore((prev) => !prev);
-  }, [setShowMore]);
+  }, []);
+
+  const combinedText = `${description} ${subDescription}`.trim();
 
   const alertIcon = useMemo(() => {
     switch (type) {
@@ -102,23 +104,21 @@ function InlineAlert({
             <Typography.Text className="font-semibold text-sm">
               {heading}
             </Typography.Text>
-            {description && (
-              <Typography.Paragraph
-                className="m-b-0 text-sm"
-                data-testid="inline-alert-description">
-                {description}
-              </Typography.Paragraph>
-            )}
-
-            {subDescription && showMore && (
-              <Typography.Paragraph
-                className="m-b-0 text-sm"
-                data-testid="inline-alert-sub-description">
-                {subDescription}
-              </Typography.Paragraph>
-            )}
-
-            {subDescription && (
+            <Typography.Paragraph
+              className={classNames('m-b-0 text-sm', {
+                'truncated-text': !showMore,
+                'expanded-text': showMore,
+              })}
+              data-testid="inline-alert-description">
+              {description}
+              {subDescription && (
+                <>
+                  <br />
+                  {subDescription}
+                </>
+              )}
+            </Typography.Paragraph>
+            {combinedText.length >= 200 && (
               <Button
                 className="text-xs p-0 m-0 w-fit-content h-auto"
                 data-testid={`read-${showMore ? 'less' : 'more'}-button`}

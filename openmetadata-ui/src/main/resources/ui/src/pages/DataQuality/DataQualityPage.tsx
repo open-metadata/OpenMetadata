@@ -91,7 +91,7 @@ const DataQualityPage = () => {
             </LeftPanelCard>
           ),
         }}
-        pageTitle="Quality"
+        pageTitle={t('label.data-quality')}
         secondPanel={{
           children: (
             <DataQualityProvider>
@@ -144,4 +144,4 @@ const DataQualityPage = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.quality'))(DataQualityPage);
+export default withPageLayout(i18n.t('label.data-quality'))(DataQualityPage);

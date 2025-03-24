@@ -292,7 +292,7 @@ const ObservabilityAlertsPage = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
+    <PageLayoutV1 pageTitle={t('label.observability-alert')}>
       <Row className="p-x-lg p-t-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">

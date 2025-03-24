@@ -86,7 +86,7 @@ const BasicSignUp = () => {
             {alert && (
               <div className="login-alert">
                 <AlertBar
-                  isUnauthenticated
+                  defafultExpand
                   message={alert?.message}
                   type={alert?.type}
                 />
