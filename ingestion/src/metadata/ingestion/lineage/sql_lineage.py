@@ -878,10 +878,12 @@ def _get_paths_from_subtree(subtree: DiGraph) -> List[List[Any]]:
     # Find all leaf nodes (nodes with no outgoing edges)
     leaf_nodes = [node for node in subtree if subtree.out_degree(node) == 0]
 
+    logger.info(f"Found {len(root_nodes)} root nodes and {len(leaf_nodes)} leaf nodes")
     # Find all simple paths from each root to each leaf
     for root in root_nodes:
+        logger.debug(f"Processing root node {root}")
         for leaf in leaf_nodes:
-            paths.extend(nx.all_simple_paths(subtree, root, leaf))
+            paths.extend(nx.all_simple_paths(subtree, root, leaf, cutoff=20))
     return paths
 
 
@@ -903,6 +905,7 @@ def get_lineage_by_graph(
     if graph is None:
         return
 
+    logger.info(f"Processing graph with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges")
     # Get all weakly connected components
     components = list(nx.weakly_connected_components(graph))
 
