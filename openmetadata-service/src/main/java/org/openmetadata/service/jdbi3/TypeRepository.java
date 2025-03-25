@@ -265,6 +265,19 @@ public class TypeRepository extends EntityRepository<Type> {
     if (uniqueColumns.size() != columns.size()) {
       throw new IllegalArgumentException("Column names must be unique.");
     }
+    if (columns.size() > tableConfig.getMaxColumns()) {
+      throw new IllegalArgumentException(
+          "Table Custom Property Type cannot have more than "
+              + tableConfig.getMaxColumns()
+              + " columns.");
+    }
+
+    if (columns.size() < tableConfig.getMinColumns()) {
+      throw new IllegalArgumentException(
+          "Table Custom Property Type cannot have empty or less than "
+              + tableConfig.getMinColumns()
+              + " columns.");
+    }
 
     try {
       JsonUtils.validateJsonSchema(config.getConfig(), TableConfig.class);
