@@ -90,11 +90,7 @@ export const checkIfUpdateRequired = async (
   newUser: OidcUser
 ): Promise<User> => {
   const updatedUserData = getUserDataFromOidc(existingUserDetails, newUser);
-  let finalData = { ...existingUserDetails };
-
-  if (existingUserDetails.lastLoginTime) {
-    finalData = { ...finalData, lastLoginTime: Date.now() };
-  }
+  let finalData = { ...existingUserDetails, lastLoginTime: Date.now() };
 
   if (existingUserDetails.email !== updatedUserData.email) {
     return existingUserDetails;
