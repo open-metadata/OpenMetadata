@@ -635,7 +635,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
-    return exportCsvInternalAsync(securityContext, name);
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -656,7 +656,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -687,7 +687,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -773,6 +773,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 }

@@ -35,7 +35,12 @@ export type ExportData = {
   documentSelector?: string;
   exportTypes: ExportTypes[];
   viewport?: ExportViewport;
-  onExport: (name: string) => Promise<CSVExportResponse | string>;
+  onExport: (
+    name: string,
+    params?: {
+      recursive?: boolean;
+    }
+  ) => Promise<CSVExportResponse | string>;
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;

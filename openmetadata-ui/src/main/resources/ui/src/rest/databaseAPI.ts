@@ -250,9 +250,16 @@ export const putDatabaseSchemaProfileConfig = async (
   return response.data['databaseSchemaProfilerConfig'];
 };
 
-export const exportDatabaseDetailsInCSV = async (fqn: string) => {
+export const exportDatabaseDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
   // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-  const res = await APIClient.get(`databases/name/${fqn}/exportAsync`);
+  const res = await APIClient.get(`databases/name/${fqn}/exportAsync`, {
+    params,
+  });
 
   return res.data;
 };
@@ -274,9 +281,16 @@ export const importDatabaseInCSVFormat = async (
   return res.data;
 };
 
-export const exportDatabaseSchemaDetailsInCSV = async (fqn: string) => {
+export const exportDatabaseSchemaDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
   // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-  const res = await APIClient.get(`databaseSchemas/name/${fqn}/exportAsync`);
+  const res = await APIClient.get(`databaseSchemas/name/${fqn}/exportAsync`, {
+    params,
+  });
 
   return res.data;
 };

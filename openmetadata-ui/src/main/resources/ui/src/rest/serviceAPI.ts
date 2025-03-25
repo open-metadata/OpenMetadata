@@ -186,10 +186,18 @@ export const restoreService = async (serviceCategory: string, id: string) => {
   return response.data;
 };
 
-export const exportDatabaseServiceDetailsInCSV = async (fqn: string) => {
+export const exportDatabaseServiceDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
   const res = await APIClient.get(
     // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-    `services/databaseServices/name/${fqn}/exportAsync`
+    `services/databaseServices/name/${fqn}/exportAsync`,
+    {
+      params,
+    }
   );
 
   return res.data;

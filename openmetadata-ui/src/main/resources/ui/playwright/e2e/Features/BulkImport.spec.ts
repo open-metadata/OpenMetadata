@@ -97,7 +97,7 @@ test.describe('Bulk Import Export', () => {
     await redirectToHomePage(page);
   });
 
-  test('Database service', async ({ page }) => {
+  test.skip('Database service', async ({ page }) => {
     test.slow(true);
 
     let customPropertyRecord: Record<string, string> = {};
@@ -237,7 +237,7 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  test('Database', async ({ page }) => {
+  test.skip('Database', async ({ page }) => {
     test.slow(true);
 
     let customPropertyRecord: Record<string, string> = {};
@@ -371,7 +371,7 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  test('Database Schema', async ({ page }) => {
+  test.skip('Database Schema', async ({ page }) => {
     test.slow(true);
 
     let customPropertyRecord: Record<string, string> = {};

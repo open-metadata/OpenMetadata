@@ -446,7 +446,7 @@ public class DatabaseServiceResource
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportDatabaseServices",
@@ -464,9 +464,16 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name)
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, recursive);
   }
 
   @GET
@@ -489,13 +496,20 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
-    return exportCsvInternalAsync(securityContext, name);
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive) {
+    return exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importDatabaseService",
@@ -521,14 +535,18 @@ public class DatabaseServiceResource
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
@@ -556,8 +574,12 @@ public class DatabaseServiceResource
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @DELETE
