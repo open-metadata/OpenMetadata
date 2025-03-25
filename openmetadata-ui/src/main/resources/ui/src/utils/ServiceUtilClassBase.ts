@@ -768,7 +768,7 @@ class ServiceUtilClassBase {
   public getProperties(property: ObjectFieldTemplatePropertyType[]) {
     return {
       properties: property,
-      additionalField: null,
+      additionalField: '',
       additionalFieldContent: null,
     };
   }
