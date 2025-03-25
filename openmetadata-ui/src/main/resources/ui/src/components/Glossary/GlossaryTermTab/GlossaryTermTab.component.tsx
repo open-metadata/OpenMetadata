@@ -864,7 +864,6 @@ const GlossaryTermTab = ({
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
-              bordered
               resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,

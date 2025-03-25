@@ -261,7 +261,6 @@ const MetricListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             columns={columns}
             customPaginationProps={{
               showPagination,

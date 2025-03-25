@@ -311,7 +311,6 @@ const BotListV1 = ({
       </Col>
       <Col span={24}>
         <Table
-          bordered
           columns={columns}
           customPaginationProps={{
             currentPage,

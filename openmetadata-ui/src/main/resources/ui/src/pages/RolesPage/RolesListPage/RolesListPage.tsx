@@ -295,7 +295,6 @@ const RolesListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             className="roles-list-table"
             columns={columns}
             customPaginationProps={{

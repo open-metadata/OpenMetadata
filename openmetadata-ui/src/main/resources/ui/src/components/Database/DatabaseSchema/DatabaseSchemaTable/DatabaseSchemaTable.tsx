@@ -302,7 +302,6 @@ export const DatabaseSchemaTable = ({
 
   return (
     <Table
-      bordered
       columns={schemaTableColumns}
       customPaginationProps={{
         currentPage,

@@ -390,7 +390,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <Table
-          bordered
           className={classNames('align-table-filter-left')}
           columns={columns}
           data-testid="schema-fields-table"

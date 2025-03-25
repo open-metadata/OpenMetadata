@@ -606,7 +606,6 @@ const IncidentManager = ({
 
       <Col span={24}>
         <Table
-          bordered
           className="test-case-table-container"
           columns={columns}
           data-testid="test-case-incident-manager-table"

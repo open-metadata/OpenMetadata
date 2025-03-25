@@ -239,7 +239,6 @@ function SchemaTablesTab({
 
   return (
     <TableAntd
-      bordered
       columns={tableColumn}
       customPaginationProps={{
         showPagination,

@@ -172,7 +172,6 @@ function APIEndpointsTab({
 
   return (
     <TableAntd
-      bordered
       columns={tableColumn}
       customPaginationProps={{
         currentPage,

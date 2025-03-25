@@ -128,7 +128,6 @@ const StoredProcedureTab = () => {
   return (
     <div className="p-lg">
       <Table
-        bordered
         columns={tableColumn}
         customPaginationProps={{
           currentPage,

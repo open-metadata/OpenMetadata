@@ -346,7 +346,6 @@ const SearchIndexFieldsTable = ({
   return (
     <>
       <Table
-        bordered
         className="align-table-filter-left"
         columns={fields}
         data-testid="search-index-fields-table"

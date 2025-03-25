@@ -131,7 +131,6 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
 
   return (
     <Table
-      bordered
       columns={columns}
       customPaginationProps={{
         currentPage,

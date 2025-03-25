@@ -297,7 +297,6 @@ const PoliciesListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             className="policies-list-table"
             columns={columns}
             customPaginationProps={{

@@ -306,7 +306,6 @@ export const PipelineTaskTab = () => {
 
       {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
         <Table
-          bordered
           className="align-table-filter-left"
           columns={taskColumns}
           data-testid="task-table"

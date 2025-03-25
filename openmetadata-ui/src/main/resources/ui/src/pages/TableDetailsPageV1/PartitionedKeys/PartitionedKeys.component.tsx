@@ -82,7 +82,6 @@ export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
 
   const content = (
     <Table
-      bordered
       columns={columns}
       data-testid="partitioned-column-table"
       dataSource={partitionColumnDetails}

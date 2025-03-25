@@ -255,7 +255,6 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     <>
       <DndProvider backend={HTML5Backend}>
         <Table
-          bordered
           className={classNames('teams-list-table drop-over-background', {
             'drop-over-table': isTableHovered,
           })}

@@ -334,7 +334,6 @@ const NotificationListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             columns={columns}
             customPaginationProps={{
               currentPage,

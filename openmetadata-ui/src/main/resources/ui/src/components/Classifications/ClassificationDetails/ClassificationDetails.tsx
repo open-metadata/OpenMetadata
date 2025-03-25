@@ -487,7 +487,6 @@ const ClassificationDetails = forwardRef(
         </div>
 
         <Table
-          bordered
           className={classNames({
             'opacity-60': isClassificationDisabled,
           })}

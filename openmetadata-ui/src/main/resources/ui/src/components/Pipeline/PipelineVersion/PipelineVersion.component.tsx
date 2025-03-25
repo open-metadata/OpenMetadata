@@ -200,7 +200,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <Table
-                    bordered
                     columns={tableColumn}
                     data-testid="schema-table"
                     dataSource={pipelineVersionTableData}

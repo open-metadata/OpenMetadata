@@ -191,7 +191,6 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <Table
-                    bordered
                     columns={tableColumn}
                     data-testid="schema-table"
                     dataSource={currentVersionData?.charts}

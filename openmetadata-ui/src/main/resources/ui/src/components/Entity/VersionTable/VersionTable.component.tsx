@@ -251,7 +251,6 @@ function VersionTable<T extends Column | SearchIndexField>({
       </Col>
       <Col>
         <Table
-          bordered
           columns={versionTableColumns}
           data-testid="entity-table"
           dataSource={data}

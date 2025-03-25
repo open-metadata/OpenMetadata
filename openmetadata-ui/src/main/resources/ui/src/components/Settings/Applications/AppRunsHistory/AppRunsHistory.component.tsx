@@ -385,7 +385,6 @@ const AppRunsHistory = forwardRef(
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <Table
-              bordered
               columns={tableColumn}
               customPaginationProps={{
                 isNumberBased: true,

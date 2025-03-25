@@ -226,7 +226,6 @@ const ModelTab = () => {
   return (
     <>
       <Table
-        bordered
         className="p-t-xs align-table-filter-left"
         columns={tableColumn}
         data-testid="data-model-column-table"

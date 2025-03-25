@@ -135,7 +135,6 @@ function IngestionRunDetailsModal({
       width="80%"
       onCancel={handleCancel}>
       <Table
-        bordered
         columns={columns}
         dataSource={pipelineStatus?.status ?? []}
         expandable={expandable}

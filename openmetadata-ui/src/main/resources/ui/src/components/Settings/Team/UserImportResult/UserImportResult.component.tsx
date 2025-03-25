@@ -202,7 +202,6 @@ export const UserImportResult = ({
 
   return (
     <Table
-      bordered
       className="vertical-top-align-td"
       columns={columns}
       data-testid="import-result-table"

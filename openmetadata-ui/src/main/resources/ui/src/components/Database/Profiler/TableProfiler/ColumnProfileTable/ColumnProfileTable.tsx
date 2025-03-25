@@ -500,7 +500,6 @@ const ColumnProfileTable = () => {
       {isEmpty(activeColumnFqn) ? (
         <Col span={24}>
           <Table
-            bordered
             columns={tableColumn}
             dataSource={data}
             expandable={getTableExpandableConfig<Column>()}

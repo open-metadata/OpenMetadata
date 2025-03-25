@@ -372,7 +372,6 @@ export const UserTab = ({
   return (
     <div className="p-y-md">
       <Table
-        bordered
         className="teams-list-table"
         columns={columns}
         customPaginationProps={{

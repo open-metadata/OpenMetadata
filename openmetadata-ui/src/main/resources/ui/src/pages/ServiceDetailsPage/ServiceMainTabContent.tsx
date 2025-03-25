@@ -264,7 +264,6 @@ function ServiceMainTabContent({
                         <Loader />
                       ) : (
                         <Table
-                          bordered
                           columns={tableColumn}
                           customPaginationProps={{
                             currentPage,

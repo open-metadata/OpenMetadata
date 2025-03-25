@@ -257,7 +257,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           getEmptyPlaceholder()
         ) : (
           <Table
-            bordered
             columns={getMlHyperParametersColumn}
             data-testid="hyperparameters-table"
             dataSource={mlModelDetail.mlHyperParameters}
@@ -276,7 +275,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
         {mlModelDetail.mlStore ? (
           <Table
-            bordered
             columns={mlModelStoreColumn}
             data-testid="model-store-table"
             dataSource={[mlModelDetail.mlStore]}

@@ -259,7 +259,6 @@ const Table = <T extends Record<string, unknown>>(
       <Col span={24}>
         <AntdTable
           {...rest}
-          bordered={false}
           columns={propsColumns}
           expandable={{
             ...getTableExpandableConfig<T>(),

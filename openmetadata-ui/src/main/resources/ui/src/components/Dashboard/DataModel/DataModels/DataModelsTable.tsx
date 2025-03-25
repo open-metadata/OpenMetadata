@@ -153,7 +153,6 @@ const DataModelTable = () => {
 
   return (
     <Table
-      bordered
       columns={tableColumn}
       customPaginationProps={{
         currentPage,
