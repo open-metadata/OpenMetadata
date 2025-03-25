@@ -281,3 +281,5 @@ reportDeprecated = false
 reportMissingTypeStubs = false
 reportAny = false
 reportExplicitAny = false
+# @override was only added in python 3.12: https://docs.python.org/3/library/typing.html#typing.override
+reportImplicitOverride = false

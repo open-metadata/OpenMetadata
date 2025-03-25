@@ -12,6 +12,7 @@
 Example external application
 """
 from time import sleep
+from typing import Any
 
 from metadata.generated.schema.entity.applications.configuration.internal.helloPipelinesConfiguration import (
     HelloPipelinesAppConfiguration,
@@ -46,8 +47,10 @@ class HelloPipelines(AppRunner):
           jwtToken: "..."
     """
 
-    def __init__(self, config: OpenMetadataApplicationConfig, metadata: OpenMetadata):
-        super().__init__(config, metadata)
+    def __init__(
+        self, config: OpenMetadataApplicationConfig, metadata: OpenMetadata[Any, Any]
+    ):
+        super().__init__(config, metadata)  # pyright: ignore [reportUnknownMemberType]
         try:
             self.app_config: HelloPipelinesAppConfiguration = (
                 HelloPipelinesAppConfiguration.model_validate(self.app_config)
