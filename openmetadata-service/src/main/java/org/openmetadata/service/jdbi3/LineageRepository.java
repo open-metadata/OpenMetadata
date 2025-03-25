@@ -470,7 +470,7 @@ public class LineageRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    CsvDocumentation documentation = getCsvDocumentation("lineage");
+    CsvDocumentation documentation = getCsvDocumentation("lineage", false);
     List<CsvHeader> headers = documentation.getHeaders();
     SearchLineageResult result =
         Entity.getSearchRepository()
