@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -94,19 +93,29 @@ class MetricDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.OVERVIEW) {
       return [];
     }
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h: 6,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],

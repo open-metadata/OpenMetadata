@@ -279,7 +279,17 @@ export const CustomizeTabWidget = () => {
     });
   };
 
-  const widgets = useMemo(() => getWidgetFromLayout(tabLayouts), [tabLayouts]);
+  const leftPanelWidget = useMemo(() => {
+    return tabLayouts.find((layout) =>
+      layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [tabLayouts]);
+
+  const widgets = useMemo(
+    // Re-render upon leftPanelWidget change
+    () => getWidgetFromLayout(tabLayouts),
+    [tabLayouts, leftPanelWidget]
+  );
 
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Space, Tag, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -142,8 +143,17 @@ const DataProductsContainer = ({
   const header = useMemo(() => {
     return (
       showHeader && (
-        <Space align="center" className="m-b-xss w-full" size="middle">
-          <Typography.Text className="right-panel-label">
+        <Space
+          align="center"
+          className={classNames('w-full', {
+            'm-b-xss': !newLook,
+          })}
+          size="middle">
+          <Typography.Text
+            className={classNames({
+              'text-sm font-medium': newLook,
+              'right-panel-label': !newLook,
+            })}>
             {t('label.data-product-plural')}
           </Typography.Text>
           {hasPermission && (

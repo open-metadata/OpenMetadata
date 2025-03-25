@@ -73,7 +73,9 @@ export type CustomizeEntityType =
   | EntityType.DASHBOARD_DATA_MODEL
   | EntityType.DOMAIN
   | EntityType.GLOSSARY
-  | EntityType.GLOSSARY_TERM;
+  | EntityType.GLOSSARY_TERM
+  | EntityType.CONTAINER
+  | EntityType.METRIC;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -91,4 +93,6 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.DOMAIN]: PageType.Domain,
   [EntityType.GLOSSARY]: PageType.Glossary,
   [EntityType.GLOSSARY_TERM]: PageType.GlossaryTerm,
+  [EntityType.CONTAINER]: PageType.Container,
+  [EntityType.METRIC]: PageType.Metric,
 };

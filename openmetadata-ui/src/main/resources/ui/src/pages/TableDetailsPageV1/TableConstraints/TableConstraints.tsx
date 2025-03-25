@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,7 +60,11 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
 
   const header = (
     <Space size="middle">
-      <Typography.Text className="right-panel-label">
+      <Typography.Text
+        className={classNames({
+          'text-sm font-medium': newLook,
+          'right-panel-label': !newLook,
+        })}>
         {t('label.table-constraints')}
       </Typography.Text>
 

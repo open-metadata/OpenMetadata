@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import { isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
@@ -19,7 +18,6 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import ContainerChildren from '../components/Container/ContainerChildren/ContainerChildren';
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -164,13 +162,7 @@ export const getContainerDetailPageTabs = ({
               <TabsLabel id={EntityTabs.CHILDREN} name={t('label.children')} />
             ),
             key: EntityTabs.CHILDREN,
-            children: (
-              <Row className="p-md" gutter={[0, 16]}>
-                <Col span={24}>
-                  <ContainerChildren />
-                </Col>
-              </Row>
-            ),
+            children: <GenericTab type={PageType.Container} />,
           },
         ]),
 
