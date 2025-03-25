@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { FileType } from '../../../BlockEditor.interface';
 import EmbedLinkElement from './EmbedLinkElement';
 
 describe('EmbedLinkElement', () => {
@@ -36,6 +37,7 @@ describe('EmbedLinkElement', () => {
     render(
       <EmbedLinkElement
         deleteNode={mockDeleteNode}
+        fileType={FileType.IMAGE}
         isUploading={false}
         isValidSource={false}
         src={mockSrc}
@@ -58,6 +60,7 @@ describe('EmbedLinkElement', () => {
     render(
       <EmbedLinkElement
         deleteNode={mockDeleteNode}
+        fileType={FileType.IMAGE}
         isUploading={false}
         isValidSource={false}
         src={mockSrc}
@@ -68,7 +71,7 @@ describe('EmbedLinkElement', () => {
     );
 
     const input = screen.getByTestId('embed-input');
-    const submitButton = screen.getByText('label.embed-image');
+    const submitButton = screen.getByText('label.embed-file-type');
 
     // Update input value
     fireEvent.change(input, {
@@ -93,6 +96,7 @@ describe('EmbedLinkElement', () => {
     render(
       <EmbedLinkElement
         deleteNode={mockDeleteNode}
+        fileType={FileType.IMAGE}
         isUploading={false}
         isValidSource={false}
         src={mockSrc}
@@ -103,7 +107,7 @@ describe('EmbedLinkElement', () => {
     );
 
     const input = screen.getByTestId('embed-input');
-    const submitButton = screen.getByText('label.embed-image');
+    const submitButton = screen.getByText('label.embed-file-type');
 
     // Set invalid URL
     fireEvent.change(input, { target: { value: 'invalid-url' } });
@@ -126,6 +130,7 @@ describe('EmbedLinkElement', () => {
     render(
       <EmbedLinkElement
         deleteNode={mockDeleteNode}
+        fileType={FileType.IMAGE}
         isUploading={false}
         isValidSource={false}
         src={mockSrc}
@@ -148,6 +153,7 @@ describe('EmbedLinkElement', () => {
     render(
       <EmbedLinkElement
         deleteNode={mockDeleteNode}
+        fileType={FileType.IMAGE}
         isUploading={false}
         isValidSource={false}
         src={mockSrc}
