@@ -299,12 +299,6 @@ class SqlColumnHandlerMixin:
                     arrayDataType=arr_data_type,
                     ordinalPosition=column.get("ordinalPosition"),
                 )
-                if column.get("children"):
-                    om_column.children = [
-                        process_column(children) for children in column.get("children")
-                    ]
-                    if not arr_data_type:
-                        om_column.arrayDataType = DataType.UNKNOWN.value
                 if precision:
                     # Precision and scale must be integer values
                     om_column.precision = int(precision[0])
@@ -314,6 +308,15 @@ class SqlColumnHandlerMixin:
                     column=column, parsed_string=parsed_string
                 )
                 om_column = col_obj
+
+                if column.get("children"):
+                    # Prioritize source-provided children for column processing.
+                    # If 'children' are directly provided in the source metadata,
+                    # process and assign them to the output column, overriding any derived children.
+                    # Currently, this is only used for BigQuery.
+                    om_column.children = [
+                        process_column(children) for children in column.get("children")
+                    ]
             om_column.tags = self.get_column_tag_labels(
                 table_name=table_name, column=column
             )

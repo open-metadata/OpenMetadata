@@ -1020,13 +1020,3 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
         else:
             yield from super().mark_tables_as_deleted()
-
-    def _process_col_type(self, column: dict, schema: str) -> Tuple:
-        """
-        Override the parent method to always return parsed_string as None for BigQuery.
-        This ensures we always use the standard column type handling path.
-        """
-        data_type_display, arr_data_type, _ = super()._process_col_type(column, schema)
-        # For BigQuery, we always want to force parsed_string to None
-        # This ensures we use the standard column type handling path
-        return data_type_display, arr_data_type, None
