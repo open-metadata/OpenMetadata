@@ -1376,10 +1376,8 @@ export const getTextFromHtmlString = (description?: string): string => {
 };
 
 export const getFirstRowColumnLink = (page: Page) => {
-  const table = page.locator('[data-testid="databaseSchema-tables"]');
-  const firstRowFirstColumn = table.locator(
-    'tbody tr:first-child td:first-child'
-  );
-
-  return firstRowFirstColumn.locator('[data-testid="column-name"] a');
+  return page
+    .getByTestId('databaseSchema-tables')
+    .getByTestId('column-name')
+    .first();
 };

@@ -24,6 +24,7 @@ import { OwnerLabelProps } from './OwnerLabel.interface';
 
 export const OwnerLabel = ({
   owners = [],
+  showLabel = true,
   className,
   onUpdate,
   hasPermission,
@@ -61,6 +62,7 @@ export const OwnerLabel = ({
           multiple={multiple}
           owners={owners}
           placeHolder={placeHolder}
+          showLabel={showLabel}
           tooltipText={tooltipText}
           onUpdate={onUpdate}
         />
@@ -81,13 +83,15 @@ export const OwnerLabel = ({
           )}>
           {!isCompactView && (
             <div className="d-flex items-center gap-2">
-              <Typography.Text
-                className={classNames(
-                  'no-owner font-medium text-sm',
-                  className
-                )}>
-                {placeHolder ?? t('label.owner-plural')}
-              </Typography.Text>
+              {showLabel && (
+                <Typography.Text
+                  className={classNames(
+                    'no-owner font-medium text-sm',
+                    className
+                  )}>
+                  {placeHolder ?? t('label.owner-plural')}
+                </Typography.Text>
+              )}
               {onUpdate && (
                 <UserTeamSelectableList
                   hasPermission={Boolean(hasPermission)}

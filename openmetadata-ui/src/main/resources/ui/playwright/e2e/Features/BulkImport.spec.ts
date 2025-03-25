@@ -229,6 +229,10 @@ test.describe('Bulk Import Export', () => {
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
+        await page.waitForSelector('.message-banner-wrapper', {
+          state: 'detached',
+        });
+
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -363,6 +367,10 @@ test.describe('Bulk Import Export', () => {
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
 
+        await page.waitForSelector('.message-banner-wrapper', {
+          state: 'detached',
+        });
+
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -484,6 +492,11 @@ test.describe('Bulk Import Export', () => {
         );
 
         await page.getByRole('button', { name: 'Update' }).click();
+
+        await page.waitForSelector('.message-banner-wrapper', {
+          state: 'detached',
+        });
+
         await toastNotification(page, /details updated successfully/);
       }
     );
@@ -587,6 +600,10 @@ test.describe('Bulk Import Export', () => {
         await page
           .locator('.inovua-react-toolkit-load-mask__background-layer')
           .waitFor({ state: 'detached' });
+
+        await page.waitForSelector('.message-banner-wrapper', {
+          state: 'detached',
+        });
 
         await toastNotification(page, /details updated successfully/);
       }

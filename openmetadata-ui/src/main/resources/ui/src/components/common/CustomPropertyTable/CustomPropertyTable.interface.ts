@@ -62,6 +62,7 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   hasPermission: boolean;
   maxDataCap?: number;
   isRenderedInRightPanel?: boolean;
+  newLook?: boolean;
 }
 
 export interface PropertyValueProps {

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) url('../../../styles/variables.less');
 
-.table-details-page-tabs {
-  .ant-tabs-nav {
-    margin: 0 !important;
-    padding: 0 20px;
+.page-search-bar {
+  .ant-input-affix-wrapper {
+    border-radius: 10px;
+    border: 1px solid @border-color-6;
+    height: 40px;
+  }
+
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper-focused {
+    box-shadow: none;
   }
 }

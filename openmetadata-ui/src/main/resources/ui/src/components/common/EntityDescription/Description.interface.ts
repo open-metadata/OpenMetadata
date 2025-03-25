@@ -33,4 +33,5 @@ export interface DescriptionProps {
   className?: string;
   showSuggestions?: boolean;
   isDescriptionExpanded?: boolean;
+  newLook?: boolean;
 }

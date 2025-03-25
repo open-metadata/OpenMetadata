@@ -107,7 +107,9 @@ test('Roles page should work properly', async ({ page }) => {
     // Navigating to roles tab to verify the added role
     await page.locator('[data-testid="breadcrumb-link"]').first().click();
 
-    await expect(page.locator('table')).toContainText(roleName);
+    await expect(
+      page.getByRole('cell', { name: roleName, exact: true })
+    ).toBeVisible();
 
     // second policy should be visible on tooltip
     await page

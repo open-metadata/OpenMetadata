@@ -20,6 +20,7 @@ import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
+import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
 import { getEntityName } from '../../../utils/EntityUtils';
 import './draggable-tabs.less';
@@ -29,11 +30,12 @@ type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 interface TabItemProps {
   item: Tab;
   index: number;
-  moveTab: (fromIndex: number, toIndex: number) => void;
+  moveTab?: (fromIndex: number, toIndex: number) => void;
   onEdit?: (key: string) => void;
   onRename?: (key: string) => void;
   onRemove?: (targetKey: TargetKey) => void;
   onItemClick?: (key: string) => void;
+  shouldHide?: boolean;
 }
 
 export const TabItem = ({
@@ -44,7 +46,9 @@ export const TabItem = ({
   onRename,
   onRemove,
   onItemClick,
+  shouldHide,
 }: TabItemProps) => {
+  const { t } = useTranslation();
   const [{ isDragging }, drag] = useDrag({
     type: 'TAB',
     item: { index },
@@ -57,19 +61,19 @@ export const TabItem = ({
     ...(item.editable
       ? [
           {
-            label: 'Edit Widgets',
+            label: t('label.edit-widget-plural'),
             key: 'edit',
             icon: <CheckCircleOutlined />,
           },
         ]
       : []),
     {
-      label: 'Rename',
+      label: t('label.rename'),
       key: 'rename',
       icon: <EditOutlined />,
     },
     {
-      label: 'Delete',
+      label: shouldHide ? t('label.hide') : t('label.delete'),
       key: 'delete',
       icon: <CloseCircleOutlined />,
     },
@@ -96,7 +100,7 @@ export const TabItem = ({
     accept: 'TAB',
     hover: (draggedItem: { index: number }) => {
       if (draggedItem.index !== index) {
-        moveTab(draggedItem.index, index);
+        moveTab?.(draggedItem.index, index);
         draggedItem.index = index;
       }
     },

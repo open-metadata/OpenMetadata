@@ -53,6 +53,7 @@ export const validateLeftSidebarWithHiddenItems = async (
 
       if (items) {
         await page.hover('[data-testid="left-sidebar"]');
+        await page.waitForTimeout(300);
         await page.click(`[data-testid="${items[0]}"]`);
 
         if (hiddenItems.includes(items[1])) {

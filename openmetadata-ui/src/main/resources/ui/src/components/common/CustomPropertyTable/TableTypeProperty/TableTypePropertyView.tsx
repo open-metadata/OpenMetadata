@@ -47,7 +47,6 @@ const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
 
   return (
     <Table
-      bordered
       resizableColumns
       className="w-full table-type-custom-property"
       columns={tableColumns}

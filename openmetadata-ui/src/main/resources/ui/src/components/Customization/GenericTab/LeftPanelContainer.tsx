@@ -1,0 +1,117 @@
+/* eslint-disable no-console */
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import React, { useMemo } from 'react';
+import RGL, { WidthProvider } from 'react-grid-layout';
+import { PageType } from '../../../generated/system/ui/page';
+import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import './generic-tab.less';
+
+import { isUndefined } from 'lodash';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
+import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import { GenericWidget } from '../GenericWidget/GenericWidget';
+const ReactGridLayout = WidthProvider(RGL);
+
+interface GenericTabProps {
+  layout: WidgetConfig[];
+  type: PageType;
+  onUpdate: (layout: WidgetConfig[]) => void;
+  isEditView: boolean;
+  handleOpenAddWidgetModal?: () => void;
+  handlePlaceholderWidgetKey?: (value: string) => void;
+}
+
+export const LeftPanelContainer = ({
+  layout,
+  type,
+  onUpdate,
+  isEditView = false,
+  handleOpenAddWidgetModal,
+  handlePlaceholderWidgetKey,
+}: GenericTabProps) => {
+  const handleRemoveWidget = (widgetKey: string) => {
+    onUpdate(layout.filter((widget) => widget.i !== widgetKey));
+  };
+
+  const getWidgetFromLayout = (layout: WidgetConfig[]) => {
+    return layout.map((widget) => {
+      let widgetComponent = null;
+
+      if (
+        widget.i.endsWith('.EmptyWidgetPlaceholder') &&
+        !isUndefined(handleOpenAddWidgetModal) &&
+        !isUndefined(handlePlaceholderWidgetKey) &&
+        !isUndefined(handleRemoveWidget)
+      ) {
+        widgetComponent = (
+          <EmptyWidgetPlaceholder
+            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+            handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+            handleRemoveWidget={handleRemoveWidget}
+            isEditable={widget.isDraggable}
+            widgetKey={widget.i}
+          />
+        );
+      } else {
+        widgetComponent = (
+          <GenericWidget
+            isEditView
+            handleRemoveWidget={handleRemoveWidget}
+            selectedGridSize={widget.w}
+            widgetKey={widget.i}
+          />
+        );
+      }
+
+      return (
+        <div data-grid={widget} id={widget.i} key={widget.i}>
+          {widgetComponent}
+        </div>
+      );
+    });
+  };
+
+  const widgets = useMemo(() => {
+    return isEditView
+      ? getWidgetFromLayout(layout)
+      : layout?.map((widget: WidgetConfig) => {
+          return (
+            <div
+              className="overflow-auto-y"
+              data-grid={widget}
+              id={widget.i}
+              key={widget.i}>
+              {getWidgetsFromKey(type, widget)}
+            </div>
+          );
+        });
+  }, [layout, type, isEditView]);
+
+  // call the hook to set the direction of the grid layout
+  useGridLayoutDirection();
+
+  return (
+    <ReactGridLayout
+      autoSize
+      className="grid-container"
+      cols={1}
+      isResizable={isEditView}
+      margin={[0, 16]}
+      rowHeight={100}
+      onLayoutChange={onUpdate}>
+      {widgets}
+    </ReactGridLayout>
+  );
+};

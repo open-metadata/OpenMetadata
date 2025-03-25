@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';
+import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
@@ -31,6 +32,7 @@ import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -142,6 +144,7 @@ export const CommonWidgets = ({
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -157,6 +160,7 @@ export const CommonWidgets = ({
   const glossaryWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -178,7 +182,9 @@ export const CommonWidgets = ({
   const descriptionWidget = useMemo(() => {
     return (
       <DescriptionV1
+        newLook
         showSuggestions
+        wrapInCard
         description={description}
         entityName={entityName}
         entityType={type}
@@ -211,6 +217,7 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
       return (
         <DataProductsContainer
+          newLook
           activeDomain={domain}
           dataProducts={dataProducts ?? []}
           hasPermission={false}
@@ -226,6 +233,7 @@ export const CommonWidgets = ({
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
+          newLook
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}
@@ -240,8 +248,16 @@ export const CommonWidgets = ({
       return <ReviewerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <OwnerLabelV2<GenericEntity> />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+      return (
+        <LeftPanelContainer
+          isEditView={false}
+          layout={widgetConfig.children ?? []}
+          type={ENTITY_PAGE_TYPE_MAP[type]}
+          onUpdate={noop}
+        />
+      );
     }
-
     const Widget =
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 

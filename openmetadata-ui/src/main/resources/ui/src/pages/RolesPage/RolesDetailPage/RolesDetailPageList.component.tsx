@@ -18,7 +18,7 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -78,7 +78,7 @@ const RolesDetailPageList = ({
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
-          <RichTextEditorPreviewerV1 markdown={record?.description || ''} />
+          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
         ),
       },
       {
@@ -114,7 +114,6 @@ const RolesDetailPageList = ({
 
   return (
     <Table
-      bordered
       className="list-table"
       columns={columns}
       dataSource={list}

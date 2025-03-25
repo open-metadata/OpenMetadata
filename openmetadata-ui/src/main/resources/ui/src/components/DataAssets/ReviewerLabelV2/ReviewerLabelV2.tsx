@@ -66,7 +66,7 @@ export const ReviewerLabelV2 = <
     <div data-testid="glossary-reviewer">
       <div className={`d-flex items-center ${hasReviewers ? 'm-b-xss' : ''}`}>
         <Typography.Text
-          className="right-panel-label"
+          className="text-sm font-medium"
           data-testid="heading-name">
           {t('label.reviewer-plural')}
         </Typography.Text>

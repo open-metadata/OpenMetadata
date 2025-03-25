@@ -511,14 +511,14 @@ describe('Test TagsPage page', () => {
     });
 
     act(async () => {
-      const tagEditIcon = await findAllByTestId(container, 'tag-edit-icon');
+      const tagEditIcon = await findAllByTestId(container, 'edit-button');
 
       expect(tagEditIcon[0]).toBeInTheDocument();
 
       fireEvent.click(tagEditIcon[0]);
     });
 
-    const tagName = await screen.findByText('test_tag');
+    const tagName = screen.getByTestId('test_tag');
 
     expect(tagName).toBeInTheDocument();
     expect(tagsComponent).toBeInTheDocument();

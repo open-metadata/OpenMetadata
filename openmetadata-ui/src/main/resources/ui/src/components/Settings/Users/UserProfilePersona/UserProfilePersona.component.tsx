@@ -77,7 +77,7 @@ const UserProfilePersonas = ({
           </div>
           <div className="d-flex justify-between w-full">
             <Typography.Text
-              className="user-profile-card-title"
+              className="text-sm font-medium"
               data-testid="persona-list">
               {t('label.default-persona')}
             </Typography.Text>
@@ -122,7 +122,7 @@ const UserProfilePersonas = ({
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text
-            className="user-profile-card-title"
+            className="text-sm font-medium"
             data-testid="persona-list">
             {t('label.persona')}
           </Typography.Text>

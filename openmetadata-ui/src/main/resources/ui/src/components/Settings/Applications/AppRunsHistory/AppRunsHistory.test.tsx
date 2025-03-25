@@ -113,22 +113,23 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../common/NextPrevious/NextPrevious', () =>
-  jest.fn().mockImplementation(({ pagingHandler }) => (
-    // passing currentPage value in pagingHandler
-    <button onClick={() => pagingHandler({ currentPage: 6 })}>
-      NextPrevious
-    </button>
-  ))
-);
-
 jest.mock('../../../common/Table/Table', () => {
-  return jest.fn().mockImplementation(({ loading, ...rest }) => (
-    <div>
-      {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
-      Table
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
+      <div>
+        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {customPaginationProps && (
+          <button
+            onClick={() =>
+              customPaginationProps.pagingHandler({ currentPage: 6 })
+            }>
+            NextPrevious
+          </button>
+        )}
+        Table
+      </div>
+    ));
 });
 
 jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>

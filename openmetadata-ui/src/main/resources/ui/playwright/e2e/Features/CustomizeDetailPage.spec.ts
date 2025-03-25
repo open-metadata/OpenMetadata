@@ -189,6 +189,7 @@ test.describe('Persona customize UI tab', async () => {
 
   test('customize navigation should work', async ({ adminPage, userPage }) => {
     test.slow();
+
     await adminPage.getByText('Navigation').click();
 
     await test.step(

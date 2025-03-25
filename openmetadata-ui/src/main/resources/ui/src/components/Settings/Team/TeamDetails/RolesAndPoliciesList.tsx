@@ -26,7 +26,7 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 
 const ListEntities = ({
   list,
@@ -80,7 +80,7 @@ const ListEntities = ({
         dataIndex: 'description',
         key: 'description',
         render: (_, record) => (
-          <RichTextEditorPreviewerV1 markdown={record?.description || ''} />
+          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
         ),
       },
       {
@@ -117,7 +117,6 @@ const ListEntities = ({
 
   return (
     <Table
-      bordered
       className="list-table"
       columns={columns}
       dataSource={list}

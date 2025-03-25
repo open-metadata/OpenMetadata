@@ -1176,7 +1176,7 @@ const TeamDetailsV1 = ({
           <Tabs
             destroyInactiveTabPane
             activeKey={currentTab}
-            className="entity-details-page-tabs"
+            className="tabs-new"
             items={tabs}
             onChange={updateActiveTab}
           />

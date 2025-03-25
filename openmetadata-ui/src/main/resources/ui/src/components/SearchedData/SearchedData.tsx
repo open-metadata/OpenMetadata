@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Pagination } from 'antd';
 import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import Qs from 'qs';
@@ -24,6 +23,7 @@ import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
 import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import PaginationComponent from '../PaginationComponent/PaginationComponent';
 import { SearchedDataProps } from './SearchedData.interface';
 
 const ASSETS_NAME = [
@@ -115,14 +115,12 @@ const SearchedData: React.FC<SearchedDataProps> = ({
               <ResultCount />
               <div data-testid="search-results">
                 {searchResultCards}
-                <Pagination
-                  hideOnSinglePage
+                <PaginationComponent
                   className="text-center m-b-sm"
                   current={isNumber(Number(page)) ? Number(page) : 1}
                   pageSize={
                     size && isNumber(Number(size)) ? Number(size) : PAGE_SIZE
                   }
-                  pageSizeOptions={[10, 25, 50]}
                   total={totalValue}
                   onChange={onPaginationChange}
                 />

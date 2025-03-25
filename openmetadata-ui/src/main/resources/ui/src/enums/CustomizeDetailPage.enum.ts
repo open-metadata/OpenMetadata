@@ -19,6 +19,7 @@ export enum WidgetWidths {
 export enum DetailPageWidgetKeys {
   TABS = 'KnowledgePanel.Tabs',
   HEADER = 'KnowledgePanel.Header',
+  LEFT_PANEL = 'KnowledgePanel.LeftPanel',
   ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
   DESCRIPTION = 'KnowledgePanel.Description',
   TABLE_SCHEMA = 'KnowledgePanel.TableSchema',

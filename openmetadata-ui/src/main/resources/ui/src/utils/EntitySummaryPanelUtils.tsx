@@ -34,6 +34,7 @@ import TagsSummary from '../components/Explore/EntitySummaryPanel/TagsSummary/Ta
 import MetricExpression from '../components/Metric/MetricExpression/MetricExpression';
 import RelatedMetrics from '../components/Metric/RelatedMetrics/RelatedMetrics';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { CustomizeEntityType } from '../constants/Customize.constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
@@ -575,7 +576,7 @@ export const getEntityChildDetails = (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
           <MetricExpression />
         </GenericProvider>
@@ -585,7 +586,7 @@ export const getEntityChildDetails = (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
           <RelatedMetrics isInSummaryPanel />
         </GenericProvider>

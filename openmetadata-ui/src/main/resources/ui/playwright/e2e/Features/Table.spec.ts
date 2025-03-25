@@ -65,7 +65,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     expect(await page.locator('.ant-table-row').count()).toBe(10);
   });
 
-  test.skip('Table search with sorting should works', async ({ page }) => {
+  test('Table search with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
     await page.click('[data-testid="by-test-cases"]');
@@ -95,20 +95,35 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test('should persist current page', async ({ page }) => {
-    page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     await page.getByTestId('next').click();
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const initialPageIndicator = await page
       .locator('[data-testid="page-indicator"]')
       .textContent();
 
     const linkInColumn = getFirstRowColumnLink(page);
-    await linkInColumn.click();
+    await linkInColumn.locator('a').click();
 
-    await page.goBack();
+    await page.waitForURL('**/table/**');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.goBack({
+      waitUntil: 'networkidle',
+    });
 
     const pageIndicatorAfterBack = await page
       .locator('[data-testid="page-indicator"]')
@@ -122,15 +137,12 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.click();
+    await page.getByTestId('page-size-selection-dropdown').click();
 
-    const dropdownOptions = page.locator('.ant-dropdown-menu');
-
-    await expect(dropdownOptions).toBeVisible();
-
-    const optionToSelect = dropdownOptions.locator('text="15 / Page"');
-    await optionToSelect.click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const linkInColumn = getFirstRowColumnLink(page);
     await linkInColumn.click();
@@ -141,6 +153,8 @@ test.describe('Table pagination sorting search scenarios ', () => {
       state: 'detached',
     });
 
-    await expect(pageSizeDropdown).toHaveText('15 / Page');
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
   });
 });

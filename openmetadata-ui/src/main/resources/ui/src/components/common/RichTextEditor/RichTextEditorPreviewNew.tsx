@@ -22,7 +22,7 @@ import BlockEditor from '../../BlockEditor/BlockEditor';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
-const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
+const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   markdown = '',
   className = '',
   enableSeeMoreVariant = true,
@@ -120,4 +120,4 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   );
 };
 
-export default RichTextEditorPreviewerV1;
+export default RichTextEditorPreviewerNew;

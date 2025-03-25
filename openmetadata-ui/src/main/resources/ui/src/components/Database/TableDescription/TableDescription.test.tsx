@@ -20,8 +20,8 @@ jest.mock('../../../pages/TasksPage/EntityTasks/EntityTasks.component', () => {
   return jest.fn().mockReturnValue(<p>EntityTasks</p>);
 });
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
-  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewNew</p>);
 });
 
 jest.mock('../../Suggestions/SuggestionsAlert/SuggestionsAlert', () => {
@@ -59,7 +59,7 @@ describe('TableDescription Component', () => {
 
     expect(descriptionElement).toBeInTheDocument();
     expect(descriptionElement).toHaveTextContent(
-      'RichTextEditorPreviewerEntityTasks'
+      'RichTextEditorPreviewNewEntityTasks'
     );
   });
 

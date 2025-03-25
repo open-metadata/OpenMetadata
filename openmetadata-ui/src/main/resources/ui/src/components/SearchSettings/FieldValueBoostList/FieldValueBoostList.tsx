@@ -114,7 +114,6 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
 
   return (
     <Table
-      bordered
       columns={columns}
       data-testid={dataTestId}
       dataSource={fieldValueBoosts?.map((boost: FieldValueBoost) => ({

@@ -27,8 +27,8 @@ const botName = `pw%bot-test-${uuid()}`;
 const BOT_DETAILS = {
   botName: botName,
   botEmail: `${botName}@mail.com`,
-  description: 'This is bot description',
-  updatedDescription: 'This is updated bot description',
+  description: `This is bot description for ${botName}`,
+  updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
   unlimitedExpiryTime: 'This token has no expiration date.',
   JWTToken: 'OpenMetadata JWT',
@@ -74,10 +74,13 @@ export const createBot = async (page: Page) => {
   await saveResponse;
 
   // Verify bot is getting added in the bots listing page
-  const table = page.locator('table');
+  await expect(
+    page.getByRole('cell', { name: BOT_DETAILS.botName })
+  ).toBeVisible();
 
-  await expect(table).toContainText(BOT_DETAILS.botName);
-  await expect(table).toContainText(BOT_DETAILS.description);
+  await expect(
+    page.getByRole('cell', { name: BOT_DETAILS.description })
+  ).toBeVisible();
 
   // Get created bot
   await getCreatedBot(page, { botName });

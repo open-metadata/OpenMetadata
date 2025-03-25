@@ -68,7 +68,6 @@ const ListView = ({
 
   return (
     <Table
-      bordered
       className="h-full"
       columns={columns}
       data-testid="list-view-table"

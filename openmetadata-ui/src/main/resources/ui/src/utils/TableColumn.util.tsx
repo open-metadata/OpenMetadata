@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { FilterOutlined } from '@ant-design/icons';
+import { ColumnsType } from 'antd/lib/table';
 import React from 'react';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
+import { EntityReference } from '../generated/type/entityReference';
 import { useApplicationStore } from '../hooks/useApplicationStore';
+import i18n from './i18next/LocalUtil';
 
 export const columnFilterIcon = (filtered: boolean) => {
   const { theme } = useApplicationStore.getState();
@@ -24,3 +29,23 @@ export const columnFilterIcon = (filtered: boolean) => {
     />
   );
 };
+
+export const ownerTableObject = <
+  T extends { owners?: EntityReference[] }
+>(): ColumnsType<T> => [
+  {
+    title: i18n.t('label.owner-plural'),
+    dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
+    key: TABLE_COLUMNS_KEYS.OWNERS,
+    width: 140,
+    filterIcon: columnFilterIcon,
+    render: (owners: EntityReference[]) => (
+      <OwnerLabel
+        isCompactView={false}
+        maxVisibleOwners={4}
+        owners={owners}
+        showLabel={false}
+      />
+    ),
+  },
+];

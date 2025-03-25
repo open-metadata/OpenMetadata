@@ -120,7 +120,6 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
   return (
     <>
       <Table
-        bordered
         columns={columns}
         dataSource={
           isDetailsLoading

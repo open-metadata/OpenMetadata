@@ -288,11 +288,11 @@ const IncidentManagerDetailPage = () => {
             onOwnerUpdate={handleOwnerChange}
           />
         </Col>
-        <Col span={24}>
+        <Col className="p-x-lg" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="entity-details-page-tabs"
+            className="tabs-new"
             data-testid="tabs"
             items={tabDetails}
             onChange={handleTabChange}

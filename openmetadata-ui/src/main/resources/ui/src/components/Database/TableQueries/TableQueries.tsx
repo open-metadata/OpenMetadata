@@ -16,16 +16,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  DatePicker,
-  Pagination,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Col, DatePicker, Row, Space, Tooltip, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -76,6 +67,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SortingDropDown from '../../Explore/SortingDropDown';
+import PaginationComponent from '../../PaginationComponent/PaginationComponent';
 import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
@@ -651,7 +643,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                     {queryTabBody}
                     {showPagination && (
                       <Col span={24}>
-                        <Pagination
+                        <PaginationComponent
                           hideOnSinglePage
                           showSizeChanger
                           className="text-center m-b-sm"

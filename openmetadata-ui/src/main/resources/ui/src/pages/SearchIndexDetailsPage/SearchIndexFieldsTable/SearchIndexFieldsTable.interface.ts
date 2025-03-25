@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { ExpandableConfig } from 'antd/lib/table/interface';
 import { ReactNode } from 'react';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 
@@ -20,15 +19,10 @@ export interface SearchIndexFieldsTableProps {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
   hasGlossaryTermEditAccess: boolean;
-  searchedFields: Array<SearchIndexField>;
-  expandableConfig: ExpandableConfig<SearchIndexField>;
   isReadOnly?: boolean;
   entityFqn: string;
   onUpdate: (fields: Array<SearchIndexField>) => Promise<void>;
-  searchText?: string;
   fieldAllRowKeys: string[];
-  expandedRowKeys: string[];
-  toggleExpandAll: () => void;
 }
 
 export type SearchIndexCellRendered<T, K extends keyof T> = (
