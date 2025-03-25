@@ -14,8 +14,7 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { toastNotification } from './common';
-import { escapeESReservedCharacters } from './entity';
+import { matchRequestParams, toastNotification } from './common';
 
 export enum Services {
   Database = GlobalSettingOptions.DATABASES,
@@ -74,15 +73,41 @@ export const getServiceCategoryFromService = (service: Services) => {
   }
 };
 
+export const getServiceIndexTypeFromService = (service: Services) => {
+  switch (service) {
+    case Services.Dashboard:
+      return 'dashboard_service_search_index';
+    case Services.Database:
+      return 'database_service_search_index';
+    case Services.Storage:
+      return 'storage_service_search_index';
+    case Services.Messaging:
+      return 'messaging_service_search_index';
+    case Services.Search:
+      return 'search_service_search_index';
+    case Services.MLModels:
+      return 'mlmodel_service_search_index';
+    case Services.Pipeline:
+      return 'pipeline_service_search_index';
+    case Services.API:
+      return 'api_service_search_index';
+    default:
+      return 'database_service_search_index';
+  }
+};
+
 export const deleteService = async (
   typeOfService: Services,
   serviceName: string,
   page: Page
 ) => {
   const serviceResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      escapeESReservedCharacters(serviceName)
-    )}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: getServiceIndexTypeFromService(typeOfService),
+        query: `*${encodeURIComponent(serviceName)}*`,
+      })
   );
 
   await page.fill('[data-testid="searchbar"]', serviceName);

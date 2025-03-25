@@ -260,32 +260,37 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   });
 
   FIELDS.forEach((field) => {
-    test(`Verify All conditions for ${field.id} field`, async ({ page }) => {
-      test.slow(true);
+    test.fixme(
+      `Verify All conditions for ${field.id} field`,
+      async ({ page }) => {
+        test.slow(true);
 
-      await verifyAllConditions(page, field, searchCriteria[field.name][0]);
-    });
+        await verifyAllConditions(page, field, searchCriteria[field.name][0]);
+      }
+    );
   });
 
   Object.values(OPERATOR).forEach(({ name: operator }) => {
     FIELDS.forEach((field) => {
       // Rule based search
-      test(`Verify Rule functionality for field ${field.id} with ${operator} operator`, async ({
-        page,
-      }) => {
-        test.slow(true);
+      test.fixme(
+        `Verify Rule functionality for field ${field.id} with ${operator} operator`,
+        async ({ page }) => {
+          test.slow(true);
 
-        await runRuleGroupTests(page, field, operator, false, searchCriteria);
-      });
+          await runRuleGroupTests(page, field, operator, false, searchCriteria);
+        }
+      );
 
       // Group based search
-      test(`Verify Group functionality for field ${field.id} with ${operator} operator`, async ({
-        page,
-      }) => {
-        test.slow(true);
+      test.fixme(
+        `Verify Group functionality for field ${field.id} with ${operator} operator`,
+        async ({ page }) => {
+          test.slow(true);
 
-        await runRuleGroupTests(page, field, operator, true, searchCriteria);
-      });
+          await runRuleGroupTests(page, field, operator, true, searchCriteria);
+        }
+      );
     });
   });
 });

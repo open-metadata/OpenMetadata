@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
-import { clickOutside } from './common';
+import { clickOutside, matchRequestParams } from './common';
 import { getEncodedFqn } from './entity';
 
 type EntityFields = {
@@ -303,13 +303,22 @@ export const checkMustPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'dataAsset',
+        from: 0,
+        size: 10,
+      })
   );
+
   await page.getByTestId('apply-btn').click();
 
   const res = await searchRes;
+  const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
+  const queryFilter = requestBody.queryFilter;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  expect(JSON.stringify(queryFilter)).toContain(searchData);
 
   const json = await res.json();
 
@@ -346,12 +355,25 @@ export const checkMustNotPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'dataAsset',
+        from: 0,
+        size: 10,
+      })
   );
+
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
 
-  expect(res.request().url()).toContain(getEncodedFqn(searchData, true));
+  const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
+
+  const queryFilter = requestBody.queryFilter;
+
+  expect(JSON.stringify(queryFilter)).toContain(
+    getEncodedFqn(searchData, true)
+  );
 
   if (!['columns.name.keyword'].includes(field.name)) {
     const json = await res.json();
@@ -386,12 +408,18 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'dataAsset',
+        from: 0,
+        size: 10,
+      })
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
-  const urlParams = new URLSearchParams(res.request().url());
-  const queryFilter = JSON.parse(urlParams.get('query_filter') ?? '');
+  const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
+  const queryFilter = requestBody.queryFilter;
 
   const resultQuery =
     condition === 'Is null'
@@ -430,7 +458,7 @@ export const checkNullPaths = async (
           },
         };
 
-  expect(JSON.stringify(queryFilter)).toContain(JSON.stringify(resultQuery));
+  expect(queryFilter).toEqual(JSON.stringify(resultQuery));
 };
 
 export const verifyAllConditions = async (
@@ -529,9 +557,14 @@ export const checkAddRuleOrGroupWithOperator = async (
   }
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'dataAsset',
+        from: 0,
+        size: 10,
+      })
   );
-  await page.getByTestId('apply-btn').click();
 
   // Since the OR operator with must not conditions will result in huge API response
   // with huge data, checking the required criteria might not be present on first page

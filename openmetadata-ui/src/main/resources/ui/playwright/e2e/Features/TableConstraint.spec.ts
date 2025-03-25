@@ -147,9 +147,8 @@ test.describe('Table Constraints', {}, () => {
       );
       await relatedColumnSelect.click();
 
-      const querySearchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=**`
-      );
+      const querySearchResponse = page.waitForResponse(`/api/v1/search/query`);
+
       await relatedColumnSelect.fill(relatedColumnFQN);
 
       await querySearchResponse;
