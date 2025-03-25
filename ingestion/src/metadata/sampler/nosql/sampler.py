@@ -24,6 +24,10 @@ class NoSQLSampler(SamplerInterface):
 
     client: NoSQLAdaptor
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client = self.get_client()
+
     @property
     def raw_dataset(self):
         return self.entity

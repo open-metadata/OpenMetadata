@@ -46,6 +46,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         super().__init__(*args, **kwargs)
         self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
         self._table = None
+        self.client = self.get_client()
 
     @property
     def raw_dataset(self):
