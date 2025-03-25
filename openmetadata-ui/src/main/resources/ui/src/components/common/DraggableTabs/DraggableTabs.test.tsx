@@ -73,7 +73,7 @@ describe('TabItem', () => {
     it('calls onEdit when Edit Widgets is clicked', () => {
       renderComponent();
       openDropdownMenu();
-      fireEvent.click(screen.getByText('Edit Widgets'));
+      fireEvent.click(screen.getByText('label.edit-widget-plural'));
 
       expect(defaultProps.onEdit).toHaveBeenCalledWith(mockTab.id);
     });
@@ -81,13 +81,15 @@ describe('TabItem', () => {
     it('does not render dropdown menu when tab is not editable', () => {
       renderComponent({ item: { ...mockTab, editable: false } });
 
-      expect(screen.queryByText('Edit Widgets')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('label.edit-widget-plural')
+      ).not.toBeInTheDocument();
     });
 
     it('calls onRename when Rename is clicked', () => {
       renderComponent();
       openDropdownMenu();
-      fireEvent.click(screen.getByText('Rename'));
+      fireEvent.click(screen.getByText('label.rename'));
 
       expect(defaultProps.onRename).toHaveBeenCalledWith(mockTab.id);
     });
@@ -95,7 +97,7 @@ describe('TabItem', () => {
     it('calls onRemove when Delete is clicked', () => {
       renderComponent();
       openDropdownMenu();
-      fireEvent.click(screen.getByText('Delete'));
+      fireEvent.click(screen.getByText('label.delete'));
 
       expect(defaultProps.onRemove).toHaveBeenCalledWith(mockTab.id);
     });

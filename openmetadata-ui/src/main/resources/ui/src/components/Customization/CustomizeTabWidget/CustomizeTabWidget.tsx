@@ -95,6 +95,7 @@ export const CustomizeTabWidget = () => {
       3
     )
   );
+  const [leftSideLayout, setLeftSideLayout] = useState<WidgetConfig[]>([]);
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>('');
 
@@ -208,6 +209,7 @@ export const CustomizeTabWidget = () => {
 
   const handleRightSideLayoutUpdate = useCallback((updatedLayout: Layout[]) => {
     if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
+      setLeftSideLayout(updatedLayout);
       setTabLayouts((prev) => {
         const newLayout = cloneDeep(prev);
         const rightSidePanelLayout = newLayout.find((layout) =>
@@ -299,13 +301,22 @@ export const CustomizeTabWidget = () => {
           ...currentPage,
           tabs: items.map((item) =>
             item.id === activeKey
-              ? { ...item, layout: getUniqueFilteredLayout(updatedLayout) }
+              ? {
+                  ...item,
+                  layout:
+                    item.id === DetailPageWidgetKeys.LEFT_PANEL
+                      ? {
+                          ...getUniqueFilteredLayout(updatedLayout),
+                          children: leftSideLayout,
+                        }
+                      : getUniqueFilteredLayout(updatedLayout),
+                }
               : item
           ),
         } as Page);
       }
     },
-    [tabLayouts]
+    [tabLayouts, leftSideLayout]
   );
 
   const handleMainPanelAddWidget = useCallback(
