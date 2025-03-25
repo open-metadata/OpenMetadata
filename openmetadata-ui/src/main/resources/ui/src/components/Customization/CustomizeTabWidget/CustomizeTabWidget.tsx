@@ -390,7 +390,7 @@ export const CustomizeTabWidget = () => {
                   menu={{
                     items: [
                       {
-                        label: 'Show',
+                        label: t('label.show'),
                         key: 'show',
                         icon: <EyeFilled />,
                       },

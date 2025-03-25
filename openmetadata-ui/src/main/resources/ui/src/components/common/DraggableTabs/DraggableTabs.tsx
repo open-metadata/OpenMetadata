@@ -20,6 +20,7 @@ import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
+import { useTranslation } from 'react-i18next';
 import { Tab } from '../../../generated/system/ui/tab';
 import { getEntityName } from '../../../utils/EntityUtils';
 import './draggable-tabs.less';
@@ -47,6 +48,7 @@ export const TabItem = ({
   onItemClick,
   shouldHide,
 }: TabItemProps) => {
+  const { t } = useTranslation();
   const [{ isDragging }, drag] = useDrag({
     type: 'TAB',
     item: { index },
@@ -59,19 +61,19 @@ export const TabItem = ({
     ...(item.editable
       ? [
           {
-            label: 'Edit Widgets',
+            label: t('label.edit-widget-plural'),
             key: 'edit',
             icon: <CheckCircleOutlined />,
           },
         ]
       : []),
     {
-      label: 'Rename',
+      label: t('label.rename'),
       key: 'rename',
       icon: <EditOutlined />,
     },
     {
-      label: shouldHide ? 'Hide' : 'Delete',
+      label: shouldHide ? t('label.hide') : t('label.delete'),
       key: 'delete',
       icon: <CloseCircleOutlined />,
     },
