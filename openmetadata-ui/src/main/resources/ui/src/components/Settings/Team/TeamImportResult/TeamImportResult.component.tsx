@@ -164,7 +164,6 @@ export const TeamImportResult = ({
         title: t('label.role-plural'),
         dataIndex: 'defaultRoles',
         key: 'defaultRoles',
-        width: 100,
         render: (role: TeamCSVRecord['defaultRoles']) => {
           return (
             <Typography.Paragraph style={{ width: 200 }}>
