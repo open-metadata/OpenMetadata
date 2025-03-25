@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Menu, Segmented, Space, Typography } from 'antd';
+import {
+  Button,
+  Dropdown,
+  Menu,
+  Segmented,
+  Skeleton,
+  Space,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -33,6 +42,7 @@ import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg'
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as AnnouncementsIcon } from '../../../assets/svg/announcements-v1.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
 import {
   COMMON_ICON_STYLES,
@@ -44,6 +54,7 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
+  AnnoucementStatus,
   Thread,
   ThreadTaskStatus,
   ThreadType,
@@ -54,6 +65,10 @@ import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
+import {
+  ANNOUNCEMENT_ENTITIES,
+  setSelectedAnnouncementStatus,
+} from '../../../utils/AnnouncementsUtils';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -63,6 +78,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
+import AddAnnouncementModal from '../../Modals/AnnouncementModal/AddAnnouncementModal';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
@@ -89,6 +105,7 @@ export const ActivityFeedTab = ({
   isForFeedTab = true,
   onUpdateFeedCount,
   onUpdateEntityDetails,
+  permissions,
   subTab,
   layoutType,
 }: ActivityFeedTabProps) => {
@@ -108,6 +125,19 @@ export const ActivityFeedTab = ({
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );
+  const [announcementFilter, setAnnouncementFilter] =
+    useState<AnnoucementStatus>(AnnoucementStatus.Active);
+  const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
+    useState<boolean>(false);
+  const handleCloseAnnouncementModal = useCallback(
+    () => setIsAddAnnouncementOpen(false),
+    []
+  );
+  const handleOpenAnnouncementModal = useCallback(
+    () => setIsAddAnnouncementOpen(true),
+    []
+  );
+
   const [isFullWidth, setIsFullWidth] = useState<boolean>(false);
   const [countData, setCountData] = useState<{
     loading: boolean;
@@ -116,6 +146,7 @@ export const ActivityFeedTab = ({
     loading: false,
     data: FEED_COUNT_INITIAL_DATA,
   });
+  const showAnnouncementsSubTab = ANNOUNCEMENT_ENTITIES.includes(entityType);
 
   const {
     selectedThread,
@@ -142,6 +173,10 @@ export const ActivityFeedTab = ({
 
   const isTaskActiveTab = useMemo(
     () => activeTab === ActivityFeedTabs.TASKS,
+    [activeTab]
+  );
+  const isAnnouncementActiveTab = useMemo(
+    () => activeTab === ActivityFeedTabs.ANNOUNCEMENTS,
     [activeTab]
   );
   useEffect(() => {
@@ -183,6 +218,8 @@ export const ActivityFeedTab = ({
           {t('message.no-mentions')}
         </Typography.Text>
       );
+    } else if (activeTab === ActivityFeedTabs.ANNOUNCEMENTS) {
+      return t('message.no-announcement-message');
     } else {
       return (
         <div className="d-flex flex-col gap-4">
@@ -235,6 +272,8 @@ export const ActivityFeedTab = ({
       return ThreadType.Task;
     } else if (activeTab === ActivityFeedTabs.ALL) {
       return ThreadType.Conversation;
+    } else if (activeTab === ActivityFeedTabs.ANNOUNCEMENTS) {
+      return ThreadType.Announcement;
     } else {
       return;
     }
@@ -263,6 +302,19 @@ export const ActivityFeedTab = ({
       feedFilter: activeTab === 'mentions' ? FeedFilter.MENTIONS : filter,
     };
   }, [activeTab, isUserEntity, currentUser]);
+
+  const handleSaveAnnouncement = useCallback(() => {
+    handleCloseAnnouncementModal();
+    getFeedData(
+      feedFilter,
+      undefined,
+      ThreadType.Announcement,
+      entityType,
+      fqn,
+      undefined,
+      undefined
+    );
+  }, [feedFilter, entityType, fqn, announcementFilter]);
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
@@ -308,7 +360,8 @@ export const ActivityFeedTab = ({
   }, [refetchFeedData]);
 
   useEffect(() => {
-    if (fqn) {
+    setSelectedAnnouncementStatus(AnnoucementStatus.Active);
+    if (fqn && !isAnnouncementActiveTab) {
       getFeedData(
         feedFilter,
         undefined,
@@ -316,6 +369,16 @@ export const ActivityFeedTab = ({
         entityType,
         fqn,
         taskFilter
+      );
+    } else {
+      getFeedData(
+        feedFilter,
+        undefined,
+        threadType,
+        entityType,
+        fqn,
+        undefined,
+        undefined
       );
     }
   }, [feedFilter, threadType, fqn]);
@@ -341,6 +404,19 @@ export const ActivityFeedTab = ({
   const handleUpdateTaskFilter = (filter: ThreadTaskStatus) => {
     setTaskFilter(filter);
     getFeedData(feedFilter, undefined, threadType, entityType, fqn, filter);
+  };
+  const handleUpdateAnnouncementFilter = (filter: AnnoucementStatus) => {
+    setAnnouncementFilter(filter);
+    setSelectedAnnouncementStatus(filter);
+    getFeedData(
+      feedFilter,
+      undefined,
+      threadType,
+      entityType,
+      fqn,
+      undefined,
+      undefined
+    );
   };
 
   const handleAfterTaskClose = () => {
@@ -469,6 +545,55 @@ export const ActivityFeedTab = ({
   const handlePanelResize = (isFullWidth: boolean) => {
     setIsFullWidth(isFullWidth);
   };
+  const refetchAnnouncements = useCallback(() => {
+    getFeedData(
+      feedFilter,
+      undefined,
+      threadType,
+      entityType,
+      fqn,
+      undefined,
+      undefined
+    );
+  }, [feedFilter, threadType, entityType, fqn, announcementFilter]);
+
+  const handleFilterClick = useCallback(
+    (status) => {
+      handleUpdateAnnouncementFilter(status);
+      setActiveThread();
+    },
+    [handleUpdateAnnouncementFilter, setActiveThread]
+  );
+
+  const handleActiveClick = useCallback(
+    () => handleFilterClick(AnnoucementStatus.Active),
+    [handleFilterClick]
+  );
+  const handleInactiveClick = useCallback(
+    () => handleFilterClick(AnnoucementStatus.Inactive),
+    [handleFilterClick]
+  );
+  const getElementWithCountLoader = useCallback(
+    (element: any) => {
+      if (countData.loading) {
+        return <Skeleton.Button active className="count-loader" size="small" />;
+      }
+
+      return element;
+    },
+    [countData.loading]
+  );
+
+  const getSelectedKey = () => {
+    if (activeTab === ActivityFeedTabs.ALL) {
+      return ActivityFeedTabs.ALL;
+    }
+    if (activeTab === ActivityFeedTabs.ANNOUNCEMENTS) {
+      return 'announcements';
+    }
+
+    return ActivityFeedTabs.TASKS;
+  };
 
   return (
     <div className="activity-feed-tab">
@@ -521,14 +646,39 @@ export const ActivityFeedTab = ({
               ),
               key: ActivityFeedTabs.TASKS,
             },
+            ...(showAnnouncementsSubTab
+              ? [
+                  {
+                    label: (
+                      <div
+                        className="d-flex justify-between"
+                        data-testid="announcement-sub-tab">
+                        <Space align="center" size="small">
+                          <AnnouncementsIcon
+                            style={COMMON_ICON_STYLES}
+                            {...ICON_DIMENSION}
+                          />
+                          <span>{t('label.announcement-plural')}</span>
+                        </Space>
+
+                        <span>
+                          {!isUserEntity &&
+                            getCountBadge(
+                              countData.data.conversationCount,
+                              '',
+                              activeTab === ActivityFeedTabs.ANNOUNCEMENTS
+                            )}
+                        </span>
+                      </div>
+                    ),
+                    key: 'announcements',
+                  },
+                ]
+              : []),
           ]}
           mode="inline"
           rootClassName="left-container"
-          selectedKeys={[
-            activeTab === ActivityFeedTabs.ALL
-              ? ActivityFeedTabs.ALL
-              : ActivityFeedTabs.TASKS,
-          ]}
+          selectedKeys={[getSelectedKey()]}
           onClick={(info) => handleTabChange(info.key)}
         />
       )}
@@ -560,6 +710,46 @@ export const ActivityFeedTab = ({
             {TaskToggle()}
           </div>
         )}
+        {isAnnouncementActiveTab && (
+          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task justify-between">
+            <div className="d-flex gap-4">
+              {getElementWithCountLoader(
+                <Typography.Text
+                  className={classNames(
+                    'cursor-pointer p-l-xss d-flex items-center',
+                    {
+                      'font-medium':
+                        announcementFilter === AnnoucementStatus.Active,
+                    }
+                  )}
+                  data-testid="active-announcement"
+                  onClick={handleActiveClick}>
+                  {countData.data.openTaskCount} {t('label.active')}
+                </Typography.Text>
+              )}
+              {getElementWithCountLoader(
+                <Typography.Text
+                  className={classNames('cursor-pointer d-flex items-center', {
+                    'font-medium':
+                      announcementFilter === AnnoucementStatus.Inactive,
+                  })}
+                  data-testid="inactive-announcements"
+                  onClick={handleInactiveClick}>
+                  {countData.data.closedTaskCount} {t('label.inactive')}
+                </Typography.Text>
+              )}
+            </div>
+            <Tooltip title={t('message.no-permission-to-view')}>
+              <Button
+                data-testid="add-announcement-btn"
+                disabled={!permissions?.EditAll}
+                type="primary"
+                onClick={handleOpenAnnouncementModal}>
+                {t('label.add')}
+              </Button>
+            </Tooltip>
+          </div>
+        )}
         <ActivityFeedListV1New
           hidePopover
           activeFeedId={selectedThread?.id}
@@ -572,7 +762,6 @@ export const ActivityFeedTab = ({
           isLoading={loading}
           selectedThread={selectedThread}
           showThread={false}
-          onAfterClose={handleAfterTaskClose}
           onFeedClick={handleFeedClick}
         />
         {loader}
@@ -599,6 +788,7 @@ export const ActivityFeedTab = ({
             <div id="feed-panel">
               <div>
                 <FeedPanelBodyV1New
+                  isAnnouncementCard
                   isOpenInDrawer
                   showActivityFeedEditor
                   showThread
@@ -643,6 +833,15 @@ export const ActivityFeedTab = ({
             </div>
           ))}
       </div>
+      {isAddAnnouncementOpen && (
+        <AddAnnouncementModal
+          entityFQN={fqn || ''}
+          entityType={entityType || ''}
+          open={isAddAnnouncementOpen}
+          onCancel={handleCloseAnnouncementModal}
+          onSave={handleSaveAnnouncement}
+        />
+      )}
     </div>
   );
 };

@@ -17,6 +17,7 @@ import qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import AnnouncementTab from '../../components/Announcement/AnnouncementTab.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -30,6 +31,7 @@ import {
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -122,6 +124,17 @@ const ServicesPage = () => {
                     },
                   ]
                 : []),
+              {
+                key: 'announcements',
+                children: (
+                  <AnnouncementTab
+                    entityType={serviceName as EntityType}
+                    fqn={serviceName}
+                    permissions={permissions}
+                  />
+                ),
+                label: t('label.announcement-plural'),
+              },
             ]}
             onChange={(activeKey) =>
               history.push({ search: `tab=${activeKey}` })

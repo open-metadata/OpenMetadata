@@ -17,6 +17,31 @@
   display: flex;
   width: 100%;
   gap: 8px;
+  position: relative;
+  &.announcement-gap {
+    gap: 8px;
+  }
+  .avatar-column {
+    &::after {
+      position: absolute;
+      content: '';
+      top: 0;
+      left: 40%;
+      transform: translateX(-50%);
+      width: 1px;
+      background: @announcement-border-light;
+      height: calc(100% - 10px);
+      z-index: 1;
+    }
+    .ant-avatar-group {
+      margin-bottom: 8px !important;
+      z-index: 9;
+      margin-right: 5px;
+    }
+    .assignee-item {
+      z-index: 9;
+    }
+  }
 
   .feed-card-v2-sidebar {
     display: flex;
@@ -36,6 +61,17 @@
   }
   &.active {
     border-left: 4px solid @info-color;
+  }
+  &.announcement-active {
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -10px;
+      height: 98%;
+      width: 4px;
+      background-color: @info-color;
+    }
   }
 
   .feed-reply-card-v2 {

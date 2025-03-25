@@ -12,6 +12,7 @@
  */
 
 import { EntityType } from '../enums/entity.enum';
+import { AnnoucementStatus } from '../generated/entity/feed/thread';
 
 export const ANNOUNCEMENT_ENTITIES = [
   EntityType.TABLE,
@@ -49,4 +50,20 @@ export const isActiveAnnouncement = (startTime: number, endTime: number) => {
   const currentTime = Date.now();
 
   return currentTime > startTime && currentTime < endTime;
+};
+
+let announcementStatus: AnnoucementStatus | undefined;
+
+export const setSelectedAnnouncementStatus = (
+  status: AnnoucementStatus
+): AnnoucementStatus => {
+  announcementStatus = status;
+
+  return announcementStatus;
+};
+
+export const getSelectedAnnouncementStatus = ():
+  | AnnoucementStatus
+  | undefined => {
+  return announcementStatus;
 };

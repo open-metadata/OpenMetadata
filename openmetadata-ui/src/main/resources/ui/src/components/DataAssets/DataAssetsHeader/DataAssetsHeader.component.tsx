@@ -34,6 +34,7 @@ import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/Enti
 import {
   DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
+  serviceEntityTypes,
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -70,7 +71,6 @@ import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
@@ -264,8 +264,6 @@ export const DataAssetsHeader = ({
     [votes, USER_ID]
   );
 
-  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
-    useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchDQFailureCount = async () => {
@@ -401,6 +399,24 @@ export const DataAssetsHeader = ({
     );
   };
 
+  const handleOpenAnnouncementsTab = () => {
+    if (!dataAsset.fullyQualifiedName) {
+      return;
+    }
+
+    const tabParams = serviceEntityTypes.includes(entityType)
+      ? [EntityTabs.ANNOUNCEMENT]
+      : [EntityTabs.ACTIVITY_FEED, ActivityFeedTabs.ANNOUNCEMENTS];
+
+    const entityLink = entityUtilClassBase.getEntityLink(
+      entityType,
+      dataAsset.fullyQualifiedName,
+      ...tabParams
+    );
+
+    history.push(entityLink);
+  };
+
   const dataAssetServiceName = useMemo(() => {
     if (isDataAssetsWithServiceField(dataAsset)) {
       return dataAsset.service?.name ?? '';
@@ -413,15 +429,6 @@ export const DataAssetsHeader = ({
     await onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
-  const handleOpenAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(true),
-    []
-  );
-
-  const handleCloseAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(false),
-    []
-  );
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -571,11 +578,11 @@ export const DataAssetsHeader = ({
                     entityType={entityType}
                     extraDropdownContent={extraDropdownContent}
                     isRecursiveDelete={isRecursiveDelete}
-                    onAnnouncementClick={
-                      permissions?.EditAll
-                        ? handleOpenAnnouncementDrawer
-                        : undefined
-                    }
+                    // onAnnouncementClick={
+                    //   permissions?.EditAll
+                    //     ? handleOpenAnnouncementDrawer
+                    //     : undefined
+                    // }
                     onEditDisplayName={onDisplayNameUpdate}
                     onProfilerSettingUpdate={onProfilerSettingUpdate}
                     onRestoreEntity={onRestoreDataAsset}
@@ -737,14 +744,14 @@ export const DataAssetsHeader = ({
             {activeAnnouncement && (
               <AnnouncementCard
                 announcement={activeAnnouncement}
-                onClick={handleOpenAnnouncementDrawer}
+                onClick={handleOpenAnnouncementsTab}
               />
             )}
           </div>
         </Col>
       </Row>
 
-      {isAnnouncementDrawerOpen && (
+      {/* {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
           createPermission={permissions?.EditAll}
           entityFQN={dataAsset.fullyQualifiedName ?? ''}
@@ -752,7 +759,7 @@ export const DataAssetsHeader = ({
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
         />
-      )}
+      )} */}
     </>
   );
 };

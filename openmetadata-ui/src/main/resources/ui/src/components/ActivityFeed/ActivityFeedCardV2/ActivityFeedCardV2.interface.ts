@@ -25,4 +25,7 @@ export interface ActivityFeedCardV2Props {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
+  isAnnouncementTab?: boolean;
+  updateAnnouncementThreads?: () => void;
+  permissions?: boolean;
 }

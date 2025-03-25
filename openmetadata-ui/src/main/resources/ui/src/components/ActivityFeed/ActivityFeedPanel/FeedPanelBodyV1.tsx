@@ -34,6 +34,10 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isActive,
   hidePopover = false,
   isForFeedTab = false,
+  isAnnouncementCard = false,
+  isAnnouncementTab,
+  updateAnnouncementThreads,
+  permissions,
 }) => {
   const mainFeed = useMemo(
     () =>

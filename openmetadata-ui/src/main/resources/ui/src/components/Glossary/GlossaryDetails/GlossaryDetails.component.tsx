@@ -309,6 +309,7 @@ const GlossaryDetails = ({
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
                   layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossary.owners}
+                  permissions={permissions}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
                 />

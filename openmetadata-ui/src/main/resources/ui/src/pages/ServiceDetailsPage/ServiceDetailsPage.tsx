@@ -29,6 +29,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import AnnouncementTab from '../../components/Announcement/AnnouncementTab.component';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -54,7 +55,10 @@ import {
   SERVICE_INGESTION_PIPELINE_TYPES,
 } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import {
+  OperationPermission,
+  UIPermission,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
@@ -1141,6 +1145,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
         isHidden: !servicePermission.EditAll,
         key: EntityTabs.CONNECTION,
         children: testConnectionTab,
+      },
+      {
+        name: t('label.announcement-plural'),
+        key: EntityTabs.ANNOUNCEMENT,
+        count: 0,
+        children: (
+          <AnnouncementTab
+            entityType={entityType}
+            fqn={decodedServiceFQN}
+            permissions={servicePermission as unknown as UIPermission}
+          />
+        ),
       }
     );
 

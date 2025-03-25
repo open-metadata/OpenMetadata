@@ -29,6 +29,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import './announcement-modal.less';
 
 interface Props {
@@ -37,6 +38,7 @@ interface Props {
   entityFQN: string;
   onCancel: () => void;
   onSave: () => void;
+  isAnnouncementTab?: boolean;
 }
 
 export interface CreateAnnouncement {
@@ -52,8 +54,10 @@ const AddAnnouncementModal: FC<Props> = ({
   onSave,
   entityType,
   entityFQN,
+  isAnnouncementTab = false,
 }) => {
   const { currentUser } = useApplicationStore();
+  const { updateEntityThread } = useActivityFeedProvider();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -85,6 +89,9 @@ const AddAnnouncementModal: FC<Props> = ({
       try {
         setIsLoading(true);
         const data = await postThread(announcementData);
+        if (!isAnnouncementTab) {
+          updateEntityThread(data);
+        }
         if (data) {
           showSuccessToast(t('message.announcement-created-successfully'));
         }
@@ -119,7 +126,7 @@ const AddAnnouncementModal: FC<Props> = ({
       className="announcement-modal"
       closable={false}
       confirmLoading={isLoading}
-      data-testid="add-announcement"
+      data-testid="add-announcement-modal"
       maskClosable={false}
       okButtonProps={{
         id: 'announcement-submit',

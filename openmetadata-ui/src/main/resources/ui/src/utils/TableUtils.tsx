@@ -803,6 +803,7 @@ export const getTableDetailPageBaseTabs = ({
           entityType={EntityType.TABLE}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={tableDetails?.owners}
+          permissions={tablePermissions}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTableDetails}
           onUpdateFeedCount={handleFeedCount}
