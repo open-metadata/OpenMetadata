@@ -10,26 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { SystemChartType } from '../../../enums/DataInsight.enum';
-import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
-
-export interface ChartData {
-  day: number;
-  count: number;
+export interface WorkflowInstanceFromApplicationParams {
+  startTs: number;
+  endTs: number;
+  workflowDefinitionName: string;
+  entityLink: string;
 }
 
-export interface ChartSeriesData {
-  chartType: SystemChartType;
-  data: ChartData[];
-  percentageChange?: number;
-  currentPercentage: number;
-  isIncreased?: boolean;
-  noRecords?: boolean;
-}
-
-export interface PlatformInsightsWidgetProps
-  extends ServiceInsightWidgetCommonProps {
-  chartsData: ChartSeriesData[];
-  isLoading: boolean;
+export interface WorkflowInstanceStateParams {
+  startTs: number;
+  endTs: number;
 }
