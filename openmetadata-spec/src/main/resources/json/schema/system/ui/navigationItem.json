@@ -29,6 +29,6 @@
       "default": []
     }
   },
-  "required": ["id", "title", "pageId", "order"],
+  "required": ["id", "title", "pageId"],
   "additionalProperties": false
 }

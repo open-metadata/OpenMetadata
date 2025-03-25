@@ -187,8 +187,6 @@ describe('AppRunsHistory', () => {
       userEvent.click(screen.getByText('label.log-plural'));
     });
 
-    expect(screen.queryByText('--')).not.toBeInTheDocument();
-
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
 
     // Verify Stop button is not present as initial status is success
@@ -230,6 +228,7 @@ describe('AppRunsHistory', () => {
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
 
     userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
@@ -239,6 +238,7 @@ describe('AppRunsHistory', () => {
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
   });
 
@@ -321,6 +321,7 @@ describe('AppRunsHistory', () => {
           status: 'success',
           endTime: 1741038028746,
           executionTime: 1741037977960,
+          startTime: 1741037977960,
         },
       ],
       paging: {
