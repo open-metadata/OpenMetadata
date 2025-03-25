@@ -137,15 +137,9 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.click();
+    await page.getByTestId('page-size-selection-dropdown').click();
 
-    const dropdownOptions = page.locator('.ant-dropdown-menu');
-
-    await expect(dropdownOptions).toBeVisible();
-
-    const optionToSelect = dropdownOptions.locator('text="15 / Page"');
-    await optionToSelect.click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
@@ -159,6 +153,8 @@ test.describe('Table pagination sorting search scenarios ', () => {
       state: 'detached',
     });
 
-    await expect(pageSizeDropdown).toHaveText('15 / Page');
+    await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
+      '15 / Page'
+    );
   });
 });
