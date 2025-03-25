@@ -91,6 +91,8 @@ test.describe('Container entity specific tests ', () => {
     });
 
     await expect(page.getByTestId('previous')).toBeDisabled();
-    await expect(page.getByTestId('page-indicator')).toContainText('1/2 Page');
+    await expect(page.getByTestId('page-indicator')).toContainText(
+      'Page 1 of 2'
+    );
   });
 });

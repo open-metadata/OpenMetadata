@@ -106,7 +106,7 @@ class ContainerDetailsClassBase {
         {
           h: this.defaultWidgetHeight[DetailPageWidgetKeys.CONTAINER_CHILDREN],
           i: DetailPageWidgetKeys.CONTAINER_CHILDREN,
-          w: 6,
+          w: 8,
           x: 0,
           y: 0,
           static: false,
