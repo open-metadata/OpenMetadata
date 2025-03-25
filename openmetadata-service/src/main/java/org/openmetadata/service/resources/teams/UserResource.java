@@ -695,7 +695,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
           securityContext,
           getResourceContextByName(user.getFullyQualifiedName()),
           new OperationContext(entityType, MetadataOperation.CREATE));
-      user.withLastLoginTime(System.currentTimeMillis());
     }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
