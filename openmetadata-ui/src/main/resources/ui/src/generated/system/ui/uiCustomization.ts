@@ -120,7 +120,7 @@ export interface NavigationItem {
     /**
      * Determine if item is visible or not
      */
-    isHidden: boolean;
+    isHidden?: boolean;
     /**
      * Reference to a Page ID that this navigation item links to.
      */

@@ -293,7 +293,7 @@ export interface ServiceConnection {
  *
  * ElasticSearch Connection.
  *
- * OpenSearch Connection.
+ * OpenSearch Connection Config
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
@@ -343,6 +343,8 @@ export interface ConfigClass {
      * Custom storage service type
      *
      * ElasticSearch Type
+     *
+     * OpenSearch Type
      *
      * Custom search service type
      */
@@ -553,8 +555,6 @@ export interface ConfigClass {
      * password to connect  to the Atlas.
      *
      * Password to connect to Airbyte.
-     *
-     * OpenSearch Password for Login
      */
     password?: string;
     /**
@@ -661,8 +661,6 @@ export interface ConfigClass {
      * metadata in Atlas.
      *
      * Username to connect to Airbyte.
-     *
-     * OpenSearch Username for Login
      */
     username?: string;
     /**
@@ -894,10 +892,8 @@ export interface ConfigClass {
      * Mongo connection scheme options.
      *
      * Couchbase driver scheme options.
-     *
-     * Http/Https connection scheme
      */
-    scheme?:                                string;
+    scheme?:                                ConfigScheme;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -1642,22 +1638,6 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: APICollectionFilterPatternClass;
-    /**
-     * Keep Alive Timeout in Seconds
-     */
-    keepAliveTimeoutSecs?: number;
-    /**
-     * Socket Timeout in Seconds
-     */
-    socketTimeoutSecs?: number;
-    /**
-     * Truststore Password
-     */
-    truststorePassword?: string;
-    /**
-     * Truststore Path
-     */
-    truststorePath?: string;
 }
 
 /**
@@ -1785,6 +1765,8 @@ export enum AuthProvider {
  * Basic Auth Configuration for ElasticSearch
  *
  * SSL Certificates By Path
+ *
+ * AWS credentials configs.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -1835,6 +1817,46 @@ export interface AuthenticationTypeForTableau {
      * Private Key Path
      */
     privateKeyPath?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
 }
 
 /**
@@ -2443,6 +2465,8 @@ export interface SecurityConfigClass {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -2485,6 +2509,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**
@@ -3446,6 +3472,53 @@ export interface ConfigSchemaFilterPattern {
 }
 
 /**
+ * SQLAlchemy driver scheme options.
+ *
+ * Mongo connection scheme options.
+ *
+ * Couchbase driver scheme options.
+ */
+export enum ConfigScheme {
+    AwsathenaREST = "awsathena+rest",
+    Bigquery = "bigquery",
+    ClickhouseHTTP = "clickhouse+http",
+    ClickhouseNative = "clickhouse+native",
+    CockroachdbPsycopg2 = "cockroachdb+psycopg2",
+    Couchbase = "couchbase",
+    DatabricksConnector = "databricks+connector",
+    Db2IBMDB = "db2+ibm_db",
+    Doris = "doris",
+    Druid = "druid",
+    ExaWebsocket = "exa+websocket",
+    Hana = "hana",
+    Hive = "hive",
+    HiveHTTP = "hive+http",
+    HiveHTTPS = "hive+https",
+    Ibmi = "ibmi",
+    Impala = "impala",
+    Impala4 = "impala4",
+    Mongodb = "mongodb",
+    MongodbSrv = "mongodb+srv",
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+    MysqlPymysql = "mysql+pymysql",
+    OracleCxOracle = "oracle+cx_oracle",
+    PgspiderPsycopg2 = "pgspider+psycopg2",
+    Pinot = "pinot",
+    PinotHTTP = "pinot+http",
+    PinotHTTPS = "pinot+https",
+    PostgresqlPsycopg2 = "postgresql+psycopg2",
+    Presto = "presto",
+    RedshiftPsycopg2 = "redshift+psycopg2",
+    Snowflake = "snowflake",
+    SqlitePysqlite = "sqlite+pysqlite",
+    Teradatasql = "teradatasql",
+    Trino = "trino",
+    VerticaVerticaPython = "vertica+vertica_python",
+}
+
+/**
  * Recreate Indexes with updated Language
  *
  * This schema defines the language options available for search index mappings.
@@ -3675,6 +3748,8 @@ export enum TransactionMode {
  * ElasticSearch Type
  *
  * ElasticSearch service type
+ *
+ * OpenSearch Type
  *
  * OpenSearch service type
  *
