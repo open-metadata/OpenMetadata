@@ -79,7 +79,8 @@ export const getBulkEntityImportBreadcrumbList = (
 export const validateCsvString = async (
   csvData: string,
   entityType: EntityType,
-  fqn: string
+  fqn: string,
+  isBulkEdit: boolean
 ) => {
   const api =
     entityType === EntityType.DATABASE_SERVICE
@@ -91,6 +92,7 @@ export const validateCsvString = async (
     name: fqn,
     data: csvData,
     dryRun: true,
+    recursive: !isBulkEdit,
   });
 
   return response;

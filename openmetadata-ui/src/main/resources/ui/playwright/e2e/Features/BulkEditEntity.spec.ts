@@ -557,6 +557,10 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
 
+      await page.waitForSelector('.message-banner-wrapper', {
+        state: 'detached',
+      });
+
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated

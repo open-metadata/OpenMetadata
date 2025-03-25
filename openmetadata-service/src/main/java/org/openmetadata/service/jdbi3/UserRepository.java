@@ -283,14 +283,16 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public String exportToCsv(String importingTeam, String user) throws IOException {
+  public String exportToCsv(String importingTeam, String user, boolean recursive)
+      throws IOException {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     return new UserCsv(team, user).exportCsv();
   }
 
   @Override
   public CsvImportResult importFromCsv(
-      String importingTeam, String csv, boolean dryRun, String user) throws IOException {
+      String importingTeam, String csv, boolean dryRun, String user, boolean recursive)
+      throws IOException {
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
     UserCsv userCsv = new UserCsv(team, user);
     return userCsv.importCsv(csv, dryRun);
@@ -504,7 +506,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public static class UserCsv extends EntityCsv<User> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(USER);
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(USER, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     public final Team team;
 
