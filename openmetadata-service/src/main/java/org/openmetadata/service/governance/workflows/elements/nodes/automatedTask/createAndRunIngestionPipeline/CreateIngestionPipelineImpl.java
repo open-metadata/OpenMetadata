@@ -50,6 +50,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class CreateIngestionPipelineImpl {
+  private static final List<String> DEFAULT_TIERS_TO_PROCESS = List.of("Tier1", "Tier2");
   private static final Map<PipelineType, String> SUPPORT_FEATURE_MAP = new HashMap<>();
 
   static {
@@ -209,9 +210,7 @@ public class CreateIngestionPipelineImpl {
     org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline create =
         new org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline()
             .withAirflowConfig(
-                new AirflowConfig()
-                    .withStartDate(getYesterdayDate())
-                    .withScheduleInterval("0 0 * * 0")) // Run every Sunday at midnight by default
+                getAirflowConfig(pipelineType)) // Run every Sunday at midnight by default
             .withLoggerLevel(LogLevels.INFO)
             .withName(UUID.randomUUID().toString())
             .withDisplayName(displayName)
@@ -223,6 +222,21 @@ public class CreateIngestionPipelineImpl {
     IngestionPipeline ingestionPipeline = mapper.createToEntity(create, "governance-bot");
 
     return repository.create(null, ingestionPipeline);
+  }
+
+  private AirflowConfig getAirflowConfig(PipelineType pipelineType) {
+    String scheduleInterval = "0 0 * * 0";
+
+    if (List.of(PipelineType.LINEAGE, PipelineType.USAGE).contains(pipelineType)) {
+      scheduleInterval = "0 2 * * 0";
+    } else if (List.of(PipelineType.PROFILER, PipelineType.AUTO_CLASSIFICATION)
+        .contains(pipelineType)) {
+      scheduleInterval = "0 4 * * 0";
+    }
+
+    return new AirflowConfig()
+        .withStartDate(getYesterdayDate())
+        .withScheduleInterval(scheduleInterval);
   }
 
   private IngestionPipeline getIngestionPipeline(
@@ -303,7 +317,9 @@ public class CreateIngestionPipelineImpl {
     return new DatabaseServiceProfilerPipeline()
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
-        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withClassificationFilterPattern(
+            new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS));
   }
 
   private static DatabaseServiceAutoClassificationPipeline
@@ -311,7 +327,9 @@ public class CreateIngestionPipelineImpl {
     return new DatabaseServiceAutoClassificationPipeline()
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
-        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withClassificationFilterPattern(new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS))
+        .withEnableAutoClassification(true);
   }
 
   // Other Services Metadata Pipelines

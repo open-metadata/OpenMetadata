@@ -95,8 +95,7 @@
       "displayName": "Run Profiler Ingestion Pipeline",
       "config": {
         "pipelineType": "profiler",
-        "waitForCompletion": true,
-        "timeoutSeconds": 3600
+        "shouldRun": false
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
@@ -109,8 +108,7 @@
       "displayName": "Run AutoClassification Ingestion Pipeline",
       "config": {
         "pipelineType": "autoClassification",
-        "waitForCompletion": true,
-        "timeoutSeconds": 3600
+        "shouldRun": false
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
