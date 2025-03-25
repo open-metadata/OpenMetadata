@@ -205,7 +205,7 @@ public class LineageRepository {
       EntityInterface toEntity,
       LineageDetails entityLineageDetails,
       boolean childRelationExists) {
-    if (shouldAddServiceLineage(fromEntity, toEntity)) {
+    if (!shouldAddServiceLineage(fromEntity, toEntity)) {
       return;
     }
     // Add Service Level Lineage
