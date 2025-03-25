@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { CONTAINER_DUMMY_DATA } from '../constants/Contianer.constants';
 import {
@@ -65,12 +64,12 @@ class ContainerDetailsClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.CONTAINER_CHILDREN]: 8,
       [DetailPageWidgetKeys.CONTAINER_SCHEMA]: 8,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1,
-      [DetailPageWidgetKeys.TAGS]: 1.5,
-      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
@@ -97,7 +96,7 @@ class ContainerDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && ![EntityTabs.CHILDREN, EntityTabs.SCHEMA].includes(tab)) {
       return [];
     }
@@ -107,7 +106,7 @@ class ContainerDetailsClassBase {
         {
           h: this.defaultWidgetHeight[DetailPageWidgetKeys.CONTAINER_CHILDREN],
           i: DetailPageWidgetKeys.CONTAINER_CHILDREN,
-          w: 6,
+          w: 8,
           x: 0,
           y: 0,
           static: false,
@@ -117,20 +116,30 @@ class ContainerDetailsClassBase {
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h: 10.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CONTAINER_SCHEMA],
-        i: DetailPageWidgetKeys.CONTAINER_SCHEMA,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.CONTAINER_SCHEMA],
+            i: DetailPageWidgetKeys.CONTAINER_SCHEMA,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],

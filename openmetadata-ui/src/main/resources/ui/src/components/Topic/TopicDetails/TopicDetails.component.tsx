@@ -372,7 +372,6 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.topic'),
       })}>
@@ -401,10 +400,10 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
-          <Col span={24}>
+          <Col className="p-x-lg" span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

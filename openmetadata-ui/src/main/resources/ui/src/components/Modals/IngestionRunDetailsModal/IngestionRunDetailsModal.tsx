@@ -142,7 +142,6 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
       width="80%"
       onCancel={handleCancel}>
       <Table
-        bordered
         columns={columns}
         dataSource={
           isArray(pipelineStatus?.status) ? pipelineStatus?.status : []

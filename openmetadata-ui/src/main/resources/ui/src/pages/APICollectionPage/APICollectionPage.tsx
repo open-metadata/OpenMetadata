@@ -452,7 +452,6 @@ const APICollectionPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(apiCollection),
       })}>
@@ -499,10 +498,10 @@ const APICollectionPage: FunctionComponent = () => {
             permissions={apiCollectionPermission}
             type={EntityType.API_COLLECTION}
             onUpdate={handleAPICollectionUpdate}>
-            <Col span={24}>
+            <Col className="p-x-lg" span={24}>
               <Tabs
                 activeKey={activeTab}
-                className="entity-details-page-tabs"
+                className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
                 onChange={activeTabHandler}

@@ -257,7 +257,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           getEmptyPlaceholder()
         ) : (
           <Table
-            bordered
             columns={getMlHyperParametersColumn}
             data-testid="hyperparameters-table"
             dataSource={mlModelDetail.mlHyperParameters}
@@ -276,7 +275,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
         {mlModelDetail.mlStore ? (
           <Table
-            bordered
             columns={mlModelStoreColumn}
             data-testid="model-store-table"
             dataSource={[mlModelDetail.mlStore]}
@@ -367,7 +365,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.ml-model'),
       })}>
@@ -396,10 +393,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
-          <Col span={24}>
+          <Col className="p-x-lg" span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

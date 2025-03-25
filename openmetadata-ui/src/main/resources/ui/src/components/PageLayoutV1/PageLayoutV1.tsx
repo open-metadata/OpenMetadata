@@ -97,7 +97,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       <Row
         className={className}
         data-testid="page-layout-v1"
-        style={{ ...pageContainerStyles, ...pageContainerStyle }}>
+        style={{ ...pageContainerStyles, ...pageContainerStyle }}
+        wrap={false}>
         {leftPanel && (
           <Col
             className="page-layout-leftpanel"

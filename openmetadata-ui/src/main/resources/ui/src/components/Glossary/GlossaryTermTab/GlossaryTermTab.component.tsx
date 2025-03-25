@@ -49,7 +49,6 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -99,9 +98,11 @@ import {
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
@@ -369,7 +370,7 @@ const GlossaryTermTab = ({
         width: tableColumnsWidth.description,
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
               maxLength={120}
@@ -413,13 +414,7 @@ const GlossaryTermTab = ({
           );
         },
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        width: tableColumnsWidth.owners,
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<ModifiedGlossaryTerm>(),
       {
         title: t('label.status'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
@@ -869,7 +864,6 @@ const GlossaryTermTab = ({
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
-              bordered
               resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
