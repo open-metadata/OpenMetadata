@@ -662,9 +662,10 @@ public final class EntityUtil {
         return column;
       }
       if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-        Column childMatch = findColumnWithChildren(column.getChildren(), columnName);
-        if (childMatch != null) {
-          return childMatch;
+        try {
+          return findColumnWithChildren(column.getChildren(), columnName);
+        } catch (IllegalArgumentException ignored) {
+          // Continue searching in other columns
         }
       }
     }
