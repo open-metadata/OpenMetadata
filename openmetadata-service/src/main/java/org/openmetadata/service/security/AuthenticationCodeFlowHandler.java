@@ -667,7 +667,7 @@ public class AuthenticationCodeFlowHandler {
         Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
     if (storedUserStr != null) {
       User user = JsonUtils.readValue(storedUserStr, User.class);
-      Entity.updateUserLastLoginTime(user, System.currentTimeMillis());
+      Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
     }
     String url =
         String.format(

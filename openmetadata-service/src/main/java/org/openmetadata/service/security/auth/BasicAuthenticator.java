@@ -469,7 +469,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(email);
     User storedUser = lookUserInProvider(email, loginRequest.getPassword());
     validatePassword(email, loginRequest.getPassword(), storedUser);
-    Entity.updateUserLastLoginTime(storedUser, System.currentTimeMillis());
+    Entity.getUserRepository().updateUserLastLoginTime(storedUser, System.currentTimeMillis());
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
