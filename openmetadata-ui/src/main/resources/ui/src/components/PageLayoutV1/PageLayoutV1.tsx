@@ -21,6 +21,7 @@ import React, {
   ReactNode,
   useEffect,
   useMemo,
+  useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAlertStore } from '../../hooks/useAlertStore';
@@ -60,8 +61,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
-  const { alert, resetAlert } = useAlertStore();
+  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
   const location = useLocation();
+  const [prevPath, setPrevPath] = useState<string | undefined>();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -76,12 +78,18 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
   useEffect(() => {
-    if (alert && alert.type === 'error') {
-      setTimeout(() => {
+    if (prevPath !== location.pathname) {
+      if (isErrorTimeOut) {
         resetAlert();
-      }, 3000);
+      }
     }
-  }, [location.pathname, resetAlert]);
+  }, [location.pathname, resetAlert, isErrorTimeOut]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setPrevPath(location.pathname);
+    }, 3000);
+  }, [location.pathname]);
 
   return (
     <Fragment>
