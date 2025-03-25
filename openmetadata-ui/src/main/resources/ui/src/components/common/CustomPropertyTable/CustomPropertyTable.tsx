@@ -213,7 +213,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       isEmpty(entityTypeDetail.customProperties) &&
       isUndefined(entityDetails?.extension)
     ) {
-      filterWidgets([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
+      filterWidgets?.([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
     }
   }, [isRenderedInRightPanel, entityTypeDetail.customProperties]);
 

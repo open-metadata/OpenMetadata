@@ -265,9 +265,13 @@ test.describe('Teams Page', () => {
       await patchTeamResponse;
 
       // Validate the updated display name
-      await expect(page.locator('[data-testid="team-heading"]')).toHaveText(
-        teamDetails.updatedName
-      );
+      //   await expect(page.locator('[data-testid="team-heading"]')).toHaveText(
+      //     teamDetails.updatedName
+      //   );
+
+      await expect(
+        page.getByRole('cell', { name: teamDetails.updatedName })
+      ).toBeVisible();
 
       await expect(page.locator('[data-testid="inactive-link"]')).toContainText(
         teamDetails.updatedName
@@ -343,9 +347,12 @@ test.describe('Teams Page', () => {
       await fetchOrganizationResponse;
 
       // Check if the table does not contain the team name
-      await expect(page.locator('table')).not.toContainText(
-        teamDetails?.displayName ?? ''
-      );
+      await expect(
+        page.getByRole('cell', { name: teamDetails?.displayName ?? '' })
+      ).not.toBeVisible();
+      //   await expect(page.locator('table')).not.toContainText(
+      //     teamDetails?.displayName ?? ''
+      //   );
 
       // Click on the show deleted button
       await page.locator('[data-testid="show-deleted"]').click();

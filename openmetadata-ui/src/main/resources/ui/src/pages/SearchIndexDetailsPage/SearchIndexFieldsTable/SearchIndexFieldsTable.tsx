@@ -341,7 +341,7 @@ const SearchIndexFieldsTable = ({
       setSearchedFields(searchFields);
       setExpandedRowKeys(fieldAllRowKeys);
     }
-  }, [searchText]);
+  }, [searchText, searchIndexFields]);
 
   return (
     <>

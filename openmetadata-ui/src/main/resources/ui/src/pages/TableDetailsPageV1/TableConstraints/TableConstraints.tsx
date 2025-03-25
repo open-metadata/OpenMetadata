@@ -183,7 +183,7 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
 
   useEffect(() => {
     if (isEmpty(data?.tableConstraints)) {
-      filterWidgets([DetailPageWidgetKeys.TABLE_CONSTRAINTS]);
+      filterWidgets?.([DetailPageWidgetKeys.TABLE_CONSTRAINTS]);
     }
   }, [data?.tableConstraints]);
 

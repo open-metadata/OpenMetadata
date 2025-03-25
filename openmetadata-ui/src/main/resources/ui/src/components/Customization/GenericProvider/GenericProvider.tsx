@@ -59,7 +59,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   currentVersionData?: T;
   onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   layout: WidgetConfig[];
-  filterWidgets: (widgets: string[]) => void;
+  filterWidgets?: (widgets: string[]) => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>

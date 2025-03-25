@@ -44,7 +44,7 @@ export const FrequentlyJoinedTables = ({
 
   useEffect(() => {
     if (isEmpty(joinedTables)) {
-      filterWidgets([DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]);
+      filterWidgets?.([DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]);
     }
   }, [joinedTables]);
 

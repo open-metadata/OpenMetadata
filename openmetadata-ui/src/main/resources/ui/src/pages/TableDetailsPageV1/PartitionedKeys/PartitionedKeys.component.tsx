@@ -62,7 +62,7 @@ export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
 
   useEffect(() => {
     if (isEmpty(partitionColumnDetails)) {
-      filterWidgets([DetailPageWidgetKeys.PARTITIONED_KEYS]);
+      filterWidgets?.([DetailPageWidgetKeys.PARTITIONED_KEYS]);
     }
   }, [partitionColumnDetails]);
 
