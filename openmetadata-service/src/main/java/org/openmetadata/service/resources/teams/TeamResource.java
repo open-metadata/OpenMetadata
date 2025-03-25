@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -50,8 +52,10 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -68,8 +72,15 @@ import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -774,5 +785,101 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+  }
+
+  @GET
+  @Path("/name/{name}/users")
+  @Valid
+  @Operation(
+      operationId = "listUsersOfTeam",
+      summary = "List users of given team",
+      description =
+          "Get a list of users. Use cursor-based pagination to limit the number "
+              + "entries in the list using `limit` and `before` or `after` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The user ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserResource.UserList.class)))
+      })
+  public ResultList<User> list(
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(description = "Limit the number users returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @Min(0)
+          @Max(1000000)
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of users before this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("before")
+          String before,
+      @Parameter(
+              description = "Returns list of users after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    ListFilter filter = new ListFilter(include).addQueryParam("team", name);
+    ResultList<User> users = repository.listTeamUsers(filter, limitParam, before, after);
+    users.getData().forEach(user -> decryptOrNullify(securityContext, user));
+    return users;
+  }
+
+  private Team getTeam(CreateTeam ct, String user) {
+    if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
+      throw new IllegalArgumentException(CREATE_ORGANIZATION);
+    }
+    if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
+      throw new IllegalArgumentException(CREATE_GROUP);
+    }
+    return repository
+        .copy(new Team(), ct, user)
+        .withProfile(ct.getProfile())
+        .withIsJoinable(ct.getIsJoinable())
+        .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))
+        .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
+        .withTeamType(ct.getTeamType())
+        .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
+        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
+        .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
+        .withEmail(ct.getEmail())
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
+  }
+
+  private void decryptOrNullify(SecurityContext securityContext, User user) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+    if (Boolean.TRUE.equals(user.getIsBot()) && user.getAuthenticationMechanism() != null) {
+      try {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(entityType, MetadataOperation.VIEW_ALL),
+            getResourceContextById(user.getId()));
+      } catch (AuthorizationException e) {
+        user.getAuthenticationMechanism().setConfig(null);
+      }
+      secretsManager.decryptAuthenticationMechanism(
+          user.getName(), user.getAuthenticationMechanism());
+      if (authorizer.shouldMaskPasswords(securityContext)) {
+        EntityMaskerFactory.getEntityMasker()
+            .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
+      }
+    }
+
+    // Remove mails for non-admin users
+    PIIMasker.maskUser(authorizer, securityContext, user);
   }
 }
