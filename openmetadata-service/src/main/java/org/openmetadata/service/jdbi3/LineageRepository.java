@@ -569,6 +569,12 @@ public class LineageRepository {
       JsonNode fromEntity = entityMap.getOrDefault(fromEntityId, null);
       JsonNode toEntity = entityMap.getOrDefault(toEntityId, null);
 
+      if (fromEntity == null || toEntity == null) {
+        LOG.error(
+            "Entity not found for IDs: fromEntityId={}, toEntityId={}", fromEntityId, toEntityId);
+        return;
+      }
+
       Map<String, String> baseRow = new HashMap<>();
       baseRow.put("fromEntityFQN", getText(fromEntity, FIELD_FULLY_QUALIFIED_NAME));
       baseRow.put("fromServiceName", getText(fromEntity.path(FIELD_SERVICE), FIELD_NAME));
