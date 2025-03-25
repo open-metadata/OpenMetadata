@@ -1290,8 +1290,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
     column.withDisplayName(csvRecord.get(1));
     column.withDescription(csvRecord.get(2));
     column.withDataTypeDisplay(csvRecord.get(13));
-    column.withDataType(
-        nullOrEmpty(csvRecord.get(14)) ? null : ColumnDataType.fromValue(csvRecord.get(14)));
+    String dataTypeStr = csvRecord.get(14);
+    if (nullOrEmpty(dataTypeStr)) {
+      throw new IllegalArgumentException(
+          "Column dataType is mandatory for column: " + csvRecord.get(0));
+    }
+
+    try {
+      column.withDataType(ColumnDataType.fromValue(dataTypeStr));
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          "Invalid dataType '" + dataTypeStr + "' for column: " + csvRecord.get(0));
+    }
 
     if (column.getDataType() == ColumnDataType.ARRAY) {
       if (nullOrEmpty(csvRecord.get(15))) {
