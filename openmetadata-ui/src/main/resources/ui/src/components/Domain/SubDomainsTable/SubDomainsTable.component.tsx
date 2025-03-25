@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
@@ -24,6 +23,7 @@ import { ownerTableObject } from '../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../common/Table/Table';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
 const SubDomainsTable = ({
@@ -92,9 +92,8 @@ const SubDomainsTable = ({
 
   return (
     <Table
-      bordered
-      className="p-md"
       columns={columns}
+      containerClassName="m-t-md"
       dataSource={subDomains}
       pagination={false}
       rowKey="fullyQualifiedName"

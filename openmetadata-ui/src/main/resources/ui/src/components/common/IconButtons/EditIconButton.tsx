@@ -41,6 +41,7 @@ export const EditIconButton = ({
         />
       ) : (
         <Icon
+          className={className}
           component={EditIcon}
           style={{ color: DE_ACTIVE_COLOR }}
           {...props}

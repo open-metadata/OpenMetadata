@@ -213,7 +213,7 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   return (
-    <Row className="table-container">
+    <Row className={classNames('table-container', rest.containerClassName)}>
       <Col
         className={classNames({
           'p-y-md': searchProps || rest.extraTableFilters || !isFullViewTable,

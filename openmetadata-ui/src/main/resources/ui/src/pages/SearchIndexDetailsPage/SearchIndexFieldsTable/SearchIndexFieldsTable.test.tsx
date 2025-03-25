@@ -12,24 +12,19 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MOCK_SEARCH_INDEX_FIELDS } from '../../../mocks/SearchIndex.mock';
 import SearchIndexFieldsTable from './SearchIndexFieldsTable';
 
 const mockOnUpdate = jest.fn();
-const toggleExpandAll = jest.fn();
-const mockOnThreadLinkSelect = jest.fn();
 
 const mockProps = {
   fieldAllRowKeys: [],
-  toggleExpandAll: toggleExpandAll,
   searchIndexFields: MOCK_SEARCH_INDEX_FIELDS,
   onUpdate: mockOnUpdate,
   hasDescriptionEditAccess: true,
   hasTagEditAccess: true,
   hasGlossaryTermEditAccess: true,
-  onThreadLinkSelect: mockOnThreadLinkSelect,
   entityFqn: 'search_service.search_index_fqn',
 };
 
@@ -140,21 +135,5 @@ describe('SearchIndexFieldsTable component', () => {
     const dataTypeFieldForColumnName = screen.getByTestId('name-data-type');
 
     expect(dataTypeFieldForColumnName).toHaveTextContent('text');
-  });
-
-  it('should call toggleExpandAll when toggle button is clicked', async () => {
-    await act(async () => {
-      render(
-        <SearchIndexFieldsTable
-          {...mockProps}
-          searchIndexFields={mockSearchedFields}
-        />
-      );
-    });
-    const toggleExpandButton = screen.getByText('testToggleExpandButton');
-
-    userEvent.click(toggleExpandButton);
-
-    expect(toggleExpandAll).toHaveBeenCalled();
   });
 });

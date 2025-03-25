@@ -15,6 +15,7 @@ import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
 import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
 
 export interface TableComponentProps<T> extends TableProps<T> {
+  containerClassName?: string; // Applied to the table container
   resizableColumns?: boolean;
   /** Filter's in ReactNode that will be aligned with TableColumnFilter. Example: GlossaryTableFilter */
   extraTableFilters?: React.ReactNode;

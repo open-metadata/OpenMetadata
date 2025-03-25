@@ -315,6 +315,7 @@ const TagsContainerV2 = ({
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
         <EditIconButton
+          className="hover-cell-icon"
           data-testid="edit-button"
           newLook={newLook}
           size="small"
@@ -448,10 +449,12 @@ const TagsContainerV2 = ({
         <>
           {tagBody}
           {(children || showBottomEditButton) && (
-            <Space align="baseline" className="m-t-xs w-full" size="middle">
-              {showBottomEditButton && !showInlineEditButton && editTagButton}
+            <div className="m-t-xs w-full d-flex items-baseline">
+              {showBottomEditButton && !showInlineEditButton && (
+                <p className="d-flex m-r-md">{editTagButton}</p>
+              )}
               {children}
-            </Space>
+            </div>
           )}
         </>
       )}

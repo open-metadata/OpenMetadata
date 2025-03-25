@@ -497,7 +497,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <Table
-          bordered
           className="test-case-table-container"
           columns={columns}
           {...(pagingData && showPagination

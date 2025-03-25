@@ -47,7 +47,7 @@ export const TeamImportResult = ({
               align="start"
               data-testid="status-container"
               // Added max width because in case of full success we don't want to occupied full width
-              style={{ maxWidth: 200 }}>
+              style={{ maxWidth: 200, minWidth: 100 }}>
               {status === Status.Success && (
                 <SuccessBadgeIcon
                   className="m-t-xss"
@@ -164,8 +164,13 @@ export const TeamImportResult = ({
         title: t('label.role-plural'),
         dataIndex: 'defaultRoles',
         key: 'defaultRoles',
+        width: 100,
         render: (role: TeamCSVRecord['defaultRoles']) => {
-          return <Typography.Paragraph>{role || '--'}</Typography.Paragraph>;
+          return (
+            <Typography.Paragraph style={{ width: 200 }}>
+              {role || '--'}
+            </Typography.Paragraph>
+          );
         },
       },
       {
@@ -173,7 +178,11 @@ export const TeamImportResult = ({
         dataIndex: 'policies',
         key: 'policies',
         render: (policy: TeamCSVRecord['policies']) => {
-          return <Typography.Paragraph>{policy || '--'}</Typography.Paragraph>;
+          return (
+            <Typography.Paragraph style={{ width: 200 }}>
+              {policy || '--'}
+            </Typography.Paragraph>
+          );
         },
       },
     ];
@@ -210,14 +219,13 @@ export const TeamImportResult = ({
 
   return (
     <Table
-      bordered
       columns={columns}
       data-testid="import-result-table"
       dataSource={parsedRecords}
       loading={loading}
       pagination={false}
       rowKey="name*"
-      scroll={{ x: true }}
+      //   scroll={{ x: true }}
       size="small"
     />
   );

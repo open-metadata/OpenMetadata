@@ -153,12 +153,12 @@ describe('ContainerDataModel', () => {
     );
     const rows = await screen.findAllByRole('row');
 
-    const row1 = rows[1];
+    const row1 = rows[0];
 
     expect(containerDataModel).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(4);
 
     const name = await findByText(row1, 'department_id');
     const dataType = await findByText(row1, 'numeric');

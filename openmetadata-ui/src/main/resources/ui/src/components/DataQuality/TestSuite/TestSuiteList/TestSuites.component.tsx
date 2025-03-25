@@ -167,6 +167,7 @@ export const TestSuites = () => {
         title: t('label.test-plural'),
         dataIndex: 'summary',
         key: 'tests',
+        width: 100,
         render: (value: TestSummary) => value?.total ?? 0,
       },
       {
