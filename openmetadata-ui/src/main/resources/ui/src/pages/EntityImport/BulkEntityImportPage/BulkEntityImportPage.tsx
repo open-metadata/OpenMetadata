@@ -152,7 +152,8 @@ const BulkEntityImportPage = () => {
         const validationResponse = await validateCsvString(
           result,
           entityType,
-          fqn
+          fqn,
+          isBulkEdit
         );
 
         const jobData: CSVImportJobType = {
@@ -210,6 +211,7 @@ const BulkEntityImportPage = () => {
         name: fqn,
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
+        recursive: !isBulkEdit,
       });
 
       const jobData: CSVImportJobType = {
