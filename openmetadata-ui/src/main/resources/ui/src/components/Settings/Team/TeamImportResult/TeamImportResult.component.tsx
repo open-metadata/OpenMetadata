@@ -225,7 +225,7 @@ export const TeamImportResult = ({
       loading={loading}
       pagination={false}
       rowKey="name*"
-      //   scroll={{ x: true }}
+      scroll={{ x: true }}
       size="small"
     />
   );
