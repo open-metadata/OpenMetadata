@@ -13,7 +13,7 @@
 import { Card, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
@@ -21,7 +21,6 @@ import { EditIconButton } from '../../../components/common/IconButtons/EditIconB
 import TagButton from '../../../components/common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
@@ -34,8 +33,7 @@ import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal
 const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { data, permissions, onUpdate, filterWidgets } =
-    useGenericContext<Table>();
+  const { data, permissions, onUpdate } = useGenericContext<Table>();
 
   const { deleted } = data ?? {};
 
@@ -180,16 +178,6 @@ const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
       )}
     </Space>
   );
-
-  useEffect(() => {
-    if (isEmpty(data?.tableConstraints)) {
-      filterWidgets?.([DetailPageWidgetKeys.TABLE_CONSTRAINTS]);
-    }
-  }, [data?.tableConstraints]);
-
-  if (!data?.tableConstraints) {
-    return null;
-  }
 
   if (newLook) {
     return (
