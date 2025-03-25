@@ -250,4 +250,5 @@ export const ingestionProps: IngestionProps = {
   },
   handleTypeFilterChange: jest.fn(),
   handleStatusFilterChange: jest.fn(),
+  refreshAgentsList: jest.fn(),
 };

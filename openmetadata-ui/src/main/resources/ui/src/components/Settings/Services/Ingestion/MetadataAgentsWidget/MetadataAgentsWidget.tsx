@@ -102,7 +102,11 @@ function MetadataAgentsWidget({
           })
         );
 
-        setPipelineIdToFetchStatus(id);
+        // To fetch pipeline status on demand
+        // adding a delay to account for the delay in the pipeline service to update the status
+        setTimeout(() => {
+          setPipelineIdToFetchStatus(id);
+        }, 500);
       } catch (err) {
         showErrorToast(
           t('server.ingestion-workflow-operation-error', {
@@ -125,6 +129,8 @@ function MetadataAgentsWidget({
           })
         );
 
+        // To fetch pipeline status on demand
+        // adding a delay to account for the delay in the pipeline service to update the status
         setTimeout(() => {
           setPipelineIdToFetchStatus(id);
         }, 500);
@@ -141,7 +147,7 @@ function MetadataAgentsWidget({
   );
 
   const renderAddIngestionButton = useMemo(() => {
-    if (isFetchingStatus || isLoading) {
+    if (isFetchingStatus) {
       return <ButtonSkeleton size="default" />;
     }
 
@@ -159,7 +165,6 @@ function MetadataAgentsWidget({
 
     return null;
   }, [
-    isLoading,
     isFetchingStatus,
     showAddIngestionButton,
     ingestionPipelineList,

@@ -10,26 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { SystemChartType } from '../../../enums/DataInsight.enum';
-import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
-
-export interface ChartData {
-  day: number;
-  count: number;
-}
-
-export interface ChartSeriesData {
-  chartType: SystemChartType;
-  data: ChartData[];
-  percentageChange?: number;
-  currentPercentage: number;
-  isIncreased?: boolean;
-  noRecords?: boolean;
-}
-
-export interface PlatformInsightsWidgetProps
-  extends ServiceInsightWidgetCommonProps {
-  chartsData: ChartSeriesData[];
-  isLoading: boolean;
+export enum ServiceInsightsWidgetType {
+  TOTAL_DATA_ASSETS = 'totalDataAssets',
+  DESCRIPTION_COVERAGE = 'descriptionCoverage',
+  OWNERS_COVERAGE = 'ownersCoverage',
+  PII_COVERAGE = 'piiCoverage',
+  TIER_COVERAGE = 'tierCoverage',
+  TIER_DISTRIBUTION = 'tierDistribution',
+  PII_DISTRIBUTION = 'piiDistribution',
+  COLLATE_AI = 'collateAI',
+  MOST_USED_ASSETS = 'mostUsedAssets',
+  MOST_EXPENSIVE_QUERIES = 'mostExpensiveQueries',
+  DATA_QUALITY = 'dataQuality',
 }
