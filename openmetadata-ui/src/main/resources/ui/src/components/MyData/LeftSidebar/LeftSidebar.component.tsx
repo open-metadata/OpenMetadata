@@ -15,7 +15,7 @@ import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
 import { MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import { noop } from 'lodash';
+import { debounce, noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -82,12 +82,12 @@ const LeftSidebar = () => {
     [handleLogoutClick]
   );
 
-  const handleMouseOver = useCallback(() => {
+  const handleMouseOver = debounce(() => {
     if (!isSidebarCollapsed) {
       return;
     }
     setIsSidebarCollapsed(false);
-  }, [isSidebarCollapsed]);
+  }, 100);
 
   const handleMouseOut = useCallback(() => {
     setIsSidebarCollapsed(true);
