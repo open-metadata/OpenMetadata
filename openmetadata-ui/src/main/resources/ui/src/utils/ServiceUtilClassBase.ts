@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { capitalize, get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
@@ -762,6 +763,14 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getProperties(property: ObjectFieldTemplatePropertyType[]) {
+    return {
+      properties: property,
+      additionalField: null,
+      additionalFieldContent: null,
+    };
   }
 
   public getEditConfigData(
