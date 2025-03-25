@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
+import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
 import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { ReactComponent as ServiceView } from '../../../../assets/svg/services.svg';
@@ -23,6 +24,7 @@ import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
+import { Table } from '../../../../generated/entity/data/table';
 import { LineageLayer } from '../../../../generated/settings/settings';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
@@ -48,7 +50,7 @@ const LayerButton: React.FC<LayerButtonProps> = React.memo(
   )
 );
 
-const LineageLayers = ({ entityType }: LineageLayersProps) => {
+const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   const {
     activeLayer,
     onUpdateLayerView,
@@ -116,13 +118,30 @@ const LineageLayers = ({ entityType }: LineageLayersProps) => {
         )}
 
         {(isPlatformLineage ||
-          (entityType && entityType !== EntityType.DOMAIN)) && (
+          (entityType &&
+            entityType !== EntityType.DOMAIN &&
+            entity?.domain)) && (
           <LayerButton
             icon={<DomainIcon />}
             isActive={platformView === LineagePlatformView.Domain}
             label={t('label.domain')}
             testId="lineage-layer-domain-btn"
             onClick={() => handlePlatformViewChange(LineagePlatformView.Domain)}
+          />
+        )}
+
+        {(isPlatformLineage ||
+          (entityType &&
+            entityType !== EntityType.DOMAIN &&
+            ((entity as Table)?.dataProducts ?? [])?.length > 0)) && (
+          <LayerButton
+            icon={<DataProductIcon />}
+            isActive={platformView === LineagePlatformView.DataProduct}
+            label={t('label.data-product')}
+            testId="lineage-layer-data-product-btn"
+            onClick={() =>
+              handlePlatformViewChange(LineagePlatformView.DataProduct)
+            }
           />
         )}
       </ButtonGroup>
