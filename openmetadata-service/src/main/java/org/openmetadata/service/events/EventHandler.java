@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.events;
 
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerResponseContext;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public interface EventHandler {

@@ -5,6 +5,8 @@ import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KE
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 
+import jakarta.json.JsonArray;
+import jakarta.json.JsonObject;
 import java.security.KeyStoreException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,8 +17,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import javax.json.JsonArray;
-import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;

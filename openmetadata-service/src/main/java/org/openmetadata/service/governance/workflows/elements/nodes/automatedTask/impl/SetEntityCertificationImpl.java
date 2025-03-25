@@ -6,9 +6,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import jakarta.json.JsonPatch;
 import java.util.Map;
 import java.util.Optional;
-import javax.json.JsonPatch;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;

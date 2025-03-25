@@ -19,7 +19,8 @@ import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.ws.rs.Path;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -30,7 +31,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.ws.rs.Path;
 import lombok.Getter;
 import lombok.Setter;
 import org.jdbi.v3.core.Jdbi;
@@ -206,9 +206,9 @@ public final class CollectionRegistry {
       if (a instanceof Path path) {
         // Use @Path annotation to compile href
         collectionInfo.withHref(URI.create(path.value()));
-      } else if (a instanceof Api api) {
-        // Use @Api annotation to get documentation about the collection
-        collectionInfo.withDocumentation(api.value());
+      } else if (a instanceof Tag tag) {
+        // Use @Tag annotation to get documentation about the collection
+        collectionInfo.withDocumentation(tag.description());
       } else if (a instanceof Collection collection) {
         // Use @Collection annotation to get initialization information for the class
         collectionInfo.withName(collection.name());

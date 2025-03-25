@@ -1,6 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
-import javax.ws.rs.BadRequestException;
+import jakarta.ws.rs.BadRequestException;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;

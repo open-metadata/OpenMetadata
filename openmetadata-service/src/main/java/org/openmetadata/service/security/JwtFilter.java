@@ -33,16 +33,16 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import jakarta.ws.rs.ext.Provider;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
-import javax.ws.rs.ext.Provider;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -165,15 +165,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
-    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
-    CatalogSecurityContext catalogSecurityContext =
-        new CatalogSecurityContext(
-            catalogPrincipal,
-            scheme,
-            SecurityContext.DIGEST_AUTH,
-            getUserRolesFromClaims(claims, isBot(claims)));
-    LOG.debug("SecurityContext {}", catalogSecurityContext);
-    requestContext.setSecurityContext(catalogSecurityContext);
+    setSecurityContext(requestContext, catalogPrincipal);
   }
 
   public void checkValidationsForToken(
@@ -304,5 +296,14 @@ public class JwtFilter implements ContainerRequestFilter {
         throw AuthenticationException.getExpiredTokenException();
       }
     }
+  }
+
+  private void setSecurityContext(
+      ContainerRequestContext requestContext, CatalogPrincipal catalogPrincipal) {
+    String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+    CatalogSecurityContext catalogSecurityContext =
+        new CatalogSecurityContext(
+            catalogPrincipal, scheme, SecurityContext.BASIC_AUTH, new HashSet<>());
+    requestContext.setSecurityContext(catalogSecurityContext);
   }
 }

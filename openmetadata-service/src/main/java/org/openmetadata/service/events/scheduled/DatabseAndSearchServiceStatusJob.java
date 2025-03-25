@@ -4,7 +4,7 @@ import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchHealthStatus;

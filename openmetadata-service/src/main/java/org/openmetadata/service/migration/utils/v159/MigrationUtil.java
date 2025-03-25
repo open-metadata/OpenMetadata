@@ -1,7 +1,7 @@
 package org.openmetadata.service.migration.utils.v159;
 
+import jakarta.json.JsonObject;
 import java.util.UUID;
-import javax.json.JsonObject;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.Update;

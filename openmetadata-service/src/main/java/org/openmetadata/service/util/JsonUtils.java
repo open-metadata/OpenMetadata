@@ -36,6 +36,19 @@ import com.jayway.jsonpath.JsonPath;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
+import jakarta.json.JsonPatch;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonStructure;
+import jakarta.json.JsonValue;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Paths;
@@ -51,19 +64,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-import javax.json.Json;
-import javax.json.JsonArray;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
-import javax.json.JsonPatch;
-import javax.json.JsonReader;
-import javax.json.JsonStructure;
-import javax.json.JsonValue;
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
@@ -327,7 +327,7 @@ public final class JsonUtils {
 
   private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
       throws JsonPatchException, IOException {
-    // Convert javax.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
+    // Convert jakarta.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
     String patchString = patch.toString();
     JsonNode patchNode;
     try {

@@ -1,6 +1,6 @@
 package org.openmetadata.sdk.exception;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 
 public class AttachmentException extends WebServiceException {
   private static final String BY_NAME_MESSAGE = "Attachment Exception [%s] due to [%s].";

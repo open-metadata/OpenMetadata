@@ -21,11 +21,11 @@ import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.Invocation;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
-import javax.ws.rs.client.Client;
-import javax.ws.rs.client.Invocation;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;

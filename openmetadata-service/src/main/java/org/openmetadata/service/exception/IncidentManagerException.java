@@ -1,6 +1,6 @@
 package org.openmetadata.service.exception;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.sdk.exception.WebServiceException;
 
@@ -12,7 +12,7 @@ public class IncidentManagerException extends WebServiceException {
   }
 
   public IncidentManagerException(String message) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, ERROR_TYPE, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), ERROR_TYPE, message);
   }
 
   public static IncidentManagerException invalidStatus(

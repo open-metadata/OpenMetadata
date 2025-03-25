@@ -34,6 +34,15 @@ import io.github.resilience4j.core.functions.CheckedRunnable;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
+import jakarta.json.JsonObject;
+import jakarta.validation.constraints.Size;
+import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.Form;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.text.DateFormat;
@@ -47,15 +56,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.json.JsonObject;
-import javax.validation.constraints.Size;
-import javax.ws.rs.client.Entity;
-import javax.ws.rs.client.Invocation;
-import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Form;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
@@ -436,10 +436,11 @@ public final class TestUtils {
     assertEquals(Status.OK.getStatusCode(), response.getStatus());
   }
 
-  public static javax.ws.rs.core.Response deleteAsync(WebTarget target, Map<String, String> headers)
-      throws HttpResponseException {
+  public static jakarta.ws.rs.core.Response deleteAsync(
+      WebTarget target, Map<String, String> headers) throws HttpResponseException {
     try {
-      final javax.ws.rs.core.Response response = SecurityUtil.addHeaders(target, headers).delete();
+      final jakarta.ws.rs.core.Response response =
+          SecurityUtil.addHeaders(target, headers).delete();
       int status = response.getStatus();
 
       // For async operations, we expect 202 Accepted

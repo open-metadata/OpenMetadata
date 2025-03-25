@@ -13,9 +13,9 @@
 
 package org.openmetadata.service.events;
 
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerResponseContext;
 import java.util.UUID;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerResponseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -35,6 +35,7 @@ public class AuditEventHandler implements EventHandler {
     // Nothing to do
   }
 
+  @Override
   public Void process(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();

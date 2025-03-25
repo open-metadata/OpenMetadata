@@ -39,6 +39,10 @@ import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
 
 import io.jsonwebtoken.lang.Collections;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -49,10 +53,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.SecurityContext;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -119,7 +119,6 @@ public class FeedRepository {
   public static final String DELETED_TEAM_NAME = "DeletedTeam";
   public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   private static final long MAX_SECONDS_TIMESTAMP = 2147483647L;
-  private static final org.slf4j.Logger LOG = log;
 
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER =

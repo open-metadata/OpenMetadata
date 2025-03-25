@@ -81,6 +81,11 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
+import jakarta.json.JsonPatch;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Instant;
@@ -112,11 +117,6 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import javax.json.JsonPatch;
-import javax.validation.ConstraintViolationException;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -196,7 +196,6 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 import software.amazon.awssdk.utils.Either;
-import org.slf4j.LoggerFactory;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to

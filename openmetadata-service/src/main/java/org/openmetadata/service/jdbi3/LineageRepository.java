@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static javax.ws.rs.core.Response.Status.OK;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.collectionOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
@@ -43,6 +43,8 @@ import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.opencsv.CSVWriter;
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -50,8 +52,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;

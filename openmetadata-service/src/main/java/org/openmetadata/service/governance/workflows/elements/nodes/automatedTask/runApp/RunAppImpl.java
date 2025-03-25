@@ -3,10 +3,10 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
+import jakarta.json.JsonPatch;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.json.JsonPatch;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;

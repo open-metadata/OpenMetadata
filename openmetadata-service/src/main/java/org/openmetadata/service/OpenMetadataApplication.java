@@ -32,27 +32,28 @@ import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.FilterRegistration;
+import jakarta.validation.MessageInterpolator;
+import jakarta.validation.Validation;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
-import javax.servlet.ServletException;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jetty.http.pathmap.ServletPathSpec;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.eclipse.jetty.websocket.server.NativeWebSocketServletContainerInitializer;
-import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
+import org.eclipse.jetty.websocket.server.JettyWebSocketServerContainer;
+import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
@@ -160,7 +161,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
 
     // Initialize HTTP and JDBI timers
-    MicrometerBundleSingleton.initLatencyEvents(catalogConfig);
+    MicrometerBundleSingleton.initLatencyEvents();
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
@@ -202,6 +203,26 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .setSqlLocator(
             new ConnectionAwareAnnotationSqlLocator(
                 catalogConfig.getDataSourceFactory().getDriverClass()));
+
+    // Configure validator to use simple message interpolation
+    environment.setValidator(
+        Validation.byDefaultProvider()
+            .configure()
+            .messageInterpolator(
+                new MessageInterpolator() {
+                  @Override
+                  public String interpolate(String messageTemplate, Context context) {
+                    return messageTemplate;
+                  }
+
+                  @Override
+                  public String interpolate(
+                      String messageTemplate, Context context, Locale locale) {
+                    return messageTemplate;
+                  }
+                })
+            .buildValidatorFactory()
+            .getValidator());
 
     // Validate flyway Migrations
     validateMigrations(jdbi, catalogConfig);
@@ -423,6 +444,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         new SubstitutingSourceProvider(
             bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
 
+    // Register custom filter factories
+    bootstrap
+        .getObjectMapper()
+        .registerSubtypes(
+            org.openmetadata.service.events.AuditOnlyFilterFactory.class,
+            org.openmetadata.service.events.AuditExcludeFilterFactory.class);
+
     bootstrap.addBundle(
         new SwaggerBundle<>() {
           @Override
@@ -614,17 +642,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
-      WebSocketUpgradeFilter.configure(environment.getApplicationContext());
-      NativeWebSocketServletContainerInitializer.configure(
-          environment.getApplicationContext(),
-          (context, container) ->
-              container.addMapping(
-                  new ServletPathSpec(pathSpec),
-                  (servletUpgradeRequest, servletUpgradeResponse) ->
-                      new JettyWebSocketHandler(
-                          WebSocketManager.getInstance().getEngineIoServer())));
-    } catch (ServletException ex) {
-      LOG.error("Websocket Upgrade Filter error : {}", ex.getMessage());
+      JettyWebSocketServletContainerInitializer.configure(
+          environment.getApplicationContext(), null);
+      JettyWebSocketServerContainer container =
+          JettyWebSocketServerContainer.getContainer(
+              environment.getApplicationContext().getServletContext());
+
+      if (container != null) {
+        container.addMapping(
+            pathSpec,
+            (req, resp) ->
+                new JettyWebSocketHandler(WebSocketManager.getInstance().getEngineIoServer()));
+      }
+    } catch (Exception ex) {
+      LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
   }
 

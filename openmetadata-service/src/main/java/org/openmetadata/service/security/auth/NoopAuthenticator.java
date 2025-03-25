@@ -3,7 +3,7 @@ package org.openmetadata.service.security.auth;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.AUTHENTICATOR_OPERATION_NOT_SUPPORTED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FORBIDDEN_AUTHENTICATOR_OP;
 
-import javax.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.OpenMetadataApplicationConfig;

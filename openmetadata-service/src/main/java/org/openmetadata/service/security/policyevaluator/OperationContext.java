@@ -1,10 +1,10 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;

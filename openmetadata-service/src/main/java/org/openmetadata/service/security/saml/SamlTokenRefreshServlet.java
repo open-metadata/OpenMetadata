@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.security.saml;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.getErrorMessage;

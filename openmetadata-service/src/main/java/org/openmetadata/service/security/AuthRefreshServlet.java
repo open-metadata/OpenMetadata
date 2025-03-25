@@ -1,9 +1,9 @@
 package org.openmetadata.service.security;
 
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import javax.servlet.annotation.WebServlet;
 import lombok.extern.slf4j.Slf4j;
 
 @WebServlet("/api/v1/auth/refresh")
