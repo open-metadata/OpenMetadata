@@ -528,6 +528,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects
   - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
     url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
+  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
+    url: /connectors/ingestion/workflows/reverse-metadata
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually
@@ -552,6 +554,13 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
+
+  - category: Connectors / Troubleshooting
+    url: /connectors/troubleshooting
+  - category: Connectors / Troubleshooting / How to enable Debug Logging for Any Ingestion
+    url: /connectors/troubleshooting/enable-debug-logging
+  - category: Connectors / Troubleshooting / Permission Issues
+    url: /connectors/troubleshooting/permission-issues
 
   - category: How-to Guides
     url: /how-to-guides
