@@ -227,7 +227,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const { CollateAIAgentsWidget } = useMemo(
     () => serviceUtilClassBase.getAgentsTabWidgets(),
-    [serviceCategory]
+    []
   );
   const isCollateAIWidgetSupported = useMemo(
     () => !isUndefined(CollateAIAgentsWidget),
@@ -354,22 +354,25 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [activeTab, decodedServiceFQN, serviceCategory, isCollateAIWidgetSupported]
   );
 
-  const fetchCollateAgentsList = async (paging?: Omit<Paging, 'total'>) => {
-    try {
-      setIsCollateAgentLoading(true);
-      const { data, paging: pagingRes } = await getApplicationList({
-        agentType: AgentType.CollateAI,
-        ...paging,
-      });
+  const fetchCollateAgentsList = useCallback(
+    async (paging?: Omit<Paging, 'total'>) => {
+      try {
+        setIsCollateAgentLoading(true);
+        const { data, paging: pagingRes } = await getApplicationList({
+          agentType: AgentType.CollateAI,
+          ...paging,
+        });
 
-      setCollateAgentsList(data);
-      handleCollateAgentPagingChange(pagingRes);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsCollateAgentLoading(false);
-    }
-  };
+        setCollateAgentsList(data);
+        handleCollateAgentPagingChange(pagingRes);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsCollateAgentLoading(false);
+      }
+    },
+    [handleCollateAgentPagingChange]
+  );
 
   const getAllIngestionWorkflows = useCallback(
     async (paging?: Omit<Paging, 'total'>, limit?: number) => {
@@ -397,7 +400,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [decodedServiceFQN, serviceCategory, ingestionPaging]
+    [
+      decodedServiceFQN,
+      serviceCategory,
+      ingestionPaging,
+      handleIngestionPagingChange,
+    ]
   );
 
   const searchPipelines = useCallback(
@@ -841,7 +849,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: paging[cursorType]!,
+            cursorValue: ingestionPaging[cursorType]!,
           },
           ingestionPageSize
         );
@@ -856,6 +864,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       ingestionPageSize,
       handleIngestionPageChange,
       searchPipelines,
+      getAllIngestionWorkflows,
     ]
   );
 
@@ -863,7 +872,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         fetchCollateAgentsList({
-          [cursorType]: ingestionPaging[cursorType],
+          [cursorType]: collateAgentPaging[cursorType],
           limit: collateAgentPageSize,
         });
 
@@ -871,13 +880,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: paging[cursorType]!,
+            cursorValue: collateAgentPaging[cursorType]!,
           },
           collateAgentPageSize
         );
       }
     },
-    [collateAgentPaging, collateAgentPageSize, handleCollateAgentPageChange]
+    [
+      collateAgentPaging,
+      collateAgentPageSize,
+      handleCollateAgentPageChange,
+      fetchCollateAgentsList,
+    ]
   );
 
   const versionHandler = useCallback(() => {
@@ -1045,7 +1059,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
         );
       }
     },
-    [collateAgentPagingCursor, collateAgentPageSize]
+    [
+      collateAgentPagingCursor,
+      collateAgentPageSize,
+      getAllIngestionWorkflows,
+      ingestionPagingCursor,
+      ingestionPageSize,
+    ]
   );
 
   const ingestionTab = useMemo(
@@ -1091,6 +1111,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
       onCollateAgentPageChange,
       agentCounts,
       refreshAgentsList,
+      handleStatusFilterChange,
+      handleTypeFilterChange,
+      statusFilter,
+      typeFilter,
     ]
   );
 
@@ -1173,6 +1197,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceCategory,
     statusFilter,
     typeFilter,
+    extraInfoData,
   ]);
 
   const tabs: TabsProps['items'] = useMemo(() => {

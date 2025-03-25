@@ -27,12 +27,10 @@ import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-saf
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
-import { DayOneExperienceWorkflowStages } from '../enums/DayOneWorkflow.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
 import { WorkflowStatus } from '../generated/governance/workflows/workflowInstance';
-import { WorkflowInstanceState } from '../generated/governance/workflows/workflowInstanceState';
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
@@ -113,7 +111,7 @@ export const getPlatformInsightsChartDataFormattingMethod =
     const data = sevenDaysStartGMTArrayInMillis.map((day) => {
       const item = summaryChartData.results.find((item) => item.day === day);
 
-      return item ? item : { day, count: 0 };
+      return item ?? { day, count: 0 };
     });
 
     // This is the data for the day 7 days ago
@@ -143,21 +141,6 @@ export const getPlatformInsightsChartDataFormattingMethod =
       noRecords: summaryChartData.results.every((item) => isEmpty(item)),
     };
   };
-
-export const getStatusByWorkflowStage = (
-  workflowStates: WorkflowInstanceState[],
-  workflowStageName: DayOneExperienceWorkflowStages
-): WorkflowStatus | undefined => {
-  const workflowState = workflowStates.find(
-    (workflowState) => workflowState.stage?.name === workflowStageName
-  );
-
-  if (workflowState) {
-    return workflowState.status;
-  }
-
-  return;
-};
 
 export const getStatusIconFromStatusType = (status?: WorkflowStatus) => {
   let Icon: FunctionComponent<any>;
@@ -283,6 +266,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
               rel="noreferrer"
               style={{ color: theme.primaryColor }}
               target="_blank"
+              title="learn-more"
             />
           }
         />

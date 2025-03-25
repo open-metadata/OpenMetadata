@@ -182,7 +182,7 @@ export const IngestionRecentRuns = <
       {!isUndefined(selectedStatus) && (
         <IngestionRunDetailsModal
           handleCancel={handleModalCancel}
-          pipelineStatus={selectedStatus as T}
+          pipelineStatus={selectedStatus}
         />
       )}
     </Space>

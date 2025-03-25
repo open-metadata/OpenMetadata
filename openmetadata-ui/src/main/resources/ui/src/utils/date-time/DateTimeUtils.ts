@@ -56,7 +56,7 @@ export const formatDateTimeLong = (timestamp?: number, format?: string) => {
   }
 
   return DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || DATE_TIME_WITH_OFFSET_FORMAT
+    format ?? DATE_TIME_WITH_OFFSET_FORMAT
   );
 };
 
@@ -243,14 +243,15 @@ export const calculateInterval = (
  * @returns A human-readable string representation of the time duration.
  */
 export const convertMillisecondsToHumanReadableFormat = (
-  ms: number,
-  length?: number
+  timestamp: number,
+  length?: number,
+  showMilliseconds = false
 ): string => {
-  if (ms <= 0) {
+  if (timestamp <= 0 || (!showMilliseconds && timestamp < 1000)) {
     return '0s';
   }
 
-  const duration = Duration.fromMillis(ms);
+  const duration = Duration.fromMillis(timestamp);
   const result: string[] = [];
 
   // Extract each unit from the duration
@@ -281,7 +282,7 @@ export const convertMillisecondsToHumanReadableFormat = (
   if (seconds > 0) {
     result.push(`${seconds}s`);
   }
-  if (milliseconds > 0) {
+  if (showMilliseconds && milliseconds > 0) {
     result.push(`${milliseconds}ms`);
   }
 
