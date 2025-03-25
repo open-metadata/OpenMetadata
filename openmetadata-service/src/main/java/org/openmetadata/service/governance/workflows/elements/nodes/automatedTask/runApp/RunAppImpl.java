@@ -100,7 +100,8 @@ public class RunAppImpl {
               .withFilter(
                   String.format(
                       "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"Tier.TagFQN\":\"Tier.Tier1\"}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()));
+                      service.getName()))
+              .withPatchIfEmpty(true);
       case "CollateAIQualityAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
               .withFilter(
@@ -112,7 +113,8 @@ public class RunAppImpl {
               .withFilter(
                   String.format(
                       "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
-                      service.getName()));
+                      service.getName()))
+              .withPatchIfEmpty(true);
       case "DataInsightsApplication" -> {
         DataInsightsAppConfig updatedAppConfig =
             (JsonUtils.convertValue(config, DataInsightsAppConfig.class));
