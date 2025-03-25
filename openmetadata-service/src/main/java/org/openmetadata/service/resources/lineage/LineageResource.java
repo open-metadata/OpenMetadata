@@ -273,6 +273,12 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
+    if (Entity.getSearchRepository().getIndexMapping(view) != null) {
+      view =
+          Entity.getSearchRepository()
+              .getIndexMapping(view)
+              .getIndexName(Entity.getSearchRepository().getClusterAlias());
+    }
     return Entity.getSearchRepository().searchPlatformLineage(view, queryFilter, deleted);
   }
 
