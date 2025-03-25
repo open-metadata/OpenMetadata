@@ -71,8 +71,6 @@ const Table = <T extends Record<string, unknown>>(
     [propsColumns]
   );
 
-  const [searchText, setSearchText] = useState(searchProps?.value ?? '');
-
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
     [loading]
@@ -178,11 +176,7 @@ const Table = <T extends Record<string, unknown>>(
     : {};
 
   const handleSearchAction = (value: string) => {
-    if (searchProps?.onSearch) {
-      searchProps.onSearch(value);
-    } else {
-      setSearchText(value);
-    }
+    searchProps?.onSearch?.(value);
   };
 
   useEffect(() => {
@@ -226,7 +220,7 @@ const Table = <T extends Record<string, unknown>>(
                 {...searchProps}
                 removeMargin
                 placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchText}
+                searchValue={searchProps?.value}
                 typingInterval={searchProps?.searchDebounceTime ?? 500}
                 onSearch={handleSearchAction}
               />

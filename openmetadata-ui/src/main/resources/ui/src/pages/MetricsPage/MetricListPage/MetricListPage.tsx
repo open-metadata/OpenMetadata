@@ -160,6 +160,7 @@ const MetricListPage = () => {
         title: t('label.description'),
         dataIndex: 'description',
         flex: true,
+        width: 300,
         key: 'description',
         render: (description: string) =>
           isEmpty(description) ? (
