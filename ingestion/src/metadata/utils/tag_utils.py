@@ -69,13 +69,12 @@ def get_ometa_tag_and_classification(
 
     if system_tags:
         # Checking for system classification
-        classification_entities = (
+        for classification_entity in (
             metadata.es_search_from_name(
                 entity_type=Classification, name_search_string=classification_name
             )
             or []
-        )
-        for classification_entity in classification_entities:
+        ):
             if (
                 classification_entity.provider == ProviderType.system
                 and classification_entity.name.root.lower()
@@ -90,13 +89,12 @@ def get_ometa_tag_and_classification(
         try:
             if system_tags:
                 # Checking for system tag
-                tag_entities = (
+                for tag_entity in (
                     metadata.es_search_from_name(
                         entity_type=Tag, name_search_string=tag
                     )
                     or []
-                )
-                for tag_entity in tag_entities:
+                ):
                     if (
                         tag_entity.provider == ProviderType.system
                         and tag_entity.classification.name == classification_name
