@@ -551,7 +551,7 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
         "==": op.eq,
         "!=": op.ne,
     }
-    op_func = operators.get(operator, op.lt)
+    op_func = operators.get(operator, op.le)
     try:
         if op_func:
             return op_func(result, threshold)

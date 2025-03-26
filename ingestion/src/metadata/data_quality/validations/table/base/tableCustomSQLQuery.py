@@ -53,7 +53,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         )
 
         operator = self.get_test_case_param_value(
-            self.test_case.parameterValues, "operator", str, "<"  # type: ignore
+            self.test_case.parameterValues, "operator", str, "<="  # type: ignore
         )
 
         threshold = self.get_test_case_param_value(
