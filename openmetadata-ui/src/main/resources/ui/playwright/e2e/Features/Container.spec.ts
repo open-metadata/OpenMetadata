@@ -43,6 +43,17 @@ test.describe('Container entity specific tests ', () => {
     await redirectToHomePage(page);
   });
 
+  test('Container page should show Schema and Children count', async ({
+    page,
+  }) => {
+    await container.visitEntityPage(page);
+
+    await expect(page.getByTestId('schema').getByTestId('count')).toBeVisible();
+    await expect(
+      page.getByTestId('children').getByTestId('count')
+    ).toBeVisible();
+  });
+
   test('Container page children pagination', async ({ page }) => {
     await container.visitEntityPage(page);
 

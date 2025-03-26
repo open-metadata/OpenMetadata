@@ -133,6 +133,7 @@ export const getContainerDetailPageTabs = ({
   containerData,
   fetchContainerDetail,
   labelMap,
+  childrenCount,
 }: ContainerDetailPageTabProps) => {
   return [
     ...(isDataModelEmpty
@@ -140,6 +141,7 @@ export const getContainerDetailPageTabs = ({
           {
             label: (
               <TabsLabel
+                count={childrenCount}
                 id={EntityTabs.CHILDREN}
                 name={labelMap?.[EntityTabs.CHILDREN] ?? t('label.children')}
               />
@@ -152,6 +154,7 @@ export const getContainerDetailPageTabs = ({
           {
             label: (
               <TabsLabel
+                count={containerData?.dataModel?.columns?.length}
                 id={EntityTabs.SCHEMA}
                 name={labelMap?.[EntityTabs.SCHEMA] ?? t('label.schema')}
               />
@@ -161,7 +164,11 @@ export const getContainerDetailPageTabs = ({
           },
           {
             label: (
-              <TabsLabel id={EntityTabs.CHILDREN} name={t('label.children')} />
+              <TabsLabel
+                count={childrenCount}
+                id={EntityTabs.CHILDREN}
+                name={t('label.children')}
+              />
             ),
             key: EntityTabs.CHILDREN,
             children: (
