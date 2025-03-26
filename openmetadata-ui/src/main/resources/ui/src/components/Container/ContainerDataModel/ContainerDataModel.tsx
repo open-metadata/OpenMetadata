@@ -43,6 +43,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../common/Table/Table';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -237,7 +238,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   return (
     <>
       <Table
-        bordered
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
@@ -254,18 +254,22 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
       {editContainerColumnDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editContainerColumnDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.column'),
-          })}
-          value={editContainerColumnDescription.description ?? ''}
-          visible={Boolean(editContainerColumnDescription)}
-          onCancel={() => setEditContainerColumnDescription(undefined)}
-          onSave={handleContainerColumnDescriptionChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editContainerColumnDescription.fullyQualifiedName}
+          entityType={EntityType.CONTAINER}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editContainerColumnDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.column'),
+            })}
+            value={editContainerColumnDescription.description ?? ''}
+            visible={Boolean(editContainerColumnDescription)}
+            onCancel={() => setEditContainerColumnDescription(undefined)}
+            onSave={handleContainerColumnDescriptionChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </>
   );

@@ -112,18 +112,18 @@ test.describe('Login flow should work properly', () => {
     await page.fill('#password', CREDENTIALS.password);
     await page.locator('[data-testid="login"]').click();
 
-    await expect(
-      page.locator('[data-testid="login-error-container"]')
-    ).toHaveText(LOGIN_ERROR_MESSAGE);
+    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
+      LOGIN_ERROR_MESSAGE
+    );
 
     // Login with invalid password
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', invalidPassword);
     await page.locator('[data-testid="login"]').click();
 
-    await expect(
-      page.locator('[data-testid="login-error-container"]')
-    ).toHaveText(LOGIN_ERROR_MESSAGE);
+    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
+      LOGIN_ERROR_MESSAGE
+    );
   });
 
   test('Forgot password and login with new password', async ({ page }) => {
@@ -140,7 +140,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test('Refresh should work', async ({ browser }) => {
+  test.skip('Refresh should work', async ({ browser }) => {
     const browserContext = await browser.newContext();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),

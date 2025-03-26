@@ -8,11 +8,10 @@
     "storeStageStatus": true
   },
   "trigger": {
-    "type": "eventBasedEntity",
-    "config": {
-      "entityType": "databaseService",
-      "events": ["Created"]
-    }
+    "type": "noOp",
+    "output": [
+      "relatedEntity"
+    ]
   },
   "nodes": [
     {
@@ -23,28 +22,16 @@
     },
     {
       "type": "automatedTask",
-      "subType": "createIngestionPipelineTask",
-      "name": "CreateMetadataIngestion",
-      "displayName": "Create Metadata Ingestion Pipeline",
-      "config": {
-        "pipelineType": "metadata",
-        "deploy": true
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "runIngestionPipelineTask",
+      "subType": "createAndRunIngestionPipelineTask",
       "name": "RunMetadataIngestion",
       "displayName": "Run Metadata Ingestion Pipeline",
       "config": {
+        "pipelineType": "metadata",
         "waitForCompletion": true,
         "timeoutSeconds": 3600
       },
       "inputNamespaceMap": {
-        "ingestionPipelineId": "CreateMetadataIngestion"
+        "relatedEntity": "global"
       }
     },
     {
@@ -69,54 +56,30 @@
     },
     {
       "type": "automatedTask",
-      "subType": "createIngestionPipelineTask",
-      "name": "CreateLineageIngestion",
-      "displayName": "Create Lineage Ingestion Pipeline",
-      "config": {
-        "pipelineType": "lineage",
-        "deploy": true
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "createIngestionPipelineTask",
-      "name": "CreateUsageIngestion",
-      "displayName": "Create Usage Ingestion Pipeline",
-      "config": {
-        "pipelineType": "usage",
-        "deploy": true
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "runIngestionPipelineTask",
-      "name": "RunUsageIngestion",
-      "displayName": "Run Usage Ingestion Pipeline",
-      "config": {
-        "waitForCompletion": true,
-        "timeoutSeconds": 3600
-      },
-      "inputNamespaceMap": {
-        "ingestionPipelineId": "CreateUsageIngestion"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "runIngestionPipelineTask",
+      "subType": "createAndRunIngestionPipelineTask",
       "name": "RunLineageIngestion",
       "displayName": "Run Lineage Ingestion Pipeline",
       "config": {
+        "pipelineType": "lineage",
         "waitForCompletion": true,
         "timeoutSeconds": 3600
       },
       "inputNamespaceMap": {
-        "ingestionPipelineId": "CreateLineageIngestion"
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "createAndRunIngestionPipelineTask",
+      "name": "RunUsageIngestion",
+      "displayName": "Run Usage Ingestion Pipeline",
+      "config": {
+        "pipelineType": "usage",
+        "waitForCompletion": true,
+        "timeoutSeconds": 3600
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
       }
     },
     {
@@ -127,38 +90,12 @@
     },
     {
       "type": "automatedTask",
-      "subType": "createIngestionPipelineTask",
-      "name": "CreateProfilerIngestion",
-      "displayName": "Create Profiler Ingestion Pipeline",
-      "config": {
-        "pipelineType": "profiler",
-        "deploy": true
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "runIngestionPipelineTask",
+      "subType": "createAndRunIngestionPipelineTask",
       "name": "RunProfilerIngestion",
       "displayName": "Run Profiler Ingestion Pipeline",
       "config": {
-        "waitForCompletion": true,
-        "timeoutSeconds": 3600
-      },
-      "inputNamespaceMap": {
-        "ingestionPipelineId": "CreateProfilerIngestion"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "createIngestionPipelineTask",
-      "name": "CreateAutoClassificationIngestion",
-      "displayName": "Create AutoClassification Ingestion Pipeline",
-      "config": {
-        "pipelineType": "autoClassification",
-        "deploy": true
+        "pipelineType": "profiler",
+        "shouldRun": false
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
@@ -166,15 +103,15 @@
     },
     {
       "type": "automatedTask",
-      "subType": "runIngestionPipelineTask",
+      "subType": "createAndRunIngestionPipelineTask",
       "name": "RunAutoClassificationIngestion",
       "displayName": "Run AutoClassification Ingestion Pipeline",
       "config": {
-        "waitForCompletion": true,
-        "timeoutSeconds": 3600
+        "pipelineType": "autoClassification",
+        "shouldRun": false
       },
       "inputNamespaceMap": {
-        "ingestionPipelineId": "CreateAutoClassificationIngestion"
+        "relatedEntity": "global"
       }
     },
     {
@@ -213,10 +150,6 @@
   "edges": [
     {
       "from": "ServiceCreated",
-      "to": "CreateMetadataIngestion"
-    },
-    {
-      "from": "CreateMetadataIngestion",
       "to": "RunMetadataIngestion"
     },
     {
@@ -239,10 +172,6 @@
     },
     {
       "from": "FirstGateway",
-      "to": "CreateLineageIngestion"
-    },
-    {
-      "from": "CreateLineageIngestion",
       "to": "RunLineageIngestion"
     },
     {
@@ -251,10 +180,6 @@
     },
     {
       "from": "FirstGateway",
-      "to": "CreateUsageIngestion"
-    },
-    {
-      "from": "CreateUsageIngestion",
       "to": "RunUsageIngestion"
     },
     {
@@ -269,10 +194,6 @@
     },
     {
       "from": "SecondGateway",
-      "to": "CreateAutoClassificationIngestion"
-    },
-    {
-      "from": "CreateAutoClassificationIngestion",
       "to": "RunAutoClassificationIngestion"
     },
     {
@@ -281,10 +202,6 @@
     },
     {
       "from": "SecondGateway",
-      "to": "CreateProfilerIngestion"
-    },
-    {
-      "from": "CreateProfilerIngestion",
       "to": "RunProfilerIngestion"
     },
     {

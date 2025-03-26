@@ -164,7 +164,9 @@
         "BITMAP",
         "UINT",
         "BIT",
-        "MONEY"
+        "MONEY",
+        "MEASURE HIDDEN",
+        "MEASURE VISIBLE"
       ]
     },
     "constraint": {
@@ -771,6 +773,11 @@
           "default": 50,
           "title": "Sample Data Rows Count"
         },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": true
+        },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
           "type": "string",
@@ -1146,6 +1153,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the table",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

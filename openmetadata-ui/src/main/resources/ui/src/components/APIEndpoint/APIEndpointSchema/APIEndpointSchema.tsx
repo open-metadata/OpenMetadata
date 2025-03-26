@@ -55,6 +55,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
@@ -388,18 +389,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Radio.Group value={viewType} onChange={handleViewChange}>
-          <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
-            {t('label.request')}
-          </Radio.Button>
-          <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
-            {t('label.response')}
-          </Radio.Button>
-        </Radio.Group>
-      </Col>
-      <Col span={24}>
         <Table
-          bordered
           className={classNames('align-table-filter-left')}
           columns={columns}
           data-testid="schema-fields-table"
@@ -414,11 +404,21 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             expandedRowKeys,
           }}
           extraTableFilters={
-            <ToggleExpandButton
-              allRowKeys={schemaAllRowKeys}
-              expandedRowKeys={expandedRowKeys}
-              toggleExpandAll={handleToggleExpandAll}
-            />
+            <div className="d-flex justify-between items-center w-full">
+              <Radio.Group value={viewType} onChange={handleViewChange}>
+                <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
+                  {t('label.request')}
+                </Radio.Button>
+                <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
+                  {t('label.response')}
+                </Radio.Button>
+              </Radio.Group>
+              <ToggleExpandButton
+                allRowKeys={schemaAllRowKeys}
+                expandedRowKeys={expandedRowKeys}
+                toggleExpandAll={handleToggleExpandAll}
+              />
+            </div>
           }
           key={viewType}
           pagination={false}
@@ -429,18 +429,22 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         />
       </Col>
       {editFieldDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.schema-field'),
-          })}: "${getEntityName(editFieldDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.schema-field'),
-          })}
-          value={editFieldDescription.description ?? ''}
-          visible={Boolean(editFieldDescription)}
-          onCancel={() => setEditFieldDescription(undefined)}
-          onSave={handleFieldDescriptionChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editFieldDescription.fullyQualifiedName}
+          entityType={EntityType.API_ENDPOINT}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.schema-field'),
+            })}: "${getEntityName(editFieldDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.schema-field'),
+            })}
+            value={editFieldDescription.description ?? ''}
+            visible={Boolean(editFieldDescription)}
+            onCancel={() => setEditFieldDescription(undefined)}
+            onSave={handleFieldDescriptionChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </Row>
   );

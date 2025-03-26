@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Col, Radio, Row, Typography } from 'antd';
+import { Card, Radio, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -38,13 +38,16 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
-import { columnFilterIcon } from '../../../utils/TableColumn.util';
+import {
+  columnFilterIcon,
+  ownerTableObject,
+} from '../../../utils/TableColumn.util';
 import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import { createTagObject } from '../../../utils/TagsUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../common/Table/Table';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -231,14 +234,7 @@ export const PipelineTaskTab = () => {
           />
         ),
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-        key: TABLE_COLUMNS_KEYS.OWNERS,
-        width: 120,
-        filterIcon: columnFilterIcon,
-        render: (owner) => <OwnerLabel hasPermission={false} owners={owner} />,
-      },
+      ...ownerTableObject<Task>(),
       {
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
@@ -297,53 +293,52 @@ export const PipelineTaskTab = () => {
   );
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col span={24}>
-        <Radio.Group
-          buttonStyle="solid"
-          className="radio-switch"
-          data-testid="pipeline-task-switch"
-          optionType="button"
-          options={Object.values(PIPELINE_TASK_TABS)}
-          value={activeTab}
-          onChange={(e) => setActiveTab(e.target.value)}
-        />
-      </Col>
+    <div>
+      <Radio.Group
+        buttonStyle="solid"
+        className="radio-switch m-b-md"
+        data-testid="pipeline-task-switch"
+        optionType="button"
+        options={Object.values(PIPELINE_TASK_TABS)}
+        value={activeTab}
+        onChange={(e) => setActiveTab(e.target.value)}
+      />
 
-      <Col span={24}>
-        {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
-          <Table
-            bordered
-            className="align-table-filter-left"
-            columns={taskColumns}
-            data-testid="task-table"
-            dataSource={tasksInternal}
-            defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
-            pagination={false}
-            rowKey="name"
-            scroll={{ x: 1200 }}
-            size="small"
-            staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-          />
-        ) : (
-          tasksDAGView
-        )}
-      </Col>
+      {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
+        <Table
+          className="align-table-filter-left"
+          columns={taskColumns}
+          data-testid="task-table"
+          dataSource={tasksInternal}
+          defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: 1200 }}
+          size="small"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        />
+      ) : (
+        tasksDAGView
+      )}
 
       {editTask && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.task'),
-          })}: "${getEntityName(editTask.task)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.task-lowercase'),
-          })}
-          value={editTask.task.description ?? ''}
-          visible={Boolean(editTask)}
-          onCancel={closeEditTaskModal}
-          onSave={onTaskUpdate}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editTask.task.fullyQualifiedName}
+          entityType={EntityType.PIPELINE}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.task'),
+            })}: "${getEntityName(editTask.task)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.task-lowercase'),
+            })}
+            value={editTask.task.description ?? ''}
+            visible={Boolean(editTask)}
+            onCancel={closeEditTaskModal}
+            onSave={onTaskUpdate}
+          />
+        </EntityAttachmentProvider>
       )}
-    </Row>
+    </div>
   );
 };

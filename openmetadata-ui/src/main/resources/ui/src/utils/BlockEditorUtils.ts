@@ -10,10 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  AudioOutlined,
+  FileOutlined,
+  PictureOutlined,
+  PlayCircleOutlined,
+} from '@ant-design/icons';
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
 import { isEmpty } from 'lodash';
 import Showdown from 'showdown';
+import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
@@ -148,6 +155,7 @@ export const isHTMLString = (content: string) => {
       /^\s*>{1,}\s/, // Blockquotes
       /^---|\*\*\*|___/, // Horizontal rules
       /`{1,3}[^`]+`{1,3}/, // Code blocks
+      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
     ];
 
     const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
@@ -212,4 +220,65 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
 export const isDescriptionContentEmpty = (content: string) => {
   // Check if the content is empty or has only empty paragraph tags
   return isEmpty(content) || content === '<p></p>';
+};
+
+/**
+ *
+ * @param description HTML string
+ * @returns Text from HTML string
+ */
+export const getTextFromHtmlString = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return description.replace(/<[^>]{1,1000}>/g, '').trim();
+};
+
+export const getAcceptedFileTypes = (fileType: FileType) => {
+  switch (fileType) {
+    case FileType.IMAGE:
+      return 'image/*';
+    case FileType.VIDEO:
+      return 'video/*';
+    case FileType.AUDIO:
+      return 'audio/*';
+    case FileType.FILE:
+    default:
+      return '*/*';
+  }
+};
+
+/**
+ * Get the file type from the mime type
+ * @param mimeType The mime type
+ * @returns The file type
+ */
+export const getFileTypeFromMimeType = (mimeType: string) => {
+  if (mimeType.startsWith(FileType.IMAGE)) {
+    return FileType.IMAGE;
+  }
+
+  if (mimeType.startsWith(FileType.VIDEO)) {
+    return FileType.VIDEO;
+  }
+
+  if (mimeType.startsWith(FileType.AUDIO)) {
+    return FileType.AUDIO;
+  }
+
+  return FileType.FILE;
+};
+
+export const getFileIcon = (fileType: FileType) => {
+  switch (fileType) {
+    case FileType.IMAGE:
+      return PictureOutlined;
+    case FileType.VIDEO:
+      return PlayCircleOutlined;
+    case FileType.AUDIO:
+      return AudioOutlined;
+    default:
+      return FileOutlined;
+  }
 };

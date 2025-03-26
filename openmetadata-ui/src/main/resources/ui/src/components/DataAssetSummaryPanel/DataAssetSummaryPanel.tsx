@@ -175,16 +175,20 @@ export const DataAssetSummaryPanel = ({
       case EntityType.TOPIC:
         return (
           <>
-            <Row
-              className="p-md border-radius-card summary-panel-card"
-              gutter={[0, 4]}>
-              <Col span={24}>
-                <CommonEntitySummaryInfo
-                  componentType={componentType}
-                  entityInfo={entityInfo}
-                />
-              </Col>
-            </Row>
+            {entityInfo.some((info) =>
+              info.visible?.includes(componentType)
+            ) && (
+              <Row
+                className="p-md border-radius-card summary-panel-card"
+                gutter={[0, 4]}>
+                <Col span={24}>
+                  <CommonEntitySummaryInfo
+                    componentType={componentType}
+                    entityInfo={entityInfo}
+                  />
+                </Col>
+              </Row>
+            )}
             {entityType === EntityType.TABLE && (
               <TableSummary entityDetails={dataAsset as Table} />
             )}

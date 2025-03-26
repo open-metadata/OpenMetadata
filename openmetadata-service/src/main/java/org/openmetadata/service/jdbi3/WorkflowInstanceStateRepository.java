@@ -2,6 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +42,6 @@ public class WorkflowInstanceStateRepository
       createNewRecord(recordEntity, recordFQN);
     } else {
       timeSeriesDao.update(JsonUtils.pojoToJson(recordEntity), recordEntity.getId());
-      postUpdate(recordEntity);
     }
     return recordEntity;
   }
@@ -141,8 +142,9 @@ public class WorkflowInstanceStateRepository
       workflowInstanceState.setStatus(WorkflowInstance.WorkflowStatus.FAILURE);
     }
 
-    if (variables.containsKey(EXCEPTION_VARIABLE)) {
-      workflowInstanceState.setException(true);
+    if (variables.containsKey(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE))) {
+      workflowInstanceState.setException(
+          (String) variables.get(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE)));
       workflowInstanceState.setStatus(WorkflowInstance.WorkflowStatus.EXCEPTION);
     }
 
