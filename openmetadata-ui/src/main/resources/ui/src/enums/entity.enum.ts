@@ -178,6 +178,7 @@ export enum FqnPart {
 
 export enum EntityTabs {
   SCHEMA = 'schema',
+  SCHEMAS = 'schemas',
   ACTIVITY_FEED = 'activity_feed',
   SAMPLE_DATA = 'sample_data',
   TABLE_QUERIES = 'table_queries',
@@ -198,7 +199,7 @@ export enum EntityTabs {
   TEST_CASES = 'test-cases',
   PIPELINE = 'pipeline',
   DATA_Model = 'data-model',
-  INGESTIONS = 'ingestions',
+  AGENTS = 'agents',
   CONNECTION = 'connection',
   SQL = 'sql',
   FIELDS = 'fields',

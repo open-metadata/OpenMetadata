@@ -30,10 +30,6 @@ import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -59,6 +55,7 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 
 function DatabaseVersionPage() {
   const { t } = useTranslation();
@@ -300,11 +297,11 @@ function DatabaseVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col span={24}>
+                <Col className="p-x-lg" span={24}>
                   <Tabs
-                    className="entity-details-page-tabs"
+                    className="tabs-new"
                     data-testid="tabs"
-                    defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                    defaultActiveKey={tab}
                     items={tabs}
                     onChange={handleTabChange}
                   />

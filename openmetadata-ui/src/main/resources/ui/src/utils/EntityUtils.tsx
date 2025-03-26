@@ -12,6 +12,8 @@
  */
 
 import { Popover, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { toPng } from 'html-to-image';
 import i18next, { t } from 'i18next';
 import {
   isEmpty,
@@ -33,6 +35,7 @@ import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAsse
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
+import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   EntityServiceUnion,
   EntityWithServices,
@@ -44,18 +47,12 @@ import {
 import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getBotsPagePath,
-  getBotsPath,
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getKpiPath,
-  getServiceDetailsPath,
-  getTagsDetailsPath,
   NO_DATA,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
+import { ExportTypes } from '../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -122,21 +119,30 @@ import {
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
+import exportUtilClassBase from './ExportUtilClassBase';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import {
   getApplicationDetailsPath,
+  getBotsPagePath,
+  getBotsPath,
   getClassificationTagPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
+  getEntityDetailsPath,
   getGlossaryPath,
+  getGlossaryTermDetailsPath,
   getIncidentManagerDetailPagePath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
+  getServiceDetailsPath,
   getSettingPath,
+  getTagsDetailsPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -148,6 +154,7 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
+import { showErrorToast } from './ToastUtils';
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
@@ -2526,4 +2533,66 @@ export const updateNodeType = (
   }
 
   return node;
+};
+
+export const handleExportFile = async (
+  exportType: ExportTypes,
+  exportData: ExportData
+) => {
+  const { name: fileName, documentSelector = '', viewport } = exportData;
+  try {
+    const exportElement = document.querySelector(documentSelector);
+
+    if (!exportElement) {
+      throw new Error(
+        i18n.t('message.error-generating-export-type', {
+          exportType,
+        })
+      );
+    }
+
+    // Minimum width and height for the image
+    const minWidth = 1000;
+    const minHeight = 800;
+    const padding = 20;
+
+    const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
+    const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
+
+    await toPng(exportElement as HTMLElement, {
+      backgroundColor: '#ffffff',
+      width: imageWidth + padding * 2,
+      height: imageHeight + padding * 2,
+      style: {
+        width: imageWidth.toString(),
+        height: imageHeight.toString(),
+        margin: `${padding}px`,
+        minWidth: `${minWidth}px`,
+        minHeight: `${minHeight}px`,
+        ...(!isUndefined(viewport)
+          ? {
+              transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+            }
+          : {}),
+      },
+    })
+      .then((base64Image: string) => {
+        exportUtilClassBase.exportMethodBasedOnType({
+          exportType,
+          base64Image,
+          fileName,
+          exportData,
+        });
+      })
+      .catch((error) => {
+        throw error;
+      });
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      i18n.t('message.error-generating-export-type', {
+        exportType,
+      })
+    );
+  }
 };

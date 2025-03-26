@@ -17,6 +17,7 @@ Configure and schedule QlikCloud metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/qlikcloud/yaml"} /%}
 
@@ -55,5 +56,7 @@ To deploy OpenMetadata, check the Deployment guides.
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+{% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}

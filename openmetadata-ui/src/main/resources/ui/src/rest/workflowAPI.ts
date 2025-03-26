@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
+import { PagingResponse } from 'Models';
 import { CreateWorkflow } from '../generated/api/automations/createWorkflow';
 import { Workflow } from '../generated/entity/automations/workflow';
 import { TestConnectionDefinition } from '../generated/entity/services/connections/testConnectionDefinition';
+import { WorkflowInstance } from '../generated/governance/workflows/workflowInstance';
+import { WorkflowInstanceState } from '../generated/governance/workflows/workflowInstanceState';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
+import {
+  WorkflowInstanceFromApplicationParams,
+  WorkflowInstanceStateParams,
+} from './workflowAPI.interface';
 
 export const getTestConnectionDefinitionByName = async (
   testDefinitionName: string
@@ -87,6 +94,34 @@ export const deleteWorkflowById = async (
   const response = await APIClient.delete<Workflow>(
     `/automations/workflows/${workflowId}`,
     { params: { hardDelete } }
+  );
+
+  return response.data;
+};
+
+export const getWorkflowInstancesForApplication = async (
+  params: WorkflowInstanceFromApplicationParams
+) => {
+  const response = await APIClient.get<PagingResponse<WorkflowInstance[]>>(
+    '/governance/workflowInstances',
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const getWorkflowInstanceStateById = async (
+  workflowName: string,
+  workflowInstanceId: string,
+  params: WorkflowInstanceStateParams
+) => {
+  const response = await APIClient.get<PagingResponse<WorkflowInstanceState[]>>(
+    `/governance/workflowInstanceStates/${workflowName}/${workflowInstanceId}`,
+    {
+      params,
+    }
   );
 
   return response.data;

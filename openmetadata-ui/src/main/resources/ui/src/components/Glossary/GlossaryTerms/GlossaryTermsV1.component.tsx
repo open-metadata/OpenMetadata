@@ -22,7 +22,6 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -48,13 +47,18 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
-import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
+import {
+  getGlossaryTermDetailsPath,
+  getGlossaryTermsVersionsPath,
+} from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
@@ -92,7 +96,7 @@ const GlossaryTermsV1 = ({
   const [assetCount, setAssetCount] = useState<number>(0);
   const { glossaryChildTerms } = useGlossaryStore();
   const childGlossaryTerms = glossaryChildTerms ?? [];
-  const { customizedPage } = useCustomPages(PageType.GlossaryTerm);
+  const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -263,6 +267,7 @@ const GlossaryTermsV1 = ({
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
+                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossaryTerm.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
@@ -301,7 +306,7 @@ const GlossaryTermsV1 = ({
     return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
-      EntityTabs.TERMS
+      EntityTabs.OVERVIEW
     );
   }, [
     customizedPage?.tabs,
@@ -350,6 +355,10 @@ const GlossaryTermsV1 = ({
       displayName,
     };
   }, [glossaryTerm, isVersionView]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <GenericProvider

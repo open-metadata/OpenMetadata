@@ -15,6 +15,7 @@
   "className": "org.openmetadata.service.apps.bundles.dayOneExperience.DayOneExperienceApp",
   "appConfiguration": {
     "type": "DayOneExperienceApplication",
-    "active": true
+    "active": true,
+    "entityLink": null
   }
 }

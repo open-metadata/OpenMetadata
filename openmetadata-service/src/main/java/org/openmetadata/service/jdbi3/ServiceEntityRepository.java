@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -133,6 +134,7 @@ public abstract class ServiceEntityRepository<
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateConnection();
+      updateIngestionAgent();
     }
 
     private void updateConnection() {
@@ -165,6 +167,17 @@ public abstract class ServiceEntityRepository<
 
           recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
         }
+      }
+    }
+
+    private void updateIngestionAgent() {
+      UUID originalAgentId =
+          original.getIngestionAgent() != null ? original.getIngestionAgent().getId() : null;
+      UUID updatedAgentId =
+          updated.getIngestionAgent() != null ? updated.getIngestionAgent().getId() : null;
+      if (!Objects.equals(originalAgentId, updatedAgentId)) {
+        addIngestionAgentRelationship(updated);
+        recordChange("ingestionAgent", originalAgentId, updatedAgentId, true);
       }
     }
   }

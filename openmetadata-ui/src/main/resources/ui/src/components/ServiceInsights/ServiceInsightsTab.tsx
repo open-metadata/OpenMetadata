@@ -11,30 +11,47 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { CloseOutlined } from '@ant-design/icons';
+import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, last, round } from 'lodash';
+import classNames from 'classnames';
+import { isUndefined, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   PLATFORM_INSIGHTS_CHART,
-  SERVICE_INSIGHTS_CHART,
+  SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
 } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
 import {
+  getWorkflowInstancesForApplication,
+  getWorkflowInstanceStateById,
+} from '../../rest/workflowAPI';
+import {
+  getCurrentDayStartGMTinMillis,
   getCurrentMillis,
-  getEpochMillisForPastDays,
+  getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityFeedLink } from '../../utils/EntityUtils';
+import {
+  getPlatformInsightsChartDataFormattingMethod,
+  getStatusIconFromStatusType,
+} from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
+import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   ChartData,
   ChartSeriesData,
 } from './PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import './service-insights-tab.less';
-import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
+import {
+  ServiceInsightsTabProps,
+  WorkflowStatesData,
+} from './ServiceInsightsTab.interface';
 
 const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
   const { serviceCategory } = useParams<{
@@ -47,54 +64,89 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
     tierDistributionChart: ChartData[];
   }>();
   const [isLoading, setIsLoading] = useState(false);
+  const [workflowStatesData, setWorkflowStatesData] =
+    useState<WorkflowStatesData>();
+  const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(false);
 
   const serviceName = serviceDetails.name;
+
+  const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
+
+  const fetchWorkflowInstanceStates = async () => {
+    try {
+      setIsWorkflowStatusLoading(true);
+      const startTs = getDayAgoStartGMTinMillis(6);
+      const endTs = getCurrentMillis();
+      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
+      const workflowInstances = await getWorkflowInstancesForApplication({
+        startTs,
+        endTs,
+        workflowDefinitionName: SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+        entityLink: getEntityFeedLink(
+          entityType,
+          serviceDetails.fullyQualifiedName
+        ),
+      });
+
+      const workflowInstanceId = workflowInstances.data[0]?.id;
+
+      if (workflowInstanceId) {
+        const workflowInstanceStates = await getWorkflowInstanceStateById(
+          SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+          workflowInstanceId,
+          {
+            startTs,
+            endTs,
+          }
+        );
+        setWorkflowStatesData({
+          mainInstanceState: workflowInstances.data[0],
+          subInstanceStates: workflowInstanceStates.data,
+        });
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsWorkflowStatusLoading(false);
+    }
+  };
 
   const fetchChartsData = async () => {
     try {
       setIsLoading(true);
-      const currentTimestampInMs = getCurrentMillis();
-      const sevenDaysAgoTimestampInMs = getEpochMillisForPastDays(7);
+      const currentTimestampInMs = getCurrentDayStartGMTinMillis();
+      const sevenDaysAgoTimestampInMs = getDayAgoStartGMTinMillis(6);
 
-      const chartsData = await getMultiChartsPreviewByName(
-        SERVICE_INSIGHTS_CHART,
-        {
-          start: sevenDaysAgoTimestampInMs,
-          end: currentTimestampInMs,
-          filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
-        }
-      );
+      const chartsList = [
+        ...PLATFORM_INSIGHTS_CHART,
+        ...(widgets.PIIDistributionWidget
+          ? [SystemChartType.PIIDistribution]
+          : []),
+        ...(widgets.TierDistributionWidget
+          ? [SystemChartType.TierDistribution]
+          : []),
+      ];
 
-      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map((chartType) => {
-        const summaryChartData = chartsData[chartType];
-
-        const data = summaryChartData.results;
-
-        const firstDayValue = data.length > 1 ? data[0]?.count : 0;
-        const lastDayValue = data[data.length - 1]?.count;
-
-        const percentageChange =
-          ((lastDayValue - firstDayValue) /
-            (firstDayValue === 0 ? lastDayValue : firstDayValue)) *
-          100;
-
-        const isIncreased = lastDayValue >= firstDayValue;
-
-        return {
-          chartType,
-          data,
-          isIncreased,
-          percentageChange: isNaN(percentageChange)
-            ? 0
-            : round(Math.abs(percentageChange), 2),
-          currentCount: round(last(summaryChartData.results)?.count ?? 0, 2),
-        };
+      const chartsData = await getMultiChartsPreviewByName(chartsList, {
+        start: sevenDaysAgoTimestampInMs,
+        end: currentTimestampInMs,
+        filter: `{"query":{"match":{"service.name.keyword":"${serviceName}"}}}`,
       });
 
-      const piiDistributionChart =
-        chartsData[SystemChartType.PIIDistribution].results;
-      const tierDistributionChart =
-        chartsData[SystemChartType.TierDistribution].results;
+      const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map(
+        getPlatformInsightsChartDataFormattingMethod(
+          chartsData,
+          sevenDaysAgoTimestampInMs,
+          currentTimestampInMs
+        )
+      );
+
+      const piiDistributionChart = chartsData[
+        SystemChartType.PIIDistribution
+      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      const tierDistributionChart = chartsData[
+        SystemChartType.TierDistribution
+      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
 
       setChartsResults({
         platformInsightsChart,
@@ -109,10 +161,9 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
   };
 
   useEffect(() => {
+    fetchWorkflowInstanceStates();
     fetchChartsData();
   }, []);
-
-  const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
 
   const arrayOfWidgets = [
     { Widget: widgets.PlatformInsightsWidget, name: 'PlatformInsightsWidget' },
@@ -140,8 +191,35 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
     }
   };
 
+  const {
+    Icon: StatusIcon,
+    message,
+    description,
+  } = getStatusIconFromStatusType(
+    workflowStatesData?.mainInstanceState?.status
+  );
+
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
+      {!isWorkflowStatusLoading && !isUndefined(workflowStatesData) && (
+        <Alert
+          closable
+          showIcon
+          className={classNames(
+            'status-banner',
+            workflowStatesData?.mainInstanceState?.status ??
+              WorkflowStatus.Running
+          )}
+          closeIcon={<CloseOutlined className="text-md" />}
+          description={description}
+          icon={
+            <div className="status-banner-icon">
+              <StatusIcon height={20} width={20} />
+            </div>
+          }
+          message={message}
+        />
+      )}
       {arrayOfWidgets.map(
         ({ Widget, name }) =>
           !isUndefined(Widget) && (
@@ -158,6 +236,7 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
                 chartsData={getChartsDataFromWidgetName(name)}
                 isLoading={isLoading}
                 serviceName={serviceName}
+                workflowStatesData={workflowStatesData}
               />
             </Col>
           )

@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -34,6 +35,7 @@ public class OmAppJobListener implements JobListener {
 
   public static final String APP_RUN_STATS = "AppRunStats";
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
+  public static final String SERVICES_FIELD = "services";
 
   protected OmAppJobListener() {
     this.repository = new AppRepository();
@@ -112,6 +114,13 @@ public class OmAppJobListener implements JobListener {
     runRecord.withEndTime(endTime);
     runRecord.setExecutionTime(endTime - runRecord.getStartTime());
 
+    if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD) != null) {
+      runRecord.setServices(
+          JsonUtils.convertObjects(
+              jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
+              EntityReference.class));
+    }
+
     if (jobException == null
         && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
             || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
@@ -134,6 +143,7 @@ public class OmAppJobListener implements JobListener {
         failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
         context.withAdditionalProperty("failure", failure);
       }
+
       runRecord.setFailureContext(context);
     }
 

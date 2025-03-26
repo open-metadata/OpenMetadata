@@ -140,6 +140,24 @@ public class EsUtils {
     return boolQuery;
   }
 
+  public static SearchResponse searchEntities(String index, String queryFilter, Boolean deleted)
+      throws IOException {
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
+
+    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+    searchRequest.source(searchSourceBuilder.size(10000));
+
+    RestHighLevelClient client =
+        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
+    return client.search(searchRequest, RequestOptions.DEFAULT);
+  }
+
   public static void buildSearchSourceFilter(
       String queryFilter, SearchSourceBuilder searchSourceBuilder) {
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {

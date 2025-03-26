@@ -63,7 +63,7 @@ export interface DbtPipeline {
 /**
  * Regex to only fetch databases that matches the pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only fetch tables or databases that matches the pattern.
  *
@@ -280,6 +280,8 @@ export interface Credentials {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -322,6 +324,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**

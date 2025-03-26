@@ -18,21 +18,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
-import { Page, PageType, Tab } from '../../../generated/system/ui/page';
+import { PageType, Tab } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import customizeGlossaryPageClassBase from '../../../utils/CustomizeGlossaryPage/CustomizeGlossaryPage';
 import {
@@ -45,8 +43,11 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getWidgetFromKey } from '../../../utils/GlossaryTerm/GlossaryTermUtil';
+import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DomainLabelV2 } from '../../DataAssets/DomainLabelV2/DomainLabelV2';
@@ -79,29 +80,25 @@ const GlossaryDetails = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { currentPersonaDocStore } = useCustomizeStore();
+
   // Since we are rendering this component for all customized tabs we need tab ID to get layout form store
   const { tab: activeTab = EntityTabs.TERMS } =
     useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Glossary);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Glossary);
 
   useGridLayoutDirection();
 
   const layout = useMemo(() => {
-    if (!currentPersonaDocStore) {
+    if (!customizedPage) {
       return customizeGlossaryPageClassBase.getDefaultWidgetForTab(activeTab);
     }
 
-    const page = currentPersonaDocStore?.data?.pages?.find(
-      (p: Page) => p.pageType === PageType.Glossary
-    );
-
-    if (page) {
-      return page.tabs.find((t: Tab) => t.id === activeTab)?.layout;
+    if (customizedPage) {
+      return customizedPage.tabs?.find((t: Tab) => t.id === activeTab)?.layout;
     } else {
       return customizeGlossaryPageClassBase.getDefaultWidgetForTab(activeTab);
     }
-  }, [currentPersonaDocStore, activeTab]);
+  }, [customizedPage, activeTab]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -246,12 +243,12 @@ const GlossaryDetails = ({
       });
     };
 
-    return layout.map((widget: WidgetConfig) => (
+    return layout?.map((widget: WidgetConfig) => (
       <div
         data-grid={widget}
+        data-testid={widget.i}
         id={widget.i}
-        key={widget.i}
-        style={{ overflow: 'scroll' }}>
+        key={widget.i}>
         {getWidgetFromKeyInternal(widget)}
       </div>
     ));
@@ -310,6 +307,7 @@ const GlossaryDetails = ({
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
+                  layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
@@ -339,6 +337,10 @@ const GlossaryDetails = ({
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <GenericProvider<Glossary>
       data={updatedGlossary}
@@ -363,7 +365,7 @@ const GlossaryDetails = ({
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.TERMS}
+            activeKey={activeTab}
             className="glossary-details-page-tabs"
             data-testid="tabs"
             items={tabs}

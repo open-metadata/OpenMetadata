@@ -21,11 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-} from '../../constants/constants';
+import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -61,7 +57,7 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
-  formatDateTime,
+  formatDateTimeLong,
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
@@ -69,13 +65,15 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../utils/EntityUtils';
-import { getIncidentManagerDetailPagePath } from '../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getIncidentManagerDetailPagePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
@@ -469,8 +467,8 @@ const IncidentManager = ({
         title: t('label.execution-time'),
         dataIndex: 'timestamp',
         key: 'timestamp',
-        width: 150,
-        render: (value: number) => (value ? formatDateTime(value) : '--'),
+        width: 200,
+        render: (value: number) => (value ? formatDateTimeLong(value) : '--'),
       },
       {
         title: t('label.status'),
@@ -501,7 +499,7 @@ const IncidentManager = ({
         title: t('label.severity'),
         dataIndex: 'severity',
         key: 'severity',
-        width: 150,
+        width: 100,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
             return <Skeleton.Input size="small" />;
@@ -608,12 +606,19 @@ const IncidentManager = ({
 
       <Col span={24}>
         <Table
-          bordered
           className="test-case-table-container"
           columns={columns}
           data-testid="test-case-incident-manager-table"
           dataSource={testCaseListData.data}
           loading={testCaseListData.isLoading}
+          {...(pagingData && showPagination
+            ? {
+                customPaginationProps: {
+                  ...pagingData,
+                  showPagination,
+                },
+              }
+            : {})}
           locale={{
             emptyText: (
               <FilterTablePlaceHolder
@@ -626,12 +631,6 @@ const IncidentManager = ({
           size="small"
         />
       </Col>
-
-      {pagingData && showPagination && (
-        <Col span={24}>
-          <NextPrevious {...pagingData} />
-        </Col>
-      )}
     </Row>
   );
 };

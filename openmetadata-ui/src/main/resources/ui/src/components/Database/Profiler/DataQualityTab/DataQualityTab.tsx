@@ -24,7 +24,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { getEntityDetailsPath } from '../../../../constants/constants';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -42,21 +41,23 @@ import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
 import {
   formatDate,
-  formatDateTime,
+  formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
-import { getIncidentManagerDetailPagePath } from '../../../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getIncidentManagerDetailPagePath,
+} from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../common/LastRunGraph/LastRunGraph.component';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import Table from '../../../common/Table/Table';
 import EditTestCaseModal from '../../../DataQuality/AddDataQualityTest/EditTestCaseModal';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
@@ -252,7 +253,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 150,
         sorter: true,
         render: (result: TestCaseResult) =>
-          result?.timestamp ? formatDateTime(result.timestamp) : '--',
+          result?.timestamp ? formatDateTimeLong(result.timestamp) : '--',
       },
       {
         title: t('label.incident'),
@@ -496,9 +497,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <Table
-          bordered
           className="test-case-table-container"
           columns={columns}
+          {...(pagingData && showPagination
+            ? {
+                customPaginationProps: {
+                  ...pagingData,
+                  showPagination,
+                },
+              }
+            : {})}
           data-testid="test-case-table"
           dataSource={sortedData}
           loading={isLoading}
@@ -529,9 +537,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           size="small"
           onChange={handleTableChange}
         />
-      </Col>
-      <Col span={24}>
-        {pagingData && showPagination && <NextPrevious {...pagingData} />}
       </Col>
       <Col>
         <EditTestCaseModal

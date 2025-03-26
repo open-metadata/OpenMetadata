@@ -24,11 +24,7 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -65,6 +61,7 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   getStoredProcedureDetailsPageTabs,
   STORED_PROCEDURE_DEFAULT_FIELDS,
@@ -86,7 +83,9 @@ const StoredProcedurePage = () => {
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const { customizedPage } = useCustomPages(PageType.StoredProcedure);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.StoredProcedure
+  );
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -514,7 +513,7 @@ const StoredProcedurePage = () => {
     }
   }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
 
-  if (isLoading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -528,7 +527,6 @@ const StoredProcedurePage = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.stored-procedure'),
       })}>
@@ -558,10 +556,10 @@ const StoredProcedurePage = () => {
           type={EntityType.STORED_PROCEDURE}
           onUpdate={handleStoreProcedureUpdate}>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="p-x-lg" span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.CODE}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={(activeKey: string) =>
