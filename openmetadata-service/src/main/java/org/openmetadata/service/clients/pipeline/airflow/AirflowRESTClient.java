@@ -174,30 +174,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
   @Override
   public PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
-    String pipelineName = ingestionPipeline.getName();
-    HttpResponse<String> response;
-    try {
-      String triggerUrl = buildURI("trigger").build().toString();
-      JSONObject requestPayload = new JSONObject();
-      requestPayload.put(DAG_ID, pipelineName);
-      response = post(triggerUrl, requestPayload.toString());
-      if (response.statusCode() == 200) {
-        return getResponse(200, response.body());
-      }
-    } catch (IOException | URISyntaxException e) {
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, TRIGGER_ERROR, e.getMessage());
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw IngestionPipelineDeploymentException.byMessage(
-          pipelineName, TRIGGER_ERROR, e.getMessage());
-    }
-
-    throw IngestionPipelineDeploymentException.byMessage(
-        pipelineName,
-        TRIGGER_ERROR,
-        "Failed to trigger IngestionPipeline",
-        Response.Status.fromStatusCode(response.statusCode()));
+    return runPipeline(ingestionPipeline, service, null);
   }
 
   @Override
@@ -211,7 +188,9 @@ public class AirflowRESTClient extends PipelineServiceClient {
       String triggerUrl = buildURI("trigger").build().toString();
       JSONObject requestPayload = new JSONObject();
       requestPayload.put(DAG_ID, pipelineName);
-      requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
+      if (config != null) {
+        requestPayload.put(CONF, Map.of(APP_CONFIG_OVERRIDE, config));
+      }
       response = post(triggerUrl, requestPayload.toString());
       if (response.statusCode() == 200) {
         return getResponse(200, response.body());
