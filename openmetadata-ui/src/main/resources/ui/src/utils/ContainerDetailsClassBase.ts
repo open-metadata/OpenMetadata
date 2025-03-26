@@ -48,6 +48,7 @@ export interface ContainerDetailPageTabProps {
   containerData: Container;
   fetchContainerDetail: (containerFQN: string) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
+  childrenCount: number;
 }
 
 type ContainerWidgetKeys =
