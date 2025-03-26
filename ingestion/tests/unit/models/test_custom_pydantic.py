@@ -6,6 +6,10 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -21,8 +25,6 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel, CustomSecretStr
-
-from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel, DataModelType
 
 
 class CustomPydanticValidationTest(TestCase):
@@ -195,7 +197,10 @@ class CustomPydanticValidationTest(TestCase):
             ],
         )
         assert fetch_response_revert_separator_3.name.root == 'test"dashboarddatamodel"'
-        assert fetch_response_revert_separator_3.columns[0].children[0].name.root == 'test "struct_children"'
+        assert (
+            fetch_response_revert_separator_3.columns[0].children[0].name.root
+            == 'test "struct_children"'
+        )
         assert fetch_response_revert_separator.name.root == "test::table"
         assert fetch_response_revert_separator_2.name.root == "test::table>"
 
