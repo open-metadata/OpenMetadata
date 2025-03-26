@@ -4,6 +4,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -300,7 +301,13 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     // -------------------------------------------------
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
-    Request request = new Request("GET", "di-data-assets-*/_search");
+    String clusterAlias = getSearchRepository().getClusterAlias();
+    String endpointSuffix = "di-data-assets-*";
+    String endpoint =
+        !(clusterAlias == null || clusterAlias.isEmpty())
+            ? String.format("%s-%s", clusterAlias, endpointSuffix)
+            : endpointSuffix;
+    Request request = new Request("GET", String.format("%s/_search", endpoint));
     String payload =
         String.format(
             "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}}}",
