@@ -148,6 +148,7 @@ public class DataQualityWorkflow {
     if (!dataQualityConfig.getEnabled()) {
       return;
     }
+    LOG.info("[Data Insights] Processing Data Quality Insights.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
