@@ -168,7 +168,7 @@ const FileNodeView: FC<NodeViewProps> = ({
           onOpenChange={handlePopoverVisibleChange}>
           <Spin
             indicator={<Loader size="small" />}
-            spinning={isMediaLoading || isFileLoading || isUploading}
+            spinning={isMediaLoading || isUploading}
             tip={isUploading ? t('label.uploading') : t('label.loading')}>
             {renderContent()}
           </Spin>
