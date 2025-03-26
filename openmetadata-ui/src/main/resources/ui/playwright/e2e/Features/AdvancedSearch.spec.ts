@@ -45,7 +45,7 @@ const user = new UserClass();
 const table = new TableClass(undefined, 'Regular');
 let glossaryEntity: Glossary;
 
-test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
+test.describe.serial('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
 

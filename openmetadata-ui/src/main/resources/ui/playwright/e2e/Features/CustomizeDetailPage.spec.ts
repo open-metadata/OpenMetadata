@@ -316,7 +316,7 @@ test.describe('Persona customize UI tab', async () => {
   });
 });
 
-test.describe('Persona customization', () => {
+test.describe.serial('Persona customization', () => {
   test.slow();
 
   test.beforeAll(async ({ browser }) => {
