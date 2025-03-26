@@ -398,7 +398,8 @@ def _(config: DbtGcsConfig):
                     f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}"
                 )
                 raise DBTConfigException(
-                    f"Unable to access GCS bucket {bucket_name}. Please verify the bucket exists and you have proper permissions."
+                    f"Unable to access GCS bucket {bucket_name}."
+                    "Please verify the bucket exists and you have proper permissions."
                 ) from bucket_exc
 
         for bucket in buckets:
