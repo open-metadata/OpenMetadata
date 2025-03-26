@@ -144,8 +144,14 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("service", service);
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter =
+        new ListFilter(include).addQueryParam("service", service).addQueryParam("domain", domain);
     if (root != null) {
       filter.addQueryParam("root", root.toString());
     }
