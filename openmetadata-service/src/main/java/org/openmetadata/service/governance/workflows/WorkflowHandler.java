@@ -16,6 +16,7 @@ import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
 import org.flowable.engine.HistoryService;
+import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
 import org.flowable.engine.ProcessEngines;
@@ -27,6 +28,7 @@ import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -34,6 +36,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.governance.workflows.flowable.sql.SqlMapper;
+import org.openmetadata.service.governance.workflows.flowable.sql.UnlockExecutionSql;
+import org.openmetadata.service.governance.workflows.flowable.sql.UnlockJobSql;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
@@ -41,10 +46,6 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 @Slf4j
 public class WorkflowHandler {
   private ProcessEngine processEngine;
-  private RepositoryService repositoryService;
-  private RuntimeService runtimeService;
-  private TaskService taskService;
-  private HistoryService historyService;
   private final Map<Object, Object> expressionMap = new HashMap<>();
   private static WorkflowHandler instance;
   @Getter private static volatile boolean initialized = false;
@@ -119,13 +120,17 @@ public class WorkflowHandler {
     // Add Global Failure Listener
     processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
 
-    ProcessEngine processEngine = processEngineConfiguration.buildProcessEngine();
+    this.processEngine = processEngineConfiguration.buildProcessEngine();
 
-    this.processEngine = processEngine;
-    this.repositoryService = processEngine.getRepositoryService();
-    this.runtimeService = processEngine.getRuntimeService();
-    this.taskService = processEngine.getTaskService();
-    this.historyService = processEngine.getHistoryService();
+    // Add SqlMapper
+    processEngine
+        .getProcessEngineConfiguration()
+        .getDbSqlSessionFactory()
+        .getSqlSessionFactory()
+        .getConfiguration()
+        .addMapper(SqlMapper.class);
+
+    unlockJobsOnStartup();
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
@@ -153,6 +158,7 @@ public class WorkflowHandler {
   }
 
   public void deploy(Workflow workflow) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
     BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
 
     // Deploy Main Workflow
@@ -180,12 +186,14 @@ public class WorkflowHandler {
   }
 
   public boolean isDeployed(WorkflowDefinition wf) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
     List<ProcessDefinition> processDefinitions =
         repositoryService.createProcessDefinitionQuery().processDefinitionKey(wf.getName()).list();
     return !processDefinitions.isEmpty();
   }
 
   public void deleteWorkflowDefinition(WorkflowDefinition wf) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
     List<ProcessDefinition> processDefinitions =
         repositoryService.createProcessDefinitionQuery().processDefinitionKey(wf.getName()).list();
 
@@ -209,18 +217,38 @@ public class WorkflowHandler {
 
   public ProcessInstance triggerByKey(
       String processDefinitionKey, String businessKey, Map<String, Object> variables) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     return runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
   }
 
   public void triggerWithSignal(String signal, Map<String, Object> variables) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     runtimeService.signalEventReceived(signal, variables);
   }
 
+  private void unlockJobsOnStartup() {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    ManagementService managementService = processEngine.getManagementService();
+
+    List<Execution> executions = runtimeService.createExecutionQuery().list();
+    for (Execution execution : executions) {
+      processEngine
+          .getManagementService()
+          .executeCustomSql(new UnlockExecutionSql(execution.getId()));
+    }
+    List<Job> jobs = managementService.createJobQuery().locked().list();
+    for (Job job : jobs) {
+      processEngine.getManagementService().executeCustomSql(new UnlockJobSql(job.getId()));
+    }
+  }
+
   public void setCustomTaskId(String taskId, UUID customTaskId) {
+    TaskService taskService = processEngine.getTaskService();
     taskService.setVariable(taskId, "customTaskId", customTaskId.toString());
   }
 
   public String getParentActivityId(String executionId) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     String activityId = null;
 
     Execution execution =
@@ -239,6 +267,7 @@ public class WorkflowHandler {
   }
 
   private Task getTaskFromCustomTaskId(UUID customTaskId) {
+    TaskService taskService = processEngine.getTaskService();
     return taskService
         .createTaskQuery()
         .processVariableValueEquals("customTaskId", customTaskId.toString())
@@ -269,6 +298,7 @@ public class WorkflowHandler {
   }
 
   public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
+    TaskService taskService = processEngine.getTaskService();
     try {
       Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
       if (oTask.isPresent()) {
@@ -286,6 +316,8 @@ public class WorkflowHandler {
   }
 
   public void terminateTaskProcessInstance(UUID customTaskId, String reason) {
+    TaskService taskService = processEngine.getTaskService();
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     try {
       List<Task> tasks =
           taskService
@@ -311,10 +343,12 @@ public class WorkflowHandler {
   }
 
   public void updateBusinessKey(String processInstanceId, UUID workflowInstanceBusinessKey) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     runtimeService.updateBusinessKey(processInstanceId, workflowInstanceBusinessKey.toString());
   }
 
   public boolean hasProcessInstanceFinished(String processInstanceId) {
+    HistoryService historyService = processEngine.getHistoryService();
     boolean hasFinished = false;
 
     HistoricProcessInstance historicProcessInstance =
@@ -332,6 +366,7 @@ public class WorkflowHandler {
 
   public boolean isActivityWithVariableExecuting(
       String activityName, String variableName, Object expectedValue) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     List<Execution> executions =
         runtimeService.createExecutionQuery().activityId(activityName).list();
 
@@ -345,6 +380,7 @@ public class WorkflowHandler {
   }
 
   public boolean triggerWorkflow(String workflowName) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     try {
       runtimeService.startProcessInstanceByKey(getTriggerWorkflowId(workflowName));
       return true;
@@ -354,6 +390,7 @@ public class WorkflowHandler {
   }
 
   public boolean isWorkflowSuspended(String workflowName) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
     ProcessDefinition processDefinition =
         repositoryService
             .createProcessDefinitionQuery()
@@ -370,6 +407,7 @@ public class WorkflowHandler {
   }
 
   public void suspendWorkflow(String workflowName) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
     if (isWorkflowSuspended(workflowName)) {
       LOG.debug(String.format("Workflow '%s' is already suspended.", workflowName));
     } else {
@@ -379,6 +417,7 @@ public class WorkflowHandler {
   }
 
   public void resumeWorkflow(String workflowName) {
+    RepositoryService repositoryService = processEngine.getRepositoryService();
     if (!isWorkflowSuspended(workflowName)) {
       LOG.debug(String.format("Workflow '%s' is already active.", workflowName));
     } else {
@@ -388,6 +427,7 @@ public class WorkflowHandler {
   }
 
   public void terminateWorkflow(String workflowName) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
     runtimeService
         .createProcessInstanceQuery()
         .processDefinitionKey(getTriggerWorkflowId(workflowName))
