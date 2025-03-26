@@ -24,7 +24,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction, EntityTabs } from '../../enums/entity.enum';
+import { EntityAction, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
@@ -40,6 +40,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
+import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
@@ -362,46 +363,55 @@ const GlossaryV1 = ({
   ) : (
     <>
       {(isLoading || isPermissionLoading) && <Loader />}
-      {!isLoading &&
-        !isPermissionLoading &&
-        !isEmpty(selectedData) &&
-        (isGlossaryActive ? (
-          <GlossaryDetails
-            handleGlossaryDelete={onGlossaryDelete}
-            isVersionView={isVersionsView}
-            permissions={glossaryPermission}
-            refreshGlossaryTerms={() => loadGlossaryTerms(true)}
-            termsLoading={isTermsLoading}
-            updateGlossary={handleGlossaryUpdate}
-            updateVote={updateVote}
-            onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term ?? null)
-            }
-            onEditGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(true, term ?? null)
-            }
-          />
-        ) : (
-          <GlossaryTermsV1
-            glossaryTerm={selectedData as GlossaryTerm}
-            handleGlossaryTermDelete={onGlossaryTermDelete}
-            handleGlossaryTermUpdate={onGlossaryTermUpdate}
-            isSummaryPanelOpen={isSummaryPanelOpen}
-            isVersionView={isVersionsView}
-            permissions={glossaryTermPermission}
-            refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
-            refreshGlossaryTerms={() => loadGlossaryTerms(true)}
-            termsLoading={isTermsLoading}
-            updateVote={updateVote}
-            onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term ?? null)
-            }
-            onAssetClick={onAssetClick}
-            onEditGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(true, term)
-            }
-          />
-        ))}
+
+      <GenericProvider<Glossary | GlossaryTerm>
+        currentVersionData={selectedData}
+        data={selectedData}
+        isVersionView={isVersionsView}
+        permissions={glossaryPermission}
+        type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        onUpdate={handleGlossaryUpdate}>
+        {!isLoading &&
+          !isPermissionLoading &&
+          !isEmpty(selectedData) &&
+          (isGlossaryActive ? (
+            <GlossaryDetails
+              handleGlossaryDelete={onGlossaryDelete}
+              isVersionView={isVersionsView}
+              permissions={glossaryPermission}
+              refreshGlossaryTerms={() => loadGlossaryTerms(true)}
+              termsLoading={isTermsLoading}
+              updateGlossary={handleGlossaryUpdate}
+              updateVote={updateVote}
+              onAddGlossaryTerm={(term) =>
+                handleGlossaryTermModalAction(false, term ?? null)
+              }
+              onEditGlossaryTerm={(term) =>
+                handleGlossaryTermModalAction(true, term ?? null)
+              }
+            />
+          ) : (
+            <GlossaryTermsV1
+              glossaryTerm={selectedData as GlossaryTerm}
+              handleGlossaryTermDelete={onGlossaryTermDelete}
+              handleGlossaryTermUpdate={onGlossaryTermUpdate}
+              isSummaryPanelOpen={isSummaryPanelOpen}
+              isVersionView={isVersionsView}
+              permissions={glossaryTermPermission}
+              refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
+              refreshGlossaryTerms={() => loadGlossaryTerms(true)}
+              termsLoading={isTermsLoading}
+              updateVote={updateVote}
+              onAddGlossaryTerm={(term) =>
+                handleGlossaryTermModalAction(false, term ?? null)
+              }
+              onAssetClick={onAssetClick}
+              onEditGlossaryTerm={(term) =>
+                handleGlossaryTermModalAction(true, term)
+              }
+            />
+          ))}
+      </GenericProvider>
 
       {selectedData && (
         <EntityDeleteModal

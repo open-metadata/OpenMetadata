@@ -61,6 +61,7 @@ import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomProp
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import { GenericTab } from '../../Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
@@ -68,7 +69,6 @@ import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
-import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
@@ -189,14 +189,7 @@ const GlossaryTermsV1 = ({
           </div>
         ),
         key: EntityTabs.OVERVIEW,
-        children: (
-          <GlossaryOverviewTab
-            editCustomAttributePermission={
-              !isVersionView &&
-              (permissions.EditAll || permissions.EditCustomFields)
-            }
-          />
-        ),
+        children: <GenericTab type={PageType.GlossaryTerm} />,
       },
       ...(!isVersionView
         ? [
