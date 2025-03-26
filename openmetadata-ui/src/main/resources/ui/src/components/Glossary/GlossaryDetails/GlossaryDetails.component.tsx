@@ -365,7 +365,6 @@ const GlossaryDetails = ({
         </Col>
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={activeTab}
             className="glossary-details-page-tabs"
             data-testid="tabs"

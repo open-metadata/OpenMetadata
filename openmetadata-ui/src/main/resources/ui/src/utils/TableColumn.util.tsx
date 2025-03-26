@@ -27,7 +27,7 @@ export const columnFilterIcon = (filtered: boolean) => (
       'filter-icon-active': filtered,
     })}
     component={FilterIcon}
-    data-testid="tag-filter"
+    data-testid="filter-icon"
     style={ICON_DIMENSION}
   />
 );
