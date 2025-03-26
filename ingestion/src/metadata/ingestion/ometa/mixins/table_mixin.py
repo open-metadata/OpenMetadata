@@ -85,10 +85,19 @@ class OMetaTableMixin:
                             except Exception as _:
                                 row[col_idx] = f"[binary]{value}"
 
+            try:
+                data = sample_data.model_dump_json()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error serializing sample data for {table.fullyQualifiedName.root} please check if the data is valid"
+                )
+                return None
+
             # Now safely serialize to JSON
             resp = self.client.put(
                 f"{self.get_suffix(Table)}/{table.id.root}/sampleData",
-                data=sample_data.model_dump_json(),
+                data=data,
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())

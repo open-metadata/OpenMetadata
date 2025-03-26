@@ -685,6 +685,12 @@ class OMetaTableTest(TestCase):
                 reference=self.create_schema_entity.fullyQualifiedName,
             )
         )
+        sample_data = TableData(
+            columns=["id"], rows=[[b"data\x00\x01\x02\x8e\xba\xab\xf0"]]
+        )
+        res = self.metadata.ingest_table_sample_data(table, sample_data)
+        assert res == sample_data
+
         sample_data = TableData(columns=["id"], rows=[[b"\x00\x01\x02"]])
         res = self.metadata.ingest_table_sample_data(table, sample_data)
         assert res == sample_data
