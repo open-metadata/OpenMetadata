@@ -522,7 +522,7 @@ const AppDetails = () => {
         <Col className="p-0" span={24}>
           <Tabs
             destroyInactiveTabPane
-            className="app-details-page-tabs entity-details-page-tabs"
+            className="app-details-page-tabs entity-details-page-tabs tabs-new"
             data-testid="tabs"
             items={tabs}
           />

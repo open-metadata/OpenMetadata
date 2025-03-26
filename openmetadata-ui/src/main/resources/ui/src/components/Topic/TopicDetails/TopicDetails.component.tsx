@@ -376,7 +376,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         entity: t('label.topic'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -400,7 +400,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

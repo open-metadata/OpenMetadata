@@ -305,7 +305,7 @@ const SearchSettingsPage = () => {
       className="search-settings"
       mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
-      <Row className="p-y-md p-x-lg settings-row" gutter={[0, 16]}>
+      <Row className="p-y-md settings-row" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -313,7 +313,7 @@ const SearchSettingsPage = () => {
           <PageHeader data={PAGE_HEADERS.SEARCH_SETTINGS} />
         </Col>
       </Row>
-      <Row className="p-y-md p-x-lg settings-row" gutter={[0, 16]}>
+      <Row className="p-y-md settings-row" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title className="text-sm font-semibold" level={5}>
             {t('label.global-setting-plural')}

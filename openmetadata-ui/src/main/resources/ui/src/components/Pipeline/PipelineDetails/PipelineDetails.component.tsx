@@ -316,7 +316,7 @@ const PipelineDetails = ({
         entity: t('label.pipeline'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -340,7 +340,7 @@ const PipelineDetails = ({
           permissions={pipelinePermissions}
           type={EntityType.PIPELINE}
           onUpdate={settingsUpdateHandler}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={tab}
               className="tabs-new"
