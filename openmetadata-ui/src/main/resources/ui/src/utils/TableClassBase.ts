@@ -39,7 +39,7 @@ export interface TableDetailPageTabProps {
   queryCount: number;
   isTourOpen: boolean;
   activeTab: EntityTabs;
-  totalFeedCount: number;
+  feedCount: FeedCounts;
   isViewTableType: boolean;
   viewAllPermission: boolean;
   viewQueriesPermission: boolean;

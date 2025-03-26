@@ -36,9 +36,7 @@ import {
 
 export interface StoredProcedureDetailPageTabProps {
   activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   decodedStoredProcedureFQN: string;
   entityName: string;
   code: string;
