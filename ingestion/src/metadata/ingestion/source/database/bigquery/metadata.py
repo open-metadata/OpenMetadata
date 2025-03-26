@@ -371,6 +371,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         tag_description="Bigquery Dataset Label",
                         classification_description="BigQuery Dataset Classification",
                         include_tags=self.source_config.includeTags,
+                        metadata=self.metadata,
+                        system_tags=True,
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.get().database]
@@ -391,6 +393,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         tag_description="Bigquery Policy Tag",
                         classification_description="BigQuery Policy Classification",
                         include_tags=self.source_config.includeTags,
+                        metadata=self.metadata,
+                        system_tags=True,
                     )
         except Exception as exc:
             yield Either(
@@ -533,6 +537,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     tag_description="Bigquery Table Label",
                     classification_description="BigQuery Table Classification",
                     include_tags=self.source_config.includeTags,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:

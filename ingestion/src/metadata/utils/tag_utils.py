@@ -20,6 +20,9 @@ from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -29,6 +32,7 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
+    ProviderType,
 )
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
@@ -46,6 +50,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+# pylint: disable=too-many-arguments
 def get_ometa_tag_and_classification(
     tags: List[str],
     classification_name: str,
@@ -53,39 +58,77 @@ def get_ometa_tag_and_classification(
     classification_description: str,
     include_tags: bool = True,
     tag_fqn: Optional[FullyQualifiedEntityName] = None,
+    metadata: Optional[OpenMetadata] = None,
+    system_tags: bool = False,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
     """
     Returns the OMetaTagAndClassification object
     """
-    if include_tags:
-        for tag in tags:
-            try:
-                classification = OMetaTagAndClassification(
-                    fqn=tag_fqn,
-                    classification_request=CreateClassificationRequest(
-                        name=EntityName(classification_name),
-                        description=Markdown(classification_description),
-                    ),
-                    tag_request=CreateTagRequest(
-                        classification=FullyQualifiedEntityName(classification_name),
-                        name=EntityName(tag),
-                        description=Markdown(tag_description)
-                        if tag_description
-                        else None,
-                    ),
-                )
-                yield Either(right=classification)
-                logger.debug(
-                    f"Classification {classification_name}, Tag {tag} Ingested"
-                )
-            except Exception as err:
-                yield Either(
-                    left=StackTraceError(
-                        name=tag,
-                        error=f"Error yielding tag [{tag}]: [{err}]",
-                        stackTrace=traceback.format_exc(),
+    if not include_tags:
+        return
+
+    if system_tags:
+        # Checking for system classification
+        classification_entities = (
+            metadata.es_search_from_name(
+                entity_type=Classification, name_search_string=classification_name
+            )
+            or []
+        )
+        for classification_entity in classification_entities:
+            if (
+                classification_entity.provider == ProviderType.system
+                and classification_entity.name.root.lower()
+                == classification_name.lower()
+            ):
+                classification_name = classification_entity.name.root
+                classification_description = classification_entity.description.root
+                break
+
+    for tag in tags:
+        try:
+            if system_tags:
+                # Checking for system tag
+                tag_entities = (
+                    metadata.es_search_from_name(
+                        entity_type=Tag, name_search_string=tag
                     )
+                    or []
                 )
+                for tag_entity in tag_entities:
+                    if (
+                        tag_entity.provider == ProviderType.system
+                        and tag_entity.classification.name == classification_name
+                        and tag_entity.name.root.lower() == tag.lower()
+                    ):
+                        tag = tag_entity.name.root
+                        tag_description = tag_entity.description.root
+                        break
+
+            classification = OMetaTagAndClassification(
+                fqn=tag_fqn,
+                classification_request=CreateClassificationRequest(
+                    name=EntityName(classification_name),
+                    description=Markdown(classification_description),
+                ),
+                tag_request=CreateTagRequest(
+                    classification=FullyQualifiedEntityName(classification_name),
+                    name=EntityName(tag),
+                    description=(
+                        Markdown(tag_description) if tag_description else None
+                    ),
+                ),
+            )
+            yield Either(right=classification)
+            logger.debug(f"Classification {classification_name}, Tag {tag} Ingested")
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name=tag,
+                    error=f"Error yielding tag [{tag}]: [{err}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
 
 @functools.lru_cache(maxsize=512)
