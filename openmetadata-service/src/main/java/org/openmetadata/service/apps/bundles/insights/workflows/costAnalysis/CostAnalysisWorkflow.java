@@ -138,6 +138,7 @@ public class CostAnalysisWorkflow {
     if (!costAnalysisConfig.getEnabled()) {
       return;
     }
+    LOG.info("[Data Insights] Processing Cost Analysis.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
