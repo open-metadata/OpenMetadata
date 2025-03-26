@@ -168,7 +168,8 @@ const SearchSettingsPage = () => {
   };
 
   // Term Boost
-  const handleAddNewTermBoost = () => {
+  const handleAddNewTermBoost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     setShowNewTermBoost(true);
   };
 
@@ -236,7 +237,8 @@ const SearchSettingsPage = () => {
 
   // Field Value Boost
 
-  const handleAddFieldValueBoost = () => {
+  const handleAddFieldValueBoost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     setSelectedFieldValueBoost(undefined);
     setShowFieldValueBoostModal(true);
   };
@@ -383,6 +385,7 @@ const SearchSettingsPage = () => {
                       <Button
                         className="term-boost-add-btn"
                         data-testid="term-boost-add-btn"
+                        disabled={isUpdating || showNewTermBoost}
                         icon={
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
@@ -421,6 +424,7 @@ const SearchSettingsPage = () => {
                       <Button
                         className="field-value-boost-add-btn"
                         data-testid="add-field-value-boost-btn"
+                        disabled={isUpdating || showFieldValueBoostModal}
                         icon={
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
