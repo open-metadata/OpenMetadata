@@ -86,6 +86,7 @@ def get_ometa_tag_and_classification(
                 break
 
     for tag in tags:
+        specific_tag_description = tag_description
         try:
             if system_tags:
                 # Checking for system tag
@@ -102,7 +103,7 @@ def get_ometa_tag_and_classification(
                         and tag_entity.name.root.lower() == tag.lower()
                     ):
                         tag = tag_entity.name.root
-                        tag_description = tag_entity.description.root
+                        specific_tag_description = tag_entity.description.root
                         break
 
             classification = OMetaTagAndClassification(
@@ -115,7 +116,9 @@ def get_ometa_tag_and_classification(
                     classification=FullyQualifiedEntityName(classification_name),
                     name=EntityName(tag),
                     description=(
-                        Markdown(tag_description) if tag_description else None
+                        Markdown(specific_tag_description)
+                        if specific_tag_description
+                        else None
                     ),
                 ),
             )
