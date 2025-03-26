@@ -60,8 +60,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
-import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
 import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -70,11 +69,6 @@ import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.c
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
-
-const queryParams = {
-  startTs: getEpochMillisForPastDays(1),
-  endTs: getCurrentMillis(),
-};
 
 function IngestionListTable({
   bordered = true,
@@ -120,6 +114,7 @@ function IngestionListTable({
   const [recentRunStatuses, setRecentRunStatuses] = useState<
     Record<string, PipelineStatus[]>
   >({});
+  const [isIngestionRunsLoading, setIsIngestionRunsLoading] = useState(false);
 
   const handleDeleteSelection = useCallback((row: SelectedRowDetails) => {
     setDeleteSelection(row);
@@ -183,6 +178,11 @@ function IngestionListTable({
 
   const fetchIngestionPipelineExtraDetails = useCallback(async () => {
     try {
+      setIsIngestionRunsLoading(true);
+      const queryParams = {
+        startTs: getEpochMillisForPastDays(1),
+        endTs: getCurrentMillis(),
+      };
       const permissionPromises = ingestionData.map((item) =>
         getEntityPermissionByFqn(
           ResourceEntity.INGESTION_PIPELINE,
@@ -231,6 +231,8 @@ function IngestionListTable({
       setRecentRunStatuses(recentRunStatusData);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsIngestionRunsLoading(false);
     }
   }, [ingestionData]);
 
@@ -318,7 +320,7 @@ function IngestionListTable({
               key: 'description',
               render: (description: string) =>
                 !isUndefined(description) && description.trim() ? (
-                  <RichTextEditorPreviewerV1
+                  <RichTextEditorPreviewerNew
                     markdown={highlightSearchText(description, searchText)}
                     maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                   />
@@ -373,6 +375,7 @@ function IngestionListTable({
             fetchStatus={false}
             handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
             ingestion={record}
+            isAppRunsLoading={isIngestionRunsLoading}
             pipelineIdToFetchStatus={pipelineIdToFetchStatus}
           />
         ),
@@ -404,6 +407,7 @@ function IngestionListTable({
       handlePipelineIdToFetchStatus,
       pipelineTypeColumnObj,
       recentRunStatuses,
+      isIngestionRunsLoading,
     ]
   );
 
@@ -433,6 +437,19 @@ function IngestionListTable({
             bordered={bordered}
             className={tableClassName}
             columns={tableColumn}
+            {...(!isUndefined(ingestionPagingInfo) &&
+            ingestionPagingInfo.showPagination &&
+            onPageChange
+              ? {
+                  customPaginationProps: {
+                    ...ingestionPagingInfo,
+                    isLoading,
+                    isNumberBased: isNumberBasedPaging,
+                    pagingHandler: onPageChange,
+                    showPagination: true,
+                  },
+                }
+              : {})}
             data-testid="ingestion-list-table"
             dataSource={ingestionData}
             loading={isLoading}
@@ -453,23 +470,6 @@ function IngestionListTable({
             {...extraTableProps}
           />
         </Col>
-
-        {!isUndefined(ingestionPagingInfo) &&
-          ingestionPagingInfo.showPagination &&
-          onPageChange && (
-            <Col span={24}>
-              <NextPrevious
-                className="m-b-sm"
-                currentPage={ingestionPagingInfo.currentPage}
-                isLoading={isLoading}
-                isNumberBased={isNumberBasedPaging}
-                pageSize={ingestionPagingInfo.pageSize}
-                paging={ingestionPagingInfo.paging}
-                pagingHandler={onPageChange}
-                onShowSizeChange={ingestionPagingInfo.handlePageSizeChange}
-              />
-            </Col>
-          )}
       </Row>
 
       <EntityDeleteModal

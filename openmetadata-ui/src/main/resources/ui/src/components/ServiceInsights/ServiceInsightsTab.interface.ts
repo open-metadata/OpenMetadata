@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
+import { WorkflowInstance } from '../../generated/governance/workflows/workflowInstance';
+import { WorkflowInstanceState } from '../../generated/governance/workflows/workflowInstanceState';
 import { ServicesType } from '../../interface/service.interface';
 
 export interface ServiceInsightsTabProps {
   serviceDetails: ServicesType;
 }
-
+export interface WorkflowStatesData {
+  mainInstanceState: WorkflowInstance;
+  subInstanceStates: WorkflowInstanceState[];
+}
 export interface ServiceInsightWidgetCommonProps {
   serviceName: string;
+  workflowStatesData?: WorkflowStatesData;
 }

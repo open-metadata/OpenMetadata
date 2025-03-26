@@ -252,7 +252,8 @@ const BotDetails: FC<BotsDetailProps> = ({
             </Typography.Text>
           </div>
         </div>
-      }>
+      }
+      rightPanelWidth={300}>
       <div className="p-sm p-x-md">
         <TitleBreadcrumb
           titleLinks={[

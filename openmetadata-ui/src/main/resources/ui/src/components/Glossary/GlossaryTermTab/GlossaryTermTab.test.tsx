@@ -49,7 +49,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
