@@ -36,6 +36,7 @@ import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.Pattern;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -238,6 +239,47 @@ public class LineageResource {
                 .withLayerFrom(from)
                 .withLayerSize(size)
                 .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
+  }
+
+  @GET
+  @Path("/getPlatformLineage")
+  @Operation(
+      operationId = "getPlatformLineage",
+      summary = "Get Platform Lineage",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public SearchLineageResult searchLineage(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "view (service or domain)")
+          @QueryParam("view")
+          @Pattern(
+              regexp = "service|domain|dataProduct|all",
+              message = "Invalid type. Allowed values: service, domain.")
+          String view,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted)
+      throws IOException {
+    if (Entity.getSearchRepository().getIndexMapping(view) != null) {
+      view =
+          Entity.getSearchRepository()
+              .getIndexMapping(view)
+              .getIndexName(Entity.getSearchRepository().getClusterAlias());
+    }
+    return Entity.getSearchRepository().searchPlatformLineage(view, queryFilter, deleted);
   }
 
   @GET

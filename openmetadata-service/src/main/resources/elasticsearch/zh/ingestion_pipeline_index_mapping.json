@@ -93,7 +93,7 @@
       "href": {
         "type": "text"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -270,7 +270,13 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -291,6 +297,25 @@
       "pipelineType": {
         "type": "keyword"
       },
+      "pipelineStatuses": {
+        "properties": {
+          "pipelineState": {
+            "type": "keyword"
+          },
+          "runId": {
+            "type": "keyword"
+          },
+          "timestamp": {
+            "type": "long"
+          },
+          "startDate": {
+            "type": "long"
+          },
+          "endDate": {
+            "type": "long"
+          }
+        }
+      },
       "entityType": {
         "type": "keyword"
       },
@@ -301,7 +326,7 @@
         "type": "long",
         "null_value": 0
       },
-      "votes" : {
+      "votes": {
         "type": "object"
       },
       "descriptionStatus": {
@@ -311,14 +336,14 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "airflowConfig" : {
-        "properties" : {
-          "scheduleInterval" : {
-            "type" : "text",
-            "fields" : {
-              "keyword" : {
-                "type" : "keyword",
-                "ignore_above" : 256
+      "airflowConfig": {
+        "properties": {
+          "scheduleInterval": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
               }
             }
           }

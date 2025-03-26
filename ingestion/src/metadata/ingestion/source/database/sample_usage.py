@@ -92,6 +92,8 @@ class SampleUsageSource(UsageSource):
                     databaseName="ecommerce_db",
                     serviceName=self.config.serviceName,
                     databaseSchema="shopify",
+                    cost=row.get("cost"),
+                    userName=row.get("user"),
                 )
                 for row in self.query_logs
             ]

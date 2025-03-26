@@ -22,9 +22,10 @@ export interface ChartData {
 export interface ChartSeriesData {
   chartType: SystemChartType;
   data: ChartData[];
-  percentageChange: number;
-  currentCount: number;
-  isIncreased: boolean;
+  percentageChange?: number;
+  currentPercentage: number;
+  isIncreased?: boolean;
+  noRecords?: boolean;
 }
 
 export interface PlatformInsightsWidgetProps

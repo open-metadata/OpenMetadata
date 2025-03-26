@@ -50,7 +50,9 @@ describe('DateTimeUtils tests', () => {
   });
 
   it(`formatDateShort should formate date and time both`, () => {
-    expect(formatDateTimeLong(0)).toBe(`Thu 1th January, 1970, 12:00 AM`);
+    expect(formatDateTimeLong(0)).toBe(
+      `January 01, 1970, 12:00 AM (UTC+00:00)`
+    );
   });
 
   it(`formatTimeDurationFromSeconds should formate date and time both`, () => {
@@ -140,7 +142,7 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     { input: 0, expected: '0s' },
     { input: 1000, expected: '1s' },
     { input: 60000, expected: '1m' },
-    { input: 3600000, expected: '1h' },
+    { input: 3600020, expected: '1h' },
     { input: 7265000, expected: '2h 1m 5s' },
     { input: 59999, expected: '59s' },
     { input: 61000, expected: '1m 1s' },
@@ -148,11 +150,25 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     { input: 86400000, expected: '1d' },
     { input: 90061000, expected: '1d 1h 1m 1s' },
     { input: -1000, expected: '0s' },
+    { input: 1200, expected: '1s 200ms', showMilliseconds: true },
+    {
+      input: 90061560,
+      expected: '1d 1h 1m 1s 560ms',
+      length: 5,
+      showMilliseconds: true,
+    },
+    { input: 90061560, expected: '1d 1h', length: 2, showMilliseconds: true },
   ];
 
-  testCases.forEach(({ input, expected }) => {
+  testCases.forEach(({ input, expected, length, showMilliseconds }) => {
     it(`should return "${expected}" for ${input} milliseconds`, () => {
-      expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
+      expect(
+        convertMillisecondsToHumanReadableFormat(
+          input,
+          length,
+          showMilliseconds
+        )
+      ).toBe(expected);
     });
   });
 

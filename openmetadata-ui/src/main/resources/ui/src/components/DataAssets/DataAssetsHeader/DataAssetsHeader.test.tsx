@@ -25,6 +25,8 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
+import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
+import { AssetCertification } from '../../../generated/type/assetCertification';
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',
@@ -222,5 +224,72 @@ describe('DataAssetsHeader component', () => {
     });
 
     mockIsAlertSupported = false;
+  });
+
+  it('should render source URL button when sourceUrl is present', () => {
+    const mockSourceUrl = 'http://test-source.com';
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          sourceUrl: mockSourceUrl,
+        }}
+      />
+    );
+
+    const sourceUrlButton = screen.getByTestId('source-url-button');
+
+    const sourceUrlLink = screen.getByRole('link');
+
+    expect(sourceUrlButton).toBeInTheDocument();
+    expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
+    expect(sourceUrlLink).toHaveAttribute('target', '_blank');
+    expect(screen.getByText('label.source-url')).toBeInTheDocument();
+  });
+
+  it('should not render source URL button when sourceUrl is not present', () => {
+    render(<DataAssetsHeader {...mockProps} />);
+
+    expect(screen.queryByTestId('source-url-button')).not.toBeInTheDocument();
+  });
+
+  it('should render certification when certification is present', () => {
+    const mockCertification: AssetCertification = {
+      tagLabel: {
+        tagFQN: 'Certification.Bronze',
+        name: 'Bronze',
+        displayName: 'Bronze_Medal',
+        description: 'Bronze certified Data Asset test',
+        style: {
+          color: '#C08329',
+          iconURL: 'BronzeCertification.svg',
+        },
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      },
+      appliedDate: 1732814645688,
+      expiryDate: 1735406645688,
+    };
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          certification: mockCertification,
+        }}
+      />
+    );
+
+    expect(screen.getByText('label.certification')).toBeInTheDocument();
+
+    const certificatComponent = screen.getByTestId(
+      `certification-${mockCertification.tagLabel.tagFQN}`
+    );
+
+    expect(certificatComponent).toBeInTheDocument();
+    expect(certificatComponent).toHaveTextContent('Bronze_Medal');
   });
 });

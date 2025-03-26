@@ -57,16 +57,13 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
 
 export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
-    page.locator(
-      '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
-    )
+    page
+      .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
+      .first()
   ).toBeVisible();
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
-  ).toBeVisible();
 };
 
 export const deletedUserChecks = async (page: Page) => {
@@ -84,9 +81,6 @@ export const deletedUserChecks = async (page: Page) => {
   ).not.toBeVisible();
   await expect(
     page.locator('[data-testid="edit-teams-button"]')
-  ).not.toBeVisible();
-  await expect(
-    page.locator('[data-testid="edit-roles-button"]')
   ).not.toBeVisible();
   await expect(
     page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
@@ -132,12 +126,18 @@ export const softDeleteUserProfilePage = async (
 
   await page.getByTestId(userName).click();
 
-  await page.getByTestId('user-profile-details').click();
-
   await nonDeletedUserChecks(page);
 
-  await page.click('[data-testid="manage-button"]');
-  await page.click('[data-testid="delete-button"]');
+  await page.waitForSelector('[data-testid="user-profile-manage-btn"]', {
+    state: 'visible',
+  });
+  await page.click('[data-testid="user-profile-manage-btn"]');
+
+  await page.waitForSelector('.ant-popover:not(.ant-popover-hidden)', {
+    state: 'visible',
+  });
+
+  await page.getByText('Delete Profile').click();
 
   await page.waitForSelector('[role="dialog"].ant-modal');
 
@@ -159,8 +159,8 @@ export const softDeleteUserProfilePage = async (
 };
 
 export const restoreUserProfilePage = async (page: Page, fqn: string) => {
-  await page.click('[data-testid="manage-button"]');
-  await page.click('[data-testid="restore-button"]');
+  await page.click('[data-testid="user-profile-manage-btn"]');
+  await page.getByText('Restore').click();
 
   await page.waitForSelector('[role="dialog"].ant-modal');
 
@@ -185,9 +185,8 @@ export const hardDeleteUserProfilePage = async (
   page: Page,
   displayName: string
 ) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('delete-button').click();
-
+  await page.getByTestId('user-profile-manage-btn').click();
+  await page.getByText('Delete Profile').click();
   await page.waitForSelector('[role="dialog"].ant-modal');
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
@@ -197,13 +196,18 @@ export const hardDeleteUserProfilePage = async (
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
+  const toastPromises = [
+    page.waitForSelector('[data-testid="alert-bar"]'),
+    page.waitForSelector('[data-testid="alert-icon"]'),
+    page.waitForSelector('[data-testid="alert-icon-close"]'),
+  ];
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=true&recursive=true'
   );
   await page.click('[data-testid="confirm-button"]');
 
-  await deleteResponse;
-
+  // Wait for both the delete response and all toast elements to appear
+  await Promise.all([deleteResponse, ...toastPromises]);
   await toastNotification(page, /deleted successfully!/);
 };
 
@@ -211,7 +215,7 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
   await page.fill('[data-testid="displayName"]', '');
-  await page.type('[data-testid="displayName"]', editedUserName);
+  await page.getByTestId('displayName').fill(editedUserName);
 
   const saveResponse = page.waitForResponse('/api/v1/users/*');
   await page.click('[data-testid="save-display-name"]');
@@ -228,7 +232,7 @@ export const editTeams = async (page: Page, teamName: string) => {
   await page.click('.ant-select-selection-item-remove > .anticon');
 
   await page.click('[data-testid="team-select"]');
-  await page.type('[data-testid="team-select"]', teamName);
+  await page.getByTestId('team-select').fill(teamName);
 
   // Click the team from the dropdown
   await page.click('.filter-node > .ant-select-tree-node-content-wrapper');
@@ -278,8 +282,7 @@ export const handleAdminUpdateDetails = async (
 
 export const handleUserUpdateDetails = async (
   page: Page,
-  editedUserName: string,
-  updatedDescription: string
+  editedUserName: string
 ) => {
   const feedResponse = page.waitForResponse(
     '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
@@ -291,19 +294,15 @@ export const handleUserUpdateDetails = async (
   await editDisplayName(page, editedUserName);
 
   // edit description
-  await page.click('.ant-collapse-expand-icon > .anticon > svg');
-  await editDescription(page, updatedDescription);
 };
 
 export const updateUserDetails = async (
   page: Page,
   {
     updatedDisplayName,
-    updatedDescription,
     isAdmin,
   }: {
     updatedDisplayName: string;
-    updatedDescription: string;
     teamName: string;
     isAdmin?: boolean;
     role?: string;
@@ -312,7 +311,7 @@ export const updateUserDetails = async (
   if (isAdmin) {
     await handleAdminUpdateDetails(page, updatedDisplayName);
   } else {
-    await handleUserUpdateDetails(page, updatedDisplayName, updatedDescription);
+    await handleUserUpdateDetails(page, updatedDisplayName);
   }
 };
 
@@ -668,10 +667,7 @@ export const addUser = async (
   await page.fill('#confirmPassword', password);
 
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
-  await page.type(
-    '[data-testid="roles-dropdown"] > .ant-select-selector',
-    role
-  );
+  await page.getByTestId('roles-dropdown').getByRole('combobox').fill(role);
   await page.click('.ant-select-item-option-content');
   await page.click('[data-testid="roles-dropdown"] > .ant-select-selector');
 

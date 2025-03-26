@@ -46,8 +46,10 @@ jest.mock(
 jest.mock('../AddWidgetModal/AddWidgetModal', () => {
   return jest.fn().mockImplementation(({ handleCloseAddWidgetModal }) => (
     <div>
-      AddWidgetModal
-      <div onClick={handleCloseAddWidgetModal}>handleCloseAddWidgetModal</div>
+      AddWidgetModal{' '}
+      <button onClick={handleCloseAddWidgetModal}>
+        handleCloseAddWidgetModal
+      </button>
     </div>
   ));
 });
@@ -57,8 +59,10 @@ jest.mock(
   () => {
     return jest.fn().mockImplementation(({ handleOpenAddWidgetModal }) => (
       <div>
-        EmptyWidgetPlaceholder
-        <div onClick={handleOpenAddWidgetModal}>handleOpenAddWidgetModal</div>
+        EmptyWidgetPlaceholder{' '}
+        <button onClick={handleOpenAddWidgetModal}>
+          handleOpenAddWidgetModal
+        </button>
       </div>
     ));
   }
@@ -135,6 +139,27 @@ jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({ isAuthDisabled: false })),
 }));
 
+jest.mock(
+  '../../../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader',
+  () => ({
+    CustomizablePageHeader: jest
+      .fn()
+      .mockImplementation(({ onReset, onSave }) => (
+        <div data-testid="customizable-page-header">
+          <button data-testid="cancel-button" onClick={onReset}>
+            Cancel
+          </button>
+          <button data-testid="reset-button" onClick={onReset}>
+            Reset
+          </button>
+          <button data-testid="save-button" onClick={onSave}>
+            Save
+          </button>
+        </div>
+      )),
+  })
+);
+
 describe('CustomizeMyData component', () => {
   it('CustomizeMyData should render the widgets in the page config', async () => {
     await act(async () => {
@@ -152,19 +177,7 @@ describe('CustomizeMyData component', () => {
     expect(screen.queryByText('KnowledgePanel.MyData')).toBeNull();
   });
 
-  it('CustomizeMyData should reroute to the customizable page settings page on click of cancel button', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
-
-    const cancelButton = screen.getByTestId('cancel-button');
-
-    await act(async () => userEvent.click(cancelButton));
-
-    expect(mockPush).toHaveBeenCalledWith('/settings/persona/testPersona');
-  });
-
-  it('CustomizeMyData should display reset layout confirmation modal on click of reset button', async () => {
+  it('should call onSaveLayout on reset', async () => {
     await act(async () => {
       render(<CustomizeMyData {...mockProps} />);
     });
@@ -173,43 +186,7 @@ describe('CustomizeMyData component', () => {
 
     await act(async () => userEvent.click(resetButton));
 
-    expect(screen.getByTestId('reset-layout-modal')).toBeInTheDocument();
-  });
-
-  it('CustomizeMyData should call handlePageDataChange with default layout and close the reset confirmation modal', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
-
-    const resetButton = screen.getByTestId('reset-button');
-
-    await act(async () => userEvent.click(resetButton));
-
-    expect(screen.getByTestId('reset-layout-modal')).toBeInTheDocument();
-
-    const yesButton = screen.getByText('label.yes');
-
-    await act(async () => userEvent.click(yesButton));
-
-    expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
-  });
-
-  it('CustomizeMyData should close the reset confirmation modal without calling handlePageDataChange', async () => {
-    await act(async () => {
-      render(<CustomizeMyData {...mockProps} />);
-    });
-
-    const resetButton = screen.getByTestId('reset-button');
-
-    await act(async () => userEvent.click(resetButton));
-
-    expect(screen.getByTestId('reset-layout-modal')).toBeInTheDocument();
-
-    const noButton = screen.getByText('label.no');
-
-    await act(async () => userEvent.click(noButton));
-
-    expect(screen.queryByTestId('reset-layout-modal')).toBeNull();
+    expect(mockProps.onSaveLayout).toHaveBeenCalled();
   });
 
   it('CustomizeMyData should call onSaveLayout after clicking on save layout button', async () => {

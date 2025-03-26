@@ -107,16 +107,18 @@ test('Roles page should work properly', async ({ page }) => {
     // Navigating to roles tab to verify the added role
     await page.locator('[data-testid="breadcrumb-link"]').first().click();
 
-    await expect(page.locator('table')).toContainText(roleName);
+    await expect(
+      page.getByRole('cell', { name: roleName, exact: true })
+    ).toBeVisible();
 
     // second policy should be visible on tooltip
     await page
       .locator(`[data-row-key="${roleName}"] [data-testid="plus-more-count"]`)
       .click();
 
-    await expect(page.locator('[role="tooltip"]')).toContainText(
-      policies.dataStewardPolicy
-    );
+    await expect(
+      page.getByRole('tooltip', { name: policies.dataStewardPolicy })
+    ).toBeVisible();
   });
 
   await test.step('Add new role without selecting data', async () => {

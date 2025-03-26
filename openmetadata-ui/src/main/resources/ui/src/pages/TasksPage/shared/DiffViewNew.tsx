@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { Change } from 'diff';
-import { uniqueId } from 'lodash';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
 import {
   Thread,
   ThreadTaskStatus,
@@ -36,68 +37,107 @@ export const DiffViewNew = ({
   const [shouldShowViewMore, setShouldShowViewMore] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  function stripHtml(html: string) {
-    return html
-      .replace(/<(?!\/?strong\b)[^>]+>/g, '')
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .trim();
-  }
-
-  const elements = diffArr.map((diff) => {
-    const diffValue = stripHtml(diff.value);
-    if (diff.added) {
-      return (
-        <ins
-          className="diff-added-new"
-          dangerouslySetInnerHTML={{ __html: diffValue }}
-          data-testid="diff-added"
-          key={uniqueId()}
-        />
-      );
-    }
-    if (diff.removed) {
-      return (
-        <del
-          className="diff-removed-new"
-          dangerouslySetInnerHTML={{ __html: diffValue }}
-          data-testid="diff-removed-new"
-          key={uniqueId()}
-        />
-      );
-    }
-
-    return (
-      <span
-        className="diff-normal-new"
-        dangerouslySetInnerHTML={{ __html: diffValue }}
-        data-testid="diff-normal-new"
-        key={uniqueId()}
-      />
-    );
-  });
-
-  // Check if content exceeds the clamp height
   useEffect(() => {
     const checkHeight = () => {
       if (contentRef.current) {
-        const element = contentRef.current;
-        // Get the line height and max lines from CSS
-        const lineHeight = parseInt(
-          window.getComputedStyle(element).lineHeight
-        );
+        const computedStyle = window.getComputedStyle(contentRef.current);
+        const lineHeight = parseInt(computedStyle.lineHeight, 10);
+
+        // Force the content to be unclamped temporarily for measurement
+        (contentRef.current.style as any)['-webkit-line-clamp'] = 'none';
+        contentRef.current.style.maxHeight = 'none';
+
+        // Get the full height
+        const fullHeight = contentRef.current.scrollHeight;
+
+        // Reset the styles
+        (contentRef.current.style as any)['-webkit-line-clamp'] = '';
+        contentRef.current.style.maxHeight = '';
+
+        // Calculate max height based on number of lines
         const maxLines = showDescTitle ? 3 : 2;
         const maxHeight = lineHeight * maxLines;
 
-        setShouldShowViewMore(element.scrollHeight > maxHeight);
+        setShouldShowViewMore(fullHeight > maxHeight);
       }
     };
 
     checkHeight();
-    // Add resize listener to recheck on window resize
-    window.addEventListener('resize', checkHeight);
 
-    return () => window.removeEventListener('resize', checkHeight);
+    const timer = setTimeout(checkHeight, 200);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [diffArr, showDescTitle]);
+
+  const contentClassName = useMemo(() => {
+    if (expanded) {
+      return '';
+    }
+
+    return showDescTitle
+      ? 'clamp-text-3 overflow-hidden'
+      : 'clamp-text-2 overflow-hidden';
+  }, [expanded, showDescTitle]);
+
+  const getDiffKey = (diff: Change) => {
+    if (diff.added) {
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-added`;
+    }
+    if (diff.removed) {
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-removed`;
+    }
+
+    return `diff-${diff.value}-${diff.removed}-${diff.added}-normal`;
+  };
+
+  const elements = useMemo(
+    () =>
+      diffArr.map((diff) => {
+        const key = getDiffKey(diff);
+
+        if (diff.added) {
+          return (
+            <ins className="diff-added-new" data-testid="diff-added" key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </ins>
+          );
+        }
+        if (diff.removed) {
+          return (
+            <del
+              className="diff-removed-new"
+              data-testid="diff-removed-new"
+              key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </del>
+          );
+        }
+
+        return (
+          <span
+            className="diff-normal-new"
+            data-testid="diff-normal-new"
+            key={key}>
+            <TaskDescriptionPreviewer
+              enableSeeMoreVariant={false}
+              markdown={diff.value}
+              showReadMoreBtn={false}
+            />
+          </span>
+        );
+      }),
+    [diffArr]
+  );
 
   return (
     <div
@@ -137,26 +177,19 @@ export const DiffViewNew = ({
         {diffArr.length ? (
           <>
             <div
-              className={classNames(
-                'relative',
-                expanded
-                  ? ''
-                  : showDescTitle
-                  ? 'clamp-text-3 overflow-hidden'
-                  : 'clamp-text-2  overflow-hidden'
-              )}
+              className={classNames('relative', contentClassName)}
               ref={contentRef}>
               {elements}
             </div>
-            {!expanded && shouldShowViewMore && (
-              <span className="text-expand" onClick={() => setExpanded(true)}>
-                {t('label.view-more')}
-              </span>
-            )}
-            {expanded && shouldShowViewMore && (
-              <span className="text-expand" onClick={() => setExpanded(false)}>
-                {t('label.view-less')}
-              </span>
+            {shouldShowViewMore && (
+              <div className="mt-2">
+                <Button
+                  className="view-more-less-button cursor-pointer remove-button-default-styling"
+                  data-testid="view-more-button"
+                  onClick={() => setExpanded(!expanded)}>
+                  {expanded ? t('label.view-less') : t('label.view-more')}
+                </Button>
+              </div>
             )}
           </>
         ) : (

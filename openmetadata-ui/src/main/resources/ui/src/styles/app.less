@@ -22,6 +22,11 @@ body {
   font-feature-settings: normal !important;
 }
 
+.main-container {
+  display: flex;
+  height: 100vh;
+}
+
 ol,
 ul {
   list-style: none;
@@ -492,18 +497,22 @@ a[href].link-text-grey,
 }
 
 .service-form-container {
-  margin: 16px auto 0;
-  padding-bottom: 16px;
+  margin: 0 auto 0;
+  border-radius: @border-radius-sm;
+  border: 1px solid @blue-15;
+  background: @white;
+  padding: @padding-md;
+  box-shadow: 0px 1px 2px 0px #0a0d120d;
 }
 
 // breadcrumb
 
 .breadcrumb-item {
   max-width: 100%;
-  font-size: 12px;
+
   .link-title {
     font-size: inherit !important;
-    color: @text-grey-muted !important;
+    color: @navigation-text-color !important;
   }
   .link-title:hover {
     color: @primary-color !important;
@@ -799,13 +808,6 @@ a[href].link-text-grey,
   padding-right: 0.25rem;
 }
 
-.app-bar-user-profile-pic {
-  display: inline-block;
-  height: 36px;
-  width: 36px;
-  border-radius: 50%;
-}
-
 // Collapse able headers
 
 .header-collapse-custom-collapse .header-collapse-custom-panel {
@@ -902,11 +904,12 @@ a[href].link-text-grey,
   margin: auto;
 }
 .placeholder-text {
-  color: #1f1f1f;
+  color: @text-color-tertiary;
   text-align: center;
   font-size: 16px;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
   letter-spacing: 0.25px;
+  width: 350px;
 }

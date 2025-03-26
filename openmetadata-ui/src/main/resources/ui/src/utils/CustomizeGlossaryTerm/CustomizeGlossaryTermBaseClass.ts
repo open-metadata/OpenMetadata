@@ -256,27 +256,27 @@ class CustomizeGlossaryTermPageClassBase {
 
   public getWidgetHeight(widgetName: string) {
     switch (widgetName) {
-      case 'HEADER':
+      case GlossaryTermDetailPageWidgetKeys.HEADER:
         return this.detailPageWidgetDefaultHeights.HEADER;
-      case 'DESCRIPTION':
+      case GlossaryTermDetailPageWidgetKeys.DESCRIPTION:
         return this.detailPageWidgetDefaultHeights.DESCRIPTION;
-      case 'TAGS':
+      case GlossaryTermDetailPageWidgetKeys.TAGS:
         return this.detailPageWidgetDefaultHeights.TAGS;
-      case 'DOMAIN':
+      case GlossaryTermDetailPageWidgetKeys.DOMAIN:
         return this.detailPageWidgetDefaultHeights.DOMAIN;
-      case 'CUSTOM_PROPERTIES':
+      case GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.detailPageWidgetDefaultHeights.CUSTOM_PROPERTIES;
-      case 'TABS':
+      case GlossaryTermDetailPageWidgetKeys.TABS:
         return this.detailPageWidgetDefaultHeights.TABS;
-      case 'SYNONYMS':
+      case GlossaryTermDetailPageWidgetKeys.SYNONYMS:
         return this.detailPageWidgetDefaultHeights.SYNONYMS;
-      case 'RELATED_TERMS':
+      case GlossaryTermDetailPageWidgetKeys.RELATED_TERMS:
         return this.detailPageWidgetDefaultHeights.RELATED_TERMS;
-      case 'REFERENCES':
+      case GlossaryTermDetailPageWidgetKeys.REFERENCES:
         return this.detailPageWidgetDefaultHeights.REFERENCES;
-      case 'OWNER':
+      case GlossaryTermDetailPageWidgetKeys.OWNER:
         return this.detailPageWidgetDefaultHeights.OWNER;
-      case 'REVIEWER':
+      case GlossaryTermDetailPageWidgetKeys.REVIEWER:
         return this.detailPageWidgetDefaultHeights.REVIEWER;
 
       default:

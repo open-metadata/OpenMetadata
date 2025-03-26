@@ -47,6 +47,7 @@ import {
   ROLE_DOCS,
   TEAMS_DOCS,
 } from '../../../../constants/docs.constants';
+import { ExportTypes } from '../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -491,6 +492,7 @@ const TeamDetailsV1 = ({
       showModal({
         name: currentTeam?.name,
         onExport: exportTeam,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [currentTeam]);
@@ -1174,7 +1176,7 @@ const TeamDetailsV1 = ({
           <Tabs
             destroyInactiveTabPane
             activeKey={currentTab}
-            className="entity-details-page-tabs"
+            className="tabs-new"
             items={tabs}
             onChange={updateActiveTab}
           />

@@ -40,6 +40,7 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const LineageConfigPage = () => {
@@ -50,7 +51,7 @@ const LineageConfigPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [form] = Form.useForm();
   const history = useHistory();
-  const { setAppPreferences } = useApplicationStore();
+  const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -101,7 +102,10 @@ const LineageConfigPage = () => {
       setLineageConfig(lineageConfig);
 
       // Update lineage config in store
-      setAppPreferences({ lineageConfig });
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -245,4 +249,6 @@ const LineageConfigPage = () => {
   );
 };
 
-export default withPageLayout('lineage-config')(LineageConfigPage);
+export default withPageLayout(i18n.t('label.lineage-config'))(
+  LineageConfigPage
+);

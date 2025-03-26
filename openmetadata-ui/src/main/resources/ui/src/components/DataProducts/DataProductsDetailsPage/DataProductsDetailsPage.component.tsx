@@ -32,11 +32,8 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import {
-  DE_ACTIVE_COLOR,
-  getEntityDetailsPath,
-  getVersionPath,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -62,7 +59,11 @@ import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
 } from '../../../utils/PermissionsUtils';
-import { getDomainPath } from '../../../utils/RouterUtils';
+import {
+  getDomainPath,
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -620,7 +621,7 @@ const DataProductsDetailsPage = ({
           data={dataProduct}
           isVersionView={isVersionsView}
           permissions={dataProductPermission}
-          type={EntityType.DATA_PRODUCT}
+          type={EntityType.DATA_PRODUCT as CustomizeEntityType}
           onUpdate={onUpdate}>
           <Col span={24}>
             <Tabs

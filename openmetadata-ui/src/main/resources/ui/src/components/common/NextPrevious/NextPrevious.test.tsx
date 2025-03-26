@@ -215,7 +215,7 @@ describe('Test Pagination Component', () => {
     expect(pageIndicator).toBeInTheDocument();
 
     expect(pageIndicator).toHaveTextContent(
-      `${totalPage}/${totalPage} label.page`
+      `label.page ${totalPage} of ${totalPage}`
     );
   });
 
