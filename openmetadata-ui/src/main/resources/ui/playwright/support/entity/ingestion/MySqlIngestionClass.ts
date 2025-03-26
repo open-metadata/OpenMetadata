@@ -88,10 +88,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await redirectToHomePage(page);
 
       // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromBotPage(page, {
-        name: 'profiler',
-        testId: 'bot-link-ProfilerBot',
-      });
+      await resetTokenFromBotPage(page, 'profiler-bot');
 
       await visitServiceDetailsPage(
         page,

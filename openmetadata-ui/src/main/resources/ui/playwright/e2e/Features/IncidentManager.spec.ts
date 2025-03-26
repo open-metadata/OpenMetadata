@@ -50,10 +50,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
     // Todo: Remove this patch once the issue is fixed #19140
-    await resetTokenFromBotPage(page, {
-      name: 'testsuite',
-      testId: 'bot-link-TestSuiteBot',
-    });
+    await resetTokenFromBotPage(page, 'testsuite-bot');
 
     for (const user of users) {
       await user.create(apiContext);
