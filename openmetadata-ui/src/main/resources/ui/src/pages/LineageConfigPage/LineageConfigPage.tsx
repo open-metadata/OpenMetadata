@@ -122,7 +122,7 @@ const LineageConfigPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizablePanels
         className="content-height-with-resizable-panel"
         firstPanel={{
