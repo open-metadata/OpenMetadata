@@ -109,10 +109,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll `,
+            `page-layout-v1-center page-layout-v1-vertical-scroll p-x-box`,
             {
               'flex justify-center': center,
-              'p-t-sm': !alert,
             },
             mainContainerClassName
           )}

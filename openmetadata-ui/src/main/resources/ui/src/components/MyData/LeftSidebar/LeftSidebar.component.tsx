@@ -129,7 +129,7 @@ const LeftSidebar = () => {
         'sidebar-open': !isSidebarCollapsed,
       })}
       collapsed={isSidebarCollapsed}
-      collapsedWidth={84}
+      collapsedWidth={72}
       data-testid="left-sidebar"
       trigger={null}
       width={228}

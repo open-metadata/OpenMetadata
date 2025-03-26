@@ -268,7 +268,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }
 
   return (
-    <div className="explore-page bg-grey p-x-box" data-testid="explore-page">
+    <div className="explore-page bg-grey" data-testid="explore-page">
       {tabItems.length > 0 && (
         <Row gutter={[20, 0]} wrap={false}>
           <Col className="explore-left-panel" flex="300px">
