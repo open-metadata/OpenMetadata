@@ -141,6 +141,7 @@ public class DataQualityWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    LOG.info("[Data Insights] Processing Data Quality Insights.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 

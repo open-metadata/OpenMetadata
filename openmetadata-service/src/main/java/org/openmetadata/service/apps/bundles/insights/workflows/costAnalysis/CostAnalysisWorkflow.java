@@ -129,6 +129,7 @@ public class CostAnalysisWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    LOG.info("[Data Insights] Processing Cost Analysis.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 

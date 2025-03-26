@@ -112,6 +112,7 @@ public class WebAnalyticsWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    LOG.info("[Data Insights] Processing App Analytics.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 

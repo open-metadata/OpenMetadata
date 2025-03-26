@@ -95,6 +95,6 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
 
   @Override
   public void deleteDataAssetDataStream(String name) throws IOException {
-    performRequest("DELETE", String.format("_data_stream/%s", name));
+    performRequest("DELETE", String.format("/_data_stream/%s", name));
   }
 }
