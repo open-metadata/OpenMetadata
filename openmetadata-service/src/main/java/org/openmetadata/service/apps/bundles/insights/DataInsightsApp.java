@@ -167,6 +167,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
         String dataStreamName =
             getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          LOG.info(
+              String.format("[Data Insights] Create Index for Entity Type: '%s'.", dataAssetType));
           searchInterface.createDataAssetsDataStream(
               dataStreamName, dataAssetType, dataAssetIndex, language);
         }
@@ -184,6 +186,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
         String dataStreamName =
             getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
         if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          LOG.info(
+              String.format(
+                  "[Data Insights] Deleting Index for Entity Type: '%s'.", dataAssetType));
           searchInterface.deleteDataAssetDataStream(dataStreamName);
         }
       }

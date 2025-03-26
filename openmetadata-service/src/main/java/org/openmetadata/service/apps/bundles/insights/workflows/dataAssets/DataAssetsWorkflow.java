@@ -144,6 +144,7 @@ public class DataAssetsWorkflow {
   }
 
   public void process() throws SearchIndexException {
+    LOG.info("[Data Insights] Processing Data Assets Insights.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
