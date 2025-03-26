@@ -78,6 +78,7 @@ export const getMlModelDetailsPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.MLMODEL}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={fetchEntityFeedCount}
           onUpdateEntityDetails={fetchMlModel}

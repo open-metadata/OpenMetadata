@@ -306,6 +306,7 @@ const GlossaryDetails = ({
                   refetchFeed
                   entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
+                  feedCount={feedCount}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
                   layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossary.owners}

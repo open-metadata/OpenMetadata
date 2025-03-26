@@ -266,6 +266,7 @@ const GlossaryTermsV1 = ({
               children: (
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
+                  feedCount={feedCount}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
                   layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossaryTerm.owners}
