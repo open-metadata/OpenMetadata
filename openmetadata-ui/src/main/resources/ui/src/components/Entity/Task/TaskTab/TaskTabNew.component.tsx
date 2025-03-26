@@ -307,7 +307,7 @@ export const TaskTabNew = ({
             data-testid="task-title"
             type="link"
             onClick={handleTaskLinkClick}>
-            <Typography.Text className="p-0 task-id text-sm">{`#${taskDetails.id} `}</Typography.Text>
+            <Typography.Text className="p-0 task-id text-sm task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
             <Typography.Text className="p-xss task-details">
               {TASK_TYPES[taskDetails.type]}
@@ -316,12 +316,12 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-sm entity-link"
+              className="break-all text-sm entity-link header-link"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss entity-type">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type header-link">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -424,6 +424,7 @@ export const TaskTabNew = ({
     (!hasGlossaryReviewer && isOwner) ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
+  const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
@@ -431,6 +432,7 @@ export const TaskTabNew = ({
         // Added block for sonar code smell
       })
       .finally(() => {
+        setHasAddedComment(true);
         editorRef.current?.clearEditorValue();
         setShowFeedEditor(false);
       });
@@ -454,7 +456,7 @@ export const TaskTabNew = ({
   };
 
   const onTaskReject = () => {
-    if (!isTaskGlossaryApproval && isEmpty(comment)) {
+    if (!isTaskGlossaryApproval && !hasAddedComment) {
       showErrorToast(t('server.task-closed-without-comment'));
 
       return;
@@ -836,7 +838,7 @@ export const TaskTabNew = ({
           <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <UserIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
-              {t('label.created-by')}:{' '}
+              {t('label.created-by')}
             </Typography.Text>
           </Col>
           <Col className="flex items-center gap-2" span={16}>
@@ -898,7 +900,7 @@ export const TaskTabNew = ({
               <Col className="flex items-center gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
-                  {t('label.assignee-plural')}:{' '}
+                  {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
               <Col className="flex items-center gap-2" span={16}>
@@ -994,6 +996,19 @@ export const TaskTabNew = ({
     );
   };
 
+  const closeFeedEditor = () => {
+    setShowFeedEditor(false);
+    setComment('');
+  };
+
+  useEffect(() => {
+    closeFeedEditor();
+  }, [taskThread.id]);
+
+  useEffect(() => {
+    setHasAddedComment(false);
+  }, [taskThread.id]);
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1035,7 +1050,9 @@ export const TaskTabNew = ({
             />
           </div>
         )}
-        {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
+        {taskThread.task?.status === ThreadTaskStatus.Open &&
+          !rest.isOpenInDrawer &&
+          ActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
@@ -1053,7 +1070,9 @@ export const TaskTabNew = ({
                 className={classNames(
                   'm-t-md feed-editor activity-feed-editor-container-new',
                   {
-                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                    'm-b-md':
+                      (showFeedEditor && taskThread?.posts?.length === 0) ||
+                      rest.isOpenInDrawer,
                   }
                 )}
                 onSave={onSave}
@@ -1073,6 +1092,7 @@ export const TaskTabNew = ({
 
                   <Input
                     className="comments-input-field"
+                    data-testid="comments-input-field"
                     placeholder={t('message.input-placeholder')}
                     onClick={() => setShowFeedEditor(true)}
                   />
@@ -1087,6 +1107,7 @@ export const TaskTabNew = ({
                   .sort((a, b) => (b.postTs as number) - (a.postTs as number))
                   .map((reply, index, arr) => (
                     <CommentCard
+                      closeFeedEditor={closeFeedEditor}
                       feed={taskThread}
                       isLastReply={index === arr.length - 1}
                       key={reply.id}

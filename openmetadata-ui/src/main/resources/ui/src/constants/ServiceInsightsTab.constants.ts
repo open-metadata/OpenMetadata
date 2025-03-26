@@ -20,8 +20,5 @@ export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
   SystemChartType.OwnersCoverage,
 ];
 
-export const SERVICE_INSIGHTS_CHART: SystemChartType[] = [
-  ...PLATFORM_INSIGHTS_CHART,
-  SystemChartType.PIIDistribution,
-  SystemChartType.TierDistribution,
-];
+export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME =
+  'DayOneExperienceWorkflow';

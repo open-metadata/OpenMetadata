@@ -23,6 +23,9 @@ export type TagsContainerV2Props = {
   entityType?: string;
   entityFqn?: string;
   tagType: TagSource;
+  columnData?: {
+    fqn: string;
+  };
   showHeader?: boolean;
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;
@@ -32,4 +35,5 @@ export type TagsContainerV2Props = {
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   defaultState?: State;
   defaultLabelType?: LabelType;
+  newLook?: boolean;
 };

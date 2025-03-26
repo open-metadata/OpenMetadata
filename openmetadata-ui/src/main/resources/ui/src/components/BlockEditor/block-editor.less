@@ -135,6 +135,7 @@
 
     code {
       white-space: break-spaces;
+      background: @markdown-bg-color;
       color: @text-color;
     }
 
@@ -162,7 +163,6 @@
     p {
       margin-top: 10px;
       margin-bottom: 0px;
-      color: @text-color;
       word-break: break-word;
       line-height: 20px;
       &:first-child {
@@ -411,21 +411,6 @@
   svg {
     fill: @primary-color;
   }
-}
-.image-placeholder {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  background-color: @grey-2;
-  border-width: 2px;
-  border-style: dashed;
-  border-radius: 4px;
-  user-select: none;
-  cursor: pointer;
-  padding: 1.5rem;
-  width: 100%;
-  font-size: 20px;
 }
 
 .om-image-node-wrapper {

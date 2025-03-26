@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Skeleton, Tooltip, Typography } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
+import { Card, Skeleton, Typography } from 'antd';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { isEmpty } from 'lodash';
@@ -21,14 +21,20 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
-import { SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
-import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
-import { getServiceNameQueryFilter } from '../../../utils/ServiceUtils';
+import {
+  getAssetsByServiceType,
+  getServiceInsightsWidgetPlaceholder,
+} from '../../../utils/ServiceInsightsTabUtils';
+import {
+  getReadableCountString,
+  getServiceNameQueryFilter,
+} from '../../../utils/ServiceUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 import './total-data-assets-widget.less';
 
@@ -36,15 +42,30 @@ function TotalDataAssetsWidget({
   serviceName,
 }: Readonly<ServiceInsightWidgetCommonProps>) {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
   const [loadingCount, setLoadingCount] = useState<number>(0);
+  const [hoveredSegment, setHoveredSegment] = useState<{
+    name: string;
+    value: number;
+  } | null>(null);
   const [entityCounts, setEntityCounts] =
     useState<
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
     >();
+
+  const showPlaceholder = useMemo(
+    () =>
+      isEmpty(entityCounts) ||
+      entityCounts?.every((entity) => entity.value === 0),
+    [entityCounts]
+  );
+
+  const totalCount =
+    entityCounts?.reduce((sum, entity) => sum + entity.value, 0) ?? 0;
 
   const getDataAssetsCount = useCallback(async () => {
     try {
@@ -75,6 +96,17 @@ function TotalDataAssetsWidget({
     }
   }, []);
 
+  const errorPlaceholder = useMemo(
+    () =>
+      getServiceInsightsWidgetPlaceholder({
+        height: 140,
+        width: 140,
+        chartType: ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
+        theme,
+      }),
+    []
+  );
+
   useEffect(() => {
     getDataAssetsCount();
   }, []);
@@ -91,13 +123,8 @@ function TotalDataAssetsWidget({
         </Typography.Text>
       </div>
       <Skeleton loading={loadingCount > 0}>
-        {isEmpty(entityCounts) ? (
-          <ErrorPlaceHolder
-            placeholderText={t('message.no-entity-data-available', {
-              entity: t('label.data-asset-lowercase-plural'),
-            })}
-            size={SIZE.MEDIUM}
-          />
+        {showPlaceholder ? (
+          errorPlaceholder
         ) : (
           <div className="total-data-assets-info">
             <div className="assets-list-container">
@@ -117,14 +144,14 @@ function TotalDataAssetsWidget({
                     <Typography.Text>{entity.name}</Typography.Text>
                   </div>
 
-                  <Typography.Text className="font-semibold">
-                    {entity.value}
+                  <Typography.Text className="font-bold">
+                    {getReadableCountString(entity.value)}
                   </Typography.Text>
                 </div>
               ))}
             </div>
-            <div className="h-full flex-center flex-half">
-              <ResponsiveContainer height="100%" width="100%">
+            <div className="chart-container">
+              <ResponsiveContainer height="100%" minHeight={275} width="100%">
                 <PieChart>
                   <Pie
                     cx="50%"
@@ -132,8 +159,8 @@ function TotalDataAssetsWidget({
                     data={[{ value: 1 }]}
                     dataKey="value"
                     fill={WHITE_SMOKE}
-                    innerRadius="75%"
-                    outerRadius="98%">
+                    innerRadius="74%"
+                    outerRadius="99%">
                     <Cell fill={WHITE_SMOKE} />
                   </Pie>
                   <Pie
@@ -141,14 +168,36 @@ function TotalDataAssetsWidget({
                     cy="50%"
                     data={entityCounts}
                     dataKey="value"
-                    innerRadius="80%"
+                    innerRadius="79%"
                     isAnimationActive={false}
                     nameKey="name"
-                    outerRadius="93%"
+                    outerRadius="94%"
+                    onMouseEnter={(_, index) => {
+                      if (entityCounts?.[index]) {
+                        setHoveredSegment({
+                          name: entityCounts[index].name,
+                          value: entityCounts[index].value,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredSegment(null)}
                   />
-                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="tooltip-container">
+                <Typography.Text strong className="text-md font-bold">
+                  {getReadableCountString(
+                    hoveredSegment ? hoveredSegment.value : totalCount
+                  )}
+                </Typography.Text>
+                <Typography.Text className="text-sm text-grey-muted">
+                  {hoveredSegment
+                    ? hoveredSegment.name
+                    : t('label.total-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                </Typography.Text>
+              </div>
             </div>
           </div>
         )}

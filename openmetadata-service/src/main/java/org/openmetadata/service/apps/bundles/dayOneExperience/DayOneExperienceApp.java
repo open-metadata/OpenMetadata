@@ -1,7 +1,15 @@
 package org.openmetadata.service.apps.bundles.dayOneExperience;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
+
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.internal.DayOneExperienceAppConfig;
@@ -55,6 +63,35 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
     }
   }
 
+  @Override
+  public void triggerOnDemand(Map<String, Object> config) {
+    // Trigger the application with the provided configuration payload
+    Map<String, Object> appConfig = JsonUtils.getMap(getApp().getAppConfiguration());
+    if (config != null) {
+      appConfig.putAll(config);
+    }
+    validateConfig(appConfig);
+
+    DayOneExperienceAppConfig runtimeConfig =
+        JsonUtils.readOrConvertValue(appConfig, DayOneExperienceAppConfig.class);
+
+    if (runtimeConfig.getActive()) {
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+          runtimeConfig.getEntityLink());
+
+      WorkflowHandler.getInstance()
+          .triggerByKey(
+              getTriggerWorkflowId(WORKFLOW_NAME), UUID.randomUUID().toString(), variables);
+    } else {
+      LOG.info(
+          String.format(
+              "%s is not active. Won't be triggered for %s",
+              WORKFLOW_NAME, runtimeConfig.getEntityLink()));
+    }
+  }
+
   private String readResource(String resourceFile) {
     try (InputStream in = getClass().getResourceAsStream(resourceFile)) {
       assert in != null;
@@ -70,7 +107,6 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
 
   private String getAppBot() {
     return getApp().getBot().getName();
-    //    return String.format("%sBot", getApp().getName());
   }
 
   private WorkflowDefinition loadWorkflow() {

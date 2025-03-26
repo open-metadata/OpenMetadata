@@ -104,7 +104,7 @@ test.describe('Custom Theme Config Page', () => {
     // Verify the default theme color
     await expect(page.getByTestId('reset-button')).toHaveCSS(
       'background-color',
-      'rgb(46, 135, 230)'
+      'rgb(61, 126, 224)'
     );
   });
 });
