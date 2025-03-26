@@ -196,7 +196,7 @@ const Lineage = ({
               <MiniMap pannable zoomable position="bottom-right" />
 
               <Panel position="bottom-left">
-                <LineageLayers entityType={entityType} />
+                <LineageLayers entity={entity} entityType={entityType} />
               </Panel>
             </ReactFlow>
           </ReactFlowProvider>

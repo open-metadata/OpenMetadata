@@ -25,6 +25,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
+import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
@@ -185,7 +186,13 @@ export const GlobalSearchBar = () => {
               active: isNLPActive,
             })}
             data-testid="nlp-suggestions-button"
-            icon={<Icon component={IconSuggestionsBlue} />}
+            icon={
+              <Icon
+                component={
+                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
+                }
+              />
+            }
             type="text"
             onClick={() => setNLPActive(!isNLPActive)}
           />

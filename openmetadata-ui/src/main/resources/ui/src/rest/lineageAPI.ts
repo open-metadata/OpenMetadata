@@ -94,7 +94,7 @@ export const getPlatformLineage = async ({
 }: {
   config?: LineageConfig;
   queryFilter?: string;
-  view: 'service' | 'domain';
+  view: string;
 }) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
   const API_PATH = `lineage/getPlatformLineage`;

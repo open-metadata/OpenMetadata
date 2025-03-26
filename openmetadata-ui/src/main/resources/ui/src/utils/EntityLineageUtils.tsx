@@ -63,6 +63,7 @@ import {
   ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
+import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
@@ -1747,4 +1748,17 @@ export const getLineageEntityExclusionFilter = () => {
       },
     },
   };
+};
+
+export const getEntityTypeFromPlatformView = (
+  platformView: LineagePlatformView
+): string => {
+  switch (platformView) {
+    case LineagePlatformView.DataProduct:
+      return EntityType.DATA_PRODUCT;
+    case LineagePlatformView.Domain:
+      return EntityType.DOMAIN;
+    default:
+      return 'service';
+  }
 };

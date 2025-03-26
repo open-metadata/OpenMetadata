@@ -662,7 +662,7 @@ const AssetsTabs = forwardRef(
         activeEntity &&
         permissions.Create &&
         data.length > 0 && (
-          <div className="w-full d-flex justify-between items-center">
+          <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
