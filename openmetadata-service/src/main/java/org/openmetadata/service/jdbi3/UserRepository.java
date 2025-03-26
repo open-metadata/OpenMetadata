@@ -38,6 +38,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.json.JsonPatch;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -220,6 +221,14 @@ public class UserRepository extends EntityRepository<User> {
 
     // Restore the relationships
     user.withRoles(roles).withTeams(teams);
+  }
+
+  public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
+    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
+    JsonPatch patch =
+        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
   }
 
   @Override

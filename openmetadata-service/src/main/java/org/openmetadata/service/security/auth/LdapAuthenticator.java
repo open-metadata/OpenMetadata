@@ -143,7 +143,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     String email = loginRequest.getEmail();
     checkIfLoginBlocked(email);
     User omUser = lookUserInProvider(email, loginRequest.getPassword());
-    Entity.updateUserLastLoginTime(omUser, System.currentTimeMillis());
+    Entity.getUserRepository().updateUserLastLoginTime(omUser, System.currentTimeMillis());
     return getJwtResponse(omUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
