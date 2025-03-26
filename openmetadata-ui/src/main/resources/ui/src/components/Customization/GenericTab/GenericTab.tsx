@@ -57,7 +57,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
 
   return (
     <ReactGridLayout
-      className={classNames('grid-container p-md', {
+      className={classNames('grid-container bg-grey', {
         'custom-tab': !leftSideWidgetPresent,
       })}
       cols={8}

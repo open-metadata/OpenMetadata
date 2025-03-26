@@ -167,14 +167,14 @@ const GlossaryV1 = ({
     [fullyQualifiedName, isGlossaryActive]
   );
 
-  const handleGlossaryTermModalAction = (
-    editMode: boolean,
-    glossaryTerm: GlossaryTerm | null
-  ) => {
-    setEditMode(editMode);
-    setActiveGlossaryTerm(glossaryTerm);
-    setIsEditModalOpen(true);
-  };
+  const handleGlossaryTermModalAction = useCallback(
+    (editMode: boolean, glossaryTerm: GlossaryTerm | null) => {
+      setEditMode(editMode);
+      setActiveGlossaryTerm(glossaryTerm);
+      setIsEditModalOpen(true);
+    },
+    []
+  );
 
   const updateGlossaryTermInStore = (updatedTerm: GlossaryTerm) => {
     const clonedTerms = cloneDeep(glossaryChildTerms);
