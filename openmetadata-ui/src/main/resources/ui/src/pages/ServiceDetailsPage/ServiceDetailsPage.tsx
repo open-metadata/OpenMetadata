@@ -1326,7 +1326,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row data-testid="service-page" gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col className="" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
