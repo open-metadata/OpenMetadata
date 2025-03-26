@@ -373,7 +373,7 @@ const GlossaryTermsV1 = ({
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}
-              className="glossary-tabs custom-tab-spacing"
+              className="tabs-new"
               items={tabItems}
               onChange={activeTabHandler}
             />

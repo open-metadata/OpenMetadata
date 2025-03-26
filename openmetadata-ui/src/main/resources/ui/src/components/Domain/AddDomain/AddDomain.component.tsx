@@ -134,9 +134,9 @@ const AddDomain = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container bg-white',
+        className: 'content-resizable-panel-container',
         children: (
-          <div className="max-width-md w-9/10 domain-form-container">
+          <div className="max-width-md w-9/10 service-form-container ">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
