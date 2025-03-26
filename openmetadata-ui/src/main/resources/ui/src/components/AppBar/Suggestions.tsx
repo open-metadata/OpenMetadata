@@ -354,7 +354,7 @@ const Suggestions = ({
             className="m-b-md w-100 text-left d-flex items-center p-0"
             data-testid="nlp-suggestions-button"
             icon={
-              <div className="nlp-button active w-6 h-6 flex-center m-r-md">
+              <div className="nlp-button w-6 h-6 flex-center m-r-md">
                 <IconSuggestionsBlue />
               </div>
             }
