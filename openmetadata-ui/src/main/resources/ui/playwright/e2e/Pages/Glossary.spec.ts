@@ -368,10 +368,9 @@ test.describe('Glossary tests', () => {
       );
 
       // Verify the Owner
-      const ownerSelector = `td:nth-child(4) a[data-testid="owner-link"]`;
-      const ownerText = await termRow.locator(ownerSelector).textContent();
-
-      expect(ownerText).toBe(`${owner1.data.firstName}${owner1.data.lastName}`);
+      await expect(
+        page.getByTestId(owner1.responseData?.['displayName'])
+      ).toBeVisible();
 
       await checkGlossaryTermDetails(
         page,

@@ -25,6 +25,7 @@ export interface ChartSeriesData {
   percentageChange?: number;
   currentPercentage: number;
   isIncreased?: boolean;
+  noRecords?: boolean;
 }
 
 export interface PlatformInsightsWidgetProps

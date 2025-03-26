@@ -707,11 +707,11 @@ const DomainDetailsPage = ({
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
-          <Col span={24}>
+          <Col className="p-x-md" span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}
-              className="domain-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

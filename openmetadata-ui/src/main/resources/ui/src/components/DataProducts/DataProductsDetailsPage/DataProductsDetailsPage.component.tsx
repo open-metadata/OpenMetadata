@@ -33,6 +33,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -620,7 +621,7 @@ const DataProductsDetailsPage = ({
           data={dataProduct}
           isVersionView={isVersionsView}
           permissions={dataProductPermission}
-          type={EntityType.DATA_PRODUCT}
+          type={EntityType.DATA_PRODUCT as CustomizeEntityType}
           onUpdate={onUpdate}>
           <Col span={24}>
             <Tabs

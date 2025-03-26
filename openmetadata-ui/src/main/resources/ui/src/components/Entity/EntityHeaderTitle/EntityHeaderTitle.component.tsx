@@ -98,7 +98,7 @@ const EntityHeaderTitle = ({
               className={classNames(
                 'entity-header-name',
                 nameClassName,
-                'm-b-0 d-block display-sm font-semibold'
+                'm-b-0 d-block display-xs font-semibold'
               )}
               data-testid="entity-header-display-name"
               ellipsis={{ tooltip: true }}>
@@ -113,7 +113,7 @@ const EntityHeaderTitle = ({
           <Tooltip placement="bottom" title={entityName}>
             <Typography.Text
               className={classNames(displayNameClassName, 'm-b-0', {
-                'display-sm entity-header-name font-semibold': !displayName,
+                'display-xs entity-header-name font-semibold': !displayName,
                 'text-md entity-header-display-name font-medium': displayName,
               })}
               data-testid="entity-header-name"

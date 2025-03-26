@@ -216,6 +216,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
   await page.getByRole('menuitem', { name: glossaryName }).click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const getRandomFirstName = () => {

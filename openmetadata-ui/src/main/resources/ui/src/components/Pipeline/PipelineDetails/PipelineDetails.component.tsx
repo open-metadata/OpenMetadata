@@ -312,7 +312,6 @@ const PipelineDetails = ({
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.pipeline'),
       })}>
@@ -341,10 +340,10 @@ const PipelineDetails = ({
           permissions={pipelinePermissions}
           type={EntityType.PIPELINE}
           onUpdate={settingsUpdateHandler}>
-          <Col span={24}>
+          <Col className="p-x-lg" span={24}>
             <Tabs
               activeKey={tab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}
