@@ -71,9 +71,10 @@ public class MigrationUtil {
 
   public static final String SERVICE_ENTITY_MIGRATION =
       "SELECT COUNT(*) FROM entity_relationship er JOIN %s f ON er.fromID = f.id JOIN %s t ON er.toID = t.id WHERE er.relation = 13 AND f.fqnHash LIKE '%s.%%' AND t.fqnHash LIKE '%s.%%'";
-  private static final String UPDATE_NULL_JSON =
+  private static final String UPDATE_NULL_JSON_MYSQL =
       "UPDATE entity_relationship SET json = :json WHERE json IS NULL AND relation = 13";
-
+  private static final String UPDATE_NULL_JSON_POSTGRESQL =
+      "UPDATE entity_relationship SET json = :json::jsonb WHERE json IS NULL AND relation = 13";
   private static final String UPDATE_NON_NULL_MYSQL_JSON =
       "UPDATE entity_relationship SET json = JSON_SET(json, '$.createdAt', IFNULL(CAST(json->>'$.createdAt' AS UNSIGNED), :currTime), '$.createdBy', IFNULL(JSON_UNQUOTE(json->>'$.createdBy'), 'admin'), '$.updatedAt', IFNULL(CAST(json->>'$.updatedAt' AS UNSIGNED), :currTime), '$.updatedBy', IFNULL(JSON_UNQUOTE(json->>'$.updatedBy'), 'admin')) WHERE "
           + "relation = 13 AND json IS NOT NULL AND (json->>'$.createdAt' IS NULL OR JSON_UNQUOTE(json->>'$.createdBy') IS NULL OR json->>'$.updatedAt' IS NULL OR JSON_UNQUOTE(json->>'$.updatedBy') IS NULL)";
@@ -91,9 +92,13 @@ public class MigrationUtil {
               .withUpdatedAt(currentTime)
               .withCreatedBy(ADMIN_USER_NAME)
               .withUpdatedBy(ADMIN_USER_NAME);
+      String updateSql =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? UPDATE_NULL_JSON_MYSQL
+              : UPDATE_NULL_JSON_POSTGRESQL;
       int result =
           handle
-              .createUpdate(UPDATE_NULL_JSON)
+              .createUpdate(updateSql)
               .bind("json", JsonUtils.pojoToJson(lineageDetails))
               .execute();
       if (result <= 0) {
