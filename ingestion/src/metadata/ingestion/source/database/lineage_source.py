@@ -56,6 +56,8 @@ logger = ingestion_logger()
 
 CHUNK_SIZE = 200
 
+THREAD_TIMEOUT = 600
+
 
 class LineageSource(QueryParserSource, ABC):
     """
@@ -165,9 +167,10 @@ class LineageSource(QueryParserSource, ABC):
                 for i, future in enumerate(futures):
                     if future.done():
                         try:
-                            future.result(timeout=600)
+                            future.result(timeout=THREAD_TIMEOUT)
                         except Exception as e:
-                            logger.error(f"Error in future: {e}")
+                            logger.debug(f"Error in future: {e}")
+                            logger.debug(traceback.format_exc())
                         futures.pop(i)
 
             time.sleep(0.01)
