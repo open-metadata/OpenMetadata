@@ -60,7 +60,10 @@ import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/Activ
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
-import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import {
+  GenericProvider,
+  useGenericContext,
+} from '../../Customization/GenericProvider/GenericProvider';
 import { GenericTab } from '../../Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
@@ -74,13 +77,8 @@ const GlossaryTermsV1 = ({
   glossaryTerm,
   handleGlossaryTermUpdate,
   handleGlossaryTermDelete,
-  permissions,
-  refreshGlossaryTerms,
   onAssetClick,
   isSummaryPanelOpen,
-  termsLoading,
-  onAddGlossaryTerm,
-  onEditGlossaryTerm,
   updateVote,
   refreshActiveGlossaryTerm,
   isVersionView,
@@ -94,7 +92,8 @@ const GlossaryTermsV1 = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { glossaryChildTerms } = useGlossaryStore();
+  const { glossaryChildTerms, onAddGlossaryTerm } = useGlossaryStore();
+  const { permissions } = useGenericContext<GlossaryTerm>();
   const childGlossaryTerms = glossaryChildTerms ?? [];
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
 
@@ -212,11 +211,6 @@ const GlossaryTermsV1 = ({
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
                   isGlossary={false}
-                  permissions={permissions}
-                  refreshGlossaryTerms={refreshGlossaryTerms}
-                  termsLoading={termsLoading}
-                  onAddGlossaryTerm={onAddGlossaryTerm}
-                  onEditGlossaryTerm={onEditGlossaryTerm}
                 />
               ),
             },
@@ -305,7 +299,6 @@ const GlossaryTermsV1 = ({
     customizedPage?.tabs,
     glossaryTerm,
     permissions,
-    termsLoading,
     activeTab,
     assetCount,
     feedCount.conversationCount,

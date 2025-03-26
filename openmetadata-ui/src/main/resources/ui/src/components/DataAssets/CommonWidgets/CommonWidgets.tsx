@@ -36,6 +36,7 @@ import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelCont
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
 
@@ -248,6 +249,8 @@ export const CommonWidgets = ({
       return <ReviewerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <OwnerLabelV2<GenericEntity> />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
+      return <DomainLabelV2 showDomainHeading />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

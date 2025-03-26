@@ -73,8 +73,8 @@ const GlossaryV1 = ({
     useState<GlossaryTerm | null>(null);
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
-  const [isTermsLoading, setIsTermsLoading] = useState(false);
   const [isPermissionLoading, setIsPermissionLoading] = useState(false);
+  const { setGlossaryFunctionRef, setTermsLoading } = useGlossaryStore();
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -106,7 +106,7 @@ const GlossaryV1 = ({
     params?: ListGlossaryTermsParams,
     refresh?: boolean
   ) => {
-    refresh ? setIsTermsLoading(true) : setIsLoading(true);
+    refresh ? setTermsLoading(true) : setIsLoading(true);
     try {
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
@@ -117,7 +117,7 @@ const GlossaryV1 = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      refresh ? setIsTermsLoading(false) : setIsLoading(false);
+      refresh ? setTermsLoading(false) : setIsLoading(false);
     }
   };
 
@@ -231,7 +231,7 @@ const GlossaryV1 = ({
   const onTermModalSuccess = useCallback(
     (term: GlossaryTerm) => {
       // Setting loading so that nested terms are rendered again on table with change
-      setIsTermsLoading(true);
+      setTermsLoading(true);
       // Update store with newly created term
       insertNewGlossaryTermToChildTerms(term);
       if (!isGlossaryActive && tab !== 'terms') {
@@ -244,7 +244,7 @@ const GlossaryV1 = ({
       }
       // Close modal and set loading to false
       setIsEditModalOpen(false);
-      setIsTermsLoading(false);
+      setTermsLoading(false);
     },
     [isGlossaryActive, tab, selectedData]
   );
@@ -358,6 +358,16 @@ const GlossaryV1 = ({
     }
   }, [id, isGlossaryActive, isVersionsView, action]);
 
+  useEffect(() => {
+    setGlossaryFunctionRef({
+      onAddGlossaryTerm: (term) =>
+        handleGlossaryTermModalAction(false, term ?? null),
+      onEditGlossaryTerm: (term) =>
+        handleGlossaryTermModalAction(true, term ?? null),
+      refreshGlossaryTerms: () => loadGlossaryTerms(true),
+    });
+  }, [loadGlossaryTerms, handleGlossaryTermModalAction]);
+
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
@@ -368,7 +378,9 @@ const GlossaryV1 = ({
         currentVersionData={selectedData}
         data={selectedData}
         isVersionView={isVersionsView}
-        permissions={glossaryPermission}
+        permissions={
+          isGlossaryActive ? glossaryPermission : glossaryTermPermission
+        }
         type={isGlossaryActive ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         onUpdate={handleGlossaryUpdate}>
         {!isLoading &&
@@ -379,16 +391,8 @@ const GlossaryV1 = ({
               handleGlossaryDelete={onGlossaryDelete}
               isVersionView={isVersionsView}
               permissions={glossaryPermission}
-              refreshGlossaryTerms={() => loadGlossaryTerms(true)}
-              termsLoading={isTermsLoading}
               updateGlossary={handleGlossaryUpdate}
               updateVote={updateVote}
-              onAddGlossaryTerm={(term) =>
-                handleGlossaryTermModalAction(false, term ?? null)
-              }
-              onEditGlossaryTerm={(term) =>
-                handleGlossaryTermModalAction(true, term ?? null)
-              }
             />
           ) : (
             <GlossaryTermsV1
@@ -397,18 +401,9 @@ const GlossaryV1 = ({
               handleGlossaryTermUpdate={onGlossaryTermUpdate}
               isSummaryPanelOpen={isSummaryPanelOpen}
               isVersionView={isVersionsView}
-              permissions={glossaryTermPermission}
               refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
-              refreshGlossaryTerms={() => loadGlossaryTerms(true)}
-              termsLoading={isTermsLoading}
               updateVote={updateVote}
-              onAddGlossaryTerm={(term) =>
-                handleGlossaryTermModalAction(false, term ?? null)
-              }
               onAssetClick={onAssetClick}
-              onEditGlossaryTerm={(term) =>
-                handleGlossaryTermModalAction(true, term)
-              }
             />
           ))}
       </GenericProvider>

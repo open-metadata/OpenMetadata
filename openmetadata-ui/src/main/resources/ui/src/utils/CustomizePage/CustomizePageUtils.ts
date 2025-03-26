@@ -34,7 +34,6 @@ import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { getEntityName } from '../EntityUtils';
-import { getGlossaryWidgetFromKey } from '../GlossaryUtils';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
 import mlModelClassBase from '../MlModel/MlModelClassBase';
@@ -357,7 +356,7 @@ export const getWidgetsFromKey = (
     case PageType.MlModel:
       return mlModelClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Glossary:
-      return getGlossaryWidgetFromKey(widgetConfig);
+      return customizeGlossaryPageClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.GlossaryTerm:
       return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
     default:
@@ -399,6 +398,7 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
     case PageType.MlModel:
       return mlModelClassBase.getWidgetHeight(widgetName);
     case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getWidgetHeight(widgetName);
     case PageType.GlossaryTerm:
       return customizeGlossaryTermPageClassBase.getWidgetHeight(widgetName);
     default:

@@ -53,8 +53,8 @@ jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () =>
 jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
 );
-jest.mock('./tabs/GlossaryOverviewTab.component', () =>
-  jest.fn().mockReturnValue(<div>GlossaryOverviewTab.component</div>)
+jest.mock('../../Customization/GenericTab/GenericTab.component', () =>
+  jest.fn().mockReturnValue(<div>GenericTab</div>)
 );
 
 const mockProps = {
