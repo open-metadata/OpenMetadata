@@ -52,6 +52,7 @@ import { FeedCounts } from '../../interface/feed.interface';
 import {
   addContainerFollower,
   getContainerByName,
+  getContainerChildrenByName,
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
@@ -94,6 +95,7 @@ const ContainerPage = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [childrenCount, setChildrenCount] = useState<number>(0);
 
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
@@ -163,6 +165,20 @@ const ContainerPage = () => {
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchContainerChildren = async (pagingOffset?: number) => {
+    try {
+      const { paging } = await getContainerChildrenByName(
+        decodedContainerName,
+        {
+          offset: pagingOffset ?? 0,
+        }
+      );
+      setChildrenCount(paging?.total ?? 0);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -444,6 +460,7 @@ const ContainerPage = () => {
       containerData,
       fetchContainerDetail,
       labelMap: tabLabelMap,
+      childrenCount,
     });
 
     return getDetailsTabWithNewLabel(
@@ -490,6 +507,7 @@ const ContainerPage = () => {
   // Effects
   useEffect(() => {
     fetchResourcePermission(decodedContainerName);
+    fetchContainerChildren();
   }, [decodedContainerName]);
 
   // Rendering
