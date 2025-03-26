@@ -169,22 +169,19 @@ const ContainerPage = () => {
   };
 
   // Fetch children count to show it in Tab label
-  const fetchContainerChildren = useCallback(
-    async (pagingOffset?: number) => {
-      try {
-        const { paging } = await getContainerChildrenByName(
-          decodedContainerName,
-          {
-            offset: pagingOffset ?? 0,
-          }
-        );
-        setChildrenCount(paging.total);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [decodedContainerName]
-  );
+  const fetchContainerChildren = useCallback(async () => {
+    try {
+      const { paging } = await getContainerChildrenByName(
+        decodedContainerName,
+        {
+          limit: 0,
+        }
+      );
+      setChildrenCount(paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [decodedContainerName]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
