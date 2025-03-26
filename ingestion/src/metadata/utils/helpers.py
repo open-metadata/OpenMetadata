@@ -529,7 +529,7 @@ def get_query_hash(query: str) -> str:
     return str(result.hexdigest())
 
 
-def evaluate_threshold(threshold: str, result: int) -> bool:
+def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
     """Evaluate the threshold against the result.
 
     Args:
@@ -541,33 +541,29 @@ def evaluate_threshold(threshold: str, result: int) -> bool:
         If no comparison operator is provided, it defaults to less than comparison.
         Returns False for invalid threshold formats.
     """
-    import operator  # pylint: disable=import-outside-toplevel
+    import operator as op  # pylint: disable=import-outside-toplevel
 
-    threshold = threshold.strip()
-    comparison_map = {
-        "<=": operator.le,
-        ">=": operator.ge,
-        "==": operator.eq,
-        "!=": operator.ne,
-        "<": operator.lt,
-        ">": operator.gt,
+    operators = {
+        "<": op.lt,
+        "<=": op.le,
+        ">": op.gt,
+        ">=": op.ge,
+        "==": op.eq,
+        "!=": op.ne,
     }
-
-    for symbol, op_func in comparison_map.items():
-        if threshold.startswith(symbol):
-            try:
-                value = int(threshold.replace(symbol, "").strip())
-                return op_func(result, value)
-            except ValueError:
-                return False
+    op_func = operators.get(operator, op.lt)
+    try:
+        if op_func:
+            return op_func(result, threshold)
+    except ValueError:
+        return False
 
     # Fallback:
-    try:
-        value = int(threshold)
-        return result < value
-    except ValueError:
-        logger.error(
-            f"Invalid threshold: {threshold}, "
-            "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
-        )
-        return False
+    logger.error(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )
+    raise ValueError(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )
