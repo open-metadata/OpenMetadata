@@ -18,7 +18,6 @@ No sample data is required beforehand
 """
 import pytest
 
-from .conftest import BUCKET_NAME
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
@@ -27,6 +26,8 @@ from metadata.utils.time_utils import (
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
+
+from .conftest import BUCKET_NAME
 
 
 @pytest.fixture(scope="class", autouse=True)
