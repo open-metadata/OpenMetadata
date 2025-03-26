@@ -830,7 +830,7 @@ const GlossaryTermTab = ({
     if (tableRef.current) {
       setTableWidth(tableRef.current.offsetWidth);
     }
-  }, []);
+  }, [tableRef.current]);
 
   if (termsLoading) {
     return <Loader />;
@@ -875,7 +875,9 @@ const GlossaryTermTab = ({
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
-              loading={isTableLoading}
+              // Loading is set to true if the table is not loaded or the table width is not set,
+              // as we are using the table width to calculate the column width
+              loading={isTableLoading || !tableRef.current?.offsetWidth}
               pagination={false}
               ref={tableRef}
               rowKey="fullyQualifiedName"

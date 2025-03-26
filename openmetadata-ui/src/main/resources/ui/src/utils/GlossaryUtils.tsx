@@ -442,17 +442,22 @@ export const findAndUpdateNested = (
 export const glossaryTermTableColumnsWidth = (
   tableWidth: number,
   havingCreatePermission: boolean
-) => ({
-  name: calculatePercentageFromValue(tableWidth, 40),
-  description: calculatePercentageFromValue(
-    tableWidth,
-    havingCreatePermission ? 21 : 33
-  ),
-  reviewers: calculatePercentageFromValue(tableWidth, 33),
-  synonyms: calculatePercentageFromValue(tableWidth, 33),
-  owners: calculatePercentageFromValue(tableWidth, 17),
-  status: calculatePercentageFromValue(tableWidth, 33),
-});
+) => {
+  const fallbackWidth = 200;
+
+  return {
+    name: calculatePercentageFromValue(tableWidth, 40) || fallbackWidth,
+    description:
+      calculatePercentageFromValue(
+        tableWidth,
+        havingCreatePermission ? 21 : 33
+      ) || fallbackWidth,
+    reviewers: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+    synonyms: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+    owners: calculatePercentageFromValue(tableWidth, 17) || fallbackWidth,
+    status: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+  };
+};
 
 export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
   `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;

@@ -60,6 +60,14 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
     history.push(ROUTES.ADD_KPI);
   };
 
+  // const handleExportFilePDF = useCallback(async () => {
+  //     await handleExportFilePDF(ExportCollateTypes.PDF, {
+  //       name: `${t('label.data-asset-plural')}_${getCurrentISODate()}`,
+  //       documentSelector: '.react-grid-item',
+  //       title: t('label.data-asset-plural'),
+  //     } as ExportData);
+  // }, []);
+
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
@@ -72,6 +80,14 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
               {t('message.data-insight-subtitle')}
             </Typography.Text>
           </div>
+
+          {/* <Button
+              data-testid="export-button"
+              type="primary"
+              onClick={handleExportFilePDF}>
+              {t('label.export-data')}
+            </Button>
+           */}
 
           {createKPIPermission && (
             <Button
