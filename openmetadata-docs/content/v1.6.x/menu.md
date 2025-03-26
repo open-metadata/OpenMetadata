@@ -719,10 +719,6 @@ site_menu:
 
   - category: Connectors / Troubleshooting
     url: /connectors/troubleshooting
-  - category: Connectors / Troubleshooting / How to enable Debug Logging for Any Ingestion
-    url: /connectors/troubleshooting/enable-debug-logging
-  - category: Connectors / Troubleshooting / Permission Issues
-    url: /connectors/troubleshooting/permission-issues
 
   - category: How-to Guides
     url: /how-to-guides
