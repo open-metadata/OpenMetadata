@@ -66,6 +66,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       },
     },
     onThreadLinkSelect: jest.fn(),
+    filterWidgets: jest.fn(),
   })),
 }));
 

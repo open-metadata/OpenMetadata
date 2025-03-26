@@ -400,7 +400,6 @@ export const DashboardChartTable = () => {
   return (
     <>
       <Table
-        bordered
         className="align-table-filter-left"
         columns={tableColumn}
         data-testid="charts-table"

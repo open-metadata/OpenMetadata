@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Skeleton, Typography } from 'antd';
+import { Card, Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -32,6 +32,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -62,17 +63,21 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   hasPermission,
   maxDataCap,
   isRenderedInRightPanel = false,
+  newLook = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { data: entityDetails, onUpdate } =
-    useGenericContext<ExtentionEntities[T]>();
+  const {
+    data: entityDetails,
+    onUpdate,
+    filterWidgets,
+  } = useGenericContext<ExtentionEntities[T]>();
 
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
 
-  const [typePermission, setPermission] = useState<OperationPermission>();
+  const [typePermission, setTypePermission] = useState<OperationPermission>();
 
   const fetchTypeDetail = async () => {
     setEntityTypeDetailLoading(true);
@@ -95,7 +100,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         entityType
       );
 
-      setPermission(permission);
+      setTypePermission(permission);
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -134,7 +139,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       const newValues = getChangedEntityNewValue(extensionDiff);
 
       if (extensionDiff.added) {
-        const addedFields = JSON.parse(newValues ? newValues : [])[0];
+        const addedFields = JSON.parse(newValues ?? [])[0];
         if (addedFields) {
           return {
             extensionObject: entityDetails?.extension,
@@ -161,6 +166,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     ) {
       return (
         <Link
+          className="text-sm"
           to={entityUtilClassBase.getEntityLink(
             entityType,
             entityDetails.fullyQualifiedName,
@@ -200,6 +206,16 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       fetchTypeDetail();
     }
   }, [typePermission]);
+
+  useEffect(() => {
+    if (
+      isRenderedInRightPanel &&
+      isEmpty(entityTypeDetail.customProperties) &&
+      isUndefined(entityDetails?.extension)
+    ) {
+      filterWidgets?.([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
+    }
+  }, [isRenderedInRightPanel, entityTypeDetail.customProperties]);
 
   useEffect(() => {
     fetchResourcePermission(entityType);
@@ -249,77 +265,98 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     );
   }
 
-  return isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails?.extension) ? (
-    <ExtensionTable extension={entityDetails?.extension} />
-  ) : (
-    <>
-      {!isEmpty(entityTypeDetail.customProperties) && (
-        <>
-          {isRenderedInRightPanel ? (
-            <>
-              <div className="d-flex justify-between m-b-md">
-                <Typography.Text className="right-panel-label">
-                  {t('label.custom-property-plural')}
-                </Typography.Text>
-                {viewAllBtn}
-              </div>
-              <div className="custom-property-right-panel-container">
-                {dataSource.map((record, index) => (
-                  <Fragment key={record.name}>
-                    <div
-                      className={classNames(
-                        'custom-property-right-panel-card',
-                        {
-                          'top-border-radius': index === 0,
-                          'bottom-border-radius':
-                            index === dataSource.length - 1,
-                        }
-                      )}
-                      key={record.name}>
-                      <PropertyValue
-                        extension={extensionObject.extensionObject}
-                        hasEditPermissions={hasEditAccess}
-                        isRenderedInRightPanel={isRenderedInRightPanel}
-                        isVersionView={isVersionView}
-                        key={record.name}
-                        property={record}
-                        versionDataKeys={extensionObject.addedKeysList}
-                        onExtensionUpdate={onExtensionUpdate}
-                      />
-                    </div>
-                    {index !== dataSource.length - 1 && (
-                      <Divider className="m-y-0" />
-                    )}
-                  </Fragment>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="custom-properties-card">
-              <Row data-testid="custom-properties-card" gutter={[16, 16]}>
-                {dataSourceColumns.map((columns, colIndex) => (
-                  <Col key={colIndex} span={8}>
-                    {columns.map((record) => (
-                      <div key={record.name} style={{ marginBottom: '16px' }}>
-                        <PropertyValue
-                          extension={extensionObject.extensionObject}
-                          hasEditPermissions={hasEditAccess}
-                          isRenderedInRightPanel={isRenderedInRightPanel}
-                          isVersionView={isVersionView}
-                          property={record}
-                          versionDataKeys={extensionObject.addedKeysList}
-                          onExtensionUpdate={onExtensionUpdate}
-                        />
-                      </div>
-                    ))}
-                  </Col>
-                ))}
-              </Row>
+  if (
+    isEmpty(entityTypeDetail.customProperties) &&
+    !isUndefined(entityDetails?.extension)
+  ) {
+    return <ExtensionTable extension={entityDetails?.extension} />;
+  }
+
+  if (isRenderedInRightPanel || newLook) {
+    const header = (
+      <div
+        className={classNames('d-flex justify-between', {
+          'm-b-md': !newLook,
+        })}>
+        <Typography.Text
+          className={classNames({
+            'text-sm font-medium': newLook,
+            'right-panel-label': !newLook,
+          })}>
+          {t('label.custom-property-plural')}
+        </Typography.Text>
+        {viewAllBtn}
+      </div>
+    );
+    const propertyList = (
+      <div className="custom-property-right-panel-container">
+        {dataSource.map((record, index) => (
+          <Fragment key={record.name}>
+            <div
+              className={classNames('custom-property-right-panel-card', {
+                'top-border-radius': index === 0,
+                'bottom-border-radius': index === dataSource.length - 1,
+              })}
+              key={record.name}>
+              <PropertyValue
+                extension={extensionObject.extensionObject}
+                hasEditPermissions={hasEditAccess}
+                isRenderedInRightPanel={isRenderedInRightPanel}
+                isVersionView={isVersionView}
+                key={record.name}
+                property={record}
+                versionDataKeys={extensionObject.addedKeysList}
+                onExtensionUpdate={onExtensionUpdate}
+              />
             </div>
-          )}
-        </>
-      )}
-    </>
-  );
+            {index !== dataSource.length - 1 && <Divider className="m-y-0" />}
+          </Fragment>
+        ))}
+      </div>
+    );
+
+    if (isEmpty(entityTypeDetail.customProperties)) {
+      // Noting should be shown in case of no properties
+      return null;
+    }
+
+    if (newLook) {
+      return (
+        <Card className="w-full new-header-border-card" title={header}>
+          {propertyList}
+        </Card>
+      );
+    }
+
+    return (
+      <>
+        {header}
+        {propertyList}
+      </>
+    );
+  }
+
+  return !isEmpty(entityTypeDetail.customProperties) ? (
+    <div className="custom-properties-card">
+      <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+        {dataSourceColumns.map((columns, colIndex) => (
+          <Col key={colIndex} span={8}>
+            {columns.map((record) => (
+              <div key={record.name} style={{ marginBottom: '16px' }}>
+                <PropertyValue
+                  extension={extensionObject.extensionObject}
+                  hasEditPermissions={hasEditAccess}
+                  isRenderedInRightPanel={isRenderedInRightPanel}
+                  isVersionView={isVersionView}
+                  property={record}
+                  versionDataKeys={extensionObject.addedKeysList}
+                  onExtensionUpdate={onExtensionUpdate}
+                />
+              </div>
+            ))}
+          </Col>
+        ))}
+      </Row>
+    </div>
+  ) : null;
 };

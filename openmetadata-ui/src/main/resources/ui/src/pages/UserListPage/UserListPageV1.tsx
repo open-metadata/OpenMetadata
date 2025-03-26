@@ -23,9 +23,7 @@ import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import Searchbar from '../../components/common/SearchBarComponent/SearchBar.component';
 import Table from '../../components/common/Table/Table';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -83,6 +81,7 @@ const UserListPageV1 = () => {
     isDeleted: false,
     user: '',
   });
+
   const showRestore = isDeleted && !isDataLoading;
 
   const { getResourceLimit } = useLimitStore();
@@ -449,15 +448,6 @@ const UserListPageV1 = () => {
         </Col>
         <Col span={12}>
           <Space align="center" className="w-full justify-end" size={16}>
-            <span>
-              <Switch
-                checked={isDeleted}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedUserChange}
-              />
-              <span className="m-l-xs">{t('label.deleted')}</span>
-            </span>
-
             {isAdminUser && (
               <LimitWrapper resource="user">
                 <Button
@@ -472,26 +462,34 @@ const UserListPageV1 = () => {
             )}
           </Space>
         </Col>
-        <Col span={8}>
-          <Searchbar
-            removeMargin
-            placeholder={`${t('label.search-for-type', {
-              type: t('label.user'),
-            })}...`}
-            searchValue={searchValue}
-            typingInterval={400}
-            urlSearchKey="user"
-            onSearch={noop}
-          />
-        </Col>
 
         <Col span={24}>
           <Table
             bordered
             className="user-list-table"
             columns={columns}
+            customPaginationProps={{
+              currentPage,
+              isLoading: isDataLoading,
+              showPagination,
+              isNumberBased: Boolean(searchValue),
+              pageSize,
+              paging,
+              pagingHandler: handleUserPageChange,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             data-testid="user-list-table"
             dataSource={userList}
+            extraTableFilters={
+              <span>
+                <Switch
+                  checked={isDeleted}
+                  data-testid="show-deleted"
+                  onClick={handleShowDeletedUserChange}
+                />
+                <span className="m-l-xs">{t('label.deleted')}</span>
+              </span>
+            }
             loading={isDataLoading}
             locale={{
               emptyText: (
@@ -502,21 +500,17 @@ const UserListPageV1 = () => {
             }}
             pagination={false}
             rowKey="id"
+            searchProps={{
+              placeholder: `${t('label.search-for-type', {
+                type: t('label.user'),
+              })}...`,
+              value: searchValue,
+              typingInterval: 400,
+              urlSearchKey: 'user',
+              onSearch: noop,
+            }}
             size="small"
           />
-        </Col>
-        <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={isDataLoading}
-              isNumberBased={Boolean(searchValue)}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handleUserPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
         </Col>
 
         <Modal

@@ -20,9 +20,8 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -222,7 +221,7 @@ const ObservabilityAlertsPage = () => {
               })}
             </Typography.Text>
           ) : (
-            <RichTextEditorPreviewerV1 markdown={description} />
+            <RichTextEditorPreviewerNew markdown={description} />
           ),
       },
       {
@@ -312,8 +311,16 @@ const ObservabilityAlertsPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             columns={columns}
+            customPaginationProps={{
+              currentPage,
+              isLoading: loading,
+              showPagination,
+              pageSize,
+              paging,
+              pagingHandler: onPageChange,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             dataSource={alerts}
             loading={loading}
             locale={{
@@ -334,17 +341,6 @@ const ObservabilityAlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={loading}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={onPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}
