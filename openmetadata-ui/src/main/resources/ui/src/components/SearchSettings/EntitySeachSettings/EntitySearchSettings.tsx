@@ -436,13 +436,18 @@ const EntitySearchSettings = () => {
 
       const updatedSearchConfig = data as SearchSettings;
 
+      const updatedAssetSearchSettings =
+        updatedSearchConfig.assetTypeConfigurations?.find(
+          (config) => config.assetType === entityType
+        );
+
       setAppPreferences({
         ...appPreferences,
         searchConfig: updatedSearchConfig,
       });
 
       setSearchSettings({
-        ...updatedSearchConfig,
+        ...updatedAssetSearchSettings,
         isUpdated: false,
       });
 
