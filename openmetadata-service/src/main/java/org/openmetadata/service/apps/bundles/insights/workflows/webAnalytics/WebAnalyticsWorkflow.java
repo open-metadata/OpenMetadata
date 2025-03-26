@@ -121,6 +121,7 @@ public class WebAnalyticsWorkflow {
     if (!webAnalyticsConfig.getEnabled()) {
       return;
     }
+    LOG.info("[Data Insights] Processing App Analytics.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
