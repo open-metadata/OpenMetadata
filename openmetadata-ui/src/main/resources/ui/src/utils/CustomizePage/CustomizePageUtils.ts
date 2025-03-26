@@ -34,6 +34,7 @@ import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { getEntityName } from '../EntityUtils';
+import { getGlossaryWidgetFromKey } from '../GlossaryUtils';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
 import mlModelClassBase from '../MlModel/MlModelClassBase';
@@ -175,8 +176,9 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
 export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
   switch (pageType) {
     case PageType.GlossaryTerm:
-    case PageType.Glossary:
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+    case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getDefaultWidgetForTab(tab);
     case PageType.Table:
       return tableClassBase.getDefaultLayout(tab);
     case PageType.Topic:
@@ -354,6 +356,10 @@ export const getWidgetsFromKey = (
       return metricDetailsClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.MlModel:
       return mlModelClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Glossary:
+      return getGlossaryWidgetFromKey(widgetConfig);
+    case PageType.GlossaryTerm:
+      return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }

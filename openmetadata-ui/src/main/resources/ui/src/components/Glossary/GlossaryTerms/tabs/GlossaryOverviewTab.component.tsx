@@ -10,54 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useParams } from 'react-router-dom';
-import { EntityField } from '../../../../constants/Feeds.constants';
-import { GlossaryTermDetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { Glossary } from '../../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
-import { ChangeDescription } from '../../../../generated/entity/type';
 import { PageType, Tab } from '../../../../generated/system/ui/page';
-import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
+import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
-import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { getWidgetFromKey } from '../../../../utils/CustomizableLandingPageUtils';
 import customizeGlossaryTermPageClassBase from '../../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import {
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
-import { getWidgetFromKey } from '../../../../utils/GlossaryTerm/GlossaryTermUtil';
-import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
-import { DomainLabelV2 } from '../../../DataAssets/DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
-import { ReviewerLabelV2 } from '../../../DataAssets/ReviewerLabelV2/ReviewerLabelV2';
-import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
-import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import { GlossaryUpdateConfirmationModal } from '../../GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
-import GlossaryTermReferences from './GlossaryTermReferences';
-import GlossaryTermSynonyms from './GlossaryTermSynonyms';
-import RelatedTerms from './RelatedTerms';
 
 const ReactGridLayout = WidthProvider(RGL);
 
-type Props = {
-  editCustomAttributePermission: boolean;
-};
-
-const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
+const GlossaryOverviewTab = () => {
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
   const {
     data: selectedData,
-    permissions,
     onUpdate,
-    isVersionView,
     type: entityType,
   } = useGenericContext<GlossaryTerm | Glossary>();
   const isGlossary = entityType === EntityType.GLOSSARY;
@@ -79,51 +53,6 @@ const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
     }
   }, [customizedPage, isGlossary, tab]);
 
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (selectedData.description !== updatedHTML) {
-      const updatedTableDetails = {
-        ...selectedData,
-        description: updatedHTML,
-      };
-      onUpdate(updatedTableDetails);
-    }
-  };
-
-  const hasEditTagsPermissions = useMemo(() => {
-    return permissions.EditAll || permissions.EditTags;
-  }, [permissions]);
-
-  const hasViewAllPermission = useMemo(() => {
-    return permissions.ViewAll;
-  }, [permissions]);
-
-  const glossaryDescription = useMemo(() => {
-    if (isVersionView) {
-      return getEntityVersionByField(
-        selectedData.changeDescription as ChangeDescription,
-        EntityField.DESCRIPTION,
-        selectedData.description
-      );
-    } else {
-      return selectedData.description;
-    }
-  }, [selectedData, isVersionView]);
-
-  const tags = useMemo(
-    () =>
-      isVersionView
-        ? getEntityVersionTags(
-            selectedData,
-            selectedData.changeDescription as ChangeDescription
-          )
-        : selectedData.tags,
-    [isVersionView, selectedData]
-  );
-
-  const handleTagsUpdate = async (updatedTags: TagLabel[]) => {
-    setTagsUpdating(updatedTags);
-  };
-
   const handleGlossaryTagUpdateValidationConfirm = async () => {
     if (selectedData) {
       await onUpdate({
@@ -133,133 +62,9 @@ const GlossaryOverviewTab = ({ editCustomAttributePermission }: Props) => {
     }
   };
 
-  const descriptionWidget = useMemo(() => {
-    return (
-      <DescriptionV1
-        description={glossaryDescription}
-        entityName={getEntityName(selectedData)}
-        entityType={EntityType.GLOSSARY_TERM}
-        hasEditAccess={permissions.EditDescription || permissions.EditAll}
-        owner={selectedData?.owners}
-        showActions={!selectedData.deleted}
-        onDescriptionUpdate={onDescriptionUpdate}
-      />
-    );
-  }, [glossaryDescription, selectedData, onDescriptionUpdate, permissions]);
-
-  const tagsWidget = useMemo(() => {
-    return (
-      <TagsContainerV2
-        displayType={DisplayType.READ_MORE}
-        entityFqn={selectedData.fullyQualifiedName}
-        entityType={EntityType.GLOSSARY_TERM}
-        permission={hasEditTagsPermissions}
-        selectedTags={tags ?? []}
-        tagType={TagSource.Classification}
-        onSelectionChange={handleTagsUpdate}
-      />
-    );
-  }, [tags, selectedData.fullyQualifiedName, hasEditTagsPermissions]);
-
-  const domainWidget = useMemo(() => {
-    return (
-      <DomainLabelV2
-        showDomainHeading
-        // Only allow domain selection at glossary level. Glossary Term will inherit
-        hasPermission={permissions.EditAll}
-      />
-    );
-  }, [
-    selectedData.domain,
-    selectedData.fullyQualifiedName,
-    selectedData.id,
-    permissions.EditAll,
-    isGlossary,
-  ]);
-
-  const customPropertyWidget = useMemo(() => {
-    return (
-      <CustomPropertyTable
-        isRenderedInRightPanel
-        entityType={EntityType.GLOSSARY_TERM}
-        hasEditAccess={Boolean(editCustomAttributePermission)}
-        hasPermission={hasViewAllPermission}
-        maxDataCap={5}
-      />
-    );
-  }, [selectedData, editCustomAttributePermission, hasViewAllPermission]);
-
   const widgets = useMemo(() => {
-    const getWidgetFromKeyInternal = (widgetConfig: WidgetConfig) => {
-      if (
-        widgetConfig.i.startsWith(
-          GlossaryTermDetailPageWidgetKeys.RELATED_TERMS
-        )
-      ) {
-        return <RelatedTerms />;
-      } else if (
-        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.SYNONYMS)
-      ) {
-        return <GlossaryTermSynonyms />;
-      } else if (
-        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.TAGS)
-      ) {
-        return tagsWidget;
-      } else if (
-        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REFERENCES)
-      ) {
-        return <GlossaryTermReferences />;
-      } else if (
-        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DESCRIPTION)
-      ) {
-        return descriptionWidget;
-      } else if (
-        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.OWNER)
-      ) {
-        return <OwnerLabelV2 />;
-      } else if (
-        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.DOMAIN)
-      ) {
-        return domainWidget;
-      } else if (
-        widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
-      ) {
-        return <ReviewerLabelV2 />;
-      } else if (
-        widgetConfig.i.startsWith(
-          GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES
-        ) &&
-        !isGlossary
-      ) {
-        return customPropertyWidget;
-      }
-
-      return getWidgetFromKey({
-        widgetConfig: widgetConfig,
-        handleOpenAddWidgetModal: noop,
-        handlePlaceholderWidgetKey: noop,
-        handleRemoveWidget: noop,
-        isEditView: false,
-      });
-    };
-
-    return layout?.map((widget: WidgetConfig) => (
-      <div
-        data-grid={widget}
-        data-testid={widget.i}
-        id={widget.i}
-        key={widget.i}>
-        {getWidgetFromKeyInternal(widget)}
-      </div>
-    ));
-  }, [
-    layout,
-    descriptionWidget,
-    tagsWidget,
-    domainWidget,
-    customPropertyWidget,
-    isGlossary,
-  ]);
+    return layout?.map(getWidgetFromKey);
+  }, [layout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();

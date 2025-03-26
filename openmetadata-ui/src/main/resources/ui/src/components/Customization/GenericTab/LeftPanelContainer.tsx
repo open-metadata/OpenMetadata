@@ -107,8 +107,9 @@ export const LeftPanelContainer = ({
       autoSize
       className="grid-container"
       cols={1}
+      isDraggable={isEditView}
       isResizable={isEditView}
-      margin={[0, 16]}
+      margin={[16, 16]}
       rowHeight={100}
       onLayoutChange={onUpdate}>
       {widgets}
