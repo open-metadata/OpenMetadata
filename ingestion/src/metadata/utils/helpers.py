@@ -538,7 +538,7 @@ def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
 
     Returns:
         True if the result satisfies the threshold condition, False otherwise.
-        If no comparison operator is provided, it defaults to less than comparison.
+        If no comparison operator is provided, it defaults to less than or equal to comparison.
         Returns False for invalid threshold formats.
     """
     import operator as op  # pylint: disable=import-outside-toplevel
