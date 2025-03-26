@@ -304,6 +304,30 @@ const Services = ({ serviceName }: ServicesProps) => {
     }));
   }, [serviceName]);
 
+  const customPaginationTableProps = useMemo(
+    () => ({
+      showPagination,
+      currentPage,
+      isLoading,
+      isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
+      pageSize,
+      paging,
+      pagingHandler: handleServicePageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      showPagination,
+      currentPage,
+      isLoading,
+      searchTerm,
+      serviceTypeFilter,
+      pageSize,
+      paging,
+      handleServicePageChange,
+      handlePageSizeChange,
+    ]
+  );
+
   const columns: ColumnsType<ServicesType> = [
     {
       title: t('label.name'),
@@ -485,16 +509,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
-          customPaginationProps={{
-            showPagination,
-            currentPage,
-            isLoading,
-            isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
-            pageSize,
-            paging,
-            pagingHandler: handleServicePageChange,
-            onShowSizeChange: handlePageSizeChange,
-          }}
+          customPaginationProps={customPaginationTableProps}
           deleted={deleted}
           handleDeletedSwitchChange={handleDeletedSwitchChange}
           searchProps={{
