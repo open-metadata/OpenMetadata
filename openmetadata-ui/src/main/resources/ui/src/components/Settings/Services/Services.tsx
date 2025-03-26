@@ -64,7 +64,6 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -486,6 +485,16 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          customPaginationProps={{
+            showPagination,
+            currentPage,
+            isLoading,
+            isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
+            pageSize,
+            paging,
+            pagingHandler: handleServicePageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
           deleted={deleted}
           handleDeletedSwitchChange={handleDeletedSwitchChange}
           searchProps={{
@@ -493,7 +502,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             search: searchTerm,
           }}
           tableProps={{
-            bordered: true,
             columns,
             dataSource: serviceDetails,
             rowKey: 'fullyQualifiedName',
@@ -506,19 +514,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleServicePageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );
