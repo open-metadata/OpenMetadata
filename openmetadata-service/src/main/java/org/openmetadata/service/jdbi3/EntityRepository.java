@@ -68,6 +68,8 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
+import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
@@ -3265,6 +3267,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               "Removing domain {} for entity {}",
               origDomain.getFullyQualifiedName(),
               original.getFullyQualifiedName());
+          removeDomainLineage(updated.getId(), entityType, origDomain);
           deleteRelationship(
               origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
@@ -3277,6 +3280,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               original.getFullyQualifiedName());
           addRelationship(
               updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
+          addDomainLineage(updated.getId(), entityType, updatedDomain);
         }
         updated.setDomain(updatedDomain);
       } else {

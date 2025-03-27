@@ -1003,6 +1003,23 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @BindList("relation") List<Integer> relation);
 
+    @SqlQuery(
+        "SELECT * FROM entity_relationship er1 JOIN entity_relationship er2  ON er1.toId = er2.toId WHERE er1.relation = 10 AND er1.fromEntity = 'domain' AND er2.fromId = :fromId AND er2.fromEntity = :fromEntity AND er2.relation = 13")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findDownstreamDomains(
+        @BindUUID("fromId") UUID fromId, @Bind("fromEntity") String fromEntity);
+
+    @SqlQuery(
+        "SELECT * FROM entity_relationship er1 JOIN entity_relationship er2  ON er1.toId = er2.fromId WHERE er1.relation = 10 AND er1.fromEntity = 'domain' AND er2.toId = :toId AND er2.toEntity = :toEntity AND er2.relation = 13")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findUpstreamDomains(
+        @BindUUID("toId") UUID toId, @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "select count(*) from entity_relationship where fromId in (select toId from entity_relationship where fromId = :fromDomainId and fromEntity = 'domain' and relation = 10) AND toId in (select toId from entity_relationship where fromId = :toDomainId and fromEntity = 'domain' and relation = 10) and relation = 13")
+    Integer countDomainChildAssets(
+        @BindUUID("fromDomainId") UUID fromDomainId, @BindUUID("toDomainId") UUID toId);
+
     default List<EntityRelationshipRecord> findTo(UUID fromId, String fromEntity, int relation) {
       return findTo(fromId, fromEntity, List.of(relation));
     }
