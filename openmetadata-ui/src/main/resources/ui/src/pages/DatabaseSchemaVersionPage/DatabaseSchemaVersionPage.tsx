@@ -353,7 +353,7 @@ function DatabaseSchemaVersionPage() {
                 permissions={servicePermissions}
                 type={EntityType.DATABASE}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="p-x-lg" span={24}>
+                <Col span={24}>
                   <Tabs
                     className="tabs-new"
                     data-testid="tabs"

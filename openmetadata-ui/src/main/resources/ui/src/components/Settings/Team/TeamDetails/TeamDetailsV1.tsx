@@ -1061,7 +1061,7 @@ const TeamDetailsV1 = ({
 
   const tabsChildrenRender = useCallback(
     (key: TeamsPageTab) => (
-      <Row className="teams-tabs-content-container p-x-lg">
+      <Row className="teams-tabs-content-container">
         <Col className="teams-scroll-component" span={previewAsset ? 18 : 24}>
           {isFetchingAdvancedDetails ? <Loader /> : getTabChildren(key)}
         </Col>
@@ -1134,13 +1134,13 @@ const TeamDetailsV1 = ({
     <div className="teams-layout">
       <Row className="h-full" data-testid="team-details-container">
         {isOrganization && (
-          <Col className="p-x-lg p-y-sm" span={24}>
+          <Col className="p-y-sm" span={24}>
             <TitleBreadcrumb titleLinks={breadcrumbs} />
           </Col>
         )}
 
         <Col
-          className="teams-profile-container p-x-lg"
+          className="teams-profile-container"
           data-testid="team-detail-header"
           span={24}>
           <Collapse

@@ -535,7 +535,7 @@ const GlossaryPage = () => {
     />
   );
 
-  return <div className="m--t-sm">{resizableLayout}</div>;
+  return <div>{resizableLayout}</div>;
 };
 
 export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);

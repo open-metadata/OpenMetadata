@@ -134,13 +134,11 @@ export const getPipelineDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: pipelineDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.PIPELINE>
-            entityType={EntityType.PIPELINE}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.PIPELINE>
+          entityType={EntityType.PIPELINE}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];
