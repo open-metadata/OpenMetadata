@@ -103,7 +103,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.user-plural'),
         dataIndex: 'userCount',
-        width: 60,
+        width: 80,
         key: 'users',
         render: (userCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (

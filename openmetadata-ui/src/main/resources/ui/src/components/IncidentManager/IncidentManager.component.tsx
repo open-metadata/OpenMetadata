@@ -628,6 +628,9 @@ const IncidentManager = ({
           }}
           pagination={false}
           rowKey="id"
+          scroll={{
+            x: true,
+          }}
           size="small"
         />
       </Col>

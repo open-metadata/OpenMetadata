@@ -208,6 +208,7 @@ export const hardDeleteUserProfilePage = async (
 
   // Wait for both the delete response and all toast elements to appear
   await Promise.all([deleteResponse, ...toastPromises]);
+  await page.waitForLoadState('networkidle');
   await toastNotification(page, /deleted successfully!/);
 };
 

@@ -196,7 +196,6 @@ function MetadataAgentsWidget({
 
         <IngestionListTable
           airflowInformation={airflowInformation}
-          bordered={false}
           deployIngestion={deployIngestion}
           handleEnableDisableIngestion={handleEnableDisableIngestion}
           handleIngestionListUpdate={handleIngestionListUpdate}
@@ -211,7 +210,7 @@ function MetadataAgentsWidget({
           serviceCategory={serviceCategory}
           serviceName={serviceName}
           tableClassName="metadata-agents-widget-table"
-          tableContainerClassName="m-b-0"
+          tableContainerClassName="p-x-md"
           triggerIngestion={triggerIngestion}
           onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
           onPageChange={onPageChange}

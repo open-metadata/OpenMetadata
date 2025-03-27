@@ -157,3 +157,15 @@
     }
   }
 }
+
+// Hide the border of the columns except the resizable columns
+.ant-table-thead > tr {
+  // Regular header cells
+  > th:not(:last-child):not(.ant-table-selection-column):not(.ant-table-row-expand-icon-cell):not([colspan])::before {
+    width: 0px;
+  }
+  // Resizable header cells
+  > .resizable-container:not(:last-child):not(.ant-table-selection-column):not(.ant-table-row-expand-icon-cell):not([colspan])::before {
+    width: 1px;
+  }
+}
