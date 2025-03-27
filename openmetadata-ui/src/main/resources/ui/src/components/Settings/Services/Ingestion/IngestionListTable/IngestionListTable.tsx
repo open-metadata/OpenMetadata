@@ -71,7 +71,6 @@ import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
 
 function IngestionListTable({
-  bordered = true,
   tableContainerClassName = '',
   afterDeleteAction,
   airflowInformation,
@@ -434,7 +433,6 @@ function IngestionListTable({
         gutter={[16, 16]}>
         <Col span={24}>
           <Table
-            bordered={bordered}
             className={tableClassName}
             columns={tableColumn}
             {...(!isUndefined(ingestionPagingInfo) &&
@@ -447,6 +445,7 @@ function IngestionListTable({
                     isNumberBased: isNumberBasedPaging,
                     pagingHandler: onPageChange,
                     showPagination: true,
+                    onShowSizeChange: ingestionPagingInfo.handlePageSizeChange,
                   },
                 }
               : {})}

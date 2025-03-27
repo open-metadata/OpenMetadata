@@ -84,19 +84,21 @@ export const LeftPanelContainer = ({
   };
 
   const widgets = useMemo(() => {
-    return isEditView
-      ? getWidgetFromLayout(layout)
-      : layout?.map((widget: WidgetConfig) => {
-          return (
-            <div
-              className="overflow-auto-y"
-              data-grid={widget}
-              id={widget.i}
-              key={widget.i}>
-              {getWidgetsFromKey(type, widget)}
-            </div>
-          );
-        });
+    if (isEditView) {
+      return getWidgetFromLayout(layout);
+    }
+
+    return layout?.map((widget: WidgetConfig) => {
+      return (
+        <div
+          className="overflow-auto-y"
+          data-grid={widget}
+          id={widget.i}
+          key={widget.i}>
+          {getWidgetsFromKey(type, widget)}
+        </div>
+      );
+    });
   }, [layout, type, isEditView]);
 
   // call the hook to set the direction of the grid layout
@@ -107,8 +109,10 @@ export const LeftPanelContainer = ({
       autoSize
       className="grid-container"
       cols={1}
+      containerPadding={[0, 16]}
+      isDraggable={isEditView}
       isResizable={isEditView}
-      margin={[0, 16]}
+      margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
       rowHeight={100}
       onLayoutChange={onUpdate}>
       {widgets}

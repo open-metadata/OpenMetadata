@@ -40,7 +40,7 @@ test.describe('Service Listing', () => {
 
   test('should render the service listing page', async ({ page }) => {
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: 'filter' }).click();
+    await page.getByTestId('filter-icon').click();
 
     const searchBigQueryResponse = page.waitForResponse(
       `/api/v1/search/query?q=**%20AND%20(serviceType:BigQuery)&from=0&size=15&index=database_service_search_index`
@@ -50,7 +50,7 @@ test.describe('Service Listing', () => {
 
     await expect(page.getByTestId('service-name-sample_data')).toBeVisible();
 
-    await page.getByRole('button', { name: 'filter' }).click();
+    await page.getByTestId('filter-icon').click();
 
     const searchResponse = page.waitForResponse(
       `/api/v1/search/query?q=**%20AND%20(serviceType:BigQuery%20OR%20serviceType:Mysql)&from=0&size=15&index=database_service_search_index`
@@ -67,7 +67,7 @@ test.describe('Service Listing', () => {
       page.getByTestId(`service-name-${databaseService.entity.name}`)
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'filter' }).click();
+    await page.getByTestId('filter-icon').click();
     await page.getByLabel('Big Query').uncheck();
 
     await expect(
