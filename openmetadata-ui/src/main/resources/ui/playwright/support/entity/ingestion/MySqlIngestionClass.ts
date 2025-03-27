@@ -86,9 +86,10 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await test.step('Add Profiler ingestion', async () => {
       const { apiContext } = await getApiContext(page);
       await redirectToHomePage(page);
-
-      // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromBotPage(page, 'profiler-bot');
+      if (!process.env.PLAYWRIGHT_IS_OSS) {
+        // Todo: Remove this patch once the issue is fixed #19140
+        await resetTokenFromBotPage(page, 'profiler-bot');
+      }
 
       await visitServiceDetailsPage(
         page,
