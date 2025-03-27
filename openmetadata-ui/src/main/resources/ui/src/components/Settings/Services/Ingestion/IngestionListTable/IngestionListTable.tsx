@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Skeleton } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -362,7 +363,9 @@ function IngestionListTable({
         key: 'count',
         width: 220,
         render: (_: string, record: ModifiedIngestionPipeline) => {
-          return (
+          return isIngestionRunsLoading ? (
+            <Skeleton.Input active size="small" />
+          ) : (
             <IngestionStatusCount
               runId={record.runId}
               summary={record.runStatus}
