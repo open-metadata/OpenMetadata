@@ -503,6 +503,7 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
+  await page.waitForLoadState('networkidle');
 };
 
 export const fillLineageConfigForm = async (
