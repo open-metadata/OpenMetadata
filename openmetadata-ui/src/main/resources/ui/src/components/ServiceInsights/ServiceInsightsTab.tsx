@@ -27,6 +27,7 @@ import {
   getCurrentDayStartGMTinMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import Fqn from '../../utils/Fqn';
 import {
   getPlatformInsightsChartDataFormattingMethod,
   getStatusIconFromStatusType,
@@ -55,6 +56,16 @@ const ServiceInsightsTab = ({
     tierDistributionChart: ChartData[];
   }>();
   const [isLoading, setIsLoading] = useState(false);
+
+  const filterDistributionChartItem = (item: {
+    term: string;
+    group: string;
+  }) => {
+    return (
+      Fqn.split(item.term).length === 2 &&
+      toLower(Fqn.split(item.term)[1]) === toLower(item.group)
+    );
+  };
 
   const serviceName = serviceDetails.name;
 
@@ -88,10 +99,10 @@ const ServiceInsightsTab = ({
 
       const piiDistributionChart = chartsData[
         SystemChartType.PIIDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
       const tierDistributionChart = chartsData[
         SystemChartType.TierDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
 
       setChartsResults({
         platformInsightsChart,
