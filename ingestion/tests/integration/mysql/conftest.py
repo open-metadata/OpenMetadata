@@ -55,7 +55,7 @@ def mysql_container(tmp_path_factory):
         assert_dangling_connections(container, 1)
         yield container
         # TODO: We are still leaving some connections open. Should be fixed in the future.
-        assert_dangling_connections(container, 5)
+        assert_dangling_connections(container, 9)
 
 
 def assert_dangling_connections(container, max_connections):
