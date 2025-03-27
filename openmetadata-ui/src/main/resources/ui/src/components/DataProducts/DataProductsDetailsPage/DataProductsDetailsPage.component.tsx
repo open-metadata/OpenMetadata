@@ -478,18 +478,16 @@ const DataProductsDetailsPage = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <div className="p-md">
-            <CustomPropertyTable<EntityType.DATA_PRODUCT>
-              entityType={EntityType.DATA_PRODUCT}
-              hasEditAccess={
-                (dataProductPermission.EditAll ||
-                  dataProductPermission.EditCustomFields) &&
-                !isVersionsView
-              }
-              hasPermission={dataProductPermission.ViewAll}
-              isVersionView={isVersionsView}
-            />
-          </div>
+          <CustomPropertyTable<EntityType.DATA_PRODUCT>
+            entityType={EntityType.DATA_PRODUCT}
+            hasEditAccess={
+              (dataProductPermission.EditAll ||
+                dataProductPermission.EditCustomFields) &&
+              !isVersionsView
+            }
+            hasPermission={dataProductPermission.ViewAll}
+            isVersionView={isVersionsView}
+          />
         ),
       },
     ];

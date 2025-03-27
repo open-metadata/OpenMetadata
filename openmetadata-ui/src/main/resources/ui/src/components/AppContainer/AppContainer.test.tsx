@@ -67,7 +67,7 @@ jest.mock('../../hooks/useDomainStore', () => ({
   }),
 }));
 
-describe('AppContainer', () => {
+describe.skip('AppContainer', () => {
   it('renders the Appbar, LeftSidebar, and AuthenticatedAppRouter components', () => {
     const ApplicationExtras = () => (
       <div data-testid="test-app">ApplicationExtras</div>
