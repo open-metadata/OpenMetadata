@@ -70,6 +70,8 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await page.waitForLoadState('networkidle');
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const userListResponse = page.waitForResponse(
     '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
   );
@@ -474,7 +476,17 @@ export const fillRowDetails = async (
   customPropertyRecord: Record<string, string>
 ) => {
   await page.locator('[data-props-id="name*"]').last().click();
-  await fillTextInputDetails(page, row.name);
+
+  const activeCell = page.locator('.InovuaReactDataGrid__cell--cell-active');
+  const isActive = await activeCell.isVisible();
+
+  if (isActive) {
+    await fillTextInputDetails(page, row.name);
+  } else {
+    // Click the name cell again
+    await page.locator('[data-props-id="name*"]').last().click();
+    await fillTextInputDetails(page, row.name);
+  }
 
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')

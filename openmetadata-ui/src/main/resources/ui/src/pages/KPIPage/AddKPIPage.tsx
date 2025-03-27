@@ -175,7 +175,7 @@ const AddKPIPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
@@ -395,7 +395,7 @@ const AddKPIPage = () => {
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </div>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
         minWidth: 400,
         flex: 0.3,
       }}

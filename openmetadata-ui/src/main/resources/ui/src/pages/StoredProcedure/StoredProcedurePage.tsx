@@ -527,12 +527,11 @@ const StoredProcedurePage = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.stored-procedure'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
@@ -560,7 +559,7 @@ const StoredProcedurePage = () => {
           <Col span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={(activeKey: string) =>

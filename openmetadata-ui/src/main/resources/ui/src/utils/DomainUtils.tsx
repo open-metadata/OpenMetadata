@@ -145,7 +145,24 @@ export const getQueryFilterToExcludeDomainTerms = (
 export const getQueryFilterForDomain = (domainFqn: string) => ({
   query: {
     bool: {
-      must: [{ prefix: { 'domain.fullyQualifiedName': domainFqn } }],
+      must: [
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'domain.fullyQualifiedName': domainFqn,
+                },
+              },
+              {
+                prefix: {
+                  'domain.fullyQualifiedName': `${domainFqn}.`,
+                },
+              },
+            ],
+          },
+        },
+      ],
       must_not: [
         {
           term: {
@@ -458,16 +475,13 @@ export const getDomainDetailTabs = ({
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
-              <div className="m-sm">
-                <CustomPropertyTable<EntityType.DOMAIN>
-                  entityType={EntityType.DOMAIN}
-                  hasEditAccess={
-                    domainPermission.EditAll ||
-                    domainPermission.EditCustomFields
-                  }
-                  hasPermission={domainPermission.ViewAll}
-                />
-              </div>
+              <CustomPropertyTable<EntityType.DOMAIN>
+                entityType={EntityType.DOMAIN}
+                hasEditAccess={
+                  domainPermission.EditAll || domainPermission.EditCustomFields
+                }
+                hasPermission={domainPermission.ViewAll}
+              />
             ),
           },
         ]
@@ -477,9 +491,9 @@ export const getDomainDetailTabs = ({
 
 export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
-    return <DomainExpertWidget />;
+    return <DomainExpertWidget newLook />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
-    return <DomainTypeWidget />;
+    return <DomainTypeWidget newLook />;
   }
 
   return (

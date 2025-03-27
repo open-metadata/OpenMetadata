@@ -49,7 +49,6 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -99,12 +98,15 @@ import {
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -112,20 +114,20 @@ import {
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
 
-const GlossaryTermTab = ({
-  refreshGlossaryTerms,
-  permissions,
-  isGlossary,
-  termsLoading,
-  onAddGlossaryTerm,
-  onEditGlossaryTerm,
-  className,
-}: GlossaryTermTabProps) => {
+const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const { currentUser } = useApplicationStore();
   const tableRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    onAddGlossaryTerm,
+    onEditGlossaryTerm,
+    termsLoading,
+    refreshGlossaryTerms,
+  } = useGlossaryStore();
+  const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Thread[]>
@@ -369,7 +371,7 @@ const GlossaryTermTab = ({
         width: tableColumnsWidth.description,
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
               maxLength={120}
@@ -413,13 +415,7 @@ const GlossaryTermTab = ({
           );
         },
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        width: tableColumnsWidth.owners,
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<ModifiedGlossaryTerm>(),
       {
         title: t('label.status'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
@@ -835,7 +831,7 @@ const GlossaryTermTab = ({
     if (tableRef.current) {
       setTableWidth(tableRef.current.offsetWidth);
     }
-  }, []);
+  }, [tableRef.current]);
 
   if (termsLoading) {
     return <Loader />;
@@ -869,7 +865,6 @@ const GlossaryTermTab = ({
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
-              bordered
               resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
@@ -881,7 +876,9 @@ const GlossaryTermTab = ({
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
-              loading={isTableLoading}
+              // Loading is set to true if the table is not loaded or the table width is not set,
+              // as we are using the table width to calculate the column width
+              loading={isTableLoading || !tableRef.current?.offsetWidth}
               pagination={false}
               ref={tableRef}
               rowKey="fullyQualifiedName"

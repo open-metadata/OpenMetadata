@@ -15,7 +15,6 @@ import { Badge, Card, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRight } from '../../../assets/svg/arrow-right.svg';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import './setting-item-card.style.less';
 
@@ -40,22 +39,19 @@ const SettingItemCard = ({
       onClick={handleOnClick}>
       <div className="setting-card-icon">
         <Icon component={data.icon} />
+        {Boolean(data?.isBeta) && (
+          <Badge className="service-beta-tag" count={t('label.beta')} />
+        )}
       </div>
       <div className="setting-card-content">
         <Typography.Text className="font-semibold">
           {data.category ?? data.label}
-          {Boolean(data?.isBeta) && (
-            <Badge className="service-beta-tag" count={t('label.beta')} />
-          )}
         </Typography.Text>
         <Typography.Paragraph
           className="font-normal text-sm"
           ellipsis={{ rows: 2 }}>
           {data.description}
         </Typography.Paragraph>
-      </div>
-      <div className="setting-card-action">
-        <Icon className="text-sm" component={ArrowRight} />
       </div>
     </Card>
   );

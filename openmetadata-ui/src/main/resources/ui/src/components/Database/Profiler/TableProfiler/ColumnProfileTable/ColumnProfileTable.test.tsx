@@ -25,7 +25,12 @@ import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('../../../../common/Table/Table', () =>
-  jest.fn().mockImplementation(() => <div>Table</div>)
+  jest.fn().mockImplementation(({ searchProps }) => (
+    <div>
+      <input data-testid="searchbar" value={searchProps?.searchValue} />
+      <div>Table</div>
+    </div>
+  ))
 );
 jest.mock('../../../../PageHeader/PageHeader.component', () =>
   jest.fn().mockImplementation(() => <div>PageHeader</div>)

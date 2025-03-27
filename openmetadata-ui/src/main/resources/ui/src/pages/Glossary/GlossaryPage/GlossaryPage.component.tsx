@@ -528,14 +528,14 @@ const GlossaryPage = () => {
           />
         ),
         className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
+          'content-resizable-panel-container entity-summary-resizable-right-panel-container bg-white',
         minWidth: 400,
         flex: 0.3,
       }}
     />
   );
 
-  return <div className="m--t-sm">{resizableLayout}</div>;
+  return <div>{resizableLayout}</div>;
 };
 
 export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);

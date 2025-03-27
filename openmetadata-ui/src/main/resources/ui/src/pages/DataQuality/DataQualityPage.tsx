@@ -69,9 +69,9 @@ const DataQualityPage = () => {
   };
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
+        className="content-height-with-resizable-panel bg-white"
         firstPanel={{
           className: 'content-resizable-panel-container',
           minWidth: 280,
@@ -135,7 +135,7 @@ const DataQualityPage = () => {
               </Row>
             </DataQualityProvider>
           ),
-          className: 'content-resizable-panel-container p-t-sm',
+          className: 'content-resizable-panel-container p-t-sm bg-white',
           minWidth: 800,
           flex: 0.87,
         }}

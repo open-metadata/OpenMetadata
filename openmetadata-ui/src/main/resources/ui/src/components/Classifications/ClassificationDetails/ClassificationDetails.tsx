@@ -61,7 +61,6 @@ import AppBadge from '../../common/Badge/Badge.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
@@ -487,41 +486,36 @@ const ClassificationDetails = forwardRef(
           />
         </div>
 
-        <Space className="w-full m-b-md" direction="vertical" size="large">
-          <Table
-            bordered
-            className={classNames({
-              'opacity-60': isClassificationDisabled,
-            })}
-            columns={tableColumn}
-            data-testid="table"
-            dataSource={tags}
-            loading={isTagsLoading}
-            locale={{
-              emptyText: (
-                <ErrorPlaceHolder
-                  className="m-y-md"
-                  placeholderText={t('message.no-tags-description')}
-                />
-              ),
-            }}
-            pagination={false}
-            rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
-            rowKey="id"
-            size="small"
-          />
-
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={isTagsLoading}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handleTagsPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-        </Space>
+        <Table
+          className={classNames({
+            'opacity-60': isClassificationDisabled,
+          })}
+          columns={tableColumn}
+          customPaginationProps={{
+            currentPage,
+            isLoading: isTagsLoading,
+            pageSize,
+            paging,
+            showPagination,
+            pagingHandler: handleTagsPageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
+          data-testid="table"
+          dataSource={tags}
+          loading={isTagsLoading}
+          locale={{
+            emptyText: (
+              <ErrorPlaceHolder
+                className="m-y-md"
+                placeholderText={t('message.no-tags-description')}
+              />
+            ),
+          }}
+          pagination={false}
+          rowClassName={(record) => (record.disabled ? 'opacity-60' : '')}
+          rowKey="id"
+          size="small"
+        />
       </div>
     );
   }

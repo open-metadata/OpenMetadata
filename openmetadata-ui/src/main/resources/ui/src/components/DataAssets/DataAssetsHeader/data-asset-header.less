@@ -24,8 +24,9 @@
     border-radius: 12px;
     border: 0.5px solid @grey-300;
     padding: 20px;
-    gap: 28px;
+    gap: 16px;
     background-color: @background-color;
+    justify-content: space-evenly;
   }
   .ant-space-item {
     .entity-no-tier {
@@ -83,7 +84,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 148px;
+    max-width: 148px;
   }
 
   .ant-btn-group {
@@ -109,7 +110,7 @@
     }
     span.anticon {
       border-radius: 50%;
-      background-color: @blue-20;
+      background-color: @blue-19;
       padding: 4px;
       height: 32px;
       width: 32px;
@@ -131,6 +132,6 @@
   }
   .tier-container,
   .extra-info-container {
-    width: 148px;
+    max-width: 148px;
   }
 }

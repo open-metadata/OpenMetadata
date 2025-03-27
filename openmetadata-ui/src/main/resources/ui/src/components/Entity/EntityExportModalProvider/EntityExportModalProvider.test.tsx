@@ -145,7 +145,9 @@ describe('EntityExportModalProvider component', () => {
       fireEvent.click(exportBtn);
     });
 
-    expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name);
+    expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name, {
+      recursive: true,
+    });
 
     expect(await screen.findByText(mockExportJob.message)).toBeInTheDocument();
   });

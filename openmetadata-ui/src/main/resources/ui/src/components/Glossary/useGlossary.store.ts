@@ -21,6 +21,12 @@ export type ModifiedGlossary = Glossary & {
   childrenCount?: number;
 };
 
+export type GlossaryFunctionRef = {
+  onAddGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  onEditGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  refreshGlossaryTerms: () => void;
+};
+
 export const useGlossaryStore = create<{
   glossaries: Glossary[];
   activeGlossary: ModifiedGlossary;
@@ -31,10 +37,17 @@ export const useGlossaryStore = create<{
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => void;
   insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => void;
+  termsLoading: boolean;
+  setTermsLoading: (termsLoading: boolean) => void;
+  onAddGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  onEditGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
+  refreshGlossaryTerms: () => void;
+  setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
   glossaryChildTerms: [],
+  termsLoading: false,
 
   setGlossaries: (glossaries: Glossary[]) => {
     set({ glossaries });
@@ -97,5 +110,23 @@ export const useGlossaryStore = create<{
   },
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
     set({ glossaryChildTerms });
+  },
+  setTermsLoading: (termsLoading: boolean) => {
+    set({ termsLoading });
+  },
+  setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
+    set({ ...glossaryFunctionRef });
+  },
+
+  onAddGlossaryTerm: (_glossaryTerm?: GlossaryTerm) => {
+    // This is a placeholder function that will be replaced by the actual function
+  },
+
+  onEditGlossaryTerm: (_glossaryTerm?: GlossaryTerm) => {
+    // This is a placeholder function that will be replaced by the actual function
+  },
+
+  refreshGlossaryTerms: () => {
+    // This is a placeholder function that will be replaced by the actual function
   },
 }));

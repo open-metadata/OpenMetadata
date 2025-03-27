@@ -31,12 +31,19 @@ const AlertBar = ({
     return getIconAndClassName(type);
   }, [type]);
 
+  const fullWidthAlert = expanded ? 'full-width-alert' : '';
+
   return (
     <Alert
       closable
       showIcon
       afterClose={resetAlert}
-      className={classNames('alert-container', className, animationClass)}
+      className={classNames(
+        'alert-container',
+        className,
+        animationClass,
+        fullWidthAlert
+      )}
       closeIcon={
         <CrossIcon
           className="alert-close-icon"

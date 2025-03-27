@@ -717,6 +717,9 @@ site_menu:
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
 
+  - category: Connectors / Troubleshooting
+    url: /connectors/troubleshooting
+
   - category: How-to Guides
     url: /how-to-guides
 

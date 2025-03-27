@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tag, Typography } from 'antd';
+import { Card, Col, Row, Space, Tag, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,7 @@ interface DataProductsContainerProps {
   hasPermission: boolean;
   dataProducts: EntityReference[];
   activeDomain?: EntityReference;
+  newLook?: boolean;
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
@@ -45,6 +47,7 @@ const DataProductsContainer = ({
   dataProducts,
   activeDomain,
   onSave,
+  newLook = false,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -140,8 +143,17 @@ const DataProductsContainer = ({
   const header = useMemo(() => {
     return (
       showHeader && (
-        <Space align="center" className="m-b-xss w-full" size="middle">
-          <Typography.Text className="right-panel-label">
+        <Space
+          align="center"
+          className={classNames('w-full', {
+            'm-b-xss': !newLook,
+          })}
+          size="middle">
+          <Typography.Text
+            className={classNames({
+              'text-sm font-medium': newLook,
+              'right-panel-label': !newLook,
+            })}>
             {t('label.data-product-plural')}
           </Typography.Text>
           {hasPermission && (
@@ -173,6 +185,25 @@ const DataProductsContainer = ({
       ) : null,
     [showAddTagButton]
   );
+
+  if (newLook) {
+    return (
+      <Card
+        className="new-header-border-card w-full"
+        data-testid="data-products-container"
+        title={header}>
+        {!isEditMode && (
+          <Row data-testid="data-products-list">
+            <Col>
+              {addTagButton}
+              {renderDataProducts}
+            </Col>
+          </Row>
+        )}
+        {isEditMode && autoCompleteFormSelectContainer}
+      </Card>
+    );
+  }
 
   return (
     <div className="w-full" data-testid="data-products-container">

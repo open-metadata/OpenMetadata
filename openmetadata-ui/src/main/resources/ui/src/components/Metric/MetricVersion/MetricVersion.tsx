@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/metric';
@@ -37,7 +38,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import MetricExpression from '../MetricExpression/MetricExpression';
 import { MetricVersionProp } from './MetricVersion.interface';
-
 const MetricVersion: FC<MetricVersionProp> = ({
   version,
   currentVersionData,
@@ -163,14 +163,12 @@ const MetricVersion: FC<MetricVersionProp> = ({
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityType={EntityType.METRIC}
-              hasEditAccess={false}
-              hasPermission={entityPermissions.ViewAll}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.METRIC}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
         ),
       },
     ],
@@ -204,7 +202,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
               currentVersionData={currentVersionData}
               data={currentVersionData}
               permissions={entityPermissions}
-              type={EntityType.METRIC}
+              type={EntityType.METRIC as CustomizeEntityType}
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs

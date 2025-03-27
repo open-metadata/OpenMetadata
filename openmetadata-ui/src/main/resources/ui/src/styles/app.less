@@ -108,6 +108,7 @@ a[href].link-text-grey,
     color: @text-color;
     text-decoration: underline;
   }
+
   &:focus {
     color: @text-color;
     text-decoration: underline;
@@ -128,6 +129,7 @@ a[href].link-text-grey,
   &:hover {
     background: initial;
   }
+
   &:focus {
     background: initial;
   }
@@ -145,12 +147,15 @@ a[href].link-text-grey,
 .text-center {
   text-align: center;
 }
+
 .text-left {
   text-align: left;
 }
+
 .text-right {
   text-align: right;
 }
+
 .text-wrap {
   text-wrap: wrap;
 }
@@ -158,6 +163,7 @@ a[href].link-text-grey,
 .text-underline {
   text-decoration: underline;
 }
+
 .text-line-through {
   text-decoration: line-through;
 }
@@ -172,30 +178,39 @@ a[href].link-text-grey,
 .no-border {
   border: none;
 }
+
 .border {
   border: @global-border;
 }
+
 .border-1 {
   border-width: 1px;
 }
+
 .border-l {
   border-left-width: 1px;
 }
+
 .border-l-2 {
   border-left: 2px;
 }
+
 .border-t-0 {
   border-top-width: 0px;
 }
+
 .border-main {
   border-color: @border-color;
 }
+
 .border-primary {
   border-color: @primary-color;
 }
+
 .border-gray {
   border-color: @border-color;
 }
+
 .border-light-gray {
   border-color: @light-border-color;
 }
@@ -227,6 +242,7 @@ a[href].link-text-grey,
 .rounded-4 {
   border-radius: @border-radius-base;
 }
+
 .rounded-full {
   border-radius: 9999px;
 }
@@ -234,6 +250,7 @@ a[href].link-text-grey,
 .rounded-6 {
   border-radius: 6px;
 }
+
 .rounded-12 {
   border-radius: 12px;
 }
@@ -243,6 +260,7 @@ a[href].link-text-grey,
 .break-all {
   word-break: break-all;
 }
+
 .break-word {
   word-break: break-word;
 }
@@ -282,33 +300,43 @@ a[href].link-text-grey,
 .bg-white {
   background-color: @white;
 }
+
 .bg-transparent {
   background-color: transparent;
 }
+
 .bg-body-main {
   background: @body-bg-color;
 }
+
 .bg-primary-lite {
   background: @primary-1;
 }
+
 .bg-primary {
   background: @primary-color;
 }
+
 .bg-primary-hover-lite {
   background-color: @primary-1;
 }
+
 .bg-grey {
   background-color: @grey-9;
 }
+
 .bg-grey-1 {
   background-color: @grey-1;
 }
+
 .bg-grey-2 {
   background-color: @grey-2;
 }
+
 .bg-grey-4 {
   background-color: @grey-4;
 }
+
 .bg-grey-5 {
   background-color: @grey-5;
 }
@@ -331,9 +359,11 @@ a[href].link-text-grey,
 .shadow-custom {
   box-shadow: 1px 1px 8px rgb(0 0 0 / 6%);
 }
+
 .card-box-shadow {
   box-shadow: rgba(0, 0, 0, 0.06) 1px 1px 8px;
 }
+
 .shadow-base {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
 }
@@ -344,6 +374,7 @@ a[href].link-text-grey,
     cursor: pointer;
   }
 }
+
 .cursor-pointer {
   cursor: pointer;
 }
@@ -379,6 +410,7 @@ a[href].link-text-grey,
 .transform-180 {
   transform: rotate(180deg);
 }
+
 .transform-90 {
   transform: rotate(90deg);
 }
@@ -392,9 +424,11 @@ a[href].link-text-grey,
 .z-5 {
   z-index: 5;
 }
+
 .z-10 {
   z-index: 10;
 }
+
 .z-400 {
   z-index: 400;
 }
@@ -428,15 +462,19 @@ a[href].link-text-grey,
 .opacity-0 {
   opacity: 0;
 }
+
 .opacity-30 {
   opacity: 0.3;
 }
+
 .opacity-50 {
   opacity: 0.5;
 }
+
 .opacity-60 {
   opacity: 0.6;
 }
+
 .opacity-100 {
   opacity: 1;
 }
@@ -458,6 +496,7 @@ a[href].link-text-grey,
     opacity: 0;
     transition: 0.3s ease-in;
   }
+
   &:hover {
     .hover-cell-icon {
       opacity: 100;
@@ -497,8 +536,10 @@ a[href].link-text-grey,
 }
 
 .service-form-container {
-  margin: 16px auto 0;
-  padding-bottom: 16px;
+  margin: 0 auto 0;
+  border-radius: @border-radius-sm;
+  background: @white;
+  padding: @padding-md;
 }
 
 // breadcrumb
@@ -510,10 +551,12 @@ a[href].link-text-grey,
     font-size: inherit !important;
     color: @navigation-text-color !important;
   }
+
   .link-title:hover {
     color: @primary-color !important;
     text-decoration: none !important;
   }
+
   .link-title.inactive-link:hover {
     color: @text-grey-muted !important;
   }
@@ -524,6 +567,7 @@ a[href].link-text-grey,
 .multiple-label-field label {
   align-items: flex-start;
 }
+
 .multiple-label-field
   .ant-form-item-label
   > label.ant-form-item-required:not(.ant-form-item-required-mark-optional)::before {
@@ -543,6 +587,7 @@ a[href].link-text-grey,
 
 .no-scrollbar {
   scrollbar-width: none;
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -591,6 +636,7 @@ a[href].link-text-grey,
     }
   }
 }
+
 .entity-tag-right-panel-container {
   height: @entity-details-tab-height;
   overflow-y: auto;
@@ -617,10 +663,12 @@ a[href].link-text-grey,
   // background: @success-background-color;
   width: fit-content;
   color: @success-color;
+
   * {
     color: @success-color;
   }
 }
+
 .diff-added-new,
 .diff-added {
   font-family: Inter, sans-serif;
@@ -647,6 +695,7 @@ a[href].link-text-grey,
   text-decoration-skip-ink: auto;
   color: #f97066;
 }
+
 .diff-normal-new {
   font-family: Inter, sans-serif;
   font-size: 14px;
@@ -655,10 +704,13 @@ a[href].link-text-grey,
   line-height: 20px;
   color: @text-color;
 }
+
 .diff-normal-new strong {
   font-weight: 600;
-  color: #000; /* Adjust color if needed */
+  color: #000;
+  /* Adjust color if needed */
 }
+
 .clamp-text-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -674,6 +726,7 @@ a[href].link-text-grey,
   overflow: hidden;
   text-overflow: clip;
 }
+
 .text-expand {
   font-family: Inter, sans-serif;
   color: @primary-color;
@@ -683,6 +736,7 @@ a[href].link-text-grey,
   line-height: 20px;
   cursor: pointer;
 }
+
 .diff-description {
   color: @success-color;
 }
@@ -710,7 +764,8 @@ a[href].link-text-grey,
 }
 
 .activity-feed-card-text pre {
-  white-space: pre-wrap; /* Since CSS 2.1 */
+  white-space: pre-wrap;
+  /* Since CSS 2.1 */
 }
 
 .table-query-editor pre.CodeMirror-line {
@@ -738,9 +793,11 @@ a[href].link-text-grey,
 .react-flow {
   height: 110%;
 }
+
 .react-flow__node {
   min-width: max-content;
 }
+
 .react-flow__edge {
   pointer-events: all;
   cursor: pointer;
@@ -867,6 +924,7 @@ a[href].link-text-grey,
     // Right side padding 20 + 64 width of sidebar
     margin-right: 84px;
   }
+
   .test-case-table-container,
   .test-suite-pipeline-tab {
     margin-right: 64px;
@@ -875,6 +933,7 @@ a[href].link-text-grey,
   .appearance-cta-buttons {
     padding-right: 64px;
   }
+
   .activity-feed-editor-drawer,
   .policies-list-table,
   .roles-list-table,
@@ -896,9 +955,11 @@ a[href].link-text-grey,
   letter-spacing: 0.25px;
   margin-top: 16px;
 }
+
 .no-data-placeholder-container {
   margin: auto;
 }
+
 .placeholder-text {
   color: @text-color-tertiary;
   text-align: center;
@@ -908,4 +969,15 @@ a[href].link-text-grey,
   line-height: normal;
   letter-spacing: 0.25px;
   width: 350px;
+}
+
+// Table icons
+
+.filter-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.filter-icon-active {
+  fill: @primary-color;
 }

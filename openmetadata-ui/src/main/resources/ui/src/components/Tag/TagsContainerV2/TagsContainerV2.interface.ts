@@ -35,4 +35,5 @@ export type TagsContainerV2Props = {
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   defaultState?: State;
   defaultLabelType?: LabelType;
+  newLook?: boolean;
 };

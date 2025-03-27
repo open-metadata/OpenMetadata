@@ -36,12 +36,15 @@ import LeftSidebarItem from './LeftSidebarItem.component';
 
 const { Sider } = Layout;
 
-const LeftSidebar = () => {
+const LeftSidebar = ({
+  isSidebarCollapsed,
+}: {
+  isSidebarCollapsed: boolean;
+}) => {
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { onLogoutHandler } = useApplicationStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
   const { i18n } = useTranslation();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
@@ -82,17 +85,6 @@ const LeftSidebar = () => {
     [handleLogoutClick]
   );
 
-  const handleMouseOver = useCallback(() => {
-    if (!isSidebarCollapsed) {
-      return;
-    }
-    setIsSidebarCollapsed(false);
-  }, [isSidebarCollapsed]);
-
-  const handleMouseOut = useCallback(() => {
-    setIsSidebarCollapsed(true);
-  }, []);
-
   const menuItems = useMemo(() => {
     return [
       ...sideBarItems.map((item) => {
@@ -111,30 +103,30 @@ const LeftSidebar = () => {
       }),
       {
         type: 'divider',
+        style: {
+          flex: 1,
+        },
       },
       ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
     ];
   }, [sideBarItems]);
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
-    setIsSidebarCollapsed(true);
     setOpenKeys([]);
   }, []);
 
   return (
     <Sider
       collapsible
-      className={classNames('left-sidebar-col left-sidebar-container', {
+      className={classNames({
         'left-sidebar-col-rtl': isDirectionRTL,
         'sidebar-open': !isSidebarCollapsed,
       })}
       collapsed={isSidebarCollapsed}
-      collapsedWidth={84}
+      collapsedWidth={72}
       data-testid="left-sidebar"
       trigger={null}
-      width={228}
-      onMouseEnter={handleMouseOver}
-      onMouseLeave={handleMouseOut}>
+      width={228}>
       <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage
@@ -155,7 +147,6 @@ const LeftSidebar = () => {
         openKeys={openKeys}
         rootClassName="left-sidebar-menu"
         selectedKeys={selectedKeys}
-        subMenuCloseDelay={1}
         onClick={handleMenuClick}
         onOpenChange={setOpenKeys}
       />

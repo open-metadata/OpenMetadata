@@ -64,6 +64,7 @@ import {
 } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
+import { AgentType, App } from '../../generated/entity/applications/app';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { Container } from '../../generated/entity/data/container';
@@ -86,6 +87,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
+import { getApplicationList } from '../../rest/applicationAPI';
 import {
   getDashboards,
   getDataModels,
@@ -169,7 +171,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const history = useHistory();
   const { isAdminUser } = useAuth();
   const ingestionPagingInfo = usePaging(PAGE_SIZE_BASE);
+  const collateAgentPagingInfo = usePaging(PAGE_SIZE_BASE);
   const pagingInfo = usePaging(PAGE_SIZE_BASE);
+
+  const {
+    paging: collateAgentPaging,
+    pageSize: collateAgentPageSize,
+    pagingCursor: collateAgentPagingCursor,
+    handlePageChange: handleCollateAgentPageChange,
+    handlePagingChange: handleCollateAgentPagingChange,
+  } = collateAgentPagingInfo;
 
   const {
     paging: ingestionPaging,
@@ -211,12 +222,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [statusFilter, setStatusFilter] = useState<
     Array<{ key: string; label: string }>
   >([]);
+  const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
+  const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
 
-  const serviceAgentSupportedWidgets = useMemo(
+  const { CollateAIAgentsWidget } = useMemo(
     () => serviceUtilClassBase.getAgentsTabWidgets(),
-    [serviceCategory]
+    []
   );
-
+  const isCollateAIWidgetSupported = useMemo(
+    () => !isUndefined(CollateAIAgentsWidget),
+    [CollateAIAgentsWidget]
+  );
   const handleTypeFilterChange = useCallback(
     (type: Array<{ key: string; label: string }>) => {
       setTypeFilter(type);
@@ -318,10 +334,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         const isAgentTab = key === EntityTabs.AGENTS;
 
         if (isAgentTab) {
-          if (isUndefined(serviceAgentSupportedWidgets.CollateAIAgentsWidget)) {
-            subTab = ServiceAgentSubTabs.METADATA;
-          } else {
+          if (isCollateAIWidgetSupported) {
             subTab = ServiceAgentSubTabs.COLLATE_AI;
+          } else {
+            subTab = ServiceAgentSubTabs.METADATA;
           }
         }
 
@@ -335,7 +351,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
         });
       }
     },
-    [activeTab, decodedServiceFQN, serviceCategory]
+    [activeTab, decodedServiceFQN, serviceCategory, isCollateAIWidgetSupported]
+  );
+
+  const fetchCollateAgentsList = useCallback(
+    async (paging?: Omit<Paging, 'total'>) => {
+      try {
+        setIsCollateAgentLoading(true);
+        const { data, paging: pagingRes } = await getApplicationList({
+          agentType: AgentType.CollateAI,
+          ...paging,
+        });
+
+        setCollateAgentsList(data);
+        handleCollateAgentPagingChange(pagingRes);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsCollateAgentLoading(false);
+      }
+    },
+    [handleCollateAgentPagingChange]
   );
 
   const getAllIngestionWorkflows = useCallback(
@@ -364,7 +400,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [decodedServiceFQN, serviceCategory, ingestionPaging]
+    [
+      decodedServiceFQN,
+      serviceCategory,
+      ingestionPaging,
+      handleIngestionPagingChange,
+    ]
   );
 
   const searchPipelines = useCallback(
@@ -808,7 +849,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: paging[cursorType]!,
+            cursorValue: ingestionPaging[cursorType]!,
           },
           ingestionPageSize
         );
@@ -823,6 +864,33 @@ const ServiceDetailsPage: FunctionComponent = () => {
       ingestionPageSize,
       handleIngestionPageChange,
       searchPipelines,
+      getAllIngestionWorkflows,
+    ]
+  );
+
+  const onCollateAgentPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchCollateAgentsList({
+          [cursorType]: collateAgentPaging[cursorType],
+          limit: collateAgentPageSize,
+        });
+
+        handleCollateAgentPageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: collateAgentPaging[cursorType]!,
+          },
+          collateAgentPageSize
+        );
+      }
+    },
+    [
+      collateAgentPaging,
+      collateAgentPageSize,
+      handleCollateAgentPageChange,
+      fetchCollateAgentsList,
     ]
   );
 
@@ -962,21 +1030,65 @@ const ServiceDetailsPage: FunctionComponent = () => {
     typeFilter,
   ]);
 
+  useEffect(() => {
+    if (isCollateAIWidgetSupported) {
+      fetchCollateAgentsList({
+        limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
+      });
+    }
+  }, [collateAgentPageSize]);
+
+  const agentCounts = useMemo(() => {
+    return {
+      [ServiceAgentSubTabs.COLLATE_AI]: collateAgentPaging.total,
+      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total,
+    };
+  }, [collateAgentPaging, ingestionPaging]);
+
+  const refreshAgentsList = useCallback(
+    async (agentListType: ServiceAgentSubTabs) => {
+      if (agentListType === ServiceAgentSubTabs.COLLATE_AI) {
+        await fetchCollateAgentsList({
+          limit: collateAgentPagingCursor?.pageSize ?? collateAgentPageSize,
+        });
+      } else {
+        setSearchText('');
+        await getAllIngestionWorkflows(
+          {},
+          ingestionPagingCursor?.pageSize ?? ingestionPageSize
+        );
+      }
+    },
+    [
+      collateAgentPagingCursor,
+      collateAgentPageSize,
+      getAllIngestionWorkflows,
+      ingestionPagingCursor,
+      ingestionPageSize,
+    ]
+  );
+
   const ingestionTab = useMemo(
     () => (
       <Ingestion
+        agentCounts={agentCounts}
         airflowInformation={airflowInformation}
+        collateAgentPagingInfo={collateAgentPagingInfo}
+        collateAgentsList={collateAgentsList}
         handleIngestionListUpdate={handleIngestionListUpdate}
         handleSearchChange={handleSearchChange}
         handleStatusFilterChange={handleStatusFilterChange}
         handleTypeFilterChange={handleTypeFilterChange}
         ingestionPagingInfo={ingestionPagingInfo}
         ingestionPipelineList={ingestionPipelines}
+        isCollateAgentLoading={isCollateAgentLoading}
         isLoading={isIngestionPipelineLoading}
+        refreshAgentsList={refreshAgentsList}
         searchText={searchText}
         serviceDetails={serviceDetails}
         statusFilter={statusFilter}
         typeFilter={typeFilter}
+        onCollateAgentPageChange={onCollateAgentPageChange}
         onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
         onPageChange={onPageChange}
       />
@@ -993,6 +1105,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
       handleSearchChange,
       onPageChange,
       ingestionPagingInfo,
+      collateAgentsList,
+      isCollateAgentLoading,
+      collateAgentPagingInfo,
+      onCollateAgentPageChange,
+      agentCounts,
+      refreshAgentsList,
+      handleStatusFilterChange,
+      handleTypeFilterChange,
+      statusFilter,
+      typeFilter,
     ]
   );
 
@@ -1002,9 +1124,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const testConnectionTab = useMemo(() => {
     return (
-      <Row>
+      <Row className="p-md" gutter={[16, 16]}>
         <Col className="p-x-lg" span={24}>
-          <Row className="my-4">
+          <Row>
             <Col span={12}>
               <AirflowMessageBanner />
             </Col>
@@ -1075,6 +1197,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceCategory,
     statusFilter,
     typeFilter,
+    extraInfoData,
   ]);
 
   const tabs: TabsProps['items'] = useMemo(() => {
@@ -1133,7 +1256,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         name: t('label.agent-plural'),
         key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
-        count: ingestionPaging.total,
+        count: ingestionPaging.total + collateAgentPaging.total,
         children: ingestionTab,
       },
       {
@@ -1176,6 +1299,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     saveUpdatedServiceData,
     dataModelPaging,
     ingestionPaging,
+    collateAgentPaging,
     ingestionTab,
     testConnectionTab,
     activeTab,
@@ -1202,7 +1326,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row data-testid="service-page" gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col className="" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -1223,7 +1347,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <Col span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={activeTabHandler}
