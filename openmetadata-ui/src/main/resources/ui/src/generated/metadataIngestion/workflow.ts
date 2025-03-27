@@ -274,6 +274,8 @@ export interface ServiceConnection {
  *
  * Airflow Metadata Database Connection Config
  *
+ * Wherescape Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -752,6 +754,8 @@ export interface ConfigClass {
      * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
      * supported backends.
      *
+     * Underlying database connection
+     *
      * Matillion Auth Configuration
      */
     connection?: ConfigConnection;
@@ -921,7 +925,7 @@ export interface ConfigClass {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: ConfigSchemaFilterPatternObject;
+    schemaFilterPattern?: SchemaFilterPatternObject;
     /**
      * SQLAlchemy driver scheme options.
      *
@@ -2630,6 +2634,10 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * SQLite Database Connection Config
  *
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ *
  * Matillion Auth Configuration
  *
  * Matillion ETL Auth Config.
@@ -2641,6 +2649,8 @@ export interface ConfigConnection {
      * Password to connect to Hana.
      *
      * Password to connect to SQLite. Blank for in-memory database.
+     *
+     * Password to connect to MSSQL.
      *
      * Password to connect to the Matillion.
      */
@@ -2667,6 +2677,9 @@ export interface ConfigConnection {
      * Username to connect to Hana. This user should have privileges to read all the metadata.
      *
      * Username to connect to SQLite. Blank for in-memory database.
+     *
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
      *
      * Username to connect to the Matillion. This user should have privileges to read all the
      * metadata in Matillion.
@@ -2704,19 +2717,23 @@ export interface ConfigConnection {
      *
      * Host and port of the SQLite service. Blank for in-memory database.
      *
+     * Host and port of the MSSQL service.
+     *
      * Matillion Host
      */
     hostPort?: string;
     /**
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: ConnectionSchemaFilterPatternObject;
+    schemaFilterPattern?: ConnectionSchemaFilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -2767,6 +2784,10 @@ export interface ConfigConnection {
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
 }
 
 /**
@@ -2963,7 +2984,7 @@ export interface AwsCredentials {
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
  */
-export interface ConnectionSchemaFilterPatternObject {
+export interface ConnectionSchemaFilterPattern {
     /**
      * List of strings/regex patterns to match and exclude only database entities that match.
      */
@@ -2979,6 +3000,9 @@ export interface ConnectionSchemaFilterPatternObject {
  * SQLAlchemy driver scheme options.
  */
 export enum ConnectionScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     PostgresqlPsycopg2 = "postgresql+psycopg2",
@@ -3035,6 +3059,7 @@ export enum SSLMode {
 export enum ConnectionType {
     Backend = "Backend",
     MatillionETL = "MatillionETL",
+    Mssql = "Mssql",
     Mysql = "Mysql",
     Postgres = "Postgres",
     SQLite = "SQLite",
@@ -3258,7 +3283,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: ConnectionDatabaseFilterPatternObject;
+    databaseFilterPattern?: HiveMetastoreConnectionDetailsDatabaseFilterPatternObject;
     /**
      * Host and port of the source service.
      *
@@ -3274,7 +3299,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: HiveMetastoreConnectionDetailsSchemaFilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -3322,9 +3347,59 @@ export interface HiveMetastoreConnectionDetails {
 }
 
 /**
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
+ * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
+ * pattern.
+ */
+export interface HiveMetastoreConnectionDetailsDatabaseFilterPatternObject {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+    [property: string]: any;
+}
+
+/**
  * Regex to only include/exclude schemas that matches the pattern.
  */
-export interface DefaultSchemaFilterPattern {
+export interface HiveMetastoreConnectionDetailsSchemaFilterPattern {
     excludes?: string[];
     includes?: string[];
     [property: string]: any;
@@ -3540,7 +3615,7 @@ export enum SaslMechanismType {
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
  */
-export interface ConfigSchemaFilterPatternObject {
+export interface SchemaFilterPatternObject {
     /**
      * List of strings/regex patterns to match and exclude only database entities that match.
      */
@@ -3938,6 +4013,7 @@ export enum RESTType {
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
     Vertica = "Vertica",
+    Wherescape = "Wherescape",
 }
 
 /**
