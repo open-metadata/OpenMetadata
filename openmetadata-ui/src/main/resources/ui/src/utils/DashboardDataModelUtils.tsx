@@ -144,17 +144,15 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="p-md">
-          <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={
-              dataModelPermissions.EditAll ||
-              dataModelPermissions.EditCustomFields
-            }
-            hasPermission={dataModelPermissions.ViewAll}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
+          entityType={EntityType.DASHBOARD_DATA_MODEL}
+          hasEditAccess={
+            dataModelPermissions.EditAll ||
+            dataModelPermissions.EditCustomFields
+          }
+          hasPermission={dataModelPermissions.ViewAll}
+          isVersionView={false}
+        />
       ),
     },
   ];
