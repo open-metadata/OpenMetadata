@@ -44,6 +44,8 @@ logger = ingestion_logger()
 
 CHUNK_SIZE = 200
 
+THREAD_TIMEOUT = 600
+
 
 class LineageSource(QueryParserSource, ABC):
     """
@@ -152,7 +154,11 @@ class LineageSource(QueryParserSource, ABC):
 
                 for i, future in enumerate(futures):
                     if future.done():
-                        future.result()
+                        try:
+                            future.result(timeout=THREAD_TIMEOUT)
+                        except Exception as e:
+                            logger.debug(f"Error in future: {e}")
+                            logger.debug(traceback.format_exc())
                         futures.pop(i)
 
             time.sleep(0.01)
@@ -245,6 +251,7 @@ class LineageSource(QueryParserSource, ABC):
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
+        logger.info("Processing Query Lineage")
         connection_type = str(self.service_connection.type.value)
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         producer_fn = self.get_table_query
