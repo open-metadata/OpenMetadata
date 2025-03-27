@@ -22,6 +22,14 @@
         "required": false
       },
       {
+        "name": "operator",
+        "displayName": "Operator",
+        "description": "Operator to use to compare the result of the custom SQL query to the threshold.",
+        "dataType": "STRING",
+        "required": false,
+        "optionValues": ["==", ">", ">=", "<", "<=", "!="]
+      },
+      {
         "name": "threshold",
         "displayName": "Threshold",
         "description": "Threshold to use to determine if the test passes or fails (defaults to 0).",
