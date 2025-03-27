@@ -106,6 +106,7 @@ import {
   TRINO,
   UNITYCATALOG,
   VERTICA,
+  WHERESCAPE,
 } from '../constants/Services.constant';
 import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -490,6 +491,9 @@ class ServiceUtilClassBase {
 
       case this.PipelineServiceTypeSmallCase.Airbyte:
         return AIRBYTE;
+
+      case this.PipelineServiceTypeSmallCase.Wherescape:
+        return WHERESCAPE;
 
       case this.PipelineServiceTypeSmallCase.Dagster:
         return DAGSTER;
