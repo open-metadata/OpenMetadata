@@ -49,12 +49,3 @@ CREATE INDEX IF NOT EXISTS query_cost_time_series_id_timestamp  on test_case_res
  UPDATE workflow_definition_entity
  SET json = jsonb_set(json, '{trigger,type}', '"periodicBatchEntity"')
  WHERE json->'trigger'->>'type' in ('periodicBatchEntityTrigger', 'periodicBatchEntityWorkflow');
-
--- Update CollateAI DisplayName
-UPDATE apps_marketplace
-SET json = jsonb_set(json, '{displayName}', 'CollateAI Documentation Agent')
-WHERE name = 'CollateAIApplication';
-
-UPDATE installed_apps
-SET json = jsonb_set(json, '{displayName}', 'CollateAI Documentation Agent')
-WHERE name = 'CollateAIApplication';

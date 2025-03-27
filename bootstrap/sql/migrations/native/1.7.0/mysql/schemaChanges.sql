@@ -36,12 +36,3 @@ WHERE JSON_EXTRACT(json, '$.trigger.type') in ('eventBasedEntityTrigger', 'event
 UPDATE workflow_definition_entity
 SET json = JSON_SET(json, '$.trigger.type', 'periodicBatchEntity')
 WHERE JSON_EXTRACT(json, '$.trigger.type') in ('periodicBatchEntityTrigger', 'periodicBatchEntityWorkflow');
-
--- Update CollateAI DisplayName
-UPDATE apps_marketplace
-SET json = JSON_SET(json, '$.displayName', 'CollateAI Documentation Agent')
-WHERE name = 'CollateAIApplication';
-
-UPDATE installed_apps
-SET json = JSON_SET(json, '$.displayName', 'CollateAI Documentation Agent')
-WHERE name = 'CollateAIApplication';
