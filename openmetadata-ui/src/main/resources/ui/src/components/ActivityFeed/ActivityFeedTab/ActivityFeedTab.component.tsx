@@ -19,7 +19,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -83,27 +82,25 @@ export const ActivityFeedTab = ({
   owners = [],
   columns,
   entityType,
-  refetchFeed,
   hasGlossaryReviewer,
-  entityFeedTotalCount,
   isForFeedTab = true,
   onUpdateFeedCount,
   onUpdateEntityDetails,
   subTab,
   layoutType,
+  feedCount,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
-  const initialRender = useRef(true);
   const { fqn } = useFqn();
   const [elementRef, isInView] = useElementInView({
     ...observerOptions,
     root: document.querySelector('#center-container'),
     rootMargin: '0px 0px 2px 0px',
   });
-  const { tab = EntityTabs.ACTIVITY_FEED, subTab: activeTab = subTab } =
+  const { subTab: activeTab = subTab } =
     useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
@@ -240,15 +237,6 @@ export const ActivityFeedTab = ({
     }
   }, []);
 
-  const isActivityFeedTab = useMemo(
-    () => tab === EntityTabs.ACTIVITY_FEED,
-    [tab]
-  );
-
-  useEffect(() => {
-    fetchFeedsCount();
-  }, []);
-
   const { feedFilter, threadType } = useMemo(() => {
     const currentFilter =
       isAdminUser &&
@@ -271,42 +259,6 @@ export const ActivityFeedTab = ({
     [threadType, feedFilter, entityType, fqn, taskFilter, getFeedData]
   );
 
-  const refetchFeedData = useCallback(() => {
-    if (
-      entityFeedTotalCount !== countData.data.totalCount &&
-      isActivityFeedTab &&
-      refetchFeed
-    ) {
-      getFeedData(
-        feedFilter,
-        undefined,
-        threadType,
-        entityType,
-        fqn,
-        taskFilter
-      );
-    }
-  }, [
-    fqn,
-    taskFilter,
-    feedFilter,
-    threadType,
-    entityType,
-    refetchFeed,
-    countData.data.totalCount,
-    entityFeedTotalCount,
-    isActivityFeedTab,
-  ]);
-
-  useEffect(() => {
-    if (initialRender.current) {
-      initialRender.current = false;
-
-      return;
-    }
-    refetchFeedData();
-  }, [refetchFeedData]);
-
   useEffect(() => {
     if (fqn) {
       getFeedData(
@@ -319,6 +271,14 @@ export const ActivityFeedTab = ({
       );
     }
   }, [feedFilter, threadType, fqn]);
+
+  useEffect(() => {
+    if (feedCount) {
+      setCountData((prev) => ({ ...prev, data: feedCount }));
+    } else {
+      fetchFeedsCount();
+    }
+  }, [feedCount]);
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
@@ -379,7 +339,7 @@ export const ActivityFeedTab = ({
                 active: taskFilter === ThreadTaskStatus.Open,
               })}>
               <span className="task-count-text">
-                {countData.data.openTaskCount}
+                {countData?.data?.openTaskCount}
               </span>
             </span>
           </div>
@@ -422,7 +382,7 @@ export const ActivityFeedTab = ({
                 active: taskFilter === ThreadTaskStatus.Closed,
               })}>
               <span className="task-count-text">
-                {countData.data.closedTaskCount}
+                {countData?.data?.closedTaskCount}
               </span>
             </span>
           </div>
@@ -433,7 +393,7 @@ export const ActivityFeedTab = ({
         },
       },
     ],
-    [taskFilter, countData.data, handleUpdateTaskFilter, setActiveThread, t]
+    [taskFilter, handleUpdateTaskFilter, setActiveThread, countData]
   );
 
   const TaskToggle = useCallback(() => {
@@ -491,7 +451,7 @@ export const ActivityFeedTab = ({
                   <span>
                     {!isUserEntity &&
                       getCountBadge(
-                        countData.data.conversationCount,
+                        countData?.data?.conversationCount,
                         '',
                         activeTab === ActivityFeedTabs.ALL
                       )}
@@ -512,7 +472,7 @@ export const ActivityFeedTab = ({
                   </Space>
                   <span>
                     {getCountBadge(
-                      countData.data.openTaskCount,
+                      countData?.data?.openTaskCount,
                       '',
                       isTaskActiveTab
                     )}

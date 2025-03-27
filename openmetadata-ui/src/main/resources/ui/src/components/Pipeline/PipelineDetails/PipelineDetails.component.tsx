@@ -260,9 +260,7 @@ const PipelineDetails = ({
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = pipelineClassBase.getPipelineDetailPageTabs({
-      feedCount: {
-        totalCount: feedCount.totalCount,
-      },
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       onExtensionUpdate,

@@ -36,9 +36,7 @@ import {
 
 export interface APIEndpointDetailPageTabProps {
   activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   apiEndpoint: APIEndpoint;
   fetchAPIEndpointDetails: () => void;
   getEntityFeedCount: () => Promise<void>;

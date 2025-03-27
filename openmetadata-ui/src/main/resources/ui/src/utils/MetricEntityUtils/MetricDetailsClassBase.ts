@@ -35,9 +35,7 @@ import {
 } from './MetricUtils';
 
 export interface MetricDetailPageTabProps {
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;

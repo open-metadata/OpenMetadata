@@ -35,9 +35,7 @@ import {
 import i18n from './i18next/LocalUtil';
 
 export interface DashboardDataModelDetailPageTabProps {
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   handleFeedCount: (data: FeedCounts) => void;
   editLineagePermission: boolean;
