@@ -348,6 +348,9 @@ export const TestSuites = () => {
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
+          scroll={{
+            x: true,
+          }}
           size="small"
         />
       </Col>

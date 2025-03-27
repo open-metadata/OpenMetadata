@@ -40,6 +40,7 @@ const SubDomainsTable = ({
         title: t('label.sub-domain-plural'),
         dataIndex: 'name',
         key: 'name',
+        width: 200,
         render: (name: string, record: Domain) => {
           return (
             <Link
@@ -58,6 +59,7 @@ const SubDomainsTable = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 300,
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewerNew
