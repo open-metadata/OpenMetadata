@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.FqnParser.UnquotedNameContext;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
+@Slf4j
 public class FullyQualifiedName {
   // Quoted name of format "sss" or unquoted string sss
   private static final Pattern namePattern = Pattern.compile("^(\")([^\"]+)(\")$|^(.*)$");
@@ -79,9 +81,14 @@ public class FullyQualifiedName {
     CommonTokenStream tokens = new CommonTokenStream(fqnLexer);
     FqnParser fqnParser = new FqnParser(tokens);
     fqnParser.setErrorHandler(new BailErrorStrategy());
-    FqnContext fqn = fqnParser.fqn();
-    ParseTreeWalker walker = new ParseTreeWalker();
-    walker.walk(listener, fqn);
+    try {
+      FqnContext fqn = fqnParser.fqn();
+      ParseTreeWalker walker = new ParseTreeWalker();
+      walker.walk(listener, fqn);
+    } catch (Exception e) {
+      LOG.error("Error parsing FQN: {} Logs: {}", string, e.getStackTrace());
+      throw new IllegalArgumentException("Invalid FQN format: " + string, e);
+    }
   }
 
   public static String getParentFQN(String fqn) {
@@ -161,8 +168,11 @@ public class FullyQualifiedName {
       return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
     }
     // Allow names with quotes
+    // If the unquoted name contains an escaped quote (\"), replace it with a normal quote (").
+    // Input:  Hello \"World\"   → Output: Hello "World"
+    // Input:  Hello \\\"World\\\"  → Output: Hello "World"
     else if (unquotedName.contains("\"")) {
-      return unquotedName.replace("\"", "\\\"");
+      return unquotedName.replaceAll("\\\\\"", "\"");
     }
 
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
