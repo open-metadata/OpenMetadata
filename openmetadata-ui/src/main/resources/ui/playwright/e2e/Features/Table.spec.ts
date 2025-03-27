@@ -153,6 +153,10 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     const linkInColumn = getFirstRowColumnLink(page);
     await linkInColumn.click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await page.goBack();
     await page.waitForLoadState('networkidle');
