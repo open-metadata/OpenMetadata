@@ -32,6 +32,12 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
     ))
 );
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: '',
+  }));
+});
+
 describe('VersionTable component', () => {
   it('VersionTable should show column display names along with name if present', () => {
     render(<VersionTable {...mockVersionTableProps} />);
