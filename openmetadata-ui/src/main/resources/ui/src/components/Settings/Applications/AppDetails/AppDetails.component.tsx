@@ -519,10 +519,10 @@ const AppDetails = () => {
             </div>
           </Space>
         </Col>
-        <Col className="p-0" span={24}>
+        <Col className="p-lg" span={24}>
           <Tabs
             destroyInactiveTabPane
-            className="app-details-page-tabs entity-details-page-tabs"
+            className="tabs-new"
             data-testid="tabs"
             items={tabs}
           />
