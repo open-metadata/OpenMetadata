@@ -281,7 +281,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -325,7 +325,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
         minWidth: 400,
         flex: 0.4,
       }}

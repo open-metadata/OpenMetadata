@@ -19,6 +19,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -28,6 +30,7 @@ import {
   TEXT_BODY_COLOR,
   TEXT_GREY_MUTED,
 } from '../constants/constants';
+import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import {
@@ -37,6 +40,7 @@ import {
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
@@ -475,4 +479,18 @@ export const permissionForApproveOrReject = (
     permission: taskThread && isReviewer,
     taskId: taskThread?.task?.id,
   };
+};
+
+export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
+  if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)) {
+    return <GlossaryTermTab isGlossary />;
+  }
+
+  return (
+    <CommonWidgets
+      showTaskHandler
+      entityType={EntityType.GLOSSARY}
+      widgetConfig={widget}
+    />
+  );
 };

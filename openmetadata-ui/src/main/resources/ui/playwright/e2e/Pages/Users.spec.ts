@@ -245,6 +245,11 @@ test.describe('User with Data Consumer Roles', () => {
     // Check CRUD for Glossary
     await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
 
+    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await expect(
       dataConsumerPage.locator('[data-testid="add-glossary"]')
     ).not.toBeVisible();

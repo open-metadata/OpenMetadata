@@ -125,42 +125,53 @@ const StoredProcedureTab = () => {
     fetchStoreProcedureDetails();
   }, [showDeleted, pageSize]);
 
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      isLoading,
+      showPagination,
+      pageSize,
+      paging,
+      pagingHandler: storedProcedurePagingHandler,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      isLoading,
+      showPagination,
+      pageSize,
+      paging,
+      storedProcedurePagingHandler,
+      handlePageSizeChange,
+    ]
+  );
+
   return (
-    <div className="p-lg">
-      <Table
-        columns={tableColumn}
-        customPaginationProps={{
-          currentPage,
-          isLoading,
-          showPagination,
-          pageSize,
-          paging,
-          pagingHandler: storedProcedurePagingHandler,
-          onShowSizeChange: handlePageSizeChange,
-        }}
-        data-testid="stored-procedure-table"
-        dataSource={storedProcedure}
-        extraTableFilters={
-          <span>
-            <Switch
-              checked={showDeleted}
-              data-testid="show-deleted-stored-procedure"
-              onClick={(checked) => setShowDeleted(checked)}
-            />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>
-          </span>
-        }
-        loading={isLoading}
-        locale={{
-          emptyText: <ErrorPlaceHolder className="m-y-md" />,
-        }}
-        pagination={false}
-        rowKey="id"
-        size="small"
-      />
-    </div>
+    <Table
+      columns={tableColumn}
+      customPaginationProps={paginationProps}
+      data-testid="stored-procedure-table"
+      dataSource={storedProcedure}
+      extraTableFilters={
+        <span>
+          <Switch
+            checked={showDeleted}
+            data-testid="show-deleted-stored-procedure"
+            onClick={(checked) => setShowDeleted(checked)}
+          />
+          <Typography.Text className="m-l-xs">
+            {t('label.deleted')}
+          </Typography.Text>
+        </span>
+      }
+      loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+    />
   );
 };
 

@@ -106,6 +106,7 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -113,20 +114,20 @@ import {
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
 
-const GlossaryTermTab = ({
-  refreshGlossaryTerms,
-  permissions,
-  isGlossary,
-  termsLoading,
-  onAddGlossaryTerm,
-  onEditGlossaryTerm,
-  className,
-}: GlossaryTermTabProps) => {
+const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const { currentUser } = useApplicationStore();
   const tableRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    onAddGlossaryTerm,
+    onEditGlossaryTerm,
+    termsLoading,
+    refreshGlossaryTerms,
+  } = useGlossaryStore();
+  const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Thread[]>

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -126,63 +126,65 @@ const GlossaryTermReferences = () => {
     );
   }, [glossaryTerm]);
 
-  return (
-    <div data-testid="references-container">
-      <div className="w-full">
-        <Space
-          className="w-full"
-          data-testid={`section-${t('label.reference-plural')}`}>
-          <div className="flex-center">
-            <Typography.Text className="right-panel-label">
-              {t('label.reference-plural')}
-            </Typography.Text>
-            {references.length > 0 && permissions.EditAll && (
-              <Tooltip
-                title={
-                  permissions.EditAll
-                    ? t('label.edit-entity', {
-                        entity: t('label.reference-plural'),
-                      })
-                    : NO_PERMISSION_FOR_ACTION
-                }>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-button"
-                  disabled={!permissions.EditAll}
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                  onClick={() => setIsViewMode(false)}
-                />
-              </Tooltip>
-            )}
-          </div>
-        </Space>
-        <>
-          {isVersionView ? (
-            getVersionReferenceElements()
-          ) : (
-            <div className="d-flex flex-wrap">
-              {references.map((ref) => renderReferenceElement(ref))}
-              {permissions.EditAll && references.length === 0 && (
-                <TagButton
-                  className="text-primary cursor-pointer"
-                  dataTestId="term-references-add-button"
-                  icon={<PlusIcon height={16} name="plus" width={16} />}
-                  label={t('label.add')}
-                  tooltip=""
-                  onClick={() => {
-                    setIsViewMode(false);
-                  }}
-                />
-              )}
-              {!permissions.EditAll && references.length === 0 && (
-                <div>{NO_DATA_PLACEHOLDER}</div>
-              )}
-            </div>
-          )}
-        </>
+  const header = (
+    <Space
+      className="w-full"
+      data-testid={`section-${t('label.reference-plural')}`}>
+      <div className="flex-center">
+        <Typography.Text className="text-sm font-medium">
+          {t('label.reference-plural')}
+        </Typography.Text>
+        {references.length > 0 && permissions.EditAll && (
+          <Tooltip
+            title={
+              permissions.EditAll
+                ? t('label.edit-entity', {
+                    entity: t('label.reference-plural'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              className="cursor-pointer flex-center m-l-xss"
+              data-testid="edit-button"
+              disabled={!permissions.EditAll}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+              onClick={() => setIsViewMode(false)}
+            />
+          </Tooltip>
+        )}
       </div>
+    </Space>
+  );
+
+  return (
+    <Card
+      className="new-header-border-card"
+      data-testid="references-container"
+      title={header}>
+      {isVersionView ? (
+        getVersionReferenceElements()
+      ) : (
+        <div className="d-flex flex-wrap">
+          {references.map((ref) => renderReferenceElement(ref))}
+          {permissions.EditAll && references.length === 0 && (
+            <TagButton
+              className="text-primary cursor-pointer"
+              dataTestId="term-references-add-button"
+              icon={<PlusIcon height={16} name="plus" width={16} />}
+              label={t('label.add')}
+              tooltip=""
+              onClick={() => {
+                setIsViewMode(false);
+              }}
+            />
+          )}
+          {!permissions.EditAll && references.length === 0 && (
+            <div>{NO_DATA_PLACEHOLDER}</div>
+          )}
+        </div>
+      )}
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}
@@ -192,7 +194,7 @@ const GlossaryTermReferences = () => {
         }}
         onSave={handleReferencesSave}
       />
-    </div>
+    </Card>
   );
 };
 

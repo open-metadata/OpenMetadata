@@ -528,7 +528,7 @@ const GlossaryPage = () => {
           />
         ),
         className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
+          'content-resizable-panel-container entity-summary-resizable-right-panel-container bg-white',
         minWidth: 400,
         flex: 0.3,
       }}
