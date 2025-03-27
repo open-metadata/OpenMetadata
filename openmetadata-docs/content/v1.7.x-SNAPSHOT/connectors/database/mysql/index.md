@@ -57,6 +57,19 @@ set GLOBAL log_output='table';
 GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
 ```
 
+#### Log Table Management
+The `mysql.general_log` table grows continuously as it stores query logs. This can consume significant storage space over time and affect the execution time of lineage and usage procedures.
+
+- Note: We recommend cleaning up log tables only after successful execution of Usage & Lineage workflows to ensure no loss of query data during extraction. Once cleanup occurs, the query history is lost.
+
+Here are some important considerations and best practices:
+
+**Best Practices**:
+- Monitor log table size regularly
+- Implement a log rotation schedule
+- Consider automating log cleanup after DAG execution
+- Keep logging enabled only when needed for lineage extraction
+
 ### Profiler & Data Quality
 Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](/how-to-guides/data-quality-observability/quality).
 
