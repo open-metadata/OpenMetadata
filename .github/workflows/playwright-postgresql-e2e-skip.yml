@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2]
+        shardIndex: [1, 2, 3, 4]
         shardTotal: [2]
     steps:
       - run: 'echo "Step is not required"'
