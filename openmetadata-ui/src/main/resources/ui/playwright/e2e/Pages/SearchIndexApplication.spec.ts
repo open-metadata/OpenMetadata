@@ -200,16 +200,21 @@ test('Search Index Application', async ({ page }) => {
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const installApplicationResponse = page.waitForResponse('api/v1/apps');
+    const getApplications = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/apps?limit') &&
+        request.method() === 'GET'
+    );
     await page.click('[data-testid="deploy-button"]');
     await installApplicationResponse;
 
     await toastNotification(page, 'Application installed successfully');
 
-    const card = page.locator(
-      '[data-testid="search-indexing-application-card"]'
-    );
+    await getApplications;
 
-    expect(await card.isVisible()).toBe(true);
+    await expect(
+      page.getByTestId('search-indexing-application-card')
+    ).toBeVisible();
   });
 
   if (process.env.PLAYWRIGHT_IS_OSS) {

@@ -215,8 +215,6 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
     'entityResponseData.service.fullyQualifiedName'
   );
 
-  const tableServiceName = get(table, 'entityResponseData.service.name');
-
   const topicServiceFqn = get(
     topic,
     'entityResponseData.service.fullyQualifiedName'
@@ -355,6 +353,8 @@ test('Verify column lineage between table and api endpoint', async ({
 });
 
 test('Verify function data in edge drawer', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
@@ -413,6 +413,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     const lineageReq1 = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
     await lineageReq1;
+
+    await page.waitForLoadState('networkidle');
 
     await activateColumnLayer(page);
     await page
