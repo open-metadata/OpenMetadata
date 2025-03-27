@@ -68,7 +68,9 @@ import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
+import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
@@ -2431,6 +2433,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
   }
 
+  protected List<EntityReference> getDataProducts(UUID entityId, String entityType) {
+    return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT);
+  }
+
   public EntityInterface getParentEntity(T entity, String fields) {
     return null;
   }
@@ -3303,6 +3309,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Relationship.HAS,
           entityType,
           original.getId());
+      removeDataProductsLineage(original.getId(), entityType, origDataProducts);
+      addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
     }
 
     private void updateExperts() {

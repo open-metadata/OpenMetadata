@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
@@ -21,6 +22,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.models.IndexMapping;
 
 public class LineageUtil {
+
+  private LineageUtil() {}
 
   public static void addDomainLineage(
       UUID entityId, String entityType, EntityReference updatedDomain) {
@@ -56,7 +59,7 @@ public class LineageUtil {
       List<CollectionDAO.EntityRelationshipObject> upstreamDomains =
           Entity.getCollectionDAO().relationshipDAO().findUpstreamDomains(entityId, entityType);
       for (CollectionDAO.EntityRelationshipObject downstreamDomain : downstreamDomains) {
-        updateDomainLineage(
+        updateLineage(
             updatedDomain,
             Entity.getEntityReferenceById(
                 downstreamDomain.getFromEntity(),
@@ -64,7 +67,7 @@ public class LineageUtil {
                 Include.ALL));
       }
       for (CollectionDAO.EntityRelationshipObject upstreamDomain : upstreamDomains) {
-        updateDomainLineage(
+        updateLineage(
             Entity.getEntityReferenceById(
                 upstreamDomain.getFromEntity(),
                 UUID.fromString(upstreamDomain.getFromId()),
@@ -74,7 +77,7 @@ public class LineageUtil {
     }
   }
 
-  private static void updateDomainLineage(EntityReference fromRef, EntityReference toRef) {
+  private static void updateLineage(EntityReference fromRef, EntityReference toRef) {
     if (fromRef == null || toRef == null) return;
 
     CollectionDAO.EntityRelationshipObject relation =
@@ -126,6 +129,19 @@ public class LineageUtil {
         Entity.getCollectionDAO()
             .relationshipDAO()
             .countDomainChildAssets(fromDomain.getId(), toDomain.getId());
+    insertLineage(count, fromDomain, toDomain);
+  }
+
+  private static void insertDataProductLineage(
+      EntityReference fromDataProduct, EntityReference toDataProduct) {
+    int count =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .countDataProductsChildAssets(fromDataProduct.getId(), toDataProduct.getId());
+    insertLineage(count, fromDataProduct, toDataProduct);
+  }
+
+  private static void insertLineage(int count, EntityReference fromRef, EntityReference toRef) {
     if (count > 0) {
       LineageDetails domainLineageDetails =
           new LineageDetails()
@@ -138,13 +154,13 @@ public class LineageUtil {
       Entity.getCollectionDAO()
           .relationshipDAO()
           .insert(
-              fromDomain.getId(),
-              toDomain.getId(),
-              fromDomain.getType(),
-              toDomain.getType(),
+              fromRef.getId(),
+              toRef.getId(),
+              fromRef.getType(),
+              toRef.getType(),
               Relationship.UPSTREAM.ordinal(),
               JsonUtils.pojoToJson(domainLineageDetails));
-      addLineageToSearch(fromDomain, toDomain, domainLineageDetails);
+      addLineageToSearch(fromRef, toRef, domainLineageDetails);
     }
   }
 
@@ -161,5 +177,65 @@ public class LineageUtil {
     Entity.getSearchRepository()
         .getSearchClient()
         .updateLineage(destinationIndexName, to, lineageData);
+  }
+
+  public static void addDataProductsLineage(
+      UUID entityId, String entityType, List<EntityReference> updatedDataProducts) {
+    for (EntityReference ref : listOrEmpty(updatedDataProducts)) {
+      List<CollectionDAO.EntityRelationshipObject> downstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findDownstreamDataProducts(entityId, entityType);
+      List<CollectionDAO.EntityRelationshipObject> upstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findUpstreamDataProducts(entityId, entityType);
+      for (CollectionDAO.EntityRelationshipObject downstreamDataProduct : downstreamDataProducts) {
+        insertDataProductLineage(
+            ref,
+            Entity.getEntityReferenceById(
+                downstreamDataProduct.getFromEntity(),
+                UUID.fromString(downstreamDataProduct.getFromId()),
+                Include.ALL));
+      }
+      for (CollectionDAO.EntityRelationshipObject upstreamDataProduct : upstreamDataProducts) {
+        insertDataProductLineage(
+            Entity.getEntityReferenceById(
+                upstreamDataProduct.getFromEntity(),
+                UUID.fromString(upstreamDataProduct.getFromId()),
+                Include.ALL),
+            ref);
+      }
+    }
+  }
+
+  public static void removeDataProductsLineage(
+      UUID entityId, String entityType, List<EntityReference> updatedDataProducts) {
+    for (EntityReference ref : listOrEmpty(updatedDataProducts)) {
+      List<CollectionDAO.EntityRelationshipObject> downstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findDownstreamDataProducts(entityId, entityType);
+      List<CollectionDAO.EntityRelationshipObject> upstreamDataProducts =
+          Entity.getCollectionDAO()
+              .relationshipDAO()
+              .findUpstreamDataProducts(entityId, entityType);
+      for (CollectionDAO.EntityRelationshipObject downstreamDataProduct : downstreamDataProducts) {
+        updateLineage(
+            ref,
+            Entity.getEntityReferenceById(
+                downstreamDataProduct.getFromEntity(),
+                UUID.fromString(downstreamDataProduct.getFromId()),
+                Include.ALL));
+      }
+      for (CollectionDAO.EntityRelationshipObject upstreamDataProduct : upstreamDataProducts) {
+        updateLineage(
+            Entity.getEntityReferenceById(
+                upstreamDataProduct.getFromEntity(),
+                UUID.fromString(upstreamDataProduct.getFromId()),
+                Include.ALL),
+            ref);
+      }
+    }
   }
 }
