@@ -137,7 +137,7 @@ const AddGlossaryPage: FunctionComponent = () => {
   }, []);
 
   return (
-    <div className="self-center m--t-sm">
+    <div className="self-center">
       <AddGlossary
         allowAccess={createPermission}
         fetchTags={fetchTags}

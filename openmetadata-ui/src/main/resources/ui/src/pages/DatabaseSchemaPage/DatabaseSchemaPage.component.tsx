@@ -511,7 +511,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             {isSchemaDetailsLoading ? (
               <Skeleton
                 active
@@ -545,7 +545,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}
             onUpdate={handleUpdateDatabaseSchema}>
-            <Col className="p-x-lg" span={24}>
+            <Col span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"

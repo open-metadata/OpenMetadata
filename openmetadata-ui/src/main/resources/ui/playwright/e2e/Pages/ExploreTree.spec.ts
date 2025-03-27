@@ -51,7 +51,6 @@ test.describe('Explore Tree scenarios ', () => {
       await expect(page.getByRole('tree')).toContainText('Search Indexes');
       await expect(page.getByRole('tree')).toContainText('Governance');
       await expect(page.getByRole('tree')).toContainText('APIs');
-      await expect(page.getByRole('tree')).toContainText('Metrics');
 
       await page
         .locator('div')

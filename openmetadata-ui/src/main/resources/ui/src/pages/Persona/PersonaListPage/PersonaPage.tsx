@@ -136,7 +136,7 @@ const PersonaPageLayout = () => {
   }
 
   return (
-    <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
+    <Row className="user-listing p-b-md" gutter={[16, 16]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </Col>

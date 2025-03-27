@@ -425,6 +425,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onPlatformViewChange = useCallback((view: LineagePlatformView) => {
     setPlatformView(view);
+    if (view !== LineagePlatformView.None) {
+      setActiveLayer([]);
+    }
   }, []);
 
   const exportLineageData = useCallback(
@@ -542,6 +545,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onUpdateLayerView = useCallback((layers: LineageLayer[]) => {
     setActiveLayer(layers);
+    if (
+      layers.includes(LineageLayer.ColumnLevelLineage) ||
+      layers.includes(LineageLayer.DataObservability)
+    ) {
+      setPlatformView(LineagePlatformView.None);
+    }
   }, []);
 
   const updateEntityData = useCallback(

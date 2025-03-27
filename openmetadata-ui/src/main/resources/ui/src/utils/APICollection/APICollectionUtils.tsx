@@ -91,15 +91,13 @@ export const getApiCollectionDetailsPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: apiCollection && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.API_COLLECTION>
-            className=""
-            entityType={EntityType.API_COLLECTION}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.API_COLLECTION>
+          className=""
+          entityType={EntityType.API_COLLECTION}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+          isVersionView={false}
+        />
       ),
     },
   ];

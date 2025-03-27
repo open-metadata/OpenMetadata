@@ -275,7 +275,7 @@ const PoliciesListPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
       <Row
-        className="policies-list-container page-container"
+        className="policies-list-container"
         data-testid="policies-list-container"
         gutter={[0, 16]}>
         <Col span={24}>

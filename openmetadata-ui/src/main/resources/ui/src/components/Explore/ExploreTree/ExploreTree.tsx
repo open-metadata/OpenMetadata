@@ -31,8 +31,8 @@ import {
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
-  updateCountsInTreeData,
   updateTreeData,
+  updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
@@ -262,20 +262,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       });
 
       const buckets = res.aggregations['entityType'].buckets;
-      const counts: Record<string, number> = {};
+      setTreeData((origin) => {
+        const updatedData = updateTreeDataWithCounts(origin, buckets);
 
-      buckets.forEach((item) => {
-        counts[item.key] = item.doc_count;
-        if (staticKeysHavingCounts.includes(item.key)) {
-          setTreeData((origin) =>
-            updateCountsInTreeData(origin, item.key, item.doc_count)
-          );
-        }
+        return updatedData.filter(
+          (node) => node.totalCount !== undefined && node.totalCount > 0
+        );
       });
-
-      setTreeData((origin) =>
-        origin.filter((node) => node.count === undefined || node.count > 0)
-      );
     } catch (error) {
       // Do nothing
     } finally {

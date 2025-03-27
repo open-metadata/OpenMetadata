@@ -55,9 +55,7 @@ const AddDataQualityTestPage = () => {
   }
 
   return (
-    <div
-      className="self-center m--t-sm"
-      data-testid="add-data-quality-test-page">
+    <div className="self-center" data-testid="add-data-quality-test-page">
       <AddDataQualityTestV1 table={table} />
     </div>
   );

@@ -134,7 +134,7 @@ const ApplicationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.application-plural')}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -164,7 +164,7 @@ const ApplicationPage = () => {
           </Space>
         </Col>
       </Row>
-      <Row className="page-container m-t-lg">
+      <Row className="m-t-lg">
         {isLoading &&
           [1, 2, 3].map((key) => (
             <Col key={key} span={8}>

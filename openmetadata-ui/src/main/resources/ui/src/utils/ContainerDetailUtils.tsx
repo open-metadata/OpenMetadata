@@ -229,13 +229,11 @@ export const getContainerDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: containerData && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.CONTAINER>
-            entityType={EntityType.CONTAINER}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.CONTAINER>
+          entityType={EntityType.CONTAINER}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

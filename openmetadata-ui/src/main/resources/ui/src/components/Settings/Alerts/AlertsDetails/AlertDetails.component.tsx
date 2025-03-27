@@ -52,7 +52,7 @@ export const AlertDetailsComponent = ({
   const { t } = useTranslation();
 
   return (
-    <Row align="middle" className="page-container" gutter={[16, 16]}>
+    <Row align="middle" gutter={[16, 16]}>
       <Col span={24}>
         <div className="d-flex items-center justify-between">
           {breadcrumb ? <TitleBreadcrumb titleLinks={breadcrumb} /> : null}

@@ -132,13 +132,11 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: mlModelDetail && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.MLMODEL>
-            entityType={EntityType.MLMODEL}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.MLMODEL>
+          entityType={EntityType.MLMODEL}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

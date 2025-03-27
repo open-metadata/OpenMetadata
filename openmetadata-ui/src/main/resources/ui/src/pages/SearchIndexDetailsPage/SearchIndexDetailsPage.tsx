@@ -528,7 +528,7 @@ function SearchIndexDetailsPage() {
         entity: t('label.search-index'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -553,7 +553,7 @@ function SearchIndexDetailsPage() {
           permissions={searchIndexPermissions}
           type={EntityType.SEARCH_INDEX}
           onUpdate={onSearchIndexUpdate}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

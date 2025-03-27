@@ -215,7 +215,7 @@ const DomainPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
         className="content-height-with-resizable-panel"
         firstPanel={{

@@ -125,7 +125,7 @@ const Lineage = ({
     <Card
       className="lineage-card card-body-full w-auto border-none card-padding-0"
       data-testid="lineage-details">
-      {isFullScreen && (
+      {isFullScreen && breadcrumbs.length > 0 && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
       <div

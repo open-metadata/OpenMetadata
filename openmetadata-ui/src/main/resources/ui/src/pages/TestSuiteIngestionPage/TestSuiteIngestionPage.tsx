@@ -124,7 +124,7 @@ const TestSuiteIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (

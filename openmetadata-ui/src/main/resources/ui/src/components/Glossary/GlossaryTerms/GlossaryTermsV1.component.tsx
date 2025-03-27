@@ -274,17 +274,15 @@ const GlossaryTermsV1 = ({
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
               children: glossaryTerm && (
-                <div className="m-sm">
-                  <CustomPropertyTable<EntityType.GLOSSARY_TERM>
-                    entityType={EntityType.GLOSSARY_TERM}
-                    hasEditAccess={
-                      !isVersionView &&
-                      (permissions.EditAll || permissions.EditCustomFields)
-                    }
-                    hasPermission={permissions.ViewAll}
-                    isVersionView={isVersionView}
-                  />
-                </div>
+                <CustomPropertyTable<EntityType.GLOSSARY_TERM>
+                  entityType={EntityType.GLOSSARY_TERM}
+                  hasEditAccess={
+                    !isVersionView &&
+                    (permissions.EditAll || permissions.EditCustomFields)
+                  }
+                  hasPermission={permissions.ViewAll}
+                  isVersionView={isVersionView}
+                />
               ),
             },
           ]

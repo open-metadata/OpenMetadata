@@ -430,7 +430,7 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={t('label.application-plural')}>
-      <Row className="page-container">
+      <Row>
         <Col className="d-flex" flex="auto">
           <Button
             className="p-0"
@@ -476,7 +476,7 @@ const AppDetails = () => {
         </Col>
       </Row>
       <Row>
-        <Col className="page-container" span={24}>
+        <Col span={24}>
           <Space className="app-details-header w-full m-t-md" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
@@ -519,10 +519,10 @@ const AppDetails = () => {
             </div>
           </Space>
         </Col>
-        <Col className="p-lg" span={24}>
+        <Col span={24}>
           <Tabs
             destroyInactiveTabPane
-            className="tabs-new"
+            className="app-details-page-tabs entity-details-page-tabs tabs-new"
             data-testid="tabs"
             items={tabs}
           />

@@ -273,7 +273,7 @@ const RolesListPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural')}>
       <Row
-        className="roles-list-container page-container"
+        className="roles-list-container"
         data-testid="roles-list-container"
         gutter={[0, 16]}>
         <Col span={24}>

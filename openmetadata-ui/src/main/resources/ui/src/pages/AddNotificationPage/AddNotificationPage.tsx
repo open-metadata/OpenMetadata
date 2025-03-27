@@ -222,7 +222,7 @@ const AddNotificationPage = () => {
   return (
     <ResizablePanels
       hideSecondPanel
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-containere',
         children: (
