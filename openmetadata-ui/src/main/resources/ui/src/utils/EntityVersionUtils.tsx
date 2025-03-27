@@ -334,6 +334,8 @@ const getGlossaryTermApprovalText = (fieldsChanged: FieldChange[]) => {
       status:
         statusFieldDiff.newValue === 'Approved'
           ? t('label.approved')
+          : statusFieldDiff.newValue === 'In Review'
+          ? t('label.in-review')
           : t('label.rejected'),
     });
   }
