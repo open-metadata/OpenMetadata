@@ -304,7 +304,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               gutter={[20, 0]}
               wrap={false}>
               <Col span={24}>
-                <Card className="p-md card-padding-0 m-b-md">
+                <Card className="p-md card-padding-0 m-b-box">
                   <Row>
                     <Col className="searched-data-container w-full">
                       <Row gutter={[0, 8]}>
