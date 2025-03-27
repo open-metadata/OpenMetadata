@@ -35,7 +35,7 @@ const ErrorPlaceHolderIngestion = ({
       <div className="mb-5" data-testid="error-steps">
         <Card
           className={classNames(
-            'd-flex flex-col justify-between w-4/5 mx-auto',
+            'd-flex flex-col justify-between',
             cardClassName
           )}>
           <AirflowMessageBanner className="m-b-xs" />

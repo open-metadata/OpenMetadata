@@ -19,6 +19,14 @@
   border: 1px solid @border-color-1;
   overflow: hidden;
 
+  .ant-table-body {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
   .custom-column-dropdown-menu {
     margin-right: 10px;
     padding: 0;

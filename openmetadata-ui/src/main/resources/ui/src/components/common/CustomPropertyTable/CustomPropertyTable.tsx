@@ -311,7 +311,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
     if (newLook) {
       return (
-        <Card className="w-full new-header-border-card" title={header}>
+        <Card
+          className="w-full new-header-border-card no-scrollbar"
+          title={header}>
           {propertyList}
         </Card>
       );
