@@ -21,6 +21,11 @@
   .entity-resizable-panel-container {
     height: @entity-details-tab-height;
     overflow-y: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
   .entity-resizable-right-panel-container {
     padding: 48px 8px 0 8px;
