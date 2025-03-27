@@ -91,6 +91,7 @@ export const getSearchIndexDetailsTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.SEARCH_INDEX}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={searchIndexDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
