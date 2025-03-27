@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Dropdown, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -110,7 +110,7 @@ export const DomainLabel = ({
       Array.isArray(activeDomain) &&
       activeDomain.length > 0
     ) {
-      return activeDomain.map((domain) => {
+      const domains = activeDomain.map((domain) => {
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
             title={t('label.inherited-entity', {
@@ -145,20 +145,54 @@ export const DomainLabel = ({
           </div>
         );
       });
-    } else {
-      return (
-        <Typography.Text
-          className={classNames(
-            'domain-link-text',
-            { 'font-medium text-sm': !showDomainHeading },
-            textClassName
-          )}
-          data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain') })}
-        </Typography.Text>
-      );
+
+      // Show limited domains with "+N more" button when multiple and headerLayout are true
+      if (multiple && headerLayout && domains.length > 1) {
+        const visibleDomains = domains.slice(0, 1);
+        const remainingCount = domains.length - 1;
+        const remainingDomains = domains.slice(1);
+
+        return (
+          <div className="d-flex items-center gap-2 flex-wrap">
+            {visibleDomains}
+            <Dropdown
+              menu={{
+                items: remainingDomains.map((domain, index) => ({
+                  key: index,
+                  label: domain,
+                })),
+                className: 'domain-tooltip-list',
+              }}>
+              <Typography.Text className="domain-count-button flex-center text-sm font-medium">
+                <span>+{remainingCount}</span>
+              </Typography.Text>
+            </Dropdown>
+          </div>
+        );
+      }
+
+      return domains;
     }
-  }, [activeDomain, domainDisplayName, showDomainHeading, textClassName]);
+
+    return (
+      <Typography.Text
+        className={classNames(
+          'domain-link-text',
+          { 'font-medium text-sm': !showDomainHeading },
+          textClassName
+        )}
+        data-testid="no-domain-text">
+        {t('label.no-entity', { entity: t('label.domain') })}
+      </Typography.Text>
+    );
+  }, [
+    activeDomain,
+    domainDisplayName,
+    showDomainHeading,
+    textClassName,
+    multiple,
+    headerLayout,
+  ]);
 
   const selectableList = useMemo(() => {
     return (

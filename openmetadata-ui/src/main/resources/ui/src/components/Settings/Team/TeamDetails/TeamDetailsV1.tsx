@@ -1147,9 +1147,10 @@ const TeamDetailsV1 = ({
           <Collapse
             accordion
             bordered={false}
-            className="header-collapse-custom-collapse">
+            className="header-collapse-custom-collapse"
+            expandIconPosition="end">
             <Collapse.Panel
-              className={classNames('p-x-md', {
+              className={classNames('collapse-panel-container', {
                 'm-t-sm': !isOrganization,
               })}
               data-testid="team-details-collapse"
