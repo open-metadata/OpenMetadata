@@ -224,9 +224,9 @@ const AddNotificationPage = () => {
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-containere',
         children: (
-          <div className="steps-form-container">
+          <div className="steps-form-container service-form-container">
             <Row className="page-container" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />

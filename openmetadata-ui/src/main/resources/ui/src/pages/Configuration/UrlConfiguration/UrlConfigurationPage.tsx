@@ -82,7 +82,7 @@ const UrlConfigurationPage = () => {
       pageTitle={t('label.entity-configuration', {
         entity: t('label.url-uppercase'),
       })}>
-      <Row gutter={[0, 16]}>
+      <Row className="page-container service-form-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

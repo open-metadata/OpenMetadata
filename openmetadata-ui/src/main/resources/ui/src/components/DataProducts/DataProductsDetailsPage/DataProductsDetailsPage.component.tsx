@@ -627,7 +627,7 @@ const DataProductsDetailsPage = ({
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-              className="domain-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}
