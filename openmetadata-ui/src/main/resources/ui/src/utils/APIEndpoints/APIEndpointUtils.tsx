@@ -108,13 +108,11 @@ export const getApiEndpointDetailsPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.API_ENDPOINT>
-            entityType={EntityType.API_ENDPOINT}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.API_ENDPOINT>
+          entityType={EntityType.API_ENDPOINT}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

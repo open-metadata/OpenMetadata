@@ -458,16 +458,13 @@ export const getDomainDetailTabs = ({
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
-              <div className="m-sm">
-                <CustomPropertyTable<EntityType.DOMAIN>
-                  entityType={EntityType.DOMAIN}
-                  hasEditAccess={
-                    domainPermission.EditAll ||
-                    domainPermission.EditCustomFields
-                  }
-                  hasPermission={domainPermission.ViewAll}
-                />
-              </div>
+              <CustomPropertyTable<EntityType.DOMAIN>
+                entityType={EntityType.DOMAIN}
+                hasEditAccess={
+                  domainPermission.EditAll || domainPermission.EditCustomFields
+                }
+                hasPermission={domainPermission.ViewAll}
+              />
             ),
           },
         ]
