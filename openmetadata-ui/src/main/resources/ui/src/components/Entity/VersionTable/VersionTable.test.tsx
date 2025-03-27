@@ -20,10 +20,6 @@ jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>FilterTablePlaceHolder</div>)
 );
 
-jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
-  jest.fn().mockImplementation(() => <div>SearchBar</div>)
-);
-
 jest.mock('../../Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );

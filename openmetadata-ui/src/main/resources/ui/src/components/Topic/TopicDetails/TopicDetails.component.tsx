@@ -323,13 +323,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </LineageProvider>
       ),
       customPropertiesTab: topicDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TOPIC>
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TOPIC>
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
       viewSampleDataPermission,
       activeTab,
