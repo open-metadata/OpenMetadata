@@ -70,8 +70,8 @@ def get_ometa_tag_and_classification(
     if system_tags:
         # Checking for system classification
         for classification_entity in (
-            metadata.es_search_from_name(
-                entity_type=Classification, name_search_string=classification_name
+            metadata.es_search_from_fqn(
+                entity_type=Classification, fqn_search_string=classification_name
             )
             or []
         ):
@@ -90,8 +90,9 @@ def get_ometa_tag_and_classification(
             if system_tags:
                 # Checking for system tag
                 for tag_entity in (
-                    metadata.es_search_from_name(
-                        entity_type=Tag, name_search_string=tag
+                    metadata.es_search_from_fqn(
+                        entity_type=Tag,
+                        fqn_search_string=f"{classification_name}.{tag}",
                     )
                     or []
                 ):

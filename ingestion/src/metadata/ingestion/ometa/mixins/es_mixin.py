@@ -201,37 +201,6 @@ class ESMixin(Generic[T]):
             fields=fields,
         )
 
-    def es_search_from_name(
-        self,
-        entity_type: Type[T],
-        name_search_string: str,
-        from_count: int = 0,
-        size: int = 10,
-        fields: Optional[str] = None,
-    ) -> Optional[List[T]]:
-        """
-        Given a service name and filters, search for entities using Elasticsearch.
-
-        Args:
-            entity_type (Type[T]): The type of entity to look for.
-            name_search_string (str): The string used to search by name.
-                Example: "PII, General, Sensitive".
-            from_count (int): The starting index of the search results.
-            size (int): The maximum number of records to return.
-            fields (Optional[str]): Comma-separated list of fields to be returned.
-
-        Returns:
-            Optional[List[T]]: A list of entities that match the search criteria, or None if no entities are found.
-        """
-        return self._es_search_entity(
-            entity_type=entity_type,
-            field_value=name_search_string,
-            field_name="name",
-            from_count=from_count,
-            size=size,
-            fields=fields,
-        )
-
     def es_search_container_by_path(
         self,
         full_path: str,
