@@ -134,10 +134,17 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
   test('should persist page size', async ({ page }) => {
     page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
     await page.getByTestId('page-size-selection-dropdown').click();
+
+    await expect(
+      page.getByRole('menuitem', { name: '15 / Page' })
+    ).toBeVisible();
 
     await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await page.waitForSelector('[data-testid="loader"]', {
