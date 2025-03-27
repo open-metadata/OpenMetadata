@@ -45,9 +45,7 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );
 
-jest.mock('../../components/Navbar/Navbar', () =>
-  jest.fn().mockReturnValue(<p>Navbar</p>)
-);
+jest.mock('../Navbar/Navbar', () => jest.fn().mockReturnValue(<p>Navbar</p>));
 
 jest.mock('../../components/AppRouter/AuthenticatedAppRouter', () =>
   jest.fn().mockReturnValue(<p>AuthenticatedAppRouter</p>)
