@@ -13,6 +13,7 @@ Mixin class containing Table specific methods
 
 To be used by OpenMetadata class
 """
+import base64
 import traceback
 from typing import List, Optional, Type, TypeVar
 
@@ -56,6 +57,7 @@ class OMetaTableMixin:
 
     client: REST
 
+    # pylint: disable=too-many-nested-blocks
     def ingest_table_sample_data(
         self, table: Table, sample_data: TableData
     ) -> Optional[TableData]:
@@ -69,7 +71,6 @@ class OMetaTableMixin:
         try:
             # Pre-process sample data to handle binary/non-UTF-8 data before serialization
             if sample_data and sample_data.rows:
-                import base64
 
                 for row in sample_data.rows:
                     if not row:
@@ -87,10 +88,11 @@ class OMetaTableMixin:
 
             try:
                 data = sample_data.model_dump_json()
-            except Exception as exc:
+            except Exception as _:
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Error serializing sample data for {table.fullyQualifiedName.root} please check if the data is valid"
+                    f"Error serializing sample data for {table.fullyQualifiedName.root}"
+                    " please check if the data is valid"
                 )
                 return None
 
