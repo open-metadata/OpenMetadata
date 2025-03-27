@@ -1149,7 +1149,9 @@ const TeamDetailsV1 = ({
             bordered={false}
             className="header-collapse-custom-collapse">
             <Collapse.Panel
-              className="p-x-md"
+              className={classNames('p-x-md', {
+                'm-t-sm': !isOrganization,
+              })}
               data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">

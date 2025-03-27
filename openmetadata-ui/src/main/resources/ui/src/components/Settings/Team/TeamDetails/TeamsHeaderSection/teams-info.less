@@ -12,6 +12,14 @@
  */
 @import (reference) url('../../../../../styles/variables.less');
 .teams-info-header-container {
+  display: flex;
+  justify-content: space-around;
+  border-radius: 12px;
+  border: 0.5px solid @border-color-2;
+  padding: 20px;
+  gap: 16px;
+  background-color: @white;
+
   .ant-typography.teams-info-heading {
     color: @blue-9;
   }
@@ -23,7 +31,7 @@
   .domain-link-container,
   .owner-label-container {
     max-width: 148px;
-    color: #414651;
+    color: @text-color-tertiary;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -31,22 +39,15 @@
   .vertical-divider {
     height: 50px;
   }
-  display: flex;
-  justify-content: space-around;
-  border-radius: 12px;
-  border: 0.5px solid #d5d7da;
-  padding: 20px;
-  gap: 16px;
-  background-color: #ffffff;
-}
-.ant-btn.ant-btn-text.ant-btn-sm.ant-btn-icon-only.teams-info-email-edit-button,
-.ant-btn.ant-btn-text.ant-btn-sm.ant-btn-icon-only.edit-team-name,
-.ant-btn.ant-btn-text.ant-btn-sm.ant-btn-icon-only.edit-team-type-icon {
-  border: 1px solid #ebeef2;
-  background-color: #ffffff;
-  border-radius: 4px;
-  padding: 4px;
-  width: 20px;
-  height: 20px;
-  display: flex;
+  .teams-info-email-edit-button,
+  .edit-team-name,
+  .edit-team-type-icon {
+    border: 1px solid @border-light;
+    background-color: @white;
+    border-radius: 4px;
+    padding: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+  }
 }
