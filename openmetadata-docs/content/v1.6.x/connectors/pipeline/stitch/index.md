@@ -19,6 +19,7 @@ Configure and schedule Stitch metadata and profiler workflows from the OpenMetad
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/stitch/yaml"} /%}
 
@@ -63,3 +64,5 @@ To extract metadata from Stitch, User first need to crate API crednetials:
 By successfully completing these steps, the lineage information for the service will be displayed.
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}

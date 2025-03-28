@@ -25,6 +25,7 @@ Configure and schedule Azure Data Factory metadata and profiler workflows from t
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/datafactory/yaml"} /%}
 
@@ -129,3 +130,5 @@ If lineage information is not displayed for a Data Factory service, follow these
 1. *Permissions*: Ensure that the service principal or managed identity you’re using has the necessary permissions in the Data Factory resource. (Reader, Contributor or Data Factory Contributor role at minimum).
 2. *Metadata Ingestion*: Ensure that metadata for both the source and sink database is ingested and passed to the lineage system. This typically involves configuring the relevant connectors to capture and transmit this information.
 3. *Run Successful*: Ensure that the Pipeline Run is successful.
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}

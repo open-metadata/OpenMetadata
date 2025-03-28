@@ -24,6 +24,7 @@ Configure and schedule Flink metadata from the OpenMetadata UI:
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/flink/yaml"} /%}
 
@@ -75,3 +76,5 @@ The ingestion framework uses flink REST APIs to connect to the instance and perf
 
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}

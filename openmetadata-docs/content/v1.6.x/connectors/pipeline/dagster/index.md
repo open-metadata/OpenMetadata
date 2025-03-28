@@ -24,6 +24,7 @@ Configure and schedule Dagster metadata and profiler workflows from the OpenMeta
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Troubleshooting](#troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dagster/yaml"} /%}
 
@@ -72,3 +73,5 @@ The ingestion framework uses [dagster graphql python client](https://docs.dagste
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}

@@ -23,6 +23,7 @@ Configure and schedule Matillion metadata and profiler workflows from the OpenMe
     - [Connection Details](#connection-details)
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/matillion/yaml"} /%}
 
@@ -79,3 +80,5 @@ By successfully completing these steps, the lineage information for the service 
   alt="Matillion Lineage" /%}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}
