@@ -1496,6 +1496,7 @@
     "view-definition": "View Definition",
     "view-detail-plural": "View Details",
     "view-entity": "View {{entity}}",
+    "view-in-service-type": "View in {{serviceType}}",
     "view-less": "View less",
     "view-more": "View more",
     "view-new-count": "View {{count}} new",

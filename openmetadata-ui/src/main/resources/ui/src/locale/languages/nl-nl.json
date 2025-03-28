@@ -1496,6 +1496,7 @@
     "view-definition": "Viewdefinitie",
     "view-detail-plural": "Details bekijken",
     "view-entity": "Bekijk {{entity}}",
+    "view-in-service-type": "Bekijk in {{serviceType}}",
     "view-less": "Minder weergeven",
     "view-more": "Bekijk meer",
     "view-new-count": "Bekijk {{count}} nieuw",
