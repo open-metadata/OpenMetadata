@@ -86,7 +86,6 @@ import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
-import wherescape from '../assets/img/service-icon-wherescape.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import elasticSearch from '../assets/svg/elasticsearch.svg';
@@ -177,7 +176,6 @@ export const LOGO = logo;
 export const EXASOL = exasol;
 export const AIRFLOW = airflow;
 export const POWERBI = powerbi;
-export const WHERESCAPE = wherescape;
 export const DATABASE_DEFAULT = databaseDefault;
 export const TOPIC_DEFAULT = topicDefault;
 export const DASHBOARD_DEFAULT = dashboardDefault;
@@ -426,7 +424,6 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
-  PipelineServiceType.Wherescape,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

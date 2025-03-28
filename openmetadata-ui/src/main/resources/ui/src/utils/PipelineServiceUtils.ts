@@ -28,7 +28,6 @@ import KafkaConnectConnection from '../jsons/connectionSchemas/connections/pipel
 import nifiConnection from '../jsons/connectionSchemas/connections/pipeline/nifiConnection.json';
 import openLineageConnection from '../jsons/connectionSchemas/connections/pipeline/openLineageConnection.json';
 import splineConnection from '../jsons/connectionSchemas/connections/pipeline/splineConnection.json';
-import wherescapeConnection from '../jsons/connectionSchemas/connections/pipeline/wherescapeConnection.json';
 
 export const getPipelineConfig = (type: PipelineServiceType) => {
   let schema = {};
@@ -102,11 +101,6 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.Flink: {
       schema = flinkConnection;
-
-      break;
-    }
-    case PipelineServiceType.Wherescape: {
-      schema = wherescapeConnection;
 
       break;
     }
