@@ -109,7 +109,6 @@ class BaseModel(PydanticBaseModel):
             self.model_dump(
                 mode="json",
                 mask_secrets=mask_secrets,
-                indent=indent,
                 include=include,
                 exclude=exclude,
                 context=context,
