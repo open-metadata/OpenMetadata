@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "เพื่อดูข้อมูลการนำเข้า ให้เรียกใช้งานการนำเข้าข้อมูลเมตาบนสภาพแวดล้อมของคุณเอง ตามลิงก์นี้ <0>{{link}}</0>",
     "pipeline-killed-successfully": "ฆ่ากระบวนการทำงานที่กำลังดำเนินการสำหรับ {{pipelineName}} สำเร็จ",
     "pipeline-not-deployed": "ท่อไม่ได้ถูกเรียกใช้",
-    "pipeline-scheduler-message": "ผู้จัดตารางการนำเข้าไม่สามารถตอบสนองได้ โปรดติดต่อฝ่ายสนับสนุนของ Collate ขอบคุณค่ะ",
+    "pipeline-scheduler-message": "ผู้จัดตารางการนำเข้าไม่สามารถตอบสนองได้ โปรดติดต่อฝ่ายสนับสนุนของ {{brandName}} ขอบคุณค่ะ",
     "pipeline-will-trigger-manually": "ท่อจะถูกกระตุ้นเฉพาะเมื่อเรียกใช้งานด้วยตนเอง",
     "pipeline-will-triggered-manually": "ท่อจะถูกกระตุ้นเฉพาะเมื่อเรียกใช้งานด้วยตนเอง",
     "platform-insight-description": "รู้จักข้อมูลเมตาเบื้องหลังของบริการของคุณและติดตามความก้าวหน้าของหลัก KPI",

@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
     "pipeline-killed-successfully": "Successfully killed running workflows for {{pipelineName}}",
     "pipeline-not-deployed": "Pipeline is not deployed",
-    "pipeline-scheduler-message": "The Ingestion Scheduler is unable to respond. Please reach out to Collate support. Thank you.",
+    "pipeline-scheduler-message": "取り込みスケジューラーが応答できません。{{brandName}}のサポートまでご連絡ください。ありがとうございます。",
     "pipeline-will-trigger-manually": "パイプラインは手動でのみ起動できます。",
     "pipeline-will-triggered-manually": "パイプラインは手動でのみ起動できます",
     "platform-insight-description": "サービスで利用可能なメタデータを理解し、主要なKPIのカバー率を追跡します。",

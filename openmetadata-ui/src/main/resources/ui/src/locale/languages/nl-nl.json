@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "Om ingestiedata te bekijken, voer de metadata-ingestie uit op je eigen omgeving via deze <0>{{link}}</0>",
     "pipeline-killed-successfully": "Successfully killed running workflows for {{pipelineName}}",
     "pipeline-not-deployed": "Pipeline is not deployed",
-    "pipeline-scheduler-message": "De ingestiescheduler reageert niet. Neem contact op met Collate-ondersteuning. Dank je.",
+    "pipeline-scheduler-message": "De ingestiescheduler reageert niet. Neem contact op met {{brandName}}-ondersteuning. Dank je.",
     "pipeline-will-trigger-manually": "Pipeline wordt alleen handmatig geactiveerd.",
     "pipeline-will-triggered-manually": "Pipeline wordt alleen handmatig geactiveerd",
     "platform-insight-description": "Begrijp de beschikbare metadata in je service en volg de belangrijkste KPI-dekking.",

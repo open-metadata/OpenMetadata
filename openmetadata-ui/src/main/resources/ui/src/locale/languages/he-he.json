@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
     "pipeline-killed-successfully": "Successfully killed running workflows for {{pipelineName}}",
     "pipeline-not-deployed": "Pipeline is not deployed",
-    "pipeline-scheduler-message": "מתזמן השקת המעבד לא מסוגל להגיב. יש לפנות לתמיכת Collate. תודה.",
+    "pipeline-scheduler-message": "מתזמן השקת המעבד לא מסוגל להגיב. יש לפנות לתמיכת {{brandName}}. תודה.",
     "pipeline-will-trigger-manually": "תהליך הטעינה יופעל באופן ידני בלבד.",
     "pipeline-will-triggered-manually": "תהליך הטעינה יופעל באופן ידני בלבד",
     "platform-insight-description": "הבנת המטא-נתונים המוכללים בשירות שלך ושימור התקדמות המטרות העיקריות של KPI.",

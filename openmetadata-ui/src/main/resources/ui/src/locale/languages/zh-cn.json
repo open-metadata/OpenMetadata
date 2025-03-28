@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "要查看提取数据, 请按照以下<0>{{link}}</0>在自己的环境中运行元数据提取",
     "pipeline-killed-successfully": "Successfully killed running workflows for {{pipelineName}}",
     "pipeline-not-deployed": "Pipeline is not deployed",
-    "pipeline-scheduler-message": "元数据提取编排器无回复，请联系系统管理员",
+    "pipeline-scheduler-message": "提取调度器无响应。请联系 {{brandName}} 支持。谢谢。",
     "pipeline-will-trigger-manually": "工作流仅能手动触发",
     "pipeline-will-triggered-manually": "工作流仅能手动触发",
     "platform-insight-description": "了解您的服务中的元数据并跟踪主要 KPI 的覆盖率。",

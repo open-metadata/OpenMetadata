@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "برای مشاهده داده‌های ورودی، متادیتا را در محیط خودتان ingest کنید، با دنبال کردن این <0>{{link}}</0>.",
     "pipeline-killed-successfully": "جریان‌های کاری در حال اجرای {{pipelineName}} با موفقیت متوقف شد.",
     "pipeline-not-deployed": "خط لوله هنوز پیاده‌سازی نشده است.",
-    "pipeline-scheduler-message": "برنامه‌ریز ورود داده قادر به پاسخ نیست. لطفاً با پشتیبانی Collate تماس بگیرید. متشکرم.",
+    "pipeline-scheduler-message": "برنامه‌ریز ورود داده قادر به پاسخ نیست. لطفاً با پشتیبانی {{brandName}} تماس بگیرید. متشکرم.",
     "pipeline-will-trigger-manually": "خط لوله فقط به صورت دستی اجرا خواهد شد.",
     "pipeline-will-triggered-manually": "خط لوله فقط به صورت دستی اجرا خواهد شد.",
     "platform-insight-description": "فهمیدن متادیتاهای موجود در سرویس خود و پیگیری پوشش اصلی KPIها.",

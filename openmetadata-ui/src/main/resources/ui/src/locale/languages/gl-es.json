@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "Para ver os datos de inxestión, executa a inxestión de metadatos no teu propio entorno seguindo estas <0>{{link}}</0>",
     "pipeline-killed-successfully": "Fluxos de traballo en execución para {{pipelineName}} detidos correctamente",
     "pipeline-not-deployed": "O pipeline non está despregado",
-    "pipeline-scheduler-message": "O Programador de Inxestión non pode responder. Por favor, contacta co soporte de Collate. Grazas.",
+    "pipeline-scheduler-message": "O Programador de Inxestión non pode responder. Por favor, contacta co soporte de {{brandName}}. Grazas.",
     "pipeline-will-trigger-manually": "O pipeline só se activará manualmente.",
     "pipeline-will-triggered-manually": "O pipeline só se activará manualmente",
     "platform-insight-description": "Entiende el metadato disponible en tu servicio y sigue el seguimiento de las principales coberturas de KPI.",

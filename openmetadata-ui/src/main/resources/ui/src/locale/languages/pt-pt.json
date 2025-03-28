@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "Para visualizar os Dados de Ingestão, execute a ingestão de metadados em seu próprio ambiente seguindo estes <0>{{link}}</0>",
     "pipeline-killed-successfully": "Successfully killed running workflows for {{pipelineName}}",
     "pipeline-not-deployed": "Pipeline is not deployed",
-    "pipeline-scheduler-message": "O Agendador de Ingestão não está respondendo. Entre em contacto com o suporte da Collate. Obrigado.",
+    "pipeline-scheduler-message": "O Agendador de Ingestão não está respondendo. Entre em contacto com o suporte da {{brandName}}. Obrigado.",
     "pipeline-will-trigger-manually": "O pipeline só será acionado manualmente.",
     "pipeline-will-triggered-manually": "O pipeline só será acionado manualmente",
     "platform-insight-description": "Compreenda os metadados disponíveis no seu serviço e mantenha o controle das principais coberturas de KPI.",

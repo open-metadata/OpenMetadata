@@ -1980,7 +1980,7 @@
     "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
     "pipeline-killed-successfully": "Successfully killed running workflows for {{pipelineName}}",
     "pipeline-not-deployed": "Pipeline is not deployed",
-    "pipeline-scheduler-message": "Планировщик загрузки не может ответить. Обратитесь в службу поддержки. Спасибо.",
+    "pipeline-scheduler-message": "Планировщик загрузки не отвечает. Пожалуйста, обратитесь в службу поддержки {{brandName}}. Спасибо.",
     "pipeline-will-trigger-manually": "Пайплайн будет запускаться только вручную.",
     "pipeline-will-triggered-manually": "Пайплайн будет запускаться только вручную.",
     "platform-insight-description": "Понимайте доступные метаданные в вашем сервисе и отслеживайте покрытие основных KPI.",

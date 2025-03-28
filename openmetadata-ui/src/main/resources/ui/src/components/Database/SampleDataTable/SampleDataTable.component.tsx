@@ -214,7 +214,7 @@ const SampleDataTable = ({
 
   return (
     <div
-      className={classNames('m-md', {
+      className={classNames('p-md border-default border-radius-sm', {
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"

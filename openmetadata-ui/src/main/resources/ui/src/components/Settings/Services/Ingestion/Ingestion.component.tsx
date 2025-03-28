@@ -78,6 +78,10 @@ const Ingestion: React.FC<IngestionProps> = ({
     () => getTypeAndStatusMenuItems(),
     []
   );
+  const isDBService = useMemo(
+    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
+    [serviceCategory]
+  );
   const [statusFilters, setStatusFilters] =
     useState<Array<{ key: string; label: string }>>(statusMenuItems);
   const [typeFilters, setTypeFilters] =
@@ -88,8 +92,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     [serviceCategory]
   );
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget),
-    [CollateAIAgentsWidget]
+    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
+    [CollateAIAgentsWidget, isDBService]
   );
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
