@@ -1710,7 +1710,8 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 -   Fixed Data Insights Data Stream deletion on OpenSearch
 -   Fixed soft delete and restore functionality
 -   Corrected childrenCount for Organizations in Teams
--   Fixed custom dashboard issue with term type of data`,
+-   Fixed custom dashboard issue with term type of data
+-   Lower training window for Collate Anomaly detection model ${CollateIconWithLinkMD}`,
     },
   },
 ];
