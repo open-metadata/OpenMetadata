@@ -547,7 +547,9 @@ export const DataAssetsHeader = ({
                         <Typography.Link
                           href={(dataAsset as Table).sourceUrl}
                           target="_blank">
-                          {t('label.source-url')}
+                          {t('label.view-in-service-type', {
+                            serviceType: (dataAsset as Table).serviceType,
+                          })}
                         </Typography.Link>
                       </Button>
                     </Tooltip>
