@@ -37,8 +37,9 @@ test.describe('Glossary tests', () => {
     }
 
     try {
-      await redirectToHomePage(page);
-      const glossaryRes = page.waitForResponse('/api/v1/glossaries?*');
+      const glossaryRes = page.waitForResponse(
+        '/api/v1/glossaryTerms?*directChildrenOf=*'
+      );
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await glossaryRes;
 
