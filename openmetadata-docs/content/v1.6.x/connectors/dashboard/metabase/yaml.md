@@ -17,6 +17,7 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
@@ -117,3 +118,5 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}
