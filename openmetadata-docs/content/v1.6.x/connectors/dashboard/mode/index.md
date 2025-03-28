@@ -18,6 +18,7 @@ Configure and schedule Mode metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Lineage](#lineage)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/mode/yaml"} /%}
 
@@ -76,3 +77,5 @@ Name of the mode workspace from where the metadata is to be fetched.
 {% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}
