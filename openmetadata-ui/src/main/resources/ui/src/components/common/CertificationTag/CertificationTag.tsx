@@ -52,7 +52,7 @@ const CertificationTag = ({
           {showName && (
             <span
               className={classNames('text-sm font-medium', {
-                [`certification-${name}`]: name,
+                [`certification-${name.toLowerCase()}`]: name,
               })}>
               {name}
             </span>
