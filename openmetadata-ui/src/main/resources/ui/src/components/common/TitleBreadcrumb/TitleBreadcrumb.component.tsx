@@ -20,6 +20,7 @@ import React, {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
+import { BREADCRUMB_SEPARATOR } from '../../../constants/constants';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
@@ -114,7 +115,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     <span className="text-sm font-regular p-x-xs text-grey-muted">
-                      {'>'}
+                      {BREADCRUMB_SEPARATOR}
                     </span>
                   </>
                 ) : (
