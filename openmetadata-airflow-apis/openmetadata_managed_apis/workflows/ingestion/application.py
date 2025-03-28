@@ -36,7 +36,7 @@ from metadata.generated.schema.metadataIngestion.applicationPipeline import (
 from metadata.workflow.application import ApplicationWorkflow
 
 
-def application_workflow(workflow_config: OpenMetadataApplicationConfig):
+def application_workflow(workflow_config: OpenMetadataApplicationConfig, **context):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -48,11 +48,17 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig):
 
     set_operator_logger(workflow_config)
 
+    # set overridden app config
     config = json.loads(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
-    workflow = ApplicationWorkflow.create(config)
+    params = context.get("params") or {}
+    config["appConfig"] = {
+        **(config.get("appConfig") or {}),
+        **(params.get("appConfigOverride") or {}),
+    }
 
+    workflow = ApplicationWorkflow.create(config)
     workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()
@@ -101,6 +107,9 @@ def build_application_dag(ingestion_pipeline: IngestionPipeline) -> DAG:
         ingestion_pipeline=ingestion_pipeline,
         workflow_config=application_workflow_config,
         workflow_fn=application_workflow,
+        params={
+            "appConfigOverride": None  # Default to None, will be overridden by trigger conf
+        },
     )
 
     return dag
