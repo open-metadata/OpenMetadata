@@ -48,3 +48,5 @@ unavailableFeatures=[]
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}
