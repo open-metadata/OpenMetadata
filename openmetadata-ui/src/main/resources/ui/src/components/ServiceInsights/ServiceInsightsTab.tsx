@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -27,8 +27,8 @@ import {
   getCurrentDayStartGMTinMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import Fqn from '../../utils/Fqn';
 import {
+  filterDistributionChartItem,
   getPlatformInsightsChartDataFormattingMethod,
   getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
@@ -56,16 +56,6 @@ const ServiceInsightsTab = ({
     tierDistributionChart: ChartData[];
   }>();
   const [isLoading, setIsLoading] = useState(false);
-
-  const filterDistributionChartItem = (item: {
-    term: string;
-    group: string;
-  }) => {
-    return (
-      Fqn.split(item.term).length === 2 &&
-      toLower(Fqn.split(item.term)[1]) === toLower(item.group)
-    );
-  };
 
   const serviceName = serviceDetails.name;
 
