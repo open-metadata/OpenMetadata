@@ -1697,7 +1697,8 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 -   Added Tableau Custom SQL lineage support
 -   Added column count validation when creating table-type custom property
 -   Transformed Reserved keywords like quotes to OM compatible
--   Added missing timestamp indexes for time series tables`,
+-   Added missing timestamp indexes for time series tables
+-   Enhancing FQN Handling: Support for Quoted Identifiers`,
 
       Fixes: `-   Fixed potential Okta login issues by clearing state to avoid login errors
 -   Fixed MariaDB profiling with Time datatype
@@ -1708,7 +1709,8 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 -   Fixed delete entity relation live indexing
 -   Fixed Data Insights Data Stream deletion on OpenSearch
 -   Fixed soft delete and restore functionality
--   Corrected childrenCount for Organizations in Teams`,
+-   Corrected childrenCount for Organizations in Teams
+-   Fixed custom dashboard issue with term type of data`,
     },
   },
 ];
