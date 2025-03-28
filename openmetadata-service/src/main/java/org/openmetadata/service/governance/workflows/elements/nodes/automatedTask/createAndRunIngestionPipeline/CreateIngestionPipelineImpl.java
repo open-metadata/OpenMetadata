@@ -192,9 +192,21 @@ public class CreateIngestionPipelineImpl {
     return response.getCode() == 200;
   }
 
+  private String getPipelineName(PipelineType pipelineType) {
+    Map<PipelineType, String> pipelineNameByType =
+        Map.of(
+            PipelineType.METADATA, "Metadata Agent",
+            PipelineType.USAGE, "Usage Agent",
+            PipelineType.LINEAGE, "Lineage Agent",
+            PipelineType.PROFILER, "Profiler Agent",
+            PipelineType.AUTO_CLASSIFICATION, "AutoClassification Agent");
+
+    return pipelineNameByType.get(pipelineType);
+  }
+
   private IngestionPipeline getOrCreateIngestionPipeline(
       PipelineType pipelineType, ServiceEntityInterface service) {
-    String displayName = String.format("[%s] %s", service.getName(), pipelineType);
+    String displayName = getPipelineName(pipelineType);
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
