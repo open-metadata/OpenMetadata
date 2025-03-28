@@ -72,12 +72,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: [
-        '**/Lineage.spec.ts',
-        '**/Table.spec.ts',
-        '**/Users.spec.ts',
-        '**/GlossaryPagination.spec.ts',
-      ],
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup'],
       grepInvert: /data-insight/,
