@@ -88,7 +88,7 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={`d-flex flex-col gap-2 ${
+        className={`d-flex flex-col gap-1 ${
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}

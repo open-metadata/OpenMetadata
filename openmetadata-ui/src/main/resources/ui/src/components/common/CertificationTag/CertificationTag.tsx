@@ -50,7 +50,10 @@ const CertificationTag = ({
             src={tagSrc}
           />
           {showName && (
-            <span className="certification-name text-sm font-medium">
+            <span
+              className={classNames('text-sm font-medium', {
+                [`certification-${name}`]: name,
+              })}>
               {name}
             </span>
           )}
