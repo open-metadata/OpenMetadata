@@ -246,7 +246,6 @@ const TeamsInfo = ({
       <>
         <Divider className="vertical-divider" type="vertical" />
         <Space align="start" className="d-flex flex-col gap-2">
-          {/* <Divider type="vertical" className='vertical-divider' /> */}
           <div className="d-flex  gap-2">
             <Typography.Text className="text-sm font-medium teams-info-heading ">
               {`${t('label.type')}`}
@@ -289,11 +288,9 @@ const TeamsInfo = ({
               updateTeamType={hasEditPermission ? updateTeamType : undefined}
             />
           ) : (
-            <>
-              <Typography.Text className="font-medium" data-testid="team-type">
-                {teamType}
-              </Typography.Text>
-            </>
+            <Typography.Text className="font-medium" data-testid="team-type">
+              {teamType}
+            </Typography.Text>
           )}
         </Space>
       </>
