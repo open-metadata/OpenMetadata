@@ -14,7 +14,7 @@
 /* eslint-disable max-len */
 
 import React from 'react';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 
 type Props = {
   data: { [name: string]: string };
@@ -29,13 +29,13 @@ const ChangeLogs = ({ data }: Props) => {
         <div className="mb-4" key={log}>
           <div className="border-bottom mb-2.5 border-text">
             <p className="text-base font-medium mb-2.5 log-title">
-              <RichTextEditorPreviewerV1
+              <RichTextEditorPreviewer
                 enableSeeMoreVariant={false}
                 markdown={log}
               />
             </p>
           </div>
-          <RichTextEditorPreviewerV1
+          <RichTextEditorPreviewer
             enableSeeMoreVariant={false}
             markdown={data[log]}
           />
