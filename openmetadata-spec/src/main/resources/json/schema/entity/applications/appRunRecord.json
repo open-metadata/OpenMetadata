@@ -88,7 +88,12 @@
       "type": "array",
       "items": {
         "$ref": "../../type/entityReference.json"
-      }
+      },
+      "deprecated": true
+    },
+    "service": {
+      "description": "Services configured in the application run. This information is generated based on the given configuration.",
+      "$ref": "../../type/entityReference.json"
     },
     "properties": {
       "description": "Arbitrary metadata that will be attached to the report.",

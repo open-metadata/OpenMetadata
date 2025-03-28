@@ -36,6 +36,11 @@ export interface App {
      */
     appSchedule?: any[] | boolean | AppScheduleClass | number | number | null | string;
     /**
+     * In case the app supports scheduling, list of different app schedules. These can be quartz
+     * jobs or ingestion pipelines.
+     */
+    appSchedules?: Array<any[] | boolean | AppScheduleClass | number | number | null | string>;
+    /**
      * Application Screenshots.
      */
     appScreenshots?: string[];
@@ -497,6 +502,8 @@ export interface Action {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Service associated with this application.
+ *
  * Bot User Associated with this application.
  *
  * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
@@ -878,10 +885,19 @@ export enum Type {
 
 export interface AppScheduleClass {
     /**
+     * Configuration override for this scheduled instance.
+     */
+    config?: any[] | boolean | number | null | CollateAIAppConfig | string;
+    /**
      * Cron Expression in case of Custom scheduled Trigger
      */
     cronExpression?:  string;
+    id:               string;
     scheduleTimeline: ScheduleTimeline;
+    /**
+     * Service associated with this application.
+     */
+    service?: EntityReference;
 }
 
 /**
@@ -889,7 +905,7 @@ export interface AppScheduleClass {
  */
 export enum ScheduleTimeline {
     Custom = "Custom",
-    Daily = " Daily",
+    Daily = "Daily",
     Hourly = "Hourly",
     Monthly = "Monthly",
     None = "None",

@@ -629,6 +629,19 @@ public final class Entity {
         .contains(entityType);
   }
 
+  public static ServiceEntityInterface getService(
+      UriInfo uriInfo, UUID serviceId, Fields fields, Include include) {
+    return (ServiceEntityInterface)
+        Arrays.stream(ServiceType.values())
+            .map(Entity::getServiceEntityRepository)
+            .flatMap(repo -> repo.get(uriInfo, List.of(serviceId), fields, include).stream())
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new EntityNotFoundException(
+                        CatalogExceptionMessage.entityNotFound("Service", serviceId)));
+  }
+
   /** Class for getting validated entity list from a queryParam with list of entities. */
   public static class EntityList {
     private EntityList() {}

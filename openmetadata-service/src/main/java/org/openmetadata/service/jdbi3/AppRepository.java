@@ -36,7 +36,8 @@ import org.openmetadata.service.util.ResultList;
 public class AppRepository extends EntityRepository<App> {
   public static final String APP_BOT_ROLE = "ApplicationBotRole";
 
-  public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
+  // TODO appSchedule is deprecated. Remove in future versions.
+  public static final String UPDATE_FIELDS = "appConfiguration,appSchedule,appSchedules";
 
   public AppRepository() {
     super(
@@ -465,10 +466,12 @@ public class AppRepository extends EntityRepository<App> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
-      recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
       recordChange("bot", original.getBot(), updated.getBot());
       recordChange(
           "eventSubscriptions", original.getEventSubscriptions(), updated.getEventSubscriptions());
+      // TODO: deprecated field. Remove in future versions.
+      recordChange("appSchedule", original.getAppSchedules(), updated.getAppSchedules());
+      recordChange("appSchedules", original.getAppSchedules(), updated.getAppSchedules());
     }
   }
 }

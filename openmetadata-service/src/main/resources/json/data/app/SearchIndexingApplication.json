@@ -17,9 +17,11 @@
     "maxBackoff": 10000,
     "searchIndexMappingLanguage": "EN"
   },
-  "appSchedule": {
-    "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * *"
-  },
+  "appSchedules": [
+    {
+      "scheduleTimeline": "Custom",
+      "cronExpression": "0 0 * * *"
+    }
+  ],
   "supportsInterrupt": true
 }

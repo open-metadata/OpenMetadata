@@ -47,10 +47,10 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
+import org.openmetadata.schema.entity.app.CreateAppSchedule;
 import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
@@ -126,7 +126,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     return new CreateApp()
         .withName(appMarketPlaceDefinition.getName())
         .withAppConfiguration(appMarketPlaceDefinition.getAppConfiguration())
-        .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY));
+        .withAppSchedules(
+            List.of(new CreateAppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY)));
   }
 
   @Test

@@ -23,6 +23,11 @@ generateType() {
     output_file=$2
     echo "Generating $output_file from specification at $tmp_schema_file"
     ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
+    # fail for bad exit code
+    if [ $? -ne 0 ]; then
+        echo "Failed to generate $output_file from $tmp_schema_file"
+        exit 1
+    fi
 }
 
 processFile() {

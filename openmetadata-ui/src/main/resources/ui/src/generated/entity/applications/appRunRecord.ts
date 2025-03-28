@@ -57,6 +57,11 @@ export interface AppRunRecord {
      * Services configured in the application run. This information is generated based on the
      * given configuration.
      */
+    service?: EntityReference;
+    /**
+     * Services configured in the application run. This information is generated based on the
+     * given configuration.
+     */
     services?: EntityReference[];
     /**
      * Start of the job status.
@@ -121,8 +126,16 @@ export interface AppScheduleClass {
     /**
      * Cron Expression in case of Custom scheduled Trigger
      */
-    cronExpression?:  string;
+    cronExpression?: string;
+    /**
+     * Unique identifier of this application.
+     */
+    id?:              string;
     scheduleTimeline: ScheduleTimeline;
+    /**
+     * Service associated with this application.
+     */
+    service?: EntityReference;
 }
 
 /**
@@ -138,10 +151,15 @@ export enum ScheduleTimeline {
 }
 
 /**
+ * Service associated with this application.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Services configured in the application run. This information is generated based on the
+ * given configuration.
  */
 export interface EntityReference {
     /**

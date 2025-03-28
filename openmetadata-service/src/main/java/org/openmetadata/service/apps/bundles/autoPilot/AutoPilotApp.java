@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
@@ -36,13 +37,14 @@ public class AutoPilotApp extends AbstractNativeApplication {
   }
 
   @Override
-  public void install(String installedBy) {
+  public App install(String installedBy) {
     createWorkflow(installedBy);
     configure();
+    return getApp();
   }
 
   @Override
-  public void uninstall() {
+  public void uninstall(String uninstalledBy) {
     deleteWorkflow();
   }
 
@@ -63,7 +65,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
   }
 
   @Override
-  public void triggerOnDemand(Map<String, Object> config) {
+  public void triggerOnDemand(AppSchedule schedule, Map<String, Object> config) {
     // Trigger the application with the provided configuration payload
     Map<String, Object> appConfig = JsonUtils.getMap(getApp().getAppConfiguration());
     if (config != null) {

@@ -784,6 +784,12 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>auth</artifactId>
     </dependency>
+      <dependency>
+          <groupId>org.elasticsearch</groupId>
+          <artifactId>elasticsearch-core</artifactId>
+          <version>7.17.23</version>
+          <scope>compile</scope>
+      </dependency>
   </dependencies>
 
   <profiles>

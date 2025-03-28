@@ -15,6 +15,7 @@ import org.openmetadata.schema.AppRuntime;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
@@ -31,6 +32,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -64,56 +66,57 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void install(String installedBy) {
+  public App install(String installedBy) {
+    // do nothing by default can be overridden by the implementation
+    return getApp();
+  }
+
+  public void schedule(String updatedBy) {
     // If the app does not have any Schedule Return without scheduling
-    if (Boolean.TRUE.equals(app.getDeleted()) || (app.getAppSchedule() == null)) {
-      return;
+    if (Boolean.TRUE.equals(app.getDeleted())) {
+      throw BadRequestException.of("Application is deleted");
     }
     if (app.getAppType().equals(AppType.Internal)
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
+      scheduleInternal();
+    } else if (app.getAppType() == AppType.External
+        && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
+      scheduleExternal(updatedBy);
+    }
+  }
+
+  @Override
+  public void uninstall(String uninstalledBy) {
+    if (AppType.Internal.equals(app.getAppType())) {
       try {
-        ApplicationHandler.getInstance().removeOldJobs(app);
-        ApplicationHandler.getInstance().migrateQuartzConfig(app);
-        ApplicationHandler.getInstance().fixCorruptedInstallation(app);
+        AppScheduler.getInstance().deleteApplication(app);
+        AppScheduler.getInstance().deleteQuartzJob(app);
       } catch (SchedulerException e) {
         throw AppException.byMessage(
             "ApplicationHandler",
             "SchedulerError",
-            "Error while migrating application configuration: " + app.getName());
+            "Error while deleting application configuration: " + app.getName());
       }
-      scheduleInternal();
     } else if (app.getAppType() == AppType.External
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
-      scheduleExternal(installedBy);
+      scheduleExternal(uninstalledBy);
     }
   }
 
   @Override
-  public void uninstall() {
-    /* Not needed by default */
-  }
-
-  @Override
-  public void triggerOnDemand() {
-    triggerOnDemand(null);
-  }
-
-  @Override
-  public void triggerOnDemand(Map<String, Object> config) {
-    // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
-      AppRuntime runtime = getAppRuntime(app);
-      validateServerExecutableApp(runtime);
-      // Trigger the application with the provided configuration payload
-      Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
-      if (config != null) {
-        appConfig.putAll(config);
-      }
-      validateConfig(appConfig);
-      AppScheduler.getInstance().triggerOnDemandApplication(app, config);
-    } else {
+  public void triggerOnDemand(AppSchedule scheduleKey, Map<String, Object> config) {
+    if (!app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
       throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
+    AppRuntime runtime = getAppRuntime(app);
+    validateServerExecutableApp(runtime);
+    // Trigger the application with the provided configuration payload
+    Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+    if (config != null) {
+      appConfig.putAll(config);
+    }
+    validateConfig(appConfig);
+    AppScheduler.getInstance().triggerOnDemandApplication(app, scheduleKey, appConfig);
   }
 
   /**
@@ -133,19 +136,20 @@ public class AbstractNativeApplication implements NativeApplication {
     AppScheduler.getInstance().scheduleApplication(app);
   }
 
-  public void scheduleExternal(String updatedBy) {
+  public String scheduleExternal(String updatedBy) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
-      updateAppConfig(
+      return updateAppConfig(
           ingestionPipelineRepository,
           JsonUtils.getMap(this.getApp().getAppConfiguration()),
+          app.getAppSchedules().get(0).getService(),
           updatedBy);
     } catch (EntityNotFoundException ex) {
       Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
-      createAndBindIngestionPipeline(ingestionPipelineRepository, config);
+      return createAndBindIngestionPipeline(ingestionPipelineRepository, config);
     }
   }
 
@@ -179,21 +183,24 @@ public class AbstractNativeApplication implements NativeApplication {
     }
   }
 
-  private void updateAppConfig(
+  private String updateAppConfig(
       IngestionPipelineRepository repository,
       Map<String, Object> appConfiguration,
+      EntityReference service,
       String updatedBy) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
+    updated.setService(service);
     ApplicationPipeline appPipeline =
         JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
         updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
     repository.update(null, original, updated, updatedBy);
+    return updated.getId().toString();
   }
 
-  private void createAndBindIngestionPipeline(
+  private String createAndBindIngestionPipeline(
       IngestionPipelineRepository ingestionPipelineRepository, Map<String, Object> config) {
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
@@ -237,11 +244,7 @@ public class AbstractNativeApplication implements NativeApplication {
             Entity.APPLICATION,
             Entity.INGESTION_PIPELINE,
             Relationship.HAS.ordinal());
-  }
-
-  @Override
-  public void cleanup() {
-    /* Not needed by default*/
+    return ingestionPipeline.getId().toString();
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {

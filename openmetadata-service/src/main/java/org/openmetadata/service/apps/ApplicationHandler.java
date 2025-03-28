@@ -2,8 +2,6 @@ package org.openmetadata.service.apps;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
-import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import io.dropwizard.configuration.ConfigurationException;
 import java.io.IOException;
@@ -18,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -28,14 +27,10 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
 import org.quartz.impl.matchers.GroupMatcher;
@@ -94,13 +89,35 @@ public class ApplicationHandler {
     }
   }
 
+  /* Run an application on demand. The configuration can be overridden in two optional ways:
+  1. By passing a scheduleId, the app will be triggered with the configuration of the schedule.
+  2. By passing a configPayload, the app will be triggered with the configuration of the schedule
+         and the configPayload will override the schedule configuration.
+
+  Maps are merged flat without deep merge.
+  * */
   public void triggerApplicationOnDemand(
       App app,
       CollectionDAO daoCollection,
       SearchRepository searchRepository,
-      Map<String, Object> configPayload) {
+      Map<String, Object> configPayload,
+      String scheduleId) {
     try {
-      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(configPayload);
+      AppSchedule appSchedule =
+          Optional.ofNullable(scheduleId)
+              .map(
+                  sid ->
+                      listOrEmpty(app.getAppSchedules()).stream()
+                          .filter(appSchedule1 -> appSchedule1.getId().equals(scheduleId))
+                          .findFirst()
+                          .orElseThrow(
+                              () ->
+                                  AppException.byMessage(
+                                      app.getName(),
+                                      "schedule not found",
+                                      "No schedule found for: " + scheduleId)))
+              .orElse(null);
+      runAppInit(app, daoCollection, searchRepository).triggerOnDemand(appSchedule, configPayload);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -115,7 +132,10 @@ public class ApplicationHandler {
   public void installApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String installedBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).install(installedBy);
+      App updated = runAppInit(app, daoCollection, searchRepository).install(installedBy);
+      if (!app.equals(updated)) {
+        appRepository.update(null, app, updated, installedBy);
+      }
       installEventSubscriptions(app, installedBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException
@@ -129,9 +149,12 @@ public class ApplicationHandler {
   }
 
   public void uninstallApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+      App app,
+      CollectionDAO daoCollection,
+      SearchRepository searchRepository,
+      String uninstalledBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).uninstall();
+      runAppInit(app, daoCollection, searchRepository).uninstall(uninstalledBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -196,7 +219,7 @@ public class ApplicationHandler {
   public void performCleanup(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String deletedBy) {
     try {
-      runAppInit(app, daoCollection, searchRepository).cleanup();
+      runAppInit(app, daoCollection, searchRepository).uninstall(deletedBy);
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -250,61 +273,8 @@ public class ApplicationHandler {
     return resource;
   }
 
-  public void migrateQuartzConfig(App application) throws SchedulerException {
-    JobDetail jobDetails =
-        AppScheduler.getInstance()
-            .getScheduler()
-            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
-    if (jobDetails == null) {
-      return;
-    }
-    JobDataMap jobDataMap = jobDetails.getJobDataMap();
-    if (jobDataMap == null) {
-      return;
-    }
-    String appInfo = jobDataMap.getString(APP_INFO_KEY);
-    if (appInfo == null) {
-      return;
-    }
-    LOG.info("migrating app quartz configuration for {}", application.getName());
-    App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
-    App currentApp = appRepository.getDao().findEntityById(application.getId());
-    updatedApp.setOpenMetadataServerConnection(null);
-    updatedApp.setPrivateConfiguration(null);
-    updatedApp.setScheduleType(currentApp.getScheduleType());
-    updatedApp.setAppSchedule(currentApp.getAppSchedule());
-    updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
-    updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
-    EntityRepository<App>.EntityUpdater updater =
-        appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH, null);
-    updater.update();
-    AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
-    AppScheduler.getInstance().scheduleApplication(updatedApp);
-    LOG.info("migrated app configuration for {}", application.getName());
-  }
-
-  public void fixCorruptedInstallation(App application) throws SchedulerException {
-    JobDetail jobDetails =
-        AppScheduler.getInstance()
-            .getScheduler()
-            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
-    if (jobDetails == null) {
-      return;
-    }
-    JobDataMap jobDataMap = jobDetails.getJobDataMap();
-    if (jobDataMap == null) {
-      return;
-    }
-    String appName = jobDataMap.getString(APP_NAME);
-    if (appName == null) {
-      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
-      App app = appRepository.getDao().findEntityByName(application.getName());
-      AppScheduler.getInstance().deleteScheduledApplication(app);
-      AppScheduler.getInstance().scheduleApplication(app);
-    }
-  }
-
   public void removeOldJobs(App app) throws SchedulerException {
+    // TODO this needs to be handled at the scheduler level, not per app
     Collection<JobKey> jobKeys =
         AppScheduler.getInstance()
             .getScheduler()
@@ -323,5 +293,20 @@ public class ApplicationHandler {
             LOG.error("Error deleting job {}", jobKey.getName(), e);
           }
         });
+  }
+
+  public void schedule(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository, String updatedBy) {
+    try {
+      runAppInit(app, daoCollection, searchRepository).schedule(updatedBy);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
+      LOG.error("Failed to configure application {}", app.getName(), e);
+      throw AppException.byMessage(
+          app.getName(), "schedule", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+    }
   }
 }

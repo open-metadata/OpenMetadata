@@ -1,15 +1,21 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.jdbi3.EntityRepository.validateOwners;
 
+import com.nimbusds.jose.util.Pair;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.validation.ConstraintViolationException;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
+import org.openmetadata.schema.entity.app.CreateAppSchedule;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -51,7 +57,7 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withAppConfiguration(createAppRequest.getAppConfiguration())
             .withRuntime(marketPlaceDefinition.getRuntime())
             .withPermission(marketPlaceDefinition.getPermission())
-            .withAppSchedule(createAppRequest.getAppSchedule())
+            .withAppSchedules(getAppSchedules(createAppRequest))
             .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
             .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
             .withFeatures(marketPlaceDefinition.getFeatures())
@@ -66,6 +72,31 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
     return app;
   }
 
+  private List<AppSchedule> getAppSchedules(CreateApp createAppRequest) {
+    return listOrEmpty(createAppRequest.getAppSchedules()).stream()
+        .map(
+            request ->
+                Pair.of(
+                    request,
+                    Entity.getService(
+                            null,
+                            request.getService(),
+                            new EntityUtil.Fields(Set.of("id")),
+                            Include.NON_DELETED)
+                        .getEntityReference()))
+        .map(pair -> getAppSchedule(pair.getLeft(), pair.getRight()))
+        .collect(Collectors.toList());
+  }
+
+  public AppSchedule getAppSchedule(CreateAppSchedule create, EntityReference service) {
+    return new AppSchedule()
+        .withId(UUID.randomUUID())
+        .withService(service)
+        .withScheduleTimeline(create.getScheduleTimeline())
+        .withCronExpression(create.getCronExpression())
+        .withConfig(create.getConfig());
+  }
+
   private void validateAndAddBot(App app, String botName) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     try {
@@ -73,7 +104,7 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
     } catch (ConstraintViolationException e) {
       throw BadRequestException.of("Invalid App: " + e.getMessage());
     }
-    if (!CommonUtil.nullOrEmpty(botName)) {
+    if (!nullOrEmpty(botName)) {
       app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
     } else {
       app.setBot(appRepository.createNewAppBot(app));

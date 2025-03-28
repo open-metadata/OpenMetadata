@@ -13,6 +13,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -21,6 +22,8 @@ import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationOps;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.search.SearchRepository;
+import org.quartz.SchedulerException;
 
 @Slf4j
 public class MigrationProcessImpl implements MigrationProcess {
@@ -149,6 +152,16 @@ public class MigrationProcessImpl implements MigrationProcess {
   public void close() {
     if (handle != null) {
       handle.close();
+    }
+  }
+
+  public void initAppScheduler() {
+    try {
+      SearchRepository searchRepository =
+          new SearchRepository(openMetadataApplicationConfig.getElasticSearchConfiguration());
+      AppScheduler.initialize(openMetadataApplicationConfig, collectionDAO, searchRepository);
+    } catch (SchedulerException e) {
+      throw new RuntimeException(e);
     }
   }
 }

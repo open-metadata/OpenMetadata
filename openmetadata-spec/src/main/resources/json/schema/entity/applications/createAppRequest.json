@@ -3,9 +3,36 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateAppRequest",
   "javaType": "org.openmetadata.schema.entity.app.CreateApp",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "description": "This schema defines the create applications request for Open-Metadata.",
   "type": "object",
+  "definitions": {
+    "createAppSchedule": {
+      "javaType": "org.openmetadata.schema.entity.app.CreateAppSchedule",
+      "description": "This schema defines a request to create an application schedule.",
+      "properties": {
+        "service": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "scheduleTimeline": {
+          "$ref": "./app.json#/definitions/scheduleTimeline"
+        },
+        "cronExpression": {
+          "description": "Cron Expression in case of Custom scheduled Trigger",
+          "type": "string"
+        },
+        "config": {
+            "description": "Application Configuration object.",
+            "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
+        }
+      },
+      "required": [
+        "scheduleTimeline"
+      ]
+    }
+  },
   "properties": {
     "name": {
       "description": "Name of the Application.",
@@ -32,10 +59,13 @@
     "appConfiguration": {
       "description": "Application Configuration object."
     },
-    "appSchedule": {
-      "$ref": "./app.json#/definitions/appSchedule"
+    "appSchedules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/createAppSchedule"
+      }
     },
-    "domain" : {
+    "domain": {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
     },

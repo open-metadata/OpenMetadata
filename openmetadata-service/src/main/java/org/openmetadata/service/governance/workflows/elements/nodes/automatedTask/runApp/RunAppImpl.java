@@ -166,7 +166,7 @@ public class RunAppImpl {
       try {
         ApplicationHandler.getInstance()
             .triggerApplicationOnDemand(
-                app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
+                app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config, null); // TODO: populate
         break;
       } catch (UnhandledServerException e) {
         if (e.getMessage().contains("Job is already running")) {

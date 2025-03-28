@@ -67,6 +67,19 @@ public class OpenMetadataConnectionBuilder {
     initializeBotUser(botName);
   }
 
+  public OpenMetadataConnectionBuilder() {}
+
+  public OpenMetadataConnectionBuilder withConfig(
+      OpenMetadataApplicationConfig openMetadataApplicationConfig) {
+    initializeOpenMetadataConnectionBuilder(openMetadataApplicationConfig);
+    return this;
+  }
+
+  public OpenMetadataConnectionBuilder withBotName(String botName) {
+    initializeBotUser(botName);
+    return this;
+  }
+
   public OpenMetadataConnectionBuilder(
       OpenMetadataApplicationConfig openMetadataApplicationConfig,
       IngestionPipeline ingestionPipeline) {

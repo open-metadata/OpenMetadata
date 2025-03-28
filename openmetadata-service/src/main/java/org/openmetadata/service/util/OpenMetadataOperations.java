@@ -51,9 +51,7 @@ import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
-import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -504,7 +502,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .withName(definition.getName())
             .withDescription(definition.getDescription())
             .withDisplayName(definition.getDisplayName())
-            .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
             .withAppConfiguration(Map.of());
 
     AppMapper appMapper = new AppMapper();
@@ -862,7 +859,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance().triggerOnDemandApplication(app, null, JsonUtils.getMap(config));
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime);
 
@@ -940,7 +937,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     // Trigger Application
     long currentTime = System.currentTimeMillis();
-    AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+    AppScheduler.getInstance().triggerOnDemandApplication(app, null, JsonUtils.getMap(config));
 
     int result = waitAndReturnReindexingAppStatus(app, currentTime);
 

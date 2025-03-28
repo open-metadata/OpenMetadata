@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.apps;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
@@ -19,8 +20,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -49,8 +53,10 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
+import org.openmetadata.schema.entity.app.CreateAppSchedule;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -86,6 +92,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
@@ -140,10 +147,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
         App app = getAppForInit(createApp.getName());
         if (app == null) {
           app = mapper.createToEntity(createApp, ADMIN_USER_NAME);
-          scheduleAppIfNeeded(app);
+          ApplicationHandler.getInstance()
+              .installApplication(
+                  app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
+          ApplicationHandler.getInstance()
+              .schedule(app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
           repository.initializeEntity(app);
         } else {
-          scheduleAppIfNeeded(app);
+          ApplicationHandler.getInstance()
+              .schedule(app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
         }
       } catch (AppException ex) {
         LOG.warn(
@@ -153,13 +165,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
       } catch (Exception ex) {
         LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
       }
-    }
-  }
-
-  private void scheduleAppIfNeeded(App app) {
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
-      ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
     }
   }
 
@@ -710,19 +715,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch)
-      throws SchedulerException {
+          JsonPatch patch) {
     App app = repository.get(null, id, repository.getFields("bot,pipelines"));
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
-    Response response = patchInternal(uriInfo, securityContext, id, patch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch, null);
     App updatedApp = (App) response.getEntity();
+    updatedApp = handleDeprecatedFields(securityContext, updatedApp);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(
+          .schedule(
               updatedApp,
               Entity.getCollectionDAO(),
               searchRepository,
@@ -731,6 +735,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
     return response;
+  }
+
+  private App handleDeprecatedFields(SecurityContext securityContext, App app) {
+    if (app.getAppSchedule() != null) {
+      App updated = JsonUtils.deepCopy(app, App.class);
+      updated.setAppSchedule(null);
+      updated.setAppSchedules(List.of(app.getAppSchedule().withId(UUID.randomUUID())));
+      return repository
+          .update(null, app, updated, securityContext.getUserPrincipal().getName())
+          .getEntity();
+    }
+    return app;
   }
 
   @PATCH
@@ -758,14 +774,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch)
-      throws SchedulerException {
+          JsonPatch patch) {
     App app = repository.getByName(null, fqn, repository.getFields("bot,pipelines"));
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
@@ -779,6 +793,46 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
     return response;
+  }
+
+  @POST
+  @Path("/name/{fqn}/schedule")
+  @Operation(operationId = "addAppSchedule", summary = "Add a schedule to an App")
+  @Consumes(MediaType.APPLICATION_JSON)
+  public AppSchedule addSchedule(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(content = @Content(mediaType = MediaType.APPLICATION_JSON))
+          CreateAppSchedule create) {
+    App app =
+        repository.getByName(uriInfo, fqn, repository.getFields("bot,pipelines,appSchedules"));
+    EntityReference service =
+        Optional.ofNullable(create.getService())
+            .map(
+                id ->
+                    Entity.getService(
+                            uriInfo, id, new EntityUtil.Fields(Set.of("id")), Include.NON_DELETED)
+                        .getEntityReference())
+            .orElse(null);
+    AppSchedule appSchedule = mapper.getAppSchedule(create, service);
+    App updated = JsonUtils.deepCopy(app, App.class);
+    updated.setAppSchedules(listOrEmpty(updated.getAppSchedules()));
+    updated.getAppSchedules().add(appSchedule);
+    RestUtil.PutResponse<App> response =
+        repository.update(uriInfo, app, updated, securityContext.getUserPrincipal().getName());
+    updated = response.getEntity();
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+      ApplicationHandler.getInstance()
+          .schedule(
+              updated,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
+    }
+    return appSchedule;
   }
 
   @PUT
@@ -799,7 +853,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
       throws SchedulerException {
     App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(
@@ -852,7 +905,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
     limits.invalidateCache(entityType);
     // Remove from Pipeline Service
-    deleteApp(securityContext, app);
+    deleteApp(securityContext, app, securityContext.getUserPrincipal().getName());
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
   }
 
@@ -892,7 +945,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             securityContext.getUserPrincipal().getName());
 
     // Remove from Pipeline Service
-    deleteApp(securityContext, app);
+    deleteApp(securityContext, app, securityContext.getUserPrincipal().getName());
     // Remove from repository
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
@@ -924,7 +977,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
-    return deleteAppAsync(uriInfo, securityContext, id, true, hardDelete);
+    return deleteAppAsync(
+        uriInfo,
+        securityContext,
+        id,
+        true,
+        hardDelete,
+        securityContext.getUserPrincipal().getName());
   }
 
   @PUT
@@ -964,7 +1023,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   }
 
   @POST
-  @Path("/schedule/{name}")
+  @Path("/{name}/schedule")
   @Operation(
       operationId = "scheduleApplication",
       summary = "Schedule an Application",
@@ -986,18 +1045,90 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name,
+      @Parameter(description = "Service to run the application", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          UUID service,
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    EntityReference entityReference =
+        Entity.getService(uriInfo, service, new EntityUtil.Fields(Set.of()), Include.NON_DELETED)
+            .getEntityReference();
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(
-              app,
-              repository.getDaoCollection(),
-              searchRepository,
-              securityContext.getUserPrincipal().getName());
+          .schedule(app, repository.getDaoCollection(), searchRepository, ADMIN_USER_NAME);
 
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
+    }
+    throw new IllegalArgumentException("App is not of schedule type Scheduled.");
+  }
+
+  @GET
+  @Path("/name/{name}/schedules")
+  @Operation(
+      operationId = "listAppSchedules",
+      summary = "List App Schedules",
+      description = "List all schedules for a given app.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Application",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Response.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Application for instance {id} is not found")
+      })
+  public List<AppSchedule> listAppSchedules(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Service to run the application", schema = @Schema(type = "string"))
+          @QueryParam("service")
+          UUID service,
+      @Context SecurityContext securityContext) {
+    App app =
+        repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    if (app.getAppType().equals(AppType.Internal)) {
+      return AppScheduler.getInstance().listAppSchedules(app);
+    }
+    throw new IllegalArgumentException("App is not of schedule type Scheduled.");
+  }
+
+  @DELETE
+  @Path("/name/{name}/schedule/{id}")
+  @Operation(
+      operationId = "deleteAppSchedule",
+      summary = "Delete App Schedule",
+      description = "Delete a schedule for a given app.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Schedule instance {id} was not found for app {name}")
+      })
+  public Response deleteAppSchedule(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Schedule Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Context SecurityContext securityContext) {
+    App app =
+        repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
+    App updated = JsonUtils.deepCopy(app, App.class);
+    updated.setAppSchedules(
+        updated.getAppSchedules().stream()
+            .filter(appSchedule -> !appSchedule.getId().equals(id))
+            .collect(Collectors.toList()));
+    repository.update(uriInfo, app, updated, securityContext.getUserPrincipal().getName());
+    if (app.getAppType().equals(AppType.Internal)) {
+      AppScheduler.getInstance().deleteSchedule(app, id);
+      return Response.status(Response.Status.OK).entity("Schedule Deleted.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
   }
@@ -1040,8 +1171,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
   @Path("/trigger/{name}")
   @Operation(
       operationId = "triggerApplicationRun",
-      summary = "Trigger an Application run",
-      description = "Trigger a Application run by name.",
+      summary = "Trigger an application run for a given schedule",
+      description = "Trigger an application run for a given schedule.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1067,7 +1198,57 @@ public class AppResource extends EntityResource<App, AppRepository> {
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .triggerApplicationOnDemand(
-              app, Entity.getCollectionDAO(), searchRepository, configPayload);
+              app, Entity.getCollectionDAO(), searchRepository, configPayload, null);
+      return Response.status(Response.Status.OK).build();
+    } else {
+      if (!app.getPipelines().isEmpty()) {
+        IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
+        ServiceEntityInterface service =
+            Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+        PipelineServiceClientResponse response =
+            pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
+        return Response.status(response.getCode()).entity(response).build();
+      }
+    }
+    throw new BadRequestException("Failed to trigger application.");
+  }
+
+  @POST
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Path("/trigger/{name}/schedule/{schedule}")
+  @Operation(
+      operationId = "triggerApplicationRun",
+      summary = "Trigger an application run for a given schedule",
+      description = "Trigger an application run for a given schedule.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Application trigger status code",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Application for instance {id} is not found")
+      })
+  public Response triggerApplicationInstanceRun(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Schedule Id", schema = @Schema(type = "string"))
+          @PathParam("schedule")
+          String schedule,
+      @RequestBody(
+              description =
+                  "Configuration payload. Keys will be added to the current configuration. Delete keys by setting them to null.",
+              content = @Content(mediaType = MediaType.APPLICATION_JSON))
+          Map<String, Object> configPayload) {
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
+    App app = repository.getByName(uriInfo, name, fields);
+    if (app.getAppType().equals(AppType.Internal)) {
+      ApplicationHandler.getInstance()
+          .triggerApplicationOnDemand(
+              app, Entity.getCollectionDAO(), searchRepository, configPayload, schedule);
       return Response.status(Response.Status.OK).build();
     } else {
       if (!app.getPipelines().isEmpty()) {
@@ -1143,12 +1324,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
+          String name,
+      UUID service) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
+    ServiceEntityInterface serviceEntity =
+        Entity.getService(uriInfo, service, new EntityUtil.Fields(Set.of()), Include.NON_DELETED);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
-          .installApplication(
+          .schedule(
               app,
               Entity.getCollectionDAO(),
               searchRepository,
@@ -1157,10 +1341,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     } else {
       if (!app.getPipelines().isEmpty()) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
-        ServiceEntityInterface service =
-            Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
         PipelineServiceClientResponse status =
-            pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+            pipelineServiceClient.deployPipeline(ingestionPipeline, serviceEntity);
         if (status.getCode() == 200) {
           IngestionPipelineRepository ingestionPipelineRepository =
               (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
@@ -1215,13 +1397,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return ingestionPipeline;
   }
 
-  private void deleteApp(SecurityContext securityContext, App installedApp) {
+  private void deleteApp(SecurityContext securityContext, App installedApp, String uninstalledBy) {
     ApplicationHandler.getInstance()
-        .uninstallApplication(installedApp, Entity.getCollectionDAO(), searchRepository);
+        .uninstallApplication(
+            installedApp, Entity.getCollectionDAO(), searchRepository, uninstalledBy);
 
     if (installedApp.getAppType().equals(AppType.Internal)) {
       try {
-        AppScheduler.getInstance().deleteScheduledApplication(installedApp);
+        AppScheduler.getInstance().deleteQuartzJob(installedApp);
       } catch (SchedulerException ex) {
         LOG.error("Failed in delete Application from Scheduler.", ex);
         throw new InternalServerErrorException("Failed in Delete App from Scheduler.");
@@ -1244,7 +1427,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
       SecurityContext securityContext,
       UUID id,
       boolean recursive,
-      boolean hardDelete) {
+      boolean hardDelete,
+      String uninstalledBy) {
     String jobId = UUID.randomUUID().toString();
     App app;
     Response response;
@@ -1262,7 +1446,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 .performCleanup(app, Entity.getCollectionDAO(), searchRepository, userName);
 
             // Remove from Pipeline Service
-            deleteApp(securityContext, app);
+            deleteApp(securityContext, app, uninstalledBy);
 
             // Remove from repository
             RestUtil.DeleteResponse<App> deleteResponse =

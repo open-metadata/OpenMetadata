@@ -36,23 +36,35 @@
       "javaType": "org.openmetadata.schema.entity.app.ScheduleTimeline",
       "description": "This schema defines the Application ScheduleTimeline Options",
       "type": "string",
-      "enum": ["Hourly"," Daily", "Weekly", "Monthly", "Custom", "None"],
+      "enum": ["Hourly","Daily", "Weekly", "Monthly", "Custom", "None"],
       "default": "Weekly"
     },
     "appSchedule": {
       "javaType": "org.openmetadata.schema.entity.app.AppSchedule",
       "description": "This schema defines the type of application.",
       "properties": {
+        "id": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "service": {
+            "description": "Service associated with this application.",
+            "$ref": "../../type/entityReference.json"
+        },
         "scheduleTimeline": {
           "$ref": "#/definitions/scheduleTimeline"
         },
         "cronExpression": {
           "description": "Cron Expression in case of Custom scheduled Trigger",
           "type": "string"
+        },
+        "config": {
+          "description": "Configuration override for this scheduled instance.",
+          "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
         }
       },
-      "required": ["scheduleTimeline"],
-      "additionalProperties": false
+      "required": ["scheduleTimeline", "id"],
+      "additionalProperties": false,
+      "deprecated": true
     },
     "appType": {
       "javaType": "org.openmetadata.schema.entity.app.AppType",
@@ -254,7 +266,15 @@
     },
     "appSchedule": {
       "description": "In case the app supports scheduling, list of different app schedules",
-      "$ref": "#/definitions/appSchedule"
+      "$ref": "#/definitions/appSchedule",
+      "deprecated": true
+    },
+    "appSchedules": {
+      "description": "In case the app supports scheduling, list of different app schedules. These can be quartz jobs or ingestion pipelines.",
+      "type": "array",
+        "items": {
+            "$ref": "#/definitions/appSchedule"
+        }
     },
     "openMetadataServerConnection": {
       "$ref": "../services/connections/metadata/openMetadataConnection.json"

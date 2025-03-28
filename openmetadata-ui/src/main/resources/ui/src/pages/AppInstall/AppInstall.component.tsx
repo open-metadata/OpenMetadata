@@ -152,12 +152,14 @@ const AppInstall = () => {
     const { cron } = updatedValue;
     const data: CreateAppRequest = {
       appConfiguration: appConfiguration ?? appData?.appConfiguration,
-      appSchedule: {
-        scheduleTimeline: isEmpty(cron)
-          ? ScheduleTimeline.None
-          : ScheduleTimeline.Custom,
-        ...(cron ? { cronExpression: cron } : {}),
-      },
+      appSchedules: [
+        {
+          scheduleTimeline: isEmpty(cron)
+            ? ScheduleTimeline.None
+            : ScheduleTimeline.Custom,
+          ...(cron ? { cronExpression: cron } : {}),
+        },
+      ],
       name: fqn,
       description: appData?.description,
       displayName: appData?.displayName,

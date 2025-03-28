@@ -3,8 +3,11 @@ package org.openmetadata.service.apps.scheduler;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.SERVICE_FIELD;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -118,12 +121,22 @@ public class OmAppJobListener implements JobListener {
       runRecord.withEndTime(endTime);
       runRecord.setExecutionTime(endTime - runRecord.getStartTime());
 
-      if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD) != null) {
-        runRecord.setServices(
-            JsonUtils.convertObjects(
-                jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
-                EntityReference.class));
-      }
+    List<EntityReference> services = new ArrayList<>();
+    if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICE_FIELD) != null) {
+      services.add(
+              JsonUtils.convertValue(
+                      jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICE_FIELD),
+                      EntityReference.class));
+    }
+    if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD) != null) {
+      services.addAll(
+          JsonUtils.convertObjects(
+              jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
+              EntityReference.class));
+    }
+    // TODO: deprecate 'services' field in favor of the 'service' field
+    runRecord.setServices(services);
+    runRecord.setService(services.get(0));
 
       if (jobException == null
           && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
