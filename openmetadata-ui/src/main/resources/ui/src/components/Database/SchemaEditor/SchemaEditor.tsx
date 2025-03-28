@@ -48,6 +48,7 @@ const SchemaEditor = ({
   editorClass,
   showCopyButton = true,
   onChange,
+  onFocus,
 }: SchemaEditorProps) => {
   const { t } = useTranslation();
   const defaultOptions = {
@@ -117,6 +118,7 @@ const SchemaEditor = ({
         value={internalValue}
         onBeforeChange={handleEditorInputBeforeChange}
         onChange={handleEditorInputChange}
+        {...(onFocus && { onFocus })}
       />
     </div>
   );

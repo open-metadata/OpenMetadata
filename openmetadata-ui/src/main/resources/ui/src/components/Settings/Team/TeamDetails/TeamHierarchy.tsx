@@ -33,14 +33,18 @@ import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
 import { getTeamsWithFqnPath } from '../../../../utils/RouterUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getTableExpandableConfig } from '../../../../utils/TableUtils';
 import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
@@ -50,6 +54,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   data,
   onTeamExpand,
   isFetchingAllTeamAdvancedDetails,
+  searchTerm,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -68,7 +73,9 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           <Link
             className="link-hover"
             to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
-            {getEntityName(record)}
+            {stringToHTML(
+              highlightSearchText(getEntityName(record), searchTerm)
+            )}
           </Link>
         ),
       },
@@ -96,7 +103,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       {
         title: t('label.user-plural'),
         dataIndex: 'userCount',
-        width: 60,
+        width: 80,
         key: 'users',
         render: (userCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
@@ -136,7 +143,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               {NO_DATA_PLACEHOLDER}
             </Typography.Paragraph>
           ) : (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               markdown={description}
               maxLength={DESCRIPTION_LENGTH}
               showReadMoreBtn={false}
@@ -248,7 +255,6 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
     <>
       <DndProvider backend={HTML5Backend}>
         <Table
-          bordered
           className={classNames('teams-list-table drop-over-background', {
             'drop-over-table': isTableHovered,
           })}

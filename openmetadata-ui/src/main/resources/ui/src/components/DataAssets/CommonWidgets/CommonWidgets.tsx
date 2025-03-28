@@ -1,0 +1,366 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { isEmpty, noop } from 'lodash';
+import { EntityTags } from 'Models';
+import React, { useMemo, useState } from 'react';
+import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../../enums/CustomizeDetailPage.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { Chart } from '../../../generated/entity/data/chart';
+import { Column } from '../../../generated/entity/data/container';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Table } from '../../../generated/entity/data/table';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../generated/entity/type';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../utils/EntityVersionUtils';
+import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { createTagObject } from '../../../utils/TagsUtils';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
+import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { GlossaryUpdateConfirmationModal } from '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
+import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
+import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
+import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
+
+interface GenericEntity
+  extends Exclude<EntityReference, 'type'>,
+    Pick<
+      Table,
+      | 'deleted'
+      | 'description'
+      | 'owners'
+      | 'domain'
+      | 'dataProducts'
+      | 'extension'
+      | 'tags'
+    > {
+  changeDescription: ChangeDescription;
+}
+
+interface CommonWidgetsProps {
+  widgetConfig: WidgetConfig;
+  entityType: EntityType;
+  showTaskHandler?: boolean;
+}
+
+export const CommonWidgets = ({
+  widgetConfig,
+  entityType,
+  showTaskHandler = true,
+}: CommonWidgetsProps) => {
+  const { data, type, onUpdate, permissions, isVersionView } =
+    useGenericContext<GenericEntity>();
+  const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
+
+  const updatedData = useMemo(() => {
+    const updatedDescription = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.DESCRIPTION,
+          data.description
+        )
+      : data.description;
+
+    const updatedName = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.NAME,
+          data.name
+        )
+      : data.name;
+    const updatedDisplayName = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.DISPLAYNAME,
+          data.displayName
+        )
+      : data.displayName;
+
+    const updatedTags = isVersionView
+      ? getEntityVersionTags(data as VersionEntityTypes, data.changeDescription)
+      : data.tags;
+
+    return {
+      ...data,
+      description: updatedDescription,
+      name: updatedName,
+      displayName: updatedDisplayName,
+      tags: updatedTags,
+    };
+  }, [data, isVersionView]);
+
+  const {
+    tier,
+    tags,
+    deleted,
+    owners,
+    domain,
+    dataProducts,
+    description,
+    entityName,
+    fullyQualifiedName,
+  } = useMemo(() => {
+    const { tags } = updatedData;
+
+    return {
+      ...updatedData,
+      tier: getTierTags(tags ?? []),
+      tags: getTagsWithoutTier(tags ?? []),
+      entityName: getEntityName(data),
+    };
+  }, [updatedData, updatedData?.tags]);
+
+  const { columns = [], charts = [] } = data as unknown as {
+    columns: Array<Column>;
+    charts: Array<Chart>;
+  };
+
+  const {
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(
+    () => ({
+      editTagsPermission:
+        (permissions.EditTags || permissions.EditAll) && !deleted,
+      editDescriptionPermission:
+        (permissions.EditDescription || permissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (permissions.EditGlossaryTerms || permissions.EditAll) && !deleted,
+      editCustomAttributePermission:
+        (permissions.EditAll || permissions.EditCustomFields) && !deleted,
+      editAllPermission: permissions.EditAll && !deleted,
+      editLineagePermission:
+        (permissions.EditAll || permissions.EditLineage) && !deleted,
+      viewSampleDataPermission:
+        permissions.ViewAll || permissions.ViewSampleData,
+      viewQueriesPermission: permissions.ViewAll || permissions.ViewQueries,
+      viewProfilerPermission:
+        permissions.ViewAll ||
+        permissions.ViewDataProfile ||
+        permissions.ViewTests,
+      viewAllPermission: permissions.ViewAll,
+      viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
+    }),
+    [permissions, deleted]
+  );
+
+  const handleTagUpdateForGlossaryTerm = async (updatedTags?: TagLabel[]) => {
+    setTagsUpdating(updatedTags);
+  };
+
+  const handleGlossaryTagUpdateValidationConfirm = async () => {
+    if (tagsUpdating && data) {
+      const updatedTags = [...(tier ? [tier] : []), ...tagsUpdating];
+      const updatedTable = { ...data, tags: updatedTags };
+      await onUpdate(updatedTable);
+    }
+  };
+
+  /**
+   * Formulates updated tags and updates table entity data for API call
+   * @param selectedTags
+   */
+  const handleTagsUpdate = async (selectedTags?: Array<TagLabel>) => {
+    if (type === EntityType.GLOSSARY_TERM) {
+      handleTagUpdateForGlossaryTerm(selectedTags);
+
+      return;
+    }
+
+    if (selectedTags && data) {
+      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
+      const updatedTable = { ...data, tags: updatedTags };
+      await onUpdate(updatedTable);
+    }
+  };
+
+  const handleTagSelection = async (selectedTags: EntityTags[]) => {
+    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
+    await handleTagsUpdate(updatedTags);
+  };
+
+  const tagsWidget = useMemo(() => {
+    return (
+      <TagsContainerV2
+        newLook
+        displayType={DisplayType.READ_MORE}
+        entityFqn={fullyQualifiedName}
+        entityType={type}
+        permission={editTagsPermission && !isVersionView}
+        selectedTags={tags}
+        showTaskHandler={showTaskHandler && !isVersionView}
+        tagType={TagSource.Classification}
+        onSelectionChange={handleTagSelection}
+      />
+    );
+  }, [
+    editTagsPermission,
+    tags,
+    type,
+    fullyQualifiedName,
+    showTaskHandler,
+    isVersionView,
+  ]);
+
+  const glossaryWidget = useMemo(() => {
+    return (
+      <TagsContainerV2
+        newLook
+        displayType={DisplayType.READ_MORE}
+        entityFqn={fullyQualifiedName}
+        entityType={type}
+        permission={editGlossaryTermsPermission && !isVersionView}
+        selectedTags={tags}
+        showTaskHandler={showTaskHandler && !isVersionView}
+        tagType={TagSource.Glossary}
+        onSelectionChange={handleTagSelection}
+      />
+    );
+  }, [
+    editGlossaryTermsPermission,
+    tags,
+    type,
+    fullyQualifiedName,
+    showTaskHandler,
+    isVersionView,
+  ]);
+
+  const descriptionWidget = useMemo(() => {
+    return (
+      <DescriptionV1
+        newLook
+        showSuggestions
+        wrapInCard
+        description={description}
+        entityName={entityName}
+        entityType={type}
+        hasEditAccess={editDescriptionPermission}
+        isDescriptionExpanded={isEmpty(columns) && isEmpty(charts)}
+        owner={owners}
+        removeBlur={widgetConfig.h > 1}
+        showActions={!deleted}
+        onDescriptionUpdate={async (value: string) => {
+          if (value !== description) {
+            await onUpdate({ ...data, description: value });
+          }
+        }}
+      />
+    );
+  }, [
+    description,
+    entityName,
+    type,
+    editDescriptionPermission,
+    deleted,
+    columns,
+    owners,
+    widgetConfig.h,
+  ]);
+
+  const widget = useMemo(() => {
+    if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
+      return descriptionWidget;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
+      return (
+        <DataProductsContainer
+          newLook
+          activeDomain={domain}
+          dataProducts={dataProducts ?? []}
+          hasPermission={false}
+        />
+      );
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TAGS)) {
+      return tagsWidget;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.GLOSSARY_TERMS)) {
+      return glossaryWidget;
+    } else if (
+      widgetConfig.i.startsWith(DetailPageWidgetKeys.CUSTOM_PROPERTIES)
+    ) {
+      return (
+        <CustomPropertyTable<EntityType.TABLE>
+          isRenderedInRightPanel
+          newLook
+          entityType={entityType as EntityType.TABLE}
+          hasEditAccess={Boolean(editCustomAttributePermission)}
+          hasPermission={Boolean(viewAllPermission)}
+          maxDataCap={5}
+        />
+      );
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
+      return <OwnerLabelV2<GenericEntity> />;
+    } else if (
+      widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+    ) {
+      return <ReviewerLabelV2<GenericEntity> />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
+      return <OwnerLabelV2<GenericEntity> />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
+      return <DomainLabelV2 showDomainHeading />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+      return (
+        <LeftPanelContainer
+          isEditView={false}
+          layout={widgetConfig.children ?? []}
+          type={ENTITY_PAGE_TYPE_MAP[type]}
+          onUpdate={noop}
+        />
+      );
+    }
+    const Widget =
+      commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
+
+    return Widget ? <Widget /> : null;
+  }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
+
+  return (
+    <>
+      <div
+        data-grid={widgetConfig}
+        data-testid={widgetConfig.i}
+        id={widgetConfig.i}
+        key={widgetConfig.i}>
+        {widget}
+      </div>
+      {tagsUpdating && (
+        <GlossaryUpdateConfirmationModal
+          glossaryTerm={updatedData as unknown as GlossaryTerm}
+          updatedTags={tagsUpdating}
+          onCancel={() => setTagsUpdating(undefined)}
+          onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
+        />
+      )}
+    </>
+  );
+};

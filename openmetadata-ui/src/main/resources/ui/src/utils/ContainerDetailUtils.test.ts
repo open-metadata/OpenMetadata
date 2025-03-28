@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { getEntityDetailsPath } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Column, DataType } from '../generated/entity/data/container';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from './ContainerDetailUtils';
+import { getEntityDetailsPath } from './RouterUtils';
 
 const mockTagOptions = [
   {

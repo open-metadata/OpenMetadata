@@ -189,16 +189,17 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
+    await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForSelector('.user-list-table [data-testid="loader"]', {
+      state: 'detached',
+    });
     await softDeleteUserProfilePage(
       adminPage,
       user.responseData.name,
       user.responseData.displayName
     );
 
-    await restoreUserProfilePage(
-      adminPage,
-      user.responseData.fullyQualifiedName
-    );
+    await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
   });
 });
@@ -243,6 +244,11 @@ test.describe('User with Data Consumer Roles', () => {
 
     // Check CRUD for Glossary
     await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+
+    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(
       dataConsumerPage.locator('[data-testid="add-glossary"]')

@@ -43,7 +43,7 @@ import {
   approveTagsTask,
   assignTagToGlossaryTerm,
   changeTermHierarchyFromModal,
-  clickSaveButton,
+  checkGlossaryTermDetails,
   confirmationDragAndDropGlossary,
   createDescriptionTaskForGlossary,
   createGlossary,
@@ -62,7 +62,7 @@ import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
   selectColumns,
-  toggleAllColumnsSelection,
+  toggleBulkActionColumnsSelection,
   updateGlossaryTermDataFromTree,
   updateGlossaryTermOwners,
   updateGlossaryTermReviewers,
@@ -130,6 +130,20 @@ test.describe('Glossary tests', () => {
           page1,
           glossary1.data.fullyQualifiedName,
           glossary1.data.terms[0].data.name
+        );
+
+        // Check reviewer's notifications before approval
+        await page1.getByTestId('task-notifications').click();
+        await page1.waitForSelector('.ant-dropdown');
+        const firstNotification = page1
+          .locator('.ant-list-items > .ant-list-item')
+          .first();
+
+        await expect(firstNotification).toContainText(
+          `Approval required for ${glossary1.data.terms[0].data.name}`
+        );
+        await expect(firstNotification).toContainText(
+          glossary1.data.fullyQualifiedName
         );
 
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
@@ -303,7 +317,9 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Add and Update Glossary Term', async ({ browser }) => {
+  test('Add, Update and Verify Data Glossary Term', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
@@ -336,7 +352,6 @@ test.describe('Glossary tests', () => {
       await openColumnDropdown(page);
       const checkboxLabels = ['Reviewer'];
       await selectColumns(page, checkboxLabels);
-      await clickSaveButton(page);
       await verifyColumnsVisibility(page, checkboxLabels, true);
 
       const escapedFqn = getEscapedTermFqn(glossaryTerm1.data);
@@ -353,10 +368,16 @@ test.describe('Glossary tests', () => {
       );
 
       // Verify the Owner
-      const ownerSelector = `td:nth-child(4) a[data-testid="owner-link"]`;
-      const ownerText = await termRow.locator(ownerSelector).textContent();
+      await expect(
+        page.getByTestId(owner1.responseData?.['displayName'])
+      ).toBeVisible();
 
-      expect(ownerText).toBe(`${owner1.data.firstName}${owner1.data.lastName}`);
+      await checkGlossaryTermDetails(
+        page,
+        glossaryTerm1.data,
+        owner1,
+        reviewer1
+      );
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
@@ -364,6 +385,80 @@ test.describe('Glossary tests', () => {
       await reviewer1.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Approve and reject glossary term from Glossary Listing', async ({
+    browser,
+  }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user3);
+    const glossary1 = new Glossary();
+
+    glossary1.data.owners = [{ name: 'admin', type: 'user' }];
+    glossary1.data.mutuallyExclusive = true;
+    glossary1.data.reviewers = [
+      { name: `${user3.data.firstName}${user3.data.lastName}`, type: 'user' },
+    ];
+    glossary1.data.terms = [
+      new GlossaryTerm(glossary1),
+      new GlossaryTerm(glossary1),
+    ];
+
+    await test.step('Create Glossary and Terms', async () => {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await createGlossary(page, glossary1.data, false);
+      await verifyGlossaryDetails(page, glossary1.data);
+      await createGlossaryTerms(page, glossary1.data);
+    });
+
+    await test.step('Approve and Reject Glossary Term', async () => {
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+      await verifyTaskCreated(
+        page1,
+        glossary1.data.fullyQualifiedName,
+        glossary1.data.terms[0].data.name
+      );
+      await verifyTaskCreated(
+        page1,
+        glossary1.data.fullyQualifiedName,
+        glossary1.data.terms[1].data.name
+      );
+      await redirectToHomePage(page1);
+      await sidebarClick(page1, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page1, glossary1.data.name);
+
+      const taskResolve = page1.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      await page1
+        .getByTestId(`${glossary1.data.terms[0].data.name}-approve-btn`)
+        .click();
+      await taskResolve;
+      await toastNotification(page1, /Task resolved successfully/);
+
+      await validateGlossaryTerm(
+        page1,
+        glossary1.data.terms[0].data,
+        'Approved'
+      );
+
+      await page1
+        .getByTestId(`${glossary1.data.terms[1].data.name}-reject-btn`)
+        .click();
+      await taskResolve;
+
+      await expect(
+        page1.getByTestId(`${glossary1.data.terms[1].data.name}`)
+      ).not.toBeVisible();
+
+      await afterActionUser1();
+    });
+
+    await glossary1.delete(apiContext);
+    await afterAction();
   });
 
   test('Add and Remove Assets', async ({ browser }) => {
@@ -406,7 +501,7 @@ test.describe('Glossary tests', () => {
 
         // Dashboard Entity Right Panel
         await page.click(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
         );
 
         // Select 1st term
@@ -462,7 +557,7 @@ test.describe('Glossary tests', () => {
 
         // Add non mutually exclusive tags
         await page.click(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="add-tag"]'
         );
 
         // Select 1st term
@@ -513,7 +608,7 @@ test.describe('Glossary tests', () => {
 
         // Check if the terms are present
         const glossaryContainer = page.locator(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"]'
         );
         const glossaryContainerText = await glossaryContainer.innerText();
 
@@ -523,7 +618,7 @@ test.describe('Glossary tests', () => {
         // Check if the icons are present
 
         const icons = page.locator(
-          '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
+          '[data-testid="KnowledgePanel.GlossaryTerms"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
         expect(await icons.count()).toBe(2);
@@ -1035,7 +1130,6 @@ test.describe('Glossary tests', () => {
           await openColumnDropdown(page);
           const checkboxLabels = ['Reviewer', 'Synonyms'];
           await selectColumns(page, checkboxLabels);
-          await clickSaveButton(page);
           await verifyColumnsVisibility(page, checkboxLabels, true);
         }
       );
@@ -1046,13 +1140,12 @@ test.describe('Glossary tests', () => {
           await openColumnDropdown(page);
           const checkboxLabels = ['Reviewer', 'Owners'];
           await deselectColumns(page, checkboxLabels);
-          await clickSaveButton(page);
           await verifyColumnsVisibility(page, checkboxLabels, false);
         }
       );
 
-      await test.step('All columns selection', async () => {
-        await toggleAllColumnsSelection(page, true);
+      await test.step('View All columns selection', async () => {
+        await toggleBulkActionColumnsSelection(page, false);
         const tableColumns = [
           'TERMS',
           'DESCRIPTION',
@@ -1063,6 +1156,18 @@ test.describe('Glossary tests', () => {
           'ACTIONS',
         ];
         await verifyAllColumns(page, tableColumns, true);
+      });
+
+      await test.step('Hide All columns selection', async () => {
+        await toggleBulkActionColumnsSelection(page, true);
+        const tableColumns = [
+          'DESCRIPTION',
+          'REVIEWER',
+          'SYNONYMS',
+          'OWNERS',
+          'STATUS',
+        ];
+        await verifyAllColumns(page, tableColumns, false);
       });
     } finally {
       await glossaryTerm1.delete(apiContext);
@@ -1123,7 +1228,6 @@ test.describe('Glossary tests', () => {
       const dragColumn = 'Owners';
       const dropColumn = 'Status';
       await dragAndDropColumn(page, dragColumn, dropColumn);
-      await clickSaveButton(page);
       await page.waitForSelector('thead th', { state: 'visible' });
       const columnHeaders = page.locator('thead th');
       const columnText = await columnHeaders.allTextContents();

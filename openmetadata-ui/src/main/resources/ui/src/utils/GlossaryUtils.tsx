@@ -19,6 +19,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -28,6 +30,7 @@ import {
   TEXT_BODY_COLOR,
   TEXT_GREY_MUTED,
 } from '../constants/constants';
+import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import {
@@ -35,6 +38,10 @@ import {
   Status,
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
+import { Domain } from '../generated/entity/domains/domain';
+import { User } from '../generated/entity/teams/user';
+import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
@@ -190,23 +197,28 @@ export const updateGlossaryTermByFqn = (
 // This function finds and gives you the glossary term you're looking for.
 // You can then use this term or update its information in the Glossary or Term with it's reference created
 // Reference will only be created if withReference is true
-export const findGlossaryTermByFqn = (
-  list: ModifiedGlossaryTerm[],
+export const findItemByFqn = (
+  list: ModifiedGlossaryTerm[] | Domain[],
   fullyQualifiedName: string,
   withReference = true
-): GlossaryTerm | Glossary | ModifiedGlossary | null => {
+): GlossaryTerm | Glossary | ModifiedGlossary | Domain | null => {
   for (const item of list) {
-    if ((item.fullyQualifiedName ?? item.value) === fullyQualifiedName) {
+    if (
+      (item.fullyQualifiedName ?? (item as ModifiedGlossaryTerm).value) ===
+      fullyQualifiedName
+    ) {
       return withReference
         ? item
         : {
             ...item,
-            fullyQualifiedName: item.fullyQualifiedName ?? item.data?.tagFQN,
-            ...(item.data ?? {}),
+            fullyQualifiedName:
+              item.fullyQualifiedName ??
+              (item as ModifiedGlossaryTerm).data?.tagFQN,
+            ...((item as ModifiedGlossaryTerm).data ?? {}),
           };
     }
     if (item.children) {
-      const found = findGlossaryTermByFqn(
+      const found = findItemByFqn(
         item.children as ModifiedGlossaryTerm[],
         fullyQualifiedName
       );
@@ -429,4 +441,61 @@ export const findAndUpdateNested = (
 
     return term;
   });
+};
+
+export const glossaryTermTableColumnsWidth = (
+  tableWidth: number,
+  havingCreatePermission: boolean
+) => {
+  const fallbackWidth = 200;
+
+  return {
+    name: calculatePercentageFromValue(tableWidth, 40) || fallbackWidth,
+    description:
+      calculatePercentageFromValue(
+        tableWidth,
+        havingCreatePermission ? 21 : 33
+      ) || fallbackWidth,
+    reviewers: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+    synonyms: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+    owners: calculatePercentageFromValue(tableWidth, 17) || fallbackWidth,
+    status: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+  };
+};
+
+export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
+  `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
+
+export const permissionForApproveOrReject = (
+  record: ModifiedGlossaryTerm,
+  currentUser: User,
+  termTaskThreads: Record<string, Array<any>>
+) => {
+  const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
+  const taskThread = termTaskThreads[entityLink]?.find(
+    (thread) => thread.about === entityLink
+  );
+
+  const isReviewer = record.reviewers?.some(
+    (reviewer) => reviewer.id === currentUser?.id
+  );
+
+  return {
+    permission: taskThread && isReviewer,
+    taskId: taskThread?.task?.id,
+  };
+};
+
+export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
+  if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)) {
+    return <GlossaryTermTab isGlossary />;
+  }
+
+  return (
+    <CommonWidgets
+      showTaskHandler
+      entityType={EntityType.GLOSSARY}
+      widgetConfig={widget}
+    />
+  );
 };

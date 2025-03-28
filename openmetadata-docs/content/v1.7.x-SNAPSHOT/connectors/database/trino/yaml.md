@@ -7,7 +7,7 @@ slug: /connectors/database/trino/yaml
 name="Trino"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 

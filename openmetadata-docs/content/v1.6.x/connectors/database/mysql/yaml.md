@@ -7,7 +7,7 @@ slug: /connectors/database/mysql/yaml
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -191,8 +191,8 @@ For a simple, local installation using our docker containers, this looks like:
 
 ```yaml {% srNumber=40 %}
 source:
-  type: mssql-lineage
-  serviceName: local_mssql
+  type: mysql-lineage
+  serviceName: local_mysql
   sourceConfig:
     config:
       type: DatabaseLineage
@@ -243,12 +243,6 @@ source:
       #     - table4
 ```
 
-```yaml {% srNumber=49 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
 ```yaml {% srNumber=51 %}
       overrideViewLineage: false
 ```
@@ -267,6 +261,12 @@ sink:
 
 ```yaml {% srNumber=55 %}
       threads: 1
+```
+
+```yaml {% srNumber=49 %}
+sink:
+  type: metadata-rest
+  config: {}
 ```
 
 {% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
@@ -372,6 +372,12 @@ administrator. The administrator must attach a policy that allows the user to ca
 This is a required field if you'd like to `AssumeRole`.
 
 Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
+
+{%note%}
+When using Assume Role authentication, ensure you provide the following details:  
+- **AWS Region**: Specify the AWS region for your deployment.  
+- **Assume Role ARN**: Provide the ARN of the role in your AWS account that OpenMetadata will assume.  
+{%/note%}
 
 **assumeRoleSessionName**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
 is assumed by different principals or for different reasons.

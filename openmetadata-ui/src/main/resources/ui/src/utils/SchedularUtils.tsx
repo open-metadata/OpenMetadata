@@ -12,7 +12,10 @@
  */
 
 import { Select } from 'antd';
+import cronstrue from 'cronstrue/i18n';
+import { t } from 'i18next';
 import { isUndefined, toNumber, toString } from 'lodash';
+import { RuleObject } from 'rc-field-form/es/interface';
 import React from 'react';
 import {
   Combination,
@@ -280,4 +283,50 @@ export const getUpdatedStateFromFormState = <T,>(
   } catch {
     return { ...currentState, ...formValues };
   }
+};
+
+export const checkDOWValidity = async (dow: string) => {
+  // Check if dow is valid if it is not a number between 0-6
+  const isDayValid = toNumber(dow) < 0 || toNumber(dow) > 6;
+
+  // Check if dow is a range and any of the values are not between 0-6
+  const isDayRangeValid =
+    dow.includes('-') &&
+    dow.split('-').some((d) => toNumber(d) < 0 || toNumber(d) > 6);
+
+  // If dow is not valid or dow range is not valid, throw an error
+  if (isDayValid || isDayRangeValid) {
+    return Promise.reject(t('message.cron-dow-validation-failure'));
+  }
+
+  return Promise.resolve();
+};
+
+export const cronValidator = async (_: RuleObject, value: string) => {
+  // Check if cron is valid and get the description
+  const description = cronstrue.toString(value.trim());
+
+  // Check if cron has a frequency of less than an hour
+  const isFrequencyInMinutes = /Every \d* *minute/.test(description);
+  const isFrequencyInSeconds = /Every \d* *second/.test(description);
+
+  if (isFrequencyInMinutes || isFrequencyInSeconds) {
+    return Promise.reject(t('message.cron-less-than-hour-message'));
+  }
+
+  // Check if dow is other than 0-6
+  // Adding this manual check since cronstrue accepts 7 as a valid value for dow
+  // which is not a valid value for argo
+  const cronParts = value.trim().split(' ');
+
+  // dow is at index 4 if there is no year field or seconds field
+  let dow = cronParts[4];
+  if (cronParts.length !== 5) {
+    dow = cronParts[5];
+  }
+
+  // Check if dow is valid
+  await checkDOWValidity(dow);
+
+  return Promise.resolve();
 };

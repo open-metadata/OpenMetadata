@@ -695,6 +695,10 @@ export const addCustomPropertiesForEntity = async ({
 
   expect(response.status()).toBe(200);
 
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   await expect(
     page.getByRole('row', { name: new RegExp(propertyName, 'i') })
   ).toBeVisible();

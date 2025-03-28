@@ -53,7 +53,6 @@ import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
@@ -65,9 +64,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -505,20 +506,19 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         invalidParentCount(1, DIVISION));
 
     // Department can have more than one parent
-    createWithParents(
-        "dep",
-        DEPARTMENT,
-        div12.getEntityReference(),
-        div21.getEntityReference(),
-        ORG_TEAM.getEntityReference());
+    createWithParents("dep", DEPARTMENT, div12.getEntityReference(), div21.getEntityReference());
+
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,childrenCount", ADMIN_AUTH_HEADERS);
+    assertEquals(ORG_TEAM.getChildren().size(), ORG_TEAM.getChildrenCount());
 
     //
     // Deletion tests to ensure no dangling parent/children relationship
     // Delete bu1 and ensure Organization does not have it a child and bu11, div12, dep13 don't
     // change Org to parent
     deleteEntity(bu1.getId(), true, true, ADMIN_AUTH_HEADERS);
-    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children", ADMIN_AUTH_HEADERS);
+    ORG_TEAM = getEntity(ORG_TEAM.getId(), "children,childrenCount", ADMIN_AUTH_HEADERS);
     assertEntityReferencesDoesNotContain(ORG_TEAM.getChildren(), bu1.getEntityReference());
+    assertEquals(ORG_TEAM.getChildren().size(), ORG_TEAM.getChildrenCount());
   }
 
   @Test
@@ -607,6 +607,47 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     fieldAdded(change, "parents", List.of(bu1.getEntityReference()));
     fieldDeleted(change, "parents", List.of(ORG_TEAM.getEntityReference()));
     patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void test_hierarchyNoDuplicateForGroupInDept() throws HttpResponseException {
+    // Team hierarchy: BU -> Division -> Department -> Group
+    Team bu = createWithParents("buTest-341f887e", BUSINESS_UNIT, ORG_TEAM.getEntityReference());
+    Team div = createWithParents("divTest-010f23ef", DIVISION, bu.getEntityReference());
+    Team dept = createWithParents("deptTest-0574ff5c", DEPARTMENT, div.getEntityReference());
+    Team group = createWithParents("groupTest-148facc0", GROUP, dept.getEntityReference());
+
+    List<TeamHierarchy> hierarchyList = getTeamsHierarchy(false, ADMIN_AUTH_HEADERS);
+
+    TeamHierarchy buHierarchy =
+        hierarchyList.stream().filter(t -> t.getId().equals(bu.getId())).findFirst().orElse(null);
+    assertNotNull(buHierarchy, "BU node should be present in the hierarchy");
+
+    TeamHierarchy divHierarchy =
+        buHierarchy.getChildren().stream()
+            .filter(t -> t.getId().equals(div.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(divHierarchy, "Division node should be present under BU");
+
+    TeamHierarchy deptHierarchy =
+        divHierarchy.getChildren().stream()
+            .filter(t -> t.getId().equals(dept.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(deptHierarchy, "Department node should be present under Division");
+
+    TeamHierarchy groupHierarchy =
+        deptHierarchy.getChildren().stream()
+            .filter(t -> t.getId().equals(group.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(groupHierarchy, "Group node should be present under Department");
+
+    // Verify that within each parent's children list, no node is duplicated
+    for (TeamHierarchy topLevel : hierarchyList) {
+      verifyNoDuplicateChildrenTeam(topLevel);
+    }
   }
 
   @Test
@@ -750,8 +791,8 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // Remove email from the team - changes from this PATCH and the previous are consolidated to no
     // change
     json = JsonUtils.pojoToJson(team);
-    change = getChangeDescription(team, NO_CHANGE);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
+    change = getChangeDescription(team, MINOR_UPDATE);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -1354,5 +1395,17 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         isJoinable == null ? "" : isJoinable,
         defaultRoles,
         policies);
+  }
+
+  void verifyNoDuplicateChildrenTeam(TeamHierarchy parent) {
+    if (parent.getChildren() != null) {
+      Set<UUID> seenChildIds = new HashSet<>();
+      for (TeamHierarchy child : parent.getChildren()) {
+        assertTrue(
+            seenChildIds.add(child.getId()),
+            "Duplicate child " + child.getId() + " found under parent " + parent.getId());
+        verifyNoDuplicateChildrenTeam(child);
+      }
+    }
   }
 }

@@ -119,9 +119,10 @@ def get_profile_sample_config(
         try:
             if config and config.profileSample:
                 return SampleConfig(
-                    profile_sample=config.profileSample,
-                    profile_sample_type=config.profileSampleType,
-                    sampling_method_type=config.samplingMethodType,
+                    profileSample=config.profileSample,
+                    profileSampleType=config.profileSampleType,
+                    samplingMethodType=config.samplingMethodType,
+                    randomizedSample=config.randomizedSample,
                 )
         except AttributeError:
             pass

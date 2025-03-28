@@ -28,6 +28,7 @@ import {
   findExpandableKeys,
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
+  glossaryTermTableColumnsWidth,
 } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
@@ -351,5 +352,46 @@ describe('Glossary Utils - findAndUpdateNested', () => {
     const updatedTerms = findAndUpdateNested(terms, newTerm);
 
     expect(updatedTerms).toEqual(terms);
+  });
+});
+
+describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
+  it('should return columnsWidth object based on Table width', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, true);
+
+    expect(columnWidthObject).toEqual({
+      description: 210,
+      name: 400,
+      owners: 170,
+      reviewers: 330,
+      status: 330,
+      synonyms: 330,
+    });
+  });
+
+  it('should return columnsWidth object based on Table width when not having create permission', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, false);
+
+    expect(columnWidthObject).toEqual({
+      description: 330,
+      name: 400,
+      owners: 170,
+      reviewers: 330,
+      status: 330,
+      synonyms: 330,
+    });
+  });
+
+  it('should return fallback width when table width is 0', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(0, false);
+
+    expect(columnWidthObject).toEqual({
+      description: 200,
+      name: 200,
+      owners: 200,
+      reviewers: 200,
+      status: 200,
+      synonyms: 200,
+    });
   });
 });

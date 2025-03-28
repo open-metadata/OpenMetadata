@@ -112,15 +112,14 @@ export const assetsData = [
     assetOwnerUrl: `/service/${pipelineWithOwner.serviceType}`,
     assetTagUrl: `/service/${pipelineWithTag.serviceType}`,
   },
-  // TODO: Uncomment when search index permission issue is fixed
-  // {
-  //   asset: ServiceTypes.SEARCH_SERVICES,
-  //   withOwner: searchIndexWithOwner,
-  //   withTag: searchIndexWithTag,
-  //   childTabId: 'search indexes',
-  //   assetOwnerUrl: `/service/${searchIndexWithOwner.serviceType}`,
-  //   assetTagUrl: `/service/${searchIndexWithTag.serviceType}`,
-  // },
+  {
+    asset: ServiceTypes.SEARCH_SERVICES,
+    withOwner: searchIndexWithOwner,
+    withTag: searchIndexWithTag,
+    childTabId: 'search indexes',
+    assetOwnerUrl: `/service/${searchIndexWithOwner.serviceType}`,
+    assetTagUrl: `/service/${searchIndexWithTag.serviceType}`,
+  },
   {
     asset: ServiceTypes.DATABASE_SERVICES,
     withOwner: tableWithOwner,
@@ -141,7 +140,7 @@ export const assetsData = [
     asset: 'database',
     withOwner: tableWithOwner,
     withTag: tableWithTag,
-    childTabId: 'schema',
+    childTabId: 'schemas',
     assetOwnerUrl: `/database`,
     assetTagUrl: `/database`,
   },

@@ -34,6 +34,7 @@ Here are some examples of conditions.
 | **matchAllTags(tagFqn, [tagFqn…])** | Returns true if the resource has all the tags from the tag list. |
 | **matchAnyTag(tagFqn, [tagFqn…])** | Returns true if the resource has any of the tags from the tag list. |
 | **matchTeam()** | Returns true if the user belongs to the team that owns the resource. |
+| **hasDomain()** | Returns true if the logged in user is the has domain access of the entity being accessed |
 
 Conditions are used to assess DataAsset like Tables/Topics/Dashboards etc.. for specific attributes.
 
@@ -131,6 +132,32 @@ For instance, in an organization, you might have:
 Roles provide the advantage of bundling multiple policies encapsulating a user’s specific function or job. For example, a "Data Consumer" role would encompass a "Data Consumer Policy." Any individual or team assigned this role would automatically be subject to the stipulations outlined in the associated policies.
 
 Moreover, roles can be allocated either to individual users or teams within an organizational hierarchy. When a role is assigned to a team, every member of that team inherits the privileges of that role. This design is intentional, aiming to simplify the role assignment process for administrators.
+
+## Roles Based Access Controls (RBAC) Search
+
+In OpenMetadata, Role-Based Access Control (RBAC) extends to search functionalities, allowing administrators to enforce granular permissions on metadata assets. By default, the search feature permits all users to access and view available data assets. To restrict search results based on user roles and policies, administrators must enable the Search RBAC setting.​
+
+To enable or disable the **RBAC Search** option, navigate to **Settings > Preferences > Search** in the OpenMetadata UI. This setting controls whether search results are filtered based on the user's assigned roles and permissions.
+
+{% image
+src="/images/v1.6/how-to-guides/roles-policies/rbac-search.png"
+alt="Roles Based Access Controls (RBAC) Search Option"
+caption="Roles Based Access Controls (RBAC) Search Option"
+/%}
+
+### Implications of Enabling Search RBAC:
+
+**Restricted Search Results**: Users will only see search results for data assets they have explicit permissions to access, enhancing data security and compliance.​
+
+**Policy Enforcement**: The system will enforce policies at the search level, ensuring that unauthorized users cannot discover or access sensitive metadata.​
+
+### Additional Considerations:
+
+**Role and Policy Configuration**: Ensure that roles and policies are appropriately configured to reflect the desired access controls. This includes assigning correct permissions to users and teams for various data assets.​
+
+**Testing**: After enabling Search RBAC, conduct thorough testing to verify that users can access only the data assets permitted by their roles and policies.​
+
+For a comprehensive understanding of configuring roles and policies, refer to the [Advanced Guide for Roles and Policies](/how-to-guides/admin-guide/roles-policies/overview). Implementing Search RBAC ensures that OpenMetadata's search functionality aligns with your organization's data governance and security requirements.​
 
 {%inlineCallout
   color="violet-70"

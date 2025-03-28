@@ -31,18 +31,20 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   getLoginConfig,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
 import { generateFormFields } from '../../../utils/formUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const EditLoginConfiguration = () => {
-  const { t } = useTranslation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = Form.useForm<LoginConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -219,7 +221,9 @@ const EditLoginConfiguration = () => {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.edit-entity', { entity: t('label.service') })}
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.login-configuration'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -230,4 +234,8 @@ const EditLoginConfiguration = () => {
   );
 };
 
-export default EditLoginConfiguration;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.login-configuration'),
+  })
+)(EditLoginConfiguration);

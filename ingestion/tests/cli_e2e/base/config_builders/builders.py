@@ -67,6 +67,7 @@ class ProfilerConfigBuilder(BaseBuilder):
             self.config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
                 "includes": self.config_args.get("includes")
             }
+            self.config["source"]["sourceConfig"]["config"]["includeViews"] = True
 
         self.config["processor"] = {"type": "orm-profiler", "config": {}}
         return self.config
@@ -90,8 +91,8 @@ class LineageConfigBuilder(BaseBuilder):
                 "type": "DatabaseLineage",
                 "queryLogDuration": 1,
                 "resultLimit": 10000,
-                "processQueryLineage": True,
-                "processStoredProcedureLineage": True,
+                "processQueryLineage": False,
+                "processStoredProcedureLineage": False,
             }
         }
         return self.config
@@ -139,13 +140,19 @@ class DataQualityConfigBuilder(BaseBuilder):
 
     def build(self) -> dict:
         """build profiler config"""
-        del self.config["source"]["sourceConfig"]["config"]
-        self.config["source"]["sourceConfig"] = {
-            "config": {
-                "type": TestSuiteConfigType.TestSuite.value,
-                "entityFullyQualifiedName": self.entity_fqn,
-            },
+        self.config["source"]["sourceConfig"]["config"] = {
+            "type": TestSuiteConfigType.TestSuite.value,
+            "entityFullyQualifiedName": self.entity_fqn,
         }
+
+        self.config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+            {
+                "serviceName": self.config["source"]["serviceName"],
+                "serviceConnection": self.config["source"]["serviceConnection"],
+            }
+        ]
+
+        del self.config["source"]["serviceConnection"]
 
         self.config["processor"] = {
             "type": "orm-test-runner",

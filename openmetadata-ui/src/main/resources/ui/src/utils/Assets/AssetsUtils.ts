@@ -38,6 +38,7 @@ import {
   getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
+import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import {
   getGlossariesByName,
   getGlossaryTermByFQN,
@@ -115,6 +116,8 @@ export const getAPIfromSource = (
       return patchApiEndPoint;
     case EntityType.METRIC:
       return patchMetric;
+    case EntityType.DOMAIN:
+      return patchDomains;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -176,6 +179,8 @@ export const getEntityAPIfromSource = (
       return getApiEndPointByFQN;
     case EntityType.METRIC:
       return getMetricByFqn;
+    case EntityType.DOMAIN:
+      return getDomainByName;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:

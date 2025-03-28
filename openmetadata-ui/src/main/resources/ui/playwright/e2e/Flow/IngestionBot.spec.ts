@@ -57,7 +57,7 @@ const test = base.extend<{
       // Set a new value for a key in localStorage
       localStorage.setItem(
         'om-session',
-        JSON.stringify({ state: { oidcIdToken: token } })
+        JSON.stringify({ oidcIdToken: token })
       );
     }, tokenData.config.JWTToken);
 
@@ -185,9 +185,9 @@ test.describe('Ingestion Bot ', () => {
         });
 
         // check if service has domain or not
-        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-          domain1.data.displayName
-        );
+        await expect(
+          ingestionBotPage.getByTestId('domain-link').first()
+        ).toHaveText(domain1.data.displayName);
       }
     );
 

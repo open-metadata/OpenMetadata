@@ -13,30 +13,41 @@
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
 import React from 'react';
-import { MOCK_CHART_COLLECTION_DATA } from '../../../../mocks/TestSuite.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
 
+// Mock utility functions
+jest.mock('../../../../utils/ChartUtils', () => ({
+  axisTickFormatter: jest.fn(),
+  tooltipFormatter: jest.fn(),
+  updateActiveChartFilter: jest.fn(),
+}));
+
+jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
+  formatDateTimeLong: jest.fn(),
+}));
+
+// Existing mocks
+jest.mock('../ProfilerLatestValue/ProfilerLatestValue', () =>
+  jest.fn(() => <div>ProfilerLatestValue</div>)
+);
+
+jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
+  jest.fn(() => <div>ErrorPlaceHolder</div>)
+);
+
+jest.mock('../../../../utils/DataInsightUtils', () => ({
+  CustomTooltip: jest.fn(() => <div>CustomTooltip</div>),
+}));
+
+// Improve mock data to be minimal
 const mockProps: ProfilerDetailsCardProps = {
-  chartCollection: MOCK_CHART_COLLECTION_DATA,
+  chartCollection: {
+    data: [{ name: 'test', value: 1 }],
+    information: [{ dataKey: 'value', title: 'Test', color: '#000' }],
+  },
   name: 'rowCount',
 };
-
-jest.mock('../ProfilerLatestValue/ProfilerLatestValue', () => {
-  return jest.fn().mockImplementation(() => {
-    return <div>ProfilerLatestValue</div>;
-  });
-});
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => {
-    return <div>ErrorPlaceHolder</div>;
-  });
-});
-jest.mock('../../../../utils/DataInsightUtils', () => {
-  return jest.fn().mockImplementation(() => {
-    return <div>CustomTooltip</div>;
-  });
-});
 
 describe('ProfilerDetailsCard Test', () => {
   it('Component should render', async () => {

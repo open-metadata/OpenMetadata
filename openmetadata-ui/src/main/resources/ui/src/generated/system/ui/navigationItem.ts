@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a navigation item in the UI navigation menu.
  */
 export interface NavigationItem {
@@ -25,9 +23,9 @@ export interface NavigationItem {
      */
     id: string;
     /**
-     * Order of the navigation item in the menu.
+     * Determine if item is visible or not
      */
-    order: number;
+    isHidden?: boolean;
     /**
      * Reference to a Page ID that this navigation item links to.
      */
@@ -51,9 +49,9 @@ export interface ChildElement {
      */
     id: string;
     /**
-     * Order of the navigation item in the menu.
+     * Determine if item is visible or not
      */
-    order: number;
+    isHidden?: boolean;
     /**
      * Reference to a Page ID that this navigation item links to.
      */

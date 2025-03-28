@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import i18next from 'i18next';
 import { isEmpty } from 'lodash';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { EntityType } from '../../enums/entity.enum';
+import {
+  importEntityInCSVFormat,
+  importServiceInCSVFormat,
+} from '../../rest/importExportAPI';
+import entityUtilClassBase from '../EntityUtilClassBase';
+import Fqn from '../Fqn';
 
 type ParsedDataType<T> = Array<T>;
 
@@ -34,4 +43,57 @@ export const parseCSV = <T extends Record<string, unknown>>(
   }
 
   return recordList;
+};
+
+export const getImportedEntityType = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.DATABASE_SERVICE:
+      return EntityType.DATABASE;
+
+    case EntityType.DATABASE:
+      return EntityType.DATABASE_SCHEMA;
+
+    case EntityType.DATABASE_SCHEMA:
+      return EntityType.TABLE;
+
+    default:
+      return entityType;
+  }
+};
+
+export const getBulkEntityImportBreadcrumbList = (
+  entityType: EntityType,
+  fqn: string
+): TitleBreadcrumbProps['titleLinks'] => [
+  {
+    name: Fqn.split(fqn).pop(),
+    url: entityUtilClassBase.getEntityLink(entityType, fqn),
+  },
+  {
+    name: i18next.t('label.import'),
+    url: '',
+    activeTitle: true,
+  },
+];
+
+export const validateCsvString = async (
+  csvData: string,
+  entityType: EntityType,
+  fqn: string,
+  isBulkEdit: boolean
+) => {
+  const api =
+    entityType === EntityType.DATABASE_SERVICE
+      ? importServiceInCSVFormat
+      : importEntityInCSVFormat;
+
+  const response = await api({
+    entityType,
+    name: fqn,
+    data: csvData,
+    dryRun: true,
+    recursive: !isBulkEdit,
+  });
+
+  return response;
 };

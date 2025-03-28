@@ -76,9 +76,6 @@ class SamplerInterface(ABC):
         self._columns: Optional[List[SQALikeColumn]] = None
         self.sample_config = sample_config
 
-        if not self.sample_config.profile_sample:
-            self.sample_config.profile_sample = 100
-
         self.entity = entity
         self.include_columns = include_columns
         self.exclude_columns = exclude_columns
@@ -89,7 +86,6 @@ class SamplerInterface(ABC):
 
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
-        self.client = self.get_client()
 
     # pylint: disable=too-many-arguments, too-many-locals
     @classmethod

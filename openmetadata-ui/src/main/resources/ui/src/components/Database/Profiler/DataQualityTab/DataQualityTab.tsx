@@ -24,14 +24,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { getEntityDetailsPath } from '../../../../constants/constants';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   TestCase,
   TestCaseResult,
@@ -43,22 +41,23 @@ import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN, Transi18next } from '../../../../utils/CommonUtils';
 import {
   formatDate,
-  formatDateTime,
+  formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getIncidentManagerDetailPagePath } from '../../../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getIncidentManagerDetailPagePath,
+} from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { StatusBox } from '../../../common/LastRunGraph/LastRunGraph.component';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import Table from '../../../common/Table/Table';
 import EditTestCaseModal from '../../../DataQuality/AddDataQualityTest/EditTestCaseModal';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
@@ -66,6 +65,7 @@ import {
   DataQualityTabProps,
   TableProfilerTab,
   TestCaseAction,
+  TestCasePermission,
 } from '../ProfilerDashboard/profilerDashboard.interface';
 import './data-quality-tab.less';
 
@@ -80,9 +80,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   showPagination,
   breadcrumbData,
   fetchTestCases,
+  isEditAllowed,
 }) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
   const [isStatusLoading, setIsStatusLoading] = useState(true);
   const [testCaseStatus, setTestCaseStatus] = useState<
@@ -90,23 +91,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   >([]);
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState(true);
+  const [testCasePermissions, setTestCasePermissions] = useState<
+    TestCasePermission[]
+  >([]);
   const isApiSortingEnabled = useRef(false);
-
-  const testCaseEditPermission = useMemo(() => {
-    return checkPermission(
-      Operation.EditAll,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
-
-  const testCaseDeletePermission = useMemo(() => {
-    return checkPermission(
-      Operation.Delete,
-      ResourceEntity.TEST_CASE,
-      permissions
-    );
-  }, [permissions]);
 
   const sortedData = useMemo(
     () =>
@@ -264,7 +253,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 150,
         sorter: true,
         render: (result: TestCaseResult) =>
-          result?.timestamp ? formatDateTime(result.timestamp) : '--',
+          result?.timestamp ? formatDateTimeLong(result.timestamp) : '--',
       },
       {
         title: t('label.incident'),
@@ -317,6 +306,19 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 100,
         fixed: 'right',
         render: (_, record) => {
+          if (isPermissionLoading) {
+            return <Skeleton.Input size="small" />;
+          }
+
+          const testCasePermission = testCasePermissions.find(
+            (permission) =>
+              permission.fullyQualifiedName === record.fullyQualifiedName
+          );
+
+          const testCaseEditPermission =
+            isEditAllowed || testCasePermission?.EditAll;
+          const testCaseDeletePermission = testCasePermission?.Delete;
+
           return (
             <Row align="middle">
               <Tooltip
@@ -391,11 +393,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return data;
   }, [
-    testCaseEditPermission,
-    testCaseDeletePermission,
     testCases,
     testCaseStatus,
     isStatusLoading,
+    isPermissionLoading,
+    testCasePermissions,
   ]);
 
   const fetchTestCaseStatus = async () => {
@@ -427,6 +429,38 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
+  const fetchTestCasePermissions = async () => {
+    try {
+      setIsPermissionLoading(true);
+      const promises = testCases.map((testCase) => {
+        return getEntityPermissionByFqn(
+          ResourceEntity.TEST_CASE,
+          testCase.fullyQualifiedName ?? ''
+        );
+      });
+      const testCasePermission = await Promise.allSettled(promises);
+      const data = testCasePermission.reduce((acc, status, i) => {
+        if (status.status === 'fulfilled') {
+          return [
+            ...acc,
+            {
+              ...status.value,
+              fullyQualifiedName: testCases[i].fullyQualifiedName,
+            },
+          ];
+        }
+
+        return acc;
+      }, [] as TestCasePermission[]);
+
+      setTestCasePermissions(data);
+    } catch (error) {
+      // do nothing
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
+
   const handleTableChange = (
     _pagination: TablePaginationConfig,
     _filters: Record<string, FilterValue | null>,
@@ -453,6 +487,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   useEffect(() => {
     if (testCases.length) {
       fetchTestCaseStatus();
+      fetchTestCasePermissions();
     } else {
       setIsStatusLoading(false);
     }
@@ -462,9 +497,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     <Row gutter={[16, 16]}>
       <Col span={24}>
         <Table
-          bordered
           className="test-case-table-container"
           columns={columns}
+          {...(pagingData && showPagination
+            ? {
+                customPaginationProps: {
+                  ...pagingData,
+                  showPagination,
+                },
+              }
+            : {})}
           data-testid="test-case-table"
           dataSource={sortedData}
           loading={isLoading}
@@ -492,12 +534,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           }}
           pagination={false}
           rowKey="id"
+          scroll={{ x: true }}
           size="small"
           onChange={handleTableChange}
         />
-      </Col>
-      <Col span={24}>
-        {pagingData && showPagination && <NextPrevious {...pagingData} />}
       </Col>
       <Col>
         <EditTestCaseModal

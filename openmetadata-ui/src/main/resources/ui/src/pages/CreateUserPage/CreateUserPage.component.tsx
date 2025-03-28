@@ -19,11 +19,7 @@ import { useHistory, useLocation, useParams } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
-import {
-  getBotsPagePath,
-  getUsersPagePath,
-  PAGE_SIZE_LARGE,
-} from '../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateUser } from '../../generated/api/teams/createUser';
@@ -36,7 +32,11 @@ import {
   createUserWithPut,
   getBotByName,
 } from '../../rest/userAPI';
-import { getSettingPath } from '../../utils/RouterUtils';
+import {
+  getBotsPagePath,
+  getSettingPath,
+  getUsersPagePath,
+} from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { getUserCreationErrorMessage } from '../../utils/Users.util';
 
@@ -214,8 +214,9 @@ const CreateUserPage = () => {
 
   return (
     <PageLayoutV1
+      center
       pageTitle={t('label.create-entity', { entity: t('label.user') })}>
-      <div className="max-width-md w-9/10 service-form-container">
+      <div className="service-form-container w-800">
         <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
         <div className="m-t-md">
           <CreateUserComponent

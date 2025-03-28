@@ -14,15 +14,18 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
-import { debounce } from 'lodash';
+import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
+import './search-bar.less';
 
-type Props = {
+export type SearchBarProps = {
+  inputClassName?: string;
   onSearch: (text: string) => void;
-  searchValue: string;
+  searchValue?: string;
   typingInterval?: number;
   placeholder?: string;
   label?: string;
@@ -31,9 +34,14 @@ type Props = {
   showClearSearch?: boolean;
   inputProps?: InputProps;
   searchBarDataTestId?: string;
+  /**
+   * Key to be used for url search
+   */
+  urlSearchKey?: string;
 };
 
 const Searchbar = ({
+  inputClassName = '',
   onSearch,
   searchValue,
   typingInterval = 0,
@@ -44,18 +52,31 @@ const Searchbar = ({
   showClearSearch = true,
   searchBarDataTestId,
   inputProps,
-}: Props) => {
+  urlSearchKey,
+}: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState('');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);
+  const { setFilters } = useTableFilters(
+    urlSearchKey
+      ? {
+          [urlSearchKey]: '',
+        }
+      : {}
+  );
 
   useEffect(() => {
-    setUserSearch(searchValue);
+    setUserSearch(searchValue ?? '');
   }, [searchValue]);
 
   const debouncedOnSearch = useCallback(
     (searchText: string): void => {
       setLoadingState((pre) => (pre === 'waiting' ? 'success' : pre));
+
+      if (urlSearchKey) {
+        setFilters({ [urlSearchKey]: isEmpty(searchText) ? null : searchText });
+      }
+
       onSearch(searchText);
     },
     [onSearch]
@@ -83,12 +104,13 @@ const Searchbar = ({
       <div className="flex relative">
         <Input
           allowClear={showClearSearch}
+          className={classNames('p-y-xs', inputClassName)}
           data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
           prefix={
             <Icon
-              className={classNames('align-middle', {
-                'text-grey-3': isSearchBlur,
+              className={classNames('align-middle m-r-xss', {
+                'text-black': isSearchBlur,
                 'text-primary': !isSearchBlur,
               })}
               component={IconSearchV1}

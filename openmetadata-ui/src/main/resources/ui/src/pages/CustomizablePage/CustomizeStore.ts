@@ -41,6 +41,14 @@ export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
   currentPageType: null,
   currentPersonaDocStore: null,
   setDocument: (document: Document) => {
+    const { updateCurrentPage, currentPageType } = get();
+
+    const newPage = document?.data?.pages?.find(
+      (p: Page) => p.pageType === currentPageType
+    );
+
+    updateCurrentPage(newPage);
+
     set({ document });
   },
 

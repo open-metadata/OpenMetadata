@@ -222,11 +222,3 @@ src="/images/v1.6/how-to-guides/insights/fau.png"
 alt="Frequently Used Assets"
 caption="Frequently Used Assets"
 /%}
-
-{%inlineCallout
-  color="violet-70"
-  bold="Cost Analysis"
-  icon="MdArrowForward"
-  href="/how-to-guides/data-insights/cost-analysis"%}
-  Get valuable insights with the cost analysis reports.
-{%/inlineCallout%}

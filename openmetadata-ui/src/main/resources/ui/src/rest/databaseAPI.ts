@@ -249,3 +249,65 @@ export const putDatabaseSchemaProfileConfig = async (
 
   return response.data['databaseSchemaProfilerConfig'];
 };
+
+export const exportDatabaseDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
+  const res = await APIClient.get(`databases/name/${fqn}/exportAsync`, {
+    params,
+  });
+
+  return res.data;
+};
+
+export const importDatabaseInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/databases/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
+};
+
+export const exportDatabaseSchemaDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
+  const res = await APIClient.get(`databaseSchemas/name/${fqn}/exportAsync`, {
+    params,
+  });
+
+  return res.data;
+};
+
+export const importDatabaseSchemaInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/databaseSchemas/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
+};

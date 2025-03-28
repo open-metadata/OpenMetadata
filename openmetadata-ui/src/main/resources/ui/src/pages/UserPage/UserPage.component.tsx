@@ -26,6 +26,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import Users from '../../components/Settings/Users/Users.component';
 import { ROUTES } from '../../constants/constants';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -187,16 +188,18 @@ const UserPage = () => {
   }
 
   return (
-    <Users
-      afterDeleteAction={afterDeleteAction}
-      handlePaginate={handleEntityPaginate}
-      queryFilters={{
-        myData: myDataQueryFilter,
-        following: followingQueryFilter,
-      }}
-      updateUserDetails={updateUserDetails}
-      userData={userData}
-    />
+    <PageLayoutV1 pageTitle={t('label.user')}>
+      <Users
+        afterDeleteAction={afterDeleteAction}
+        handlePaginate={handleEntityPaginate}
+        queryFilters={{
+          myData: myDataQueryFilter,
+          following: followingQueryFilter,
+        }}
+        updateUserDetails={updateUserDetails}
+        userData={userData}
+      />
+    </PageLayoutV1>
   );
 };
 

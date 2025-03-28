@@ -423,6 +423,35 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDatabaseAsync",
+      summary = "Asynchronously delete a database by Id",
+      description =
+          "Asynchronously delete a database by `Id`. Database can only be deleted if it has no tables.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
   @GET
   @Path("/name/{name}/exportAsync")
   @Produces(MediaType.APPLICATION_JSON)
@@ -443,13 +472,20 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name) {
-    return exportCsvInternalAsync(securityContext, name);
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive) {
+    return exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportDatabase",
@@ -467,14 +503,21 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name)
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, recursive);
   }
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importDatabase",
@@ -501,14 +544,18 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, resursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT
   @Path("/name/{name}/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
@@ -537,8 +584,12 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @PUT

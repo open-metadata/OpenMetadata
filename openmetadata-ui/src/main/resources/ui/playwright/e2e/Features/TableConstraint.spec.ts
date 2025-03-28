@@ -31,6 +31,11 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 const table = new TableClass();
 
 test.describe('Table Constraints', {}, () => {
+  const columnName1 = table.children[0].name;
+  const columnName2 = table.children[1].name;
+  const columnName3 = table.children[2].name;
+  const columnName4 = table.children[3].name;
+
   test.beforeAll('Prerequisite', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
@@ -55,6 +60,10 @@ test.describe('Table Constraints', {}, () => {
 
     await test.step('Add Constraints', async () => {
       await table.visitEntityPage(page);
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await page.click('[data-testid="table-constraints-add-button"]');
       await page.waitForSelector('[role="dialog"].ant-modal');
@@ -76,23 +85,21 @@ test.describe('Table Constraints', {}, () => {
 
       await page
         .getByTestId('primary-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('user_id');
+        .getByRole('combobox')
+        .fill(columnName1, { force: true });
 
       // select 1st value from dropdown
-      const firstPrimaryKeyColumn = page.getByTitle('user_id');
+      const firstPrimaryKeyColumn = page.getByTitle(columnName1);
       await firstPrimaryKeyColumn.hover();
       await firstPrimaryKeyColumn.click();
 
       // select 2nd value  from dropdown
       await page
         .getByTestId('primary-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('shop_id');
+        .getByRole('combobox')
+        .fill(columnName2, { force: true });
 
-      const secondPrimaryKeyColumn = page.getByTitle('shop_id');
+      const secondPrimaryKeyColumn = page.getByTitle(columnName2);
       await secondPrimaryKeyColumn.hover();
       await secondPrimaryKeyColumn.click();
       await clickOutside(page);
@@ -100,7 +107,7 @@ test.describe('Table Constraints', {}, () => {
       await expect(
         page
           .getByTestId('primary-constraint-type-select')
-          .getByText('user_idshop_id')
+          .getByText(`${columnName1}${columnName2}`)
       ).toBeVisible();
 
       // Foreign Key Constraint Section
@@ -170,29 +177,31 @@ test.describe('Table Constraints', {}, () => {
 
       await page
         .getByTestId('unique-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('name');
+        .getByRole('combobox')
+        .fill(columnName3, { force: true });
 
       // select 1st value from dropdown
-      const firstUniqueKeyColumn = page.getByTitle('name', { exact: true });
+      const firstUniqueKeyColumn = page.getByTitle(columnName3, {
+        exact: true,
+      });
       await firstUniqueKeyColumn.hover();
       await firstUniqueKeyColumn.click();
 
       // select 2nd value  from dropdown
       await page
         .getByTestId('unique-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('email');
+        .getByRole('combobox')
+        .fill(columnName4, { force: true });
 
-      const secondUniqueKeyColumn = page.getByTitle('email');
+      const secondUniqueKeyColumn = page.getByTitle(columnName4);
       await secondUniqueKeyColumn.hover();
       await secondUniqueKeyColumn.click();
       await clickOutside(page);
 
       await expect(
-        page.getByTestId('unique-constraint-type-select').getByText('nameemail')
+        page
+          .getByTestId('unique-constraint-type-select')
+          .getByText(`${columnName3}${columnName4}`)
       ).toBeVisible();
 
       // Dist Constraint Section
@@ -206,23 +215,21 @@ test.describe('Table Constraints', {}, () => {
 
       await page
         .getByTestId('dist-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('user_id');
+        .getByRole('combobox')
+        .fill(columnName1, { force: true });
 
       // select 1st value from dropdown
-      const firstDistKeyColumn = page.getByTitle('user_id');
+      const firstDistKeyColumn = page.getByTitle(columnName1);
       await firstDistKeyColumn.hover();
       await firstDistKeyColumn.click();
 
       // select 2nd value  from dropdown
       await page
         .getByTestId('dist-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('shop_id');
+        .getByRole('combobox')
+        .fill(columnName2, { force: true });
 
-      const secondDistKeyColumn = page.getByTitle('shop_id');
+      const secondDistKeyColumn = page.getByTitle(columnName2);
       await secondDistKeyColumn.hover();
       await secondDistKeyColumn.click();
       await clickOutside(page);
@@ -230,7 +237,7 @@ test.describe('Table Constraints', {}, () => {
       await expect(
         page
           .getByTestId('dist-constraint-type-select')
-          .getByText('user_idshop_id')
+          .getByText(`${columnName1}${columnName2}`)
       ).toBeVisible();
 
       // Sort Constraint Section
@@ -244,29 +251,29 @@ test.describe('Table Constraints', {}, () => {
 
       await page
         .getByTestId('sort-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('name');
+        .getByRole('combobox')
+        .fill(columnName3, { force: true });
 
       // select 1st value from dropdown
-      const firstSortKeyColumn = page.getByTitle('name', { exact: true });
+      const firstSortKeyColumn = page.getByTitle(columnName3, { exact: true });
       await firstSortKeyColumn.hover();
       await firstSortKeyColumn.click();
 
       // select 2nd value  from dropdown
       await page
         .getByTestId('sort-constraint-type-select')
-        .locator('div')
-        .nth(1)
-        .type('email');
+        .getByRole('combobox')
+        .fill(columnName4, { force: true });
 
-      const secondSortKeyColumn = page.getByTitle('email');
+      const secondSortKeyColumn = page.getByTitle(columnName4);
       await secondSortKeyColumn.hover();
       await secondSortKeyColumn.click();
       await clickOutside(page);
 
       await expect(
-        page.getByTestId('sort-constraint-type-select').getByText('nameemail')
+        page
+          .getByTestId('sort-constraint-type-select')
+          .getByText(`${columnName3}${columnName4}`)
       ).toBeVisible();
 
       const saveResponse = page.waitForResponse('/api/v1/tables/*');
@@ -288,31 +295,31 @@ test.describe('Table Constraints', {}, () => {
 
       // Verify Primary Key
       await expect(page.getByTestId('PRIMARY_KEY-container')).toContainText(
-        'shop_iduser_id'
+        `${columnName2}${columnName1}`
       );
       await expect(page.getByTestId('PRIMARY_KEY-icon')).toBeVisible();
 
       // Verify Foreign Key
       await expect(page.getByTestId('FOREIGN_KEY-container')).toContainText(
-        `user_id${table.additionalEntityTableResponseData[0]?.['columns'][1].fullyQualifiedName}`
+        `${columnName1}${table.additionalEntityTableResponseData[0]?.['columns'][1].fullyQualifiedName}`
       );
       await expect(page.getByTestId('FOREIGN_KEY-icon')).toBeVisible();
 
       // Verify Unique Key
       await expect(page.getByTestId('UNIQUE-container')).toContainText(
-        'emailname'
+        `${columnName4}${columnName3}`
       );
       await expect(page.getByTestId('UNIQUE-icon')).toBeVisible();
 
       // Verify Sort Key
       await expect(page.getByTestId('SORT_KEY-container')).toContainText(
-        'emailname'
+        `${columnName4}${columnName3}`
       );
       await expect(page.getByTestId('SORT_KEY-icon')).toBeVisible();
 
       // Verify Dist Key
       await expect(page.getByTestId('DIST_KEY-container')).toContainText(
-        'shop_iduser_id'
+        `${columnName2}${columnName1}`
       );
       await expect(page.getByTestId('DIST_KEY-icon')).toBeVisible();
     });
@@ -345,11 +352,11 @@ test.describe('Table Constraints', {}, () => {
 
       // Verify Sort and Dist Key to be available
       await expect(page.getByTestId('SORT_KEY-container')).toContainText(
-        'emailname'
+        `${columnName4}${columnName3}`
       );
       await expect(page.getByTestId('SORT_KEY-icon')).toBeVisible();
       await expect(page.getByTestId('DIST_KEY-container')).toContainText(
-        'shop_iduser_id'
+        `${columnName2}${columnName1}`
       );
 
       // Remove the pending constraints
