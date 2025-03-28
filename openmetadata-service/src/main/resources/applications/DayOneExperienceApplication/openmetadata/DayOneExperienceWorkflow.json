@@ -145,6 +145,16 @@
       "subType": "endEvent",
       "name": "WorkflowFailure",
       "displayName": "Workflow Failure"
+    },
+    {
+      "type": "userTask",
+      "subType": "manualRetryTask",
+      "name": "ManualRetry",
+      "displayName": "Manual Retry",
+      "description": "If an Ingestion Pipeline Fails, the workflow will wait here until the User prompts for a retry manually",
+      "inputNamespaceMap": {
+        "stepToRetry": "global"
+      }
     }
   ],
   "edges": [
@@ -154,7 +164,7 @@
     },
     {
       "from": "RunMetadataIngestion",
-      "to": "WorkflowFailure",
+      "to": "ManualRetry",
       "condition": "failure"
     },
     {
@@ -184,7 +194,7 @@
     },
     {
       "from": "RunUsageIngestion",
-      "to": "WorkflowFailure",
+      "to": "ManualRetry",
       "condition": "failure"
     },
     {

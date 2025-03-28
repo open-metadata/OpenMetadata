@@ -42,11 +42,13 @@ import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.SearchServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 @Slf4j
 public class CreateIngestionPipelineImpl {
@@ -149,12 +151,14 @@ public class CreateIngestionPipelineImpl {
 
   public CreateIngestionPipelineResult execute(
       ServiceEntityInterface service, PipelineType pipelineType, boolean deploy) {
+    LOG.info(
+        String.format("Creating '%s' Agent for '%s'", pipelineType.value(), service.getName()));
     if (!supportsPipelineType(
         pipelineType, JsonUtils.getMap(service.getConnection().getConfig()))) {
       LOG.debug(
           String.format(
               "Service '%s' does not support Ingestion Pipeline of type '%s'",
-              service.getDisplayName(), pipelineType));
+              service.getName(), pipelineType));
       return new CreateIngestionPipelineResult(null, true);
     }
 
@@ -163,6 +167,9 @@ public class CreateIngestionPipelineImpl {
     IngestionPipeline ingestionPipeline = getOrCreateIngestionPipeline(pipelineType, service);
 
     if (deploy) {
+      LOG.info(
+          String.format(
+              "Deploying '%s' for '%s'", ingestionPipeline.getDisplayName(), service.getName()));
       wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
       if (wasSuccessful) {
         // Mark the pipeline as deployed
@@ -170,6 +177,11 @@ public class CreateIngestionPipelineImpl {
         IngestionPipelineRepository repository =
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         repository.createOrUpdate(null, ingestionPipeline);
+      } else {
+        LOG.warn(
+            String.format(
+                "'%s' deployment failed for '%s'",
+                ingestionPipeline.getDisplayName(), service.getName()));
       }
     }
 
@@ -250,7 +262,12 @@ public class CreateIngestionPipelineImpl {
           JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
       if (ingestionPipeline.getPipelineType().equals(pipelineType)
           && ingestionPipeline.getDisplayName().equals(displayName)) {
-        return ingestionPipeline.withService(service.getEntityReference());
+        OpenMetadataConnection openMetadataServerConnection =
+            new OpenMetadataConnectionBuilder(repository.getOpenMetadataApplicationConfig())
+                .build();
+        return ingestionPipeline
+            .withService(service.getEntityReference())
+            .withOpenMetadataServerConnection(openMetadataServerConnection);
       }
     }
     return null;

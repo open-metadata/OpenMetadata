@@ -49,6 +49,7 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long timeoutSeconds,
       MessageParser.EntityLink entityLink) {
+    boolean wasSuccessful = true;
     ServiceEntityInterface service = Entity.getEntity(entityLink, "owners", Include.NON_DELETED);
 
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
@@ -58,25 +59,33 @@ public class RunAppImpl {
           appRepository.getByName(null, appName, new EntityUtil.Fields(Set.of("bot", "pipelines")));
     } catch (EntityNotFoundException ex) {
       LOG.warn(String.format("App: '%s' is not Installed. Skipping", appName));
-      return true;
+      return wasSuccessful;
     }
 
     if (!validateAppShouldRun(app, service)) {
-      return true;
+      return wasSuccessful;
     }
 
     long startTime = System.currentTimeMillis();
     long timeoutMillis = timeoutSeconds * 1000;
 
     Map<String, Object> config = getConfig(app, service);
+
+    LOG.info(String.format("%s running for '%s'", app.getDisplayName(), service.getName()));
     if (app.getAppType().equals(AppType.Internal)) {
-      return runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
+      wasSuccessful =
+          runApp(appRepository, app, config, waitForCompletion, startTime, timeoutMillis);
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
       updatedApp.setAppConfiguration(config);
       updateApp(appRepository, app, app);
-      return runApp(pipelineServiceClient, app, waitForCompletion, startTime, timeoutMillis);
+      wasSuccessful =
+          runApp(pipelineServiceClient, app, waitForCompletion, startTime, timeoutMillis);
     }
+    if (!wasSuccessful) {
+      LOG.warn(String.format("%s failed for '%s'", app.getDisplayName(), service.getName()));
+    }
+    return wasSuccessful;
   }
 
   private boolean validateAppShouldRun(App app, ServiceEntityInterface service) {

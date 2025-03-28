@@ -49,8 +49,22 @@ public class WorkflowVariableHandler {
     }
   }
 
+  public void removeNamespacedVariable(String namespace, String varName) {
+    String namespacedVarName = getNamespacedVariableName(namespace, varName);
+    if (namespacedVarName != null) {
+      varScope.removeVariable(namespacedVarName);
+      LOG.debug(String.format("%s variable removed.", namespacedVarName));
+    } else {
+      throw new RuntimeException("Namespace can't be null when setting a namespaced variable.");
+    }
+  }
+
   public void setGlobalVariable(String varName, Object varValue) {
     setNamespacedVariable(GLOBAL_NAMESPACE, varName, varValue);
+  }
+
+  public void removeGlobalVariable(String varName) {
+    removeNamespacedVariable(GLOBAL_NAMESPACE, varName);
   }
 
   private String getNodeNamespace() {
