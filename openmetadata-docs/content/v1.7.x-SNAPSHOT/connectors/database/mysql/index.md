@@ -43,6 +43,9 @@ GRANT SELECT ON world.* TO '<username>';
 
 -- Grant select on a specific object
 GRANT SELECT ON world.hello TO '<username>';
+
+-- Grant show view to extract ddl
+GRANT SHOW VIEW ON world.* to '<username>';
 ```
 
 ### Lineage & Usage 
