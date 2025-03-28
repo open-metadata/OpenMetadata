@@ -55,18 +55,36 @@
     .ant-radio-button-wrapper-checked:not([class*=' ant-radio-button-wrapper-disabled']).ant-radio-button-wrapper:first-child {
       font-size: 14px;
       font-weight: 500;
-      border-color: @border-color;
     }
     .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)::before {
       background-color: @border-color;
     }
     .ant-radio-button-wrapper:first-child {
+      border-color: @border-color;
       border-radius: 8px 0 0 8px;
     }
     .ant-radio-button-wrapper:last-child {
+      border-color: @border-color;
       border-radius: 0 8px 8px 0;
     }
     .ant-radio-button-wrapper-checked {
+      background-color: @blue-11;
+      .tab-label {
+        color: @primary-color;
+        .ant-typography {
+          color: @primary-color;
+        }
+      }
+    }
+    .ant-radio-button-wrapper {
+      box-shadow: none;
+      .tab-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    }
+    .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled):hover {
       background-color: @blue-11;
     }
   }

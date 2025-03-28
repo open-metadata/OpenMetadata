@@ -154,9 +154,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
       return {
         label: (
-          <div
-            className="flex items-center gap-2"
-            data-testid={`${tabName}-sub-tab`}>
+          <div className="tab-label" data-testid={`${tabName}-sub-tab`}>
             <Icon height={14} width={14} />
             <Typography.Text>{label}</Typography.Text>
             {getCountBadge(
