@@ -14,7 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { getFirstRowColumnLink, visitEntityPage } from '../../utils/entity';
+import { getFirstRowColumnLink } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -151,15 +151,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
       state: 'detached',
     });
 
+    const linkInColumn = getFirstRowColumnLink(page);
     const entityApiResponse = page.waitForResponse(
-      '/api/v1/permissions/table/name/sample_data.ecommerce_db.shopify.dim_address'
+      '/api/v1/permissions/table/name/*'
     );
-
-    await visitEntityPage({
-      page,
-      searchTerm: 'sample_data.ecommerce_db.shopify.dim_address',
-      dataTestId: 'sample_data-dim_address',
-    });
+    await linkInColumn.click();
 
     await entityApiResponse;
     await page.waitForLoadState('networkidle');
