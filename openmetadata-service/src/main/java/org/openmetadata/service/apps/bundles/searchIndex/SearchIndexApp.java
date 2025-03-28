@@ -108,6 +108,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
+      LOG.info("Starting Search Indexing App with JobData: {}", jobData);
       this.jobExecutionContext = jobExecutionContext;
       initializeJob(jobExecutionContext);
       String runType =
@@ -201,7 +202,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
-    LOG.debug("Updated AppRunRecord in DB: {}", appRecord);
+    LOG.info("Updated AppRunRecord in DB: {}", appRecord);
   }
 
   private void performReindex(JobExecutionContext jobExecutionContext) throws InterruptedException {
@@ -247,17 +248,21 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
+              LOG.info(
+                  "Processing entity type: {}, TotalRecords: {}, Load per Thread will be : {}",
+                  entityType,
+                  totalEntityRecords,
+                  loadPerThread);
               Semaphore semaphore = new Semaphore(jobData.getQueueSize());
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < loadPerThread; i++) {
                   semaphore.acquire();
-                  LOG.debug(
-                      "Submitting producer task current queue size: {}", producerQueue.size());
+                  LOG.info("Submitting producer task current queue size: {}", producerQueue.size());
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
                         try {
-                          LOG.debug(
+                          LOG.info(
                               "Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}",
                               currentOffset,
                               producerLatch.getCount());
@@ -265,7 +270,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                         } catch (Exception e) {
                           LOG.error("Error processing entity type {}", entityType, e);
                         } finally {
-                          LOG.debug(
+                          LOG.info(
                               "Producer Latch Down and Semaphore Release, Current : {}",
                               producerLatch.getCount());
                           producerLatch.countDown();
@@ -437,7 +442,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void reCreateIndexes(Set<String> entities) throws SearchIndexException {
     for (String entityType : entities) {
       if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
-        LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
+        LOG.info("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
         return;
       }
 
@@ -573,7 +578,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       JobExecutionContext jobExecutionContext, String entityType, Source<?> source, int offset) {
     try {
       Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
-      LOG.debug("Read Entities with entityType: {},  CurrentOffset: {}", entityType, offset);
+      LOG.info("Read Entities with entityType: {},  CurrentOffset: {}", entityType, offset);
       if (resultList != null) {
         ResultList<?> entities = extractEntities(entityType, resultList);
         if (!nullOrEmpty(entities.getData())) {

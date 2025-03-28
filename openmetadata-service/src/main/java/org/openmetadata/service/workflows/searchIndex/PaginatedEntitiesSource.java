@@ -150,14 +150,17 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
 
   public ResultList<? extends EntityInterface> readWithCursor(String currentCursor)
       throws SearchIndexException {
-    LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
+    LOG.info(
+        "[PaginatedEntitiesSource] Fetching a Batch of Size: {} , Current Cursor: {}",
+        batchSize,
+        RestUtil.decodeCursor(currentCursor));
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     ResultList<? extends EntityInterface> result;
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
               null, Entity.getFields(entityType, fields), filter, batchSize, currentCursor);
-      LOG.debug(
+      LOG.info(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
 
