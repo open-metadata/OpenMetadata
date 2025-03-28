@@ -144,6 +144,14 @@ class UpstreamTable(BaseModel):
     database: Optional[TableauDatabase] = None
     referencedByQueries: Optional[List[CustomSQLTable]] = None
 
+    @validator("referencedByQueries", pre=True)
+    @classmethod
+    def filter_none_queries(cls, v):
+        """Filter out CustomSQLTable items where query==None."""
+        if v is None:
+            return None
+        return [item for item in v if item.get("query") is not None]
+
 
 class DataSource(BaseModel):
     id: str
