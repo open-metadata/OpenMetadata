@@ -91,21 +91,24 @@
 
   .teams-profile-container {
     background: @user-profile-background;
-
+    .collapse-panel-container {
+      padding: 20px;
+    }
     .ant-card {
       background: none;
     }
 
     .ant-collapse-header {
-      padding-left: 0;
-
-      .ant-collapse-expand-icon {
-        padding-top: 10px;
-      }
+      padding: 0 35px 0 0;
     }
 
     .ant-collapse-arrow {
-      top: 35px !important; // overriding from antd
+      top: 28px !important; // overriding from antd
+      right: 0px !important;
+      padding: 8px;
+      background-color: @background-color;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
     }
 
     .domain-link {
@@ -125,6 +128,16 @@
         display: none;
       }
     }
+  }
+
+  .edit-team-name {
+    border: 1px solid @border-light;
+    background-color: @white;
+    border-radius: 4px;
+    padding: 4px;
+    width: 20px;
+    height: 20px;
+    display: flex;
   }
 }
 .team-assets-right-panel {
