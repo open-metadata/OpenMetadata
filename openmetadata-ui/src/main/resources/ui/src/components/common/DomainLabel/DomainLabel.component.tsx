@@ -122,9 +122,15 @@ export const DomainLabel = ({
 
         return (
           <div
-            className="d-flex items-center domain-link-container"
+            className={classNames(
+              'd-flex items-center gap-1 domain-link-container',
+              {
+                'gap-1': !headerLayout || (headerLayout && multiple),
+              }
+            )}
             key={domain.id}>
-            {!headerLayout && (
+            {/* condition to show icon for new layout perticulary for multiple domains */}
+            {(!headerLayout || (headerLayout && multiple)) && (
               <Typography.Text className="self-center text-xs whitespace-nowrap">
                 <DomainIcon
                   className="d-flex"
