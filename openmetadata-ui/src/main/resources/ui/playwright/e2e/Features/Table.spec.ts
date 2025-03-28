@@ -113,7 +113,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .textContent();
 
     const linkInColumn = getFirstRowColumnLink(page);
-    await linkInColumn.locator('a').click();
+    await linkInColumn.click();
 
     await page.waitForURL('**/table/**');
     await page.waitForLoadState('networkidle');
