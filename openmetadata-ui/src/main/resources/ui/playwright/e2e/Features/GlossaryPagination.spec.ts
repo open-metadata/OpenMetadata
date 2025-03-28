@@ -40,12 +40,13 @@ test.describe('Glossary tests', () => {
       const glossaryRes = page.waitForResponse(
         '/api/v1/glossaryTerms?*directChildrenOf=*'
       );
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await glossaryRes;
 
       const glossaryAfterRes = page.waitForResponse(
         '/api/v1/glossaries?*after=*'
       );
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await glossaryRes;
+
       await page
         .getByTestId('glossary-left-panel-scroller')
         .scrollIntoViewIfNeeded();

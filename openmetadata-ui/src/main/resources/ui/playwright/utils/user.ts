@@ -201,9 +201,8 @@ export const hardDeleteUserProfilePage = async (
   );
   await page.click('[data-testid="confirm-button"]');
 
-  // Wait for both the delete response and all toast elements to appear
-  await deleteResponse;
   await toastNotification(page, /deleted successfully!/);
+  await deleteResponse;
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
