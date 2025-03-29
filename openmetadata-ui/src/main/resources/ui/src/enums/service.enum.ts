@@ -96,6 +96,6 @@ export type ApiServiceTypeSmallCaseType = {
 };
 
 export enum ServiceAgentSubTabs {
-  COLLATE_AI = 'collateAI',
   METADATA = 'metadata',
+  COLLATE_AI = 'collateAI',
 }

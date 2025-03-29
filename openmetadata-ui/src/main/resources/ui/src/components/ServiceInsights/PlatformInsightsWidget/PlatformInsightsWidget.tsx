@@ -101,7 +101,7 @@ function PlatformInsightsWidget({
                       <Row align="bottom" className="m-t-sm flex-1" gutter={8}>
                         <Col
                           className="flex flex-col justify-between h-full"
-                          span={14}>
+                          span={15}>
                           <Typography.Title level={3}>
                             {`${getReadableCountString(
                               chart.currentPercentage
@@ -120,12 +120,16 @@ function PlatformInsightsWidget({
                                 )}%`}
                               </Typography.Text>
                               <Typography.Text className="font-medium text-grey-muted text-sm">
-                                {t('label.vs-last-week-lowercase')}
+                                {chart.numberOfDays === 1
+                                  ? t('label.in-the-last-day')
+                                  : t('label.in-last-number-of-days', {
+                                      numberOfDays: chart.numberOfDays,
+                                    })}
                               </Typography.Text>
                             </div>
                           )}
                         </Col>
-                        <Col className="flex items-end h-full" span={10}>
+                        <Col className="flex items-end h-full" span={9}>
                           <ResponsiveContainer
                             height="90%"
                             minHeight={90}

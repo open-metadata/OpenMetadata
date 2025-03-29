@@ -134,11 +134,7 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
       });
 
       const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map(
-        getPlatformInsightsChartDataFormattingMethod(
-          chartsData,
-          sevenDaysAgoTimestampInMs,
-          currentTimestampInMs
-        )
+        getPlatformInsightsChartDataFormattingMethod(chartsData)
       );
 
       const piiDistributionChart = chartsData[

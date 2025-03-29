@@ -12,7 +12,7 @@
  */
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
-import { isEmpty, isUndefined, round } from 'lodash';
+import { first, isEmpty, last, round, sortBy } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
@@ -34,7 +34,6 @@ import { WorkflowStatus } from '../generated/governance/workflows/workflowInstan
 import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
-import { getSevenDaysStartGMTArrayInMillis } from './date-time/DateTimeUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
 
 const { t } = i18n;
@@ -95,50 +94,56 @@ export const getTitleByChartType = (chartType: SystemChartType) => {
 };
 
 export const getPlatformInsightsChartDataFormattingMethod =
-  (
-    chartsData: Record<SystemChartType, DataInsightCustomChartResult>,
-    startTime: number,
-    endTime: number
-  ) =>
+  (chartsData: Record<SystemChartType, DataInsightCustomChartResult>) =>
   (chartType: SystemChartType) => {
     const summaryChartData = chartsData[chartType];
+    const lastDay = last(summaryChartData.results)?.day ?? 1;
 
-    // Get the seven days start GMT array in milliseconds
-    const sevenDaysStartGMTArrayInMillis = getSevenDaysStartGMTArrayInMillis();
+    const sortedResults = sortBy(summaryChartData.results, 'day');
 
-    // Get the data for the seven days
-    // If the data is not available for a day, fill in the data with the count as 0
-    const data = sevenDaysStartGMTArrayInMillis.map((day) => {
-      const item = summaryChartData.results.find((item) => item.day === day);
+    let data = sortedResults.length >= 2 ? sortedResults : [];
 
-      return item ?? { day, count: 0 };
-    });
+    if (summaryChartData.results.length === 1) {
+      const previousDay = sortedResults[0].day - 86400000; // 1 day in milliseconds
 
-    // This is the data for the day 7 days ago
-    const sevenDaysAgoData = data.find((item) => item.day === startTime)?.count;
-    // This is the data for the current day
-    const currentData = data.find((item) => item.day === endTime)?.count;
+      data = [
+        {
+          day: previousDay,
+          count: 0,
+          group: sortedResults[0].group,
+          term: sortedResults[0].term,
+        },
+        {
+          day: lastDay,
+          count: sortedResults[0].count,
+          group: sortedResults[0].group,
+          term: sortedResults[0].term,
+        },
+      ];
+    }
 
-    // This is the percentage change for the last 7 days
-    // This is undefined if the data is not available for all the days
-    const percentageChangeInSevenDays =
-      !isUndefined(currentData) && !isUndefined(sevenDaysAgoData)
-        ? round(Math.abs(currentData - sevenDaysAgoData), 2)
-        : undefined;
+    // Data for the earliest day
+    const earliestDayData = first(data)?.count ?? 0;
+    // Data for the last day
+    const lastDayData = last(data)?.count ?? 0;
 
-    // This is true if the current data is greater than the earliest day data
-    // This is false if the data is not available for more than 1 day
-    const isIncreased = !isUndefined(currentData)
-      ? currentData >= (sevenDaysAgoData ?? 0)
-      : false;
+    // Percentage change for the last 7 days
+    const percentageChangeOverall = round(
+      Math.abs(lastDayData - earliestDayData),
+      2
+    );
+
+    // This is true if the current data is greater than or equal to the earliest day data
+    const isIncreased = (lastDayData ?? 0) >= (earliestDayData ?? 0);
 
     return {
       chartType,
       data,
       isIncreased,
-      percentageChange: percentageChangeInSevenDays,
-      currentPercentage: round(currentData ?? 0, 2),
+      percentageChange: percentageChangeOverall,
+      currentPercentage: round(lastDayData ?? 0, 2),
       noRecords: summaryChartData.results.every((item) => isEmpty(item)),
+      numberOfDays: data.length - 1,
     };
   };
 

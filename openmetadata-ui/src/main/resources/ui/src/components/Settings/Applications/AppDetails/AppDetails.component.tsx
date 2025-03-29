@@ -361,7 +361,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.SCHEDULE,
               children: (
-                <div className="p-lg">
+                <div className="p-lg border-default border-radius-sm">
                   {appData && (
                     <AppSchedule
                       appData={appData}
@@ -392,12 +392,10 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.RECENT_RUNS,
               children: (
-                <div className="p-lg">
-                  <AppRunsHistory
-                    appData={appData}
-                    jsonSchema={jsonSchema as RJSFSchema}
-                  />
-                </div>
+                <AppRunsHistory
+                  appData={appData}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
               ),
             },
           ]

@@ -229,9 +229,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
   );
+  const isDBService = useMemo(
+    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
+    [serviceCategory]
+  );
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget),
-    [CollateAIAgentsWidget]
+    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
+    [CollateAIAgentsWidget, isDBService]
   );
   const handleTypeFilterChange = useCallback(
     (type: Array<{ key: string; label: string }>) => {
@@ -334,11 +338,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         const isAgentTab = key === EntityTabs.AGENTS;
 
         if (isAgentTab) {
-          if (isCollateAIWidgetSupported) {
-            subTab = ServiceAgentSubTabs.COLLATE_AI;
-          } else {
-            subTab = ServiceAgentSubTabs.METADATA;
-          }
+          subTab = ServiceAgentSubTabs.METADATA;
         }
 
         history.push({
@@ -351,7 +351,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         });
       }
     },
-    [activeTab, decodedServiceFQN, serviceCategory, isCollateAIWidgetSupported]
+    [activeTab, decodedServiceFQN, serviceCategory]
   );
 
   const fetchCollateAgentsList = useCallback(
@@ -1124,67 +1124,61 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const testConnectionTab = useMemo(() => {
     return (
-      <Row className="p-md" gutter={[16, 16]}>
-        <Col className="p-x-lg" span={24}>
-          <Row>
-            <Col span={12}>
-              <AirflowMessageBanner />
-            </Col>
-            <Col span={12}>
-              <Space className="w-full justify-end">
-                <Tooltip
-                  title={
-                    servicePermission.EditAll
-                      ? t('label.edit-entity', {
-                          entity: t('label.connection'),
-                        })
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    ghost
-                    data-testid="edit-connection-button"
-                    disabled={!servicePermission.EditAll}
-                    type="primary"
-                    onClick={goToEditConnection}>
-                    {t('label.edit-entity', {
+      <div className="connection-tab-content">
+        <div className="flex items-center justify-between">
+          <AirflowMessageBanner />
+
+          <Space className="w-full justify-end">
+            <Tooltip
+              title={
+                servicePermission.EditAll
+                  ? t('label.edit-entity', {
                       entity: t('label.connection'),
-                    })}
-                  </Button>
-                </Tooltip>
-                {allowTestConn && isAirflowAvailable && (
-                  <Tooltip
-                    title={
-                      servicePermission.EditAll
-                        ? t('label.test-entity', {
-                            entity: t('label.connection'),
-                          })
-                        : t('message.no-permission-for-action')
-                    }>
-                    <TestConnection
-                      connectionType={serviceDetails?.serviceType ?? ''}
-                      getData={() => connectionDetails}
-                      isTestingDisabled={isTestingDisabled}
-                      serviceCategory={serviceCategory as ServiceCategory}
-                      serviceName={serviceDetails?.name}
-                      // validation is not required as we have all the data available and not in edit mode
-                      shouldValidateForm={false}
-                      showDetails={false}
-                    />
-                  </Tooltip>
-                )}
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-        <Col className="p-x-lg" span={24}>
-          <ServiceConnectionDetails
-            connectionDetails={connectionDetails ?? {}}
-            extraInfo={extraInfoData}
-            serviceCategory={serviceCategory}
-            serviceFQN={serviceDetails?.serviceType || ''}
-          />
-        </Col>
-      </Row>
+                    })
+                  : t('message.no-permission-for-action')
+              }>
+              <Button
+                ghost
+                data-testid="edit-connection-button"
+                disabled={!servicePermission.EditAll}
+                type="primary"
+                onClick={goToEditConnection}>
+                {t('label.edit-entity', {
+                  entity: t('label.connection'),
+                })}
+              </Button>
+            </Tooltip>
+            {allowTestConn && isAirflowAvailable && (
+              <Tooltip
+                title={
+                  servicePermission.EditAll
+                    ? t('label.test-entity', {
+                        entity: t('label.connection'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <TestConnection
+                  connectionType={serviceDetails?.serviceType ?? ''}
+                  getData={() => connectionDetails}
+                  isTestingDisabled={isTestingDisabled}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceName={serviceDetails?.name}
+                  // validation is not required as we have all the data available and not in edit mode
+                  shouldValidateForm={false}
+                  showDetails={false}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        </div>
+
+        <ServiceConnectionDetails
+          connectionDetails={connectionDetails ?? {}}
+          extraInfo={extraInfoData}
+          serviceCategory={serviceCategory}
+          serviceFQN={serviceDetails?.serviceType || ''}
+        />
+      </div>
     );
   }, [
     servicePermission.EditAll,

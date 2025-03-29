@@ -297,7 +297,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       sampleDataTab: !viewSampleDataPermission ? (
-        <div className="m-t-xlg">
+        <div className="border-default border-radius-sm p-y-lg">
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
         </div>
       ) : (
