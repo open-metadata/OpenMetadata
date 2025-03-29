@@ -299,6 +299,10 @@ const AddServicePage = () => {
     </div>
   );
 
+  useEffect(() => {
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"

@@ -765,6 +765,10 @@ class ServiceUtilClassBase {
     return widgets;
   }
 
+  public getExtraInfo() {
+    return null;
+  }
+
   public getProperties(property: ObjectFieldTemplatePropertyType[]) {
     return {
       properties: property,
