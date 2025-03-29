@@ -201,8 +201,11 @@ export const hardDeleteUserProfilePage = async (
   );
   await page.click('[data-testid="confirm-button"]');
 
-  await toastNotification(page, /deleted successfully!/);
   await deleteResponse;
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(
+    /deleted successfully!/
+  );
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
