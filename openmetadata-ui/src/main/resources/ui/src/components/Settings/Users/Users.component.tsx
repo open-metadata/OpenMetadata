@@ -343,26 +343,20 @@ const Users = ({
           </div>
         </Col>
         <Col flex="auto">
-          <Row className="mb-sm w-full">
-            <div className="tabs-container d-flex justify-center">
-              <Tabs
-                activeKey={currentTab}
-                className="user-page-tabs-new"
-                data-testid="tabs"
-                items={tabs.map((tab) => ({
-                  key: tab.key,
-                  label: tab.label,
-                  disabled: tab.disabled,
-                }))}
-                renderTabBar={(props, DefaultTabBar) => (
-                  <div>
-                    <DefaultTabBar {...props} />
-                  </div>
-                )}
-                onChange={activeTabHandler}
-              />
-            </div>
-          </Row>
+          <Tabs
+            activeKey={currentTab}
+            className="tabs-new"
+            data-testid="tabs"
+            items={tabs.map((tab) => ({
+              key: tab.key,
+              label: tab.label,
+              disabled: tab.disabled,
+            }))}
+            renderTabBar={(props, DefaultTabBar) => (
+              <DefaultTabBar {...props} />
+            )}
+            onChange={activeTabHandler}
+          />
           <Row gutter={[16, 16]}>
             <Col span={24}>
               {tabs.find((tab) => tab.key === currentTab)?.children}

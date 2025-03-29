@@ -95,6 +95,7 @@ const ServicesPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={search as string}
+            className="tabs-new"
             items={[
               ...(serviceName === 'dataObservabilityServices'
                 ? []

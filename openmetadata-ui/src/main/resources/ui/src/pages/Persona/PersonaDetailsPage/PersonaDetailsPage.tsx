@@ -242,6 +242,7 @@ export const PersonaDetailsPage = () => {
         <Col span={24}>
           <Tabs
             activeKey={activeKey}
+            className="tabs-new"
             items={tabItems}
             tabBarExtraContent={
               activeKey === 'users' && (

@@ -448,7 +448,7 @@ function AlertDetailsPage({
               <Col span={24}>
                 <Tabs
                   activeKey={tab}
-                  className="m-b-lg"
+                  className="tabs-new"
                   items={tabItems}
                   onTabClick={handleTabChange}
                 />

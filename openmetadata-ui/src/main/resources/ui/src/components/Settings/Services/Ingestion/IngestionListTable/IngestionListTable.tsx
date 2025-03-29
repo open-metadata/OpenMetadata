@@ -428,7 +428,7 @@ function IngestionListTable({
   return (
     <>
       <Row
-        className={classNames('m-b-md', tableContainerClassName)}
+        className={classNames(tableContainerClassName)}
         data-testid="ingestion-table"
         gutter={[16, 16]}>
         <Col span={24}>
