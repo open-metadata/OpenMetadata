@@ -13,6 +13,9 @@ unavailableFeatures=["Tags"]
 
 In this section, we provide guides and references to use the Airflow connector.
 
+- [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
+
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
@@ -64,3 +67,5 @@ In terms of `connection` we support the following selections:
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}

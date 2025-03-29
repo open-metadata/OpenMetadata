@@ -24,6 +24,7 @@ Configure and schedule KafkaConnect metadata and profiler workflows from the Ope
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/kafkaconnect/yaml"} /%}
 
@@ -103,3 +104,5 @@ If lineage information is not displayed for a Kafka Connect service, follow thes
 1. *Kafka Service Association*: Make sure the Kafka service that the data is being ingested from is associated with this Kafka Connect service. Additionally, verify that the correct name is passed on in the Kafka Service Name field during configuration. This field helps establish the lineage between the Kafka service and the Kafka Connect flow.
 2. *Source and Sink Configuration*: Verify that the Kafka Connect connector associated with the service is configured with a source and/or sink database or storage system. Connectors without a defined source or sink cannot provide lineage data.
 3. *Metadata Ingestion*: Ensure that metadata for both the source and sink database/storage systems is ingested and passed to the lineage system. This typically involves configuring the relevant connectors to capture and transmit this information.
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}

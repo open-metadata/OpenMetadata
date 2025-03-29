@@ -17,6 +17,7 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/glue-pipeline/yaml"} /%}
 
@@ -125,3 +126,5 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}

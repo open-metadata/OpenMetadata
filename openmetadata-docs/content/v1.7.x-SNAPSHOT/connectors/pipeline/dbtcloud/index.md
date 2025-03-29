@@ -24,6 +24,7 @@ Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMe
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
 
@@ -108,3 +109,5 @@ If lineage information is not displayed for a DBT Cloud service, follow these st
 1. *DBT Cloud Account*: Make sure that the DBT cloud instance you are ingesting have the necessary permissions to fetch jobs and run graphql queries over the API.
 2. *Metadata Ingestion*: Ensure that metadata for both the source and sink database is ingested and passed to the lineage system. This typically involves configuring the relevant connectors to capture and transmit this information.
 3. *Last Run Successful*: Ensure that the Last Run for a Job is successful as OpenMetadata gets the metadata required to build the lineage using the last Run under a Job.
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}
