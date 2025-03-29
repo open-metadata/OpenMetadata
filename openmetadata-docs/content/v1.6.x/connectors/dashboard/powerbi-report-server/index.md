@@ -17,6 +17,7 @@ Configure and schedule PowerBI Report Server metadata from CLI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
@@ -65,3 +66,5 @@ Web Portal Virtual Directory name which you have configured in your PowerBI Repo
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}
