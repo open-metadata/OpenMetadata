@@ -17,6 +17,7 @@ Configure and schedule REST metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/api/rest/yaml"} /%}
 
@@ -60,3 +61,5 @@ An OpenAPI schema URL typically refers to the URL where the OpenAPI Specificatio
 {% /stepsContainer %}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}

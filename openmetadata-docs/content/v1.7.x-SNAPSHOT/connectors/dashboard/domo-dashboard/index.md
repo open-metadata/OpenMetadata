@@ -16,6 +16,7 @@ In this section, we provide guides and references to use the DomoDashboard conne
 Configure and schedule DomoDashboard metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/domo-dashboard/yaml"} /%}
 
@@ -58,3 +59,5 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 {% /stepsContainer %}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}
