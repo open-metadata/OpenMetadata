@@ -119,7 +119,6 @@ class BaseModel(PydanticBaseModel):
                 round_trip=round_trip,
                 warnings=warnings,
                 serialize_as_any=serialize_as_any,
-                fallback=fallback,
             ),
             ensure_ascii=True,
         )
