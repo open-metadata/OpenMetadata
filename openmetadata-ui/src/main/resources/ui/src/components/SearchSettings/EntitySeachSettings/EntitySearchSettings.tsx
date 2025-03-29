@@ -526,10 +526,10 @@ const EntitySearchSettings = () => {
   return (
     <PageLayoutV1
       className="entity-search-settings"
-      mainContainerClassName="p-t-0"
+      mainContainerClassName="p-t-0 p-x-0"
       pageTitle={t('label.search')}>
       <Row
-        className="entity-search-settings-header bg-white m-b-lg p-box"
+        className="entity-search-settings-header bg-white m-b-lg p-box m-t-0"
         data-testid="entity-search-settings-header"
         gutter={[0, 16]}>
         <Col span={24}>
