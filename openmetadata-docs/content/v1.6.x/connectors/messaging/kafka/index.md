@@ -18,6 +18,7 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-kafka-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kafka/yaml"} /%}
 
@@ -79,3 +80,5 @@ To establish secure connections between OpenMetadata and Kafka, navigate to the 
   caption="SSL Configuration" /%}
 
 {% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.6/connectors/connectors-troubleshooting.md" /%}

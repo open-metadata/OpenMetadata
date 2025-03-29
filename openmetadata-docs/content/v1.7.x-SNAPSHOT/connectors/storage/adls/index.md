@@ -18,6 +18,7 @@ Configure and schedule ADLS metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/adls/yaml"} /%}
 
@@ -183,3 +184,5 @@ desired.
 {% /stepsContainer %}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}

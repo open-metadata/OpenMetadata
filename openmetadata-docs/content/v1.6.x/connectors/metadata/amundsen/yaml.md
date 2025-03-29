@@ -18,7 +18,6 @@ Configure and schedule Amundsen metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-
 {% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements

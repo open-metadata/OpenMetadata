@@ -74,3 +74,5 @@ Then, prepare the Atlas Service and configure the Ingestion:
 {% /stepsContainer %}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}

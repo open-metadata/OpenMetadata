@@ -17,6 +17,7 @@ Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](#troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kinesis/yaml"} /%}
 
@@ -143,3 +144,5 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% /stepsContainer %}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.7/connectors/connectors-troubleshooting.md" /%}
