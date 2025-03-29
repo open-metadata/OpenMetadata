@@ -83,6 +83,10 @@ export interface User {
      */
     isEmailVerified?: boolean;
     /**
+     * Last time the user logged in.
+     */
+    lastLoginTime?: number;
+    /**
      * A unique name of the user, typically the user ID from an identity provider. Example - uid
      * from LDAP.
      */
