@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -60,7 +62,11 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -284,7 +290,17 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Valid CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, dataProduct);
+    EntityReference domain = dataProduct.getDomain(); // domain is always non-null
+    ResourceContext<?> domainResourceContext =
+        new ResourceContext<>(Entity.DOMAIN, domain.getId(), null);
+
+    // If the user has domain-level permissions, allow to have the same permissions at the data
+    // product level
+    OperationContext domainOperationContext =
+        new OperationContext(Entity.DOMAIN, createOrUpdateOperation(domainResourceContext));
+    List<AuthRequest> authRequests =
+        List.of(new AuthRequest(domainOperationContext, domainResourceContext));
+    return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, dataProduct);
   }
 
   @PUT
@@ -309,7 +325,18 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Valid CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, dataProduct);
+    EntityReference domain = dataProduct.getDomain(); // domain is always non-null
+    ResourceContext<?> domainResourceContext =
+        new ResourceContext<>(Entity.DOMAIN, domain.getId(), null);
+
+    // If the user has domain-level permissions, allow to have the same permissions at the data
+    // product level
+    OperationContext domainOperationContext =
+        new OperationContext(Entity.DOMAIN, createOrUpdateOperation(domainResourceContext));
+    List<AuthRequest> authRequests =
+        List.of(new AuthRequest(domainOperationContext, domainResourceContext));
+    return createOrUpdate(
+        uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, dataProduct);
   }
 
   @PUT
