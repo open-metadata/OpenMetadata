@@ -1,5 +1,9 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.MANUAL_RETRY_MESSAGE;
+import static org.openmetadata.service.governance.workflows.Workflow.RETRY_LOCK_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.STEP_TO_RETRY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
@@ -28,8 +32,10 @@ import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.eventsubscription.api.EventSubscription;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
@@ -437,5 +443,84 @@ public class WorkflowHandler {
               runtimeService.deleteProcessInstance(
                   instance.getId(), "Terminating all instances due to user request.");
             });
+  }
+
+  public void retryFromStep(String executionId, String stepToRetry) {
+    if (CommonUtil.nullOrEmpty(stepToRetry)) {
+      LOG.warn("StepToRetry is null. No Retry will be done");
+      return;
+    }
+    processEngine
+        .getRuntimeService()
+        .createChangeActivityStateBuilder()
+        .moveExecutionToActivityId(executionId, stepToRetry)
+        .changeState();
+  }
+
+  public void retryWorkflowInstance(
+      String workflowName, UUID workflowInstance, String stepToRetry) {
+    RuntimeService runtimeService = processEngine.getRuntimeService();
+    String processInstanceId =
+        Optional.ofNullable(
+                runtimeService
+                    .createExecutionQuery()
+                    .processInstanceBusinessKey(workflowInstance.toString())
+                    .processDefinitionKey(workflowName)
+                    .singleResult())
+            .map(Execution::getProcessInstanceId)
+            .orElse(null);
+
+    if (processInstanceId == null) {
+      LOG.info(String.format("WorkflowInstance %s is not being executed.", workflowInstance));
+      return;
+    }
+
+    String executionId =
+        Optional.ofNullable(
+                runtimeService
+                    .createEventSubscriptionQuery()
+                    .processInstanceId(processInstanceId)
+                    .eventType("MESSAGE")
+                    .eventName(MANUAL_RETRY_MESSAGE)
+                    .singleResult())
+            .map(EventSubscription::getExecutionId)
+            .orElse(null);
+
+    if (executionId == null) {
+      LOG.info(
+          String.format(
+              "WorkflowInstance %s is not waiting for a '%s' Message.",
+              workflowInstance, MANUAL_RETRY_MESSAGE));
+      return;
+    }
+
+    int maxRetries = 10;
+    int retryIntervalMillis = 30000;
+    int retries = 0;
+    String retryLockVarName = getNamespacedVariableName(GLOBAL_NAMESPACE, RETRY_LOCK_VARIABLE);
+
+    while (retries < maxRetries) {
+      Boolean retryLock = (Boolean) runtimeService.getVariable(processInstanceId, retryLockVarName);
+
+      if (retryLock == null || !retryLock) {
+        Map<String, Object> retryVariables = new HashMap<>();
+        retryVariables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, STEP_TO_RETRY_VARIABLE), stepToRetry);
+
+        runtimeService.setVariable(processInstanceId, retryLockVarName, true);
+        runtimeService.messageEventReceived(MANUAL_RETRY_MESSAGE, executionId, retryVariables);
+        LOG.info(
+            String.format("WorkflowInstance %s retrying from %s", workflowInstance, stepToRetry));
+        break;
+      } else {
+        retries++;
+        try {
+          Thread.sleep(retryIntervalMillis);
+          retryIntervalMillis = retryIntervalMillis * 2;
+        } catch (InterruptedException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+    }
   }
 }

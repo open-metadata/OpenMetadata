@@ -17,6 +17,7 @@ export enum NodeSubType {
     CheckEntityAttributesTask = "checkEntityAttributesTask",
     CreateAndRunIngestionPipelineTask = "createAndRunIngestionPipelineTask",
     EndEvent = "endEvent",
+    ManualRetryTask = "manualRetryTask",
     ParallelGateway = "parallelGateway",
     RunAppTask = "runAppTask",
     SetEntityCertificationTask = "setEntityCertificationTask",

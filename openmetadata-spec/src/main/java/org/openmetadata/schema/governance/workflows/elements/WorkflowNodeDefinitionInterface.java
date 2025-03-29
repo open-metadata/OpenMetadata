@@ -14,6 +14,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ManualRetryTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "subType")
@@ -35,6 +36,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
       name = "createAndRunIngestionPipelineTask"),
   @JsonSubTypes.Type(value = RunAppTaskDefinition.class, name = "runAppTask"),
   @JsonSubTypes.Type(value = ParallelGatewayDefinition.class, name = "parallelGateway"),
+  @JsonSubTypes.Type(value = ManualRetryTaskDefinition.class, name = "manualRetryTask"),
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();
