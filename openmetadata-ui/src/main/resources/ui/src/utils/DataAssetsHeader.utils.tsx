@@ -14,8 +14,8 @@
 
 import { Divider } from 'antd';
 import { t } from 'i18next';
-import { isObject, isUndefined } from 'lodash';
-import React from 'react';
+import { isArray, isObject, isUndefined } from 'lodash';
+import React, { ReactNode } from 'react';
 import {
   ExtraInfoLabel,
   ExtraInfoLink,
@@ -673,4 +673,15 @@ export const isDataAssetsWithServiceField = (
   asset: DataAssetsType
 ): asset is DataAssetsWithServiceField => {
   return (asset as DataAssetsWithServiceField).service !== undefined;
+};
+
+export const getEntityExtraInfoLength = (element: ReactNode): number => {
+  if (React.isValidElement(element)) {
+    if (isArray(element.props.children)) {
+      return element.props.children?.filter((child?: ReactNode) => child)
+        .length;
+    }
+  }
+
+  return 0;
 };
