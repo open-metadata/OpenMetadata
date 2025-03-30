@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
@@ -67,6 +68,8 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -293,13 +296,18 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     EntityReference domain = dataProduct.getDomain(); // domain is always non-null
     ResourceContext<?> domainResourceContext =
         new ResourceContext<>(Entity.DOMAIN, domain.getId(), null);
+    ResourceContext<?> dataProductResourceContext = getResourceContext();
+    OperationContext dataProductOperationContext =
+        new OperationContext(entityType, MetadataOperation.CREATE);
 
     // If the user has domain-level permissions, allow to have the same permissions at the data
     // product level
     OperationContext domainOperationContext =
         new OperationContext(Entity.DOMAIN, createOrUpdateOperation(domainResourceContext));
     List<AuthRequest> authRequests =
-        List.of(new AuthRequest(domainOperationContext, domainResourceContext));
+        List.of(
+            new AuthRequest(domainOperationContext, domainResourceContext),
+            new AuthRequest(dataProductOperationContext, dataProductResourceContext));
     return create(uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, dataProduct);
   }
 
@@ -325,16 +333,30 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Valid CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    // If the user has domain-level permissions, allow to have the same permissions at the data
+    // product level
     EntityReference domain = dataProduct.getDomain(); // domain is always non-null
     ResourceContext<?> domainResourceContext =
         new ResourceContext<>(Entity.DOMAIN, domain.getId(), null);
-
-    // If the user has domain-level permissions, allow to have the same permissions at the data
-    // product level
     OperationContext domainOperationContext =
         new OperationContext(Entity.DOMAIN, createOrUpdateOperation(domainResourceContext));
+
+    ResourceContext<?> updateDataProductResourceContext =
+        getResourceContextByName(
+            FullyQualifiedName.quoteName(dataProduct.getName()),
+            ResourceContextInterface.Operation.PUT);
+    OperationContext updateDataProductOperationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+
+    ResourceContext<?> postDataProductResourceContext = getResourceContext();
+    OperationContext postDataProductOperationContext =
+        new OperationContext(entityType, MetadataOperation.CREATE);
+
     List<AuthRequest> authRequests =
-        List.of(new AuthRequest(domainOperationContext, domainResourceContext));
+        List.of(
+            new AuthRequest(domainOperationContext, domainResourceContext),
+            new AuthRequest(updateDataProductOperationContext, updateDataProductResourceContext),
+            new AuthRequest(postDataProductOperationContext, postDataProductResourceContext));
     return createOrUpdate(
         uriInfo, securityContext, authRequests, AuthorizationLogic.ANY, dataProduct);
   }
