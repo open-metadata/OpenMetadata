@@ -93,9 +93,9 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     setAsyncDeleteJob(updatedAsyncDeleteJob);
     asyncDeleteJobRef.current = updatedAsyncDeleteJob;
 
-    if (asyncDeleteJobRef.current?.status === 'FAILED') {
+    if (response.status === 'FAILED') {
       showErrorToast(
-        asyncDeleteJobRef.current.error ??
+        response.error ??
           t('server.delete-entity-error', {
             entity: response.entityName,
           })
