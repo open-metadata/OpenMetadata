@@ -52,6 +52,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
   fetchDatabaseSchemaDetails,
   handleFeedCount,
   tableCount,
+  labelMap,
 }: DatabaseSchemaPageTabProps): TabProps[] => {
   return [
     {
@@ -60,7 +61,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
           count={tableCount}
           id={EntityTabs.TABLE}
           isActive={activeTab === EntityTabs.TABLE}
-          name={t('label.table-plural')}
+          name={labelMap[EntityTabs.TABLE] || t('label.table-plural')}
         />
       ),
       key: EntityTabs.TABLE,
@@ -72,7 +73,10 @@ export const getDataBaseSchemaPageBaseTabs = ({
           count={storedProcedureCount}
           id={EntityTabs.STORED_PROCEDURE}
           isActive={activeTab === EntityTabs.STORED_PROCEDURE}
-          name={t('label.stored-procedure-plural')}
+          name={
+            labelMap[EntityTabs.STORED_PROCEDURE] ||
+            t('label.stored-procedure-plural')
+          }
         />
       ),
       key: EntityTabs.STORED_PROCEDURE,
@@ -82,17 +86,21 @@ export const getDataBaseSchemaPageBaseTabs = ({
       label: (
         <TabsLabel
           count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEEDS}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEEDS}
-          name={t('label.activity-feed-plural')}
+          id={EntityTabs.ACTIVITY_FEED}
+          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
+          name={
+            labelMap[EntityTabs.ACTIVITY_FEED] ||
+            t('label.activity-feed-and-task-plural')
+          }
         />
       ),
-      key: EntityTabs.ACTIVITY_FEEDS,
+      key: EntityTabs.ACTIVITY_FEED,
       children: (
         <ActivityFeedTab
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DATABASE_SCHEMA}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDatabaseSchemaDetails}
@@ -104,20 +112,21 @@ export const getDataBaseSchemaPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={
+            labelMap[EntityTabs.CUSTOM_PROPERTIES] ||
+            t('label.custom-property-plural')
+          }
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
-            className=""
-            entityType={EntityType.DATABASE_SCHEMA}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
+          className=""
+          entityType={EntityType.DATABASE_SCHEMA}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+          isVersionView={false}
+        />
       ),
     },
   ];

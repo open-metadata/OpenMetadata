@@ -244,7 +244,6 @@ const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
     (entityStats: EntityStats) => {
       return (
         <Table
-          bordered
           className="m-t-md"
           columns={tableColumn}
           data-testid="app-entity-stats-history-table"

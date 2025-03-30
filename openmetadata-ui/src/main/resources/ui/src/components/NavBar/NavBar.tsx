@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Alert, Badge, Button, Dropdown, InputRef, Typography } from 'antd';
+import {
+  Alert,
+  Badge,
+  Button,
+  Dropdown,
+  InputRef,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
@@ -32,6 +40,8 @@ import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
+import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
+import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
@@ -84,7 +94,13 @@ import popupAlertsCardsClassBase from './PopupAlertClassBase';
 
 const cookieStorage = new CookieStorage();
 
-const NavBar: React.FC = () => {
+const NavBar = ({
+  isSidebarCollapsed = true,
+  toggleSideBar,
+}: {
+  isSidebarCollapsed?: boolean;
+  toggleSideBar?: () => void;
+}) => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
@@ -387,7 +403,29 @@ const NavBar: React.FC = () => {
     <>
       <Header>
         <div className="navbar-container">
-          <GlobalSearchBar />
+          <div className="flex-center">
+            <Tooltip
+              placement="right"
+              title={
+                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
+              }>
+              <Button
+                className="mr-2"
+                data-testid="sidebar-toggle"
+                icon={
+                  isSidebarCollapsed ? (
+                    <SidebarCollapsedIcon height={24} width={24} />
+                  ) : (
+                    <SidebarExpandedIcon height={24} width={24} />
+                  )
+                }
+                size="middle"
+                type="text"
+                onClick={toggleSideBar}
+              />
+            </Tooltip>
+            <GlobalSearchBar />
+          </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">
             <DomainSelectableList
@@ -464,7 +502,7 @@ const NavBar: React.FC = () => {
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
                     offset={[-3, 3]}>
-                    <IconBell width={20} />
+                    <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
                 size="large"

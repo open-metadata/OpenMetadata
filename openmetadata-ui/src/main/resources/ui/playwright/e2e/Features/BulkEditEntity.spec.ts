@@ -181,11 +181,21 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user1.responseData?.['displayName']);
+        page.getByRole('link', {
+          name: EntityDataClass.user1.responseData?.[
+            'displayName'
+          ][0].toUpperCase(),
+          exact: true,
+        })
+      ).toBeVisible();
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user2.responseData?.['displayName']);
+        page.getByRole('link', {
+          name: EntityDataClass.user2.responseData?.[
+            'displayName'
+          ][0].toUpperCase(),
+          exact: true,
+        })
+      ).toBeVisible();
 
       // Verify Tags
       await expect(
@@ -318,11 +328,12 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user1.responseData?.['displayName']);
+        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
+      ).toBeVisible();
+
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user2.responseData?.['displayName']);
+        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
+      ).toBeVisible();
 
       await page.getByTestId('column-display-name').click();
 
@@ -458,15 +469,11 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page
-          .getByTestId('owner-label')
-          .getByTestId(`${EntityDataClass.user1.responseData?.['displayName']}`)
+        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
       ).toBeVisible();
 
       await expect(
-        page
-          .getByTestId('owner-label')
-          .getByTestId(`${EntityDataClass.user2.responseData?.['displayName']}`)
+        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Tags
@@ -556,6 +563,10 @@ test.describe('Bulk Edit Entity', () => {
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
+
+      await page.waitForSelector('.message-banner-wrapper', {
+        state: 'detached',
+      });
 
       await toastNotification(page, /details updated successfully/);
 

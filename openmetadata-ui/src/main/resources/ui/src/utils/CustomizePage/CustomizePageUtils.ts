@@ -47,7 +47,7 @@ export const getGlossaryTermDefaultTabs = () => {
   return [
     {
       id: EntityTabs.OVERVIEW,
-      displayName: 'Overview',
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.OVERVIEW]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.OVERVIEW
       ),
@@ -56,7 +56,7 @@ export const getGlossaryTermDefaultTabs = () => {
     },
     {
       id: EntityTabs.GLOSSARY_TERMS,
-      displayName: 'Glossary Terms',
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.GLOSSARY_TERMS]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.GLOSSARY_TERMS
       ),
@@ -65,7 +65,7 @@ export const getGlossaryTermDefaultTabs = () => {
     },
     {
       id: EntityTabs.ASSETS,
-      displayName: 'Assets',
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ASSETS]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.ASSETS
       ),
@@ -73,7 +73,7 @@ export const getGlossaryTermDefaultTabs = () => {
       editable: false,
     },
     {
-      displayName: 'Activity Feeds & Tasks',
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED]),
       name: EntityTabs.ACTIVITY_FEED,
       id: EntityTabs.ACTIVITY_FEED,
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
@@ -84,7 +84,7 @@ export const getGlossaryTermDefaultTabs = () => {
     {
       id: EntityTabs.CUSTOM_PROPERTIES,
       name: EntityTabs.CUSTOM_PROPERTIES,
-      displayName: 'Custom Property',
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.CUSTOM_PROPERTIES
       ),
@@ -98,14 +98,14 @@ export const getGlossaryDefaultTabs = () => {
     {
       id: EntityTabs.TERMS,
       name: EntityTabs.TERMS,
-      displayName: 'Terms',
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.TERMS]),
       layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
         EntityTabs.TERMS
       ),
       editable: true,
     },
     {
-      displayName: 'Activity Feeds & Tasks',
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED]),
       name: EntityTabs.ACTIVITY_FEED,
       id: EntityTabs.ACTIVITY_FEED,
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
@@ -163,7 +163,7 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
         {
           id: EntityTabs.CUSTOM_PROPERTIES,
           name: EntityTabs.CUSTOM_PROPERTIES,
-          displayName: 'Custom Property',
+          displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES]),
           layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
             EntityTabs.CUSTOM_PROPERTIES
           ),
@@ -175,8 +175,9 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
 export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
   switch (pageType) {
     case PageType.GlossaryTerm:
-    case PageType.Glossary:
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+    case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getDefaultWidgetForTab(tab);
     case PageType.Table:
       return tableClassBase.getDefaultLayout(tab);
     case PageType.Topic:
@@ -354,6 +355,10 @@ export const getWidgetsFromKey = (
       return metricDetailsClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.MlModel:
       return mlModelClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.GlossaryTerm:
+      return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -392,6 +397,10 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return metricDetailsClassBase.getWidgetHeight(widgetName);
     case PageType.MlModel:
       return mlModelClassBase.getWidgetHeight(widgetName);
+    case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getWidgetHeight(widgetName);
+    case PageType.GlossaryTerm:
+      return customizeGlossaryTermPageClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }

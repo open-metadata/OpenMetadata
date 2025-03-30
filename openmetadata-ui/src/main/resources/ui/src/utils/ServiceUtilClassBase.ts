@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { capitalize, get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
@@ -130,6 +131,7 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -207,6 +209,35 @@ class ServiceUtilClassBase {
 
   filterUnsupportedServiceType(types: string[]) {
     return types.filter((type) => !this.unSupportedServices.includes(type));
+  }
+
+  public getServiceConfigData(data: {
+    serviceName: string;
+    serviceType: string;
+    description: string;
+    userId: string;
+    configData: ConfigData;
+  }) {
+    const { serviceName, serviceType, description, userId, configData } = data;
+
+    return {
+      name: serviceName,
+      serviceType: serviceType,
+      description: description,
+      owners: [
+        {
+          id: userId,
+          type: 'user',
+        },
+      ],
+      connection: {
+        config: configData,
+      },
+    };
+  }
+
+  public getServiceExtraInfo(_data?: ServicesType): any {
+    return null;
   }
 
   public getSupportedServiceFromList() {
@@ -732,6 +763,42 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getExtraInfo() {
+    return null;
+  }
+
+  public getProperties(property: ObjectFieldTemplatePropertyType[]) {
+    return {
+      properties: property,
+      additionalField: '',
+      additionalFieldContent: null,
+    };
+  }
+
+  public getEditConfigData(
+    serviceData?: ServicesType,
+    data?: ConfigData
+  ): ServicesType {
+    if (!serviceData || !data) {
+      return serviceData as ServicesType;
+    }
+    const updatedData = { ...serviceData };
+    if (updatedData.connection) {
+      const connection = updatedData.connection as {
+        config: Record<string, unknown>;
+      };
+      updatedData.connection = {
+        ...connection,
+        config: {
+          ...connection.config,
+          ...data,
+        },
+      } as typeof updatedData.connection;
+    }
+
+    return updatedData;
   }
 
   public getAgentsTabWidgets() {

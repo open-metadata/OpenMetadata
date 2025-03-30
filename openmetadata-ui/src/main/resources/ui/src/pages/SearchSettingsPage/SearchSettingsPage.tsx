@@ -168,7 +168,8 @@ const SearchSettingsPage = () => {
   };
 
   // Term Boost
-  const handleAddNewTermBoost = () => {
+  const handleAddNewTermBoost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     setShowNewTermBoost(true);
   };
 
@@ -236,7 +237,8 @@ const SearchSettingsPage = () => {
 
   // Field Value Boost
 
-  const handleAddFieldValueBoost = () => {
+  const handleAddFieldValueBoost = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     setSelectedFieldValueBoost(undefined);
     setShowFieldValueBoostModal(true);
   };
@@ -305,7 +307,7 @@ const SearchSettingsPage = () => {
       className="search-settings"
       mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
-      <Row className="p-y-md p-x-lg settings-row" gutter={[0, 16]}>
+      <Row className="p-y-md settings-row" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -313,7 +315,7 @@ const SearchSettingsPage = () => {
           <PageHeader data={PAGE_HEADERS.SEARCH_SETTINGS} />
         </Col>
       </Row>
-      <Row className="p-y-md p-x-lg settings-row" gutter={[0, 16]}>
+      <Row className="p-y-md settings-row" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title className="text-sm font-semibold" level={5}>
             {t('label.global-setting-plural')}
@@ -383,6 +385,7 @@ const SearchSettingsPage = () => {
                       <Button
                         className="term-boost-add-btn"
                         data-testid="term-boost-add-btn"
+                        disabled={isUpdating || showNewTermBoost}
                         icon={
                           <Icon className="text-sm" component={PlusOutlined} />
                         }
@@ -421,6 +424,7 @@ const SearchSettingsPage = () => {
                       <Button
                         className="field-value-boost-add-btn"
                         data-testid="add-field-value-boost-btn"
+                        disabled={isUpdating || showFieldValueBoostModal}
                         icon={
                           <Icon className="text-sm" component={PlusOutlined} />
                         }

@@ -204,10 +204,16 @@ test.describe('Teams drag and drop should work properly', () => {
       await page.getByRole('link', { name: teamName }).click();
       await getTeamResponse;
 
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await hardDeleteTeam(page);
 
       // Validate the deleted team
-      await expect(page.locator('table')).not.toContainText(teamName);
+      await expect(
+        page.getByRole('cell', { name: teamName })
+      ).not.toBeVisible();
     }
   });
 });

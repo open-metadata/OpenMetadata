@@ -521,9 +521,7 @@ export const validateGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
-  await taskCountRes;
 
   const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page

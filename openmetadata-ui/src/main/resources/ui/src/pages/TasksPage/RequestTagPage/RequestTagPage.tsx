@@ -172,9 +172,9 @@ const RequestTag = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -270,9 +270,9 @@ const RequestTag = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.request-tag-plural')}
       secondPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 60,
         flex: 0.4,
         children: (
@@ -293,4 +293,4 @@ const RequestTag = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.task'))(RequestTag);
+export default withPageLayout(i18n.t('label.request-tag-plural'))(RequestTag);

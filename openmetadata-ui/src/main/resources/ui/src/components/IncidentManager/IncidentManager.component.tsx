@@ -74,7 +74,6 @@ import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
@@ -607,12 +606,19 @@ const IncidentManager = ({
 
       <Col span={24}>
         <Table
-          bordered
           className="test-case-table-container"
           columns={columns}
           data-testid="test-case-incident-manager-table"
           dataSource={testCaseListData.data}
           loading={testCaseListData.isLoading}
+          {...(pagingData && showPagination
+            ? {
+                customPaginationProps: {
+                  ...pagingData,
+                  showPagination,
+                },
+              }
+            : {})}
           locale={{
             emptyText: (
               <FilterTablePlaceHolder
@@ -622,15 +628,12 @@ const IncidentManager = ({
           }}
           pagination={false}
           rowKey="id"
+          scroll={{
+            x: true,
+          }}
           size="small"
         />
       </Col>
-
-      {pagingData && showPagination && (
-        <Col span={24}>
-          <NextPrevious {...pagingData} />
-        </Col>
-      )}
     </Row>
   );
 };

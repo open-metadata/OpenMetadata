@@ -222,11 +222,11 @@ const AddNotificationPage = () => {
   return (
     <ResizablePanels
       hideSecondPanel
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-containere',
         children: (
-          <div className="steps-form-container">
+          <div className="steps-form-container service-form-container">
             <Row className="page-container" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -349,8 +349,8 @@ const AddNotificationPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.alert'),
+      pageTitle={t('label.add-entity', {
+        entity: t('label.notification-alert'),
       })}
       secondPanel={{
         children: <></>,
@@ -362,7 +362,7 @@ const AddNotificationPage = () => {
 };
 
 export default withPageLayout(
-  i18n.t('label.entity-detail-plural', {
-    entity: i18n.t('label.alert'),
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.notification-alert'),
   })
 )(AddNotificationPage);

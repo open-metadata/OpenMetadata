@@ -98,7 +98,6 @@ import {
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import './table-details-page-v1.less';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -496,7 +495,7 @@ const TableDetailsPageV1: React.FC = () => {
       activeTab,
       deleted,
       tableDetails,
-      totalFeedCount: feedCount.totalCount,
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
@@ -766,7 +765,6 @@ const TableDetailsPageV1: React.FC = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.table'),
       })}
@@ -779,7 +777,7 @@ const TableDetailsPageV1: React.FC = () => {
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <Col data-testid="entity-page-header" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -804,7 +802,7 @@ const TableDetailsPageV1: React.FC = () => {
           <Col span={24}>
             <Tabs
               activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
-              className="table-details-page-tabs entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

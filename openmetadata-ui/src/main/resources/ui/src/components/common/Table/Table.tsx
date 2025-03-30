@@ -42,6 +42,8 @@ import {
 } from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
+import NextPrevious from '../NextPrevious/NextPrevious';
+import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
   TableColumnDropdownList,
@@ -49,9 +51,10 @@ import {
 } from './Table.interface';
 import './table.less';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
-const Table = <T extends object = any>(
-  { loading, ...rest }: TableComponentProps<T>,
+type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
+
+const Table = <T extends Record<string, unknown>>(
+  { loading, searchProps, customPaginationProps, ...rest }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
@@ -172,6 +175,10 @@ const Table = <T extends object = any>(
       }
     : {};
 
+  const handleSearchAction = (value: string) => {
+    searchProps?.onSearch?.(value);
+  };
+
   useEffect(() => {
     if (!isFullViewTable) {
       setDropdownColumnList(
@@ -200,45 +207,63 @@ const Table = <T extends object = any>(
   ]);
 
   return (
-    <Row className="table-container" gutter={[0, 16]}>
-      {(rest.extraTableFilters || !isFullViewTable) && (
-        <Col
-          className={classNames(
-            'd-flex justify-end items-center gap-5',
-            rest.extraTableFiltersClassName
+    <Row className={classNames('table-container', rest.containerClassName)}>
+      <Col
+        className={classNames({
+          'p-y-md': searchProps || rest.extraTableFilters || !isFullViewTable,
+        })}
+        span={24}>
+        <Row className="p-x-md">
+          {searchProps ? (
+            <Col span={12}>
+              <Searchbar
+                {...searchProps}
+                removeMargin
+                placeholder={searchProps?.placeholder ?? t('label.search')}
+                searchValue={searchProps?.value}
+                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                onSearch={handleSearchAction}
+              />
+            </Col>
+          ) : null}
+          {(rest.extraTableFilters || !isFullViewTable) && (
+            <Col
+              className={classNames(
+                'd-flex justify-end items-center gap-5',
+                rest.extraTableFiltersClassName
+              )}
+              span={searchProps ? 12 : 24}>
+              {rest.extraTableFilters}
+              {!isFullViewTable && (
+                <DndProvider backend={HTML5Backend}>
+                  <Dropdown
+                    className="custom-column-dropdown-menu"
+                    menu={menu}
+                    open={isDropdownVisible}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setIsDropdownVisible}>
+                    <Button
+                      data-testid="column-dropdown"
+                      icon={<Icon component={ColumnIcon} />}>
+                      {t('label.column-plural')}
+                    </Button>
+                  </Dropdown>
+                </DndProvider>
+              )}
+            </Col>
           )}
-          span={24}>
-          {rest.extraTableFilters}
-          {!isFullViewTable && (
-            <DndProvider backend={HTML5Backend}>
-              <Dropdown
-                className="custom-column-dropdown-menu"
-                getPopupContainer={(trigger) => {
-                  const customContainer = trigger.closest(
-                    '.custom-column-dropdown-menu'
-                  );
+        </Row>
+      </Col>
 
-                  return customContainer as HTMLElement;
-                }}
-                menu={menu}
-                open={isDropdownVisible}
-                trigger={['click']}
-                onOpenChange={setIsDropdownVisible}>
-                <Button
-                  data-testid="column-dropdown"
-                  icon={<Icon component={ColumnIcon} />}>
-                  {t('label.column-plural')}
-                </Button>
-              </Dropdown>
-            </DndProvider>
-          )}
-        </Col>
-      )}
       <Col span={24}>
         <AntdTable
           {...rest}
           columns={propsColumns}
-          expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
+          expandable={{
+            ...getTableExpandableConfig<T>(),
+            ...rest.expandable,
+          }}
           loading={{
             spinning: isLoading,
             indicator: <Loader />,
@@ -250,10 +275,19 @@ const Table = <T extends object = any>(
           ref={ref}
           tableLayout="fixed"
           {...resizingTableProps}
+          scroll={{
+            y: 740,
+            x: resizingTableProps.scroll?.x || rest.scroll?.x,
+          }}
         />
       </Col>
+      {customPaginationProps && customPaginationProps.showPagination ? (
+        <Col span={24}>
+          <NextPrevious {...customPaginationProps} />
+        </Col>
+      ) : null}
     </Row>
   );
 };
 
-export default forwardRef<HTMLDivElement, TableComponentProps<any>>(Table);
+export default forwardRef<HTMLDivElement, TableProps<any>>(Table);

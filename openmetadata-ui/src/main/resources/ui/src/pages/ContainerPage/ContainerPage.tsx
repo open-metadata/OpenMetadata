@@ -26,6 +26,7 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -51,6 +52,7 @@ import { FeedCounts } from '../../interface/feed.interface';
 import {
   addContainerFollower,
   getContainerByName,
+  getContainerChildrenByName,
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
@@ -93,6 +95,7 @@ const ContainerPage = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [childrenCount, setChildrenCount] = useState<number>(0);
 
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
@@ -164,6 +167,21 @@ const ContainerPage = () => {
       setIsLoading(false);
     }
   };
+
+  // Fetch children count to show it in Tab label
+  const fetchContainerChildren = useCallback(async () => {
+    try {
+      const { paging } = await getContainerChildrenByName(
+        decodedContainerName,
+        {
+          limit: 0,
+        }
+      );
+      setChildrenCount(paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [decodedContainerName]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -443,6 +461,7 @@ const ContainerPage = () => {
       containerData,
       fetchContainerDetail,
       labelMap: tabLabelMap,
+      childrenCount,
     });
 
     return getDetailsTabWithNewLabel(
@@ -489,6 +508,7 @@ const ContainerPage = () => {
   // Effects
   useEffect(() => {
     fetchResourcePermission(decodedContainerName);
+    fetchContainerChildren();
   }, [decodedContainerName]);
 
   // Rendering
@@ -514,12 +534,11 @@ const ContainerPage = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.container'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -541,12 +560,12 @@ const ContainerPage = () => {
         <GenericProvider<Container>
           data={containerData}
           permissions={containerPermissions}
-          type={EntityType.CONTAINER}
+          type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
           <Col span={24}>
             <Tabs
               activeKey={tab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

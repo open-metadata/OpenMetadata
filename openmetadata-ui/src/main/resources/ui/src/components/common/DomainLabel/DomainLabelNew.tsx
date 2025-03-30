@@ -159,9 +159,7 @@ export const DomainLabelNew = ({
     } else {
       return (
         <Typography.Text
-          className={classNames('text-sm no-data-chip-placeholder', {
-            'text-xs': !showDomainHeading,
-          })}
+          className={classNames('text-sm no-data-chip-placeholder')}
           data-testid="no-domain-text">
           {t('label.no-entity', { entity: t('label.domain') })}
         </Typography.Text>
@@ -206,7 +204,7 @@ export const DomainLabelNew = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium">
             {t('label.domain-plural')}
           </Typography.Text>
           {selectableList}

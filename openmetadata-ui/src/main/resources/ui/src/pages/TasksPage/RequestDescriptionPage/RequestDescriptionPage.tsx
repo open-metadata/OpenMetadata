@@ -188,7 +188,7 @@ const RequestDescription = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel m--t-sm bg-white"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 700,
@@ -294,7 +294,7 @@ const RequestDescription = () => {
           </div>
         ),
       }}
-      pageTitle={t('label.task')}
+      pageTitle={t('label.request-description')}
       secondPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 60,
@@ -317,4 +317,6 @@ const RequestDescription = () => {
   );
 };
 
-export default withPageLayout(i18n.t('label.task'))(RequestDescription);
+export default withPageLayout(i18n.t('label.request-description'))(
+  RequestDescription
+);

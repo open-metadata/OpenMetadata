@@ -11,25 +11,26 @@
  *  limitations under the License.
  */
 import { camelCase, map, startCase } from 'lodash';
-import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored.svg';
-import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets.svg';
-import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored.svg';
-import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-colored.svg';
+import { ReactComponent as APICollectionIcon } from '../../assets/svg/api-collection-colored.svg';
+import { ReactComponent as APIEndpointIcon } from '../../assets/svg/api-endpoints-colored.svg';
+import { ReactComponent as DashboardIcon } from '../../assets/svg/dashboard-colored-new.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/dashboard-data-models-colored.svg';
+import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-assets-colored-new.svg';
+import { ReactComponent as DatabaseIcon } from '../../assets/svg/database-colored-new.svg';
+import { ReactComponent as SchemaIcon } from '../../assets/svg/database-schema-colored.svg';
+import { ReactComponent as DomainIcon } from '../../assets/svg/domain-colored.svg';
+import { ReactComponent as GlossaryIcon } from '../../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as GovernIcon } from '../../assets/svg/governance.svg';
 import { ReactComponent as HomepageIcon } from '../../assets/svg/homepage.svg';
-import { ReactComponent as APICollectionIcon } from '../../assets/svg/ic-api-collection.svg';
-import { ReactComponent as APIEndpointIcon } from '../../assets/svg/ic-api-endpoint.svg';
-import { ReactComponent as DashboardDataModelIcon } from '../../assets/svg/ic-dashboard-data-model-colored.svg';
-import { ReactComponent as SchemaIcon } from '../../assets/svg/ic-database-schema-colored.svg';
-import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored.svg';
-import { ReactComponent as MetricColoredIcon } from '../../assets/svg/metric-colored.svg';
-import { ReactComponent as MlModelIcon } from '../../assets/svg/ml-model-colored.svg';
+import { ReactComponent as MessagingIcon } from '../../assets/svg/messaging-colored-new.svg';
+import { ReactComponent as MetricIcon } from '../../assets/svg/metric-colored-new.svg';
+import { ReactComponent as MlModelIcon } from '../../assets/svg/ml-models-colored-new.svg';
 import { ReactComponent as NavigationIcon } from '../../assets/svg/navigation.svg';
-import { ReactComponent as PipelineIcon } from '../../assets/svg/pipeline-colored.svg';
-import { ReactComponent as SearchIcon } from '../../assets/svg/search-colored.svg';
-import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored.svg';
-import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedure-colored.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/table-colored.svg';
+import { ReactComponent as PipelineIcon } from '../../assets/svg/pipelines-colored-new.svg';
+import { ReactComponent as SearchIndexIcon } from '../../assets/svg/search-index-colored-new.svg';
+import { ReactComponent as StorageIcon } from '../../assets/svg/storage-colored-new.svg';
+import { ReactComponent as StoredProcedureIcon } from '../../assets/svg/stored-procedures-colored-new.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/table-colored-new.svg';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { SettingMenuItem } from '../GlobalSettingsUtils';
 import i18n from '../i18next/LocalUtil';
@@ -41,11 +42,11 @@ const ENTITY_ICONS: Record<string, SvgComponent> = {
   [PageType.DashboardDataModel]: DashboardDataModelIcon,
   [PageType.Database]: DatabaseIcon,
   [PageType.DatabaseSchema]: SchemaIcon,
-  [PageType.Domain]: SchemaIcon,
+  [PageType.Domain]: DomainIcon,
   [PageType.Glossary]: GlossaryIcon,
   [PageType.GlossaryTerm]: GlossaryIcon,
   [PageType.Pipeline]: PipelineIcon,
-  [PageType.SearchIndex]: SearchIcon,
+  [PageType.SearchIndex]: SearchIndexIcon,
   [PageType.StoredProcedure]: StoredProcedureIcon,
   [PageType.Topic]: MessagingIcon,
   ['govern']: GovernIcon,
@@ -55,7 +56,7 @@ const ENTITY_ICONS: Record<string, SvgComponent> = {
   [PageType.APICollection]: APICollectionIcon,
   [PageType.APIEndpoint]: APIEndpointIcon,
   [PageType.MlModel]: MlModelIcon,
-  [PageType.Metric]: MetricColoredIcon,
+  [PageType.Metric]: MetricIcon,
 };
 
 export const getCustomizePageCategories = (): SettingMenuItem[] => {
@@ -63,6 +64,7 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'navigation',
       label: i18n.t('label.navigation'),
+      isBeta: true,
       description: 'Customize left sidebar ',
       icon: ENTITY_ICONS[camelCase('Navigation')],
     },
@@ -75,12 +77,14 @@ export const getCustomizePageCategories = (): SettingMenuItem[] => {
     {
       key: 'governance',
       label: i18n.t('label.governance'),
+      isBeta: true,
       description: 'Customize the Govern pages with widget of your preference',
       icon: ENTITY_ICONS[camelCase('GOVERN')],
     },
     {
       key: 'data-assets',
       label: i18n.t('label.data-asset-plural'),
+      isBeta: true,
       description:
         'Customize the entity detail page with widget of your preference',
       icon: ENTITY_ICONS[camelCase('data-assets')],

@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Modal, Space } from 'antd';
-import { isEmpty, isNil, isUndefined, toString, uniqueId } from 'lodash';
+import { EyeFilled, MoreOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Dropdown, Input, Modal, Space } from 'antd';
+import {
+  cloneDeep,
+  isEmpty,
+  isNil,
+  isUndefined,
+  toString,
+  uniqueId,
+} from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -23,6 +30,7 @@ import {
   CommonWidgetType,
   TAB_GRID_MAX_COLUMNS,
 } from '../../../constants/CustomizeWidgets.constants';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
@@ -48,6 +56,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
 
 const ReactGridLayout = WidthProvider(RGL);
@@ -59,14 +68,20 @@ type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 export const CustomizeTabWidget = () => {
   const { currentPage, currentPageType, updateCurrentPage } =
     useCustomizeStore();
-  const items = useMemo(() => {
-    return currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType);
-  }, [currentPage, currentPageType, currentPage?.tabs]);
+  const systemTabs = useMemo(
+    () => getDefaultTabs(currentPageType as PageType),
+    [currentPageType]
+  );
 
+  const items = useMemo(() => {
+    return currentPage?.tabs ?? systemTabs;
+  }, [systemTabs, currentPage?.tabs]);
+  const [showAddTabModal, setShowAddTabModal] = useState<boolean>(false);
+  const { t } = useTranslation();
+  const [newTabName, setNewTabName] = useState<string>(t('label.new-tab'));
   const [activeKey, setActiveKey] = useState<string | null>(
     items.find((i) => i.editable)?.id ?? null
   );
-  const { t } = useTranslation();
 
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
   const [tabLayouts, setTabLayouts] = useState<WidgetConfig[]>(
@@ -80,6 +95,7 @@ export const CustomizeTabWidget = () => {
       3
     )
   );
+  const [leftSideLayout, setLeftSideLayout] = useState<WidgetConfig[]>([]);
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>('');
 
@@ -108,23 +124,24 @@ export const CustomizeTabWidget = () => {
     );
   };
 
-  const add = () => {
+  const add = (item?: Tab) => {
     const newActiveKey = uniqueId(`custom`);
+    const newTab =
+      item ??
+      ({
+        name: newTabName,
+        layout: [],
+        id: newActiveKey,
+        editable: true,
+      } as Tab);
 
     updateCurrentPage({
       ...currentPage,
-      tabs: [
-        ...items,
-        {
-          name: t('label.new-tab'),
-          layout: [],
-          id: newActiveKey,
-          editable: true,
-        } as Tab,
-      ],
+      tabs: [...items, newTab],
     } as Page);
 
     onChange(newActiveKey, false);
+    setShowAddTabModal(false);
   };
 
   const remove = (targetKey: TargetKey) => {
@@ -190,44 +207,90 @@ export const CustomizeTabWidget = () => {
     setTabLayouts(getRemoveWidgetHandler(widgetKey, 3, 3.5));
   };
 
-  const widgets = useMemo(
-    () =>
-      tabLayouts.map((widget) => {
-        let widgetComponent = null;
-
-        if (
-          widget.i.endsWith('.EmptyWidgetPlaceholder') &&
-          !isUndefined(handleOpenAddWidgetModal) &&
-          !isUndefined(handlePlaceholderWidgetKey) &&
-          !isUndefined(handleRemoveWidget)
-        ) {
-          widgetComponent = (
-            <EmptyWidgetPlaceholder
-              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-              handleRemoveWidget={handleRemoveWidget}
-              isEditable={widget.isDraggable}
-              widgetKey={widget.i}
-            />
-          );
-        } else {
-          widgetComponent = (
-            <GenericWidget
-              isEditView
-              handleRemoveWidget={handleRemoveWidget}
-              selectedGridSize={widget.w}
-              widgetKey={widget.i}
-            />
-          );
+  const handleRightSideLayoutUpdate = useCallback((updatedLayout: Layout[]) => {
+    if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
+      setLeftSideLayout(updatedLayout);
+      setTabLayouts((prev) => {
+        const newLayout = cloneDeep(prev);
+        const rightSidePanelLayout = newLayout.find((layout) =>
+          layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+        );
+        if (rightSidePanelLayout) {
+          rightSidePanelLayout.children = updatedLayout;
         }
 
-        return (
-          <div data-grid={widget} id={widget.i} key={widget.i}>
-            {widgetComponent}
-          </div>
+        updateCurrentPage({
+          ...currentPage,
+          tabs: items.map((item) =>
+            item.id === activeKey
+              ? { ...item, layout: getUniqueFilteredLayout(newLayout) }
+              : item
+          ),
+        } as Page);
+
+        return newLayout;
+      });
+    }
+  }, []);
+
+  const getWidgetFromLayout = (layout: WidgetConfig[]) => {
+    return layout.map((widget) => {
+      let widgetComponent = null;
+
+      if (
+        widget.i.endsWith('.EmptyWidgetPlaceholder') &&
+        !isUndefined(handleOpenAddWidgetModal) &&
+        !isUndefined(handlePlaceholderWidgetKey) &&
+        !isUndefined(handleRemoveWidget)
+      ) {
+        widgetComponent = (
+          <EmptyWidgetPlaceholder
+            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+            handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+            handleRemoveWidget={handleRemoveWidget}
+            isEditable={widget.isDraggable}
+            widgetKey={widget.i}
+          />
         );
-      }),
-    [tabLayouts]
+      } else if (widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+        widgetComponent = (
+          <LeftPanelContainer
+            isEditView
+            key={widget.i}
+            layout={widget.children ?? []}
+            type={currentPageType as PageType}
+            onUpdate={handleRightSideLayoutUpdate}
+          />
+        );
+      } else {
+        widgetComponent = (
+          <GenericWidget
+            isEditView
+            handleRemoveWidget={handleRemoveWidget}
+            selectedGridSize={widget.w}
+            widgetKey={widget.i}
+          />
+        );
+      }
+
+      return (
+        <div data-grid={widget} id={widget.i} key={widget.i}>
+          {widgetComponent}
+        </div>
+      );
+    });
+  };
+
+  const leftPanelWidget = useMemo(() => {
+    return tabLayouts.find((layout) =>
+      layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [tabLayouts]);
+
+  const widgets = useMemo(
+    // Re-render upon leftPanelWidget change
+    () => getWidgetFromLayout(tabLayouts),
+    [tabLayouts, leftPanelWidget]
   );
 
   const handleLayoutUpdate = useCallback(
@@ -238,13 +301,22 @@ export const CustomizeTabWidget = () => {
           ...currentPage,
           tabs: items.map((item) =>
             item.id === activeKey
-              ? { ...item, layout: getUniqueFilteredLayout(updatedLayout) }
+              ? {
+                  ...item,
+                  layout:
+                    item.id === DetailPageWidgetKeys.LEFT_PANEL
+                      ? {
+                          ...getUniqueFilteredLayout(updatedLayout),
+                          children: leftSideLayout,
+                        }
+                      : getUniqueFilteredLayout(updatedLayout),
+                }
               : item
           ),
         } as Page);
       }
     },
-    [tabLayouts]
+    [tabLayouts, leftSideLayout]
   );
 
   const handleMainPanelAddWidget = useCallback(
@@ -281,6 +353,17 @@ export const CustomizeTabWidget = () => {
     } as Page);
   };
 
+  const { tabs: hiddenTabs, systemTabIds } = useMemo(() => {
+    const systemTabIds = systemTabs.map((item) => item.id);
+
+    return {
+      tabs: systemTabs.filter(
+        (systemTab) => !items.some((item) => item.id === systemTab.id)
+      ),
+      systemTabIds,
+    };
+  }, [items, systemTabs]);
+
   return (
     <>
       <Col span={24}>
@@ -288,7 +371,10 @@ export const CustomizeTabWidget = () => {
           bordered={false}
           data-testid="customize-tab-card"
           extra={
-            <Button icon={<PlusOutlined />} type="primary" onClick={add}>
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setShowAddTabModal(true)}>
               {t('label.add-entity', {
                 entity: t('label.tab'),
               })}
@@ -303,10 +389,35 @@ export const CustomizeTabWidget = () => {
                   item={item}
                   key={item.id}
                   moveTab={moveTab}
+                  shouldHide={systemTabIds.includes(item.id)}
                   onEdit={onChange}
                   onRemove={remove}
                   onRename={handleTabEditClick}
                 />
+              ))}
+              {hiddenTabs.map((item) => (
+                <Dropdown
+                  key={item.id}
+                  menu={{
+                    items: [
+                      {
+                        label: t('label.show'),
+                        key: 'show',
+                        icon: <EyeFilled />,
+                      },
+                    ],
+                    onClick: () => add(item),
+                  }}
+                  trigger={['click']}>
+                  <Button
+                    className="draggable-hidden-tab-item bg-grey"
+                    data-testid={`tab-${item.displayName}`}>
+                    <Space>
+                      {getEntityName(item)}
+                      <MoreOutlined />
+                    </Space>
+                  </Button>
+                </Dropdown>
               ))}
             </Space>
           </DndProvider>
@@ -353,6 +464,25 @@ export const CustomizeTabWidget = () => {
           widgetsList={getCustomizableWidgetByPage(currentPageType)}
         />
       )}
+      {showAddTabModal && (
+        <Modal
+          closable
+          cancelText={t('label.cancel')}
+          closeIcon={null}
+          okText={t('label.add')}
+          open={showAddTabModal}
+          title={t('label.add-entity', {
+            entity: t('label.tab'),
+          })}
+          onCancel={() => setShowAddTabModal(false)}
+          onOk={() => add()}>
+          <Input
+            autoFocus
+            value={newTabName}
+            onChange={(e) => setNewTabName(e.target.value)}
+          />
+        </Modal>
+      )}
       {editableItem && (
         <Modal
           maskClosable
@@ -361,6 +491,7 @@ export const CustomizeTabWidget = () => {
           onCancel={() => setEditableItem(null)}
           onOk={handleRenameSave}>
           <Input
+            autoFocus
             value={toString(getEntityName(editableItem))}
             onChange={handleChange}
           />

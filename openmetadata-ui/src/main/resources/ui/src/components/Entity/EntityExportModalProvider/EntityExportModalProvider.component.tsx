@@ -137,7 +137,9 @@ export const EntityExportModalProvider = ({
       csvExportJobRef.current = {
         fileName: fileName,
       };
-      const data = await exportData.onExport(exportData.name);
+      const data = await exportData.onExport(exportData.name, {
+        recursive: !isBulkEdit,
+      });
 
       if (isString(data)) {
         handleDownload(data, fileName);

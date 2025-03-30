@@ -254,13 +254,6 @@
   .user-profile-card-body {
     margin-bottom: 10px;
   }
-
-  .user-profile-card-title {
-    font-weight: 600;
-    font-size: 14px;
-    line-height: 20px;
-    color: @text-color;
-  }
 }
 
 .user-profile-edit-popover-card-title {
@@ -445,4 +438,21 @@
 
 .no-data-chip-placeholder {
   color: @text-color-tertiary;
+}
+.user-profile-deleted-badge {
+  color: @red-10;
+  text-align: center;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 20px;
+  border-radius: 16px;
+  background: @red-9;
+  padding: 2px 8px 2px 10px;
+  margin-top: @margin-xs;
+
+  svg {
+    stroke: @red-10;
+    stroke-width: 0.5px;
+    vertical-align: text-top;
+  }
 }

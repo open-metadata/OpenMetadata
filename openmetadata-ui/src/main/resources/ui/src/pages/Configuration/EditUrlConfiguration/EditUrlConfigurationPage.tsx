@@ -184,7 +184,7 @@ const EditUrlConfigurationPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
@@ -192,7 +192,9 @@ const EditUrlConfigurationPage = () => {
         className: 'content-resizable-panel-container',
       }}
       pageTitle={t('label.edit-entity', {
-        entity: t('label.service'),
+        entity: t('label.entity-configuration', {
+          entity: t('label.open-metadata-url'),
+        }),
       })}
       secondPanel={{
         children: secondPanelChildren,
@@ -206,6 +208,8 @@ const EditUrlConfigurationPage = () => {
 
 export default withPageLayout(
   i18n.t('label.edit-entity', {
-    entity: i18n.t('label.service'),
+    entity: i18n.t('label.entity-configuration', {
+      entity: i18n.t('label.url-uppercase'),
+    }),
   })
 )(EditUrlConfigurationPage);

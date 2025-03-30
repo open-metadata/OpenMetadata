@@ -260,9 +260,7 @@ const PipelineDetails = ({
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = pipelineClassBase.getPipelineDetailPageTabs({
-      feedCount: {
-        totalCount: feedCount.totalCount,
-      },
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       onExtensionUpdate,
@@ -312,12 +310,11 @@ const PipelineDetails = ({
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.pipeline'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -344,7 +341,7 @@ const PipelineDetails = ({
           <Col span={24}>
             <Tabs
               activeKey={tab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

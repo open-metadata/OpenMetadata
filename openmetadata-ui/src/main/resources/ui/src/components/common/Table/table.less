@@ -13,6 +13,12 @@
 @import (reference) url('../../../styles/variables.less');
 
 .table-container {
+  height: initial !important;
+  border-radius: 12px;
+  background-color: @white;
+  border: 1px solid @border-color-1;
+  overflow: hidden;
+
   .custom-column-dropdown-menu {
     margin-right: 10px;
     padding: 0;
@@ -28,9 +34,15 @@
       padding-left: 0px;
       padding-right: 0px;
     }
+
     .ant-dropdown-menu-item:hover {
       background-color: @white;
       color: inherit;
     }
+  }
+
+  .pagination-container {
+    border-top: 1px solid @border-color-1;
+    padding: 16px 0;
   }
 }

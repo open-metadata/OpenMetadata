@@ -174,15 +174,17 @@ function EditEmailConfigPage() {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.add-entity', {
-        entity: t('label.service'),
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.entity-configuration', {
+          entity: t('label.email'),
+        }),
       })}
       secondPanel={{
         children: secondPanelChildren,
@@ -195,7 +197,9 @@ function EditEmailConfigPage() {
 }
 
 export default withPageLayout(
-  i18n.t('label.add-entity', {
-    entity: i18n.t('label.service'),
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.entity-configuration', {
+      entity: i18n.t('label.email'),
+    }),
   })
 )(EditEmailConfigPage);

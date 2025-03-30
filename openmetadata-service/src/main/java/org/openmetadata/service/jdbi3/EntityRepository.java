@@ -62,11 +62,16 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
+import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
+import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
+import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
+import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
@@ -862,9 +867,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   Map<String, String> parseCursorMap(String param) {
     Map<String, String> cursorMap;
     if (param == null) {
-      cursorMap = new HashMap<>();
-      cursorMap.put("name", null);
-      cursorMap.put("id", null);
+      cursorMap = Map.of("name", null, "id", null);
     } else if (nullOrEmpty(param)) {
       cursorMap = Map.of("name", "", "id", "");
     } else {
@@ -2430,6 +2433,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : findFrom(entity.getId(), entityType, Relationship.HAS, DATA_PRODUCT);
   }
 
+  protected List<EntityReference> getDataProducts(UUID entityId, String entityType) {
+    return findFrom(entityId, entityType, Relationship.HAS, DATA_PRODUCT);
+  }
+
   public EntityInterface getParentEntity(T entity, String fields) {
     return null;
   }
@@ -2625,7 +2632,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void createAndInsertChangeEvent(
       T original, T updated, ChangeDescription changeDescription, EventType eventType) {
-    if (changeDescription == null) {
+    if (isNullOrEmptyChangeDescription(changeDescription)) {
       return;
     }
 
@@ -2813,15 +2820,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * Override this method to support downloading CSV functionality
    */
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
   /**
    * Load CSV provided for bulk upload
    */
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     throw new IllegalArgumentException(csvNotSupported(entityType));
   }
 
@@ -2990,7 +2997,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void updateChangeSummary() {
-      if (changeDescription == null) {
+      if (isNullOrEmptyChangeDescription(changeDescription)) {
         return;
       }
       // build new change summary
@@ -3113,7 +3120,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         // delete operation
         if (!Objects.equals(updated.getDeleted(), original.getDeleted())
             && Boolean.TRUE.equals(updated.getDeleted())
-            && changeDescription != null) {
+            && isNullOrEmptyChangeDescription(changeDescription)
+            && (Objects.equals(original.getVersion(), updated.getVersion()))) {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.readOnlyAttribute(entityType, FIELD_DELETED));
         }
@@ -3265,6 +3273,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               "Removing domain {} for entity {}",
               origDomain.getFullyQualifiedName(),
               original.getFullyQualifiedName());
+          removeDomainLineage(updated.getId(), entityType, origDomain);
           deleteRelationship(
               origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
         }
@@ -3277,6 +3286,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               original.getFullyQualifiedName());
           addRelationship(
               updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
+          addDomainLineage(updated.getId(), entityType, updatedDomain);
         }
         updated.setDomain(updatedDomain);
       } else {
@@ -3299,6 +3309,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           Relationship.HAS,
           entityType,
           original.getId());
+      removeDataProductsLineage(original.getId(), entityType, origDataProducts);
+      addDataProductsLineage(original.getId(), entityType, updatedDataProducts);
     }
 
     private void updateExperts() {
@@ -3906,14 +3918,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     protected void updateColumnDataLength(Column origColumn, Column updatedColumn) {
       String columnField = getColumnField(origColumn, "dataLength");
+
       boolean updated =
           recordChange(columnField, origColumn.getDataLength(), updatedColumn.getDataLength());
-      if (updated
-          && (origColumn.getDataLength() == null
-              || updatedColumn.getDataLength() < origColumn.getDataLength())) {
-        // The data length of a column was reduced or added. Treat it as backward-incompatible
-        // change
-        majorVersionChange = true;
+
+      if (updated) {
+        Integer origDataLength = origColumn.getDataLength();
+        Integer updatedDataLength = updatedColumn.getDataLength();
+
+        // Ensure safe comparison when one of them is null
+        if (origDataLength == null
+            || (updatedDataLength != null && updatedDataLength < origDataLength)) {
+          // The data length of a column was reduced or added. Treat it as backward-incompatible
+          // change
+          majorVersionChange = true;
+        }
       }
     }
 

@@ -35,11 +35,10 @@
     overflow-y: scroll;
     border-radius: 12px;
     background-color: @white;
-    padding: 14px 20px 20px 20px;
     margin-right: 20px;
     display: flex;
     flex-direction: column;
-    border: 1px solid #eaecf5;
+    border: 1px solid @grey-15;
     .full-width {
       flex: 10;
       margin-right: 0px;
@@ -53,7 +52,7 @@
     overflow-y: scroll;
     background-color: @white;
     border-radius: 12px;
-    border: 1px solid #eaecf5;
+    border: 1px solid @grey-15;
     .full-width {
       flex: 0;
     }
@@ -77,7 +76,7 @@
       font-size: 12px;
     }
     .comments-input-field {
-      background-color: #f4f5f7;
+      background-color: @grey-16;
       border-radius: 20px;
       border: 1px solid #eaecf5;
       height: 36px;
@@ -104,15 +103,6 @@
     margin-right: 0px;
     border: none;
   }
-  .placeholder-text {
-    color: #666;
-    font-size: 16px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 23px; /* 143.75% */
-
-    width: 350px;
-  }
 
   .left-container {
     flex: 0 0 @left-side-panel-width;
@@ -120,7 +110,6 @@
   }
   .activity-feed-card-new {
     border-radius: 12px;
-    margin: 10px 0px;
     background: @grey-9;
     display: flex;
     flex-direction: column;
@@ -316,10 +305,6 @@
   .ant-dropdown-menu {
     padding: 0px;
   }
-  .task-filter-icon:hover path {
-    stroke: #2e90fa;
-    stroke-width: 2;
-  }
   .task-count-container {
     background: #e9eaeb;
     border-radius: 16px;
@@ -498,6 +483,7 @@
     }
   }
 }
+
 .view-more-less-button {
   color: @blue-9;
   font-size: 14px;
@@ -530,6 +516,43 @@
     &::after {
       display: none;
       content: none;
+    }
+  }
+}
+
+.task-filter-container {
+  padding: 20px 20px 0px 20px;
+}
+.owners-label {
+  font-style: normal;
+  font-weight: 600;
+  line-height: normal;
+  margin-left: @margin-xs;
+  margin-right: @margin-xs;
+}
+.owner-chip {
+  border-radius: 8px;
+  background: @grey-16;
+  padding: 4px 8px;
+  margin-right: @margin-xs;
+  border: 1px solid @grey-15;
+}
+
+.owner-chip-text {
+  color: @text-color;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  margin-left: @margin-xss;
+}
+.task-filter-icon {
+  stroke: @grey-8;
+  cursor: pointer;
+  &.disabled {
+    cursor: not-allowed;
+    stroke: @grey-300;
+    path {
+      stroke: @grey-300;
     }
   }
 }
