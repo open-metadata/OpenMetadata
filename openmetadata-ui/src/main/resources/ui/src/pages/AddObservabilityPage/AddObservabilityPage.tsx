@@ -201,9 +201,9 @@ function AddObservabilityPage() {
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container ',
         children: (
-          <div className="steps-form-container">
+          <div className="steps-form-container service-form-container">
             <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />

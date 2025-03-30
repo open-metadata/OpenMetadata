@@ -1124,9 +1124,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const testConnectionTab = useMemo(() => {
     return (
-      <Row>
+      <Row className="p-md" gutter={[16, 16]}>
         <Col className="p-x-lg" span={24}>
-          <Row className="my-4">
+          <Row>
             <Col span={12}>
               <AirflowMessageBanner />
             </Col>
@@ -1326,7 +1326,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row data-testid="service-page" gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col className="" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}

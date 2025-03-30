@@ -347,7 +347,7 @@ const AddGlossary = ({
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
         minWidth: 400,
         flex: 0.3,
       }}

@@ -29,6 +29,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -39,6 +40,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
@@ -121,12 +123,28 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+    BulkOperationResult result =
+        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      for (EntityReference ref : listOrEmpty(request.getAssets())) {
+        LineageUtil.addDataProductsLineage(
+            ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
+      }
+    }
+    return result;
   }
 
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
+    BulkOperationResult result =
+        bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
+    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+      for (EntityReference ref : listOrEmpty(request.getAssets())) {
+        LineageUtil.removeDataProductsLineage(
+            ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
+      }
+    }
+    return result;
   }
 
   @Override
