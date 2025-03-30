@@ -73,6 +73,8 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -227,10 +229,18 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
-    ResourceContextInterface resourceContext = new ResourceContext<>(GLOSSARY_TERM);
-    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
+    OperationContext glossaryOperationContext =
+        new OperationContext(GLOSSARY, getViewOperations(fields));
+    OperationContext glossaryTermOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
 
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(glossaryOperationContext, glossaryResourceContext),
+            new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
     // Filter by glossary
     String fqn = null;
