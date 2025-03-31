@@ -24,11 +24,11 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Metric } from '../../../generated/entity/data/metric';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   getDetailsTabWithNewLabel,
@@ -45,7 +45,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { MetricDetailsProps } from './MetricDetails.interface';
-
 const MetricDetails: React.FC<MetricDetailsProps> = ({
   metricDetails,
   metricPermissions,
@@ -59,7 +58,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   onUpdateVote,
 }: MetricDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();

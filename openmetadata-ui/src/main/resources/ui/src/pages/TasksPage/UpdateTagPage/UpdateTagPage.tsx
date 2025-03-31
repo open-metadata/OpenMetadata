@@ -37,10 +37,10 @@ import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -62,13 +62,12 @@ import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
-
 const UpdateTag = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
   const history = useHistory();
   const [form] = useForm();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 

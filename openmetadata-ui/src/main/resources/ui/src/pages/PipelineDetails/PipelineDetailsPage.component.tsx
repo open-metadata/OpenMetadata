@@ -29,7 +29,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -38,6 +37,7 @@ import {
   removeFollower,
   updatePipelinesVotes,
 } from '../../rest/pipelineAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   addToRecentViewed,
   getEntityMissingError,
@@ -47,10 +47,9 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
 

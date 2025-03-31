@@ -31,9 +31,9 @@ import { TERM_ADMIN } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getUserByName } from '../../../rest/userAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -45,7 +45,7 @@ import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
 const UserTeams = React.memo(({ userName }: { userName: string }) => {
-  const { userProfilePics } = useApplicationStore();
+  const { userProfilePics } = useCurrentUserStore();
   const userData = userProfilePics[userName];
   const teams = getNonDeletedTeams(userData?.teams ?? []);
 
@@ -72,7 +72,7 @@ const UserTeams = React.memo(({ userName }: { userName: string }) => {
 });
 
 const UserRoles = React.memo(({ userName }: { userName: string }) => {
-  const { userProfilePics } = useApplicationStore();
+  const { userProfilePics } = useCurrentUserStore();
   const userData = userProfilePics[userName];
   const roles = userData?.roles;
   const isAdmin = userData?.isAdmin;
@@ -118,7 +118,7 @@ const PopoverContent = React.memo(
       name: userName,
       isTeam,
     });
-    const { updateUserProfilePics } = useApplicationStore();
+    const { updateUserProfilePics } = useCurrentUserStore();
     const [loading, setLoading] = useState(false);
 
     const teamDetails = get(user, 'teams', null);

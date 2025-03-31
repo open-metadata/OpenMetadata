@@ -24,7 +24,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 
 import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
 
@@ -42,7 +42,7 @@ const ActivityFeedActions = ({
   onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const isAuthor = post.from === currentUser?.name;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus } =

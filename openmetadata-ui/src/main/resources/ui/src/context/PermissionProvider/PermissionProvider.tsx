@@ -36,7 +36,7 @@ import {
   getUIPermission,
 } from '../../utils/PermissionsUtils';
 
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { setUrlPathnameExpiryAfterRoute } from '../../utils/AuthProvider.util';
 import {
   EntityPermissionMap,
@@ -64,7 +64,7 @@ const PermissionProvider: FC<PermissionProviderProps> = ({ children }) => {
   const [permissions, setPermissions] = useState<UIPermission>(
     {} as UIPermission
   );
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const cookieStorage = new CookieStorage();
   const history = useHistory();
   const [loading, setLoading] = useState(true);

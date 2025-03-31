@@ -30,15 +30,14 @@ import { generateFormFields, getField } from '../../../utils/formUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import './add-glossary.less';
 import { AddGlossaryProps } from './AddGlossary.interface';
-
 const AddGlossary = ({
   header,
   allowAccess = true,
@@ -49,7 +48,7 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { activeDomainEntityRef } = useDomainStore();
 
   const selectedOwners =

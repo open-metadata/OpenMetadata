@@ -12,10 +12,10 @@
  */
 import React, { useEffect } from 'react';
 import Loader from '../../components/common/Loader/Loader';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 
 export const LogoutPage = () => {
-  const { onLogoutHandler } = useApplicationStore();
+  const { onLogoutHandler } = useCurrentUserStore();
 
   useEffect(() => {
     onLogoutHandler();

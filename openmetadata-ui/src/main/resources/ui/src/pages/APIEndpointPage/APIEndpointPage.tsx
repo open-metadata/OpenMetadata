@@ -32,7 +32,6 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addApiEndpointFollower,
@@ -41,6 +40,7 @@ import {
   removeApiEndpointFollower,
   updateApiEndPointVote,
 } from '../../rest/apiEndpointsAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   addToRecentViewed,
   getEntityMissingError,
@@ -49,10 +49,9 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const APIEndpointPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const currentUserId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();

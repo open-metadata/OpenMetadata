@@ -19,8 +19,8 @@ import {
 import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/entity/type';
 import { DomainStore } from '../interface/store.interface';
+import { useCurrentUserStore } from '../store/useCurrentUser.store';
 import { getDomainOptions } from '../utils/DomainUtils';
-import { useApplicationStore } from './useApplicationStore';
 
 export const useDomainStore = create<DomainStore>()(
   persist(
@@ -32,7 +32,7 @@ export const useDomainStore = create<DomainStore>()(
       activeDomainEntityRef: undefined,
       domainOptions: [],
       updateDomains: (data: Domain[]) => {
-        const currentUser = useApplicationStore.getState().currentUser;
+        const currentUser = useCurrentUserStore.getState().currentUser;
         const { isAdmin = false, domains = [] } = currentUser ?? {};
         const userDomainsObj = isAdmin ? [] : domains;
         const userDomainFqn =

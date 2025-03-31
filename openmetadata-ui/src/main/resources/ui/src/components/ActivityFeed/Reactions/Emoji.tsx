@@ -19,8 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useImage from '../../../hooks/useImage';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 
 interface EmojiProps {
   reaction: ReactionType;
@@ -37,7 +37,7 @@ const Emoji: FC<EmojiProps> = ({
   onReactionSelect,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
   const [visible, setVisible] = useState(false);

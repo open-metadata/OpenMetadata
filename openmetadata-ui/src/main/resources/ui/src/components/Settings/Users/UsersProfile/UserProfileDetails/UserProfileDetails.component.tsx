@@ -31,10 +31,10 @@ import {
 import { EntityReference } from '../../../../../generated/entity/type';
 import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { changePassword } from '../../../../../rest/auth-API';
 import { restoreUser } from '../../../../../rest/userAPI';
+import { useCurrentUserStore } from '../../../../../store/useCurrentUser.store';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import {
   showErrorToast,
@@ -49,7 +49,6 @@ import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelecta
 import ChangePasswordForm from '../../ChangePasswordForm';
 import UserProfileImage from '../UserProfileImage/UserProfileImage.component';
 import { UserProfileDetailsProps } from './UserProfileDetails.interface';
-
 const UserProfileDetails = ({
   userData,
   afterDeleteAction,
@@ -58,7 +57,7 @@ const UserProfileDetails = ({
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
-  const { authConfig, currentUser } = useApplicationStore();
+  const { authConfig, currentUser } = useCurrentUserStore();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);

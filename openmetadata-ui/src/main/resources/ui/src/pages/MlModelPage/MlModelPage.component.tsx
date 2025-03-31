@@ -29,7 +29,6 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -38,6 +37,7 @@ import {
   removeFollower,
   updateMlModelVotes,
 } from '../../rest/mlModelAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   addToRecentViewed,
   getEntityMissingError,
@@ -47,10 +47,9 @@ import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const MlModelPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const history = useHistory();
   const { fqn: mlModelFqn } = useFqn();
   const [mlModelDetail, setMlModelDetail] = useState<Mlmodel>({} as Mlmodel);

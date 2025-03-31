@@ -70,7 +70,6 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   FieldProp,
   FieldTypes,
@@ -85,6 +84,7 @@ import {
 } from '../../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
@@ -125,7 +125,7 @@ export const TaskTab = ({
   const editorRef = useRef<EditorContentRef>();
   const history = useHistory();
   const [assigneesForm] = useForm();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();
   const { task: taskDetails } = taskThread;

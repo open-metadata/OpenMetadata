@@ -27,8 +27,8 @@ import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { generateFormFields } from '../../../utils/formUtils';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
@@ -41,7 +41,7 @@ export const TestCaseStatusModal = ({
   usersList,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);

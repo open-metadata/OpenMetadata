@@ -42,7 +42,6 @@ import {
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -54,6 +53,7 @@ import {
   restoreStoredProcedures,
   updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   getDetailsTabWithNewLabel,
@@ -69,10 +69,9 @@ import {
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
   const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();

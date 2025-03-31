@@ -17,17 +17,16 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
+import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
+import SamlCallback from '../../pages/SamlCallback';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
-
-import { LogoutPage } from '../../pages/LogoutPage/LogoutPage';
-import SamlCallback from '../../pages/SamlCallback';
 
 const AppRouter = () => {
   const location = useCustomLocation();
@@ -35,7 +34,7 @@ const AppRouter = () => {
   // web analytics instance
   const analytics = useAnalytics();
   const { currentUser, isAuthenticated, isApplicationLoading } =
-    useApplicationStore();
+    useCurrentUserStore();
 
   useEffect(() => {
     const { pathname } = location;

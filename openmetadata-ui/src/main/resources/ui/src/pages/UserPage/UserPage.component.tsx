@@ -32,12 +32,11 @@ import { ROUTES } from '../../constants/constants';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const UserPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -45,7 +44,7 @@ const UserPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<User>({} as User);
   const [isError, setIsError] = useState(false);
-  const { currentUser, updateCurrentUser } = useApplicationStore();
+  const { currentUser, updateCurrentUser } = useCurrentUserStore();
 
   const fetchUserData = async () => {
     try {

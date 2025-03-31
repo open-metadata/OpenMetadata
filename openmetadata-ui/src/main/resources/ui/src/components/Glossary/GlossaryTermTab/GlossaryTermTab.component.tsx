@@ -78,7 +78,6 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { User } from '../../../generated/entity/teams/user';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
   getFirstLevelGlossaryTerms,
@@ -86,6 +85,7 @@ import {
   GlossaryTermWithChildren,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
@@ -115,7 +115,7 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const tableRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
   const {

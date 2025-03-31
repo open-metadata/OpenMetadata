@@ -39,7 +39,6 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
 import { PageType } from '../../generated/system/ui/page';
 import LimitWrapper from '../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -51,6 +50,7 @@ import {
   restoreSearchIndex,
   updateSearchIndexVotes,
 } from '../../rest/SearchIndexAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   getDetailsTabWithNewLabel,
@@ -72,7 +72,7 @@ function SearchIndexDetailsPage() {
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
   const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();

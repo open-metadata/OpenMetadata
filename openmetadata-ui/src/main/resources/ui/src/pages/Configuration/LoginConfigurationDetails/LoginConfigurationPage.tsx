@@ -31,14 +31,13 @@ import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.co
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { AuthProvider } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-
 const LoginConfigurationPage = () => {
   const { t } = useTranslation();
-  const { authConfig } = useApplicationStore();
+  const { authConfig } = useCurrentUserStore();
   const history = useHistory();
   const [loading, setLoading] = useState<boolean>(false);
   const [loginConfig, setLoginConfig] = useState<LoginConfiguration>();

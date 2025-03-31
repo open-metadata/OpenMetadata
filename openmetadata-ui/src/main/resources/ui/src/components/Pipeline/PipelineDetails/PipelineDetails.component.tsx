@@ -25,10 +25,10 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Pipeline, TagLabel } from '../../../generated/entity/data/pipeline';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   getDetailsTabWithNewLabel,
@@ -67,7 +67,7 @@ const PipelineDetails = ({
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const userID = currentUser?.id ?? '';
   const { deleted, owners, description, entityName, tier, followers } =
     useMemo(() => {

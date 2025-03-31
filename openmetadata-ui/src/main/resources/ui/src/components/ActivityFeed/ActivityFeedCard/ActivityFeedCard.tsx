@@ -20,7 +20,7 @@ import { ReactionOperation } from '../../../enums/reactions.enum';
 import { AnnouncementDetails } from '../../../generated/api/feed/createThread';
 import { Post } from '../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   getEntityField,
   getEntityFQN,
@@ -33,7 +33,6 @@ import FeedCardBody from './FeedCardBody/FeedCardBody';
 import FeedCardFooter from './FeedCardFooter/FeedCardFooter';
 import FeedCardHeader from './FeedCardHeader/FeedCardHeader';
 import PopoverContent from './PopoverContent';
-
 const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   feed,
   feedType,
@@ -58,7 +57,7 @@ const ActivityFeedCard: FC<ActivityFeedCardProp> = ({
   const entityType = getEntityType(entityLink ?? '');
   const entityFQN = getEntityFQN(entityLink ?? '');
   const entityField = getEntityField(entityLink ?? '');
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 

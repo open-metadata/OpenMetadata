@@ -31,7 +31,7 @@ import {
   TERM_USER,
 } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import {
@@ -44,7 +44,6 @@ import {
 } from '../../../../utils/RouterUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
-
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -91,7 +90,7 @@ export const UserProfileIcon = () => {
     onLogoutHandler,
     selectedPersona,
     setSelectedPersona: updateSelectedPersona,
-  } = useApplicationStore();
+  } = useCurrentUserStore();
 
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();

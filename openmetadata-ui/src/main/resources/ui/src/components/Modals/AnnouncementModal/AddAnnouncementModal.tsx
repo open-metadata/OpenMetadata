@@ -26,11 +26,10 @@ import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getField } from '../../../utils/formUtils';
 import './announcement-modal.less';
-
 interface Props {
   open: boolean;
   entityType: string;
@@ -53,7 +52,7 @@ const AddAnnouncementModal: FC<Props> = ({
   entityType,
   entityFQN,
 }) => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 

@@ -26,9 +26,8 @@ import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.
 import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getTeamsUser } from '../../../utils/CommonUtils';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './entity-summary-details.style.less';
 
@@ -58,7 +57,7 @@ const InfoIcon = ({
 const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
   let retVal = <></>;
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const displayVal = data.placeholderText || data.value;
 
   const { isEntityDetails, userDetails, isTier, isOwner, isTeamOwner } =

@@ -35,7 +35,6 @@ import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import {
@@ -47,12 +46,12 @@ import {
   updateUsersFromTeam,
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
-
 const TeamsPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -70,7 +69,7 @@ const TeamsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [assets, setAssets] = useState<number>(0);
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
-  const { updateCurrentUser } = useApplicationStore();
+  const { updateCurrentUser } = useCurrentUserStore();
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);

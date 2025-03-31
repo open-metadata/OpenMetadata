@@ -49,7 +49,6 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   exportGlossaryInCSVFormat,
@@ -57,6 +56,7 @@ import {
   getGlossaryTermsById,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
@@ -85,7 +85,7 @@ const GlossaryHeader = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const {
     onUpdate,
     data: selectedData,

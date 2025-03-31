@@ -13,7 +13,7 @@
 
 import React, { ReactNode } from 'react';
 import { AnalyticsProvider } from 'use-analytics';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getAnalyticInstance } from '../../utils/WebAnalyticsUtils';
 
 interface WebAnalyticsProps {
@@ -21,7 +21,7 @@ interface WebAnalyticsProps {
 }
 
 const WebAnalyticsProvider = ({ children }: WebAnalyticsProps) => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   return (
     <AnalyticsProvider instance={getAnalyticInstance(currentUser?.id)}>

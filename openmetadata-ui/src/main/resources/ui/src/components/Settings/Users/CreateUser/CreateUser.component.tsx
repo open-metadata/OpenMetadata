@@ -51,6 +51,7 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { checkEmailInUse, generateRandomPwd } from '../../../../rest/auth-API';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -80,7 +81,8 @@ const CreateUser = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const isAdminPage = Boolean(state?.isAdminPage);
-  const { authConfig, inlineAlertDetails } = useApplicationStore();
+  const { inlineAlertDetails } = useApplicationStore();
+  const { authConfig } = useCurrentUserStore();
   const [isAdmin, setIsAdmin] = useState(isAdminPage);
   const [isBot, setIsBot] = useState(forceBot);
   const [selectedTeams, setSelectedTeams] = useState<

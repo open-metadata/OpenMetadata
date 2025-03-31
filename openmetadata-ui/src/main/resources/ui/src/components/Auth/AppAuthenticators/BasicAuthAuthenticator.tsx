@@ -25,7 +25,7 @@ import {
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   getRefreshToken,
   setOidcToken,
@@ -33,7 +33,6 @@ import {
 } from '../../../utils/LocalStorageUtils';
 import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
-
 interface BasicAuthenticatorInterface {
   children: ReactNode;
 }
@@ -42,12 +41,8 @@ const BasicAuthenticator = forwardRef(
   ({ children }: BasicAuthenticatorInterface, ref) => {
     const { handleLogout } = useBasicAuth();
     const { t } = useTranslation();
-    const {
-      setIsAuthenticated,
-      authConfig,
-
-      isApplicationLoading,
-    } = useApplicationStore();
+    const { setIsAuthenticated, authConfig, isApplicationLoading } =
+      useCurrentUserStore();
 
     const handleSilentSignIn =
       useCallback(async (): Promise<AccessTokenResponse> => {

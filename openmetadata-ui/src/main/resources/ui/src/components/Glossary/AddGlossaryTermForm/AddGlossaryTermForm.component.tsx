@@ -29,7 +29,7 @@ import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 
@@ -39,7 +39,7 @@ const AddGlossaryTermForm = ({
   glossaryTerm,
   formRef: form,
 }: AddGlossaryTermFormProps) => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
 

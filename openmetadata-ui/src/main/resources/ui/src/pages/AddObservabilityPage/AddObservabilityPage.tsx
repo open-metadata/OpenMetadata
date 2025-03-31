@@ -45,6 +45,7 @@ import {
   getResourceFunctions,
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   getModifiedAlertDataForForm,
   handleAlertSave,
@@ -63,8 +64,8 @@ function AddObservabilityPage() {
   const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
-  const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
-    useApplicationStore();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]

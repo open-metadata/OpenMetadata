@@ -15,14 +15,13 @@ import React, { useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
 import withSuspenseFallback from './withSuspenseFallback';
-
 const SigninPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/LoginPage/SignInPage'))
 );
@@ -43,7 +42,7 @@ const BasicSignupPage = withSuspenseFallback(
 
 export const UnAuthenticatedAppRouter = () => {
   const location = useCustomLocation();
-  const { authConfig, isSigningUp } = useApplicationStore();
+  const { authConfig, isSigningUp } = useCurrentUserStore();
 
   const isBasicAuthProvider =
     authConfig &&

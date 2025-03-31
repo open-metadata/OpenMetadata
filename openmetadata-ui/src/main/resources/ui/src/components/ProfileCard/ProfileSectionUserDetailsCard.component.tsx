@@ -29,9 +29,9 @@ import {
 } from '../../generated/auth/changePasswordRequest';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { changePassword } from '../../rest/auth-API';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
@@ -56,7 +56,7 @@ const ProfileSectionUserDetailsCard = ({
   const { t } = useTranslation();
   const { fqn: username } = useFqn();
   const { isAdminUser } = useAuth();
-  const { authConfig, currentUser } = useApplicationStore();
+  const { authConfig, currentUser } = useCurrentUserStore();
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);

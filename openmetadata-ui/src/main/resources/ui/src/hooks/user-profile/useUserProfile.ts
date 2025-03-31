@@ -18,12 +18,12 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../utils/ProfilerUtils';
 import { getUserWithImage } from '../../utils/UserDataUtils';
-import { useApplicationStore } from '../useApplicationStore';
 
 let userProfilePicsLoading: string[] = [];
 
@@ -36,7 +36,7 @@ export const useUserProfile = ({
   name: string;
   isTeam?: boolean;
 }): [string | null, boolean, User | undefined] => {
-  const { userProfilePics, updateUserProfilePics } = useApplicationStore();
+  const { userProfilePics, updateUserProfilePics } = useCurrentUserStore();
 
   const user = userProfilePics[name];
   const [profilePic, setProfilePic] = useState(

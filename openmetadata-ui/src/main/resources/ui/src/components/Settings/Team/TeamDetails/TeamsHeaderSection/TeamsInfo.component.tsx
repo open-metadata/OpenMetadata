@@ -31,7 +31,7 @@ import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../../../store/useCurrentUser.store';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
@@ -55,7 +55,7 @@ const TeamsInfo = ({
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const { email, owners, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,

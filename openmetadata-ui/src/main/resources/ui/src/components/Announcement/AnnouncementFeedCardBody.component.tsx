@@ -25,7 +25,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Post } from '../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../generated/type/reaction';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   getEntityField,
   getEntityFQN,
@@ -39,7 +39,6 @@ import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
 import './announcement.less';
-
 const AnnouncementFeedCardBody = ({
   feed,
   entityLink,
@@ -58,7 +57,7 @@ const AnnouncementFeedCardBody = ({
   const entityType = getEntityType(entityLink ?? '');
   const entityFQN = getEntityFQN(entityLink ?? '');
   const entityField = getEntityField(entityLink ?? '');
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [feedDetail, setFeedDetail] = useState<Post>(feed);
 

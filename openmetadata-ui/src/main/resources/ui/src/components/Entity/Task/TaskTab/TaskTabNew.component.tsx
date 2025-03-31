@@ -74,7 +74,6 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   FieldProp,
   FieldTypes,
@@ -114,6 +113,7 @@ import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/Acti
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
@@ -132,7 +132,7 @@ export const TaskTabNew = ({
   const editorRef = useRef<EditorContentRef>();
   const history = useHistory();
   const [assigneesForm] = useForm();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();
   const { task: taskDetails } = taskThread;

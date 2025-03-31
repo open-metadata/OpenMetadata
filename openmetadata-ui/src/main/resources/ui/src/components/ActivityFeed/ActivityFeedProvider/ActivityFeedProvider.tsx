@@ -42,7 +42,6 @@ import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deletePostById,
   deleteThread,
@@ -54,6 +53,7 @@ import {
 } from '../../../rest/feedsAPI';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
 import { getUsers } from '../../../rest/userAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   getEntityFeedLink,
   getEntityReferenceListFromEntities,
@@ -62,7 +62,6 @@ import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
-
 interface Props {
   children: ReactNode;
   // To override current userId in case of User profile page
@@ -88,7 +87,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
     []
   );
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const fetchTestCaseResolution = useCallback(async (id: string) => {
     try {

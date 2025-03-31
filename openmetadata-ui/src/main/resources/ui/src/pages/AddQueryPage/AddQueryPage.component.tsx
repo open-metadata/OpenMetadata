@@ -36,12 +36,12 @@ import { OwnerType } from '../../enums/user.enum';
 import { CreateQuery } from '../../generated/api/data/createQuery';
 import { Table } from '../../generated/entity/data/table';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { searchData } from '../../rest/miscAPI';
 import { postQuery } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
 import {
@@ -55,7 +55,7 @@ import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();

@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { FeedFilter } from '../../../enums/mydata.enum';
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getFeedFilterWidgets } from '../../../utils/LandingPageWidget/WidgetsUtils';
 import './feeds-filter-popover.less';
 import { FeedsFilterPopoverProps } from './FeedsFilterPopover.interface';
@@ -35,7 +35,7 @@ const FeedsFilterPopover = ({
   onUpdate,
 }: FeedsFilterPopoverProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [popupVisible, setPopupVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] =
     useState<FeedFilter>(defaultFilter);

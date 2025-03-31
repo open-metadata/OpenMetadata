@@ -54,7 +54,6 @@ import {
 } from '../../../generated/configuration/authenticationConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
@@ -64,6 +63,7 @@ import {
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
@@ -92,7 +92,11 @@ import MsalAuthenticator from '../AppAuthenticators/MsalAuthenticator';
 import OidcAuthenticator from '../AppAuthenticators/OidcAuthenticator';
 import OktaAuthenticator from '../AppAuthenticators/OktaAuthenticator';
 import SamlAuthenticator from '../AppAuthenticators/SamlAuthenticator';
-import { AuthenticatorRef, OidcUser } from './AuthProvider.interface';
+import {
+  AuthenticationConfigurationWithScope,
+  AuthenticatorRef,
+  OidcUser,
+} from './AuthProvider.interface';
 import BasicAuthProvider from './BasicAuthProvider';
 import OktaAuthProvider from './OktaAuthProvider';
 
@@ -140,7 +144,7 @@ export const AuthProvider = ({
     setJwtPrincipalClaimsMapping,
     isApplicationLoading,
     setApplicationLoading,
-  } = useApplicationStore();
+  } = useCurrentUserStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
   const tokenService = useRef<TokenService>(TokenService.getInstance());
 
@@ -154,7 +158,12 @@ export const AuthProvider = ({
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const userConfig = useMemo(
-    () => (authConfig ? getUserManagerConfig(authConfig) : {}),
+    () =>
+      authConfig
+        ? getUserManagerConfig(
+            authConfig as AuthenticationConfigurationWithScope
+          )
+        : {},
     [authConfig]
   );
 

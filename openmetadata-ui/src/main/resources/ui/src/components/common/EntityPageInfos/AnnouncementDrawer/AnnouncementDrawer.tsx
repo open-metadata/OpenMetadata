@@ -19,11 +19,10 @@ import React, { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
 import { postFeedById } from '../../../../rest/feedsAPI';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
@@ -43,7 +42,7 @@ const AnnouncementDrawer: FC<Props> = ({
   createPermission = false,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
     useState<boolean>(false);
   const [refetchThread, setRefetchThread] = useState<boolean>(false);

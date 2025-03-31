@@ -39,7 +39,6 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Include } from '../../generated/type/include';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
@@ -48,6 +47,7 @@ import {
   removeDataModelFollower,
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   addToRecentViewed,
   getEntityMissingError,
@@ -61,7 +61,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const DataModelsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: dashboardDataModelFQN } = useFqn();

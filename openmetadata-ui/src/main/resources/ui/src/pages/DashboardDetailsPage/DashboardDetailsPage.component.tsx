@@ -29,7 +29,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
@@ -38,6 +37,7 @@ import {
   removeFollower,
   updateDashboardVotes,
 } from '../../rest/dashboardAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   addToRecentViewed,
   getEntityMissingError,
@@ -54,7 +54,7 @@ export type ChartType = {
 
 const DashboardDetailsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();

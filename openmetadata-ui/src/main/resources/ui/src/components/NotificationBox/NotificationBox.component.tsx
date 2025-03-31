@@ -26,8 +26,8 @@ import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getFeedsWithFilter } from '../../rest/feedsAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
 import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -45,7 +45,7 @@ const NotificationBox = ({
   onTabChange,
 }: NotificationBoxProp) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [notifications, setNotifications] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [viewAllPath, setViewAllPath] = useState<string>(

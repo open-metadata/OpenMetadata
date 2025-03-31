@@ -20,8 +20,8 @@ import { Link } from 'react-router-dom';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   formatDateTime,
   getRelativeTime,
@@ -74,7 +74,7 @@ const ActivityFeedCardNew = ({
     return { entityFQN, entityType };
   }, [feed.about]);
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { selectedThread, postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);

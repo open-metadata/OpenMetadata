@@ -25,7 +25,7 @@ import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import LoginCarousel from '../LoginPage/LoginCarousel';
 import './../LoginPage/login.style.less';
 
@@ -39,7 +39,7 @@ interface SignUpFormData {
 
 const BasicSignUp = () => {
   const { t } = useTranslation();
-  const { authConfig } = useApplicationStore();
+  const { authConfig } = useCurrentUserStore();
   const { handleRegister } = useBasicAuth();
   const { alert, resetAlert } = useAlertStore();
   const history = useHistory();

@@ -28,10 +28,10 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../../generated/entity/feed/thread';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedCount } from '../../../../rest/feedsAPI';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityUserLink } from '../../../../utils/EntityUtils';
@@ -41,7 +41,6 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import '../../../ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import { ActivityFeedTabs } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import FeedsFilterPopover from '../../../common/FeedsFilterPopover/FeedsFilterPopover.component';
-
 const FeedsWidget = ({
   isEditView = false,
   handleRemoveWidget,
@@ -50,7 +49,7 @@ const FeedsWidget = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
     ActivityFeedTabs.ALL
   );

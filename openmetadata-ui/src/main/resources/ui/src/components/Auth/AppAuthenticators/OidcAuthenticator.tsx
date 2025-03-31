@@ -24,9 +24,9 @@ import React, {
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -35,7 +35,6 @@ import {
   AuthenticatorRef,
   OidcUser,
 } from '../AuthProviders/AuthProvider.interface';
-
 interface Props {
   childComponentType: ComponentType;
   children: ReactNode;
@@ -74,7 +73,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       currentUser,
       newUser,
       isApplicationLoading,
-    } = useApplicationStore();
+    } = useCurrentUserStore();
     const history = useHistory();
     const location = useCustomLocation();
     const userManager = useMemo(

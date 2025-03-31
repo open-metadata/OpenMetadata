@@ -20,6 +20,7 @@ import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import TokenService from '../../utils/Auth/TokenService/TokenServiceUtil';
 import {
@@ -34,16 +35,14 @@ import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './app-container.less';
-
 const { Content } = Layout;
 
 const AppContainer = () => {
-  const { currentUser, setAppPreferences, appPreferences } =
-    useApplicationStore();
+  const { setAppPreferences, appPreferences } = useApplicationStore();
   const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
-  const { isAuthenticated } = useApplicationStore();
+  const { isAuthenticated, currentUser } = useCurrentUserStore();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
   const { setConfig, bannerDetails } = useLimitStore();

@@ -26,7 +26,7 @@ import {
   Reaction as ReactionProp,
   ReactionType,
 } from '../../../generated/type/reaction';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 import './reactions.less';
@@ -42,7 +42,7 @@ interface ReactionsProps {
 const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const hide = () => {
     setVisible(false);

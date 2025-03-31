@@ -25,11 +25,11 @@ import { FormSubmitType } from '../../../../enums/form.enum';
 import { OwnerType } from '../../../../enums/user.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   addTestCaseToLogicalTestSuite,
   createTestSuites,
 } from '../../../../rest/testAPI';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { getTestSuitePath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -45,7 +45,7 @@ import AddTestSuiteForm from '../AddTestSuiteForm/AddTestSuiteForm';
 const TestSuiteStepper = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [testSuiteResponse, setTestSuiteResponse] = useState<TestSuite>();
   const [addIngestion, setAddIngestion] = useState(false);

@@ -24,9 +24,9 @@ import {
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
@@ -42,7 +42,7 @@ const LeftSidebar = ({
 }) => {
   const location = useCustomLocation();
   const { t } = useTranslation();
-  const { onLogoutHandler } = useApplicationStore();
+  const { onLogoutHandler } = useCurrentUserStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
 
   const { i18n } = useTranslation();

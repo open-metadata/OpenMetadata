@@ -26,9 +26,9 @@ import {
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import {
   getDefaultFilterPropertyValues,
   getSuccessMessage,
@@ -73,7 +73,7 @@ const AddIngestion = ({
 }: AddIngestionProps) => {
   const { t } = useTranslation();
   const { ingestionFQN } = useFqn();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { config: limitConfig } = useLimitStore();
 
   const isEditMode = !isEmpty(ingestionFQN);

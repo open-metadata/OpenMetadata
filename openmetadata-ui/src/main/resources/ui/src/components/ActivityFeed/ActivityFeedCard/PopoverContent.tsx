@@ -23,7 +23,7 @@ import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Post } from '../../../generated/entity/feed/thread';
 import { ReactionType } from '../../../generated/type/reaction';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import Reaction from '../Reactions/Reaction';
 import { ConfirmState } from './ActivityFeedCard.interface';
 
@@ -59,7 +59,7 @@ const PopoverContent: FC<Props> = ({
   isAnnouncement,
   editAnnouncementPermission,
 }) => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [visible, setVisible] = useState<boolean>(false);
 
   const hide = () => {

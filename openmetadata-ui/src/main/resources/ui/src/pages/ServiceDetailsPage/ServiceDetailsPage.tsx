@@ -78,12 +78,12 @@ import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EntityReference } from '../../generated/entity/type';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
@@ -106,6 +106,7 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -148,7 +149,7 @@ export type ServicePageData =
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const airflowInformation = useAirflowStatus();
   const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
@@ -1205,7 +1206,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     const ownerIds = serviceDetails?.owners?.map((owner) => owner.id) ?? [];
     const userOwnsService = ownerIds.includes(currentUser?.id ?? '');
     const userInOwnerTeam = Boolean(
-      currentUser?.teams?.some((team) => ownerIds.includes(team.id))
+      currentUser?.teams?.some((team: EntityReference) =>
+        ownerIds.includes(team.id)
+      )
     );
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;

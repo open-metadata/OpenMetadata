@@ -43,7 +43,6 @@ import { TASK_TYPES } from '../../../constants/Task.constant';
 import { TaskType } from '../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import { useAuth } from '../../../hooks/authHooks';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import DescriptionTaskNew from '../../../pages/TasksPage/shared/DescriptionTaskNew';
 import TagsTask from '../../../pages/TasksPage/shared/TagsTask';
 import { updateTask } from '../../../rest/feedsAPI';
@@ -56,11 +55,11 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../common/OwnerLabel/UserAvatarGroup.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
-
 interface TaskFeedCardProps {
   feed: Thread;
   className?: string;
@@ -83,7 +82,7 @@ const TaskFeedCard = ({
   const history = useHistory();
   const { t } = useTranslation();
   const { setActiveThread } = useActivityFeedProvider();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { isAdminUser } = useAuth();
   const { threadTs: timeStamp, task: taskDetails } = feed;
   const { showDrawer } = useActivityFeedProvider();

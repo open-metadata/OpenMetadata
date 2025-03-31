@@ -18,14 +18,14 @@ import React, {
 } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
-    const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
+    const { setIsAuthenticated, setIsSigningUp } = useCurrentUserStore();
     const history = useHistory();
 
     const handleLogin = () => {

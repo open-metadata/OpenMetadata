@@ -48,11 +48,11 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { useAuth } from '../../../hooks/authHooks';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -72,7 +72,6 @@ import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
 } from './ActivityFeedTab.interface';
-
 const componentsVisibility = {
   showThreadIcon: false,
   showRepliesContainer: true,
@@ -92,7 +91,7 @@ export const ActivityFeedTab = ({
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { isAdminUser } = useAuth();
   const { fqn } = useFqn();
   const [elementRef, isInView] = useElementInView({

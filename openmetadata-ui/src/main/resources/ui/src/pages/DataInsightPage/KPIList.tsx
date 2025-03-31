@@ -38,16 +38,15 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getListKPIs } from '../../rest/KpiAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
-
 const KPIList = () => {
   const history = useHistory();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const isAdminUser = currentUser?.isAdmin ?? false;
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();

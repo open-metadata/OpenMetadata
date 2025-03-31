@@ -39,13 +39,13 @@ import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   createExecutableTestSuite,
   createTestCase,
   getTestSuiteByName,
 } from '../../../rest/testAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   getEntityBreadcrumbs,
   getEntityName,
@@ -80,7 +80,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testSuiteData, setTestSuiteData] = useState<TestSuite>();
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { getResourceLimit } = useLimitStore();
 
   const breadcrumb = useMemo(() => {

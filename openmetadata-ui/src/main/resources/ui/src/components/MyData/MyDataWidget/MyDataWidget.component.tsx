@@ -24,9 +24,9 @@ import {
 } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../rest/miscAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -36,14 +36,13 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import EntityListSkeleton from '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './my-data-widget.less';
-
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
   widgetKey,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SourceType[]>([]);
   const [totalOwnedAssetsCount, setTotalOwnedAssetsCount] = useState<number>(0);

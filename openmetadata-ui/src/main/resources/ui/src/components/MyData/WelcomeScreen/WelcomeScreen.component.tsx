@@ -18,11 +18,10 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow-right.svg';
 import { ROUTES } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import './welcome-screen.style.less';
-
 const { Paragraph, Text } = Typography;
 
 interface WelcomeScreenProps {
@@ -31,7 +30,7 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const userName = useMemo(() => {
     return split(getEntityName(currentUser), ' ')[0];

@@ -31,6 +31,7 @@ import {
   deleteSampleDataByTableId,
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   getEntityDeleteMessage,
   Transi18next,
@@ -48,7 +49,6 @@ import {
   SampleDataProps,
   SampleDataType,
 } from './SampleData.interface';
-
 const SampleDataTable = ({
   isTableDeleted,
   tableId,
@@ -56,7 +56,8 @@ const SampleDataTable = ({
   permissions,
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
-  const { currentUser, theme } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
+  const { theme } = useApplicationStore();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);

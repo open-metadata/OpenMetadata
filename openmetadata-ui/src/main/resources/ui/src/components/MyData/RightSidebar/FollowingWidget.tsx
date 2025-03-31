@@ -20,8 +20,8 @@ import { ReactComponent as FollowingEmptyIcon } from '../../../assets/svg/follow
 import { FOLLOW_DATA_ASSET } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getUserPath } from '../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
@@ -42,7 +42,7 @@ function FollowingWidget({
   widgetKey,
 }: Readonly<FollowingWidgetProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);

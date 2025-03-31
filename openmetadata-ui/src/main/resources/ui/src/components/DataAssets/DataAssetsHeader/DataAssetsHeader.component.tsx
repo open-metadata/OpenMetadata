@@ -43,11 +43,11 @@ import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
@@ -199,7 +199,7 @@ export const DataAssetsHeader = ({
   isDqAlertSupported,
   isCustomizedView = false,
 }: DataAssetsHeaderProps) => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
   const { t } = useTranslation();

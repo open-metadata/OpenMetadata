@@ -10,28 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { groupBy } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Page, PageType } from '../generated/system/ui/page';
-import { NavigationItem } from '../generated/system/ui/uiCustomization';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
-import { useApplicationStore } from './useApplicationStore';
+import { useCurrentUserStore } from '../store/useCurrentUser.store';
 
 export const useCustomPages = (pageType: PageType | 'Navigation') => {
-  const { selectedPersona } = useApplicationStore();
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
-  const [navigation, setNavigation] = useState<NavigationItem[] | null>(null);
+  const {
+    selectedPersona,
+    setCustomizedPages,
+    customizedPages,
+    customizeNavigation,
+    setCustomizeNavigation,
+  } = useCurrentUserStore();
+
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDocument = useCallback(async () => {
     const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
     try {
       const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === pageType)
+      setCustomizedPages(
+        groupBy<Page>(doc.data?.pages, 'pageType') as unknown as Record<
+          PageType,
+          Page
+        >
       );
-      setNavigation(doc.data?.navigation);
+      setCustomizeNavigation(doc.data?.navigation);
     } catch (error) {
       // fail silent
     } finally {
@@ -45,11 +53,17 @@ export const useCustomPages = (pageType: PageType | 'Navigation') => {
     } else {
       setIsLoading(false);
     }
-  }, [selectedPersona, pageType]);
+  }, [selectedPersona]);
+
+  //   useEffect(() => {
+  //     if (customizedPages) {
+  //       setCustomizedPage(customizedPages?.[pageType as PageType]);
+  //     }
+  //   }, [pageType]);
 
   return {
-    customizedPage,
-    navigation,
+    customizedPage: customizedPages?.[pageType as PageType],
+    navigation: customizeNavigation,
     isLoading,
   };
 };

@@ -34,8 +34,8 @@ import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import { ROUTES } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse, refreshSAMLToken } from '../../../rest/auth-API';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   getOidcToken,
@@ -52,7 +52,7 @@ interface Props {
 
 const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, authConfig } = useApplicationStore();
+    const { setIsAuthenticated, authConfig } = useCurrentUserStore();
     const config = authConfig?.samlConfiguration as SamlSSOClientConfig;
 
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {

@@ -28,6 +28,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -36,7 +37,6 @@ import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import AppLogo from '../AppLogo/AppLogo.component';
 import './app-install-verify-card.less';
 import { AppInstallVerifyCardProps } from './AppInstallVerifyCard.interface';
-
 const AppInstallVerifyCard = ({
   appData,
   nextButtonLabel,
@@ -44,7 +44,8 @@ const AppInstallVerifyCard = ({
   onSave,
 }: AppInstallVerifyCardProps) => {
   const { t } = useTranslation();
-  const { currentUser, theme } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
+  const { theme } = useApplicationStore();
 
   return (
     <div className="flex-center flex-col">

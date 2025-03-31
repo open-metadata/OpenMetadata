@@ -19,7 +19,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
@@ -31,7 +31,7 @@ interface Props {
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { oktaAuth } = useOktaAuth();
-    const { setIsAuthenticated } = useApplicationStore();
+    const { setIsAuthenticated } = useCurrentUserStore();
 
     const login = async () => {
       oktaAuth.signInWithRedirect();

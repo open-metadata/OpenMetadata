@@ -56,6 +56,7 @@ import {
   getResourceFunctions,
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   getModifiedAlertDataForForm,
   handleAlertSave,
@@ -77,8 +78,8 @@ const AddNotificationPage = () => {
   const history = useHistory();
   const { fqn } = useFqn();
   const { t } = useTranslation();
-  const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
-    useApplicationStore();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { getResourceLimit } = useLimitStore();
 
   const [loadingCount, setLoadingCount] = useState(0);

@@ -45,7 +45,6 @@ import { Container } from '../../generated/entity/data/container';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -58,6 +57,7 @@ import {
   restoreContainer,
   updateContainerVotes,
 } from '../../rest/storageAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   addToRecentViewed,
   getEntityMissingError,
@@ -77,7 +77,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 const ContainerPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading: loading } = useCustomPages(

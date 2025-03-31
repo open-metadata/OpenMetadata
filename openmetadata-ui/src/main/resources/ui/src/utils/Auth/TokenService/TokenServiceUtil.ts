@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse } from '../../../rest/auth-API';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { extractDetailsFromToken } from '../../AuthProvider.util';
 import { getOidcToken } from '../../LocalStorageUtils';
 
@@ -105,7 +105,7 @@ class TokenService {
         // Silent Frame window timeout error since it doesn't affect refresh token process
         if ((error as AxiosError).message !== 'Frame window timed out') {
           // Perform logout for any error
-          useApplicationStore.getState().onLogoutHandler();
+          useCurrentUserStore.getState().onLogoutHandler();
           this.clearRefreshInProgress();
         }
         // Do nothing

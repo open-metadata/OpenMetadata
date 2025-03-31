@@ -19,7 +19,7 @@ import React, {
   useCallback,
   useMemo,
 } from 'react';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -32,7 +32,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
   onLoginSuccess,
 }: Props) => {
-  const { authConfig } = useApplicationStore();
+  const { authConfig } = useCurrentUserStore();
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as unknown as OktaAuthOptions;
 

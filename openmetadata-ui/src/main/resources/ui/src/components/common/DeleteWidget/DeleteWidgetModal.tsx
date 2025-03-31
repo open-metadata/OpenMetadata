@@ -33,8 +33,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deleteEntity } from '../../../rest/miscAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { Transi18next } from '../../../utils/CommonUtils';
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -68,7 +68,7 @@ const DeleteWidgetModal = ({
 }: DeleteWidgetModalProps) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const { currentUser, onLogoutHandler } = useApplicationStore();
+  const { currentUser, onLogoutHandler } = useCurrentUserStore();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const [deleteConfirmationText, setDeleteConfirmationText] =
     useState<string>('');

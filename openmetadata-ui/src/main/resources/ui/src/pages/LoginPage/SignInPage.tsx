@@ -32,7 +32,7 @@ import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { EMAIL_REG_EX } from '../../constants/regex.constants';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAlertStore } from '../../hooks/useAlertStore';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import './login.style.less';
 import LoginCarousel from './LoginCarousel';
 
@@ -41,7 +41,7 @@ const SignInPage = () => {
   const [form] = Form.useForm();
 
   const history = useHistory();
-  const { authConfig, onLoginHandler, isAuthenticated } = useApplicationStore();
+  const { authConfig, onLoginHandler, isAuthenticated } = useCurrentUserStore();
   const { alert, resetAlert } = useAlertStore();
 
   const { t } = useTranslation();

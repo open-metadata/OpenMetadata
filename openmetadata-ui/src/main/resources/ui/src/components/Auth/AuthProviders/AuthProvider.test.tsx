@@ -19,7 +19,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import AuthProvider from './AuthProvider';
 
 const localStorageMock = {
@@ -60,7 +60,7 @@ jest.mock('../../../rest/userAPI', () => ({
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
     const ConsumerComponent = () => {
-      const { onLogoutHandler } = useApplicationStore();
+      const { onLogoutHandler } = useCurrentUserStore();
 
       return (
         <button data-testid="logout-button" onClick={onLogoutHandler}>

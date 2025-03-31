@@ -24,11 +24,11 @@ import { Document } from '../../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../../generated/entity/type';
 import { Page } from '../../../../generated/system/ui/page';
 import { PageType } from '../../../../generated/system/ui/uiCustomization';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../../pages/MyDataPage/my-data.less';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
@@ -46,7 +46,6 @@ import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
-
 const ReactGridLayout = WidthProvider(RGL);
 
 function CustomizeMyData({
@@ -55,7 +54,7 @@ function CustomizeMyData({
   onSaveLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(

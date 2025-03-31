@@ -19,8 +19,8 @@ import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useCurrentUserStore } from '../../../../store/useCurrentUser.store';
 import Chip from '../../../common/Chip/Chip.component';
 import { PersonaSelectableList } from '../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import '../users.less';
@@ -36,7 +36,7 @@ const UserProfilePersonas = ({
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const { fqn: username } = useFqn();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
       await updateUserDetails({ personas }, 'personas');

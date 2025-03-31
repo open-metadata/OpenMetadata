@@ -24,11 +24,11 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   getDetailsTabWithNewLabel,
@@ -59,7 +59,7 @@ const DashboardDetails = ({
   handleToggleDelete,
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const history = useHistory();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();

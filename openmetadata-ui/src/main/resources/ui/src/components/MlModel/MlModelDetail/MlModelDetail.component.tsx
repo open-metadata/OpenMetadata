@@ -27,11 +27,11 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { getEmptyPlaceholder, getFeedCounts } from '../../../utils/CommonUtils';
 import {
   getDetailsTabWithNewLabel,
@@ -65,7 +65,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   onMlModelUpdate,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);

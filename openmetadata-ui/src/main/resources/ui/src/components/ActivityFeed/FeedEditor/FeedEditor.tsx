@@ -39,8 +39,8 @@ import {
   TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import {
   HTMLToMarkdown,
   suggestions,
@@ -88,7 +88,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
     const [isMentionListOpen, toggleMentionList] = useState(false);
     const [isFocused, toggleFocus] = useState(false);
 
-    const { userProfilePics } = useApplicationStore();
+    const { userProfilePics } = useCurrentUserStore();
 
     const userSuggestionRenderer = async (
       searchTerm: string,

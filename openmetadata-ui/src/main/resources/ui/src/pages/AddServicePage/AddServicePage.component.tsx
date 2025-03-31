@@ -38,6 +38,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
@@ -61,7 +62,8 @@ const AddServicePage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
-  const { currentUser, setInlineAlertDetails } = useApplicationStore();
+  const { setInlineAlertDetails } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP

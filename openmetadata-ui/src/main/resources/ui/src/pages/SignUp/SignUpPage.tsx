@@ -26,8 +26,8 @@ import {
 } from '../../constants/constants';
 import { ClientType } from '../../generated/configuration/authenticationConfiguration';
 import { EntityReference } from '../../generated/entity/type';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createUser } from '../../rest/userAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import {
   getNameFromUserData,
   setUrlPathnameExpiryAfterRoute,
@@ -35,7 +35,6 @@ import {
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { getImages, Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const cookieStorage = new CookieStorage();
 
 const SignUp = () => {
@@ -49,7 +48,7 @@ const SignUp = () => {
     updateCurrentUser,
     newUser,
     authConfig,
-  } = useApplicationStore();
+  } = useCurrentUserStore();
 
   const [loading, setLoading] = useState<boolean>(false);
   const OMDLogo = useMemo(() => brandClassBase.getMonogram().svg, []);

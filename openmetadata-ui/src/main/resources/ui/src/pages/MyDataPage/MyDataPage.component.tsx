@@ -30,23 +30,22 @@ import { Thread } from '../../generated/entity/feed/thread';
 import { Page, PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import LimitWrapper from '../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
-
 const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona } = useApplicationStore();
+  const { currentUser, selectedPersona } = useCurrentUserStore();
   const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);

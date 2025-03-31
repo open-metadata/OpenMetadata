@@ -22,11 +22,11 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { useAuth } from '../../../hooks/authHooks';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
 import { restoreUser } from '../../../rest/userAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -52,7 +52,6 @@ import { Props, UserPageTabs } from './Users.interface';
 import './users.less';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
-
 const Users = ({
   afterDeleteAction,
   userData,
@@ -66,7 +65,7 @@ const Users = ({
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useCustomLocation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const [currentTab, setCurrentTab] = useState<UserPageTabs>(activeTab);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();

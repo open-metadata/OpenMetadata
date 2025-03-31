@@ -21,7 +21,7 @@ import React, {
 } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { ROUTES } from '../../constants/constants';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useCurrentUserStore } from '../../store/useCurrentUser.store';
 
 export const WebSocketContext = React.createContext<{ socket?: Socket }>({});
 
@@ -31,7 +31,7 @@ interface Props {
 
 const WebSocketProvider: FC<Props> = ({ children }: Props) => {
   const [socket, setSocket] = useState<Socket>();
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
 
   // Init websocket for Feed & notification
   const initWebSocket = useCallback(() => {

@@ -36,10 +36,10 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { withPageLayout } from '../../../hoc/withPageLayout';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
+import { useCurrentUserStore } from '../../../store/useCurrentUser.store';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -62,9 +62,8 @@ import Assignees from '../shared/Assignees';
 import { DescriptionTabs } from '../shared/DescriptionTabs';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
-
 const UpdateDescription = () => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser } = useCurrentUserStore();
   const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
