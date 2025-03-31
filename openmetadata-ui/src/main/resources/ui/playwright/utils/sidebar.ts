@@ -21,8 +21,8 @@ export type SettingOptionsType =
   | keyof typeof SETTINGS_OPTIONS_PATH
   | keyof typeof SETTING_CUSTOM_PROPERTIES_PATH;
 
-export const clickOnLogo = async (page: Page) => {
-  await page.click('#openmetadata_logo > [data-testid="image"]');
+export const visitHomePage = async (page: Page) => {
+  await page.click('[data-testid="app-bar-item-my-data"]');
   await page.mouse.move(1280, 0); // Move mouse to top right corner
 };
 

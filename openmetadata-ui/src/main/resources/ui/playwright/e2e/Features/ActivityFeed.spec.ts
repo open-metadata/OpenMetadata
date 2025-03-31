@@ -38,7 +38,7 @@ import {
   visitOwnProfilePage,
 } from '../../utils/common';
 import { addOwner, updateDescription } from '../../utils/entity';
-import { clickOnLogo } from '../../utils/sidebar';
+import { visitHomePage } from '../../utils/sidebar';
 import {
   checkTaskCountInActivityFeed,
   createDescriptionTask,
@@ -161,7 +161,7 @@ test.describe('Activity feed', () => {
     // create tag task
     await createTagTask(page, { ...value, tag: 'PII.None' });
 
-    await clickOnLogo(page);
+    await visitHomePage(page);
 
     const taskResponse = page.waitForResponse(
       '/api/v1/feed?type=Task&filterType=OWNER&taskStatus=Open&userId=*'
