@@ -22,8 +22,8 @@ Check the more information about environment variable [here](/deployment/securit
 
 ```implicit
 # Implicit Flow
-AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+AUTHORIZER_CLASS_NAME= org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER= org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]                 # john.doe from john.doe@example.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org       # Update with your Domain,The primary domain for the organization (example.com from john.doe@example.com).
 
@@ -38,8 +38,8 @@ AUTHENTICATION_CLIENT_TYPE=public
 
 ```authcode
 # Auth Code Flow 
-AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+AUTHORIZER_CLASS_NAME= org.openmetadata.service.security.DefaultAuthorizer
+AUTHORIZER_REQUEST_FILTER= org.openmetadata.service.security.JwtFilter
 AUTHORIZER_ADMIN_PRINCIPALS=[admin]                 # john.doe from john.doe@example.com
 AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org       # Update with your Domain,The primary domain for the organization (example.com from john.doe@example.com).
 
