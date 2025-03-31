@@ -953,7 +953,7 @@ class PowerbiSource(DashboardServiceSource):
         Method to process the dashboard owners
         """
         try:
-            owner_ref_list = []
+            owner_ref_list = []  # to assign multiple owners to entity if they exist
             for owner in dashboard_details.users or []:
                 if owner.email:
                     owner_ref = None
@@ -966,16 +966,19 @@ class PowerbiSource(DashboardServiceSource):
                         logger.warning(
                             f"Could not fetch owner data for email: {owner.email}"
                         )
-                        owner_ref = self.metadata.get_reference_by_name(
-                            name=owner.displayName
-                        )
+                        if owner.displayName:
+                            owner_ref = self.metadata.get_reference_by_name(
+                                name=owner.displayName
+                            )
                     except Exception as err:
-                        logger.warning(f"Could not fetch owner data due to {err}")
+                        logger.warning(
+                            f"Error processing current owner data in {dashboard_details.id}: {err}"
+                        )
                     if owner_ref:
                         owner_ref_list.append(owner_ref.root[0])
             if len(owner_ref_list) > 0:
                 logger.debug(
-                    f"Successfully fetched owner data for {dashboard_details.name}"
+                    f"Successfully fetched owners data for {dashboard_details.id}"
                 )
                 return EntityReferenceList(root=owner_ref_list)
             return None
