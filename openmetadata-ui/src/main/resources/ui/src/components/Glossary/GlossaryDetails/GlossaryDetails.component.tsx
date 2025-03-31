@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -160,14 +159,14 @@ const GlossaryDetails = ({
       className="glossary-details p-t-sm"
       data-testid="glossary-details"
       gutter={[0, 16]}>
-      <Col className={classNames('p-x-lg')} span={24}>
+      <Col className="p-l-lg" span={24}>
         <GlossaryHeader
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
         />
       </Col>
-      <Col className="p-x-lg" span={24}>
+      <Col className="p-l-lg" span={24}>
         <Tabs
           activeKey={activeTab}
           className="tabs-new"
