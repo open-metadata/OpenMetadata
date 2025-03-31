@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_6_2'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_6_7'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1509,6 +1509,209 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 - **Improvement**: Add the missing filters for different assets in the Automator(Ex. Database filter for Database Schema asset). ${CollateIconWithLinkMD}
 - **Improvement**: Add Glossary Term and Metric as assets for Automation. ${CollateIconWithLinkMD}
 `,
+    },
+  },
+  {
+    id: 59,
+    version: 'v1.6.3',
+    description: 'Released on 29th January 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Fix**: Adds percona server for postgresql support.
+- **Fix**: Inherited Ownership for Data Products.
+- **Fix**: Favicon not being updated in the browser tab.
+- **Fix**: Fix Search Index for ER Model.
+- **Fix**: dbt ingestion picks up wrong service to patch metadata.
+- **Fix**: Wrong team count displayed on team tab.
+- **Fix**: Tracing highlighter in lineage after edge clicked.
+- **Fix**: Api should not called after time out in Test connection.
+- **Fix**: Get only non-deleted entities in export.
+- **Fix**: The permissions call made for search service.
+- **Fix**: Kafkaconnect validation errors.
+- **Fix**: DI Filter not getting applied.
+- **Fix**: Redash Get Dashboards flow.
+- **Fix**: Description not rendered in Glossary Modal while edit.
+- **Fix**: The persona JSON schema is named Team.
+- **Fix**: Redirection issue on IDP initiated calls.
+- **Fix**: Async export csv not happening in lineage.
+- **Fix**: Description renderer having tags in glossary,team and user import.
+- **Fix**: RichTextEditor output in case on no data save.
+- **Fix**: s3 storage parquet structureFormat ingestion.
+- **Fix**: Data Insights index mapping.
+- **Fix**: Edit description permission for domain owner.
+- **Fix**: Model dump dict key names.
+- **Fix**: Broken looker lineage.
+- **Fix**: Refresh call concurrency for multiple browser tabs.
+- **Fix**: Infinite loading for refresh attempted on app visit.
+- **Fix**: Duplicate table constraints.
+- **Fix**: Updated MSSQL queries causing arithmetic overflow error.
+- **Fix**: PowerBI tables, datamodel metadata missing.
+- **Fix**: Wrong dataset and project id in filter of system metric query.
+- **Fix**: Data Insight fix custom property filter.
+- **Fix**: Entity Hierarchy Schema.
+- **Fix**: Salesforce column description with toggle api.
+- **Fix**: Update glossary term table upon new term added.
+- **Fix**: Remove unwanted spacing around the list in block editor.
+- **Fix**: Postgres parse json schema.
+- **Fix**: Optimize multithreading for lineage.
+- **Fix**: Fetch Stored Procedures from account usage .
+- **Fix**: Add MaterializedView & DynamicTable for lineage computation.
+- **Fix**: MariaDB Lineage Dialect Issue.
+- **Fix**: DQ Dashboard: update order of the pie chart. ${CollateIconWithLinkMD}
+- **Fix**: Lineage Propagation when Entity doesn't have a given field. ${CollateIconWithLinkMD}
+- **Minor**: Optimize Snowflake SP Query.
+- **Minor**: Hide description tooltip for tag edit mode.
+- **Minor**: BigQuery Improvement, Hive Partitioned Tables, Nonetype issue resolved
+- **Minor**: Typo for datetime attribute.
+- **Minor**: Get missing dataProducts and pipeline properties in /customProperties api.
+- **Minor**: Improve cron expression validations.
+- **Minor**: Change log localization improvement.
+- **Minor**: Async test case result deletion.
+- **Minor**: Retention period 'Cancel' international display issue.
+- **Minor**: Added limits configuration in telemetry payload. ${CollateIconWithLinkMD}
+- **Improvement**: Logout user on unsuccessful refresh attempt.
+- **Improvement**: Support for Domain hierarchy listing.
+- **Improvement**: Avoid usage of CONCAT in WHERE clause.
+- **Improvement**: Glossary column width sizes for the resizable columns.
+- **Improvement**: Move Recreate Out of executors.
+- **Improvement**: Supported the task filter on landing page feed widget.
+- **Improvement**: Implement Data Quality Dashboards (Incident Manager + Data Quality).
+- **Improvement**: Added loading state, and manage error notification in TestSuite.
+- **Improvement**: Enhance Kafka SSL configuration support with consumerConfigSSL.
+- **Improvement**: Add prometheus counter for search and database.
+- **Improvement**: Retention Application : Delete change_events, activity threads, versions based on admin retention policies.
+- **Improvement**: Show displayName for custom dashboards. ${CollateIconWithLinkMD}
+- **Improvement**: Support rename for custom dashboard and charts. ${CollateIconWithLinkMD}
+- **Improvement**: Improve Onboarding Application. ${CollateIconWithLinkMD}
+`,
+    },
+  },
+  {
+    id: 60,
+    version: 'v1.6.4',
+    description: 'Released on 19th February 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Improvement**: Trino Add missing import.
+-   **Improvement**: Optimise Pipeline Lineage Extraction.
+-   **Improvement**: Powerbi fetch workspaces failure handle.
+-   **Fix**: Powerbi test connection sucess with bad credentials.
+-   **Fix**: Remove description check for columnDescriptionStatus.
+-   **Fix**: Markdown editor fix.
+-   **Fix**: Postgres usage not terminating with bad connection.
+-   **Fix**: Fix followers for Data Insights index.
+-   **Fix**: Add support for temp table lineage.
+-   **Fix**: Exclude deleted Stored Procedure Snowflake.
+-   **Fix**: Fix databricks schema not found.
+-   **Fix**: API service schema fields of object type not listed.
+-   **Fix**: Multiple Tier selection not resulting correct DQ dashboard view.
+-   **Fix**: Not able to edit sql query from test case details page.
+-   **Fix**: Implement the right SQA Sampler for UnityCatalog.
+-   **Fix**: Fix dbt Test case Timestamp issue.
+-   **Fix**: Delete pipelines from logical suites at deletion.
+-   **Fix**: Table Update Sys Metric shows wrong value.
+-   **Fix**: Fix unity catalog lineage - handle errors.
+-   **Improvement**: Validate basic suites do have basicEntityRef.
+-   **Improvement**: Add support for cluster key information - bigquery.
+-   **Improvement**: Automator - Remove tags by label type.
+-   **Improvement**: Show sub domain assets to top level.
+-   **Improvement**: Sort Enum type Custom Property Values.
+-   **Improvement**: Modify the appeariance of self connecting edge lineage.
+-   **Improvement**: Global search should persist quick filter in explore.
+-   **Improvement**: Show sourceUrl if present.
+-   **Improvement**: Modify the lineage alignment algorithm to tree view.
+
+
+`,
+    },
+  },
+  {
+    id: 61,
+    version: 'v1.6.5',
+    description: 'Released on 27th February 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Fix hyperlink encoding for alerts and notifications
+-   Fix failed tests sample data exception management
+-   Fix MySQL and MariaDB window function computation when no database is added in the connection
+-   Add support for tags and glossary terms in Domains and Data Products
+-   Fix consolidation issues on incremental changes
+-   Fix snowflake lineage Key Error
+-   Fix iframe SSO setup
+-   Support pagination for container children`,
+    },
+  },
+  {
+    id: 62,
+    version: 'v1.6.6',
+    description: 'Released on 14th March 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Added loggedInAPI to show more specific error messages instead of generic ones
+-   Added support for \`/logout\` path to perform logout from API redirect
+-   Added displayName field in the \`createCustomProperty\` schema
+-   Improved search relevancy for plural/singular words and partial matches
+-   Introduced "clear sample" option in entity config to support explicit null
+-   Made domain a required field for Data Product creation
+-   Enabled showdown rendering options`,
+
+      Fixes: `-   Fixed Snowflake ARRAY column ingestion issues
+-   Fixed Sigma workbook ingestion
+-   Fixed tomcat-jdbc dependency
+-   Fixed schema URL construction
+-   Fixed Redshift view logging for no schema binding
+-   Fixed OpenMetadata Operations
+-   Added support for datatype=array without type consistency
+-   Added result_maker check for query share URL in Looker
+-   Supported request schema field for OpenAPI lineage when response field is absent
+-   Fixed tour page clicking issues
+-   Fixed duplicate activity feed providers
+-   Fixed search query for non-admin pages
+-   Fixed other columns visibility when testSuite name is large
+-   Fixed task description viewer for diff creation
+-   Fixed inherited owner not updating in Data Product list
+-   Fixed user update roles
+-   Fixed table constraint error
+-   Fixed manual constraints deletion
+-   Fixed deletion of entities
+-   Fixed entity relation live indexing
+-   Fixed service creation error display
+-   Improved memory handling in temp table lineage
+-   Enhanced Column Name Scanner
+-   Improved pipeline service client exception handling
+-   Updated Tableau documentation in Connectors
+-   Optimized pipeline service client initialization
+-   Implemented Incremental Lineage Processing
+-   Don't overwrite query to execute
+-   Fixed external app logs
+-   Fixed incremental lineage processing when processedLineage is null`,
+    },
+  },
+  {
+    id: 63,
+    version: 'v1.6.7',
+    description: 'Released on 28th March 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Lineage Improvements
+-   Added Tableau Custom SQL lineage support
+-   Added column count validation when creating table-type custom property
+-   Transformed Reserved keywords like quotes to OM compatible
+-   Added missing timestamp indexes for time series tables
+-   Enhancing FQN Handling: Support for Quoted Identifiers`,
+
+      Fixes: `-   Fixed potential Okta login issues by clearing state to avoid login errors
+-   Fixed MariaDB profiling with Time datatype
+-   Fixed handling of Sample Data with non-utf8 characters
+-   Fixed test connection showing timeout after successful connection
+-   Fixed DBT logs and improved error handling
+-   Fixed Test Suite 'NoneType' object has no attribute 'id' handling
+-   Fixed delete entity relation live indexing
+-   Fixed Data Insights Data Stream deletion on OpenSearch
+-   Fixed soft delete and restore functionality
+-   Corrected childrenCount for Organizations in Teams
+-   Fixed custom dashboard issue with term type of data
+-   Lower training window for Collate Anomaly detection model ${CollateIconWithLinkMD}`,
     },
   },
 ];

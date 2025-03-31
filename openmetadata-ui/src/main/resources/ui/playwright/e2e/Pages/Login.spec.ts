@@ -12,9 +12,10 @@
  */
 import { expect, test } from '@playwright/test';
 import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
+import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { clickOutside, redirectToHomePage } from '../../utils/common';
 import { updateJWTTokenExpiryTime } from '../../utils/login';
 import { visitUserProfilePage } from '../../utils/user';
 
@@ -111,18 +112,18 @@ test.describe('Login flow should work properly', () => {
     await page.fill('#password', CREDENTIALS.password);
     await page.locator('[data-testid="login"]').click();
 
-    await expect(
-      page.locator('[data-testid="login-error-container"]')
-    ).toHaveText(LOGIN_ERROR_MESSAGE);
+    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
+      LOGIN_ERROR_MESSAGE
+    );
 
     // Login with invalid password
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', invalidPassword);
     await page.locator('[data-testid="login"]').click();
 
-    await expect(
-      page.locator('[data-testid="login-error-container"]')
-    ).toHaveText(LOGIN_ERROR_MESSAGE);
+    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
+      LOGIN_ERROR_MESSAGE
+    );
   });
 
   test('Forgot password and login with new password', async ({ page }) => {
@@ -139,7 +140,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test.fixme('Refresh should work', async ({ browser }) => {
+  test.skip('Refresh should work', async ({ browser }) => {
     const browserContext = await browser.newContext();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),
@@ -148,8 +149,6 @@ test.describe('Login flow should work properly', () => {
     const testUser = new UserClass();
     await testUser.create(apiContext);
 
-    await afterAction();
-
     await test.step('Login and wait for refresh call is made', async () => {
       // User login
 
@@ -157,11 +156,8 @@ test.describe('Login flow should work properly', () => {
       await redirectToHomePage(page1);
       await redirectToHomePage(page2);
 
-      const refreshCall = page1.waitForResponse('**/refresh', {
-        timeout: 3 * 60 * 1000,
-      });
-
-      await refreshCall;
+      // Need to wait until refresh happens and update the storage
+      await page1.waitForTimeout(3 * 60 * 1000);
 
       await redirectToHomePage(page1);
 
@@ -169,5 +165,38 @@ test.describe('Login flow should work properly', () => {
       await redirectToHomePage(page2);
       await visitUserProfilePage(page2, testUser.responseData.name);
     });
+
+    await afterAction();
+  });
+
+  test('accessing app with expired token should do auto renew token', async ({
+    browser,
+  }) => {
+    const browserContext = await browser.newContext();
+
+    // Create new page and validate access
+    const page1 = await browserContext.newPage();
+    const page2 = await browserContext.newPage();
+
+    const admin = new AdminClass();
+    await admin.login(page1);
+
+    await redirectToHomePage(page1);
+    await page1.getByTestId('dropdown-profile').click();
+    await page1.waitForLoadState('networkidle');
+    await clickOutside(page1);
+
+    await expect(page1.getByTestId('user-name')).toContainText(/admin/i);
+
+    // Wait for token expiry
+    await page2.waitForTimeout(3 * 60 * 1000);
+
+    await redirectToHomePage(page2);
+
+    await page2.getByTestId('dropdown-profile').click();
+    await page2.waitForLoadState('networkidle');
+    await clickOutside(page2);
+
+    await expect(page2.getByTestId('user-name')).toContainText(/admin/i);
   });
 });

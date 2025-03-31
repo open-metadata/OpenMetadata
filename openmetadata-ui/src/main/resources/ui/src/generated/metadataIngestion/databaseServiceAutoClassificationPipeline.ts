@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -70,7 +70,7 @@ export interface DatabaseServiceAutoClassificationPipeline {
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  *
  * Regex to only fetch databases that matches the pattern.
  *

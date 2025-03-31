@@ -13,8 +13,7 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
@@ -22,21 +21,31 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import Appbar from '../AppBar/Appbar';
+import TokenService from '../../utils/Auth/TokenService/TokenServiceUtil';
+import {
+  extractDetailsFromToken,
+  isProtectedRoute,
+  isTourRoute,
+} from '../../utils/AuthProvider.util';
+import { getOidcToken } from '../../utils/LocalStorageUtils';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
+import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './app-container.less';
 
+const { Content } = Layout;
+
 const AppContainer = () => {
-  const { i18n } = useTranslation();
-  const { Header, Sider, Content } = Layout;
-  const { currentUser, setAppPreferences } = useApplicationStore();
+  const { currentUser, setAppPreferences, appPreferences } =
+    useApplicationStore();
   const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
-  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const { isAuthenticated } = useApplicationStore();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
+
   const { setConfig, bannerDetails } = useLimitStore();
 
   const fetchAppConfigurations = useCallback(async () => {
@@ -47,7 +56,10 @@ const AppContainer = () => {
       ]);
 
       setConfig(response);
-      setAppPreferences({ lineageConfig: lineageConfig as LineageSettings });
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig: lineageConfig as LineageSettings,
+      });
     } catch (error) {
       // silent fail
     }
@@ -70,6 +82,28 @@ const AppContainer = () => {
     }
   }, [applications]);
 
+  useEffect(() => {
+    const handleDocumentVisibilityChange = () => {
+      if (
+        isProtectedRoute(location.pathname) &&
+        isTourRoute(location.pathname)
+      ) {
+        return;
+      }
+      const { isExpired } = extractDetailsFromToken(getOidcToken());
+      if (!document.hidden && isExpired) {
+        // force logout
+        TokenService.getInstance().refreshToken();
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, []);
+
   return (
     <Layout>
       <LimitBanner />
@@ -77,17 +111,20 @@ const AppContainer = () => {
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
         })}>
-        <Sider
-          className={classNames('left-sidebar-col', {
-            'left-sidebar-col-rtl': isDirectionRTL,
-          })}
-          width={60}>
-          <LeftSidebar />
-        </Sider>
+        {/* Render left side navigation */}
+        <LeftSidebar isSidebarCollapsed={isSidebarCollapsed} />
+
+        {/* Render main content */}
         <Layout>
-          <Header className="p-x-0">
-            <Appbar />
-          </Header>
+          {/* Render Appbar */}
+          {isProtectedRoute(location.pathname) && isAuthenticated ? (
+            <NavBar
+              isSidebarCollapsed={isSidebarCollapsed}
+              toggleSideBar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            />
+          ) : null}
+
+          {/* Render main content */}
           <Content>
             <AuthenticatedRouter />
             {ApplicationExtras && <ApplicationExtras />}

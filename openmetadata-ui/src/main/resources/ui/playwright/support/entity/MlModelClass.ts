@@ -44,6 +44,11 @@ export class MlModelClass extends EntityClass {
       dataType: 'numerical',
       description: 'Sales amount',
     },
+    {
+      name: 'persona',
+      dataType: 'categorical',
+      description: 'type of buyer',
+    },
   ];
 
   entity = {

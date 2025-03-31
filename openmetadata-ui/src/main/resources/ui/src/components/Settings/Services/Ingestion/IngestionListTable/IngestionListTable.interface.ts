@@ -23,6 +23,7 @@ import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 
 export interface IngestionListTableProps {
+  tableContainerClassName?: string;
   afterDeleteAction?: () => void;
   airflowInformation?: UseAirflowStatusProps;
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
@@ -56,4 +57,5 @@ export interface IngestionListTableProps {
     record: IngestionPipeline
   ) => ReactNode;
   tableClassName?: string;
+  searchText?: string;
 }

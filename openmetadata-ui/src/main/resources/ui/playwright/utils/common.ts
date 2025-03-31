@@ -47,6 +47,8 @@ export const getToken = async (page: Page) => {
 
 export const getAuthContext = async (token: string) => {
   return await request.newContext({
+    // Default timeout is 30s making it to 1m for AUTs
+    timeout: 60000,
     extraHTTPHeaders: {
       Authorization: `Bearer ${token}`,
     },
@@ -116,15 +118,11 @@ export const toastNotification = async (
   page: Page,
   message: string | RegExp
 ) => {
-  await expect(
-    page.locator('.Toastify__toast-body[role="alert"]').first()
-  ).toHaveText(message);
+  await expect(page.getByTestId('alert-bar')).toHaveText(message);
 
-  await page
-    .locator('.Toastify__toast')
-    .getByLabel('close', { exact: true })
-    .first()
-    .click();
+  await expect(page.getByTestId('alert-icon')).toBeVisible();
+
+  await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -152,7 +150,7 @@ export const visitOwnProfilePage = async (page: Page) => {
 
 export const assignDomain = async (
   page: Page,
-  domain: { name: string; displayName: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -160,11 +158,12 @@ export const assignDomain = async (
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
   await page
-    .getByTestId('selectable-list')
+    .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -173,33 +172,40 @@ export const assignDomain = async (
 
 export const updateDomain = async (
   page: Page,
-  domain: { name: string; displayName: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-  await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
+
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
   await page
-    .getByTestId('selectable-list')
+    .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
   );
 };
 
-export const removeDomain = async (page: Page) => {
+export const removeDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
-
-  await page.getByTestId('remove-owner').locator('svg').click();
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };
@@ -210,6 +216,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
   await page.getByRole('menuitem', { name: glossaryName }).click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const getRandomFirstName = () => {
@@ -257,13 +265,9 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 // This error toast blocks the buttons at the top
 // Below logic closes the alert if it's present to avoid flakiness in tests
 export const closeFirstPopupAlert = async (page: Page) => {
-  const toastLocator = '.Toastify__toast-body[role="alert"]';
-  const toastElement = await page.$(toastLocator);
-  if (toastElement) {
-    await page
-      .locator('.Toastify__toast')
-      .getByLabel('close', { exact: true })
-      .first()
-      .click();
+  const toastElement = page.getByTestId('alert-bar');
+
+  if ((await toastElement.count()) > 0) {
+    await page.getByTestId('alert-icon-close').first().click();
   }
 };

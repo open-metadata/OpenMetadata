@@ -12,7 +12,8 @@
  */
 
 import { EntityType } from '../../enums/entity.enum';
-import { TestSummary } from '../../generated/tests/testCase';
+import { TestCaseStatus, TestSummary } from '../../generated/tests/testCase';
+import { TestCaseType } from '../../rest/testAPI';
 
 export enum DataQualityPageTabs {
   TEST_SUITES = 'test-suites',
@@ -35,4 +36,9 @@ export type DataQualityDashboardChartFilters = {
   endTs?: number;
   entityFQN?: string;
   entityType?: EntityType;
+  serviceName?: string;
+  testPlatforms?: string[];
+  dataQualityDimension?: string;
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: TestCaseType;
 };

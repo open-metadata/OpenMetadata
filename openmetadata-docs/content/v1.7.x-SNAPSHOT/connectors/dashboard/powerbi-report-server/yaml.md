@@ -4,7 +4,7 @@ slug: /connectors/dashboard/powerbireportserver/yaml
 ---
 
 {% connectorDetailsHeader
-  name="PowerBIReportServer"
+  name="PowerBI Report Server"
   stage="BETA"
   platform="Collate"
   availableFeatures=["Dashboards"]

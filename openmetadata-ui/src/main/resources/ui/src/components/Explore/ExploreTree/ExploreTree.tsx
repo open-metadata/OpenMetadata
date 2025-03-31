@@ -31,14 +31,15 @@ import {
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
-  updateCountsInTreeData,
   updateTreeData,
+  updateTreeDataWithCounts,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
 import {
@@ -68,6 +69,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
@@ -166,6 +168,20 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 style={{ width: 18, height: 18 }}
               />
             );
+          } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+            logo = searchClassBase.getEntityIcon(
+              'database',
+              'service-icon w-4 h-4'
+            ) ?? <></>;
+          } else if (
+            bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
+          ) {
+            logo = searchClassBase.getEntityIcon(
+              'databaseSchema',
+              'service-icon w-4 h-4'
+            ) ?? <></>;
+          } else if (bucketToFind === EntityFields.SERVICE) {
+            logo = treeNode.icon;
           }
 
           if (bucket.key.toLowerCase() === defaultServiceType) {
@@ -233,6 +249,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
   const fetchEntityCounts = useCallback(async () => {
     try {
+      setIsLoading(true);
       const res = await searchQuery({
         query: searchQueryParam ?? '',
         pageNumber: 0,
@@ -245,18 +262,17 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       });
 
       const buckets = res.aggregations['entityType'].buckets;
-      const counts: Record<string, number> = {};
+      setTreeData((origin) => {
+        const updatedData = updateTreeDataWithCounts(origin, buckets);
 
-      buckets.forEach((item) => {
-        counts[item.key] = item.doc_count;
-        if (staticKeysHavingCounts.includes(item.key)) {
-          setTreeData((origin) =>
-            updateCountsInTreeData(origin, item.key, item.doc_count)
-          );
-        }
+        return updatedData.filter(
+          (node) => node.totalCount !== undefined && node.totalCount > 0
+        );
       });
     } catch (error) {
       // Do nothing
+    } finally {
+      setIsLoading(false);
     }
   }, [staticKeysHavingCounts]);
 
@@ -271,11 +287,15 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     }
   }, [parsedSearch]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <Tree
       blockNode
       showIcon
-      className="explore-tree p-sm p-t-0"
+      className="explore-tree"
       data-testid="explore-tree"
       defaultExpandedKeys={defaultExpandedKeys}
       loadData={onLoadData}

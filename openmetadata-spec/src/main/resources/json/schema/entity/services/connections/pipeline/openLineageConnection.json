@@ -98,6 +98,11 @@
       "description": "SASL Configuration details.",
       "$ref": "../../../../security/sasl/saslClientConfig.json"
     },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
     "supportsMetadataExtraction": {
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }

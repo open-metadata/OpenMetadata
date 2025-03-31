@@ -30,6 +30,8 @@ site_menu:
     url: /connectors/api/rest
   - category: Connectors / API / REST / Run Externally
     url: /connectors/api/rest/yaml
+  - category: Connectors / API / REST / Troubleshooting
+    url: /connectors/api/rest/troubleshooting
   - category: Connectors / Database
     url: /connectors/database
   - category: Connectors / Database / ADLS Datalake
@@ -100,6 +102,10 @@ site_menu:
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / Exasol
+    url: /connectors/database/exasol
+  - category: Connectors / Database / Exasol / Run Externally
+    url: /connectors/database/exasol/yaml
   - category: Connectors / Database / GCS Datalake
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
@@ -154,11 +160,11 @@ site_menu:
     url: /connectors/database/pinotdb
   - category: Connectors / Database / PinotDB / Run Externally
     url: /connectors/database/pinotdb/yaml
-  - category: Connectors / Database / Postgres
+  - category: Connectors / Database / PostgreSQL
     url: /connectors/database/postgres
-  - category: Connectors / Database / Postgres / Run Externally
+  - category: Connectors / Database / PostgreSQL / Run Externally
     url: /connectors/database/postgres/yaml
-  - category: Connectors / Database / Postgres / Troubleshooting
+  - category: Connectors / Database / PostgreSQL / Troubleshooting
     url: /connectors/database/postgres/troubleshooting
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
@@ -174,9 +180,9 @@ site_menu:
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
-  - category: Connectors / Database / SAP Hana
+  - category: Connectors / Database / SAP HANA
     url: /connectors/database/sap-hana
-  - category: Connectors / Database / SAP Hana / Run Externally
+  - category: Connectors / Database / SAP HANA / Run Externally
     url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAP ERP
     url: /connectors/database/sap-erp
@@ -212,6 +218,10 @@ site_menu:
     url: /connectors/database/s3-datalake/yaml
   - category: Connectors / Database / S3 Datalake / Troubleshooting
     url: /connectors/database/s3-datalake/troubleshooting
+  - category: Connectors / Database / Teradata
+    url: /connectors/database/teradata
+  - category: Connectors / Database / Teradata / Run Externally
+    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -235,18 +245,26 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Domo Dashboard / Troubleshooting
+    url: /connectors/dashboard/domo-dashboard/troubleshooting
   - category: Connectors / Dashboard / Lightdash
     url: /connectors/dashboard/lightdash
   - category: Connectors / Dashboard / Lightdash / Run Externally
     url: /connectors/dashboard/lightdash/yaml
+  - category: Connectors / Dashboard / Lightdash / Troubleshooting
+    url: /connectors/dashboard/lightdash/troubleshooting
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
     url: /connectors/dashboard/looker/yaml
+  - category: Connectors / Dashboard / Looker / Troubleshooting
+    url: /connectors/dashboard/looker/troubleshooting
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / Metabase / Troubleshooting
+    url: /connectors/dashboard/metabase/troubleshooting
   - category: Connectors / Dashboard / MicroStrategy
     url: /connectors/dashboard/microstrategy
   - category: Connectors / Dashboard / MicroStrategy / Run Externally
@@ -533,6 +551,9 @@ site_menu:
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
 
+  - category: Connectors / Troubleshooting
+    url: /connectors/troubleshooting
+
   - category: How-to Guides
     url: /how-to-guides
 
@@ -622,6 +643,8 @@ site_menu:
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
+  - category: How-to Guides / Data Discovery / Troubleshooting
+    url: /how-to-guides/data-discovery/troubleshooting
   - category: How-to Guides / Data Discovery / Bulk Upload Data Assets
     url: /how-to-guides/data-discovery/bulk-upload
   - category: How-to Guides / Data Discovery / How to Bulk Import Data Asset
@@ -636,6 +659,8 @@ site_menu:
     url: /how-to-guides/data-discovery/openmetadata-extension/looking-up
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing tasks & add comment directly from the extension
     url: /how-to-guides/data-discovery/openmetadata-extension/viewing-tasks
+  - category: How-to Guides / Data Discovery / ER Diagrams
+    url: /how-to-guides/data-discovery/er-diagrams
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -681,6 +706,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/workflow
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
     url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Custom Metrics
+    url: /how-to-guides/data-quality-observability/profiler/custom-metrics
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
@@ -816,6 +843,8 @@ site_menu:
     url: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
   - category: How-to Guides / Data Governance / Workflows / How to Edit a Workflow
     url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
+  - category: How-to Guides / Data Governance / Metrics
+    url: /how-to-guides/data-governance/metrics
 
   - category: Enable Security
     url: /security
@@ -854,6 +883,16 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.6 Release
+    url: /releases/all-releases/#1.6.6-release
+  - category: Releases / All Releases / 1.6.5 Release
+    url: /releases/all-releases/#1.6.5-release
+  - category: Releases / All Releases / 1.6.4 Release
+    url: /releases/all-releases/#1.6.4-release
+  - category: Releases / All Releases / 1.6.3 Release
+    url: /releases/all-releases/#1.6.3-release
+  - category: Releases / All Releases / 1.6.2 Release
+    url: /releases/all-releases/#1.6.2-release
   - category: Releases / All Releases / 1.6.1 Release
     url: /releases/all-releases/#1.6.1-release
   - category: Releases / All Releases / 1.5.15 Release

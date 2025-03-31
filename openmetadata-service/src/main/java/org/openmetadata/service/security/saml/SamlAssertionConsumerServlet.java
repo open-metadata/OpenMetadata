@@ -130,15 +130,21 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
       // Redirect with JWT Token
       String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
       String url =
-          redirectUri
-              + "?id_token="
-              + jwtAuthMechanism.getJWTToken()
-              + "&email="
-              + nameId
-              + "&name="
-              + username;
+          String.format(
+              "%s?id_token=%s&email=%s&name=%s",
+              (nullOrEmpty(redirectUri) ? buildBaseRequestUrl(req) : redirectUri),
+              jwtAuthMechanism.getJWTToken(),
+              nameId,
+              username);
+      Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
       resp.sendRedirect(url);
     }
+  }
+
+  private String buildBaseRequestUrl(HttpServletRequest req) {
+    // In case of IDP initiated one it needs to be built on fly, since the session might not exist
+    return String.format(
+        "%s://%s:%s/saml/callback", req.getScheme(), req.getServerName(), req.getServerPort());
   }
 
   private JwtResponse getJwtResponseWithRefresh(

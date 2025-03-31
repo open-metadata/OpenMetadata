@@ -183,7 +183,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
-              getSmtpSettings().getOpenMetadataUrl(),
+              EmailUtil.getOMBaseURL(),
               URLEncoder.encode(user.getFullyQualifiedName(), StandardCharsets.UTF_8),
               mailVerificationToken);
       try {
@@ -207,7 +207,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     String passwordResetLink =
         String.format(
             "%s/users/password/reset?user=%s&token=%s",
-            getSmtpSettings().getOpenMetadataUrl(),
+            EmailUtil.getOMBaseURL(),
             URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
             mailVerificationToken);
     try {
@@ -339,7 +339,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         templatePopulator.put(SUPPORT_URL, getSmtpSettings().getSupportUrl());
         templatePopulator.put(USERNAME, user.getName());
         templatePopulator.put(PASSWORD, pwd);
-        templatePopulator.put(APPLICATION_LOGIN_LINK, getSmtpSettings().getOpenMetadataUrl());
+        templatePopulator.put(APPLICATION_LOGIN_LINK, EmailUtil.getOMBaseURL());
         try {
           EmailUtil.sendMail(
               subject, templatePopulator, user.getEmail(), INVITE_RANDOM_PASSWORD_TEMPLATE, true);
@@ -469,6 +469,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(email);
     User storedUser = lookUserInProvider(email, loginRequest.getPassword());
     validatePassword(email, loginRequest.getPassword(), storedUser);
+    Entity.getUserRepository().updateUserLastLoginTime(storedUser, System.currentTimeMillis());
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 

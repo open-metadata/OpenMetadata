@@ -11,11 +11,11 @@ The **Data Insights Dashboard** provides an analytical view of all the key metri
 
 Watch the video to learn more about proactively honing the data culture of your company by setting targets, monitoring, and boosting teams to accomplish data goals.
 
-{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" width="560px" height="315px" /%}
+{% youtube videoId="lOQepnTdA58" start="0:00" end="58:23" width="800px" height="450px" /%}
 
 Watch a demo of Data Insights in OpenMetadata
 
-{% youtube videoId="Epd9G6igLUM" start="0:00" end="21:58" width="560px" height="315px" /%}
+{% youtube videoId="Epd9G6igLUM" start="0:00" end="21:58" width="800px" height="450px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout
@@ -45,13 +45,6 @@ Watch a demo of Data Insights in OpenMetadata
   icon="MdInsights"
   href="/how-to-guides/data-insights/report"%}
   Get a quick glance of data asset description, ownership, and tiering coverage.
- {%/inlineCallout%}
- {%inlineCallout
-  color="violet-70"
-  bold="Cost Analysis"
-  icon="MdInsights"
-  href="/how-to-guides/data-insights/cost-analysis"%}
-  Get valuable insights with the cost analysis reports.
  {%/inlineCallout%}
  {%inlineCallout
   color="violet-70"

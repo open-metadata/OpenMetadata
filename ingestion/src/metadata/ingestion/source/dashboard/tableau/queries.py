@@ -77,3 +77,17 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
   }}
 }}
 """
+
+TALEAU_GET_CUSTOM_SQL_QUERY = """
+{
+  customSQLTables {
+    name
+    id
+    downstreamWorkbooks {
+      luid
+      name
+    }
+    query
+  }
+}
+"""

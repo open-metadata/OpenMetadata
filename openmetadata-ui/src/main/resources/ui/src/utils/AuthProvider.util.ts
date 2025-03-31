@@ -311,6 +311,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
       ROUTES.NOT_FOUND,
+      ROUTES.LOGOUT,
     ].indexOf(pathname) === -1
   );
 };
@@ -363,7 +364,6 @@ export const extractDetailsFromToken = (token: string) => {
   return {
     exp: 0,
     isExpired: true,
-
     timeoutExpiry: 0,
   };
 };

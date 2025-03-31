@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Card, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -21,7 +21,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
 export const OwnerLabelV2 = <
   T extends { owners?: EntityReference[]; id: string }
@@ -35,35 +35,39 @@ export const OwnerLabelV2 = <
   };
 
   return (
-    <div data-testid="glossary-right-panel-owner-link">
-      <div className="d-flex items-center m-b-xs">
-        <Typography.Text className="right-panel-label">
-          {t('label.owner-plural')}
-        </Typography.Text>
-        {(permissions.EditOwners || permissions.EditAll) &&
-          data.owners &&
-          data.owners.length > 0 && (
-            <UserTeamSelectableList
-              hasPermission={permissions.EditOwners || permissions.EditAll}
-              listHeight={200}
-              multiple={{ user: true, team: false }}
-              owner={data.owners}
-              onUpdate={handleUpdatedOwner}>
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
-                })}>
-                <Button
-                  className="cursor-pointer flex-center m-l-xss"
-                  data-testid="edit-owner"
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                  size="small"
-                  type="text"
-                />
-              </Tooltip>
-            </UserTeamSelectableList>
-          )}
-      </div>
+    <Card
+      className="new-header-border-card"
+      data-testid="glossary-right-panel-owner-link"
+      title={
+        <div className="d-flex items-center ">
+          <Typography.Text className="text-sm font-medium">
+            {t('label.owner-plural')}
+          </Typography.Text>
+          {(permissions.EditOwners || permissions.EditAll) &&
+            data.owners &&
+            data.owners.length > 0 && (
+              <UserTeamSelectableList
+                hasPermission={permissions.EditOwners || permissions.EditAll}
+                listHeight={200}
+                multiple={{ user: true, team: false }}
+                owner={data.owners}
+                onUpdate={handleUpdatedOwner}>
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.owner-plural'),
+                  })}>
+                  <Button
+                    className="cursor-pointer flex-center m-l-xss"
+                    data-testid="edit-owner"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    size="small"
+                    type="text"
+                  />
+                </Tooltip>
+              </UserTeamSelectableList>
+            )}
+        </div>
+      }>
       <Space className="m-r-xss" size={4}>
         {getOwnerVersionLabel(
           data,
@@ -89,6 +93,6 @@ export const OwnerLabelV2 = <
             />
           </UserTeamSelectableList>
         )}
-    </div>
+    </Card>
   );
 };

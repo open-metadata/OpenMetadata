@@ -1,23 +1,17 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.RestUtil.decodeCursor;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
-import org.openmetadata.service.util.JsonUtils;
 
 @Builder
-@Slf4j
 public class FeedFilter {
   @Getter private ThreadType threadType;
   @Getter private Boolean activeAnnouncement;
@@ -54,27 +48,13 @@ public class FeedFilter {
     }
     condition1 =
         addCondition(condition1, resolved == null ? "" : String.format("resolved = %s", resolved));
-
-    // Add pagination filter
     if (paginationType != null && includePagination) {
-      Map<String, String> cursorMap =
-          paginationType == PaginationType.BEFORE
-              ? parseCursorMap(decodeCursor(before))
-              : parseCursorMap(decodeCursor(after));
-
-      String updatedAt = cursorMap.get("updatedAt");
-      String id = cursorMap.get("id");
-
       String paginationCondition =
           paginationType == PaginationType.BEFORE
-              ? String.format(
-                  "((updatedAt > %s) OR (updatedAt = %s AND id > '%s')) ", updatedAt, updatedAt, id)
+              ? String.format("updatedAt > %s", Long.parseLong(decodeCursor(before)))
               : String.format(
-                  "((updatedAt < %s) OR (updatedAt = %s AND id < '%s')) ",
-                  updatedAt != null ? updatedAt : Long.MAX_VALUE,
-                  updatedAt != null ? updatedAt : Long.MAX_VALUE,
-                  id);
-
+                  "updatedAt < %s",
+                  after != null ? Long.parseLong(decodeCursor(after)) : Long.MAX_VALUE);
       condition1 = addCondition(condition1, paginationCondition);
     }
 
@@ -103,32 +83,5 @@ public class FeedFilter {
       return condition1;
     }
     return condition1 + " AND " + condition2;
-  }
-
-  Map<String, String> parseCursorMap(String param) {
-    Map<String, String> cursorMap = new HashMap<>();
-    cursorMap.put("updatedAt", null);
-    cursorMap.put("id", null);
-
-    if (nullOrEmpty(param)) {
-      return cursorMap;
-    }
-
-    try {
-      return JsonUtils.readValue(param, Map.class);
-    } catch (Exception e) {
-      LOG.error("Failed to parse cursor map", e);
-      return cursorMap;
-    }
-  }
-
-  public String getSortingOrder() {
-    if (paginationType == null) {
-      return "ORDER BY updatedAt DESC, id DESC";
-    } else {
-      return paginationType == PaginationType.BEFORE
-          ? "ORDER BY updatedAt ASC,id ASC"
-          : "ORDER BY updatedAt DESC,id DESC";
-    }
   }
 }

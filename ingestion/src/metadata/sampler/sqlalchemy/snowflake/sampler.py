@@ -68,7 +68,7 @@ class SnowflakeSampler(SQASampler):
         self.sampling_method_type = func.bernoulli
         if (
             sample_config
-            and sample_config.sampling_method_type == SamplingMethodType.SYSTEM
+            and sample_config.samplingMethodType == SamplingMethodType.SYSTEM
         ):
             self.sampling_method_type = func.system
 
@@ -77,19 +77,20 @@ class SnowflakeSampler(SQASampler):
         Args:
             selectable (Table): _description_
         """
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
             return selectable.tablesample(
-                self.sampling_method_type(self.sample_config.profile_sample or 100)
+                self.sampling_method_type(self.sample_config.profileSample or 100)
             )
 
         return selectable.tablesample(
-            func.ROW(text(f"{self.sample_config.profile_sample or 100} ROWS"))
+            func.ROW(text(f"{self.sample_config.profileSample or 100} ROWS"))
         )
 
     def get_sample_query(self, *, column=None) -> CTE:
         """get query for sample data"""
         rnd = self._base_sample_query(column).cte(
-            f"{self.raw_dataset.__tablename__}_rnd"
+            f"{self.get_sampler_table_name()}_rnd"
         )
-        query = self.client.query(rnd)
-        return query.cte(f"{self.raw_dataset.__tablename__}_sample")
+        with self.get_client() as client:
+            query = client.query(rnd)
+        return query.cte(f"{self.get_sampler_table_name()}_sample")

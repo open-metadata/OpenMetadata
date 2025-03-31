@@ -13,10 +13,11 @@
 
 import pytest
 
-from ingestion.tests.integration.datalake.conftest import BUCKET_NAME
 from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+from .conftest import BUCKET_NAME
 
 
 class TestDatalake:

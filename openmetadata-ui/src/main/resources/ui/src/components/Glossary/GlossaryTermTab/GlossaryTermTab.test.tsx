@@ -36,11 +36,8 @@ const mockProps = {
   childGlossaryTerms: [],
   isGlossary: false,
   permissions: MOCK_PERMISSIONS,
-  refreshGlossaryTerms: mockRefreshGlossaryTerms,
   selectedData: mockedGlossaryTerms[0],
   termsLoading: false,
-  onAddGlossaryTerm: mockOnAddGlossaryTerm,
-  onEditGlossaryTerm: mockOnEditGlossaryTerm,
 };
 
 jest.mock('../../../rest/glossaryAPI', () => ({
@@ -49,7 +46,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockedGlossaryTerms })),
   patchGlossaryTerm: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
@@ -75,6 +72,15 @@ jest.mock('../useGlossary.store', () => ({
   useGlossaryStore: jest.fn().mockImplementation(() => ({
     activeGlossary: mockedGlossaryTerms[0],
     updateActiveGlossary: jest.fn(),
+    onAddGlossaryTerm: mockOnAddGlossaryTerm,
+    onEditGlossaryTerm: mockOnEditGlossaryTerm,
+    refreshGlossaryTerms: mockRefreshGlossaryTerms,
+  })),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    permissions: MOCK_PERMISSIONS,
   })),
 }));
 

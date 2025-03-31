@@ -52,6 +52,11 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await page
     .getByTestId('data-summary-container')
     .getByText(classificationDisplayName)
@@ -78,6 +83,11 @@ export const addAssetsToTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -135,6 +145,11 @@ export const removeAssetsFromTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -302,6 +317,11 @@ export const verifyTagPageUI = async (
   await tag.visitPage(page);
   await res;
 
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
   );
@@ -335,6 +355,12 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await page.getByTestId('edit-description').click();
 
   await expect(page.getByRole('dialog')).toBeVisible();

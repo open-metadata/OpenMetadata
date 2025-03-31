@@ -17,8 +17,10 @@ import Loader from '../../components/common/Loader/Loader';
 import AddDataQualityTestV1 from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {
@@ -59,4 +61,8 @@ const AddDataQualityTestPage = () => {
   );
 };
 
-export default AddDataQualityTestPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.data-quality-test'),
+  })
+)(AddDataQualityTestPage);

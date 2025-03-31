@@ -21,7 +21,8 @@ import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
@@ -34,24 +35,24 @@ const TableDescription = ({
   onClick,
   entityType,
   hasEditPermission,
-  onThreadLinkSelect,
 }: TableDescriptionProps) => {
   const { t } = useTranslation();
-  const { selectedUserSuggestions = [] } = useSuggestionsContext();
+  const { selectedUserSuggestions } = useSuggestionsContext();
+  const { onThreadLinkSelect } = useGenericContext();
 
   const entityLink = useMemo(
     () =>
       entityType === EntityType.TABLE
         ? EntityLink.getTableEntityLink(
             entityFqn,
-            columnData.record?.name ?? ''
+            EntityLink.getTableColumnNameFromColumnFqn(columnData.fqn)
           )
         : getEntityFeedLink(entityType, columnData.fqn),
     [entityType, entityFqn]
   );
 
   const suggestionData = useMemo(() => {
-    const activeSuggestion = selectedUserSuggestions.find(
+    const activeSuggestion = selectedUserSuggestions?.description.find(
       (suggestion) => suggestion.entityLink === entityLink
     );
 
@@ -73,7 +74,7 @@ const TableDescription = ({
     if (suggestionData) {
       return suggestionData;
     } else if (columnData.field) {
-      return <RichTextEditorPreviewerV1 markdown={columnData.field} />;
+      return <RichTextEditorPreviewerNew markdown={columnData.field} />;
     } else {
       return (
         <span className="text-grey-muted">

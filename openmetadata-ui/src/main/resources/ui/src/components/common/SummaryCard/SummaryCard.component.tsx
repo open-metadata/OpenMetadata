@@ -27,6 +27,9 @@ export const SummaryCard = ({
   showProgressBar = true,
   className,
   isLoading = false,
+  inverseLabel,
+  titleIcon,
+  cardBackgroundClass,
 }: SummaryCardProps) => {
   const percent = useMemo(() => {
     if (isNumber(value)) {
@@ -48,14 +51,19 @@ export const SummaryCard = ({
 
   return (
     <Space
-      className={classNames('summary-card', className)}
+      className={classNames('summary-card', cardBackgroundClass, className)}
       data-testid="summary-card-container">
-      <div>
-        <Typography.Paragraph
-          className="summary-card-title"
-          data-testid="summary-card-title">
-          {title}
-        </Typography.Paragraph>
+      <div
+        className={classNames({ 'inverse-label': inverseLabel })}
+        data-testid="summary-card-label">
+        <Space align="center" size={8}>
+          {titleIcon}
+          <Typography.Paragraph
+            className="summary-card-title"
+            data-testid="summary-card-title">
+            {title}
+          </Typography.Paragraph>
+        </Space>
         <Typography.Paragraph
           className="summary-card-description"
           data-testid="summary-card-description">

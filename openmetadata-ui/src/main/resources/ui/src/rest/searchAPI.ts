@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
+import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
   Aggregations,
   KeysOfUnion,
@@ -232,4 +233,38 @@ export const searchQuery = async <
   const res = await rawSearchQuery(req);
 
   return formatSearchQueryResponse(res.data);
+};
+
+export const searchPreview = async (payload: PreviewSearchRequest) => {
+  const response = await APIClient.post<SearchResponse<SearchIndex>>(
+    '/search/preview',
+    payload
+  );
+
+  return response.data;
+};
+
+export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
+  const response = await APIClient.get<SearchResponse<SearchIndex>>(
+    '/search/nlq/query',
+    {
+      params: {
+        q: payload.query,
+        index: payload.searchIndex,
+        size: payload.pageSize,
+        from: payload.pageNumber,
+        sort_field: payload.sortField,
+        sort_order: payload.sortOrder,
+        query_filter: JSON.stringify(payload.queryFilter),
+      },
+    }
+  );
+
+  return formatSearchQueryResponse(response.data);
+};
+
+export const getNLPEnabledStatus = async () => {
+  const response = await APIClient.get<boolean>('/system/search/nlq');
+
+  return response.data;
 };

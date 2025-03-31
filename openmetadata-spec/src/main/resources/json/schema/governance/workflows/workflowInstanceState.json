@@ -55,9 +55,11 @@
       "description": "Timestamp on which the workflow instance state was created.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
+    "status": {
+      "$ref": "workflowInstance.json#/definitions/workflowStatus"
+    },
     "exception": {
-      "description": "If the Workflow Instance has errors, 'True'. Else, 'False'.",
-      "type": "boolean"
+      "type": "string"
     }
   },
   "required": [],

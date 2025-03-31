@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import { SidebarItem } from '../../constant/sidebar';
 import { uuid } from '../../utils/common';
+import { selectDomain } from '../../utils/domain';
+import { sidebarClick } from '../../utils/sidebar';
+import { EntityTypeEndpoint } from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
 
 type UserTeamRef = {
   name: string;
@@ -31,13 +37,14 @@ type ResponseDataType = {
   experts?: string[];
 };
 
-export class Domain {
+export class Domain extends EntityClass {
   id: string;
   data: ResponseDataType;
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
+    super(EntityTypeEndpoint.Domain);
     this.id = uuid();
     this.data = data ?? {
       name: `PW%domain.${this.id}`,
@@ -47,6 +54,12 @@ export class Domain {
       // eslint-disable-next-line no-useless-escape
       fullyQualifiedName: `\"PW%domain.${this.id}\"`,
     };
+  }
+
+  async visitEntityPage(page: Page) {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
+    await selectDomain(page, this.responseData);
   }
 
   async create(apiContext: APIRequestContext) {
@@ -71,5 +84,29 @@ export class Domain {
     );
 
     return response.body;
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/domains/${this.responseData?.id}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.responseData = await response.json();
+
+    return {
+      entity: this.responseData,
+    };
   }
 }
