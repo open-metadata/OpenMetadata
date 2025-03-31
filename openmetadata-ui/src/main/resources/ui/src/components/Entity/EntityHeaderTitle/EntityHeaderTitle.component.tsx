@@ -78,6 +78,26 @@ const EntityHeaderTitle = ({
       ),
     [showOnlyDisplayName, displayName, name]
   );
+  const renderBadges = () => (
+    <>
+      {isDisabled && (
+        <Badge
+          className="m-l-xs badge-grey"
+          count={t('label.disabled')}
+          data-testid="disabled"
+        />
+      )}
+      {deleted && (
+        <Col className="text-xs" flex="100px">
+          <span className="deleted-badge-button" data-testid="deleted-badge">
+            <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+            {t('label.deleted')}
+          </span>
+        </Col>
+      )}
+      {badge && <Col>{badge}</Col>}
+    </>
+  );
 
   const content = (
     <Row
@@ -93,18 +113,23 @@ const EntityHeaderTitle = ({
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Tooltip placement="bottom" title={stringToHTML(displayName ?? name)}>
-            <Typography.Text
-              className={classNames(
-                'entity-header-name',
-                nameClassName,
-                'm-b-0 d-block display-xs font-semibold'
-              )}
-              data-testid="entity-header-display-name"
-              ellipsis={{ tooltip: true }}>
-              {stringToHTML(displayName ?? name)}
-            </Typography.Text>
-          </Tooltip>
+          <div className="d-flex items-center gap-2">
+            <Tooltip
+              placement="bottom"
+              title={stringToHTML(displayName ?? name)}>
+              <Typography.Text
+                className={classNames(
+                  'entity-header-name',
+                  nameClassName,
+                  'm-b-0 d-block display-xs font-semibold'
+                )}
+                data-testid="entity-header-display-name"
+                ellipsis={{ tooltip: true }}>
+                {stringToHTML(displayName ?? name)}
+              </Typography.Text>
+            </Tooltip>
+            {renderBadges()}
+          </div>
         ) : null}
 
         <div
@@ -163,22 +188,7 @@ const EntityHeaderTitle = ({
         </div>
       </Col>
 
-      {isDisabled && (
-        <Badge
-          className="m-l-xs badge-grey"
-          count={t('label.disabled')}
-          data-testid="disabled"
-        />
-      )}
-      {deleted && (
-        <Col className="text-xs" flex="100px">
-          <span className="deleted-badge-button" data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
-            {t('label.deleted')}
-          </span>
-        </Col>
-      )}
-      {badge && <Col>{badge}</Col>}
+      {isEmpty(displayName) ? renderBadges() : null}
     </Row>
   );
 

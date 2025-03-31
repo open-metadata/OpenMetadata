@@ -45,7 +45,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
       title={t('label.inherited-entity', {
         entity: t('label.owner-plural'),
       })}>
-      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+      <InheritIcon className="inherit-icon cursor-pointer" width={10} />
     </Tooltip>
   ) : null;
 
@@ -56,11 +56,17 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
         marginLeft: index === 0 || isCompactView ? 0 : '-4px',
       }}>
       {!isCompactView ? (
-        <UserPopOverCard userName={owner.name ?? ''}>
-          <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
-            <OwnerAvatar isCompactView={isCompactView} owner={owner} />
-          </Link>
-        </UserPopOverCard>
+        <>
+          <UserPopOverCard userName={owner.name ?? ''}>
+            <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
+              <OwnerAvatar
+                inheritedIcon={inheritedIcon}
+                isCompactView={isCompactView}
+                owner={owner}
+              />
+            </Link>
+          </UserPopOverCard>
+        </>
       ) : (
         <>
           <div className="owner-avatar-icon d-flex">
@@ -77,9 +83,9 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
               {ownerDisplayName ?? displayName}
             </span>
           </Link>
+          {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
         </>
       )}
-      {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
     </div>
   );
 };

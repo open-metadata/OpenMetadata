@@ -98,8 +98,8 @@ export const OwnerLabel = ({
                   multiple={multiple}
                   owner={owners}
                   tooltipText={tooltipText}
-                  onUpdate={(updatedUsers) => {
-                    onUpdate(updatedUsers);
+                  onUpdate={async (updatedUsers) => {
+                    await onUpdate(updatedUsers);
                   }}
                 />
               )}
@@ -140,8 +140,8 @@ export const OwnerLabel = ({
             multiple={multiple}
             owner={owners}
             tooltipText={tooltipText}
-            onUpdate={(updatedUsers) => {
-              onUpdate(updatedUsers);
+            onUpdate={async (updatedUsers) => {
+              await onUpdate(updatedUsers);
             }}
           />
         )}

@@ -22,11 +22,13 @@ import './owner-avtar.less';
 interface OwnerAvatarProps {
   owner: EntityReference;
   isCompactView: boolean;
+  inheritedIcon?: React.ReactNode;
 }
 
 export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   owner,
   isCompactView,
+  inheritedIcon,
 }) => {
   const displayName = getEntityName(owner);
 
@@ -55,6 +57,13 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         type="circle"
         width={isCompactView ? '18' : '32'}
       />
+
+      {inheritedIcon && !isCompactView && (
+        <div className="inherited-icon-styling flex-center">
+          {' '}
+          {inheritedIcon}
+        </div>
+      )}
     </div>
   );
 };
