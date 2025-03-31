@@ -2,6 +2,7 @@
 
 {% connectorInfoCard name="Airbyte" stage="PROD" href="/connectors/pipeline/airbyte" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Airflow" stage="PROD" href="/connectors/pipeline/airflow" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Wherescape" stage="BETA" href="/connectors/pipeline/wherescape" platform="Collate" / %}
 {% connectorInfoCard name="Dagster" stage="PROD" href="/connectors/pipeline/dagster" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Azure Data Factory" stage="PROD" href="/connectors/pipeline/datafactory" platform="Collate" / %}
 {% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/pipeline/databricks-pipeline" platform="OpenMetadata" / %}
