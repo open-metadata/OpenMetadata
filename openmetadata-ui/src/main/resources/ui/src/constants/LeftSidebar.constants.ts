@@ -19,6 +19,7 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform-lineage.svg';
@@ -37,6 +38,13 @@ export const SIDEBAR_NESTED_KEYS = {
 };
 
 export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
+  {
+    key: ROUTES.MY_DATA,
+    title: i18next.t('label.home'),
+    redirect_url: ROUTES.MY_DATA,
+    icon: HomeIcon,
+    dataTestId: `app-bar-item-${SidebarItem.HOME}`,
+  },
   {
     key: ROUTES.EXPLORE,
     title: i18next.t('label.explore'),

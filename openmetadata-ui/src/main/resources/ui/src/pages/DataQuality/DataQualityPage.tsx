@@ -69,7 +69,7 @@ const DataQualityPage = () => {
   };
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
         className="content-height-with-resizable-panel bg-white"
         firstPanel={{
