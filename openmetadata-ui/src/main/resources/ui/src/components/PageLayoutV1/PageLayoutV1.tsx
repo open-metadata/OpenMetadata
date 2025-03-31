@@ -124,9 +124,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            <Col className={classNames({ 'p-t-sm': alert })} span={24}>
-              {children}
-            </Col>
+            <Col span={24}>{children}</Col>
           </Row>
         </Col>
         {rightPanel && (
