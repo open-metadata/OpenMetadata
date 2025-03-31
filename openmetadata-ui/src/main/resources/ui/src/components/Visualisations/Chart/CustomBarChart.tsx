@@ -39,6 +39,7 @@ const CustomBarChart = ({
   chartCollection,
   tickFormatter,
   name,
+  noDataPlaceholderText,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -47,7 +48,10 @@ const CustomBarChart = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder className="mt-0-important" />
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            placeholderText={noDataPlaceholderText}
+          />
         </Col>
       </Row>
     );
