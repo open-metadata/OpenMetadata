@@ -348,7 +348,7 @@ class PowerbiSource(DashboardServiceSource):
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),
-                        owners=self.get_owner_ref(dashboard_details),
+                        owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                 else:
                     dashboard_request = CreateDashboardRequest(
@@ -363,7 +363,7 @@ class PowerbiSource(DashboardServiceSource):
                         project=self.get_project_name(dashboard_details),
                         displayName=dashboard_details.name,
                         service=self.context.get().dashboard_service,
-                        owners=self.get_owner_ref(dashboard_details),
+                        owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                 yield Either(right=dashboard_request)
                 self.register_record(dashboard_request=dashboard_request)
@@ -539,7 +539,7 @@ class PowerbiSource(DashboardServiceSource):
                         serviceType=DashboardServiceType.PowerBI.value,
                         columns=self._get_column_info(dataset),
                         project=self.get_project_name(dashboard_details=dataset),
-                        owners=self.get_owner_ref(dataset),
+                        owners=self.get_owner_ref(dashboard_details=dataset),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
