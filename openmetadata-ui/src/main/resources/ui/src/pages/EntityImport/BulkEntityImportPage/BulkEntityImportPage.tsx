@@ -39,6 +39,7 @@ import Banner from '../../../components/common/Banner/Banner';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { UploadFile } from '../../../components/UploadFile/UploadFile';
@@ -61,7 +62,7 @@ import {
 } from '../../../utils/CSV/CSV.utils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getBulkEntityImportBreadcrumbList,
+  getBulkEntityBreadcrumbList,
   getImportedEntityType,
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
@@ -97,10 +98,29 @@ const BulkEntityImportPage = () => {
   const [gridRef, setGridRef] = useState<
     MutableRefObject<TypeComputedProps | null>
   >({ current: null });
+  const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
+
+  const fetchEntityData = useCallback(async () => {
+    try {
+      const response = await entityUtilClassBase.getEntityByFqn(
+        entityType,
+        fqn
+      );
+      setEntity(response);
+    } catch (error) {
+      // not show error here
+    }
+  }, [entityType, fqn]);
 
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
     [location]
+  );
+
+  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      entity ? getBulkEntityBreadcrumbList(entityType, entity, isBulkEdit) : [],
+    [entityType, entity, isBulkEdit]
   );
 
   const importedEntityType = useMemo(
@@ -179,11 +199,6 @@ const BulkEntityImportPage = () => {
       setDataSource(data);
     },
     [dataSource]
-  );
-
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => getBulkEntityImportBreadcrumbList(entityType, fqn),
-    [entityType, fqn]
   );
 
   const handleBack = () => {
@@ -447,6 +462,10 @@ const BulkEntityImportPage = () => {
   );
 
   useEffect(() => {
+    fetchEntityData();
+  }, [fetchEntityData]);
+
+  useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.CSV_IMPORT_CHANNEL, (importResponse) => {
         if (importResponse) {
@@ -474,6 +493,7 @@ const BulkEntityImportPage = () => {
           <BulkEditEntity
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
+            breadcrumbList={breadcrumbList}
             columns={columns}
             dataSource={dataSource}
             handleBack={handleBack}

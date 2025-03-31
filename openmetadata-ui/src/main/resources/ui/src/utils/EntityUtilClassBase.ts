@@ -36,6 +36,12 @@ import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexD
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../rest/databaseAPI';
+import { getServiceByFQN } from '../rest/serviceAPI';
+import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
@@ -270,6 +276,19 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+    }
+  }
+
+  public getEntityByFqn(entityType: string, fqn: string, fields?: string[]) {
+    switch (entityType) {
+      case EntityType.DATABASE_SERVICE:
+        return getServiceByFQN('databaseServices', fqn, { fields });
+      case EntityType.DATABASE:
+        return getDatabaseDetailsByFQN(fqn, { fields });
+      case EntityType.DATABASE_SCHEMA:
+        return getDatabaseSchemaDetailsByFQN(fqn, { fields });
+      default:
+        return getTableDetailsByFQN(fqn, { fields });
     }
   }
 
