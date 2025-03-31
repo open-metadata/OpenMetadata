@@ -389,6 +389,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         </Col>
         <GenericProvider<Mlmodel>
+          customizedPage={customizedPage}
           data={mlModelDetail}
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}

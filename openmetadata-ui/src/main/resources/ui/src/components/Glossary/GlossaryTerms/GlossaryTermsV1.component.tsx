@@ -347,6 +347,7 @@ const GlossaryTermsV1 = ({
 
   return (
     <GenericProvider
+      customizedPage={customizedPage}
       data={updatedGlossaryTerm}
       isVersionView={isVersionView}
       permissions={permissions}
@@ -363,6 +364,7 @@ const GlossaryTermsV1 = ({
         </Col>
 
         <GenericProvider<GlossaryTerm>
+          customizedPage={customizedPage}
           data={updatedGlossaryTerm}
           isVersionView={isVersionView}
           permissions={permissions}

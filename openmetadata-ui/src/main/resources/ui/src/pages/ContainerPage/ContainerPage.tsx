@@ -558,6 +558,7 @@ const ContainerPage = () => {
           />
         </Col>
         <GenericProvider<Container>
+          customizedPage={customizedPage}
           data={containerData}
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}

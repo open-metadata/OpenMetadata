@@ -24,6 +24,7 @@ import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.sv
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -123,6 +124,7 @@ const TableDetailsPageV1: React.FC = () => {
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const tableFqn = useMemo(
     () =>
@@ -539,6 +541,9 @@ const TableDetailsPageV1: React.FC = () => {
     isViewTableType,
   ]);
 
+  const isDefaultTab =
+    tabs[0].key === EntityTabs.SCHEMA || activeTab === EntityTabs.SCHEMA;
+
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
       if (tableDetails) {
@@ -751,6 +756,10 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded((prev) => !prev);
+  };
+
   if (loading || isLoading) {
     return <Loader />;
   }
@@ -770,7 +779,9 @@ const TableDetailsPageV1: React.FC = () => {
       })}
       title="Table details">
       <GenericProvider<Table>
+        customizedPage={customizedPage}
         data={tableDetails}
+        isTabExpanded={isTabExpanded}
         isVersionView={false}
         permissions={tablePermissions}
         type={EntityType.TABLE}
@@ -805,6 +816,15 @@ const TableDetailsPageV1: React.FC = () => {
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isDefaultTab && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    size="small"
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

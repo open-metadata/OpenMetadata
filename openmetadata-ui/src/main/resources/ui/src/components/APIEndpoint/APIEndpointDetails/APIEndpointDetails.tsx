@@ -260,6 +260,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           />
         </Col>
         <GenericProvider<APIEndpoint>
+          customizedPage={customizedPage}
           data={apiEndpointDetails}
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}

@@ -395,6 +395,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Topic>
+          customizedPage={customizedPage}
           data={topicDetails}
           permissions={topicPermissions}
           type={EntityType.TOPIC}

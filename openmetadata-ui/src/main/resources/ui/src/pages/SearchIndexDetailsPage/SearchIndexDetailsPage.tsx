@@ -549,6 +549,7 @@ function SearchIndexDetailsPage() {
         </Col>
 
         <GenericProvider<SearchIndex>
+          customizedPage={customizedPage}
           data={searchIndexDetails}
           permissions={searchIndexPermissions}
           type={EntityType.SEARCH_INDEX}

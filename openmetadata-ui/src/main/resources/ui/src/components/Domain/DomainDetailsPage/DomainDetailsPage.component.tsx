@@ -703,6 +703,7 @@ const DomainDetailsPage = ({
         </Col>
 
         <GenericProvider<Domain>
+          customizedPage={customizedPage}
           data={domain}
           permissions={domainPermission}
           type={EntityType.DOMAIN}

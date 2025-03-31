@@ -224,6 +224,7 @@ const DataModelDetails = ({
           />
         </Col>
         <GenericProvider<DashboardDataModel>
+          customizedPage={customizedPage}
           data={dataModelData}
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}

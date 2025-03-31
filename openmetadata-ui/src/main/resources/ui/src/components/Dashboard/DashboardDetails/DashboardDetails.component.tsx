@@ -292,6 +292,7 @@ const DashboardDetails = ({
           />
         </Col>
         <GenericProvider<Dashboard>
+          customizedPage={customizedPage}
           data={dashboardDetails}
           permissions={dashboardPermissions}
           type={EntityType.DASHBOARD}

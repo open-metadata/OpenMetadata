@@ -27,6 +27,8 @@ import {
 import { EntityAction, EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { PageType } from '../../generated/system/ui/page';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
   addGlossaryTerm,
@@ -67,7 +69,9 @@ const GlossaryV1 = ({
   const { t } = useTranslation();
   const { action, tab } =
     useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
-
+  const { customizedPage } = useCustomPages(
+    isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
+  );
   const history = useHistory();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
     useState<GlossaryTerm | null>(null);
@@ -376,6 +380,7 @@ const GlossaryV1 = ({
 
       <GenericProvider<Glossary | GlossaryTerm>
         currentVersionData={selectedData}
+        customizedPage={customizedPage}
         data={selectedData}
         isVersionView={isVersionsView}
         permissions={

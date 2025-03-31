@@ -248,6 +248,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Metric>
+          customizedPage={customizedPage}
           data={metricDetails}
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}

@@ -474,6 +474,7 @@ const DatabaseDetails: FunctionComponent = () => {
             />
           </Col>
           <GenericProvider<Database>
+            customizedPage={customizedPage}
             data={database}
             permissions={databasePermission}
             type={EntityType.DATABASE}

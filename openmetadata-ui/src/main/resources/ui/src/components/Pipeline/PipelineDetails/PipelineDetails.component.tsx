@@ -334,6 +334,7 @@ const PipelineDetails = ({
           />
         </Col>
         <GenericProvider<Pipeline>
+          customizedPage={customizedPage}
           data={pipelineDetails}
           permissions={pipelinePermissions}
           type={EntityType.PIPELINE}

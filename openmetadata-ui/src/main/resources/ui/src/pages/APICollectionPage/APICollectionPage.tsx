@@ -493,6 +493,7 @@ const APICollectionPage: FunctionComponent = () => {
             )}
           </Col>
           <GenericProvider<APICollection>
+            customizedPage={customizedPage}
             data={apiCollection}
             isVersionView={false}
             permissions={apiCollectionPermission}

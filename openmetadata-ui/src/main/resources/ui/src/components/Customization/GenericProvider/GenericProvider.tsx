@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { get, once } from 'lodash';
+import { isEmpty, once } from 'lodash';
 import React, {
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,19 +27,18 @@ import {
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
-import { Tab } from '../../../generated/system/ui/page';
-import { useCustomPages } from '../../../hooks/useCustomPages';
+import { Page } from '../../../generated/system/ui/page';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
-import { getDefaultWidgetForTab } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getLayoutFromCustomizedPage } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import Loader from '../../common/Loader/Loader';
 
 interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   children?: React.ReactNode;
@@ -48,6 +48,8 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   isVersionView?: boolean;
   permissions: OperationPermission;
   currentVersionData?: T;
+  isTabExpanded?: boolean;
+  customizedPage?: Page | undefined;
 }
 
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -74,6 +76,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   isVersionView,
   permissions,
   currentVersionData,
+  isTabExpanded = false,
+  customizedPage,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -83,38 +87,14 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const pageType = ENTITY_PAGE_TYPE_MAP[type];
-  const { customizedPage, isLoading } = useCustomPages(pageType);
   const { tab } = useParams<{ tab: EntityTabs }>();
-  const [layout, setLayout] = useState<WidgetConfig[]>(() => {
-    if (!customizedPage) {
-      return getDefaultWidgetForTab(pageType, tab);
-    }
-
-    if (customizedPage?.tabs?.length) {
-      return tab
-        ? customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout
-        : get(customizedPage, 'tabs.0.layout', []);
-    } else {
-      return getDefaultWidgetForTab(pageType, tab);
-    }
-  });
+  const expandedLayout = useRef<WidgetConfig[]>([]);
+  const [layout, setLayout] = useState<WidgetConfig[]>(
+    getLayoutFromCustomizedPage(pageType, tab, customizedPage)
+  );
 
   useEffect(() => {
-    if (!customizedPage) {
-      setLayout(getDefaultWidgetForTab(pageType, tab));
-
-      return;
-    }
-
-    if (customizedPage?.tabs && customizedPage.tabs.length > 0) {
-      setLayout(
-        tab
-          ? customizedPage.tabs.find((t: Tab) => t.id === tab)?.layout
-          : get(customizedPage, 'tabs.0.layout', [])
-      );
-    } else {
-      setLayout(getDefaultWidgetForTab(pageType, tab));
-    }
+    setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
   }, [customizedPage, tab, pageType]);
 
   const onThreadPanelClose = () => {
@@ -128,6 +108,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }
   };
 
+  // Create a thread
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
@@ -141,9 +122,38 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }
   };
 
+  // Filter the widgets we need to hide widgets which doesn't render anything
   const filterWidgets = useCallback((widgets: string[]) => {
     setLayout((prev) => prev.filter((widget) => !widgets.includes(widget.i)));
   }, []);
+
+  // store the left side panel widget
+  const leftPanelWidget = useMemo(() => {
+    return layout.find((widget) =>
+      widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [layout]);
+
+  // Handle the left side panel expand collapse
+  useEffect(() => {
+    setLayout((prev) => {
+      if (!prev || !leftPanelWidget) {
+        return prev;
+      }
+
+      if (isTabExpanded) {
+        leftPanelWidget.w = 8;
+
+        // Store the expanded layout
+        expandedLayout.current = prev;
+
+        return [leftPanelWidget];
+      } else {
+        // Restore the collapsed layout
+        return isEmpty(expandedLayout.current) ? prev : expandedLayout.current;
+      }
+    });
+  }, [isTabExpanded, leftPanelWidget]);
 
   const values = useMemo(
     () => ({
@@ -169,10 +179,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       filterWidgets,
     ]
   );
-
-  if (isLoading) {
-    return <Loader />;
-  }
 
   return (
     <GenericContext.Provider value={values}>

@@ -541,6 +541,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             )}
           </Col>
           <GenericProvider<DatabaseSchema>
+            customizedPage={customizedPage}
             data={databaseSchema}
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}

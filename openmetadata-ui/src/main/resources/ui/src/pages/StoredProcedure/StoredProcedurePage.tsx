@@ -551,6 +551,7 @@ const StoredProcedurePage = () => {
         </Col>
 
         <GenericProvider<StoredProcedure>
+          customizedPage={customizedPage}
           data={storedProcedure}
           permissions={storedProcedurePermissions}
           type={EntityType.STORED_PROCEDURE}
