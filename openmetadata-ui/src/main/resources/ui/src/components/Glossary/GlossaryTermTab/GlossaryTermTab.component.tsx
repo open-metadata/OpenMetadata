@@ -193,9 +193,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return;
     }
 
+    const entityType = isGlossary
+      ? EntityType.GLOSSARY
+      : EntityType.GLOSSARY_TERM;
+
     try {
       const { data } = await getAllFeeds(
-        `<#E::${EntityType.GLOSSARY}::${activeGlossary.fullyQualifiedName}>`,
+        `<#E::${entityType}::${activeGlossary.fullyQualifiedName}>`,
         undefined,
         ThreadType.Task,
         undefined,
@@ -840,7 +844,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   if (isEmpty(glossaryTerms)) {
     return (
       <ErrorPlaceHolder
-        className="m-t-xlg"
+        className="m-t-xlg p-md p-b-lg"
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary-term')}
         permission={permissions.Create}

@@ -12,13 +12,11 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
-import { MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
@@ -101,13 +99,6 @@ const LeftSidebar = ({
           }),
         };
       }),
-      {
-        type: 'divider',
-        style: {
-          flex: 1,
-        },
-      },
-      ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
     ];
   }, [sideBarItems]);
 
@@ -128,28 +119,50 @@ const LeftSidebar = ({
       trigger={null}
       width={228}>
       <div className="logo-container">
-        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
-          <BrandImage
-            alt="OpenMetadata Logo"
-            className="vertical-middle"
-            dataTestId="image"
-            height={40}
-            isMonoGram={isSidebarCollapsed}
-            width="auto"
-          />
-        </Link>
+        <BrandImage
+          alt="OpenMetadata Logo"
+          className="vertical-middle"
+          dataTestId="image"
+          height={40}
+          isMonoGram={isSidebarCollapsed}
+          width="auto"
+        />
       </div>
 
-      <Menu
-        inlineIndent={16}
-        items={menuItems as MenuItemType[]}
-        mode="inline"
-        openKeys={openKeys}
-        rootClassName="left-sidebar-menu"
-        selectedKeys={selectedKeys}
-        onClick={handleMenuClick}
-        onOpenChange={setOpenKeys}
-      />
+      <div className="left-sidebar-layout">
+        <div className="menu-container">
+          <div className="top-menu">
+            <Menu
+              inlineIndent={16}
+              items={menuItems}
+              mode="inline"
+              openKeys={openKeys}
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+              onClick={handleMenuClick}
+              onOpenChange={setOpenKeys}
+            />
+          </div>
+
+          <div className="bottom-menu">
+            <Menu
+              inlineIndent={16}
+              items={[
+                {
+                  type: 'divider',
+                  style: {
+                    margin: '8px 0',
+                  },
+                },
+                ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
+              ]}
+              mode="inline"
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+            />
+          </div>
+        </div>
+      </div>
 
       {showConfirmLogoutModal && (
         <Modal

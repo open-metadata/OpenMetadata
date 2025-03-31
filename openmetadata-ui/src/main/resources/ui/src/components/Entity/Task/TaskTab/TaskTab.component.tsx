@@ -737,9 +737,7 @@ export const TaskTab = ({
                 }}
                 overlayClassName="task-action-dropdown"
                 onClick={() =>
-                  taskAction.key === TaskActionMode.EDIT
-                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
-                    : onTaskResolve()
+                  handleMenuItemClick({ key: taskAction.key } as MenuInfo)
                 }>
                 {taskAction.label}
               </Dropdown.Button>
