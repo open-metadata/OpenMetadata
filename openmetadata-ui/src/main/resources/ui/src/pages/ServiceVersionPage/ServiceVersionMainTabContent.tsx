@@ -24,6 +24,7 @@ import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import { EntityType } from '../../enums/entity.enum';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
@@ -87,6 +88,7 @@ function ServiceVersionMainTabContent({
                 }}
                 data-testid="service-children-table"
                 dataSource={data}
+                entityType={EntityType.SERVICE}
                 loading={isServiceLoading}
                 locale={{
                   emptyText: <ErrorPlaceHolder className="m-y-md" />,

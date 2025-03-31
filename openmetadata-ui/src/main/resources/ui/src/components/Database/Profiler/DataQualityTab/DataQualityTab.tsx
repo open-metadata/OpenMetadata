@@ -499,6 +499,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Table
           className="test-case-table-container"
           columns={columns}
+          entityType={EntityType.TEST_CASE}
           {...(pagingData && showPagination
             ? {
                 customPaginationProps: {

@@ -308,6 +308,7 @@ const RolesListPage = () => {
             }}
             data-testid="roles-list-table"
             dataSource={roles}
+            entityType={EntityType.ROLE}
             loading={isLoading}
             locale={{
               emptyText: (

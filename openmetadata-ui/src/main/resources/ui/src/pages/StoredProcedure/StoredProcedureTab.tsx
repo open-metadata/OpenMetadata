@@ -152,6 +152,7 @@ const StoredProcedureTab = () => {
       customPaginationProps={paginationProps}
       data-testid="stored-procedure-table"
       dataSource={storedProcedure}
+      entityType={EntityType.STORED_PROCEDURE}
       extraTableFilters={
         <span>
           <Switch

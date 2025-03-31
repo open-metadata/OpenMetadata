@@ -14,6 +14,7 @@ import { isArray } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import Table from '../../Table/Table';
 import './table-type-property-view.less';
 
@@ -52,6 +53,7 @@ const TableTypePropertyView: FC<TableTypePropertyViewProps> = ({
       columns={tableColumns}
       data-testid="table-type-property-value"
       dataSource={rows}
+      entityType={EntityType.TABLE}
       pagination={{
         position: ['bottomCenter'],
         pageSize: 10,

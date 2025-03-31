@@ -166,6 +166,7 @@ const DataModelTable = () => {
       data-testid="data-models-table"
       dataSource={dataModels}
       defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
+      entityType={EntityType.DASHBOARD_DATA_MODEL}
       extraTableFilters={
         <span>
           <Switch

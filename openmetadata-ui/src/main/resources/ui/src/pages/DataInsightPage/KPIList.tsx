@@ -243,6 +243,7 @@ const KPIList = () => {
         }}
         data-testid="kpi-table"
         dataSource={kpiList}
+        entityType={EntityType.KPI}
         loading={isLoading}
         locale={{
           emptyText: noDataPlaceHolder,

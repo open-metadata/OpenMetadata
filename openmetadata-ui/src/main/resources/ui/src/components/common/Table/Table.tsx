@@ -54,7 +54,14 @@ import './table.less';
 type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
 
 const Table = <T extends Record<string, unknown>>(
-  { loading, searchProps, customPaginationProps, ...rest }: TableProps<T>,
+  {
+    loading,
+    searchProps,
+    customPaginationProps,
+    entityType,
+    defaultVisibleColumns,
+    ...rest
+  }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
@@ -65,7 +72,7 @@ const Table = <T extends Record<string, unknown>>(
   >([]);
   const [columnDropdownSelections, setColumnDropdownSelections] = useState<
     string[]
-  >(rest.defaultVisibleColumns ?? []);
+  >([]);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
     () => ({ columns: propsColumns, minWidth: 150 }),
     [propsColumns]
@@ -78,9 +85,8 @@ const Table = <T extends Record<string, unknown>>(
 
   // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
   const isFullViewTable = useMemo(
-    () =>
-      isEmpty(rest.staticVisibleColumns) && isEmpty(rest.defaultVisibleColumns),
-    [rest.staticVisibleColumns, rest.defaultVisibleColumns]
+    () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
+    [rest.staticVisibleColumns, defaultVisibleColumns]
   );
 
   const handleMoveItem = useCallback(
@@ -93,11 +99,27 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      setColumnDropdownSelections((prev: string[]) => {
-        return selected ? [...prev, key] : prev.filter((item) => item !== key);
-      });
+      const updatedSelections = selected
+        ? [...columnDropdownSelections, key]
+        : columnDropdownSelections.filter((item) => item !== key);
+
+      // Updating localStorage
+      const selectedColumns = JSON.parse(
+        localStorage.getItem('selectedColumns') ?? '{}'
+      );
+      if (entityType) {
+        localStorage.setItem(
+          'selectedColumns',
+          JSON.stringify({
+            ...selectedColumns,
+            [entityType]: updatedSelections,
+          })
+        );
+      }
+
+      setColumnDropdownSelections(updatedSelections);
     },
-    [setColumnDropdownSelections]
+    [columnDropdownSelections, entityType]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -205,6 +227,26 @@ const Table = <T extends Record<string, unknown>>(
     columnDropdownSelections,
     rest.staticVisibleColumns,
   ]);
+
+  useEffect(() => {
+    const selectedColumns = JSON.parse(
+      localStorage.getItem('selectedColumns') ?? '{}'
+    );
+    if (entityType && selectedColumns[entityType]) {
+      setColumnDropdownSelections(selectedColumns[entityType]);
+    } else {
+      if (defaultVisibleColumns && entityType) {
+        setColumnDropdownSelections(defaultVisibleColumns);
+        localStorage.setItem(
+          'selectedColumns',
+          JSON.stringify({
+            ...selectedColumns,
+            [entityType]: defaultVisibleColumns,
+          })
+        );
+      }
+    }
+  }, [entityType, defaultVisibleColumns]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>

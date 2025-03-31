@@ -122,6 +122,7 @@ const ListEntities = ({
       className="list-table"
       columns={columns}
       dataSource={list}
+      entityType={type}
       pagination={false}
       rowKey="id"
       size="small"

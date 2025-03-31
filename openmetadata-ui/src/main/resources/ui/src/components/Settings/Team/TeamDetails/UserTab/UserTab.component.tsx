@@ -385,6 +385,7 @@ export const UserTab = ({
           onShowSizeChange: handlePageSizeChange,
         }}
         dataSource={sortedUser}
+        entityType={EntityType.USER}
         extraTableFilters={
           !currentTeam.deleted &&
           isGroupType && (

@@ -243,6 +243,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         data-testid="container-data-model-table"
         dataSource={dataModel?.columns}
         defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
+        entityType={EntityType.CONTAINER}
         expandable={{
           ...getTableExpandableConfig<Column>(),
           rowExpandable: (record) => !isEmpty(record.children),

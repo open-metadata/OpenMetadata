@@ -34,7 +34,7 @@ import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-d
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
-import { TabSpecificField } from '../../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import {
   Column,
@@ -503,6 +503,7 @@ const ColumnProfileTable = () => {
           <Table
             columns={tableColumn}
             dataSource={data}
+            entityType={EntityType.TABLE}
             expandable={getTableExpandableConfig<Column>()}
             loading={isLoading}
             locale={{

@@ -371,6 +371,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 data-testid="topic-schema-fields-table"
                 dataSource={messageSchema?.schemaFields}
                 defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
+                entityType={EntityType.TOPIC}
                 expandable={{
                   ...getTableExpandableConfig<Field>(),
                   rowExpandable: (record) => !isEmpty(record.children),

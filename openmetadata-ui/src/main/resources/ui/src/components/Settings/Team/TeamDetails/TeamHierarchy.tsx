@@ -28,7 +28,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
-import { TabSpecificField } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
@@ -262,6 +262,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           components={TABLE_CONSTANTS}
           data-testid="team-hierarchy-table"
           dataSource={data}
+          entityType={EntityType.TEAM}
           expandable={expandableConfig}
           loading={isTableLoading}
           locale={{

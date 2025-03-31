@@ -176,6 +176,7 @@ export const GlossaryUpdateConfirmationModal = ({
                   <Table
                     columns={tagsColumn}
                     dataSource={failedStatus?.failedRequest ?? []}
+                    entityType={EntityType.GLOSSARY}
                     pagination={{
                       pageSize: 5,
                       showSizeChanger: true,

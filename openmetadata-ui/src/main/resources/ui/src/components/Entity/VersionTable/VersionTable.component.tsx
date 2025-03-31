@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { TableConstraint } from '../../../generated/api/data/createTable';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
@@ -255,6 +256,7 @@ function VersionTable<T extends Column | SearchIndexField>({
       containerClassName="m-b-sm"
       data-testid="entity-table"
       dataSource={data}
+      entityType={EntityType.TABLE}
       expandable={{
         ...getTableExpandableConfig<T>(),
         defaultExpandAllRows: true,

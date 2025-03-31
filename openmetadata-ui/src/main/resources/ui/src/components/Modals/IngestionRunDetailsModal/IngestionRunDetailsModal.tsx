@@ -18,6 +18,7 @@ import { isArray, startCase } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';
 import {
   PipelineStatus,
@@ -146,6 +147,7 @@ function IngestionRunDetailsModal<T extends PipelineStatus | AppRunRecord>({
         dataSource={
           isArray(pipelineStatus?.status) ? pipelineStatus?.status : []
         }
+        entityType={EntityType.INGESTION_PIPELINE}
         expandable={expandable}
         indentSize={0}
         pagination={false}

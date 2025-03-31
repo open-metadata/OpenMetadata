@@ -874,6 +874,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               data-testid="glossary-terms-table"
               dataSource={filteredGlossaryTerms}
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
+              entityType={EntityType.GLOSSARY}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
               // Loading is set to true if the table is not loaded or the table width is not set,

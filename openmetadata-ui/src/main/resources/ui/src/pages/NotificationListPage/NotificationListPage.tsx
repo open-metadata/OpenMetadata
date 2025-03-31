@@ -345,6 +345,7 @@ const NotificationListPage = () => {
               onShowSizeChange: handlePageSizeChange,
             }}
             dataSource={alerts}
+            entityType={EntityType.SUBSCRIPTION}
             loading={Boolean(loadingCount)}
             locale={{
               emptyText: (

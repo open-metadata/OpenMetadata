@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { TabSpecificField } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getUserById } from '../../../../rest/userAPI';
@@ -126,6 +126,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
             ? (users as unknown as User[])
             : additionalUsersDetails
         }
+        entityType={EntityType.USER}
         loading={isDetailsLoading}
         locale={{
           emptyText: (

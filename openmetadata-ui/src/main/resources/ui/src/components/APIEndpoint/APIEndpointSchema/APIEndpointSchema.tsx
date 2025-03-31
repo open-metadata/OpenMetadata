@@ -397,6 +397,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             isVersionView ? activeSchemaFieldsDiff : activeSchemaFields
           }
           defaultVisibleColumns={DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS}
+          entityType={EntityType.API_ENDPOINT}
           expandable={{
             ...getTableExpandableConfig<Field>(),
             rowExpandable: (record) => !isEmpty(record.children),

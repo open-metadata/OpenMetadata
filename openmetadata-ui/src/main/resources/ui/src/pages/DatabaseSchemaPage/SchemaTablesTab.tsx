@@ -251,6 +251,7 @@ function SchemaTablesTab({
       }}
       data-testid="databaseSchema-tables"
       dataSource={tableData}
+      entityType={EntityType.DATABASE_SCHEMA}
       extraTableFilters={
         !isVersionView && (
           <>
