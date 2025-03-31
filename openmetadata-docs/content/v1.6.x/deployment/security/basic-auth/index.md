@@ -73,7 +73,7 @@ For the Basic auth we need to set:
 
 - `adminPrincipals`: admin usernames to bootstrap the server with, comma-separated values.
 - `allowedEmailRegistrationDomains`: This controls what all domain are allowed for email registration can be your {principalDomain} as well, for example gmail.com, outlook.comm etc.
-- `principalDomain`: This controls what all domain are allowed for email registration, for example gmail.com, outlook.comm etc.
+- `principalDomain`: This controls what all domain are allowed for email registration, for example gmail.com, outlook.comm etc. When `AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN` is set to `true`, only users with email addresses from the `AUTHORIZER_PRINCIPAL_DOMAIN` can log in.
 
 {%note%}
 
