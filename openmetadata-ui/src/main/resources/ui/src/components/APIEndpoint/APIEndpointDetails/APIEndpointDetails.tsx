@@ -30,6 +30,7 @@ import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -39,6 +40,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -68,6 +70,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     FEED_COUNT_INITIAL_DATA
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.APIEndpoint);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
     owners,
@@ -230,6 +233,15 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     customizedPage,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.APIEndpoint),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -262,6 +274,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         <GenericProvider<APIEndpoint>
           customizedPage={customizedPage}
           data={apiEndpointDetails}
+          isTabExpanded={isTabExpanded}
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}
           onUpdate={onApiEndpointUpdate}>
@@ -271,6 +284,15 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    size="small"
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

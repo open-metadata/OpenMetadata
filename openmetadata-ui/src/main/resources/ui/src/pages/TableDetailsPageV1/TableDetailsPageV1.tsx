@@ -541,8 +541,10 @@ const TableDetailsPageV1: React.FC = () => {
     isViewTableType,
   ]);
 
-  const isDefaultTab =
-    tabs[0].key === EntityTabs.SCHEMA || activeTab === EntityTabs.SCHEMA;
+  const isExpandViewSupported = useMemo(
+    () => tabs[0].key === EntityTabs.SCHEMA || activeTab === EntityTabs.SCHEMA,
+    [tabs[0], activeTab]
+  );
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -817,7 +819,7 @@ const TableDetailsPageV1: React.FC = () => {
               data-testid="tabs"
               items={tabs}
               tabBarExtraContent={
-                isDefaultTab && (
+                isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
                     size="small"

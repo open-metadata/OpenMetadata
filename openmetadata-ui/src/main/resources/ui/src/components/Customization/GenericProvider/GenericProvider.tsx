@@ -49,7 +49,7 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   permissions: OperationPermission;
   currentVersionData?: T;
   isTabExpanded?: boolean;
-  customizedPage?: Page | undefined;
+  customizedPage?: Page | null;
 }
 
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -142,13 +142,22 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       }
 
       if (isTabExpanded) {
-        leftPanelWidget.w = 8;
+        const widget = leftPanelWidget;
+        widget.w = 8;
 
         // Store the expanded layout
         expandedLayout.current = prev;
 
-        return [leftPanelWidget];
+        return [widget];
       } else {
+        const leftPanelWidget = expandedLayout.current.find((widget) =>
+          widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+        );
+
+        if (leftPanelWidget) {
+          leftPanelWidget.w = 6;
+        }
+
         // Restore the collapsed layout
         return isEmpty(expandedLayout.current) ? prev : expandedLayout.current;
       }

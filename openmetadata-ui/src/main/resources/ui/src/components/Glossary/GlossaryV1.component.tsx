@@ -79,6 +79,7 @@ const GlossaryV1 = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isPermissionLoading, setIsPermissionLoading] = useState(false);
   const { setGlossaryFunctionRef, setTermsLoading } = useGlossaryStore();
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -372,6 +373,10 @@ const GlossaryV1 = ({
     });
   }, [loadGlossaryTerms, handleGlossaryTermModalAction]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
   return isImportAction ? (
     <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
@@ -382,6 +387,7 @@ const GlossaryV1 = ({
         currentVersionData={selectedData}
         customizedPage={customizedPage}
         data={selectedData}
+        isTabExpanded={isTabExpanded}
         isVersionView={isVersionsView}
         permissions={
           isGlossaryActive ? glossaryPermission : glossaryTermPermission
@@ -394,8 +400,10 @@ const GlossaryV1 = ({
           (isGlossaryActive ? (
             <GlossaryDetails
               handleGlossaryDelete={onGlossaryDelete}
+              isTabExpanded={isTabExpanded}
               isVersionView={isVersionsView}
               permissions={glossaryPermission}
+              toggleTabExpanded={toggleTabExpanded}
               updateGlossary={handleGlossaryUpdate}
               updateVote={updateVote}
             />
@@ -405,8 +413,10 @@ const GlossaryV1 = ({
               handleGlossaryTermDelete={onGlossaryTermDelete}
               handleGlossaryTermUpdate={onGlossaryTermUpdate}
               isSummaryPanelOpen={isSummaryPanelOpen}
+              isTabExpanded={isTabExpanded}
               isVersionView={isVersionsView}
               refreshActiveGlossaryTerm={refreshActiveGlossaryTerm}
+              toggleTabExpanded={toggleTabExpanded}
               updateVote={updateVote}
               onAssetClick={onAssetClick}
             />

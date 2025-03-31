@@ -31,6 +31,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restorePipeline } from '../../../rest/pipelineAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -42,6 +43,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -69,6 +71,7 @@ const PipelineDetails = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const userID = currentUser?.id ?? '';
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { deleted, owners, description, entityName, tier, followers } =
     useMemo(() => {
       return {
@@ -300,9 +303,14 @@ const PipelineDetails = ({
     viewAllPermission,
   ]);
 
-  useEffect(() => {
-    getEntityFeedCount();
-  }, [pipelineFQN]);
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], tab, PageType.Pipeline),
+    [tabs[0], tab]
+  );
 
   if (isLoading) {
     return <Loader />;
@@ -336,6 +344,7 @@ const PipelineDetails = ({
         <GenericProvider<Pipeline>
           customizedPage={customizedPage}
           data={pipelineDetails}
+          isTabExpanded={isTabExpanded}
           permissions={pipelinePermissions}
           type={EntityType.PIPELINE}
           onUpdate={settingsUpdateHandler}>
@@ -345,6 +354,15 @@ const PipelineDetails = ({
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    size="small"
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

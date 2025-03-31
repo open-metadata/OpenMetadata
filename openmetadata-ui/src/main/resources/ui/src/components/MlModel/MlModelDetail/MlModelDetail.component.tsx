@@ -34,6 +34,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMlmodel } from '../../../rest/mlModelAPI';
 import { getEmptyPlaceholder, getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -45,6 +46,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -69,6 +71,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const { fqn: decodedMlModelFqn } = useFqn();
 
@@ -359,6 +362,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     customizedPage?.tabs,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.MlModel),
+    [tabs[0], activeTab]
+  );
   if (isLoading) {
     return <Loader />;
   }
@@ -391,6 +402,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <GenericProvider<Mlmodel>
           customizedPage={customizedPage}
           data={mlModelDetail}
+          isTabExpanded={isTabExpanded}
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
@@ -400,6 +412,15 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    size="small"
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

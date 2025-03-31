@@ -525,3 +525,65 @@ export const getLayoutFromCustomizedPage = (
     return getDefaultWidgetForTab(pageType, tab);
   }
 };
+
+export const checkIfExpandViewSupported = (
+  firstTab: NonNullable<TabsProps['items']>[number],
+  activeTab: EntityTabs,
+  pageType: PageType
+) => {
+  switch (pageType) {
+    case PageType.Table:
+    case PageType.Topic:
+    case PageType.APIEndpoint:
+      return (
+        firstTab.key === EntityTabs.SCHEMA || activeTab === EntityTabs.SCHEMA
+      );
+
+    case PageType.Glossary:
+      return (
+        firstTab.key === EntityTabs.TERMS || activeTab === EntityTabs.TERMS
+      );
+    case PageType.GlossaryTerm:
+    case PageType.Metric:
+      return (
+        firstTab.key === EntityTabs.OVERVIEW ||
+        activeTab === EntityTabs.OVERVIEW
+      );
+    case PageType.Dashboard:
+      return (
+        firstTab.key === EntityTabs.DETAILS || activeTab === EntityTabs.DETAILS
+      );
+    case PageType.DashboardDataModel:
+      return (
+        firstTab.key === EntityTabs.MODEL || activeTab === EntityTabs.MODEL
+      );
+    case PageType.Container:
+      return (
+        firstTab.key === EntityTabs.CHILDREN ||
+        activeTab === EntityTabs.CHILDREN
+      );
+    case PageType.Database:
+      return (
+        firstTab.key === EntityTabs.SCHEMAS || activeTab === EntityTabs.SCHEMAS
+      );
+    case PageType.SearchIndex:
+      return (
+        firstTab.key === EntityTabs.FIELDS || activeTab === EntityTabs.FIELDS
+      );
+    case PageType.DatabaseSchema:
+      return (
+        firstTab.key === EntityTabs.TABLE || activeTab === EntityTabs.TABLE
+      );
+    case PageType.Pipeline:
+      return (
+        firstTab.key === EntityTabs.TASKS || activeTab === EntityTabs.TASKS
+      );
+    case PageType.APICollection:
+      return (
+        firstTab.key === EntityTabs.API_ENDPOINT ||
+        activeTab === EntityTabs.API_ENDPOINT
+      );
+    default:
+      return false;
+  }
+};
