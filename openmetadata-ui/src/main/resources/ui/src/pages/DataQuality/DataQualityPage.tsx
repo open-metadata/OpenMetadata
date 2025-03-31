@@ -135,7 +135,7 @@ const DataQualityPage = () => {
               </Row>
             </DataQualityProvider>
           ),
-          className: 'content-resizable-panel-container p-t-sm bg-white',
+          className: 'content-resizable-panel-container p-t-sm',
           minWidth: 800,
           flex: 0.87,
         }}
