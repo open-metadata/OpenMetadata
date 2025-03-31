@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
@@ -739,5 +740,9 @@ public final class Entity {
     }
 
     return allServices;
+  }
+
+  public static UserRepository getUserRepository() {
+    return (UserRepository) Entity.getEntityRepository(Entity.USER);
   }
 }

@@ -600,7 +600,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
         if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
-          User created = addHref(uriInfo, repository.create(uriInfo, user));
+          User created =
+              addHref(
+                  uriInfo,
+                  repository.create(uriInfo, user.withLastLoginTime(System.currentTimeMillis())));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
           throw new CustomExceptionMessage(

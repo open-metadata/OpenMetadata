@@ -663,6 +663,12 @@ public class AuthenticationCodeFlowHandler {
 
     String redirectUri = (String) request.getSession().getAttribute(SESSION_REDIRECT_URI);
 
+    String storedUserStr =
+        Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
+    if (storedUserStr != null) {
+      User user = JsonUtils.readValue(storedUserStr, User.class);
+      Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
+    }
     String url =
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
