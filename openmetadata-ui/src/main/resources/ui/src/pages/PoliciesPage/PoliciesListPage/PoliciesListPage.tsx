@@ -136,7 +136,7 @@ const PoliciesListPage = () => {
           isEmpty(record?.description) ? (
             NO_DATA_PLACEHOLDER
           ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description || ''} />
+            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
           ),
       },
       {

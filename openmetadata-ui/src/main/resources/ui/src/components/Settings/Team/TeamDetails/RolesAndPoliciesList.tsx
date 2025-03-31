@@ -82,7 +82,7 @@ const ListEntities = ({
         key: 'description',
         width: 300,
         render: (_, record) => (
-          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
+          <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
         ),
       },
       {

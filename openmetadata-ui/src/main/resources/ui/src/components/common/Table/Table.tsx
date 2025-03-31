@@ -232,18 +232,22 @@ const Table = <T extends Record<string, unknown>>(
     const selectedColumns = JSON.parse(
       localStorage.getItem('selectedColumns') ?? '{}'
     );
-    if (entityType && selectedColumns[entityType]) {
-      setColumnDropdownSelections(selectedColumns[entityType]);
-    } else {
-      if (defaultVisibleColumns && entityType) {
-        setColumnDropdownSelections(defaultVisibleColumns);
-        localStorage.setItem(
-          'selectedColumns',
-          JSON.stringify({
-            ...selectedColumns,
-            [entityType]: defaultVisibleColumns,
-          })
-        );
+    if (entityType) {
+      if (selectedColumns[entityType]) {
+        setColumnDropdownSelections(selectedColumns[entityType]);
+      } else {
+        if (defaultVisibleColumns) {
+          setColumnDropdownSelections(defaultVisibleColumns);
+          localStorage.setItem(
+            'selectedColumns',
+            JSON.stringify({
+              ...selectedColumns,
+              [entityType]: defaultVisibleColumns,
+            })
+          );
+        } else {
+          setColumnDropdownSelections([]);
+        }
       }
     }
   }, [entityType, defaultVisibleColumns]);
@@ -252,7 +256,7 @@ const Table = <T extends Record<string, unknown>>(
     <Row className={classNames('table-container', rest.containerClassName)}>
       <Col
         className={classNames({
-          'p-y-md': searchProps || rest.extraTableFilters || !isFullViewTable,
+          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
         })}
         span={24}>
         <Row className="p-x-md">
@@ -319,7 +323,7 @@ const Table = <T extends Record<string, unknown>>(
           {...resizingTableProps}
           scroll={{
             y: 740,
-            x: resizingTableProps.scroll?.x || rest.scroll?.x,
+            x: resizingTableProps.scroll?.x ?? rest.scroll?.x,
           }}
         />
       </Col>
