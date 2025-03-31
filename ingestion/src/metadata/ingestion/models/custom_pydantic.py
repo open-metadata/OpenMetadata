@@ -17,7 +17,7 @@ be self-sufficient with only pydantic at import time.
 """
 import json
 import logging
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Callable, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import WrapSerializer, model_validator
@@ -73,7 +73,7 @@ class BaseModel(PydanticBaseModel):
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
-        mask_secrets: bool = None,
+        mask_secrets: Optional[bool] = None,
         indent: Optional[int] = None,
         include: IncEx = None,
         exclude: IncEx = None,
@@ -84,6 +84,7 @@ class BaseModel(PydanticBaseModel):
         exclude_none: bool = True,
         round_trip: bool = False,
         warnings: Union[bool, Literal["none", "warn", "error"]] = True,
+        fallback: Optional[Callable[[Any], Any]] = None,
         serialize_as_any: bool = False,
     ) -> str:
         """
