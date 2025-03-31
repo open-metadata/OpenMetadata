@@ -651,6 +651,8 @@ site_menu:
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / Table Constraint
+    url: /how-to-guides/data-discovery/table-constraint
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
     url: /how-to-guides/data-discovery/openmetadata-extension
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
