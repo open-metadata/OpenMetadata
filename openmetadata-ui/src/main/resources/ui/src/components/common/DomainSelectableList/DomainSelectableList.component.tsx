@@ -150,6 +150,7 @@ const DomainSelectableList = ({
     initialDomains,
     multiple,
     popoverProps,
+    popupVisible,
     selectedDomainsList,
   ]);
 
