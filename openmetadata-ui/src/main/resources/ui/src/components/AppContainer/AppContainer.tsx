@@ -13,7 +13,7 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
 import { SettingType } from '../../generated/settings/settings';
@@ -21,9 +21,16 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import Appbar from '../AppBar/Appbar';
+import TokenService from '../../utils/Auth/TokenService/TokenServiceUtil';
+import {
+  extractDetailsFromToken,
+  isProtectedRoute,
+  isTourRoute,
+} from '../../utils/AuthProvider.util';
+import { getOidcToken } from '../../utils/LocalStorageUtils';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
+import NavBar from '../NavBar/NavBar';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './app-container.less';
@@ -36,6 +43,8 @@ const AppContainer = () => {
   const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
+  const { isAuthenticated } = useApplicationStore();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
   const { setConfig, bannerDetails } = useLimitStore();
 
@@ -73,6 +82,28 @@ const AppContainer = () => {
     }
   }, [applications]);
 
+  useEffect(() => {
+    const handleDocumentVisibilityChange = () => {
+      if (
+        isProtectedRoute(location.pathname) &&
+        isTourRoute(location.pathname)
+      ) {
+        return;
+      }
+      const { isExpired } = extractDetailsFromToken(getOidcToken());
+      if (!document.hidden && isExpired) {
+        // force logout
+        TokenService.getInstance().refreshToken();
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, []);
+
   return (
     <Layout>
       <LimitBanner />
@@ -81,12 +112,17 @@ const AppContainer = () => {
           ['extra-banner']: Boolean(bannerDetails),
         })}>
         {/* Render left side navigation */}
-        <LeftSidebar />
+        <LeftSidebar isSidebarCollapsed={isSidebarCollapsed} />
 
         {/* Render main content */}
         <Layout>
           {/* Render Appbar */}
-          <Appbar />
+          {isProtectedRoute(location.pathname) && isAuthenticated ? (
+            <NavBar
+              isSidebarCollapsed={isSidebarCollapsed}
+              toggleSideBar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            />
+          ) : null}
 
           {/* Render main content */}
           <Content>

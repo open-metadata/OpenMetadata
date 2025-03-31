@@ -369,7 +369,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         entity: t('label.ml-model'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -393,7 +393,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           permissions={mlModelPermissions}
           type={EntityType.MLMODEL}
           onUpdate={onMlModelUpdate}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

@@ -268,7 +268,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }
 
   return (
-    <div className="explore-page bg-grey p-x-box" data-testid="explore-page">
+    <div className="explore-page bg-grey" data-testid="explore-page">
       {tabItems.length > 0 && (
         <Row gutter={[20, 0]} wrap={false}>
           <Col className="explore-left-panel" flex="300px">
@@ -304,7 +304,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               gutter={[20, 0]}
               wrap={false}>
               <Col span={24}>
-                <Card className="p-md card-padding-0 m-b-md">
+                <Card className="p-md card-padding-0 m-b-box">
                   <Row>
                     <Col className="searched-data-container w-full">
                       <Row gutter={[0, 8]}>

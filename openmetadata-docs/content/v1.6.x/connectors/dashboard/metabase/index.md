@@ -18,6 +18,7 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/metabase/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/metabase/yaml"} /%}
 

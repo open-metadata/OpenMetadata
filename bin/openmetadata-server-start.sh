@@ -50,19 +50,24 @@ fi
 
 
 COMMAND=$1
-case $COMMAND in
-  -name)
-    DAEMON_NAME=$2
-    CONSOLE_OUTPUT_FILE=$LOG_DIR/$DAEMON_NAME.out
-    shift 2
-    ;;
-  -daemon)
-    DAEMON_MODE=true
-    shift
-    ;;
-  *)
-    ;;
-esac
+while [ "$COMMAND" != "" ]; do
+  case $COMMAND in
+    -name)
+      DAEMON_NAME=$2
+      shift 2
+      ;;
+    -daemon)
+      DAEMON_NAME=OpenMetadataServer
+      DAEMON_MODE=true
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+  COMMAND=$1
+done
+CONSOLE_OUTPUT_FILE=$LOG_DIR/$DAEMON_NAME.out
 
 # Which java to use
 if [ -z "$JAVA_HOME" ]; then

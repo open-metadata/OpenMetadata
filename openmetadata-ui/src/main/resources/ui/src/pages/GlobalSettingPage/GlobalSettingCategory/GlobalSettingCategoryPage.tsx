@@ -98,7 +98,7 @@ const GlobalSettingCategoryPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row className="page-container" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

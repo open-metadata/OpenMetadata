@@ -168,13 +168,11 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: searchIndexDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.SEARCH_INDEX>
-            entityType={EntityType.SEARCH_INDEX}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.SEARCH_INDEX>
+          entityType={EntityType.SEARCH_INDEX}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

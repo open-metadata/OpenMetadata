@@ -17,6 +17,9 @@ from typing import List, Optional, TypeVar
 from pydantic import BaseModel
 
 from metadata.generated.schema.analytics.reportData import ReportData
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
@@ -66,6 +69,7 @@ ES_INDEX_MAP = {
     GlossaryTerm.__name__: "glossary_term_search_index",
     MlModel.__name__: "mlmodel_search_index",
     Tag.__name__: "tag_search_index",
+    Classification.__name__: "classification_search_index",
     Container.__name__: "container_search_index",
     Query.__name__: "query_search_index",
     ReportData.__name__: "entity_report_data_index",

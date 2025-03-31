@@ -186,14 +186,12 @@ export const getDatabasePageBaseTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: database && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DATABASE>
-            entityType={EntityType.DATABASE}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DATABASE>
+          entityType={EntityType.DATABASE}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+          isVersionView={false}
+        />
       ),
     },
   ];

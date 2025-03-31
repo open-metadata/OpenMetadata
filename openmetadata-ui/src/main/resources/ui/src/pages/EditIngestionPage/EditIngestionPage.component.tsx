@@ -309,7 +309,7 @@ const EditIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,

@@ -30,7 +30,7 @@ const TabsLabel = ({
 
   return (
     <div className="w-full tabs-label-container" data-testid={id}>
-      <div className="d-flex justify-between gap-2">
+      <div className="d-flex justify-between gap-1">
         {name}
         {!isNil(count) && (
           <span data-testid="count">{getCountBadge(count, '', isActive)}</span>

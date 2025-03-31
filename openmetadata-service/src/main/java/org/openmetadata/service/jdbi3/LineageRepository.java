@@ -401,7 +401,7 @@ public class LineageRepository {
     }
   }
 
-  private static String getDocumentUniqueId(
+  public static String getDocumentUniqueId(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     if (lineageDetails != null && !nullOrEmpty(lineageDetails.getPipeline())) {
       EntityReference ref = lineageDetails.getPipeline();

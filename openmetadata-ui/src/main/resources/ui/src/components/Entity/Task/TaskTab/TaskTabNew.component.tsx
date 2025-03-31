@@ -425,16 +425,18 @@ export const TaskTabNew = ({
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
+  const [recentComment, setRecentComment] = useState<string>('');
+
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
         // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
       })
       .finally(() => {
         setHasAddedComment(true);
         editorRef.current?.clearEditorValue();
         setShowFeedEditor(false);
+        setRecentComment(comment);
       });
   };
 
@@ -462,7 +464,7 @@ export const TaskTabNew = ({
       return;
     }
 
-    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : recentComment;
     updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
       comment: updatedComment,
     } as unknown as TaskDetails)
@@ -749,9 +751,7 @@ export const TaskTabNew = ({
                 }}
                 overlayClassName="task-action-dropdown"
                 onClick={() =>
-                  taskAction.key === TaskActionMode.EDIT
-                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
-                    : onTaskResolve()
+                  handleMenuItemClick({ key: taskAction.key } as MenuInfo)
                 }>
                 {taskAction.label}
               </Dropdown.Button>
@@ -998,7 +998,6 @@ export const TaskTabNew = ({
 
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
-    setComment('');
   };
 
   useEffect(() => {

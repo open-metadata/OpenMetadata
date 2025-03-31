@@ -639,6 +639,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
         except Exception as exc:
@@ -673,6 +675,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
         except Exception as exc:
@@ -711,6 +715,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     classification_name=tag_name,
                     tag_description=DATABRICKS_TAG,
                     classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
             column_tags = self.column_tags.get(
@@ -737,6 +743,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         classification_name=tag_name,
                         tag_description=DATABRICKS_TAG,
                         classification_description=DATABRICKS_TAG_CLASSIFICATION,
+                        metadata=self.metadata,
+                        system_tags=True,
                     )
 
         except Exception as exc:

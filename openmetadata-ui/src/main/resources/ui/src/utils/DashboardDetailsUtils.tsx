@@ -126,13 +126,11 @@ export const getDashboardDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DASHBOARD>
-            entityType={EntityType.DASHBOARD}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DASHBOARD>
+          entityType={EntityType.DASHBOARD}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

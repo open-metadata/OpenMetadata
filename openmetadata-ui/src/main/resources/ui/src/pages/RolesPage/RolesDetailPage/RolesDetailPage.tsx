@@ -305,7 +305,7 @@ const RolesDetailPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.role'),
       })}>
-      <div className="page-container" data-testid="role-details-container">
+      <div data-testid="role-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         <>

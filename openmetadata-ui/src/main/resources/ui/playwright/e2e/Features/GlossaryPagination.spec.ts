@@ -37,14 +37,16 @@ test.describe('Glossary tests', () => {
     }
 
     try {
-      await redirectToHomePage(page);
-      const glossaryRes = page.waitForResponse('/api/v1/glossaries?*');
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await glossaryRes;
+      const glossaryRes = page.waitForResponse(
+        '/api/v1/glossaryTerms?*directChildrenOf=*'
+      );
 
       const glossaryAfterRes = page.waitForResponse(
         '/api/v1/glossaries?*after=*'
       );
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await glossaryRes;
+
       await page
         .getByTestId('glossary-left-panel-scroller')
         .scrollIntoViewIfNeeded();

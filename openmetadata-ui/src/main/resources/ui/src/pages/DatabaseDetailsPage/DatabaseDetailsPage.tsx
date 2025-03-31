@@ -454,7 +454,7 @@ const DatabaseDetails: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -478,7 +478,7 @@ const DatabaseDetails: FunctionComponent = () => {
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
-            <Col className="p-x-lg" span={24}>
+            <Col span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"

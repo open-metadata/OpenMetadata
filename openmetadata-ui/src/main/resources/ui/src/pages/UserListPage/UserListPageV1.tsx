@@ -349,7 +349,7 @@ const UserListPageV1 = () => {
   const errorPlaceHolder = useMemo(
     () => (
       <PageLayoutV1 pageTitle={t('label.user-plural')}>
-        <Row className="page-container">
+        <Row>
           <Col className="w-full d-flex justify-end">
             <span>
               <Switch
@@ -435,7 +435,7 @@ const UserListPageV1 = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.user-plural')}>
       <Row
-        className="user-listing p-b-md page-container"
+        className="user-listing p-b-md"
         data-testid="user-list-v1-component"
         gutter={[0, 16]}>
         <Col span={24}>

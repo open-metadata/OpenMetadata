@@ -120,11 +120,6 @@ export const FIELDS: EntityFields[] = [
     localSearch: false,
   },
   {
-    id: 'Entity Type',
-    name: 'entityType',
-    localSearch: false,
-  },
-  {
     id: 'Chart',
     name: 'charts.displayName.keyword',
     localSearch: false,

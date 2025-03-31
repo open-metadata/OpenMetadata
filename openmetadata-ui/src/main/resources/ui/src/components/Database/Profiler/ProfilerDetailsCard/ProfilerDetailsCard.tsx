@@ -44,6 +44,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   curveType,
   title,
   isLoading,
+  noDataPlaceholderText,
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -126,7 +127,10 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
           ) : (
             <Row align="middle" className="h-full w-full" justify="center">
               <Col>
-                <ErrorPlaceHolder className="mt-0-important" />
+                <ErrorPlaceHolder
+                  className="mt-0-important"
+                  placeholderText={noDataPlaceholderText}
+                />
               </Col>
             </Row>
           )}

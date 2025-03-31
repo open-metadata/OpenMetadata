@@ -35,6 +35,7 @@ import { DataDistributionHistogramProps } from './Chart.interface';
 
 const DataDistributionHistogram = ({
   data,
+  noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
   const showSingleGraph =
@@ -48,7 +49,7 @@ const DataDistributionHistogram = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder />
+          <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
         </Col>
       </Row>
     );

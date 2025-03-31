@@ -18,6 +18,7 @@ Configure and schedule Looker metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/looker/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/looker/yaml"} /%}
 

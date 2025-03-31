@@ -135,21 +135,19 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           />
         )}
 
-        {entityType && (
-          <Button
-            className="lineage-button"
-            data-testid="lineage-export"
-            disabled={isEditMode}
-            icon={
-              <span className="anticon">
-                <ExportIcon height={18} width={18} />
-              </span>
-            }
-            title={t('label.export-entity', { entity: t('label.lineage') })}
-            type="text"
-            onClick={onExportClick}
-          />
-        )}
+        <Button
+          className="lineage-button"
+          data-testid="lineage-export"
+          disabled={isEditMode}
+          icon={
+            <span className="anticon">
+              <ExportIcon height={18} width={18} />
+            </span>
+          }
+          title={t('label.export-entity', { entity: t('label.lineage') })}
+          type="text"
+          onClick={onExportClick}
+        />
 
         {handleFullScreenViewClick && (
           <Button

@@ -120,15 +120,13 @@ export const getDataBaseSchemaPageBaseTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
-            className=""
-            entityType={EntityType.DATABASE_SCHEMA}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
+          className=""
+          entityType={EntityType.DATABASE_SCHEMA}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+          isVersionView={false}
+        />
       ),
     },
   ];

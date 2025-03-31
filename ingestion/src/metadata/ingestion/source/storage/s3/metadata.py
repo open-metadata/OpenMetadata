@@ -305,7 +305,6 @@ class S3Source(StorageServiceSource):
                     client=self.s3_client,
                 )
             except Exception as err:
-                logger.warning()
                 self.status.failed(
                     error=StackTraceError(
                         name=f"{bucket_name}/{sample_key}",

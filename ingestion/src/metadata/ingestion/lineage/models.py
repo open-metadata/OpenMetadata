@@ -105,6 +105,7 @@ class Dialect(Enum):
     SQLITE = "sqlite"
     TERADATA = "teradata"
     TSQL = "tsql"
+    MARIADB = "mariadb"
 
 
 MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
@@ -126,7 +127,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,
     str(TeradataType.Teradata.value): Dialect.TERADATA,
-    str(MariaDBType.MariaDB.value): Dialect.MYSQL,
+    str(MariaDBType.MariaDB.value): Dialect.MARIADB,
     str(SingleStoreType.SingleStore.value): Dialect.MYSQL,
 }
 

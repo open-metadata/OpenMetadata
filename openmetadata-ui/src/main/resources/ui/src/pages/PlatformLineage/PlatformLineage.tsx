@@ -167,7 +167,7 @@ const PlatformLineage = () => {
     <PageLayoutV1 pageTitle={t('label.lineage')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <Row className="p-x-lg">
+          <Row className="">
             <Col span={24}>
               <PageHeader data={PAGE_HEADERS.PLATFORM_LINEAGE} />
             </Col>

@@ -19,7 +19,7 @@ describe('LeftSidebar', () => {
   it('renders sidebar links correctly', () => {
     render(
       <BrowserRouter>
-        <LeftSidebar />
+        <LeftSidebar isSidebarCollapsed={false} />
       </BrowserRouter>
     );
 

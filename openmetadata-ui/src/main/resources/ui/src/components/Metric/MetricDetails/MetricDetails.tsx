@@ -227,7 +227,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         entity: t('label.metric'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -252,7 +252,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

@@ -240,14 +240,20 @@ export const addMultiOwner = async (data: {
 
   await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   if (clearAll && isMultipleOwners) {
     await page.click('[data-testid="clear-all-button"]');
@@ -260,7 +266,10 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
 
     const ownerItem = page.getByRole('listitem', {
       name: ownerName,
@@ -1378,6 +1387,6 @@ export const getTextFromHtmlString = (description?: string): string => {
 export const getFirstRowColumnLink = (page: Page) => {
   return page
     .getByTestId('databaseSchema-tables')
-    .getByTestId('column-name')
+    .locator('[data-testid="column-name"] a')
     .first();
 };

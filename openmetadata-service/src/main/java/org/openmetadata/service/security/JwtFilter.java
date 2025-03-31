@@ -301,7 +301,7 @@ public class JwtFilter implements ContainerRequestFilter {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
-        throw AuthenticationException.getExpiredTokenException();
+        throw AuthenticationException.invalidTokenMessage();
       }
     }
   }

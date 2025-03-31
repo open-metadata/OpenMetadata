@@ -14,17 +14,7 @@ import { Badge } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-
-interface LeftSidebarItemProps {
-  data: {
-    key: string;
-    title: string;
-    dataTestId: string;
-    redirect_url?: string;
-    icon: SvgComponent;
-    isBeta?: boolean;
-  };
-}
+import { LeftSidebarItemProps } from './LeftSidebar.interface';
 
 const LeftSidebarItem = ({
   data: { title, redirect_url, dataTestId, isBeta },

@@ -45,6 +45,7 @@ class DocumentationLinksClassBase {
       FOLLOW_DATA_ASSET: `${this.docsBaseURL}how-to-guides/guide-for-data-users/follow-data-asset`,
       RECENTLY_VIEWED: `${this.docsBaseURL}how-to-guides/data-discovery/discover`,
       DATA_QUALITY_PROFILER_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability`,
+      DATA_QUALITY_PROFILER_WORKFLOW_DOCS: `${this.docsBaseURL}how-to-guides/data-quality-observability/profiler/workflow`,
       CUSTOM_PROPERTIES_DOCS: `${this.docsBaseURL}how-to-guides/guide-for-data-users/custom`,
       DATA_DISCOVERY_DOCS: `${this.docsBaseURL}how-to-guides/data-discovery`,
       HOW_TO_GUIDE_DOCS: `${this.docsBaseURL}how-to-guides`,

@@ -240,7 +240,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         entity: t('label.api-endpoint'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -264,7 +264,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}
           onUpdate={onApiEndpointUpdate}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

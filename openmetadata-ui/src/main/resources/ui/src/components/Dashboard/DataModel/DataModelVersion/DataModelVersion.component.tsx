@@ -192,14 +192,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={false}
-              hasPermission={entityPermissions.ViewAll}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
         ),
       },
     ],
