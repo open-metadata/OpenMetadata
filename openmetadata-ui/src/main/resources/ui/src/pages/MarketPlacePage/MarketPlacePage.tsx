@@ -133,21 +133,22 @@ const MarketPlacePage = () => {
 
       <Row className="m-t-lg" justify="center">
         <Col span={18}>
-          <div className="d-flex flex-wrap gap-3">
+          <Row className="marketplace-card-container" gutter={[20, 20]}>
             {applicationData?.map((item) => (
-              <ApplicationCard
-                appName={item.fullyQualifiedName ?? ''}
-                className="w-400"
-                description={item.description ?? ''}
-                key={uniqueId()}
-                linkTitle={t('label.read-type', {
-                  type: t('label.more'),
-                })}
-                title={getEntityName(item)}
-                onClick={() => viewAppDetails(item)}
-              />
+              <Col key={item.fullyQualifiedName} lg={12} sm={24}>
+                <ApplicationCard
+                  appName={item.fullyQualifiedName ?? ''}
+                  description={item.description ?? ''}
+                  key={uniqueId()}
+                  linkTitle={t('label.read-type', {
+                    type: t('label.more'),
+                  })}
+                  title={getEntityName(item)}
+                  onClick={() => viewAppDetails(item)}
+                />
+              </Col>
             ))}
-          </div>
+          </Row>
         </Col>
         <Col span={18}>
           {showPagination && (

@@ -179,21 +179,27 @@ const ApplicationPage = () => {
         {!isLoading && (
           <>
             <Col span={24}>
-              <div className="d-flex flex-wrap gap-3">
+              <Row className="applications-card-container" gutter={[20, 20]}>
                 {applicationData?.map((item) => (
-                  <ApplicationCard
-                    appName={item.fullyQualifiedName ?? ''}
-                    className="w-400"
-                    deleted={item.deleted}
-                    description={item.description ?? ''}
-                    key={uniqueId()}
-                    linkTitle={t('label.configure')}
-                    showDescription={false}
-                    title={getEntityName(item)}
-                    onClick={() => viewAppDetails(item)}
-                  />
+                  <Col
+                    key={item.fullyQualifiedName}
+                    lg={8}
+                    md={12}
+                    sm={24}
+                    xl={6}>
+                    <ApplicationCard
+                      appName={item.fullyQualifiedName ?? ''}
+                      deleted={item.deleted}
+                      description={item.description ?? ''}
+                      key={uniqueId()}
+                      linkTitle={t('label.configure')}
+                      showDescription={false}
+                      title={getEntityName(item)}
+                      onClick={() => viewAppDetails(item)}
+                    />
+                  </Col>
                 ))}
-              </div>
+              </Row>
             </Col>
             <Col span={24}>
               {showPagination && (
