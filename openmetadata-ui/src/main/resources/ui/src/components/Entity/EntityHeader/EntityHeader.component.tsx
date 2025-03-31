@@ -36,6 +36,8 @@ interface Props {
   titleColor?: string;
   badge?: React.ReactNode;
   showName?: boolean;
+  nameClassName?: string;
+  displayNameClassName?: string;
 }
 
 export const EntityHeader = ({
@@ -50,6 +52,8 @@ export const EntityHeader = ({
   badge,
   titleColor,
   showName = true,
+  nameClassName = '',
+  displayNameClassName = '',
 }: Props) => {
   return (
     <div className="w-full">
@@ -67,6 +71,7 @@ export const EntityHeader = ({
         color={titleColor}
         deleted={entityData.deleted}
         displayName={entityData.displayName}
+        displayNameClassName={displayNameClassName}
         icon={icon}
         link={
           titleIsLink && entityData.fullyQualifiedName && entityType
@@ -74,6 +79,7 @@ export const EntityHeader = ({
             : undefined
         }
         name={entityData.name}
+        nameClassName={nameClassName}
         openEntityInNewPage={openEntityInNewPage}
         serviceName={serviceName}
         showName={showName}

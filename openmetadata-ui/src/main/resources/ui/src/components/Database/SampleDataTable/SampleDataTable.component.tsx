@@ -219,7 +219,7 @@ const SampleDataTable = ({
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-b-md justify-end w-full">
+      <Space className="m-y-xss justify-end w-full">
         {hasPermission && (
           <Dropdown
             menu={{
