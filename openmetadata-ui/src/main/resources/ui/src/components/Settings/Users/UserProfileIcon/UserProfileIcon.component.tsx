@@ -379,7 +379,9 @@ export const UserProfileIcon = () => {
         type="text">
         <div className="name-persona-container">
           <Tooltip title={getEntityName(currentUser)}>
-            <Typography.Text className="font-semibold">
+            <Typography.Text
+              className="font-semibold"
+              data-testid="nav-user-name">
               {getEntityName(currentUser)}
             </Typography.Text>
           </Tooltip>
