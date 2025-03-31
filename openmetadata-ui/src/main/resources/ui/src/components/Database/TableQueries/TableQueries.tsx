@@ -486,7 +486,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <div className="flex-center font-medium mt-24" data-testid="no-queries">
+      <div className="query-placeholder-container" data-testid="no-queries">
         <ErrorPlaceHolder
           buttonId="add-query-btn"
           doc={USAGE_DOCS}
@@ -501,7 +501,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   if (isTableDeleted) {
     return (
-      <div className="flex-center font-medium mt-24" data-testid="no-queries">
+      <div className="query-placeholder-container" data-testid="no-queries">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           {t('message.field-data-is-not-available-for-deleted-entities', {
             field: t('label.query-plural'),

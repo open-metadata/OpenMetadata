@@ -16,7 +16,7 @@
   height: initial !important;
   border-radius: 12px;
   background-color: @white;
-  border: 1px solid @border-color-1;
+  border: 1px solid @border-color;
   overflow: hidden;
 
   .ant-table-body {
@@ -24,6 +24,10 @@
 
     &::-webkit-scrollbar {
       display: none;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
     }
   }
 
@@ -35,7 +39,7 @@
 
     .ant-dropdown-menu {
       background-color: @white;
-      border-color: @grey-4;
+      border-color: @border-color;
     }
 
     .ant-dropdown-menu-item {
@@ -50,7 +54,7 @@
   }
 
   .pagination-container {
-    border-top: 1px solid @border-color-1;
+    border-top: 1px solid @border-color;
     padding: 16px 0;
   }
 }

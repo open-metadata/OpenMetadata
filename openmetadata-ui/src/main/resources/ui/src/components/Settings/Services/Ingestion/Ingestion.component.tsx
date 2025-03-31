@@ -197,6 +197,7 @@ const Ingestion: React.FC<IngestionProps> = ({
               entity: t('label.agent-plural'),
             })}>
             <Button
+              className="reload-button"
               icon={<ReloadOutlined className="reload-button-icon" />}
               size="large"
               onClick={() => refreshAgentsList(subTab as ServiceAgentSubTabs)}
