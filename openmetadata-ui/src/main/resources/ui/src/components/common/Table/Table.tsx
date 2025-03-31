@@ -36,6 +36,7 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getCustomizeColumnDetails,
   getReorderedColumns,
@@ -65,6 +66,7 @@ const Table = <T extends Record<string, unknown>>(
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
   const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [dropdownColumnList, setDropdownColumnList] = useState<
@@ -105,11 +107,13 @@ const Table = <T extends Record<string, unknown>>(
 
       // Updating localStorage
       const selectedColumns = JSON.parse(
-        localStorage.getItem('selectedColumns') ?? '{}'
+        localStorage.getItem(
+          `selectedColumns-${currentUser?.fullyQualifiedName}`
+        ) ?? '{}'
       );
       if (entityType) {
         localStorage.setItem(
-          'selectedColumns',
+          `selectedColumns-${currentUser?.fullyQualifiedName}`,
           JSON.stringify({
             ...selectedColumns,
             [entityType]: updatedSelections,
@@ -229,25 +233,23 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
+    const storageKey = `selectedColumns-${currentUser?.fullyQualifiedName}`;
     const selectedColumns = JSON.parse(
-      localStorage.getItem('selectedColumns') ?? '{}'
+      localStorage.getItem(storageKey) ?? '{}'
     );
+
     if (entityType) {
       if (selectedColumns[entityType]) {
         setColumnDropdownSelections(selectedColumns[entityType]);
-      } else {
-        if (defaultVisibleColumns) {
-          setColumnDropdownSelections(defaultVisibleColumns);
-          localStorage.setItem(
-            'selectedColumns',
-            JSON.stringify({
-              ...selectedColumns,
-              [entityType]: defaultVisibleColumns,
-            })
-          );
-        } else {
-          setColumnDropdownSelections([]);
-        }
+      } else if (defaultVisibleColumns) {
+        setColumnDropdownSelections(defaultVisibleColumns);
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            ...selectedColumns,
+            [entityType]: defaultVisibleColumns,
+          })
+        );
       }
     }
   }, [entityType, defaultVisibleColumns]);
