@@ -11,17 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  Alert,
-  Badge,
-  Button,
-  Dropdown,
-  InputRef,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
@@ -43,6 +36,7 @@ import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
+  DEFAULT_DOMAIN_VALUE,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
@@ -414,9 +408,9 @@ const NavBar = ({
                 data-testid="sidebar-toggle"
                 icon={
                   isSidebarCollapsed ? (
-                    <SidebarCollapsedIcon height={24} width={24} />
+                    <SidebarCollapsedIcon height={20} width={20} />
                   ) : (
-                    <SidebarExpandedIcon height={24} width={24} />
+                    <SidebarExpandedIcon height={20} width={20} />
                   )
                 }
                 size="middle"
@@ -425,9 +419,6 @@ const NavBar = ({
               />
             </Tooltip>
             <GlobalSearchBar />
-          </div>
-
-          <div className="flex-center gap-5 nav-bar-side-items">
             <DomainSelectableList
               hasPermission
               popoverProps={{
@@ -437,29 +428,34 @@ const NavBar = ({
                 },
               }}
               selectedDomain={activeDomainEntityRef}
+              wrapInButton={false}
               onCancel={() => setIsDomainDropdownOpen(false)}
               onUpdate={handleDomainChange}>
               <Button
-                className="flex-center gap-2 p-0 font-medium"
+                className={classNames(
+                  'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                  {
+                    'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                  }
+                )}
                 data-testid="domain-dropdown"
-                type="text"
                 onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
                 <DomainIcon
-                  className="d-flex text-base-color"
-                  height={24}
+                  className="d-flex"
+                  height={20}
                   name="domain"
-                  width={24}
+                  width={20}
                 />
-                <Typography.Text className="font-medium">
-                  {activeDomainEntityRef
-                    ? getEntityName(activeDomainEntityRef)
-                    : activeDomain}
-                </Typography.Text>
+                {activeDomainEntityRef
+                  ? getEntityName(activeDomainEntityRef)
+                  : activeDomain}
 
-                <DropDownIcon width={20} />
+                <DropDownIcon width={12} />
               </Button>
             </DomainSelectableList>
+          </div>
 
+          <div className="flex-center gap-5 nav-bar-side-items">
             <Dropdown
               className="cursor-pointer"
               menu={{
@@ -472,7 +468,7 @@ const NavBar = ({
                 {upperCase(
                   (language || SupportedLocales.English).split('-')[0]
                 )}{' '}
-                <DropDownIcon width={20} />
+                <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown

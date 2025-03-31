@@ -59,6 +59,7 @@ const DomainSelectableList = ({
   selectedDomain,
   multiple = false,
   onCancel,
+  wrapInButton = true,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -99,12 +100,8 @@ const DomainSelectableList = ({
     onCancel?.();
   }, [onCancel]);
 
-  return (
-    // Used Button to stop click propagation event anywhere in the component to parent
-    // TeamDetailV1 collapsible panel
-    <Button
-      className="remove-button-default-styling flex-center"
-      onClick={(e) => e.stopPropagation()}>
+  const popoverContent = useMemo(() => {
+    return (
       <Popover
         destroyTooltipOnHide
         content={
@@ -144,8 +141,29 @@ const DomainSelectableList = ({
           </Tooltip>
         )}
       </Popover>
-    </Button>
-  );
+    );
+  }, [
+    children,
+    hasPermission,
+    handleCancel,
+    handleUpdate,
+    initialDomains,
+    multiple,
+    popoverProps,
+    selectedDomainsList,
+  ]);
+
+  if (wrapInButton) {
+    return (
+      <Button
+        className="remove-button-default-styling flex-center"
+        onClick={(e) => e.stopPropagation()}>
+        {popoverContent}
+      </Button>
+    );
+  }
+
+  return popoverContent;
 };
 
 export default DomainSelectableList;
