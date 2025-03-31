@@ -1905,6 +1905,7 @@
     "no-tags-description": "No tags have been defined in this category. To create a new tag, simply click on the 'Add' button.",
     "no-tasks-assigned": "Currently, there are no pending tasks assigned to you.",
     "no-team-found": "チームが見つかりません。",
+    "no-teams-assigned": "チームが割り当てられていません",
     "no-terms-found": "用語が見つかりません",
     "no-terms-found-for-search-text": "No terms found for {{searchText}}",
     "no-test-result-for-days": "We couldn't find any test results from the {{days}}.",

@@ -1905,6 +1905,7 @@
     "no-tags-description": "No tags have been defined in this category. To create a new tag, simply click on the 'Add' button.",
     "no-tasks-assigned": "כרגע אין משימות ממתינות שהוקצו לך.",
     "no-team-found": "לא נמצא צוות.",
+    "no-teams-assigned": "אין צוותים מוקצים",
     "no-terms-found": "לא נמצאו מונחים",
     "no-terms-found-for-search-text": "לא נמצאו מונחים עבור {{searchText}}",
     "no-test-result-for-days": "We couldn't find any test results from the {{days}}.",

@@ -1905,6 +1905,7 @@
     "no-tags-description": "ไม่มีแท็กที่กำหนดไว้ในหมวดหมู่นี้ หากต้องการสร้างแท็กใหม่ เพียงคลิกที่ปุ่ม 'เพิ่ม'",
     "no-tasks-assigned": "ขณะนี้ยังไม่มีงานที่รอดำเนินการมอบหมายให้คุณ",
     "no-team-found": "ไม่พบทีม",
+    "no-teams-assigned": "ไม่มีทีมที่มอบหมาย",
     "no-terms-found": "ไม่พบคำศัพท์",
     "no-terms-found-for-search-text": "ไม่พบคำศัพท์สำหรับ {{searchText}}",
     "no-test-result-for-days": "ไม่พบผลการทดสอบจาก {{days}}",

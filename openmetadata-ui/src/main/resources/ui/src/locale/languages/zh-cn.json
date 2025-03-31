@@ -1905,6 +1905,7 @@
     "no-tags-description": "本分类中尚未定义任何标签。要创建新标签，只需点击“添加”按钮",
     "no-tasks-assigned": "当前您没有待处理的指派任务",
     "no-team-found": "未找到团队",
+    "no-teams-assigned": "没有分配团队",
     "no-terms-found": "未找到术语",
     "no-terms-found-for-search-text": "未找到{{searchText}}的术语",
     "no-test-result-for-days": "我们找不到{{days}}的测试结果",

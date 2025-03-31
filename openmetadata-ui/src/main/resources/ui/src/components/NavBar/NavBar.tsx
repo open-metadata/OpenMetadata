@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Alert, Badge, Button, Dropdown, InputRef, Tooltip } from 'antd';
+import {
+  Alert,
+  Badge,
+  Button,
+  Dropdown,
+  InputRef,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -446,10 +454,11 @@ const NavBar = ({
                   name="domain"
                   width={20}
                 />
-                {activeDomainEntityRef
-                  ? getEntityName(activeDomainEntityRef)
-                  : activeDomain}
-
+                <Typography.Text ellipsis className="domain-text">
+                  {activeDomainEntityRef
+                    ? getEntityName(activeDomainEntityRef)
+                    : activeDomain}
+                </Typography.Text>
                 <DropDownIcon width={12} />
               </Button>
             </DomainSelectableList>

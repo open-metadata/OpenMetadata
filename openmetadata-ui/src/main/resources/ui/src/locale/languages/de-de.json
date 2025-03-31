@@ -1905,6 +1905,7 @@
     "no-tags-description": "In dieser Kategorie wurden keine Tags definiert. Um ein neues Tag zu erstellen, klicken Sie einfach auf die Schaltfläche 'Hinzufügen'.",
     "no-tasks-assigned": "Derzeit sind keine ausstehenden Aufgaben auf Sie zugewiesen.",
     "no-team-found": "Kein Team gefunden.",
+    "no-teams-assigned": "Es sind keine Teams zugewiesen.",
     "no-terms-found": "Keine Begriffe gefunden",
     "no-terms-found-for-search-text": "Keine Begriffe für {{searchText}} gefunden",
     "no-test-result-for-days": "Wir konnten keine Testergebnisse aus den letzten {{days}} finden.",

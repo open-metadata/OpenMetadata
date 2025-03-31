@@ -1905,6 +1905,7 @@
     "no-tags-description": "Er zijn geen tags gedefinieerd in deze categorie. Klik op de knop 'Toevoegen' om een nieuwe tag aan te maken.",
     "no-tasks-assigned": "Momenteel zijn er geen uitstaande taken toegewezen aan jou.",
     "no-team-found": "Geen team gevonden.",
+    "no-teams-assigned": "Geen teams toegewezen",
     "no-terms-found": "Geen termen gevonden",
     "no-terms-found-for-search-text": "Geen termen gevonden voor {{searchText}}",
     "no-test-result-for-days": "Er zijn geen testresultaten gevonden van de {{days}}.",

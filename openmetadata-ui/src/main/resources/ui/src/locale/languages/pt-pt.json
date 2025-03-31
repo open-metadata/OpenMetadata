@@ -1905,6 +1905,7 @@
     "no-tags-description": "Nenhuma tag foi definida nesta categoria. Para criar uma nova tag, basta clicar no botão 'Adicionar'.",
     "no-tasks-assigned": "Atualmente, não há tarefas pendentes atribuídas a você.",
     "no-team-found": "Nenhum time encontrado.",
+    "no-teams-assigned": "Nenhum time atribuído",
     "no-terms-found": "Nenhum termo encontrado",
     "no-terms-found-for-search-text": "Nenhum termo encontrado para {{searchText}}",
     "no-test-result-for-days": "Não conseguimos encontrar nenhum resultado de teste nos últimos {{days}}.",

@@ -1905,6 +1905,7 @@
     "no-tags-description": "No tags have been defined in this category. To create a new tag, simply click on the 'Add' button.",
     "no-tasks-assigned": "На данный момент у вас нет назначенных задач",
     "no-team-found": "Команда не найдена.",
+    "no-teams-assigned": "Команды не назначены",
     "no-terms-found": "Термины не найдены",
     "no-terms-found-for-search-text": "Термины для {{searchText}} не найдены",
     "no-test-result-for-days": "We couldn't find any test results from the {{days}}.",

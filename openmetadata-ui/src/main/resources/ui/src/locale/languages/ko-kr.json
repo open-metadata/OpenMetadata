@@ -1905,6 +1905,7 @@
     "no-tags-description": "이 카테고리에는 정의된 태그가 없습니다. 새 태그를 생성하려면 '추가' 버튼을 클릭하세요.",
     "no-tasks-assigned": "현재 귀하에게 할당된 대기 작업이 없습니다.",
     "no-team-found": "팀을 찾을 수 없습니다.",
+    "no-teams-assigned": "할당된 팀이 없습니다.",
     "no-terms-found": "용어를 찾을 수 없습니다.",
     "no-terms-found-for-search-text": "\"{{searchText}}\"에 해당하는 용어를 찾을 수 없습니다.",
     "no-test-result-for-days": "{{days}} 동안의 테스트 결과를 찾을 수 없습니다.",

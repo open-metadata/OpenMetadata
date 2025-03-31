@@ -40,7 +40,7 @@
   }
 
   .appbar-search {
-    width: 35vw;
+    width: 30vw;
   }
 
   .app-user-icon {
@@ -113,7 +113,13 @@
   border: 1px solid @blue-15;
   color: @text-color;
 
-  &:hover {
+  .domain-text {
+    max-width: 15vw;
+    color: inherit;
+  }
+
+  &:hover,
+  &:focus {
     background-color: @blue-11;
     border: 1px solid @blue-19;
     color: @text-color;

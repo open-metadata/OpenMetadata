@@ -1905,6 +1905,7 @@
     "no-tags-description": "No se han definido etiquetas en esta categoría. Para crear una nueva etiqueta, simplemente haz clic en el botón 'Agregar'.",
     "no-tasks-assigned": "Actualmente, no hay tareas pendientes asignadas a ti.",
     "no-team-found": "No se encontró ningún equipo.",
+    "no-teams-assigned": "No hay equipos asignados",
     "no-terms-found": "No se encontraron términos",
     "no-terms-found-for-search-text": "No se encontraron términos para {{searchText}}",
     "no-test-result-for-days": "No pudimos encontrar resultados de prueba de los últimos {{days}}.",
