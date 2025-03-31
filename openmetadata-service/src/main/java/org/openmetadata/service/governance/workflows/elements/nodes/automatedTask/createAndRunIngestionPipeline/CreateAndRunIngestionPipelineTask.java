@@ -32,7 +32,7 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess =
-        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(false).build();
+        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(true).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
@@ -46,6 +46,7 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
     ServiceTask runIngestionPipeline =
         getRunIngestionPipelineServiceTask(
             subProcessId,
+            nodeDefinition.getConfig().getShouldRun(),
             nodeDefinition.getConfig().getWaitForCompletion(),
             nodeDefinition.getConfig().getTimeoutSeconds(),
             JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
@@ -79,9 +80,15 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
 
   private ServiceTask getRunIngestionPipelineServiceTask(
       String subProcessId,
+      boolean shouldRun,
       boolean waitForCompletion,
       long timeoutSeconds,
       String inputNamespaceMap) {
+    FieldExtension shouldRunExpr =
+        new FieldExtensionBuilder()
+            .fieldName("shouldRunExpr")
+            .fieldValue(String.valueOf(shouldRun))
+            .build();
     FieldExtension waitExpr =
         new FieldExtensionBuilder()
             .fieldName("waitForCompletionExpr")
@@ -108,6 +115,7 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
         .implementation(RunIngestionPipelineDelegate.class.getName())
+        .addFieldExtension(shouldRunExpr)
         .addFieldExtension(waitExpr)
         .addFieldExtension(timeoutSecondsExpr)
         .addFieldExtension(inputNamespaceMapExpr)

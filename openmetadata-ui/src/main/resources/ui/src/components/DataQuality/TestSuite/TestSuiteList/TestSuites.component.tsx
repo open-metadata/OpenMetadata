@@ -18,11 +18,7 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import {
-  getEntityDetailsPath,
-  INITIAL_PAGING_VALUE,
-  ROUTES,
-} from '../../../../constants/constants';
+import { INITIAL_PAGING_VALUE, ROUTES } from '../../../../constants/constants';
 import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -46,13 +42,15 @@ import {
   TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getTestSuitePath } from '../../../../utils/RouterUtils';
+import {
+  getEntityDetailsPath,
+  getTestSuitePath,
+} from '../../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -169,11 +167,13 @@ export const TestSuites = () => {
         title: t('label.test-plural'),
         dataIndex: 'summary',
         key: 'tests',
+        width: 100,
         render: (value: TestSummary) => value?.total ?? 0,
       },
       {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
+        width: 200,
         key: 'success',
         render: (value: TestSuite['summary']) => {
           const percent =
@@ -187,12 +187,7 @@ export const TestSuites = () => {
           );
         },
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: 'owners',
-        key: 'owners',
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<TestSuite>(),
     ];
 
     return data;
@@ -335,8 +330,17 @@ export const TestSuites = () => {
       </Col>
       <Col span={24}>
         <Table
-          bordered
           columns={columns}
+          customPaginationProps={{
+            currentPage,
+            isLoading,
+            pageSize,
+            isNumberBased: true,
+            paging,
+            pagingHandler: handleTestSuitesPageChange,
+            onShowSizeChange: handlePageSizeChange,
+            showPagination,
+          }}
           data-testid="test-suite-table"
           dataSource={testSuites}
           loading={isLoading}
@@ -344,21 +348,11 @@ export const TestSuites = () => {
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
+          scroll={{
+            x: true,
+          }}
           size="small"
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            isNumberBased
-            currentPage={currentPage}
-            isLoading={isLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleTestSuitesPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );

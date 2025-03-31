@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -35,10 +34,12 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -66,7 +67,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { customizedPage } = useCustomPages(PageType.APIEndpoint);
+  const { customizedPage, isLoading } = useCustomPages(PageType.APIEndpoint);
 
   const {
     owners,
@@ -226,16 +227,20 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     editCustomAttributePermission,
     viewAllPermission,
     editLineagePermission,
+    customizedPage,
   ]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.api-endpoint'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -261,8 +266,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           onUpdate={onApiEndpointUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

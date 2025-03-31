@@ -42,19 +42,15 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
 
   return (
     <Dropdown
-      className="self-end m-r-xs cursor-pointer"
+      className="self-end m-r-xs cursor-pointer sorting-dropdown"
       data-testid="dropdown"
       menu={{
         items,
       }}
       trigger={['click']}>
       <Space align="baseline" data-testid="sorting-dropdown-label" size={4}>
-        <Typography.Text className="text-grey-muted">{label}</Typography.Text>
-        <DropDownIcon
-          className="text-grey-muted align-middle"
-          height={16}
-          width={16}
-        />
+        <Typography.Text>{label}</Typography.Text>
+        <DropDownIcon className="align-middle" height={16} width={16} />
       </Space>
     </Dropdown>
   );

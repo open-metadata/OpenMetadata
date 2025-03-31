@@ -65,6 +65,13 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ applicationConfig: config, theme: config.customTheme });
   },
   setCurrentUser: (user) => {
+    const { personas, defaultPersona } = user;
+    // Update selected Persona to fetch the customized pages
+    if (defaultPersona && personas?.find((p) => p.id === defaultPersona.id)) {
+      set({ selectedPersona: defaultPersona });
+    }
+
+    // Update the current user
     set({ currentUser: user });
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {

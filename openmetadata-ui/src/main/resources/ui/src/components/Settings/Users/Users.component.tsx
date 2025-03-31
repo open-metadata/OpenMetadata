@@ -17,7 +17,7 @@ import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getUserPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -28,6 +28,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
 import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getUserPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -58,10 +59,8 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const {
-    tab: activeTab = UserPageTabs.ACTIVITY,
-    subTab = ActivityFeedTabs.TASKS,
-  } = useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
+    useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
@@ -164,7 +163,10 @@ const Users = ({
     [previewAsset, assetCount, handleAssetClick, setPreviewAsset, currentTab]
   );
   useEffect(() => {
-    if (subTab === ActivityFeedTabs.MENTIONS) {
+    if (
+      subTab === ActivityFeedTabs.MENTIONS ||
+      subTab === ActivityFeedTabs.TASKS
+    ) {
       setCurrentTab(UserPageTabs.TASK);
     }
   }, [subTab]);

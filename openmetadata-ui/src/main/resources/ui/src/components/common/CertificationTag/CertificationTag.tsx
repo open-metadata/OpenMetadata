@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Tag, Tooltip } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -19,8 +20,10 @@ import './certification-tag.less';
 
 const CertificationTag = ({
   certification,
+  showName = false,
 }: {
   certification: AssetCertification;
+  showName?: boolean;
 }) => {
   if (certification.tagLabel.style?.iconURL) {
     const name = getEntityName(certification.tagLabel);
@@ -31,12 +34,26 @@ const CertificationTag = ({
         className="cursor-pointer"
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
-        <div data-testid={`certification-${certification.tagLabel.tagFQN}`}>
+        <div
+          className={classNames({
+            'certification-tag-with-name d-flex items-center gap-1': showName,
+          })}
+          data-testid={`certification-${certification.tagLabel.tagFQN}`}
+          style={
+            showName
+              ? { backgroundColor: certification.tagLabel.style?.color + '33' } // to decrease opacity of the background color by 80%
+              : {}
+          }>
           <img
             alt={`certification: ${name}`}
             className="certification-img"
             src={tagSrc}
           />
+          {showName && (
+            <span className="certification-name text-sm font-medium">
+              {name}
+            </span>
+          )}
         </div>
       </Tooltip>
     );

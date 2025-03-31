@@ -18,8 +18,7 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -37,6 +36,7 @@ import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
 import { getLinkForFqn } from './ServiceUtils';
+import { ownerTableObject } from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
@@ -68,9 +68,10 @@ export const getServiceMainTabColumns = (
     title: t('label.description'),
     dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
     key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    width: 300,
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewerV1 markdown={description} />
+        <RichTextEditorPreviewerNew markdown={description} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {
@@ -85,6 +86,7 @@ export const getServiceMainTabColumns = (
           title: t('label.schedule-interval'),
           dataIndex: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
           key: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
+          width: 200,
           render: (scheduleInterval: Pipeline['scheduleInterval']) =>
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
@@ -94,17 +96,7 @@ export const getServiceMainTabColumns = (
         },
       ]
     : []),
-  {
-    title: t('label.owner-plural'),
-    dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-    key: TABLE_COLUMNS_KEYS.OWNERS,
-    render: (owners: ServicePageData['owners']) =>
-      !isUndefined(owners) && owners.length > 0 ? (
-        <OwnerLabel owners={owners} />
-      ) : (
-        <Typography.Text data-testid="no-owner-text">--</Typography.Text>
-      ),
-  },
+  ...ownerTableObject<ServicePageData>(),
   {
     title: t('label.tag-plural'),
     dataIndex: TABLE_COLUMNS_KEYS.TAGS,
@@ -120,6 +112,7 @@ export const getServiceMainTabColumns = (
           title: t('label.usage'),
           dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+          width: 200,
           render: (usageSummary: Database['usageSummary']) => (
             <Typography.Text>
               {getUsagePercentile(

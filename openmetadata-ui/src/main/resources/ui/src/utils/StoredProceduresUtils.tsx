@@ -70,6 +70,7 @@ export const getStoredProcedureDetailsPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.STORED_PROCEDURE}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={storedProcedure?.owners}
           onFeedUpdate={getEntityFeedCount}

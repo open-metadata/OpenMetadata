@@ -30,6 +30,8 @@ site_menu:
     url: /connectors/api/rest
   - category: Connectors / API / REST / Run Externally
     url: /connectors/api/rest/yaml
+  - category: Connectors / API / REST / Troubleshooting
+    url: /connectors/api/rest/troubleshooting
   - category: Connectors / Database
     url: /connectors/database
   - category: Connectors / Database / ADLS Datalake
@@ -251,18 +253,26 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Domo Dashboard / Troubleshooting
+    url: /connectors/dashboard/domo-dashboard/troubleshooting
   - category: Connectors / Dashboard / Lightdash
     url: /connectors/dashboard/lightdash
   - category: Connectors / Dashboard / Lightdash / Run Externally
     url: /connectors/dashboard/lightdash/yaml
+  - category: Connectors / Dashboard / Lightdash / Troubleshooting
+    url: /connectors/dashboard/lightdash/troubleshooting
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
     url: /connectors/dashboard/looker/yaml
+  - category: Connectors / Dashboard / Looker / Troubleshooting
+    url: /connectors/dashboard/looker/troubleshooting
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / Metabase / Troubleshooting
+    url: /connectors/dashboard/metabase/troubleshooting
   - category: Connectors / Dashboard / MicroStrategy
     url: /connectors/dashboard/microstrategy
   - category: Connectors / Dashboard / MicroStrategy / Run Externally
@@ -443,6 +453,10 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / OpenSearch
+    url: /connectors/search/opensearch
+  - category: Connectors / Search / OpenSearch / Run Externally
+    url: /connectors/search/opensearch/yaml
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -524,6 +538,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects
   - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
     url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
+  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
+    url: /connectors/ingestion/workflows/reverse-metadata
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually
@@ -548,6 +564,9 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
+
+  - category: Connectors / Troubleshooting
+    url: /connectors/troubleshooting
 
   - category: How-to Guides
     url: /how-to-guides
@@ -848,6 +867,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.6 Release
+    url: /releases/all-releases/#1.6.6-release
   - category: Releases / All Releases / 1.6.5 Release
     url: /releases/all-releases/#1.6.5-release
   - category: Releases / All Releases / 1.6.4 Release

@@ -27,7 +27,6 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   DEPLOYED_PROGRESS_VAL,
-  getServiceDetailsPath,
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
@@ -40,6 +39,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
@@ -50,17 +50,19 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
 } from '../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
-  const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
+  const { t } = useTranslation();
   const { ingestionType, serviceCategory } = useParams<{
     ingestionType: string;
     serviceCategory: string;
@@ -327,4 +329,8 @@ const EditIngestionPage = () => {
   );
 };
 
-export default EditIngestionPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.ingestion'),
+  })
+)(EditIngestionPage);

@@ -486,6 +486,8 @@ export enum DataType {
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -1185,6 +1187,10 @@ export interface TableProfilerConfig {
      */
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
+    /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
     /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */

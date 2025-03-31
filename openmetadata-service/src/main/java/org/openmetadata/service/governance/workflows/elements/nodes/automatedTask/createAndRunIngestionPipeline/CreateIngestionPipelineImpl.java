@@ -50,6 +50,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class CreateIngestionPipelineImpl {
+  private static final List<String> DEFAULT_TIERS_TO_PROCESS = List.of("Tier1", "Tier2");
   private static final Map<PipelineType, String> SUPPORT_FEATURE_MAP = new HashMap<>();
 
   static {
@@ -101,26 +102,40 @@ public class CreateIngestionPipelineImpl {
 
   private static final Map<String, List<String>> SERVICE_FILTERS_MAP = new HashMap<>();
 
+  public static final String DATABASE_FILTER_PATTERN = "databaseFilterPattern";
+  public static final String SCHEMA_FILTER_PATTERN = "schemaFilterPattern";
+  public static final String TABLE_FILTER_PATTERN = "tableFilterPattern";
+  public static final String TOPIC_FILTER_PATTERN = "topicFilterPattern";
+  public static final String DASHBOARD_FILTER_PATTERN = "dashboardFilterPattern";
+  public static final String CHART_FILTER_PATTERN = "chartFilterPattern";
+  public static final String DATA_MODEL_FILTER_PATTERN = "dataModelFilterPattern";
+  public static final String PROJECT_FILTER_PATTERN = "projectFilterPattern";
+  public static final String PIPELINE_FILTER_PATTERN = "pipelineFilterPattern";
+  public static final String ML_MODEL_FILTER_PATTERN = "mlModelFilterPattern";
+  public static final String CONTAINER_FILTER_PATTERN = "containerFilterPattern";
+  public static final String SEARCH_INDEX_FILTER_PATTERN = "searchIndexFilterPattern";
+  public static final String API_COLLECTION_FILTER_PATTERN = "apiCollectionFilterPattern";
+
   static {
     SERVICE_FILTERS_MAP.put(
         DATABASE_SERVICE,
-        List.of("databaseFilterPattern", "schemaFilterPattern", "tableFilterPattern"));
-    SERVICE_FILTERS_MAP.put(MESSAGING_SERVICE, List.of("topicFilterPattern"));
+        List.of(DATABASE_FILTER_PATTERN, SCHEMA_FILTER_PATTERN, TABLE_FILTER_PATTERN));
+    SERVICE_FILTERS_MAP.put(MESSAGING_SERVICE, List.of(TOPIC_FILTER_PATTERN));
     SERVICE_FILTERS_MAP.put(
         DASHBOARD_SERVICE,
         List.of(
-            "dashboardFilterPattern",
-            "chartFilterPattern",
-            "dataModelFilterPattern",
-            "projectFilterPattern"));
-    SERVICE_FILTERS_MAP.put(PIPELINE_SERVICE, List.of("pipelineFilterPattern"));
-    SERVICE_FILTERS_MAP.put(MLMODEL_SERVICE, List.of("mlModelFilterPattern"));
+            DASHBOARD_FILTER_PATTERN,
+            CHART_FILTER_PATTERN,
+            DATA_MODEL_FILTER_PATTERN,
+            PROJECT_FILTER_PATTERN));
+    SERVICE_FILTERS_MAP.put(PIPELINE_SERVICE, List.of(PIPELINE_FILTER_PATTERN));
+    SERVICE_FILTERS_MAP.put(MLMODEL_SERVICE, List.of(ML_MODEL_FILTER_PATTERN));
     SERVICE_FILTERS_MAP.put(
         METADATA_SERVICE,
-        List.of("databaseFilterPattern", "schemaFilterPattern", "tableFilterPattern"));
-    SERVICE_FILTERS_MAP.put(STORAGE_SERVICE, List.of("containerFilterPattern"));
-    SERVICE_FILTERS_MAP.put(SEARCH_SERVICE, List.of("searchIndexFilterPattern"));
-    SERVICE_FILTERS_MAP.put(API_SERVICE, List.of("apiCollectionFilterPattern"));
+        List.of(DATABASE_FILTER_PATTERN, SCHEMA_FILTER_PATTERN, TABLE_FILTER_PATTERN));
+    SERVICE_FILTERS_MAP.put(STORAGE_SERVICE, List.of(CONTAINER_FILTER_PATTERN));
+    SERVICE_FILTERS_MAP.put(SEARCH_SERVICE, List.of(SEARCH_INDEX_FILTER_PATTERN));
+    SERVICE_FILTERS_MAP.put(API_SERVICE, List.of(API_COLLECTION_FILTER_PATTERN));
   }
 
   private final IngestionPipelineMapper mapper;
@@ -149,6 +164,13 @@ public class CreateIngestionPipelineImpl {
 
     if (deploy) {
       wasSuccessful = deployPipeline(pipelineServiceClient, ingestionPipeline, service);
+      if (wasSuccessful) {
+        // Mark the pipeline as deployed
+        ingestionPipeline.setDeployed(true);
+        IngestionPipelineRepository repository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+        repository.createOrUpdate(null, ingestionPipeline);
+      }
     }
 
     return new CreateIngestionPipelineResult(ingestionPipeline.getId(), wasSuccessful);
@@ -170,9 +192,21 @@ public class CreateIngestionPipelineImpl {
     return response.getCode() == 200;
   }
 
+  private String getPipelineName(PipelineType pipelineType) {
+    Map<PipelineType, String> pipelineNameByType =
+        Map.of(
+            PipelineType.METADATA, "Metadata Agent",
+            PipelineType.USAGE, "Usage Agent",
+            PipelineType.LINEAGE, "Lineage Agent",
+            PipelineType.PROFILER, "Profiler Agent",
+            PipelineType.AUTO_CLASSIFICATION, "AutoClassification Agent");
+
+    return pipelineNameByType.get(pipelineType);
+  }
+
   private IngestionPipeline getOrCreateIngestionPipeline(
       PipelineType pipelineType, ServiceEntityInterface service) {
-    String displayName = String.format("[%s] %s", service.getName(), pipelineType);
+    String displayName = getPipelineName(pipelineType);
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
@@ -187,7 +221,8 @@ public class CreateIngestionPipelineImpl {
       String displayName) {
     org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline create =
         new org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline()
-            .withAirflowConfig(new AirflowConfig().withStartDate(getYesterdayDate()))
+            .withAirflowConfig(
+                getAirflowConfig(pipelineType)) // Run every Sunday at midnight by default
             .withLoggerLevel(LogLevels.INFO)
             .withName(UUID.randomUUID().toString())
             .withDisplayName(displayName)
@@ -199,6 +234,21 @@ public class CreateIngestionPipelineImpl {
     IngestionPipeline ingestionPipeline = mapper.createToEntity(create, "governance-bot");
 
     return repository.create(null, ingestionPipeline);
+  }
+
+  private AirflowConfig getAirflowConfig(PipelineType pipelineType) {
+    String scheduleInterval = "0 0 * * 0";
+
+    if (List.of(PipelineType.LINEAGE, PipelineType.USAGE).contains(pipelineType)) {
+      scheduleInterval = "0 2 * * 0";
+    } else if (List.of(PipelineType.PROFILER, PipelineType.AUTO_CLASSIFICATION)
+        .contains(pipelineType)) {
+      scheduleInterval = "0 4 * * 0";
+    }
+
+    return new AirflowConfig()
+        .withStartDate(getYesterdayDate())
+        .withScheduleInterval(scheduleInterval);
   }
 
   private IngestionPipeline getIngestionPipeline(
@@ -256,9 +306,9 @@ public class CreateIngestionPipelineImpl {
   private static DatabaseServiceMetadataPipeline getDatabaseServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new DatabaseServiceMetadataPipeline()
-        .withDatabaseFilterPattern(defaultFilters.get("databaseFilterPattern"))
-        .withSchemaFilterPattern(defaultFilters.get("schemaFilterPattern"))
-        .withTableFilterPattern(defaultFilters.get("tableFilterPattern"));
+        .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
+        .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
   }
 
   private static DatabaseServiceQueryUsagePipeline getDatabaseServiceQueryUsagePipeline(
@@ -269,71 +319,75 @@ public class CreateIngestionPipelineImpl {
   private static DatabaseServiceQueryLineagePipeline getDatabaseServiceQueryLineagePipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new DatabaseServiceQueryLineagePipeline()
-        .withDatabaseFilterPattern(defaultFilters.get("databaseFilterPattern"))
-        .withSchemaFilterPattern(defaultFilters.get("schemaFilterPattern"))
-        .withTableFilterPattern(defaultFilters.get("tableFilterPattern"));
+        .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
+        .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
   }
 
   private static DatabaseServiceProfilerPipeline getDatabaseServiceProfilerPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new DatabaseServiceProfilerPipeline()
-        .withDatabaseFilterPattern(defaultFilters.get("databaseFilterPattern"))
-        .withSchemaFilterPattern(defaultFilters.get("schemaFilterPattern"))
-        .withTableFilterPattern(defaultFilters.get("tableFilterPattern"));
+        .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
+        .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withClassificationFilterPattern(
+            new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS));
   }
 
   private static DatabaseServiceAutoClassificationPipeline
       getDatabaseServiceAutoClassificationPipeline(Map<String, FilterPattern> defaultFilters) {
     return new DatabaseServiceAutoClassificationPipeline()
-        .withDatabaseFilterPattern(defaultFilters.get("databaseFilterPattern"))
-        .withSchemaFilterPattern(defaultFilters.get("schemaFilterPattern"))
-        .withTableFilterPattern(defaultFilters.get("tableFilterPattern"));
+        .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
+        .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withClassificationFilterPattern(new FilterPattern().withIncludes(DEFAULT_TIERS_TO_PROCESS))
+        .withEnableAutoClassification(true);
   }
 
   // Other Services Metadata Pipelines
   private static MessagingServiceMetadataPipeline getMessagingServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new MessagingServiceMetadataPipeline()
-        .withTopicFilterPattern(defaultFilters.get("topicFilterPattern"));
+        .withTopicFilterPattern(defaultFilters.get(TOPIC_FILTER_PATTERN));
   }
 
   private static DashboardServiceMetadataPipeline getDashboardServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new DashboardServiceMetadataPipeline()
-        .withDashboardFilterPattern(defaultFilters.get("dashboardFilterPattern"))
-        .withChartFilterPattern(defaultFilters.get("chartFilterPattern"))
-        .withDataModelFilterPattern(defaultFilters.get("dataModelFilterPattern"))
-        .withProjectFilterPattern(defaultFilters.get("projectFilterPattern"));
+        .withDashboardFilterPattern(defaultFilters.get(DASHBOARD_FILTER_PATTERN))
+        .withChartFilterPattern(defaultFilters.get(CHART_FILTER_PATTERN))
+        .withDataModelFilterPattern(defaultFilters.get(DATA_MODEL_FILTER_PATTERN))
+        .withProjectFilterPattern(defaultFilters.get(PROJECT_FILTER_PATTERN));
   }
 
   private static PipelineServiceMetadataPipeline getPipelineServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new PipelineServiceMetadataPipeline()
-        .withPipelineFilterPattern(defaultFilters.get("pipelineFilterPattern"));
+        .withPipelineFilterPattern(defaultFilters.get(PIPELINE_FILTER_PATTERN));
   }
 
   private static MlmodelServiceMetadataPipeline getMlmodelServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new MlmodelServiceMetadataPipeline()
-        .withMlModelFilterPattern(defaultFilters.get("mlModelFilterPattern"));
+        .withMlModelFilterPattern(defaultFilters.get(ML_MODEL_FILTER_PATTERN));
   }
 
   private static StorageServiceMetadataPipeline getStorageServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new StorageServiceMetadataPipeline()
-        .withContainerFilterPattern(defaultFilters.get("containerFilterPattern"));
+        .withContainerFilterPattern(defaultFilters.get(CONTAINER_FILTER_PATTERN));
   }
 
   private static SearchServiceMetadataPipeline getSearchServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new SearchServiceMetadataPipeline()
-        .withSearchIndexFilterPattern(defaultFilters.get("searchIndexFilterPattern"));
+        .withSearchIndexFilterPattern(defaultFilters.get(SEARCH_INDEX_FILTER_PATTERN));
   }
 
   private static ApiServiceMetadataPipeline getApiServiceMetadataPipeline(
       Map<String, FilterPattern> defaultFilters) {
     return new ApiServiceMetadataPipeline()
-        .withApiCollectionFilterPattern(defaultFilters.get("apiCollectionFilterPattern"));
+        .withApiCollectionFilterPattern(defaultFilters.get(API_COLLECTION_FILTER_PATTERN));
   }
 
   @Getter

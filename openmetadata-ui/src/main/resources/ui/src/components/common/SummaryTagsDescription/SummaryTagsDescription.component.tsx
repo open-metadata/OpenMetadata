@@ -15,6 +15,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
+import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 
 export interface EntityWithDescription {
@@ -44,7 +45,11 @@ const SummaryTagsDescription = ({
         </Col>
         <Col className="d-flex flex-wrap gap-2" span={24}>
           {tags.length > 0 ? (
-            <TagsViewer sizeCap={-1} tags={tags} />
+            <TagsViewer
+              displayType={DisplayType.READ_MORE}
+              sizeCap={6}
+              tags={tags}
+            />
           ) : (
             <Typography.Text className="text-sm no-data-chip-placeholder">
               {t('label.no-tags-added')}

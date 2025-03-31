@@ -359,10 +359,9 @@ export const UserTeamSelectableList = ({
                 }))
             }>
             <Button
-              className="flex-center p-0"
+              className="flex-center p-0 edit-owner-button"
               data-testid="edit-owner"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               type="text"
               onClick={openPopover}
             />

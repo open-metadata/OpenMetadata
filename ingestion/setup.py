@@ -34,6 +34,7 @@ VERSIONS = {
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -59,6 +60,7 @@ VERSIONS = {
     "teradata": "teradatasqlalchemy==20.0.0.2",
     "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
+    "opensearch": "opensearch-py~=2.4.0",
     "pydoris": "pydoris==1.0.2",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
@@ -137,6 +139,7 @@ base_requirements = {
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
+    VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "PyYAML~=6.0",
@@ -240,7 +243,9 @@ plugins: Dict[str, Set[str]] = {
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
+        "httpx>=0.23.0",
     },  # also requires requests-aws4auth which is in base
+    "opensearch": {VERSIONS["opensearch"]},
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},

@@ -11,35 +11,34 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
+import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { useAlertStore } from '../../hooks/useAlertStore';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
+  const { alert, resetAlert } = useAlertStore();
   const history = useHistory();
   const [loading, setLoading] = useState(false);
-
-  const [showResetLinkSentAlert, setShowResetLinkSentAlert] = useState(false);
 
   const handleSubmit = useCallback(
     async (data: { email: string }) => {
       try {
         setLoading(true);
         await handleForgotPassword?.(data.email);
-        setShowResetLinkSentAlert(true);
+        showSuccessToast(t('message.reset-link-has-been-sent'));
       } catch (error) {
         showErrorToast(
           (error as AxiosError).response?.status ===
@@ -47,14 +46,17 @@ const ForgotPassword = () => {
             ? t('server.forgot-password-email-error')
             : t('server.email-not-found')
         );
-
-        setShowResetLinkSentAlert(false);
       } finally {
         setLoading(false);
       }
     },
-    [setShowResetLinkSentAlert, handleForgotPassword]
+    [handleForgotPassword]
   );
+
+  const handleLogin = () => {
+    history.push(ROUTES.SIGNIN);
+    resetAlert();
+  };
 
   return (
     <div
@@ -74,6 +76,16 @@ const ForgotPassword = () => {
               {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>
+
+          {alert && (
+            <Col className="m-b-lg" span={24}>
+              <AlertBar
+                defafultExpand
+                message={alert?.message}
+                type={alert?.type}
+              />
+            </Col>
+          )}
 
           <Form
             className="w-full"
@@ -101,28 +113,6 @@ const ForgotPassword = () => {
               </Button>
             </Col>
           </Form>
-
-          {showResetLinkSentAlert && (
-            <Col span={24}>
-              <div
-                className="flex flex-col"
-                data-testid="success-screen-container">
-                <div className="flex global-border rounded-4 p-sm success-alert">
-                  <div className="m-r-xs">
-                    <Icon
-                      className="align-middle"
-                      component={IconSuccessBadge}
-                      data-testid="success-icon"
-                      style={{ fontSize: '20px' }}
-                    />
-                  </div>
-                  <p data-testid="success-line">
-                    <span>{t('message.reset-link-has-been-sent')}</span>
-                  </p>
-                </div>
-              </div>
-            </Col>
-          )}
           <Divider className="w-min-0 mt-8 mb-12 justify-center items-start p-x-xs">
             <Typography.Text className="text-sm" type="secondary">
               {t('label.or-lowercase')}
@@ -134,7 +124,7 @@ const ForgotPassword = () => {
               className="w-full"
               data-testid="go-back-button"
               type="primary"
-              onClick={() => history.push(ROUTES.SIGNIN)}>
+              onClick={handleLogin}>
               {t('message.go-back-to-login-page')}
             </Button>
           </Col>

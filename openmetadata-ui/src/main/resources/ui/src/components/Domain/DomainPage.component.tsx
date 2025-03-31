@@ -33,6 +33,7 @@ import {
   getDomainList,
   patchDomains,
 } from '../../rest/domainAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -43,8 +44,8 @@ import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 
 const DomainPage = () => {
-  const { t } = useTranslation();
   const { fqn: domainFqn } = useFqn();
+  const { t } = useTranslation();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
   const { domains, updateDomains, domainLoading, updateDomainLoading } =
@@ -214,7 +215,7 @@ const DomainPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
         className="content-height-with-resizable-panel"
         firstPanel={{
@@ -235,4 +236,4 @@ const DomainPage = () => {
   );
 };
 
-export default withPageLayout('domain')(DomainPage);
+export default withPageLayout(i18n.t('label.domain'))(DomainPage);

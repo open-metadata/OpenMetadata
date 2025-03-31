@@ -424,15 +424,19 @@ export const TaskTabNew = ({
     (!hasGlossaryReviewer && isOwner) ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
+  const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
+  const [recentComment, setRecentComment] = useState<string>('');
+
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
         // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
       })
       .finally(() => {
+        setHasAddedComment(true);
         editorRef.current?.clearEditorValue();
         setShowFeedEditor(false);
+        setRecentComment(comment);
       });
   };
 
@@ -454,13 +458,13 @@ export const TaskTabNew = ({
   };
 
   const onTaskReject = () => {
-    if (!isTaskGlossaryApproval && isEmpty(comment)) {
+    if (!isTaskGlossaryApproval && !hasAddedComment) {
       showErrorToast(t('server.task-closed-without-comment'));
 
       return;
     }
 
-    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : recentComment;
     updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
       comment: updatedComment,
     } as unknown as TaskDetails)
@@ -747,9 +751,7 @@ export const TaskTabNew = ({
                 }}
                 overlayClassName="task-action-dropdown"
                 onClick={() =>
-                  taskAction.key === TaskActionMode.EDIT
-                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
-                    : onTaskResolve()
+                  handleMenuItemClick({ key: taskAction.key } as MenuInfo)
                 }>
                 {taskAction.label}
               </Dropdown.Button>
@@ -994,6 +996,18 @@ export const TaskTabNew = ({
     );
   };
 
+  const closeFeedEditor = () => {
+    setShowFeedEditor(false);
+  };
+
+  useEffect(() => {
+    closeFeedEditor();
+  }, [taskThread.id]);
+
+  useEffect(() => {
+    setHasAddedComment(false);
+  }, [taskThread.id]);
+
   return (
     <Row
       className="relative task-details-panel"
@@ -1035,7 +1049,9 @@ export const TaskTabNew = ({
             />
           </div>
         )}
-        {taskThread.task?.status === ThreadTaskStatus.Open && ActionRequired()}
+        {taskThread.task?.status === ThreadTaskStatus.Open &&
+          !rest.isOpenInDrawer &&
+          ActionRequired()}
 
         <Col span={24}>
           <div className="activity-feed-comments-container d-flex flex-col">
@@ -1053,7 +1069,9 @@ export const TaskTabNew = ({
                 className={classNames(
                   'm-t-md feed-editor activity-feed-editor-container-new',
                   {
-                    'm-b-md': showFeedEditor && taskThread?.posts?.length === 0,
+                    'm-b-md':
+                      (showFeedEditor && taskThread?.posts?.length === 0) ||
+                      rest.isOpenInDrawer,
                   }
                 )}
                 onSave={onSave}
@@ -1088,6 +1106,7 @@ export const TaskTabNew = ({
                   .sort((a, b) => (b.postTs as number) - (a.postTs as number))
                   .map((reply, index, arr) => (
                     <CommentCard
+                      closeFeedEditor={closeFeedEditor}
                       feed={taskThread}
                       isLastReply={index === arr.length - 1}
                       key={reply.id}

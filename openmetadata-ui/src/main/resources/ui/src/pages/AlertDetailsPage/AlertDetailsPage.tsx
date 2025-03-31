@@ -59,6 +59,7 @@ import {
 } from '../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
@@ -74,13 +75,12 @@ import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 function AlertDetailsPage({
   isNotificationAlert = false,
 }: Readonly<AlertDetailsPageProps>) {
-  const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab = AlertDetailTabs.CONFIGURATION } =
     useParams<{ tab: AlertDetailTabs }>();
   const { fqn } = useFqn();
   const history = useHistory();
-
+  const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
   const [loadingCount, setLoadingCount] = useState(1);
@@ -340,12 +340,12 @@ function AlertDetailsPage({
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container ',
         children: loadingCount ? (
           <Loader />
         ) : (
           <div
-            className="steps-form-container"
+            className="steps-form-container service-form-container"
             data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"
@@ -480,6 +480,8 @@ function AlertDetailsPage({
   );
 }
 
-export default withPageLayout<AlertDetailsPageProps>('alert-detail-plural')(
-  AlertDetailsPage
-);
+export default withPageLayout<AlertDetailsPageProps>(
+  i18n.t('label.entity-detail-plural', {
+    entity: i18n.t('label.alert'),
+  })
+)(AlertDetailsPage);

@@ -17,6 +17,8 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
@@ -89,6 +91,16 @@ class EmptyPayloadException(Exception):
     """
 
 
+class OpenMetadataSettings(BaseSettings):
+    """OpenMetadataConnection settings wrapper"""
+
+    model_config = SettingsConfigDict(
+        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=True
+    )
+
+    connection: OpenMetadataConnection
+
+
 class OpenMetadata(
     OMetaPipelineMixin,
     OMetaMlModelMixin,
@@ -146,11 +158,14 @@ class OpenMetadata(
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
+        extra_headers: Optional[dict[str, str]] = None
+        if self.config.extraHeaders:
+            extra_headers = self.config.extraHeaders.root
         client_config: ClientConfig = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
-            extra_headers=self.config.extraHeaders,
+            extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
         )
@@ -158,6 +173,11 @@ class OpenMetadata(
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
+
+    @classmethod
+    def from_env(cls) -> "OpenMetadata":
+        settings = OpenMetadataSettings()
+        return cls(settings.connection)
 
     @staticmethod
     def get_suffix(entity: Type[T]) -> str:

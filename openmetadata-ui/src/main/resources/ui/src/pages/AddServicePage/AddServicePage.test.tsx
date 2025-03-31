@@ -39,6 +39,19 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   }),
 }));
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useHistory: jest.fn().mockImplementation(() => mockHistory),
@@ -153,9 +166,6 @@ jest.mock('../../utils/CommonUtils', () => ({
 jest.mock('../../utils/RouterUtils', () => ({
   getSettingPath: jest.fn(),
   getAddServicePath: jest.fn(),
-}));
-
-jest.mock('../../constants/constants', () => ({
   getServiceDetailsPath: jest
     .fn()
     .mockImplementation(() => '/service/details/path'),

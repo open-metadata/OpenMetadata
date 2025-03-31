@@ -11,20 +11,30 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
+import {
+  Button,
+  Col,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
-import { getServiceDetailsPath } from '../../../../constants/constants';
 import {
   ServiceAgentSubTabs,
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
+import { getCountBadge } from '../../../../utils/CommonUtils';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
@@ -48,6 +58,12 @@ const Ingestion: React.FC<IngestionProps> = ({
   handleStatusFilterChange,
   statusFilter,
   typeFilter,
+  isCollateAgentLoading,
+  collateAgentsList,
+  collateAgentPagingInfo,
+  onCollateAgentPageChange,
+  agentCounts,
+  refreshAgentsList,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -75,6 +91,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     () => !isUndefined(CollateAIAgentsWidget),
     [CollateAIAgentsWidget]
   );
+
+  const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
 
   const { isAirflowAvailable } = useMemo(
     () => airflowInformation,
@@ -120,13 +138,13 @@ const Ingestion: React.FC<IngestionProps> = ({
   );
 
   const subTabOptions = useMemo(() => {
-    return Object.values(ServiceAgentSubTabs).map((subTab) => {
+    return Object.values(ServiceAgentSubTabs).map((tabName) => {
       const Icon =
-        subTab === ServiceAgentSubTabs.COLLATE_AI
+        tabName === ServiceAgentSubTabs.COLLATE_AI
           ? CollateAI
           : MetadataAgentIcon;
       const label =
-        subTab === ServiceAgentSubTabs.COLLATE_AI
+        tabName === ServiceAgentSubTabs.COLLATE_AI
           ? t('label.collate-ai')
           : t('label.metadata');
 
@@ -134,15 +152,20 @@ const Ingestion: React.FC<IngestionProps> = ({
         label: (
           <div
             className="flex items-center gap-2"
-            data-testid={`${subTab}-sub-tab`}>
+            data-testid={`${tabName}-sub-tab`}>
             <Icon height={14} width={14} />
             <Typography.Text>{label}</Typography.Text>
+            {getCountBadge(
+              agentCounts?.[tabName],
+              'flex-center h-5',
+              subTab === tabName
+            )}
           </div>
         ),
-        value: subTab,
+        value: tabName,
       };
     });
-  }, []);
+  }, [subTab, agentCounts]);
 
   if (!isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;
@@ -169,44 +192,65 @@ const Ingestion: React.FC<IngestionProps> = ({
               />
             )}
           </Col>
-          <Col className="flex items-center gap-2">
-            <SearchDropdown
-              hideCounts
-              label={t('label.status')}
-              options={statusFilters}
-              searchKey="status"
-              selectedKeys={statusFilter ?? []}
-              triggerButtonSize="large"
-              onChange={handleStatusFilterChange}
-              onSearch={handleStatusFilterSearch}
-            />
-            <SearchDropdown
-              hideCounts
-              label={t('label.type')}
-              options={typeFilters}
-              searchKey="status"
-              selectedKeys={typeFilter ?? []}
-              triggerButtonSize="large"
-              onChange={handleTypeFilterChange}
-              onSearch={handleTypeFilterSearch}
-            />
 
-            <div className="search-bar-container">
-              <Searchbar
-                removeMargin
-                inputClassName="p-x-sm p-y-xs border-radius-xs"
-                placeholder={t('label.search')}
-                searchValue={searchText}
-                typingInterval={500}
-                onSearch={handleSearchChange}
+          <Col className="flex items-center gap-2">
+            <Tooltip
+              title={t('label.refresh-entity', {
+                entity: t('label.agent-plural'),
+              })}>
+              <Button
+                icon={<ReloadOutlined className="reload-button-icon" />}
+                size="large"
+                onClick={() => refreshAgentsList(subTab as ServiceAgentSubTabs)}
               />
-            </div>
+            </Tooltip>
+            {!isCollateSubTabSelected && (
+              <>
+                <SearchDropdown
+                  hideCounts
+                  label={t('label.status')}
+                  options={statusFilters}
+                  searchKey="status"
+                  selectedKeys={statusFilter ?? []}
+                  triggerButtonSize="large"
+                  onChange={handleStatusFilterChange}
+                  onSearch={handleStatusFilterSearch}
+                />
+                <SearchDropdown
+                  hideCounts
+                  label={t('label.type')}
+                  options={typeFilters}
+                  searchKey="status"
+                  selectedKeys={typeFilter ?? []}
+                  triggerButtonSize="large"
+                  onChange={handleTypeFilterChange}
+                  onSearch={handleTypeFilterSearch}
+                />
+
+                <div className="search-bar-container">
+                  <Searchbar
+                    removeMargin
+                    inputClassName="p-x-sm p-y-xs border-radius-xs"
+                    placeholder={t('label.search')}
+                    searchValue={searchText}
+                    typingInterval={500}
+                    onSearch={handleSearchChange}
+                  />
+                </div>
+              </>
+            )}
           </Col>
         </Row>
       </Col>
       <Col span={24}>
-        {subTab === ServiceAgentSubTabs.COLLATE_AI ? (
-          <CollateAIAgentsWidget />
+        {isCollateSubTabSelected ? (
+          <CollateAIAgentsWidget
+            collateAgentPagingInfo={collateAgentPagingInfo}
+            collateAgentsList={collateAgentsList}
+            isCollateAgentLoading={isCollateAgentLoading}
+            serviceDetails={serviceDetails}
+            onCollateAgentPageChange={onCollateAgentPageChange}
+          />
         ) : (
           <MetadataAgentsWidget
             airflowInformation={airflowInformation}

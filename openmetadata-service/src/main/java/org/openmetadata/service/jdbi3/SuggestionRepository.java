@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
@@ -280,7 +281,7 @@ public class SuggestionRepository {
         securityContext,
         operationContext,
         new ResourceContext<>(entityLink.getEntityType(), entity.getId(), null));
-    repository.patch(null, entity.getId(), user, patch);
+    repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
     suggestion.setStatus(SuggestionStatus.Accepted);
     update(suggestion, user);
   }
@@ -330,7 +331,7 @@ public class SuggestionRepository {
         securityContext,
         operationContext,
         new ResourceContext<>(repository.getEntityType(), entity.getId(), null));
-    repository.patch(null, entity.getId(), user, patch);
+    repository.patch(null, entity.getId(), user, patch, ChangeSource.SUGGESTED);
 
     // Only mark the suggestions as accepted after the entity has been successfully updated
     for (Suggestion suggestion : suggestions) {

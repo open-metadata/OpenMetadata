@@ -24,6 +24,10 @@ export interface TestCase {
      */
     computePassedFailedRowCount?: boolean;
     /**
+     * User who made the update.
+     */
+    createdBy?: string;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;

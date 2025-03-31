@@ -25,11 +25,8 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
+import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -55,6 +52,7 @@ import { FeedCounts } from '../../interface/feed.interface';
 import {
   addContainerFollower,
   getContainerByName,
+  getContainerChildrenByName,
   patchContainerDetails,
   removeContainerFollower,
   restoreContainer,
@@ -72,6 +70,7 @@ import {
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -81,7 +80,9 @@ const ContainerPage = () => {
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab } = useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.Container);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Container
+  );
   const { fqn: decodedContainerName } = useFqn();
 
   // Local states
@@ -94,6 +95,7 @@ const ContainerPage = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [childrenCount, setChildrenCount] = useState<number>(0);
 
   const fetchContainerDetail = async (containerFQN: string) => {
     setIsLoading(true);
@@ -165,6 +167,21 @@ const ContainerPage = () => {
       setIsLoading(false);
     }
   };
+
+  // Fetch children count to show it in Tab label
+  const fetchContainerChildren = useCallback(async () => {
+    try {
+      const { paging } = await getContainerChildrenByName(
+        decodedContainerName,
+        {
+          limit: 0,
+        }
+      );
+      setChildrenCount(paging.total);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [decodedContainerName]);
 
   const { deleted, version, isUserFollowing } = useMemo(() => {
     return {
@@ -444,12 +461,13 @@ const ContainerPage = () => {
       containerData,
       fetchContainerDetail,
       labelMap: tabLabelMap,
+      childrenCount,
     });
 
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA
     );
   }, [
     isDataModelEmpty,
@@ -490,10 +508,11 @@ const ContainerPage = () => {
   // Effects
   useEffect(() => {
     fetchResourcePermission(decodedContainerName);
+    fetchContainerChildren();
   }, [decodedContainerName]);
 
   // Rendering
-  if (isLoading) {
+  if (isLoading || loading) {
     return <Loader />;
   }
 
@@ -515,12 +534,11 @@ const ContainerPage = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.container'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -542,15 +560,12 @@ const ContainerPage = () => {
         <GenericProvider<Container>
           data={containerData}
           permissions={containerPermissions}
-          type={EntityType.CONTAINER}
+          type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={
-                tab ??
-                (isDataModelEmpty ? EntityTabs.CHILDREN : EntityTabs.SCHEMA)
-              }
-              className="entity-details-page-tabs"
+              activeKey={tab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

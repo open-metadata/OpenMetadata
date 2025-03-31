@@ -14,9 +14,12 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -173,7 +176,13 @@ public interface SearchClient {
 
   void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
+  Response previewSearch(
+      SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
+      throws IOException;
+
   Response search(SearchRequest request, SubjectContext subjectContext) throws IOException;
+
+  Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext) throws IOException;
 
   Response getDocByID(String indexName, String entityId) throws IOException;
 
@@ -206,6 +215,9 @@ public interface SearchClient {
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
+      throws IOException;
+
+  SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
       throws IOException;
 
   Response searchEntityRelationship(
@@ -348,4 +360,6 @@ public interface SearchClient {
   Object getClient();
 
   SearchHealthStatus getSearchHealthStatus() throws IOException;
+
+  QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 }

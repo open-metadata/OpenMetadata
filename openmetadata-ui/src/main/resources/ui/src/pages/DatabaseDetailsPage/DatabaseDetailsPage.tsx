@@ -34,12 +34,7 @@ import ProfilerSettings from '../../components/Database/Profiler/ProfilerSetting
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  getEntityDetailsPath,
-  getExplorePath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -78,6 +73,11 @@ import databaseClassBase from '../../utils/Database/DatabaseClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  getEntityDetailsPath,
+  getExplorePath,
+  getVersionPath,
+} from '../../utils/RouterUtils';
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -88,12 +88,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
-
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
-  const { customizedPage } = useCustomPages(PageType.Database);
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Database
+  );
 
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
@@ -128,9 +128,10 @@ const DatabaseDetails: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.DATABASE,
         decodedDatabaseFQN,
-        databasePermission
+        databasePermission,
+        database?.deleted ?? false
       ),
-    [decodedDatabaseFQN, databasePermission]
+    [decodedDatabaseFQN, databasePermission, database?.deleted]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
@@ -403,7 +404,7 @@ const DatabaseDetails: FunctionComponent = () => {
     return getDetailsTabWithNewLabel(
       tabs,
       customizedPage?.tabs,
-      EntityTabs.CHILDREN
+      EntityTabs.SCHEMAS
     );
   }, [
     activeTab,
@@ -434,7 +435,7 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  if (isLoading || isDatabaseDetailsLoading) {
+  if (isLoading || isDatabaseDetailsLoading || loading) {
     return <Loader />;
   }
 
@@ -444,7 +445,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(database),
       })}>
@@ -454,7 +454,7 @@ const DatabaseDetails: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -480,8 +480,8 @@ const DatabaseDetails: FunctionComponent = () => {
             onUpdate={settingsUpdateHandler}>
             <Col span={24}>
               <Tabs
-                activeKey={activeTab ?? EntityTabs.SCHEMA}
-                className="entity-details-page-tabs"
+                activeKey={activeTab}
+                className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
                 onChange={activeTabHandler}

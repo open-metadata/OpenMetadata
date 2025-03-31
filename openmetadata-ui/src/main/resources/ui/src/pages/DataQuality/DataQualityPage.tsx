@@ -26,6 +26,7 @@ import ResizableLeftPanels from '../../components/common/ResizablePanels/Resizab
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../constants/constants';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -33,10 +34,9 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
 
 const DataQualityPage = () => {
-  const { t } = useTranslation();
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
-
+  const { t } = useTranslation();
   const menuItems: MenuProps['items'] = useMemo(() => {
     const data = DataQualityClassBase.getLeftSideBar();
 
@@ -69,9 +69,9 @@ const DataQualityPage = () => {
   };
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
+        className="content-height-with-resizable-panel bg-white"
         firstPanel={{
           className: 'content-resizable-panel-container',
           minWidth: 280,
@@ -91,7 +91,7 @@ const DataQualityPage = () => {
             </LeftPanelCard>
           ),
         }}
-        pageTitle="Quality"
+        pageTitle={t('label.data-quality')}
         secondPanel={{
           children: (
             <DataQualityProvider>
@@ -144,4 +144,4 @@ const DataQualityPage = () => {
   );
 };
 
-export default withPageLayout('quality')(DataQualityPage);
+export default withPageLayout(i18n.t('label.data-quality'))(DataQualityPage);

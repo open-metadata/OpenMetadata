@@ -18,7 +18,6 @@ import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -41,10 +40,12 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import mlModelDetailsClassBase from '../../../utils/MlModel/MlModelClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -67,7 +68,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { currentUser } = useApplicationStore();
   const history = useHistory();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
-  const { customizedPage } = useCustomPages(PageType.MlModel);
+  const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
 
   const { fqn: decodedMlModelFqn } = useFqn();
 
@@ -256,7 +257,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           getEmptyPlaceholder()
         ) : (
           <Table
-            bordered
             columns={getMlHyperParametersColumn}
             data-testid="hyperparameters-table"
             dataSource={mlModelDetail.mlHyperParameters}
@@ -275,7 +275,6 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         <Typography.Title level={5}>{t('label.model-store')}</Typography.Title>
         {mlModelDetail.mlStore ? (
           <Table
-            bordered
             columns={mlModelStoreColumn}
             data-testid="model-store-table"
             dataSource={[mlModelDetail.mlStore]}
@@ -360,14 +359,17 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     customizedPage?.tabs,
   ]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.ml-model'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -393,8 +395,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           onUpdate={onMlModelUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.FEATURES}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

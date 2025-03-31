@@ -238,7 +238,6 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   return (
     <>
       <Table
-        bordered
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"

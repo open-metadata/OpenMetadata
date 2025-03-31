@@ -27,13 +27,13 @@ import IngestionStepper from '../../components/Settings/Services/Ingestion/Inges
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { DAY_ONE_EXPERIENCE_APP_NAME } from '../../constants/Applications.constant';
-import { getServiceDetailsPath } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
 import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -41,7 +41,13 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
-import { getAddServicePath, getSettingPath } from '../../utils/RouterUtils';
+import i18n from '../../utils/i18next/LocalUtil';
+import {
+  getAddServicePath,
+  getServiceDetailsPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
+import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
   getAddServiceEntityBreadcrumb,
   getEntityTypeFromServiceCategory,
@@ -129,18 +135,13 @@ const AddServicePage = () => {
   // Service connection
   const handleConnectionDetailsBackClick = () => setActiveServiceStep(2);
   const handleConfigUpdate = (newConfigData: ConfigData) => {
-    const data = {
+    const data = serviceUtilClassBase.getServiceConfigData({
+      serviceName: serviceConfig.name,
       serviceType: serviceConfig.serviceType,
-      owners: [
-        {
-          id: currentUser?.id ?? '',
-          type: 'user',
-        },
-      ],
-      connection: {
-        config: newConfigData,
-      },
-    };
+      description: serviceConfig.description,
+      userId: currentUser?.id ?? '',
+      configData: newConfigData,
+    });
 
     setServiceConfig((prev) => ({
       ...prev,
@@ -298,6 +299,10 @@ const AddServicePage = () => {
     </div>
   );
 
+  useEffect(() => {
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -325,4 +330,8 @@ const AddServicePage = () => {
   );
 };
 
-export default AddServicePage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.service'),
+  })
+)(AddServicePage);

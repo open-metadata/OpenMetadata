@@ -20,7 +20,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { getBotsPath } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
@@ -39,14 +38,14 @@ import {
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
+import { getBotsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -139,7 +138,7 @@ const BotListV1 = ({
         key: 'description',
         render: (_, record) =>
           record?.description ? (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               markdown={highlightSearchText(
                 record?.description || '',
                 searchTerm
@@ -264,7 +263,7 @@ const BotListV1 = ({
       </Col>
     </Row>
   ) : (
-    <Row className="page-container" gutter={[0, 16]}>
+    <Row gutter={[0, 16]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </Col>
@@ -312,8 +311,16 @@ const BotListV1 = ({
       </Col>
       <Col span={24}>
         <Table
-          bordered
           columns={columns}
+          customPaginationProps={{
+            currentPage,
+            isLoading: loading,
+            pageSize,
+            paging,
+            pagingHandler: handleBotPageChange,
+            onShowSizeChange: handlePageSizeChange,
+            showPagination,
+          }}
           dataSource={searchedData}
           loading={loading}
           locale={{
@@ -323,18 +330,6 @@ const BotListV1 = ({
           rowKey="name"
           size="small"
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={loading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleBotPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
 
       <DeleteWidgetModal

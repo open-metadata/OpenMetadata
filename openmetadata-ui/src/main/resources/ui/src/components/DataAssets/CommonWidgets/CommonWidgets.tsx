@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
+import { EntityField } from '../../../constants/Feeds.constants';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
@@ -20,20 +22,32 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Chart } from '../../../generated/entity/data/chart';
 import { Column } from '../../../generated/entity/data/container';
+import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
-import { EntityReference } from '../../../generated/entity/type';
+import {
+  ChangeDescription,
+  EntityReference,
+} from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityVersionByField,
+  getEntityVersionTags,
+} from '../../../utils/EntityVersionUtils';
+import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { GlossaryUpdateConfirmationModal } from '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
 
@@ -48,7 +62,9 @@ interface GenericEntity
       | 'dataProducts'
       | 'extension'
       | 'tags'
-    > {}
+    > {
+  changeDescription: ChangeDescription;
+}
 
 interface CommonWidgetsProps {
   widgetConfig: WidgetConfig;
@@ -61,8 +77,46 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, onUpdate, permissions } =
+  const { data, type, onUpdate, permissions, isVersionView } =
     useGenericContext<GenericEntity>();
+  const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
+
+  const updatedData = useMemo(() => {
+    const updatedDescription = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.DESCRIPTION,
+          data.description
+        )
+      : data.description;
+
+    const updatedName = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.NAME,
+          data.name
+        )
+      : data.name;
+    const updatedDisplayName = isVersionView
+      ? getEntityVersionByField(
+          data.changeDescription,
+          EntityField.DISPLAYNAME,
+          data.displayName
+        )
+      : data.displayName;
+
+    const updatedTags = isVersionView
+      ? getEntityVersionTags(data as VersionEntityTypes, data.changeDescription)
+      : data.tags;
+
+    return {
+      ...data,
+      description: updatedDescription,
+      name: updatedName,
+      displayName: updatedDisplayName,
+      tags: updatedTags,
+    };
+  }, [data, isVersionView]);
 
   const {
     tier,
@@ -75,15 +129,15 @@ export const CommonWidgets = ({
     entityName,
     fullyQualifiedName,
   } = useMemo(() => {
-    const { tags } = data;
+    const { tags } = updatedData;
 
     return {
-      ...data,
+      ...updatedData,
       tier: getTierTags(tags ?? []),
       tags: getTagsWithoutTier(tags ?? []),
       entityName: getEntityName(data),
     };
-  }, [data, data?.tags]);
+  }, [updatedData, updatedData?.tags]);
 
   const { columns = [], charts = [] } = data as unknown as {
     columns: Array<Column>;
@@ -122,11 +176,29 @@ export const CommonWidgets = ({
     [permissions, deleted]
   );
 
+  const handleTagUpdateForGlossaryTerm = async (updatedTags?: TagLabel[]) => {
+    setTagsUpdating(updatedTags);
+  };
+
+  const handleGlossaryTagUpdateValidationConfirm = async () => {
+    if (tagsUpdating && data) {
+      const updatedTags = [...(tier ? [tier] : []), ...tagsUpdating];
+      const updatedTable = { ...data, tags: updatedTags };
+      await onUpdate(updatedTable);
+    }
+  };
+
   /**
    * Formulates updated tags and updates table entity data for API call
    * @param selectedTags
    */
   const handleTagsUpdate = async (selectedTags?: Array<TagLabel>) => {
+    if (type === EntityType.GLOSSARY_TERM) {
+      handleTagUpdateForGlossaryTerm(selectedTags);
+
+      return;
+    }
+
     if (selectedTags && data) {
       const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
       const updatedTable = { ...data, tags: updatedTags };
@@ -142,27 +214,36 @@ export const CommonWidgets = ({
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
-        permission={editTagsPermission}
+        permission={editTagsPermission && !isVersionView}
         selectedTags={tags}
-        showTaskHandler={showTaskHandler}
+        showTaskHandler={showTaskHandler && !isVersionView}
         tagType={TagSource.Classification}
         onSelectionChange={handleTagSelection}
       />
     );
-  }, [editTagsPermission, tags, type, fullyQualifiedName, showTaskHandler]);
+  }, [
+    editTagsPermission,
+    tags,
+    type,
+    fullyQualifiedName,
+    showTaskHandler,
+    isVersionView,
+  ]);
 
   const glossaryWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
-        permission={editGlossaryTermsPermission}
+        permission={editGlossaryTermsPermission && !isVersionView}
         selectedTags={tags}
-        showTaskHandler={showTaskHandler}
+        showTaskHandler={showTaskHandler && !isVersionView}
         tagType={TagSource.Glossary}
         onSelectionChange={handleTagSelection}
       />
@@ -173,12 +254,15 @@ export const CommonWidgets = ({
     type,
     fullyQualifiedName,
     showTaskHandler,
+    isVersionView,
   ]);
 
   const descriptionWidget = useMemo(() => {
     return (
       <DescriptionV1
+        newLook
         showSuggestions
+        wrapInCard
         description={description}
         entityName={entityName}
         entityType={type}
@@ -211,6 +295,7 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
       return (
         <DataProductsContainer
+          newLook
           activeDomain={domain}
           dataProducts={dataProducts ?? []}
           hasPermission={false}
@@ -226,6 +311,7 @@ export const CommonWidgets = ({
       return (
         <CustomPropertyTable<EntityType.TABLE>
           isRenderedInRightPanel
+          newLook
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
           hasPermission={Boolean(viewAllPermission)}
@@ -240,8 +326,18 @@ export const CommonWidgets = ({
       return <ReviewerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
       return <OwnerLabelV2<GenericEntity> />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
+      return <DomainLabelV2 showDomainHeading />;
+    } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
+      return (
+        <LeftPanelContainer
+          isEditView={false}
+          layout={widgetConfig.children ?? []}
+          type={ENTITY_PAGE_TYPE_MAP[type]}
+          onUpdate={noop}
+        />
+      );
     }
-
     const Widget =
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 
@@ -249,13 +345,22 @@ export const CommonWidgets = ({
   }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
 
   return (
-    <div
-      className="overflow-scroll"
-      data-grid={widgetConfig}
-      data-testid={widgetConfig.i}
-      id={widgetConfig.i}
-      key={widgetConfig.i}>
-      {widget}
-    </div>
+    <>
+      <div
+        data-grid={widgetConfig}
+        data-testid={widgetConfig.i}
+        id={widgetConfig.i}
+        key={widgetConfig.i}>
+        {widget}
+      </div>
+      {tagsUpdating && (
+        <GlossaryUpdateConfirmationModal
+          glossaryTerm={updatedData as unknown as GlossaryTerm}
+          updatedTags={tagsUpdating}
+          onCancel={() => setTagsUpdating(undefined)}
+          onValidationSuccess={handleGlossaryTagUpdateValidationConfirm}
+        />
+      )}
+    </>
   );
 };

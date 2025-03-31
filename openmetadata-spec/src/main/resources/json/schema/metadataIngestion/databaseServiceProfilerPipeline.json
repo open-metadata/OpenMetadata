@@ -88,6 +88,11 @@
       "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
       "title": "Sampling Method Type"
     },
+    "randomizedSample": {
+      "description": "Whether to randomize the sample data or not.",
+      "type": "boolean",
+      "default": true
+    },
     "threadCount": {
       "description": "Number of threads to use during metric computations",
       "type": "number",

@@ -227,7 +227,7 @@
 
 // lineage
 .lineage-card {
-  height: calc(100vh - 240px);
+  height: calc(100vh - 350px);
 
   // lineage and it's children's always should be ltr
   direction: ltr;
@@ -238,11 +238,11 @@
 }
 
 .full-screen-lineage {
-  top: @om-navbar-height;
-  left: @sidebar-width;
-  position: fixed !important;
-  width: calc(100vw - @sidebar-width);
-  height: calc(100vh - @om-navbar-height);
+  top: -120px;
+  left: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
 
   .lineage-card {
     height: calc(100vh - @om-navbar-height);
@@ -401,7 +401,7 @@
 
 .react-flow__panel.left.bottom,
 .react-flow__panel.right.bottom {
-  bottom: 8px;
+  bottom: 24px;
 }
 
 .react-flow__minimap {

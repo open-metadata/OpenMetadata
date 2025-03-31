@@ -17,7 +17,6 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -29,6 +28,7 @@ import { PageType } from '../../../generated/system/ui/page';
 import { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
@@ -41,26 +41,27 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
+import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
+import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
 import Lineage from '../../Lineage/Lineage.component';
-
-import { useCustomPages } from '../../../hooks/useCustomPages';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { TopicDetailsProps } from './TopicDetails.interface';
+
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
   topicDetails,
@@ -79,7 +80,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
-  const { customizedPage } = useCustomPages(PageType.Topic);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -288,6 +289,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TOPIC}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTopic}
@@ -321,13 +323,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </LineageProvider>
       ),
       customPropertiesTab: topicDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TOPIC>
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TOPIC>
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
       viewSampleDataPermission,
       activeTab,
@@ -365,14 +365,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewAllPermission,
   ]);
 
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.topic'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -398,8 +401,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           onUpdate={onTopicUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}
