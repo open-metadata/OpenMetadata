@@ -23,6 +23,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   getRandomLastName,
   redirectToHomePage,
   toastNotification,
@@ -145,6 +146,8 @@ test.describe('Glossary tests', () => {
         await expect(firstNotification).toContainText(
           glossary1.data.fullyQualifiedName
         );
+
+        await clickOutside(page1);
 
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
         await redirectToHomePage(page1);

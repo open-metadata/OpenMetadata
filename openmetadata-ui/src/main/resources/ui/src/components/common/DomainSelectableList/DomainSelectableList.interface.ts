@@ -22,4 +22,5 @@ export interface DomainSelectableListProps {
   selectedDomain?: EntityReference | EntityReference[];
   multiple?: boolean;
   onCancel?: () => void;
+  wrapInButton?: boolean;
 }

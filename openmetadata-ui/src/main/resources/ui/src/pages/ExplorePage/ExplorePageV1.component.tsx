@@ -362,7 +362,10 @@ const ExplorePageV1: FunctionComponent = () => {
       queryFilter as unknown as QueryFilterInterface
     );
 
-    const searchRequest = isNLPRequestEnabled ? nlqSearch : searchQuery;
+    const searchRequest =
+      isNLPRequestEnabled && !isEmpty(searchQueryParam)
+        ? nlqSearch
+        : searchQuery;
 
     setIsLoading(true);
 

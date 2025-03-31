@@ -15,14 +15,28 @@
 
 .profile-dropdown {
   .ant-dropdown-menu-item-group {
-    .ant-dropdown-menu-item-only-child {
-      padding: 0 5px;
+    padding: 6px 4px;
+
+    .ant-dropdown-menu-item-group-list {
+      padding-left: 14px;
     }
-    .ant-dropdown-menu-item-group-list .ant-dropdown-menu-item:last-child {
-      padding-bottom: 5px;
+
+    .ant-dropdown-menu-item-group-title {
+      padding: 4px 0;
+    }
+
+    .ant-dropdown-menu-item-only-child {
+      padding: 4px 0 4px 6px;
+      border-radius: 4px;
+    }
+
+    .ant-dropdown-menu-item-disabled {
+      color: inherit;
+      cursor: default;
     }
   }
 }
+
 .user-profile-btn.ant-btn {
   padding: 0;
   gap: @padding-md;

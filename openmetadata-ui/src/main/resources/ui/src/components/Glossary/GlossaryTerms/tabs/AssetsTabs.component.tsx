@@ -862,7 +862,7 @@ const AssetsTabs = forwardRef(
             )}
             {isLoading ? (
               <Col span={24}>
-                <Space direction="vertical" size={16}>
+                <Space className="w-full" direction="vertical" size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
@@ -891,7 +891,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && permissions?.EditAll && (
+        {!isLoading && permissions?.EditAll && assetCount > 0 && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

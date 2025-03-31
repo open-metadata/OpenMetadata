@@ -51,7 +51,7 @@ import {
   DashboardDataModelSearchSource,
   StoredProcedureSearchSource,
 } from '../../interface/search.interface';
-import { nlqSearch, searchQuery } from '../../rest/searchAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import {
@@ -286,25 +286,19 @@ const Suggestions = ({
   };
 
   const fetchSearchData = useCallback(async () => {
+    if (isNLPActive) {
+      return;
+    }
+
     try {
       setIsLoading(true);
 
-      let res;
-      if (isNLPActive) {
-        res = await nlqSearch({
-          query: searchText,
-          searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
-          queryFilter: quickFilter,
-          pageSize: PAGE_SIZE_BASE,
-        });
-      } else {
-        res = await searchQuery({
-          query: searchText,
-          searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
-          queryFilter: quickFilter,
-          pageSize: PAGE_SIZE_BASE,
-        });
-      }
+      const res = await searchQuery({
+        query: searchText,
+        searchIndex: searchCriteria ?? SearchIndex.DATA_ASSET,
+        queryFilter: quickFilter,
+        pageSize: PAGE_SIZE_BASE,
+      });
 
       setOptions(res.hits.hits as unknown as Option[]);
       updateSuggestions(res.hits.hits as unknown as Option[]);

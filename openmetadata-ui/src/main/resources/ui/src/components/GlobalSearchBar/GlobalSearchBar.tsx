@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Divider, Input, Popover, Select } from 'antd';
+import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isString } from 'lodash';
 import Qs from 'qs';
@@ -181,22 +181,29 @@ export const GlobalSearchBar = () => {
       ref={searchContainerRef}>
       {isNLPEnabled && (
         <>
-          <Button
-            className={classNames('nlp-button', 'w-6', 'h-6', {
-              active: isNLPActive,
-            })}
-            data-testid="nlp-suggestions-button"
-            icon={
-              <Icon
-                component={
-                  isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
-                }
-              />
-            }
-            type="text"
-            onClick={() => setNLPActive(!isNLPActive)}
-          />
-          <Divider className="h-full m-r-0 m-l-md" type="vertical" />
+          <Tooltip
+            title={
+              isNLPActive
+                ? t('message.natural-language-search-active')
+                : t('label.use-natural-language-search')
+            }>
+            <Button
+              className={classNames('nlp-button', 'w-6', 'h-6', {
+                active: isNLPActive,
+              })}
+              data-testid="nlp-suggestions-button"
+              icon={
+                <Icon
+                  component={
+                    isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
+                  }
+                />
+              }
+              type="text"
+              onClick={() => setNLPActive(!isNLPActive)}
+            />
+          </Tooltip>
+          <Divider className="h-5" type="vertical" />
         </>
       )}
       <Popover
