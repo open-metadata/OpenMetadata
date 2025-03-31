@@ -114,7 +114,7 @@ export const GlobalSearchBar = () => {
   ]);
 
   const searchHandler = (value: string) => {
-    if (!isTourOpen) {
+    if (!isTourOpen && value) {
       setIsSearchBoxOpen(false);
       addToRecentSearched(value);
 
