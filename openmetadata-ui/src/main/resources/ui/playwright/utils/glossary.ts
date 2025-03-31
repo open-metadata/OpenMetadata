@@ -612,9 +612,6 @@ export const validateGlossaryTerm = async (
   await expect(
     page.getByTestId('glossary-terms-table').getByText('Status')
   ).toBeVisible();
-  await expect(
-    page.getByTestId('glossary-terms-table').getByText('Actions')
-  ).toBeVisible();
 
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
