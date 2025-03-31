@@ -58,6 +58,11 @@ public class AuthenticationException extends RuntimeException {
     return new AuthenticationException(msg);
   }
 
+  public static AuthenticationException invalidTokenMessage() {
+    String msg = "Invalid token, used after logout!";
+    return new AuthenticationException(msg);
+  }
+
   public static AuthenticationException invalidEmailMessage(String principalDomain) {
     return new AuthenticationException(
         String.format(
