@@ -1834,6 +1834,7 @@
     "most-viewed-data-assets": "מציג את הנכסים שנצפו הכי הרבה.",
     "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.",
     "name-of-the-bucket-dbt-files-stored": "שם הדלי בו נשמרים קבצי dbt.",
+    "natural-language-search-active": "החיפוש בשפה טבעית פעיל. חפש נכסים באמצעות ביטויים פשוטים. לחץ שוב כדי לאפס את מצב החיפוש.",
     "new-conversation": "אתה מתחיל שיחה חדשה",
     "new-to-the-platform": "חדש בפלטפורמה?",
     "no-access-placeholder": "אין לך גישה, אנא בדוק עם המנהל לקבלת הרשאות.",

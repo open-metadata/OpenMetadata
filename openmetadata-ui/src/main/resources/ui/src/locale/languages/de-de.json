@@ -1834,6 +1834,7 @@
     "most-viewed-data-assets": "Zeigt die am häufigsten angesehenen Datenressourcen.",
     "mutually-exclusive-alert": "Wenn Sie 'Wechselseitig ausschließend' für eine {{entity}} aktivieren, sind Benutzer darauf beschränkt, nur eine {{child-entity}} auf ein Datenobjekt anzuwenden. Sobald diese Option aktiviert wurde, kann sie nicht mehr deaktiviert werden.",
     "name-of-the-bucket-dbt-files-stored": "Name des Buckets, in dem die dbt-Dateien gespeichert sind.",
+    "natural-language-search-active": "Natürliche Sprachsuche ist aktiviert. Suchen Sie nach Assets mit einfachen Phrasen. Klicken Sie erneut, um die Suche zurückzusetzen.",
     "new-conversation": "Sie beginnen eine neue Konversation.",
     "new-to-the-platform": "Neu auf der Plattform?",
     "no-access-placeholder": "Sie haben keinen Zugriff. Bitte wenden Sie sich an den Administrator, um Berechtigungen zu erhalten.",

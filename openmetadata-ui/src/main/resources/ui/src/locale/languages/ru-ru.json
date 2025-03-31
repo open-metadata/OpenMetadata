@@ -1834,6 +1834,7 @@
     "most-viewed-data-assets": "Отображает наиболее просматриваемые объекты данных.",
     "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.",
     "name-of-the-bucket-dbt-files-stored": "Имя корзины, в которой хранятся файлы dbt.",
+    "natural-language-search-active": "Поиск на естественном языке активирован. Ищите объекты, используя простые фразы. Нажмите ещё раз, чтобы сбросить режим поиска.",
     "new-conversation": "Начать новое обсуждение",
     "new-to-the-platform": "Новичок на платформе?",
     "no-access-placeholder": "У вас нет доступа, обратитесь к администратору, чтобы получить разрешения",

@@ -1834,6 +1834,7 @@
     "most-viewed-data-assets": "دارایی‌های داده‌ای با بیشترین بازدید را نمایش می‌دهد.",
     "mutually-exclusive-alert": "اگر 'Mutually Exclusive' را برای {{entity}} فعال کنید، کاربران محدود به استفاده از یک {{child-entity}} برای اعمال بر یک دارایی داده خواهند شد. پس از فعال‌سازی، این گزینه غیرقابل غیرفعال شدن است.",
     "name-of-the-bucket-dbt-files-stored": "نام مخزن که فایل‌های dbt در آن ذخیره شده‌اند.",
+    "natural-language-search-active": "La búsqueda en lenguaje natural está activa. Busca activos usando frases simples. Haz clic de nuevo para restablecer el modo de búsqueda.",
     "new-conversation": "شما در حال شروع یک مکالمه جدید هستید.",
     "new-to-the-platform": "جدید در این پلتفرم هستید؟",
     "no-access-placeholder": "شما دسترسی ندارید، لطفاً با مدیر تماس بگیرید تا مجوز دریافت کنید.",

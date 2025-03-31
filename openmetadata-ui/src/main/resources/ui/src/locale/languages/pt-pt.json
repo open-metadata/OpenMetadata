@@ -1834,6 +1834,7 @@
     "most-viewed-data-assets": "Exibe os ativos de dados mais visualizados.",
     "mutually-exclusive-alert": "If you enable 'Mutually Exclusive' for a {{entity}}, users will be restricted to using only one {{child-entity}} to apply to a data asset. Once this option is activated, it cannot be deactivated.",
     "name-of-the-bucket-dbt-files-stored": "Nome do bucket onde os arquivos dbt são armazenados.",
+    "natural-language-search-active": "A pesquisa em linguagem natural está ativa. Pesquise ativos usando frases simples. Clique novamente para repor o modo de pesquisa.",
     "new-conversation": "Você está iniciando uma nova conversa",
     "new-to-the-platform": "Novo na plataforma?",
     "no-access-placeholder": "Você não tem acesso, por favor, verifique com o administrador para obter permissões",
