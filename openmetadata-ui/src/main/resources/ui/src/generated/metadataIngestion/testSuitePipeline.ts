@@ -235,6 +235,8 @@ export interface ServiceConnection {
  *
  * Airflow Metadata Database Connection Config
  *
+ * Wherescape Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -433,6 +435,9 @@ export interface ConfigClass {
    * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
    * host when using the `mongodb+srv` scheme.
    *
+   * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
+   * host when using the `cassandra+srv` scheme.
+   *
    * Host and port of the Doris service.
    *
    * Host and port of the Teradata service.
@@ -440,6 +445,8 @@ export interface ConfigClass {
    * Host and Port of the SAP ERP instance.
    *
    * Host and port of the Azure Synapse service.
+   *
+   * Host and port of the Cockrooach service.
    *
    * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
    * bolt://localhost:7687.
@@ -601,6 +608,9 @@ export interface ConfigClass {
    * Username to connect to MongoDB. This user should have privileges to read all the metadata
    * in MongoDB.
    *
+   * Username to connect to Cassandra. This user should have privileges to read all the
+   * metadata in Cassandra.
+   *
    * Username to connect to Couchbase. This user should have privileges to read all the
    * metadata in Couchbase.
    *
@@ -620,6 +630,9 @@ export interface ConfigClass {
    *
    * Username to connect to Exasol. This user should have privileges to read all the metadata
    * in Exasol.
+   *
+   * Username to connect to Cockroach. This user should have privileges to read all the
+   * metadata in Cockroach.
    *
    * username to connect to the Amundsen Neo4j Connection.
    *
@@ -693,6 +706,8 @@ export interface ConfigClass {
    * Sigma API version.
    *
    * OpenMetadata server API version to use.
+   *
+   * Airbyte API version.
    */
   apiVersion?: string;
   /**
@@ -920,6 +935,9 @@ export interface ConfigClass {
    *
    * Initial Redshift database to connect to. If you want to ingest all databases, set
    * ingestAllDatabases to true.
+   *
+   * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+   * as the database name.
    */
   database?: string;
   /**
@@ -997,6 +1015,10 @@ export interface ConfigClass {
    * Databricks compute resources URL.
    */
   httpPath?: string;
+  /**
+   * Table name to fetch the query history.
+   */
+  queryHistoryTable?: string;
   /**
    * License to connect to DB2.
    */
@@ -1099,10 +1121,18 @@ export interface ConfigClass {
    */
   account?: string;
   /**
+   * Full name of the schema where the account usage data is stored.
+   */
+  accountUsageSchema?: string;
+  /**
    * Optional configuration for ingestion to keep the client session active in case the
    * ingestion process runs for longer durations.
    */
   clientSessionKeepAlive?: boolean;
+  /**
+   * Cost of credit for the Snowflake account.
+   */
+  creditCost?: number;
   /**
    * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
    * TRANSIENT tables.
@@ -1222,6 +1252,11 @@ export interface ConfigClass {
    * Confluent Redpanda Consumer Config
    */
   consumerConfig?: { [key: string]: any };
+  /**
+   * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+   * connection.
+   */
+  consumerConfigSSL?: SchemaRegistrySSLClass;
   /**
    * sasl.mechanism Consumer Config property
    */
@@ -1444,6 +1479,10 @@ export interface ConfigClass {
    * Pipeline Service Number Of Status
    */
   numberOfStatus?: number;
+  /**
+   * Underlying database connection
+   */
+  databaseConnection?: DatabaseConnectionClass;
   /**
    * Fivetran API Secret.
    */
@@ -2786,6 +2825,78 @@ export interface GCPCredentials {
 }
 
 /**
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ */
+export interface DatabaseConnectionClass {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Database of the data source. This is optional parameter, if you would like to restrict
+     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the databases.
+     */
+    database: string;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Host and port of the MSSQL service.
+     */
+    hostPort?: string;
+    /**
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     */
+    password?:                string;
+    sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     MssqlScheme;
+    supportsDatabase?:           boolean;
+    supportsDataDiff?:           boolean;
+    supportsDBTExtraction?:      boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    /**
+     * Service Type
+     */
+    type?: MssqlType;
+    /**
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     */
+    username?: string;
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum MssqlType {
+    Mssql = "Mssql",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ElasticsSearch {
@@ -3442,6 +3553,7 @@ export enum RESTType {
   UnityCatalog = 'UnityCatalog',
   VertexAI = 'VertexAI',
   Vertica = 'Vertica',
+  Wherescape = "Wherescape",
 }
 
 /**
