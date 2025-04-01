@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   LOGOUT_ITEM,
   SETTING_ITEM,
@@ -119,14 +120,16 @@ const LeftSidebar = ({
       trigger={null}
       width={228}>
       <div className="logo-container">
-        <BrandImage
-          alt="OpenMetadata Logo"
-          className="vertical-middle"
-          dataTestId="image"
-          height={40}
-          isMonoGram={isSidebarCollapsed}
-          width="auto"
-        />
+        <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
+          <BrandImage
+            alt="OpenMetadata Logo"
+            className="vertical-middle"
+            dataTestId="image"
+            height={40}
+            isMonoGram={isSidebarCollapsed}
+            width="auto"
+          />
+        </Link>
       </div>
 
       <div className="left-sidebar-layout">
