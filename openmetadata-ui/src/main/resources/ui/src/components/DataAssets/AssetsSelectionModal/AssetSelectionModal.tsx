@@ -677,9 +677,11 @@ export const AssetSelectionModal = ({
                         showCheckboxes
                         checked={selectedItems?.has(item.id ?? '')}
                         className="border-none asset-selection-model-card cursor-pointer"
+                        displayNameClassName="text-md"
                         handleSummaryPanelDisplay={handleCardClick}
                         id={`tabledatacard-${item.id}`}
                         key={item.id}
+                        nameClassName="text-md"
                         showBody={false}
                         showName={false}
                         source={{ ...item, tags: [] }}

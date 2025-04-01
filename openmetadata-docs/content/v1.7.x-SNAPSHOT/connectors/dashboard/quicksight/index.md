@@ -7,8 +7,8 @@ slug: /connectors/dashboard/quicksight
   name="QuickSight"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Lineage"]
-  unavailableFeatures=["Owners", "Tags", "Datamodels", "Projects"]
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Datamodels"]
+  unavailableFeatures=["Owners", "Tags", "Projects"]
 / %}
 
 In this section, we provide guides and references to use the QuickSight connector.
