@@ -74,8 +74,11 @@ public class RunAppImpl {
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
       updatedApp.setAppConfiguration(config);
-      updateApp(appRepository, app, app);
-      return runApp(pipelineServiceClient, app, waitForCompletion, startTime, timeoutMillis);
+      updateApp(appRepository, app, updatedApp);
+      boolean result =
+          runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
+      updateApp(appRepository, updatedApp, app);
+      return result;
     }
   }
 
@@ -149,6 +152,10 @@ public class RunAppImpl {
   private void updateApp(AppRepository repository, App originalApp, App updatedApp) {
     JsonPatch patch = JsonUtils.getJsonPatch(originalApp, updatedApp);
     repository.patch(null, originalApp.getId(), "admin", patch);
+    // Update App Configuration.
+    ApplicationHandler.getInstance()
+        .configureApplication(
+            updatedApp, repository.getDaoCollection(), Entity.getSearchRepository());
   }
 
   // Internal App Logic
