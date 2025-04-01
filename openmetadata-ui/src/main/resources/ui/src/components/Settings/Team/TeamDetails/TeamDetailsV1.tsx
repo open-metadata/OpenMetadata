@@ -15,7 +15,6 @@ import { PlusOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Button,
-  Card,
   Col,
   Collapse,
   Modal,
@@ -950,15 +949,17 @@ const TeamDetailsV1 = ({
     () => (
       <>
         <Space wrap className="w-full justify-between">
-          <Space className="w-full" size="middle">
-            <Avatar className="teams-profile" size={40}>
-              <IconTeams className="text-primary" width={20} />
-            </Avatar>
-
-            <div className="d-flex flex-column gap-1">
-              {!isOrganization && (
-                <TitleBreadcrumb titleLinks={slashedTeamName} />
-              )}
+          <Space
+            align="start"
+            className="w-full flex-col justify-center p-t-xs"
+            size="middle">
+            {!isOrganization && (
+              <TitleBreadcrumb titleLinks={slashedTeamName} />
+            )}
+            <div className="d-flex  gap-2">
+              <Avatar className="teams-profile" size={40}>
+                <IconTeams className="text-primary" width={20} />
+              </Avatar>
 
               <TeamsHeadingLabel
                 currentTeam={currentTeam}
@@ -1005,7 +1006,7 @@ const TeamDetailsV1 = ({
             )}
           </Space>
         </Space>
-        <div className="p-t-md p-l-xss">
+        <div className="p-t-md ">
           <TeamsInfo
             childTeamsCount={childTeams.length}
             currentTeam={currentTeam}
@@ -1146,28 +1147,25 @@ const TeamDetailsV1 = ({
           <Collapse
             accordion
             bordered={false}
-            className="header-collapse-custom-collapse">
+            className="header-collapse-custom-collapse"
+            expandIconPosition="end">
             <Collapse.Panel
-              className="header-collapse-custom-panel"
+              className={classNames('collapse-panel-container', {
+                'm-t-sm': !isOrganization,
+              })}
               data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">
-              <Row>
-                <Col className="border-top" span={24}>
-                  <Card
-                    className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"
-                    data-testid="teams-description">
-                    <DescriptionV1
-                      description={currentTeam.description ?? ''}
-                      entityName={getEntityName(currentTeam)}
-                      entityType={EntityType.TEAM}
-                      hasEditAccess={editDescriptionPermission}
-                      showCommentsIcon={false}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                    />
-                  </Card>
-                </Col>
-              </Row>
+              <DescriptionV1
+                newLook
+                wrapInCard
+                description={currentTeam.description ?? ''}
+                entityName={getEntityName(currentTeam)}
+                entityType={EntityType.TEAM}
+                hasEditAccess={editDescriptionPermission}
+                showCommentsIcon={false}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
             </Collapse.Panel>
           </Collapse>
         </Col>
