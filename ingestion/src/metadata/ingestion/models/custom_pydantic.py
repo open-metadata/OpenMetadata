@@ -70,7 +70,7 @@ class BaseModel(PydanticBaseModel):
             raise exc
         return values
 
-    def model_dump_json(  # pylint: disable=too-many-arguments
+    def model_dump_json(  # pylint: disable=too-many-arguments,unused-argument
         self,
         *,
         mask_secrets: Optional[bool] = None,
