@@ -60,6 +60,7 @@ import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
+  GLOSSARY_TERM_STATUS_OPTIONS,
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
   STATIC_VISIBLE_COLUMNS,
 } from '../../../constants/Glossary.contant';
@@ -150,12 +151,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
-  const statusOptions = useMemo(
-    () =>
-      Object.values(Status).map((status) => ({ value: status, label: status })),
-    []
-  );
-  const [statusDropdownSelection, setStatusDropdownSelections] = useState<
+  const [statusDropdownSelection, setStatusDropdownSelection] = useState<
     string[]
   >([Status.Approved, Status.Draft, Status.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
@@ -351,6 +347,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <>
               {record.style?.iconURL && (
                 <img
+                  alt={record.name}
                   className="m-r-xss vertical-baseline"
                   data-testid="tag-icon"
                   height={12}
@@ -361,7 +358,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 className="cursor-pointer vertical-baseline"
                 data-testid={name}
                 style={{ color: record.style?.color }}
-                to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
+                to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
                 {name}
               </Link>
             </>
@@ -384,42 +381,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
-      {
-        title: t('label.reviewer'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
-        width: tableColumnsWidth.reviewers,
-        render: (reviewers: EntityReference[]) => (
-          <OwnerLabel
-            owners={reviewers}
-            placeHolder={t('label.no-entity', {
-              entity: t('label.reviewer-plural'),
-            })}
-          />
-        ),
-      },
-      {
-        title: t('label.synonym-plural'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
-        width: tableColumnsWidth.synonyms,
-        render: (synonyms: string[]) => {
-          return isEmpty(synonyms) ? (
-            <div>{NO_DATA_PLACEHOLDER}</div>
-          ) : (
-            <div className="d-flex flex-wrap">
-              {synonyms.map((synonym: string) => (
-                <TagButton
-                  className="glossary-synonym-tag"
-                  key={synonym}
-                  label={synonym}
-                />
-              ))}
-            </div>
-          );
-        },
-      },
-      ...ownerTableObject<ModifiedGlossaryTerm>(),
       {
         title: t('label.status'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
@@ -458,6 +419,42 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         },
         onFilter: (value, record) => record.status === value,
       },
+      {
+        title: t('label.reviewer'),
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
+        width: tableColumnsWidth.reviewers,
+        render: (reviewers: EntityReference[]) => (
+          <OwnerLabel
+            owners={reviewers}
+            placeHolder={t('label.no-entity', {
+              entity: t('label.reviewer-plural'),
+            })}
+          />
+        ),
+      },
+      {
+        title: t('label.synonym-plural'),
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
+        width: tableColumnsWidth.synonyms,
+        render: (synonyms: string[]) => {
+          return isEmpty(synonyms) ? (
+            <div>{NO_DATA_PLACEHOLDER}</div>
+          ) : (
+            <div className="d-flex flex-wrap">
+              {synonyms.map((synonym: string) => (
+                <TagButton
+                  className="glossary-synonym-tag"
+                  key={synonym}
+                  label={synonym}
+                />
+              ))}
+            </div>
+          );
+        },
+      },
+      ...ownerTableObject<ModifiedGlossaryTerm>(),
     ];
     if (permissions.Create) {
       data.push({
@@ -520,9 +517,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleCheckboxChange = useCallback(
     (key: string, checked: boolean) => {
-      const setCheckedList = setStatusDropdownSelections;
+      const setCheckedList = setStatusDropdownSelection;
 
-      const optionsToUse = statusOptions as { value: string }[];
+      const optionsToUse = GLOSSARY_TERM_STATUS_OPTIONS as { value: string }[];
 
       if (key === 'all') {
         if (checked) {
@@ -554,7 +551,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
       }
     },
-    [columns, statusOptions, setStatusDropdownSelections]
+    [columns, setStatusDropdownSelection]
   );
 
   const handleStatusSelectionDropdownSave = () => {
@@ -563,7 +560,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const handleStatusSelectionDropdownCancel = () => {
-    setStatusDropdownSelections(selectedStatus);
+    setStatusDropdownSelection(selectedStatus);
     setIsStatusDropdownVisible(false);
   };
 
@@ -598,7 +595,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                   }>
                   <p className="glossary-dropdown-label">{t('label.all')}</p>
                 </Checkbox>
-                {statusOptions.map((option) => (
+                {GLOSSARY_TERM_STATUS_OPTIONS.map((option) => (
                   <div key={option.value}>
                     <Checkbox
                       className="custom-glossary-col-sel-checkbox"
@@ -606,7 +603,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                       onChange={(e) =>
                         handleCheckboxChange(option.value, e.target.checked)
                       }>
-                      <p className="glossary-dropdown-label">{option.label}</p>
+                      <p className="glossary-dropdown-label">{option.text}</p>
                     </Checkbox>
                   </div>
                 ))}
@@ -644,7 +641,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }),
     [
       statusDropdownSelection,
-      statusOptions,
       handleStatusSelectionDropdownSave,
       handleStatusSelectionDropdownCancel,
     ]
@@ -655,13 +651,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       <>
         <Dropdown
           className="custom-glossary-dropdown-menu status-dropdown"
-          getPopupContainer={(trigger) => {
-            const customContainer = trigger.closest(
-              '.custom-glossary-dropdown-menu.status-dropdown'
-            );
-
-            return customContainer as HTMLElement;
-          }}
           menu={statusDropdownMenu}
           open={isStatusDropdownVisible}
           trigger={['click']}
@@ -886,6 +875,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               pagination={false}
               ref={tableRef}
               rowKey="fullyQualifiedName"
+              // Had to pass empty object to override default styling from Table component
+              scroll={{}}
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               onHeaderRow={onTableHeader}

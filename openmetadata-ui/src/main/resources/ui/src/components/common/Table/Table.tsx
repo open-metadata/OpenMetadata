@@ -277,7 +277,8 @@ const Table = <T extends Record<string, unknown>>(
           {...resizingTableProps}
           scroll={{
             y: 740,
-            x: resizingTableProps.scroll?.x || rest.scroll?.x,
+            x: resizingTableProps.scroll?.x ?? rest.scroll?.x,
+            ...rest.scroll,
           }}
         />
       </Col>

@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { Status } from '../generated/entity/data/glossaryTerm';
+
 export const GLOSSARY_TERM_TABLE_COLUMNS_KEYS = {
   NAME: 'name',
   DESCRIPTION: 'description',
@@ -29,4 +32,15 @@ export const DEFAULT_VISIBLE_COLUMNS = [
 export const STATIC_VISIBLE_COLUMNS = [
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS.NAME,
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
+];
+
+export const GLOSSARY_TERM_STATUS_OPTIONS = [
+  {
+    value: '',
+    text: 'All',
+  },
+  ...Object.values(Status).map((status) => ({
+    value: status,
+    text: status,
+  })),
 ];

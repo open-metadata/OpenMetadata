@@ -42,9 +42,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
-  getLayoutFromCustomizedPage: jest.fn().mockImplementation(() => ({
-    layout: [],
-  })),
+  getLayoutFromCustomizedPage: jest.fn().mockImplementation(() => []),
 }));
 
 // Mock ActivityFeedProvider

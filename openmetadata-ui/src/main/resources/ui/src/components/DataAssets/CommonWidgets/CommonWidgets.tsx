@@ -161,7 +161,10 @@ export const CommonWidgets = ({
       case EntityType.SEARCH_INDEX:
         return isEmpty((data as unknown as SearchIndex).fields);
       case EntityType.STORED_PROCEDURE:
-        return isEmpty((data as unknown as StoredProcedure).code);
+        return isEmpty(
+          (data as unknown as StoredProcedure).code ??
+            (data as unknown as StoredProcedure).storedProcedureCode
+        );
       case EntityType.DOMAIN:
       case EntityType.METRIC:
         return true;
