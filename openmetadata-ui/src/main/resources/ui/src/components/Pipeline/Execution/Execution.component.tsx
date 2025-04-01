@@ -193,9 +193,7 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
                         placeholder={['', '']}
                         suffixIcon={null}
                         onChange={onDateChange}
-                        onOpenChange={(isOpen) => {
-                          setIsClickedCalendar(isOpen);
-                        }}
+                        onOpenChange={setIsClickedCalendar}
                       />
                     </span>
                   </Button>

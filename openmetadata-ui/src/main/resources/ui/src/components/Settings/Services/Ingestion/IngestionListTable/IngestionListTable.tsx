@@ -409,7 +409,7 @@ function IngestionListTable({
               title: t('label.action-plural'),
               dataIndex: 'actions',
               key: 'actions',
-              width: 220,
+              width: 240,
               fixed: 'right' as FixedType,
               render: renderActionsField,
             },

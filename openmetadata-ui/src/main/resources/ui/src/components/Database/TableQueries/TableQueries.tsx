@@ -550,10 +550,9 @@ const TableQueries: FC<TableQueriesProp> = ({
           className: 'entity-resizable-panel-container',
           children: (
             <Row
-              className="p-x-md m-t-md"
+              className="p-x-md m-t-md p-r-xl"
               data-testid="queries-container"
-              gutter={[8, 16]}
-              style={{ paddingRight: '36px' }}>
+              gutter={[8, 16]}>
               <Col span={24}>
                 <Space className="justify-between w-full">
                   <Space size={16}>
@@ -614,24 +613,20 @@ const TableQueries: FC<TableQueriesProp> = ({
                     <Button
                       className="p-0"
                       data-testid="sort-order-button"
+                      icon={
+                        isAscSortOrder ? (
+                          <SortAscendingOutlined className="text-sm text-grey-muted" />
+                        ) : (
+                          <SortDescendingOutlined className="text-sm text-grey-muted" />
+                        )
+                      }
                       type="text"
                       onClick={() =>
                         handleSortOderChange(
                           isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                         )
-                      }>
-                      {isAscSortOrder ? (
-                        <SortAscendingOutlined
-                          className="text-base text-grey-muted"
-                          style={{ fontSize: '14px' }}
-                        />
-                      ) : (
-                        <SortDescendingOutlined
-                          className="text-base text-grey-muted"
-                          style={{ fontSize: '14px' }}
-                        />
-                      )}
-                    </Button>
+                      }
+                    />
                     {addButton}
                   </Space>
                 </Space>
