@@ -18,6 +18,7 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, {
   MutableRefObject,
   useCallback,
@@ -28,7 +29,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
+import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import {
   CSVImportAsyncWebsocketResponse,
   CSVImportJobType,
@@ -37,6 +39,7 @@ import Banner from '../../../components/common/Banner/Banner';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { UploadFile } from '../../../components/UploadFile/UploadFile';
@@ -57,8 +60,9 @@ import {
   getCSVStringFromColumnsAndDataSource,
   getEntityColumnsAndDataSourceFromCSV,
 } from '../../../utils/CSV/CSV.utils';
+import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getBulkEntityImportBreadcrumbList,
+  getBulkEntityBreadcrumbList,
   getImportedEntityType,
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
@@ -79,6 +83,7 @@ const BulkEntityImportPage = () => {
   );
   const activeStepRef = useRef<VALIDATION_STEP>(VALIDATION_STEP.UPLOAD);
 
+  const location = useLocation();
   const { t } = useTranslation();
   const { entityType } = useParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
@@ -93,6 +98,30 @@ const BulkEntityImportPage = () => {
   const [gridRef, setGridRef] = useState<
     MutableRefObject<TypeComputedProps | null>
   >({ current: null });
+  const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
+
+  const fetchEntityData = useCallback(async () => {
+    try {
+      const response = await entityUtilClassBase.getEntityByFqn(
+        entityType,
+        fqn
+      );
+      setEntity(response);
+    } catch (error) {
+      // not show error here
+    }
+  }, [entityType, fqn]);
+
+  const isBulkEdit = useMemo(
+    () => isBulkEditRoute(location.pathname),
+    [location]
+  );
+
+  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      entity ? getBulkEntityBreadcrumbList(entityType, entity, isBulkEdit) : [],
+    [entityType, entity, isBulkEdit]
+  );
 
   const importedEntityType = useMemo(
     () => getImportedEntityType(entityType),
@@ -143,7 +172,8 @@ const BulkEntityImportPage = () => {
         const validationResponse = await validateCsvString(
           result,
           entityType,
-          fqn
+          fqn,
+          isBulkEdit
         );
 
         const jobData: CSVImportJobType = {
@@ -171,11 +201,6 @@ const BulkEntityImportPage = () => {
     [dataSource]
   );
 
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => getBulkEntityImportBreadcrumbList(entityType, fqn),
-    [entityType, fqn]
-  );
-
   const handleBack = () => {
     if (activeStep === VALIDATION_STEP.UPDATE) {
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
@@ -201,6 +226,7 @@ const BulkEntityImportPage = () => {
         name: fqn,
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
+        recursive: !isBulkEdit,
       });
 
       const jobData: CSVImportJobType = {
@@ -419,6 +445,10 @@ const BulkEntityImportPage = () => {
 
           handleImportWebsocketResponseWithActiveStep(importResults);
         }
+
+        if (websocketResponse.status === 'FAILED') {
+          setIsValidating(false);
+        }
       }
     },
     [
@@ -430,6 +460,10 @@ const BulkEntityImportPage = () => {
       handleActiveStepChange,
     ]
   );
+
+  useEffect(() => {
+    fetchEntityData();
+  }, [fetchEntityData]);
 
   useEffect(() => {
     if (socket) {
@@ -455,118 +489,150 @@ const BulkEntityImportPage = () => {
         entity: entityType,
       })}>
       <Row className="p-x-lg" gutter={[16, 16]}>
-        <Col span={24}>
-          <TitleBreadcrumb titleLinks={breadcrumbList} />
-        </Col>
-        <Col span={24}>
-          <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
-        </Col>
-        <Col span={24}>
-          {activeAsyncImportJob?.jobId && (
-            <Banner
-              className="border-radius"
-              isLoading={!activeAsyncImportJob.error}
-              message={
-                activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
-              }
-              type={activeAsyncImportJob.error ? 'error' : 'success'}
-            />
-          )}
-        </Col>
-        <Col span={24}>
-          {activeStep === 0 && (
-            <>
-              {validationData?.abortReason ? (
-                <Card className="m-t-lg">
-                  <Space
-                    align="center"
-                    className="w-full justify-center p-lg text-center"
-                    direction="vertical"
-                    size={16}>
-                    <Typography.Text
-                      className="text-center"
-                      data-testid="abort-reason">
-                      <strong className="d-block">{t('label.aborted')}</strong>{' '}
-                      {validationData.abortReason}
-                    </Typography.Text>
-                    <Space size={16}>
-                      <Button
-                        ghost
-                        data-testid="cancel-button"
-                        type="primary"
-                        onClick={handleRetryCsvUpload}>
-                        {t('label.back')}
-                      </Button>
-                    </Space>
-                  </Space>
-                </Card>
-              ) : (
-                <UploadFile fileType=".csv" onCSVUploaded={handleLoadData} />
+        {isBulkEdit ? (
+          <BulkEditEntity
+            activeAsyncImportJob={activeAsyncImportJob}
+            activeStep={activeStep}
+            breadcrumbList={breadcrumbList}
+            columns={columns}
+            dataSource={dataSource}
+            handleBack={handleBack}
+            handleValidate={handleValidate}
+            isValidating={isValidating}
+            setGridRef={setGridRef}
+            validateCSVData={validateCSVData}
+            validationData={validationData}
+            onCSVReadComplete={onCSVReadComplete}
+            onEditComplete={onEditComplete}
+            onEditStart={onEditStart}
+            onEditStop={onEditStop}
+            onKeyDown={onKeyDown}
+          />
+        ) : (
+          <>
+            <Col span={24}>
+              <TitleBreadcrumb titleLinks={breadcrumbList} />
+            </Col>
+            <Col span={24}>
+              <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
+            </Col>
+            <Col span={24}>
+              {activeAsyncImportJob?.jobId && (
+                <Banner
+                  className="border-radius"
+                  isLoading={isEmpty(activeAsyncImportJob.error)}
+                  message={
+                    activeAsyncImportJob.error ??
+                    activeAsyncImportJob.message ??
+                    ''
+                  }
+                  type={
+                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                  }
+                />
               )}
-            </>
-          )}
-          {activeStep === 1 && (
-            <ReactDataGrid
-              editable
-              columns={columns}
-              dataSource={dataSource}
-              defaultActiveCell={[0, 0]}
-              handle={setGridRef}
-              idProperty="id"
-              loading={isValidating}
-              minRowHeight={30}
-              showZebraRows={false}
-              style={{ height: 'calc(100vh - 245px)' }}
-              onEditComplete={onEditComplete}
-              onEditStart={onEditStart}
-              onEditStop={onEditStop}
-              onKeyDown={onKeyDown}
-            />
-          )}
-          {activeStep === 2 && validationData && (
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <ImportStatus csvImportResult={validationData} />
-              </Col>
+            </Col>
+            <Col span={24}>
+              {activeStep === 0 && (
+                <>
+                  {validationData?.abortReason ? (
+                    <Card className="m-t-lg">
+                      <Space
+                        align="center"
+                        className="w-full justify-center p-lg text-center"
+                        direction="vertical"
+                        size={16}>
+                        <Typography.Text
+                          className="text-center"
+                          data-testid="abort-reason">
+                          <strong className="d-block">
+                            {t('label.aborted')}
+                          </strong>{' '}
+                          {validationData.abortReason}
+                        </Typography.Text>
+                        <Space size={16}>
+                          <Button
+                            ghost
+                            data-testid="cancel-button"
+                            type="primary"
+                            onClick={handleRetryCsvUpload}>
+                            {t('label.back')}
+                          </Button>
+                        </Space>
+                      </Space>
+                    </Card>
+                  ) : (
+                    <UploadFile
+                      fileType=".csv"
+                      onCSVUploaded={handleLoadData}
+                    />
+                  )}
+                </>
+              )}
+              {activeStep === 1 && (
+                <ReactDataGrid
+                  editable
+                  columns={columns}
+                  dataSource={dataSource}
+                  defaultActiveCell={[0, 0]}
+                  handle={setGridRef}
+                  idProperty="id"
+                  loading={isValidating}
+                  minRowHeight={30}
+                  showZebraRows={false}
+                  style={{ height: 'calc(100vh - 245px)' }}
+                  onEditComplete={onEditComplete}
+                  onEditStart={onEditStart}
+                  onEditStop={onEditStop}
+                  onKeyDown={onKeyDown}
+                />
+              )}
+              {activeStep === 2 && validationData && (
+                <Row gutter={[16, 16]}>
+                  <Col span={24}>
+                    <ImportStatus csvImportResult={validationData} />
+                  </Col>
 
+                  <Col span={24}>
+                    {validateCSVData && (
+                      <ReactDataGrid
+                        idProperty="id"
+                        loading={isValidating}
+                        style={{ height: 'calc(100vh - 300px)' }}
+                        {...validateCSVData}
+                      />
+                    )}
+                  </Col>
+                </Row>
+              )}
+            </Col>
+
+            {activeStep > 0 && (
               <Col span={24}>
-                {validateCSVData && (
-                  <ReactDataGrid
-                    idProperty="id"
-                    loading={isValidating}
-                    style={{ height: 'calc(100vh - 300px)' }}
-                    {...validateCSVData}
-                  />
+                {activeStep === 1 && (
+                  <Button data-testid="add-row-btn" onClick={handleAddRow}>
+                    {`+ ${t('label.add-row')}`}
+                  </Button>
                 )}
+                <div className="float-right import-footer">
+                  {activeStep > 0 && (
+                    <Button disabled={isValidating} onClick={handleBack}>
+                      {t('label.previous')}
+                    </Button>
+                  )}
+                  {activeStep < 3 && (
+                    <Button
+                      className="m-l-sm"
+                      disabled={isValidating}
+                      type="primary"
+                      onClick={handleValidate}>
+                      {activeStep === 2 ? t('label.update') : t('label.next')}
+                    </Button>
+                  )}
+                </div>
               </Col>
-            </Row>
-          )}
-        </Col>
-
-        {activeStep > 0 && (
-          <Col span={24}>
-            {activeStep === 1 && (
-              <Button data-testid="add-row-btn" onClick={handleAddRow}>
-                {`+ ${t('label.add-row')}`}
-              </Button>
             )}
-            <div className="float-right import-footer">
-              {activeStep > 0 && (
-                <Button disabled={isValidating} onClick={handleBack}>
-                  {t('label.previous')}
-                </Button>
-              )}
-              {activeStep < 3 && (
-                <Button
-                  className="m-l-sm"
-                  disabled={isValidating}
-                  type="primary"
-                  onClick={handleValidate}>
-                  {activeStep === 2 ? t('label.update') : t('label.next')}
-                </Button>
-              )}
-            </div>
-          </Col>
+          </>
         )}
       </Row>
     </PageLayoutV1>

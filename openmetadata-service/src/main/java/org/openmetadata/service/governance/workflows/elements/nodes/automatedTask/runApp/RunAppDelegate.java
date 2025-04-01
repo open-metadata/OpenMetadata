@@ -8,6 +8,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -46,19 +47,28 @@ public class RunAppDelegate implements JavaDelegate {
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
 
-      boolean success =
+      boolean wasSuccessful =
           new RunAppImpl()
               .execute(
                   pipelineServiceClient, appName, waitForCompletion, timeoutSeconds, entityLink);
 
-      varHandler.setNodeVariable(RESULT_VARIABLE, success);
+      varHandler.setNodeVariable(RESULT_VARIABLE, getResultValue(wasSuccessful));
+      varHandler.setFailure(!wasSuccessful);
     } catch (Exception exc) {
       LOG.error(
           String.format(
               "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
           exc);
-      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
+  }
+
+  private String getResultValue(boolean result) {
+    if (result) {
+      return "success";
+    } else {
+      return "failure";
     }
   }
 }

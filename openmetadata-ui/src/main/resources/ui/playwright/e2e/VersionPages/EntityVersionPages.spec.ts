@@ -33,6 +33,7 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   container: true,
   searchIndex: true,
   dashboardDataModel: true,
+  entityDetails: true,
 };
 
 const entities = [
@@ -126,6 +127,8 @@ test.describe('Entity Version pages', () => {
 
   entities.forEach((entity) => {
     test(`${entity.getType()}`, async ({ page }) => {
+      test.slow();
+
       await entity.visitEntityPage(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
@@ -178,9 +181,7 @@ test.describe('Entity Version pages', () => {
         await versionDetailResponse;
 
         await expect(
-          page.locator(
-            '[data-testid="owner-link"] > [data-testid="diff-added"]'
-          )
+          page.locator('[data-testid="owner-link"] [data-testid="diff-added"]')
         ).toBeVisible();
       });
 
@@ -250,13 +251,13 @@ test.describe('Entity Version pages', () => {
 
           await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
           const deleteResponse = page.waitForResponse(
-            `/api/v1/${entity.endpoint}/*?hardDelete=false&recursive=true`
+            `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
           );
           await page.click('[data-testid="confirm-button"]');
 
           await deleteResponse;
 
-          await toastNotification(page, /deleted successfully!/);
+          await toastNotification(page, /Delete operation initiated for/);
 
           await page.reload();
 

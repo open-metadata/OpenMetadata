@@ -12,8 +12,8 @@
  */
 
 import { Col, Row } from 'antd';
-import { t } from 'i18next';
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Redirect,
   Route,
@@ -28,12 +28,13 @@ import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { SystemChartType } from '../../enums/DataInsight.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
-import { SystemChartType } from '../../rest/DataInsightAPI';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import './data-insight.less';
 import { default as dataInsightClassBase } from './DataInsightClassBase';
@@ -42,7 +43,7 @@ import DataInsightProvider from './DataInsightProvider';
 
 const DataInsightPage = () => {
   const { tab } = useParams<{ tab: DataInsightTabs }>();
-
+  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const history = useHistory();
   const LeftPanel = dataInsightClassBase.getLeftPanel();
@@ -127,9 +128,9 @@ const DataInsightPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
+        className="content-height-with-resizable-panel bg-white"
         firstPanel={{
           className: 'content-resizable-panel-container',
           minWidth: 280,
@@ -167,7 +168,7 @@ const DataInsightPage = () => {
               </Row>
             </DataInsightProvider>
           ),
-          className: 'content-resizable-panel-container p-t-sm',
+          className: 'content-resizable-panel-container p-t-sm bg-white',
           minWidth: 800,
           flex: 0.87,
         }}
@@ -176,4 +177,4 @@ const DataInsightPage = () => {
   );
 };
 
-export default withPageLayout('data-insight')(DataInsightPage);
+export default withPageLayout(i18n.t('label.data-insight'))(DataInsightPage);

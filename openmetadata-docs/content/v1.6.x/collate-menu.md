@@ -30,6 +30,8 @@ site_menu:
     url: /connectors/api/rest
   - category: Connectors / API / REST / Run Externally
     url: /connectors/api/rest/yaml
+  - category: Connectors / API / REST / Troubleshooting
+    url: /connectors/api/rest/troubleshooting
   - category: Connectors / Database
     url: /connectors/database
   - category: Connectors / Database / ADLS Datalake
@@ -243,36 +245,52 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Domo Dashboard / Troubleshooting
+    url: /connectors/dashboard/domo-dashboard/troubleshooting
   - category: Connectors / Dashboard / Lightdash
     url: /connectors/dashboard/lightdash
   - category: Connectors / Dashboard / Lightdash / Run Externally
     url: /connectors/dashboard/lightdash/yaml
+  - category: Connectors / Dashboard / Lightdash / Troubleshooting
+    url: /connectors/dashboard/lightdash/troubleshooting
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
     url: /connectors/dashboard/looker/yaml
+  - category: Connectors / Dashboard / Looker / Troubleshooting
+    url: /connectors/dashboard/looker/troubleshooting
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / Metabase / Troubleshooting
+    url: /connectors/dashboard/metabase/troubleshooting
   - category: Connectors / Dashboard / MicroStrategy
     url: /connectors/dashboard/microstrategy
   - category: Connectors / Dashboard / MicroStrategy / Run Externally
     url: /connectors/dashboard/microstrategy/yaml
+  - category: Connectors / Dashboard / MicroStrategy / Troubleshooting
+    url: /connectors/dashboard/microstrategy/troubleshooting
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
     url: /connectors/dashboard/mode/yaml
+  - category: Connectors / Dashboard / Mode / Troubleshooting
+    url: /connectors/dashboard/mode/troubleshooting
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / Run Externally
     url: /connectors/dashboard/powerbi/yaml
   - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
+  - category: Connectors / Dashboard / PowerBI / Troubleshooting
+    url: /connectors/dashboard/powerbi/troubleshooting
   - category: Connectors / Dashboard / PowerBI Report Server
     url: /connectors/dashboard/powerbireportserver
   - category: Connectors / Dashboard / PowerBI Report Server / Run Externally
     url: /connectors/dashboard/powerbireportserver/yaml
+  - category: Connectors / Dashboard / PowerBI Report Server / Troubleshooting
+    url: /connectors/dashboard/powerbireportserver/troubleshooting
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -283,6 +301,8 @@ site_menu:
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
     url: /connectors/dashboard/qlikcloud/yaml
+  - category: Connectors / Dashboard / Qlik Cloud / Troubleshooting
+    url: /connectors/dashboard/qlikcloud/troubleshooting
   - category: Connectors / Dashboard / Qlik Cloud / API Keys
     url: /connectors/dashboard/qlikcloud/api_keys
   - category: Connectors / Dashboard / QuickSight
@@ -541,6 +561,9 @@ site_menu:
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
 
+  - category: Connectors / Troubleshooting
+    url: /connectors/troubleshooting
+
   - category: How-to Guides
     url: /how-to-guides
 
@@ -638,6 +661,8 @@ site_menu:
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / Table Constraint
+    url: /how-to-guides/data-discovery/table-constraint
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
     url: /how-to-guides/data-discovery/openmetadata-extension
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
@@ -646,6 +671,8 @@ site_menu:
     url: /how-to-guides/data-discovery/openmetadata-extension/looking-up
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing tasks & add comment directly from the extension
     url: /how-to-guides/data-discovery/openmetadata-extension/viewing-tasks
+  - category: How-to Guides / Data Discovery / ER Diagrams
+    url: /how-to-guides/data-discovery/er-diagrams
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -868,6 +895,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.6 Release
+    url: /releases/all-releases/#1.6.6-release
+  - category: Releases / All Releases / 1.6.5 Release
+    url: /releases/all-releases/#1.6.5-release
   - category: Releases / All Releases / 1.6.4 Release
     url: /releases/all-releases/#1.6.4-release
   - category: Releases / All Releases / 1.6.3 Release

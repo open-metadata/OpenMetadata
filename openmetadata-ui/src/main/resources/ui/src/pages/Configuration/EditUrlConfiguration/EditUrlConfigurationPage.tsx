@@ -31,17 +31,19 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
 } from '../../../rest/settingConfigAPI';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const { Item } = Form;
 const EditUrlConfigurationPage = () => {
-  const { t } = useTranslation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = Form.useForm<OpenMetadataBaseURLConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -189,7 +191,11 @@ const EditUrlConfigurationPage = () => {
         flex: 0.7,
         className: 'content-resizable-panel-container',
       }}
-      pageTitle={t('label.edit-entity', { entity: t('label.service') })}
+      pageTitle={t('label.edit-entity', {
+        entity: t('label.entity-configuration', {
+          entity: t('label.open-metadata-url'),
+        }),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -200,4 +206,10 @@ const EditUrlConfigurationPage = () => {
   );
 };
 
-export default EditUrlConfigurationPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.entity-configuration', {
+      entity: i18n.t('label.url-uppercase'),
+    }),
+  })
+)(EditUrlConfigurationPage);

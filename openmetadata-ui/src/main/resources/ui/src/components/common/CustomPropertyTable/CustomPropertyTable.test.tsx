@@ -55,6 +55,14 @@ jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: {},
+    onUpdate: jest.fn(),
+    filterWidgets: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn().mockImplementation(() =>
     Promise.resolve({

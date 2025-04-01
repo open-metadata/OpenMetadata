@@ -486,7 +486,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return exportCsvInternalAsync(securityContext, name);
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -511,7 +511,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -544,7 +544,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -576,7 +576,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 
   @DELETE
@@ -604,6 +604,33 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTableAsync",
+      summary = "Asynchronously delete a table by Id",
+      description = "Asynchronously delete a table by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE

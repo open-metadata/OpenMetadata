@@ -15,6 +15,7 @@ Helpers module for ingestion related methods
 
 from __future__ import annotations
 
+import hashlib
 import itertools
 import re
 import shutil
@@ -521,3 +522,48 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
         return wrapper
 
     return decorator
+
+
+def get_query_hash(query: str) -> str:
+    result = hashlib.md5(query.encode())
+    return str(result.hexdigest())
+
+
+def evaluate_threshold(threshold: int, operator: str, result: int) -> bool:
+    """Evaluate the threshold against the result.
+
+    Args:
+        threshold: A string representing a comparison threshold (e.g., "< 5", ">= 10").
+        result: The integer value to compare against the threshold.
+
+    Returns:
+        True if the result satisfies the threshold condition, False otherwise.
+        If no comparison operator is provided, it defaults to less than or equal to comparison.
+        Returns False for invalid threshold formats.
+    """
+    import operator as op  # pylint: disable=import-outside-toplevel
+
+    operators = {
+        "<": op.lt,
+        "<=": op.le,
+        ">": op.gt,
+        ">=": op.ge,
+        "==": op.eq,
+        "!=": op.ne,
+    }
+    op_func = operators.get(operator, op.le)
+    try:
+        if op_func:
+            return op_func(result, threshold)
+    except ValueError:
+        return False
+
+    # Fallback:
+    logger.error(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )
+    raise ValueError(
+        f"Invalid threshold: {threshold}, "
+        "Allowed format: <, >, <=, >=, ==, !=. Example: >5"
+    )

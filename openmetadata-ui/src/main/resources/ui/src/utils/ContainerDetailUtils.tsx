@@ -16,6 +16,7 @@ import { isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../components/Container/ContainerChildren/ContainerChildren';
@@ -132,6 +133,7 @@ export const getContainerDetailPageTabs = ({
   containerData,
   fetchContainerDetail,
   labelMap,
+  childrenCount,
 }: ContainerDetailPageTabProps) => {
   return [
     ...(isDataModelEmpty
@@ -139,6 +141,7 @@ export const getContainerDetailPageTabs = ({
           {
             label: (
               <TabsLabel
+                count={childrenCount}
                 id={EntityTabs.CHILDREN}
                 name={labelMap?.[EntityTabs.CHILDREN] ?? t('label.children')}
               />
@@ -151,6 +154,7 @@ export const getContainerDetailPageTabs = ({
           {
             label: (
               <TabsLabel
+                count={containerData?.dataModel?.columns?.length}
                 id={EntityTabs.SCHEMA}
                 name={labelMap?.[EntityTabs.SCHEMA] ?? t('label.schema')}
               />
@@ -160,7 +164,11 @@ export const getContainerDetailPageTabs = ({
           },
           {
             label: (
-              <TabsLabel id={EntityTabs.CHILDREN} name={t('label.children')} />
+              <TabsLabel
+                count={childrenCount}
+                id={EntityTabs.CHILDREN}
+                name={t('label.children')}
+              />
             ),
             key: EntityTabs.CHILDREN,
             children: (
@@ -188,6 +196,8 @@ export const getContainerDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.CONTAINER}
+          feedCount={feedCount}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={() =>
             fetchContainerDetail(decodedContainerName)
@@ -219,20 +229,21 @@ export const getContainerDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: containerData && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.CONTAINER>
-            entityType={EntityType.CONTAINER}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.CONTAINER>
+          entityType={EntityType.CONTAINER}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];
 };
 
 export const getContainerWidgetsFromKey = (widgetConfig: WidgetConfig) => {
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.CONTAINER_CHILDREN)) {
+  if (
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.CONTAINER_CHILDREN) ||
+    widgetConfig.i.startsWith(DetailPageWidgetKeys.CONTAINER_SCHEMA)
+  ) {
     return <ContainerWidget />;
   }
 

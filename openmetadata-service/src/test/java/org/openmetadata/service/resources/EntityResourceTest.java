@@ -148,6 +148,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.connections.TestConnectionStepResult;
@@ -184,6 +185,9 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.DatabaseRepository;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.apis.APICollectionResourceTest;
@@ -216,10 +220,13 @@ import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.*;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportMessage;
 import org.openmetadata.service.util.CSVImportResponse;
+import org.openmetadata.service.util.DeleteEntityMessage;
+import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -2189,6 +2196,163 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity tests for ASYNC DELETE operations
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void delete_async_nonExistentEntity_404() {
+    assertResponse(
+        () -> deleteEntityAsync(NON_EXISTENT_ENTITY, false, false, ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        entityNotFound(entityType, NON_EXISTENT_ENTITY));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void delete_async_entity_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    // Create entity as admin
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Attempt to delete async as non-admin should fail
+    assertResponse(
+        () -> deleteEntityAsync(entity.getId(), false, false, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  public void delete_async_with_recursive_hardDelete(TestInfo test) throws Exception {
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Test async delete with recursive and hard delete flags
+    DeleteEntityMessage deleteMessage = receiveDeleteEntityMessage(entity.getId(), true, true);
+
+    assertEquals("COMPLETED", deleteMessage.getStatus());
+    assertEquals(entity.getName(), deleteMessage.getEntityName());
+    assertNull(deleteMessage.getError());
+    assertEntityDeleted(entity.getId(), true);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void delete_async_soft_delete(TestInfo test) throws Exception {
+    if (!supportsSoftDelete) {
+      return;
+    }
+
+    K request = createRequest(getEntityName(test), "", "", null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Test async soft delete
+    DeleteEntityMessage deleteMessage = receiveDeleteEntityMessage(entity.getId(), false, false);
+
+    assertEquals("COMPLETED", deleteMessage.getStatus());
+    assertEquals(entity.getName(), deleteMessage.getEntityName());
+    assertNull(deleteMessage.getError());
+    assertEntityDeleted(entity.getId(), false);
+  }
+
+  protected DeleteEntityMessage receiveDeleteEntityMessage(
+      UUID id, boolean recursive, boolean hardDelete) throws Exception {
+    UUID userId = getAdminUserId();
+    String uri = String.format("http://localhost:%d", APP.getLocalPort());
+
+    IO.Options options = new IO.Options();
+    options.path = "/api/v1/push/feed";
+    options.query = "userId=" + userId.toString();
+    options.transports = new String[] {"websocket"};
+    options.reconnection = false;
+    options.timeout = 10000; // 10 seconds
+
+    Socket socket = IO.socket(uri, options);
+
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    CountDownLatch messageLatch = new CountDownLatch(1);
+    final String[] receivedMessage = new String[1];
+
+    socket
+        .on(
+            Socket.EVENT_CONNECT,
+            args -> {
+              LOG.info("Connected to Socket.IO server");
+              connectLatch.countDown();
+            })
+        .on(
+            WebSocketManager.DELETE_ENTITY_CHANNEL,
+            args -> {
+              receivedMessage[0] = (String) args[0];
+              LOG.info("Received delete message: " + receivedMessage[0]);
+              messageLatch.countDown();
+              socket.disconnect();
+            })
+        .on(
+            Socket.EVENT_CONNECT_ERROR,
+            args -> {
+              LOG.error("Socket.IO connect error: " + args[0]);
+              connectLatch.countDown();
+              messageLatch.countDown();
+            })
+        .on(
+            Socket.EVENT_DISCONNECT,
+            args -> {
+              LOG.info("Disconnected from Socket.IO server");
+            });
+
+    socket.connect();
+    if (!connectLatch.await(10, TimeUnit.SECONDS)) {
+      fail("Could not connect to Socket.IO server");
+    }
+
+    // Initiate the delete operation after connection is established
+    javax.ws.rs.core.Response response =
+        deleteEntityAsync(id, recursive, hardDelete, ADMIN_AUTH_HEADERS);
+    assertEquals(javax.ws.rs.core.Response.Status.ACCEPTED.getStatusCode(), response.getStatus());
+
+    // Validate initial response
+    DeleteEntityResponse deleteResponse = response.readEntity(DeleteEntityResponse.class);
+    assertNotNull(deleteResponse.getJobId());
+    assertEquals(
+        "Delete operation initiated for " + deleteResponse.getEntityName(),
+        deleteResponse.getMessage());
+    assertEquals(hardDelete, deleteResponse.isHardDelete());
+
+    if (!messageLatch.await(30, TimeUnit.SECONDS)) {
+      fail("Did not receive delete notification via Socket.IO within the expected time.");
+    }
+
+    String receivedJson = receivedMessage[0];
+    if (receivedJson == null) {
+      fail("Received message is null.");
+    }
+
+    DeleteEntityMessage deleteMessage =
+        JsonUtils.readValue(receivedJson, DeleteEntityMessage.class);
+    if ("FAILED".equals(deleteMessage.getStatus())) {
+      fail("Delete operation failed: " + deleteMessage.getError());
+    }
+
+    return deleteMessage;
+  }
+
+  protected javax.ws.rs.core.Response deleteEntityAsync(
+      UUID id, boolean recursive, boolean hardDelete, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    try {
+      WebTarget target = getCollection().path(String.format("async/%s", id));
+      target = target.queryParam("recursive", recursive).queryParam("hardDelete", hardDelete);
+      LOG.info("Deleting entity with id {}, target:{}", id, target);
+      return TestUtils.deleteAsync(target, authHeaders);
+    } catch (HttpResponseException e) {
+      LOG.error("Failed to delete entity with id {}: {}", id, e.getMessage());
+      throw e;
+    }
+  }
+
   //////////////////////////////////////////////////////////////////////////////////////////////////
   // Other tests
   //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3931,8 +4095,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
+  public CsvImportResult importCsvRecursive(String entityName, String csv, boolean dryRun)
+      throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/import").queryParam("recursive", "true");
+    target = !dryRun ? target.queryParam("dryRun", false) : target;
+    return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
   protected String exportCsv(String entityName) throws HttpResponseException {
     WebTarget target = getResourceByName(entityName + "/export");
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  protected String exportCsvRecursive(String entityName) throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/export").queryParam("recursive", "true");
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
   }
 
@@ -4357,6 +4533,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             actual.getUpdated().getAccessedByAProcess());
       }
     }
+  }
+
+  protected List<CsvHeader> getDatabaseCsvHeaders(Database db, boolean recursive) {
+    return new DatabaseRepository.DatabaseCsv(db, "admin", recursive).HEADERS;
+  }
+
+  protected List<CsvHeader> getDatabaseServiceCsvHeaders(
+      DatabaseService dbService, boolean recursive) {
+    return new DatabaseServiceRepository.DatabaseServiceCsv(dbService, "admin", recursive).HEADERS;
+  }
+
+  protected List<CsvHeader> getDatabaseSchemaCsvHeaders(
+      DatabaseSchema dbSchema, boolean recursive) {
+    return new DatabaseSchemaRepository.DatabaseSchemaCsv(dbSchema, "admin", recursive).HEADERS;
   }
 
   public UpdateType getChangeType() {

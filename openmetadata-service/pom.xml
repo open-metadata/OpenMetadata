@@ -29,6 +29,8 @@
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
     <json-smart.version>2.5.2</json-smart.version>
+    <aws.sdk.version>2.31.1</aws.sdk.version>
+    <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
   </properties>
 
   <dependencyManagement>
@@ -48,6 +50,13 @@
         <groupId>com.google.cloud</groupId>
         <artifactId>libraries-bom</artifactId>
         <version>26.49.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>2.22.12</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -131,6 +140,10 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.tomcat</groupId>
+      <artifactId>tomcat-jdbc</artifactId>
     </dependency>
     <dependency>
       <groupId>com.mysql</groupId>
@@ -331,22 +344,18 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>secretsmanager</artifactId>
-      <version>${awssdk.version}</version>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>ssm</artifactId>
-      <version>${awssdk.version}</version>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>rds</artifactId>
-      <version>${awssdk.version}</version>
     </dependency>
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>sts</artifactId>
-      <version>${awssdk.version}</version>
     </dependency>
     <dependency>
       <groupId>com.azure</groupId>
@@ -362,7 +371,7 @@
       <groupId>com.azure</groupId>
       <artifactId>azure-identity-extensions</artifactId>
       <version>${azure-identity-extensions.version}</version>
-  </dependency>
+    </dependency>
     <dependency>
       <groupId>io.dropwizard.modules</groupId>
       <artifactId>dropwizard-web</artifactId>
@@ -376,7 +385,6 @@
     <dependency>
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>cloudwatch</artifactId>
-      <version>${awssdk.version}</version>
     </dependency>
 
     <!--test dependencies-->
@@ -596,7 +604,7 @@
     <dependency>
       <groupId>org.eclipse.jetty.websocket</groupId>
       <artifactId>websocket-server</artifactId>
-      <version>9.4.56.v20240826</version>
+      <version>9.4.57.v20241219</version>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
@@ -746,6 +754,25 @@
     <dependency>
       <groupId>com.microsoft.azure</groupId>
       <artifactId>msal4j</artifactId>
+    </dependency>
+    <!-- AWS SDK Core (if not already included) -->
+    <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>aws-core</artifactId>
+    </dependency>
+    <!-- AWS Auth (if not already included) -->
+    <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>auth</artifactId>
+    </dependency>
+    <!-- Required AWS dependencies -->
+    <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>apache-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>auth</artifactId>
     </dependency>
   </dependencies>
 

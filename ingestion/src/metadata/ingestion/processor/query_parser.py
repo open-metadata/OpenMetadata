@@ -66,6 +66,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         date=str(start_time),
         serviceName=record.serviceName,
         duration=record.duration,
+        cost=record.cost,
     )
 
 

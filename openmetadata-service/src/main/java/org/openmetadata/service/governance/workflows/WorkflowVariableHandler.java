@@ -1,7 +1,9 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.task.service.delegate.DelegateTask;
@@ -32,6 +34,11 @@ public class WorkflowVariableHandler {
     }
   }
 
+  public Object getNodeVariable(String varName) {
+    String namespace = getNodeNamespace();
+    return getNamespacedVariable(namespace, varName);
+  }
+
   public void setNamespacedVariable(String namespace, String varName, Object varValue) {
     String namespacedVarName = getNamespacedVariableName(namespace, varName);
     if (namespacedVarName != null) {
@@ -48,7 +55,8 @@ public class WorkflowVariableHandler {
 
   private String getNodeNamespace() {
     if (varScope instanceof DelegateExecution) {
-      return ((DelegateExecution) varScope).getParent().getCurrentActivityId();
+      return Optional.ofNullable(((DelegateExecution) varScope).getParent().getCurrentActivityId())
+          .orElseGet(() -> ((DelegateExecution) varScope).getCurrentActivityId().split("\\.")[0]);
     } else if (varScope instanceof DelegateTask) {
       return WorkflowHandler.getInstance()
           .getParentActivityId(((DelegateTask) varScope).getExecutionId());
@@ -61,5 +69,11 @@ public class WorkflowVariableHandler {
   public void setNodeVariable(String varName, Object varValue) {
     String namespace = getNodeNamespace();
     setNamespacedVariable(namespace, varName, varValue);
+  }
+
+  public void setFailure(boolean failure) {
+    if (failure) {
+      varScope.setTransientVariable(FAILURE_VARIABLE, true);
+    }
   }
 }

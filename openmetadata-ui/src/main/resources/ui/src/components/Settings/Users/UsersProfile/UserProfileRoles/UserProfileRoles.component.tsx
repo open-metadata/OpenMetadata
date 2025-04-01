@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Divider, Popover, Select, Typography } from 'antd';
+import { Button, Divider, Popover, Select, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, toLower } from 'lodash';
 import React, {
@@ -190,14 +190,14 @@ const UserProfileRoles = ({
 
   return (
     <div
-      className="d-flex flex-col m-b-0 w-full h-full p-[20px] user-profile-card"
+      className="d-flex flex-col m-b-0 w-full p-[20px] user-profile-card"
       data-testid="user-profile-roles">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon">
           <RoleIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium">
             {t('label.role-plural')}
           </Typography.Text>
           <Popover
@@ -304,12 +304,17 @@ const UserProfileRoles = ({
             trigger="click"
             onOpenChange={setIsRolesEdit}>
             {isAdminUser && (
-              <EditIcon
-                className="cursor-pointer align-middle"
-                data-testid="edit-roles-button"
-                height={16}
-                onClick={() => setIsRolesEdit(true)}
-              />
+              <Tooltip
+                title={t('label.edit-entity', {
+                  entity: t('label.role-plural'),
+                })}>
+                <EditIcon
+                  className="cursor-pointer align-middle"
+                  data-testid="edit-roles-button"
+                  height={16}
+                  onClick={() => setIsRolesEdit(true)}
+                />
+              </Tooltip>
             )}
           </Popover>
         </div>

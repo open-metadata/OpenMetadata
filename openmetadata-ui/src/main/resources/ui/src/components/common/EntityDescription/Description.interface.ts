@@ -22,6 +22,7 @@ export interface DescriptionProps {
   description?: string;
   isReadOnly?: boolean;
   entityType: EntityType;
+  entityFullyQualifiedName?: string;
   onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
   onEntityFieldSelect?: (value: string) => void;
@@ -32,4 +33,5 @@ export interface DescriptionProps {
   className?: string;
   showSuggestions?: boolean;
   isDescriptionExpanded?: boolean;
+  newLook?: boolean;
 }

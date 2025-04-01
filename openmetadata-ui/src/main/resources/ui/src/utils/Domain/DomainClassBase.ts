@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
@@ -56,11 +55,28 @@ export interface DomainDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+type DomainWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.OWNERS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.EXPERTS
+  | DetailPageWidgetKeys.DOMAIN_TYPE
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+
 class DomainClassBase {
-  tabs = [];
+  defaultWidgetHeight: Record<DomainWidgetKeys, number>;
 
   constructor() {
-    this.tabs = [];
+    this.defaultWidgetHeight = {
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.OWNERS]: 1.5,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.EXPERTS]: 2,
+      [DetailPageWidgetKeys.DOMAIN_TYPE]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
   }
 
   public getDomainDetailPageTabs(
@@ -75,6 +91,7 @@ class DomainClassBase {
       EntityTabs.SUBDOMAINS,
       EntityTabs.DATA_PRODUCTS,
       EntityTabs.ASSETS,
+      EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
@@ -84,22 +101,32 @@ class DomainClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.DOCUMENTATION) {
       return [];
     }
 
     return [
       {
-        h: 2,
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h: 4,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.OWNERS],
         i: DetailPageWidgetKeys.OWNERS,
         w: 2,
         x: 6,
@@ -107,7 +134,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -115,7 +142,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -123,7 +150,7 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS],
         i: DetailPageWidgetKeys.EXPERTS,
         w: 2,
         x: 6,
@@ -131,11 +158,19 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_TYPE],
         i: DetailPageWidgetKeys.DOMAIN_TYPE,
         w: 2,
         x: 6,
         y: 4,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        w: 2,
+        x: 6,
+        y: 5,
         static: false,
       },
     ];
@@ -174,6 +209,27 @@ class DomainClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDomainWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.OWNERS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.OWNERS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.EXPERTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS];
+      case DetailPageWidgetKeys.DOMAIN_TYPE:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_TYPE];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

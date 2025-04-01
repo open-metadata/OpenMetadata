@@ -77,7 +77,7 @@ const UserProfilePersonas = ({
           </div>
           <div className="d-flex justify-between w-full">
             <Typography.Text
-              className="user-profile-card-title"
+              className="text-sm font-medium"
               data-testid="persona-list">
               {t('label.default-persona')}
             </Typography.Text>
@@ -93,11 +93,11 @@ const UserProfilePersonas = ({
         </div>
         <div className="user-profile-card-body d-flex justify-start gap-2">
           {defaultPersona?.displayName ? (
-            <Typography.Text className="default-persona-text text-primary">
+            <Typography.Text className="default-persona-text  cursor-pointer">
               {defaultPersona?.displayName}
             </Typography.Text>
           ) : (
-            <Typography.Paragraph className="text-grey-muted m-b-0 text-sm  no-default-persona-text">
+            <Typography.Paragraph className="m-b-0 text-sm  no-default-persona-text">
               {t('message.no-default-persona')}
             </Typography.Paragraph>
           )}
@@ -114,7 +114,7 @@ const UserProfilePersonas = ({
 
   return (
     <div
-      className="d-flex flex-col mb-4 w-full h-full p-[20px] user-profile-card"
+      className="d-flex flex-col mb-4 w-full  p-[20px] user-profile-card"
       data-testid="persona-details-card">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
         <div className="d-flex flex-center user-page-icon cursor-pointer">
@@ -122,7 +122,7 @@ const UserProfilePersonas = ({
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text
-            className="user-profile-card-title"
+            className="text-sm font-medium"
             data-testid="persona-list">
             {t('label.persona')}
           </Typography.Text>

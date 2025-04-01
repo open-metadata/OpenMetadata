@@ -12,6 +12,8 @@
  */
 
 import { Popover, Space, Typography } from 'antd';
+import { AxiosError } from 'axios';
+import { toPng } from 'html-to-image';
 import i18next, { t } from 'i18next';
 import {
   isEmpty,
@@ -25,6 +27,7 @@ import { EntityDetailUnion } from 'Models';
 import QueryString from 'qs';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
+import { Node } from 'reactflow';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -32,6 +35,7 @@ import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAsse
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
+import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   EntityServiceUnion,
   EntityWithServices,
@@ -43,24 +47,23 @@ import {
 import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
-  getBotsPagePath,
-  getBotsPath,
-  getEntityDetailsPath,
-  getGlossaryTermDetailsPath,
-  getKpiPath,
-  getServiceDetailsPath,
-  getTagsDetailsPath,
   NO_DATA,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
+import { ExportTypes } from '../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { TAG_START_WITH } from '../constants/Tag.constants';
-import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
+import {
+  EntityLineageNodeType,
+  EntityTabs,
+  EntityType,
+  FqnPart,
+} from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
@@ -116,21 +119,30 @@ import {
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
+import exportUtilClassBase from './ExportUtilClassBase';
 import Fqn from './Fqn';
+import i18n from './i18next/LocalUtil';
 import {
   getApplicationDetailsPath,
+  getBotsPagePath,
+  getBotsPath,
   getClassificationTagPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
+  getEntityDetailsPath,
   getGlossaryPath,
+  getGlossaryTermDetailsPath,
   getIncidentManagerDetailPagePath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
+  getServiceDetailsPath,
   getSettingPath,
+  getTagsDetailsPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
@@ -142,6 +154,7 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
+import { showErrorToast } from './ToastUtils';
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
@@ -1638,7 +1651,8 @@ export const getBreadcrumbForTable = (
             name: entity.name,
             url: getEntityLinkFromType(
               entity.fullyQualifiedName ?? '',
-              (entity as SourceType).entityType as EntityType
+              ((entity as SourceType).entityType as EntityType) ??
+                EntityType.TABLE
             ),
           },
         ]
@@ -1925,7 +1939,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE
           ),
         },
       ];
@@ -1962,7 +1977,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE_SCHEMA
           ),
         },
       ];
@@ -1976,6 +1992,17 @@ export const getEntityBreadcrumbs = (
             getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
           ),
         },
+        ...(includeCurrent
+          ? [
+              {
+                name: entity.name,
+                url: getServiceDetailsPath(
+                  entity?.name,
+                  ServiceCategory.DATABASE_SERVICES
+                ),
+              },
+            ]
+          : []),
       ];
 
     case EntityType.DASHBOARD_SERVICE:
@@ -2485,4 +2512,101 @@ export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
   ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
+export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
+  return ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace(
+    PLACEHOLDER_ROUTE_ENTITY_TYPE,
+    entityType
+  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+};
+
+/**
+ * Updates the node type based on whether it's a source or target node
+ * @param node - The node to update
+ * @param sourceNodeId - ID of the source node
+ * @param targetNodeId - ID of the target node
+ * @returns The updated node with the correct type
+ */
+export const updateNodeType = (
+  node: Node,
+  sourceNodeId?: string,
+  targetNodeId?: string
+): Node => {
+  if (node.id === sourceNodeId) {
+    return {
+      ...node,
+      type: EntityLineageNodeType.INPUT,
+    };
+  }
+  if (node.id === targetNodeId) {
+    return {
+      ...node,
+      type: EntityLineageNodeType.OUTPUT,
+    };
+  }
+
+  return node;
+};
+
+export const handleExportFile = async (
+  exportType: ExportTypes,
+  exportData: ExportData
+) => {
+  const { name: fileName, documentSelector = '', viewport } = exportData;
+  try {
+    const exportElement = document.querySelector(documentSelector);
+
+    if (!exportElement) {
+      throw new Error(
+        i18n.t('message.error-generating-export-type', {
+          exportType,
+        })
+      );
+    }
+
+    // Minimum width and height for the image
+    const minWidth = 1000;
+    const minHeight = 800;
+    const padding = 20;
+
+    const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
+    const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
+
+    await toPng(exportElement as HTMLElement, {
+      backgroundColor: '#ffffff',
+      width: imageWidth + padding * 2,
+      height: imageHeight + padding * 2,
+      style: {
+        width: imageWidth.toString(),
+        height: imageHeight.toString(),
+        margin: `${padding}px`,
+        minWidth: `${minWidth}px`,
+        minHeight: `${minHeight}px`,
+        ...(!isUndefined(viewport)
+          ? {
+              transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+            }
+          : {}),
+      },
+    })
+      .then((base64Image: string) => {
+        exportUtilClassBase.exportMethodBasedOnType({
+          exportType,
+          base64Image,
+          fileName,
+          exportData,
+        });
+      })
+      .catch((error) => {
+        throw error;
+      });
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      i18n.t('message.error-generating-export-type', {
+        exportType,
+      })
+    );
+  }
 };

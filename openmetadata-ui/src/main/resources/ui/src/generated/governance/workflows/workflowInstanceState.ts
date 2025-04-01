@@ -14,15 +14,13 @@
  * Defines a workflow instance.
  */
 export interface WorkflowInstanceState {
-    /**
-     * If the Workflow Instance has errors, 'True'. Else, 'False'.
-     */
-    exception?: boolean;
+    exception?: string;
     /**
      * Unique identifier of this workflow instance state.
      */
-    id?:    string;
-    stage?: Stage;
+    id?:     string;
+    stage?:  Stage;
+    status?: WorkflowStatus;
     /**
      * Timestamp on which the workflow instance state was created.
      */
@@ -54,4 +52,11 @@ export interface Stage {
     startedAt?: number;
     tasks?:     string[];
     variables?: { [key: string]: any };
+}
+
+export enum WorkflowStatus {
+    Exception = "EXCEPTION",
+    Failure = "FAILURE",
+    Finished = "FINISHED",
+    Running = "RUNNING",
 }

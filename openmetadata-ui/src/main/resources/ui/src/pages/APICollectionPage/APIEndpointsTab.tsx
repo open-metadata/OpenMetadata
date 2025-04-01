@@ -11,19 +11,24 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
+import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
 import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../constants/TableKeys.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
@@ -42,10 +47,12 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 interface APIEndpointsTabProps {
   isVersionView?: boolean;
+  isCustomizationPage?: boolean;
 }
 
 function APIEndpointsTab({
   isVersionView = false,
+  isCustomizationPage = false,
 }: Readonly<APIEndpointsTabProps>) {
   const { t } = useTranslation();
   const { fqn: decodedAPICollectionFQN } = useFqn();
@@ -69,6 +76,10 @@ function APIEndpointsTab({
   const getAPICollectionEndpoints = useCallback(
     async (params?: Pick<GetApiEndPointsType, 'paging'>) => {
       if (!apiCollection) {
+        return;
+      } else if (isCustomizationPage) {
+        setAPIEndpoints(API_COLLECTION_API_ENDPOINTS);
+
         return;
       }
 
@@ -98,8 +109,8 @@ function APIEndpointsTab({
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 400,
         render: (_, record: APIEndpoint) => {
           return (
@@ -119,20 +130,20 @@ function APIEndpointsTab({
       },
       {
         title: t('label.request-method'),
-        dataIndex: 'requestMethod',
-        key: 'requestMethod',
+        dataIndex: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
+        key: TABLE_COLUMNS_KEYS.REQUEST_METHOD,
 
         render: (requestMethod: APIEndpoint['requestMethod']) => {
-          return <Typography.Text>{requestMethod || NO_DATA}</Typography.Text>;
+          return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
         },
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewerV1 markdown={text} />
+            <RichTextEditorPreviewerNew markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
@@ -160,62 +171,53 @@ function APIEndpointsTab({
   }, [apiCollection]);
 
   return (
-    <Row gutter={[16, 16]}>
-      {!isVersionView && (
-        <Col span={24}>
-          <Row justify="end">
-            <Col>
-              <Switch
-                checked={filters.showDeletedEndpoints}
-                data-testid="show-deleted"
-                onClick={() =>
-                  setFilters({
-                    ...filters,
-                    showDeletedEndpoints: !filters.showDeletedEndpoints,
-                  })
-                }
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>{' '}
-            </Col>
-          </Row>
-        </Col>
-      )}
-
-      <Col span={24}>
-        <TableAntd
-          bordered
-          columns={tableColumn}
-          data-testid="databaseSchema-tables"
-          dataSource={apiEndpoints}
-          loading={apiEndpointsLoading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                className="mt-0-important"
-                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-              />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      {showPagination && (
-        <Col span={24}>
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={apiEndpointsLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleEndpointsPagination}
-            onShowSizeChange={handlePageSizeChange}
+    <TableAntd
+      columns={tableColumn}
+      customPaginationProps={{
+        currentPage,
+        isLoading: apiEndpointsLoading,
+        showPagination,
+        pageSize,
+        paging,
+        pagingHandler: handleEndpointsPagination,
+        onShowSizeChange: handlePageSizeChange,
+      }}
+      data-testid="databaseSchema-tables"
+      dataSource={apiEndpoints}
+      defaultVisibleColumns={DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS}
+      extraTableFilters={
+        !isVersionView && (
+          <span>
+            <Switch
+              checked={filters.showDeletedEndpoints}
+              data-testid="show-deleted"
+              onClick={() =>
+                setFilters({
+                  ...filters,
+                  showDeletedEndpoints: !filters.showDeletedEndpoints,
+                })
+              }
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>{' '}
+          </span>
+        )
+      }
+      loading={apiEndpointsLoading}
+      locale={{
+        emptyText: (
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
-        </Col>
-      )}
-    </Row>
+        ),
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+    />
   );
 }
 

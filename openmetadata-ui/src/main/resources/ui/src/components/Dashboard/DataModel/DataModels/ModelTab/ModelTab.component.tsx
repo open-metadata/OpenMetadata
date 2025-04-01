@@ -16,6 +16,11 @@ import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import {
   Column,
@@ -33,6 +38,7 @@ import {
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
@@ -115,8 +121,8 @@ const ModelTab = () => {
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
         width: 250,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
@@ -126,8 +132,8 @@ const ModelTab = () => {
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataType',
-        key: 'dataType',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE,
         width: 100,
         render: (dataType, record) => (
           <Typography.Text>
@@ -137,9 +143,9 @@ const ModelTab = () => {
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 350,
         render: (_, record, index) => (
           <TableDescription
@@ -158,9 +164,9 @@ const ModelTab = () => {
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filters: tagFilter.Classification,
         filterIcon: columnFilterIcon,
@@ -182,9 +188,9 @@ const ModelTab = () => {
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 250,
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
@@ -220,30 +226,35 @@ const ModelTab = () => {
   return (
     <>
       <Table
-        bordered
         className="p-t-xs align-table-filter-left"
         columns={tableColumn}
         data-testid="data-model-column-table"
         dataSource={data}
+        defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
         pagination={false}
         rowKey="name"
         scroll={{ x: 1200 }}
         size="small"
+        staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
       />
 
       {editColumnDescription && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editColumnDescription)}"`}
-          placeholder={t('label.enter-field-description', {
-            field: t('label.column'),
-          })}
-          value={editColumnDescription.description || ''}
-          visible={Boolean(editColumnDescription)}
-          onCancel={() => setEditColumnDescription(undefined)}
-          onSave={handleColumnDescriptionChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editColumnDescription.fullyQualifiedName}
+          entityType={EntityType.DASHBOARD_DATA_MODEL}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editColumnDescription)}"`}
+            placeholder={t('label.enter-field-description', {
+              field: t('label.column'),
+            })}
+            value={editColumnDescription.description || ''}
+            visible={Boolean(editColumnDescription)}
+            onCancel={() => setEditColumnDescription(undefined)}
+            onSave={handleColumnDescriptionChange}
+          />
+        </EntityAttachmentProvider>
       )}
     </>
   );

@@ -265,10 +265,10 @@ test(
       searchTerm: DATA_QUALITY_TABLE.term,
       dataTestId: `${DATA_QUALITY_TABLE.serviceName}-${DATA_QUALITY_TABLE.term}`,
     });
-    await page.waitForSelector(`[data-testid="entity-header-display-name"]`);
+    await page.waitForSelector(`[data-testid="entity-header-name"]`);
 
     await expect(
-      page.locator(`[data-testid="entity-header-display-name"]`)
+      page.locator(`[data-testid="entity-header-name"]`)
     ).toContainText(DATA_QUALITY_TABLE.term);
 
     const profilerResponse = page.waitForResponse(
@@ -505,78 +505,137 @@ test(
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    await page.click('[data-testid="profiler-setting-btn"]');
-    await page.waitForSelector('.ant-modal-body');
-    await page.locator('[data-testid="slider-input"]').clear();
-    await page
-      .locator('[data-testid="slider-input"]')
-      .fill(profilerSetting.profileSample);
+    await test.step('Update profiler setting', async () => {
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
 
-    await page.locator('[data-testid="sample-data-count-input"]').clear();
-    await page
-      .locator('[data-testid="sample-data-count-input"]')
-      .fill(profilerSetting.sampleDataCount);
-    await page.locator('[data-testid="exclude-column-select"]').click();
-    await page.keyboard.type(`${profilerSetting.excludeColumns}`);
-    await page.keyboard.press('Enter');
-    await page.locator('.CodeMirror-scroll').click();
-    await page.keyboard.type(profilerSetting.profileQuery);
+      await page.locator('[data-testid="slider-input"]').clear();
+      await page
+        .locator('[data-testid="slider-input"]')
+        .fill(profilerSetting.profileSample);
 
-    await page.locator('[data-testid="include-column-select"]').click();
-    await page
-      .locator('.ant-select-dropdown')
-      .locator(
-        `[title="${profilerSetting.includeColumns}"]:not(.ant-select-dropdown-hidden)`
-      )
-      .last()
-      .click();
-    await page.locator('[data-testid="enable-partition-switch"]').click();
-    await page.locator('[data-testid="interval-type"]').click();
-    await page
-      .locator('.ant-select-dropdown')
-      .locator(
-        `[title="${profilerSetting.partitionIntervalType}"]:not(.ant-select-dropdown-hidden)`
-      )
-      .click();
+      await page.locator('[data-testid="sample-data-count-input"]').clear();
+      await page
+        .locator('[data-testid="sample-data-count-input"]')
+        .fill(profilerSetting.sampleDataCount);
+      await page.locator('[data-testid="exclude-column-select"]').click();
+      await page.keyboard.type(`${profilerSetting.excludeColumns}`);
+      await page.keyboard.press('Enter');
+      await page.locator('.CodeMirror-scroll').click();
+      await page.keyboard.type(profilerSetting.profileQuery);
 
-    await page.locator('#includeColumnsProfiler_partitionColumnName').click();
-    await page
-      .locator('.ant-select-dropdown')
-      .locator(
-        `[title="${profilerSetting.partitionColumnName}"]:not(.ant-select-dropdown-hidden)`
-      )
-      .last()
-      .click();
-    await page
-      .locator('[data-testid="partition-value"]')
-      .fill(profilerSetting.partitionValues);
+      await page.locator('[data-testid="include-column-select"]').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.includeColumns}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .last()
+        .click();
+      await page.locator('[data-testid="enable-partition-switch"]').click();
+      await page.locator('[data-testid="interval-type"]').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.partitionIntervalType}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .click();
 
-    const updateTableProfilerConfigResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/tables/') &&
-        response.url().includes('/tableProfilerConfig') &&
-        response.request().method() === 'PUT'
-    );
-    await page.getByRole('button', { name: 'Save' }).click();
-    const updateResponse = await updateTableProfilerConfigResponse;
-    const requestBody = await updateResponse.request().postData();
+      await page.locator('#includeColumnsProfiler_partitionColumnName').click();
+      await page
+        .locator('.ant-select-dropdown')
+        .locator(
+          `[title="${profilerSetting.partitionColumnName}"]:not(.ant-select-dropdown-hidden)`
+        )
+        .last()
+        .click();
+      await page
+        .locator('[data-testid="partition-value"]')
+        .fill(profilerSetting.partitionValues);
 
-    expect(requestBody).toEqual(
-      JSON.stringify({
-        excludeColumns: [table1.entity?.columns[0].name],
-        profileQuery: 'select * from table',
-        profileSample: 60,
-        profileSampleType: 'PERCENTAGE',
-        includeColumns: [{ columnName: table1.entity?.columns[1].name }],
-        partitioning: {
-          partitionColumnName: table1.entity?.columns[2].name,
-          partitionIntervalType: 'COLUMN-VALUE',
-          partitionValues: ['test'],
-          enablePartitioning: true,
-        },
-        sampleDataCount: 100,
-      })
-    );
+      const updateTableProfilerConfigResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tables/') &&
+          response.url().includes('/tableProfilerConfig') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByRole('button', { name: 'Save' }).click();
+      const updateResponse = await updateTableProfilerConfigResponse;
+      const requestBody = await updateResponse.request().postData();
+
+      expect(requestBody).toEqual(
+        JSON.stringify({
+          excludeColumns: [table1.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          profileSample: 60,
+          profileSampleType: 'PERCENTAGE',
+          includeColumns: [{ columnName: table1.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table1.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        })
+      );
+    });
+
+    await test.step('Reset profile sample type', async () => {
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
+
+      await expect(
+        page.locator('[data-testid="profile-sample"]')
+      ).toBeVisible();
+
+      await page.getByTestId('clear-slider-input').click();
+
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+
+      const updateTableProfilerConfigResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tables/') &&
+          response.url().includes('/tableProfilerConfig') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByRole('button', { name: 'Save' }).click();
+      const updateResponse = await updateTableProfilerConfigResponse;
+      const requestBody = await updateResponse.request().postData();
+
+      expect(requestBody).toEqual(
+        JSON.stringify({
+          excludeColumns: [table1.entity?.columns[0].name],
+          profileQuery: 'select * from table',
+          profileSample: null,
+          profileSampleType: 'PERCENTAGE',
+          includeColumns: [{ columnName: table1.entity?.columns[1].name }],
+          partitioning: {
+            partitionColumnName: table1.entity?.columns[2].name,
+            partitionIntervalType: 'COLUMN-VALUE',
+            partitionValues: ['test'],
+            enablePartitioning: true,
+          },
+          sampleDataCount: 100,
+        })
+      );
+
+      await page.waitForSelector('.ant-modal-body', {
+        state: 'detached',
+      });
+
+      // Validate the profiler setting is updated
+      await page.click('[data-testid="profiler-setting-btn"]');
+      await page.waitForSelector('.ant-modal-body');
+
+      await expect(
+        page.locator('[data-testid="profile-sample"]')
+      ).toBeVisible();
+      await expect(page.locator('[data-testid="slider-input"]')).toBeEmpty();
+      await expect(
+        page.getByTestId('profile-sample').locator('div')
+      ).toBeVisible();
+    });
   }
 );
 
@@ -948,7 +1007,6 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
-    await page.getByTestId('saveAssociatedTag').click();
 
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
     const getTestCaseList = page.waitForResponse(

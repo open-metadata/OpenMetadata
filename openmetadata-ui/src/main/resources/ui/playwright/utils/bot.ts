@@ -22,13 +22,13 @@ import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
-const botName = `pw%bot-test-${uuid()}`;
+const botName = `a-bot-pw%test-${uuid()}`;
 
 const BOT_DETAILS = {
   botName: botName,
   botEmail: `${botName}@mail.com`,
-  description: 'This is bot description',
-  updatedDescription: 'This is updated bot description',
+  description: `This is bot description for ${botName}`,
+  updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
   unlimitedExpiryTime: 'This token has no expiration date.',
   JWTToken: 'OpenMetadata JWT',
@@ -74,10 +74,13 @@ export const createBot = async (page: Page) => {
   await saveResponse;
 
   // Verify bot is getting added in the bots listing page
-  const table = page.locator('table');
+  await expect(
+    page.getByTestId(`bot-link-${BOT_DETAILS.botName}`)
+  ).toBeVisible();
 
-  await expect(table).toContainText(BOT_DETAILS.botName);
-  await expect(table).toContainText(BOT_DETAILS.description);
+  await expect(
+    page.getByRole('cell', { name: BOT_DETAILS.description })
+  ).toBeVisible();
 
   // Get created bot
   await getCreatedBot(page, { botName });
@@ -219,21 +222,10 @@ export const redirectToBotPage = async (page: Page) => {
   await fetchResponse;
 };
 
-export const resetTokenFromBotPage = async (
-  page: Page,
-  bot: {
-    name: string;
-    testId: string;
-  }
-) => {
-  await settingClick(page, GlobalSettingOptions.BOTS);
-
-  await page.getByTestId('searchbar').click();
-  await page.getByTestId('searchbar').fill(bot.name);
-
-  await expect(page.getByTestId(bot.testId)).toBeVisible();
-
-  await page.getByTestId(bot.testId).click();
+export const resetTokenFromBotPage = async (page: Page, botName: string) => {
+  await page.goto(`/bots/${botName}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('revoke-button')).toBeVisible();
 

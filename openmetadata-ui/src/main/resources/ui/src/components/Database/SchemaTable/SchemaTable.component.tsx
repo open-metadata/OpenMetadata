@@ -27,6 +27,7 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
@@ -38,6 +39,11 @@ import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
   TABLE_SCROLL_VALUE,
 } from '../../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
+  TABLE_COLUMNS_KEYS,
+} from '../../../constants/TableKeys.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
   Column,
@@ -49,8 +55,10 @@ import { TagLabel } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
+import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
   getColumnSorter,
+  getEntityBulkEditPath,
   getEntityName,
   getFrequentlyJoinedColumns,
   highlightSearchArrayElement,
@@ -71,8 +79,8 @@ import {
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../../utils/TableUtils';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -92,6 +100,7 @@ import {
 
 const SchemaTable = () => {
   const { t } = useTranslation();
+  const history = useHistory();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -385,17 +394,13 @@ const SchemaTable = () => {
     >;
   }, [data]);
 
-  const handleSearchAction = (searchValue: string) => {
-    setSearchText(searchValue);
-  };
-
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
         title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        accessor: 'name',
+        dataIndex: TABLE_COLUMNS_KEYS.NAME,
+        key: TABLE_COLUMNS_KEYS.NAME,
+        accessor: TABLE_COLUMNS_KEYS.NAME,
         width: 200,
         fixed: 'left',
         sorter: getColumnSorter<Column, 'name'>('name'),
@@ -411,7 +416,7 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className="m-b-0 d-block text-grey-muted break-word"
+                  className="m-b-0 d-block break-word"
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
@@ -451,25 +456,25 @@ const SchemaTable = () => {
       },
       {
         title: t('label.type'),
-        dataIndex: 'dataTypeDisplay',
-        key: 'dataTypeDisplay',
-        accessor: 'dataTypeDisplay',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        key: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
+        accessor: TABLE_COLUMNS_KEYS.DATA_TYPE_DISPLAY,
         width: 150,
         render: renderDataTypeDisplay,
       },
       {
         title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        accessor: 'description',
+        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+        accessor: TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: 300,
         render: renderDescription,
       },
       {
         title: t('label.tag-plural'),
-        dataIndex: 'tags',
-        key: 'tags',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.TAGS,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 230,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -491,9 +496,9 @@ const SchemaTable = () => {
       },
       {
         title: t('label.glossary-term-plural'),
-        dataIndex: 'tags',
-        key: 'glossary',
-        accessor: 'tags',
+        dataIndex: TABLE_COLUMNS_KEYS.TAGS,
+        key: TABLE_COLUMNS_KEYS.GLOSSARY,
+        accessor: TABLE_COLUMNS_KEYS.TAGS,
         width: 230,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Column, index: number) => (
@@ -515,8 +520,8 @@ const SchemaTable = () => {
       },
       {
         title: t('label.data-quality'),
-        dataIndex: 'dataQualityTest',
-        key: 'dataQualityTest',
+        dataIndex: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
+        key: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         width: 120,
         render: (_, record) => {
           const testCounts = testCaseCounts.find((column) => {
@@ -567,6 +572,12 @@ const SchemaTable = () => {
     </Form.Item>
   );
 
+  const handleEditTable = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn),
+    });
+  };
+
   useEffect(() => {
     setExpandedRowKeys(nestedTableFqnKeys);
   }, [searchText]);
@@ -588,45 +599,56 @@ const SchemaTable = () => {
     }
   }, [data, decodedEntityFqn]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      onSearch: (value: string) => setSearchText(value),
+      onClear: () => setSearchText(''),
+    }),
+    [searchText]
+  );
+
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={8}>
-        <Searchbar
-          removeMargin
-          placeholder={t('message.find-in-table')}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearchAction}
-        />
-      </Col>
+    <Row gutter={[0, 16]}>
       <Col id="schemaDetails" span={24}>
         <Table
-          bordered
-          className="m-b-sm align-table-filter-left"
+          className="align-table-filter-left"
           columns={columns}
           data-testid="entity-table"
           dataSource={data}
+          defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
           expandable={expandableConfig}
+          extraTableFilters={getBulkEditButton(
+            tablePermissions.EditAll && !deleted,
+            handleEditTable
+          )}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
+          searchProps={searchProps}
           size="middle"
+          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />
       </Col>
       {editColumn && (
-        <ModalWithMarkdownEditor
-          header={`${t('label.edit-entity', {
-            entity: t('label.column'),
-          })}: "${getEntityName(editColumn)}"`}
-          placeholder={t('message.enter-column-description')}
-          value={editColumn.description as string}
-          visible={Boolean(editColumn)}
-          onCancel={closeEditColumnModal}
-          onSave={handleEditColumnChange}
-        />
+        <EntityAttachmentProvider
+          entityFqn={editColumn.fullyQualifiedName}
+          entityType={EntityType.TABLE}>
+          <ModalWithMarkdownEditor
+            header={`${t('label.edit-entity', {
+              entity: t('label.column'),
+            })}: "${getEntityName(editColumn)}"`}
+            placeholder={t('message.enter-column-description')}
+            value={editColumn.description as string}
+            visible={Boolean(editColumn)}
+            onCancel={closeEditColumnModal}
+            onSave={handleEditColumnChange}
+          />
+        </EntityAttachmentProvider>
       )}
       {editColumnDisplayName && (
         <EntityNameModal

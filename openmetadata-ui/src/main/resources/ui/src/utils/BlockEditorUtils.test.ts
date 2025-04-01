@@ -62,15 +62,15 @@ describe('getTextFromHtmlString', () => {
 
   it('should handle complex nested structure', () => {
     const input = `
-      <div class="container">
-        <h1>Title</h1>
-        <p>First <strong>paragraph</strong> with <em>emphasis</em></p>
-        <ul>
-          <li>Item 1</li>
-          <li>Item 2</li>
-        </ul>
-      </div>
-    `;
+        <div class="container">
+          <h1>Title</h1>
+          <p>First <strong>paragraph</strong> with <em>emphasis</em></p>
+          <ul>
+            <li>Item 1</li>
+            <li>Item 2</li>
+          </ul>
+        </div>
+      `;
 
     const output = getTextFromHtmlString(input);
 

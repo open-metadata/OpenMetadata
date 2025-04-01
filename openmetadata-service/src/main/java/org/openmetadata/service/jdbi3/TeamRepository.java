@@ -295,7 +295,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  protected void cleanup(Team team) {
+  protected void entitySpecificCleanup(Team team) {
     // When a team is deleted, if the children team don't have another parent, set Organization as
     // the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
@@ -308,18 +308,17 @@ public class TeamRepository extends EntityRepository<Team> {
         LOG.info("Moving parent of team " + childTeam.getId() + " to organization");
       }
     }
-    super.cleanup(team);
   }
 
   @Override
-  public String exportToCsv(String parentTeam, String user) throws IOException {
+  public String exportToCsv(String parentTeam, String user, boolean recursive) throws IOException {
     Team team = getByName(null, parentTeam, Fields.EMPTY_FIELDS); // Validate team name
     return new TeamCsv(team, user).exportCsv();
   }
 
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
     return teamCsv.importCsv(csv, dryRun);
@@ -736,7 +735,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public static class TeamCsv extends EntityCsv<Team> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEAM);
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEAM, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Team team;
 

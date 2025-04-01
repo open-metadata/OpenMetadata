@@ -155,6 +155,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJsonContains;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
@@ -194,6 +195,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   TestCaseResolutionStatusTimeSeriesDAO testCaseResolutionStatusTimeSeriesDao();
+
+  @CreateSqlObject
+  QueryCostTimeSeriesDAO queryCostRecordTimeSeriesDAO();
 
   @CreateSqlObject
   TestCaseResultTimeSeriesDAO testCaseResultTimeSeriesDao();
@@ -891,6 +895,8 @@ public interface CollectionDAO {
     private String fromEntity;
     private String toEntity;
     private int relation;
+    private String json;
+    private String jsonSchema;
   }
 
   @Getter
@@ -997,12 +1003,47 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity,
         @BindList("relation") List<Integer> relation);
 
+    @SqlQuery(
+        "SELECT * FROM entity_relationship er1 JOIN entity_relationship er2  ON er1.toId = er2.toId WHERE er1.relation = 10 AND er1.fromEntity = 'domain' AND er2.fromId = :fromId AND er2.fromEntity = :fromEntity AND er2.relation = 13")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findDownstreamDomains(
+        @BindUUID("fromId") UUID fromId, @Bind("fromEntity") String fromEntity);
+
+    @SqlQuery(
+        "SELECT * FROM entity_relationship er1 JOIN entity_relationship er2  ON er1.toId = er2.fromId WHERE er1.relation = 10 AND er1.fromEntity = 'domain' AND er2.toId = :toId AND er2.toEntity = :toEntity AND er2.relation = 13")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findUpstreamDomains(
+        @BindUUID("toId") UUID toId, @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "select count(*) from entity_relationship where fromId in (select toId from entity_relationship where fromId = :fromDomainId and fromEntity = 'domain' and relation = 10) AND toId in (select toId from entity_relationship where fromId = :toDomainId and fromEntity = 'domain' and relation = 10) and relation = 13")
+    Integer countDomainChildAssets(
+        @BindUUID("fromDomainId") UUID fromDomainId, @BindUUID("toDomainId") UUID toId);
+
+    @SqlQuery(
+        "SELECT * FROM entity_relationship er1 JOIN entity_relationship er2  ON er1.toId = er2.toId WHERE er1.relation = 10 AND er1.fromEntity = 'dataProduct' AND er2.fromId = :fromId AND er2.fromEntity = :fromEntity AND er2.relation = 13")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findDownstreamDataProducts(
+        @BindUUID("fromId") UUID fromId, @Bind("fromEntity") String fromEntity);
+
+    @SqlQuery(
+        "SELECT * FROM entity_relationship er1 JOIN entity_relationship er2  ON er1.toId = er2.fromId WHERE er1.relation = 10 AND er1.fromEntity = 'dataProduct' AND er2.toId = :toId AND er2.toEntity = :toEntity AND er2.relation = 13")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findUpstreamDataProducts(
+        @BindUUID("toId") UUID toId, @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "select count(*) from entity_relationship where fromId in (select toId from entity_relationship where fromId = :fromDataProductId and fromEntity = 'dataProduct' and relation = 10) AND toId in (select toId from entity_relationship where fromId = :toDataProductId and fromEntity = 'dataProduct' and relation = 10) and relation = 13")
+    Integer countDataProductsChildAssets(
+        @BindUUID("fromDataProductId") UUID fromDataProductId,
+        @BindUUID("toDataProductId") UUID toDataProductId);
+
     default List<EntityRelationshipRecord> findTo(UUID fromId, String fromEntity, int relation) {
       return findTo(fromId, fromEntity, List.of(relation));
     }
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
@@ -1017,7 +1058,7 @@ public interface CollectionDAO {
         @Bind("toEntityType") String toEntityType);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
@@ -1100,7 +1141,7 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1110,7 +1151,7 @@ public interface CollectionDAO {
         @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1123,7 +1164,7 @@ public interface CollectionDAO {
         @Bind("fromEntityType") String fromEntityType);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1145,7 +1186,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1177,13 +1218,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
                 + "AND relation = :relation ORDER BY fromId",
         connectionType = POSTGRES)
@@ -1196,13 +1237,13 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+            "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
                 + "AND json->>'source' = :source ORDER BY toId",
         connectionType = POSTGRES)
@@ -1226,6 +1267,22 @@ public interface CollectionDAO {
         @BindUUID("fromId") UUID fromId,
         @BindUUID("toId") UUID toId,
         @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship WHERE fromId = :fromId "
+            + " AND toId = :toId "
+            + " AND relation = :relation ")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    EntityRelationshipObject getRecord(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship where relation = :relation ORDER BY fromId, toId LIMIT :limit OFFSET :offset")
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> getRecordWithOffset(
+        @Bind("relation") int relation, @Bind("offset") long offset, @Bind("limit") int limit);
 
     //
     // Delete Operations
@@ -1350,6 +1407,8 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
+            .jsonSchema(rs.getString("jsonSchema"))
             .build();
       }
     }
@@ -1367,7 +1426,7 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE id = :id")
     String findById(@BindUUID("id") UUID id);
 
-    @SqlQuery("SELECT json FROM thread_entity ORDER BY updatedAt DESC")
+    @SqlQuery("SELECT json FROM thread_entity ORDER BY createdAt DESC")
     List<String> list();
 
     @SqlQuery("SELECT count(id) FROM thread_entity <condition>")
@@ -1390,11 +1449,8 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
     String findByTaskId(@Bind("id") int id);
 
-    @SqlQuery("SELECT json FROM thread_entity <condition> <sortingOrder> LIMIT :limit")
-    List<String> list(
-        @Bind("limit") int limit,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+    @SqlQuery("SELECT json FROM thread_entity <condition> ORDER BY createdAt DESC LIMIT :limit")
+    List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT json FROM thread_entity "
@@ -1413,22 +1469,21 @@ public interface CollectionDAO {
         value =
             "SELECT json FROM thread_entity <condition> AND "
                 + "to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + "<sortingOrder>  "
+                + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> AND "
                 + "MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + "<sortingOrder> "
+                + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     List<String> listTasksAssigned(
         @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("limit") int limit,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1449,14 +1504,14 @@ public interface CollectionDAO {
         value =
             "SELECT json FROM thread_entity <condition> "
                 + "AND (to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) OR createdBy = :username) "
-                + "<sortingOrder>  "
+                + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> "
                 + "AND (MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) OR createdBy = :username) "
-                + "<sortingOrder> "
+                + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     List<String> listTasksOfUser(
@@ -1464,8 +1519,7 @@ public interface CollectionDAO {
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("username") String username,
         @Bind("limit") int limit,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT id FROM thread_entity WHERE type = 'Conversation' AND createdAt < :cutoffMillis LIMIT :batchSize")
@@ -1489,12 +1543,11 @@ public interface CollectionDAO {
         @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND createdBy = :username <sortingOrder> LIMIT :limit")
+        "SELECT json FROM thread_entity <condition> AND createdBy = :username ORDER BY createdAt DESC LIMIT :limit")
     List<String> listTasksAssigned(
         @Bind("username") String username,
         @Bind("limit") int limit,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     @SqlQuery("SELECT count(id) FROM thread_entity <condition> AND createdBy = :username")
     int listCountTasksAssignedBy(
@@ -1507,14 +1560,13 @@ public interface CollectionDAO {
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
             + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
-            + "<sortingOrder> "
+            + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByOwner(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
@@ -1554,8 +1606,7 @@ public interface CollectionDAO {
           userName,
           teamNames,
           filterRelation,
-          filter.getCondition(),
-          filter.getSortingOrder());
+          filter.getCondition());
     }
 
     @SqlQuery(
@@ -1566,7 +1617,7 @@ public interface CollectionDAO {
             + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
-            + "<sortingOrder> "
+            + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLink(
         @BindConcat(
@@ -1585,8 +1636,7 @@ public interface CollectionDAO {
         @BindFQN("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("filterRelation") int filterRelation,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     default int listCountThreadsByEntityLink(
         FeedFilter filter,
@@ -1677,6 +1727,26 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT COUNT(te.id) AS count "
+                + "FROM thread_entity te "
+                + "WHERE te.type = 'Announcement' "
+                + "  AND te.entityLink = :entityLink "
+                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
+                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(te.id) AS count "
+                + "FROM thread_entity te "
+                + "WHERE te.type = 'Announcement' "
+                + "  AND te.entityLink = :entityLink "
+                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
+                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
+        connectionType = POSTGRES)
+    int countActiveAnnouncement(@Bind("entityLink") String entityLink);
+
+    @ConnectionAwareSqlQuery(
+        value =
             "SELECT combined.type, combined.taskStatus, COUNT(combined.id) AS count "
                 + "FROM ( "
                 + "    SELECT te.type, te.taskStatus, te.id  "
@@ -1757,15 +1827,14 @@ public interface CollectionDAO {
             + "SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
-            + "<sortingOrder> "
+            + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByFollows(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
@@ -1781,7 +1850,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM ( "
-            + "    SELECT json, updatedAt, id FROM thread_entity te "
+            + "    SELECT json, createdAt FROM thread_entity te "
             + "     <condition> AND entityId IN ( "
             + "        SELECT toId FROM entity_relationship er "
             + "        WHERE er.relation = 8 "
@@ -1791,7 +1860,7 @@ public interface CollectionDAO {
             + "        ) "
             + "    )  "
             + "    UNION   "
-            + "    SELECT json, updatedAt, id FROM thread_entity te  "
+            + "    SELECT json, createdAt FROM thread_entity te  "
             + "     <condition> AND id IN ( "
             + "        SELECT toId FROM entity_relationship er  "
             + "        WHERE er.toEntity = 'THREAD'  "
@@ -1800,7 +1869,7 @@ public interface CollectionDAO {
             + "        AND er.fromId = :userId  "
             + "    )  "
             + "    UNION   "
-            + "    SELECT json, updatedAt, id FROM thread_entity te  "
+            + "    SELECT json, createdAt FROM thread_entity te  "
             + "     <condition> AND id IN ( "
             + "        SELECT toId FROM entity_relationship er  "
             + "        WHERE er.relation = 11  "
@@ -1810,14 +1879,13 @@ public interface CollectionDAO {
             + "        ) "
             + "    )  "
             + ") AS combined  "
-            + "<sortingOrder>  "
+            + "ORDER BY createdAt DESC  "
             + "LIMIT :limit")
     List<String> listThreadsByOwnerOrFollows(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT COUNT(id) FROM ( "
@@ -1861,15 +1929,14 @@ public interface CollectionDAO {
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
-            + "<sortingOrder> "
+            + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByMentions(
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
@@ -1892,7 +1959,7 @@ public interface CollectionDAO {
             + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
-            + "<sortingOrder> "
+            + "ORDER BY createdAt DESC "
             + "LIMIT :limit")
     List<String> listThreadsByGlossaryAndTerms(
         @BindConcat(
@@ -1916,8 +1983,7 @@ public interface CollectionDAO {
         @BindFQN("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("filterRelation") int filterRelation,
-        @Define("condition") String condition,
-        @Define("sortingOrder") String sortingOrder);
+        @Define("condition") String condition);
 
     default List<List<String>> listCountThreadsByGlossaryAndTerms(
         EntityLink entityLink, EntityReference reference) {
@@ -3862,9 +3928,9 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT te.id "
             + "FROM team_entity te "
-            + "WHERE te.id NOT IN (SELECT :teamId) UNION "
+            + "WHERE te.id NOT IN ((SELECT :teamId) UNION "
             + "(SELECT toId FROM entity_relationship "
-            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team')")
+            + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team'))")
     List<String> listTeamsUnderOrganization(
         @BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
   }
@@ -5040,32 +5106,54 @@ public interface CollectionDAO {
     void delete(@Bind("appId") String appId, @Bind("extension") String extension);
 
     @SqlQuery(
-        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension")
-    int listAppExtensionCount(@Bind("appId") String appId, @Bind("extension") String extension);
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND <service_filter>")
+    int listAppExtensionCount(
+        @Bind("appId") String appId,
+        @Bind("extension") String extension,
+        @BindJsonContains(value = "service_filter", path = "$.services", property = "id")
+            UUID service);
 
     @SqlQuery(
-        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime")
+        "SELECT count(*) FROM apps_extension_time_series where appId = :appId and extension = :extension AND timestamp > :startTime AND <service_filter>")
     int listAppExtensionCountAfterTime(
         @Bind("appId") String appId,
         @Bind("startTime") long startTime,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND <service_filter> ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppExtension(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     @SqlQuery(
-        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+        "SELECT json FROM apps_extension_time_series where appId = :appId AND extension = :extension AND timestamp > :startTime AND <service_filter> ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
     List<String> listAppExtensionAfterTime(
         @Bind("appId") String appId,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
         @Bind("startTime") long startTime,
-        @Bind("extension") String extension);
+        @Bind("extension") String extension,
+        @BindJsonContains(
+                value = "service_filter",
+                path = "$.services",
+                property = "id",
+                ifNull = "TRUE")
+            UUID service);
 
     // Prepare methods to get extension by name instead of ID
     // For example, for limits we need to fetch by app name to ensure if we reinstall the app,
@@ -5098,6 +5186,19 @@ public interface CollectionDAO {
         @Bind("offset") int offset,
         @Bind("startTime") long startTime,
         @Bind("extension") String extension);
+
+    default List<String> listAppExtensionAfterTime(
+        String appId, int limit, int offset, long startTime, String extension) {
+      return listAppExtensionAfterTime(appId, limit, offset, startTime, extension, null);
+    }
+
+    default int listAppExtensionCountAfterTime(String appName, long startTime, String extension) {
+      return listAppExtensionCountAfterTime(appName, startTime, extension, null);
+    }
+
+    default List<String> listAppExtension(String appName, int limit, int offset, String extension) {
+      return listAppExtension(appName, limit, offset, extension, null);
+    }
   }
 
   interface ReportDataTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -5164,6 +5265,34 @@ public interface CollectionDAO {
         String incidentStateId) {
       insert(getTimeSeriesTableName(), entityFQNHash, extension, jsonSchema, json, incidentStateId);
     }
+  }
+
+  interface QueryCostTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "query_cost_time_series";
+    }
+
+    // TODO: Do not change id on override... updating json changed the id as well
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :jsonSchema, :json) ON DUPLICATE KEY UPDATE"
+                + "    json = VALUES(json);",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO <table>(entityFQNHash, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (entityFQNHash, timestamp) "
+                + "DO UPDATE SET "
+                + "json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertWithoutExtension(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") String json);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -6070,5 +6199,12 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "workflow_instance_state_time_series";
     }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceId = :workflowInstanceId AND stage = :stage ORDER BY timestamp DESC")
+    List<String> listWorkflowInstanceStateForStage(
+        @Bind("workflowInstanceId") String workflowInstanceId, @Bind("stage") String stage);
   }
 }

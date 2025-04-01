@@ -54,6 +54,7 @@ import {
   ENTITIES_SUMMARY_LIST,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
+import { SystemChartType } from '../enums/DataInsight.enum';
 import {
   DataInsightChartResult,
   DataInsightChartType,
@@ -64,10 +65,7 @@ import {
   DataInsightChartTooltipProps,
   DataInsightTabs,
 } from '../interface/data-insight.interface';
-import {
-  DataInsightCustomChartResult,
-  SystemChartType,
-} from '../rest/DataInsightAPI';
+import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import { entityChartColor } from '../utils/CommonUtils';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';

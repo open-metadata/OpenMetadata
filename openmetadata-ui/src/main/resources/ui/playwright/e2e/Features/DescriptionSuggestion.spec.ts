@@ -15,10 +15,11 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { createTableSuggestions } from '../../utils/suggestions';
+import { createTableDescriptionSuggestions } from '../../utils/suggestions';
 import { performUserLogin } from '../../utils/user';
 
 const table = new TableClass();
+const table2 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
 let entityLinkList: string[];
@@ -29,6 +30,7 @@ test.describe('Description Suggestions Table Entity', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table.create(apiContext);
+    await table2.create(apiContext);
 
     entityLinkList = table.entityLinkColumnsName.map(
       (entityLinkName) =>
@@ -39,7 +41,7 @@ test.describe('Description Suggestions Table Entity', () => {
 
     // Create suggestions for both users
     for (const entityLink of entityLinkList) {
-      await createTableSuggestions(apiContext, entityLink);
+      await createTableDescriptionSuggestions(apiContext, entityLink);
     }
 
     await afterAction();
@@ -48,6 +50,7 @@ test.describe('Description Suggestions Table Entity', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table.delete(apiContext);
+    await table2.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
     await afterAction();
@@ -80,7 +83,9 @@ test.describe('Description Suggestions Table Entity', () => {
       await expect(page.getByTestId('close-suggestion')).toBeVisible();
 
       // All Column Suggestions Card should be visible
-      await expect(page.locator('.suggested-description-card')).toHaveCount(6);
+      await expect(
+        page.getByTestId('suggested-SuggestDescription-card')
+      ).toHaveCount(6);
 
       // Close the suggestions
       await page.getByTestId('close-suggestion').click();
@@ -222,8 +227,8 @@ test.describe('Description Suggestions Table Entity', () => {
       await performUserLogin(browser, user2);
 
     for (const entityLink of entityLinkList) {
-      await createTableSuggestions(apiContext2, entityLink);
-      await createTableSuggestions(apiContext3, entityLink);
+      await createTableDescriptionSuggestions(apiContext2, entityLink);
+      await createTableDescriptionSuggestions(apiContext3, entityLink);
     }
 
     await redirectToHomePage(page);
@@ -247,5 +252,30 @@ test.describe('Description Suggestions Table Entity', () => {
     await afterAction();
     await afterAction2();
     await afterAction3();
+  });
+
+  test('Should fetch initial 10 suggestions on entity change from table1 to table2', async ({
+    browser,
+  }) => {
+    // Jumping from one table to another table to check if the suggestions are fetched correctly
+    // due to provider boundary on entity.
+
+    const { page, afterAction } = await performAdminLogin(browser);
+
+    await redirectToHomePage(page);
+
+    const suggestionFetchCallResponse = page.waitForResponse(
+      '/api/v1/suggestions?entityFQN=*&limit=10'
+    );
+    await table2.visitEntityPage(page);
+    await suggestionFetchCallResponse;
+
+    const suggestionFetchCallResponse2 = page.waitForResponse(
+      '/api/v1/suggestions?entityFQN=*&limit=10'
+    );
+    await table.visitEntityPage(page);
+    await suggestionFetchCallResponse2;
+
+    await afterAction();
   });
 });

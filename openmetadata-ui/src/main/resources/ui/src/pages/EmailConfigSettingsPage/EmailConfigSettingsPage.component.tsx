@@ -152,8 +152,11 @@ function EmailConfigSettingsPage() {
   }, []);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.email')}>
-      <Row align="middle" className="page-container" gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.email-configuration')}>
+      <Row
+        align="middle"
+        className="page-container service-form-container"
+        gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

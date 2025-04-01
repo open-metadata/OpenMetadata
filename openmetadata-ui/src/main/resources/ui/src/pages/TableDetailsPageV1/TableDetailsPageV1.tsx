@@ -31,11 +31,7 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -54,7 +50,10 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Table, TableType } from '../../generated/entity/data/table';
-import { Suggestion } from '../../generated/entity/feed/suggestion';
+import {
+  Suggestion,
+  SuggestionType,
+} from '../../generated/entity/feed/suggestion';
 import { PageType } from '../../generated/system/ui/page';
 import { TestSummary } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -89,6 +88,7 @@ import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
   getJoinsFromTableJoins,
@@ -98,7 +98,6 @@ import {
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import './table-details-page-v1.less';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -123,7 +122,7 @@ const TableDetailsPageV1: React.FC = () => {
   );
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
-  const { customizedPage } = useCustomPages(PageType.Table);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Table);
 
   const tableFqn = useMemo(
     () =>
@@ -157,9 +156,10 @@ const TableDetailsPageV1: React.FC = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.TABLE,
         tableFqn,
-        tablePermissions
+        tablePermissions,
+        tableDetails?.deleted ?? false
       ),
-    [tablePermissions, tableFqn]
+    [tablePermissions, tableFqn, tableDetails?.deleted]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
@@ -495,7 +495,7 @@ const TableDetailsPageV1: React.FC = () => {
       activeTab,
       deleted,
       tableDetails,
-      totalFeedCount: feedCount.totalCount,
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
@@ -668,7 +668,7 @@ const TableDetailsPageV1: React.FC = () => {
     }));
   }, []);
 
-  const updateDescriptionFromSuggestions = useCallback(
+  const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
       setTableDetails((prev) => {
         if (!prev) {
@@ -687,14 +687,18 @@ const TableDetailsPageV1: React.FC = () => {
         if (!activeCol) {
           return {
             ...prev,
-            description: suggestion.description,
+            ...(suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels }),
           };
         } else {
           const updatedColumns = prev.columns.map((column) => {
             if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
               return {
                 ...column,
-                description: suggestion.description,
+                ...(suggestion.type === SuggestionType.SuggestDescription
+                  ? { description: suggestion.description }
+                  : { tags: suggestion.tagLabels }),
               };
             } else {
               return column;
@@ -730,7 +734,7 @@ const TableDetailsPageV1: React.FC = () => {
   useSub(
     'updateDetails',
     (suggestion: Suggestion) => {
-      updateDescriptionFromSuggestions(suggestion);
+      updateDescriptionTagFromSuggestions(suggestion);
     },
     [tableDetails]
   );
@@ -747,7 +751,7 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || isLoading) {
     return <Loader />;
   }
 
@@ -761,7 +765,6 @@ const TableDetailsPageV1: React.FC = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.table'),
       })}
@@ -774,7 +777,7 @@ const TableDetailsPageV1: React.FC = () => {
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <Col data-testid="entity-page-header" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -798,12 +801,8 @@ const TableDetailsPageV1: React.FC = () => {
           {/* Entity Tabs */}
           <Col span={24}>
             <Tabs
-              activeKey={
-                isTourOpen
-                  ? activeTabForTourDatasetPage
-                  : activeTab ?? EntityTabs.SCHEMA
-              }
-              className="table-details-page-tabs entity-details-page-tabs"
+              activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

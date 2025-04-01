@@ -34,6 +34,7 @@ import TagsSummary from '../components/Explore/EntitySummaryPanel/TagsSummary/Ta
 import MetricExpression from '../components/Metric/MetricExpression/MetricExpression';
 import RelatedMetrics from '../components/Metric/RelatedMetrics/RelatedMetrics';
 import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { CustomizeEntityType } from '../constants/Customize.constants';
 import { SummaryListHighlightKeys } from '../constants/EntitySummaryPanelUtils.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
@@ -411,7 +412,7 @@ export const getEntityChildDetails = (
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
         <Typography.Text data-testid="no-data-message">
-          <Typography.Text className="text-grey-body">
+          <Typography.Text className="no-data-chip-placeholder">
             {i18n.t('message.no-data-available')}
           </Typography.Text>
         </Typography.Text>
@@ -575,7 +576,7 @@ export const getEntityChildDetails = (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
           <MetricExpression />
         </GenericProvider>
@@ -585,7 +586,7 @@ export const getEntityChildDetails = (
         <GenericProvider<Metric>
           data={entityInfo as Metric}
           permissions={{} as OperationPermission}
-          type={EntityType.METRIC}
+          type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={() => Promise.resolve()}>
           <RelatedMetrics isInSummaryPanel />
         </GenericProvider>
@@ -671,10 +672,7 @@ export const getEntityChildDetails = (
   }
 
   return (
-    <Row
-      className="p-md border-radius-card"
-      gutter={[0, 8]}
-      style={{ background: '#f5f5f5' }}>
+    <Row className="p-md border-radius-card summary-panel-card" gutter={[0, 8]}>
       <Col span={24}>
         <Typography.Text
           className="summary-panel-section-title"

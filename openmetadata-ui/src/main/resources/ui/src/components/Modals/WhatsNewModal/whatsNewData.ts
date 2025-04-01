@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_6_5'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_6_7'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1639,6 +1639,79 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 -   Fix snowflake lineage Key Error
 -   Fix iframe SSO setup
 -   Support pagination for container children`,
+    },
+  },
+  {
+    id: 62,
+    version: 'v1.6.6',
+    description: 'Released on 14th March 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Added loggedInAPI to show more specific error messages instead of generic ones
+-   Added support for \`/logout\` path to perform logout from API redirect
+-   Added displayName field in the \`createCustomProperty\` schema
+-   Improved search relevancy for plural/singular words and partial matches
+-   Introduced "clear sample" option in entity config to support explicit null
+-   Made domain a required field for Data Product creation
+-   Enabled showdown rendering options`,
+
+      Fixes: `-   Fixed Snowflake ARRAY column ingestion issues
+-   Fixed Sigma workbook ingestion
+-   Fixed tomcat-jdbc dependency
+-   Fixed schema URL construction
+-   Fixed Redshift view logging for no schema binding
+-   Fixed OpenMetadata Operations
+-   Added support for datatype=array without type consistency
+-   Added result_maker check for query share URL in Looker
+-   Supported request schema field for OpenAPI lineage when response field is absent
+-   Fixed tour page clicking issues
+-   Fixed duplicate activity feed providers
+-   Fixed search query for non-admin pages
+-   Fixed other columns visibility when testSuite name is large
+-   Fixed task description viewer for diff creation
+-   Fixed inherited owner not updating in Data Product list
+-   Fixed user update roles
+-   Fixed table constraint error
+-   Fixed manual constraints deletion
+-   Fixed deletion of entities
+-   Fixed entity relation live indexing
+-   Fixed service creation error display
+-   Improved memory handling in temp table lineage
+-   Enhanced Column Name Scanner
+-   Improved pipeline service client exception handling
+-   Updated Tableau documentation in Connectors
+-   Optimized pipeline service client initialization
+-   Implemented Incremental Lineage Processing
+-   Don't overwrite query to execute
+-   Fixed external app logs
+-   Fixed incremental lineage processing when processedLineage is null`,
+    },
+  },
+  {
+    id: 63,
+    version: 'v1.6.7',
+    description: 'Released on 28th March 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Lineage Improvements
+-   Added Tableau Custom SQL lineage support
+-   Added column count validation when creating table-type custom property
+-   Transformed Reserved keywords like quotes to OM compatible
+-   Added missing timestamp indexes for time series tables
+-   Enhancing FQN Handling: Support for Quoted Identifiers`,
+
+      Fixes: `-   Fixed potential Okta login issues by clearing state to avoid login errors
+-   Fixed MariaDB profiling with Time datatype
+-   Fixed handling of Sample Data with non-utf8 characters
+-   Fixed test connection showing timeout after successful connection
+-   Fixed DBT logs and improved error handling
+-   Fixed Test Suite 'NoneType' object has no attribute 'id' handling
+-   Fixed delete entity relation live indexing
+-   Fixed Data Insights Data Stream deletion on OpenSearch
+-   Fixed soft delete and restore functionality
+-   Corrected childrenCount for Organizations in Teams
+-   Fixed custom dashboard issue with term type of data
+-   Lower training window for Collate Anomaly detection model ${CollateIconWithLinkMD}`,
     },
   },
 ];

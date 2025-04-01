@@ -40,8 +40,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
@@ -92,6 +92,7 @@ import {
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -440,18 +441,33 @@ const AssetsTabs = forwardRef(
         !permissions.Create
       ) {
         return (
-          <ErrorPlaceHolder>
+          <ErrorPlaceHolderNew
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }>
             {isObject(noDataPlaceholder) && (
-              <Typography.Paragraph>
-                {noDataPlaceholder.message}
-              </Typography.Paragraph>
+              <div className="gap-4">
+                <Typography.Paragraph>
+                  {noDataPlaceholder.message}
+                </Typography.Paragraph>
+              </div>
             )}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolderNew>
         );
       } else {
         return (
-          <ErrorPlaceHolder
-            icon={<AddPlaceHolderIcon className="h-32 w-32" />}
+          <ErrorPlaceHolderNew
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph>
               {noDataPlaceholder ??
@@ -497,7 +513,7 @@ const AssetsTabs = forwardRef(
                 </Button>
               </Tooltip>
             )}
-          </ErrorPlaceHolder>
+          </ErrorPlaceHolderNew>
         );
       }
     }, [
@@ -646,7 +662,7 @@ const AssetsTabs = forwardRef(
         activeEntity &&
         permissions.Create &&
         data.length > 0 && (
-          <div className="w-full d-flex justify-between items-center">
+          <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -792,7 +808,7 @@ const AssetsTabs = forwardRef(
       <>
         <div
           className={classNames(
-            'assets-tab-container relative bg-white p-box border-radius-card'
+            'assets-tab-container relative bg-white p-box border-radius-card h-full'
           )}
           data-testid="table-container"
           id="asset-tab">
@@ -846,7 +862,7 @@ const AssetsTabs = forwardRef(
             )}
             {isLoading ? (
               <Col span={24}>
-                <Space direction="vertical" size={16}>
+                <Space className="w-full" direction="vertical" size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
@@ -875,7 +891,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && permissions?.EditAll && (
+        {!isLoading && permissions?.EditAll && assetCount > 0 && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

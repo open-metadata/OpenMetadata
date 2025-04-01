@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -23,6 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
   APICollectionSource,
@@ -66,12 +67,16 @@ type SuggestionProp = {
   searchCriteria?: SearchIndex;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
+  isNLPActive?: boolean;
+  onSearchTextUpdate?: (text: string) => void;
 };
 
 const Suggestions = ({
   searchText,
   setIsOpen,
   searchCriteria,
+  isNLPActive = false,
+  onSearchTextUpdate,
 }: SuggestionProp) => {
   const { t } = useTranslation();
   const { isTourOpen } = useTourProvider();
@@ -281,6 +286,10 @@ const Suggestions = ({
   };
 
   const fetchSearchData = useCallback(async () => {
+    if (isNLPActive) {
+      return;
+    }
+
     try {
       setIsLoading(true);
 
@@ -318,8 +327,48 @@ const Suggestions = ({
     isMounting.current = false;
   }, []);
 
+  // Add a function to render AI query suggestions
+  const renderAIQuerySuggestions = () => {
+    const aiQueries = [
+      'Tables owned by marketing',
+      'Tables with Tier1 classification',
+      'Find dashboards tagged with PII.Sensitive',
+      'Topics with schema fields containing address',
+      'Tables tagged with tier1 or tier2',
+    ];
+
+    return (
+      <div data-testid="ai-query-suggestions">
+        <Typography.Text strong className="m-b-sm d-block">
+          {t('label.ai-queries')}
+        </Typography.Text>
+        {aiQueries.map((query) => (
+          <Button
+            block
+            className="m-b-md w-100 text-left d-flex items-center p-0"
+            data-testid="nlp-suggestions-button"
+            icon={
+              <div className="nlp-button w-6 h-6 flex-center m-r-md">
+                <IconSuggestionsBlue />
+              </div>
+            }
+            key={query}
+            type="text"
+            onClick={() => onSearchTextUpdate?.(query)}>
+            {query}
+          </Button>
+        ))}
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <Loader />;
+  }
+
+  // Add a condition to show AI query suggestions when searchText is empty and isNLPActive is true
+  if (isEmpty(searchText) && isNLPActive) {
+    return renderAIQuerySuggestions();
   }
 
   if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {

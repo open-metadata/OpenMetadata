@@ -102,36 +102,48 @@ public class DataInsightsApp extends AbstractNativeApplication {
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
       searchInterface =
           new ElasticSearchDataInsightsClient(
-              (RestClient) searchRepository.getSearchClient().getLowLevelClient());
+              (RestClient) searchRepository.getSearchClient().getLowLevelClient(),
+              searchRepository.getClusterAlias());
     } else {
       searchInterface =
           new OpenSearchDataInsightsClient(
               (os.org.opensearch.client.RestClient)
-                  searchRepository.getSearchClient().getLowLevelClient());
+                  searchRepository.getSearchClient().getLowLevelClient(),
+              searchRepository.getClusterAlias());
     }
     return searchInterface;
   }
 
-  public static String getDataStreamName(String dataAssetType) {
-    return String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+  public static String getDataStreamName(String prefix, String dataAssetType) {
+    String dataStreamName =
+        String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+    if (!(prefix == null || prefix.isEmpty())) {
+      dataStreamName = String.format("%s-%s", prefix, dataStreamName);
+    }
+    return dataStreamName;
   }
 
   private void createIndexInternal(String entityType) throws IOException {
     IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
     if (!searchRepository.indexExists(resultIndexType)) {
+      LOG.info(String.format("[Data Insights] Creating Index for Entity Type: '%s'", entityType));
       searchRepository.createIndex(resultIndexType);
     }
     DataInsightsSearchInterface searchInterface = getSearchInterface();
-    if (!searchInterface.dataAssetDataStreamExists(getDataStreamName(entityType))) {
+    if (!searchInterface.dataAssetDataStreamExists(
+        getDataStreamName(searchRepository.getClusterAlias(), entityType))) {
+      LOG.info(String.format("[Data Insights] Creating Index for Entity Type: '%s'", entityType));
       searchRepository
           .getSearchClient()
-          .addIndexAlias(resultIndexType, getDataStreamName(entityType));
+          .addIndexAlias(
+              resultIndexType, getDataStreamName(searchRepository.getClusterAlias(), entityType));
     }
   }
 
   private void deleteIndexInternal(String entityType) {
     IndexMapping resultIndexType = searchRepository.getIndexMapping(entityType);
     if (searchRepository.indexExists(resultIndexType)) {
+      LOG.info(String.format("[Data Insights] Deleting Index for Entity Type: '%s'", entityType));
       searchRepository.deleteIndex(resultIndexType);
     }
   }
@@ -164,7 +176,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       for (String dataAssetType : dataAssetTypes) {
         IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
-        String dataStreamName = getDataStreamName(dataAssetType);
+        String dataStreamName =
+            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
               dataStreamName,
@@ -186,7 +199,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     try {
       for (String dataAssetType : dataAssetTypes) {
-        String dataStreamName = getDataStreamName(dataAssetType);
+        String dataStreamName =
+            getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
         if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.deleteDataAssetDataStream(dataStreamName);
         }

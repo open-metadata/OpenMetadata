@@ -15,6 +15,7 @@ import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -77,6 +78,8 @@ export const getMlModelDetailsPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.MLMODEL}
+          feedCount={feedCount}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={fetchEntityFeedCount}
           onUpdateEntityDetails={fetchMlModel}
           onUpdateFeedCount={handleFeedCount}
@@ -129,13 +132,11 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: mlModelDetail && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.MLMODEL>
-            entityType={EntityType.MLMODEL}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.MLMODEL>
+          entityType={EntityType.MLMODEL}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

@@ -18,7 +18,6 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { getVersionPath } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
 import {
@@ -34,6 +33,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getVersionPath } from '../../../../utils/RouterUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
@@ -192,14 +192,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={false}
-              hasPermission={entityPermissions.ViewAll}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
         ),
       },
     ],
@@ -241,7 +239,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 onUpdate={() => Promise.resolve()}>
                 <Col span={24}>
                   <Tabs
-                    activeKey={tab ?? EntityTabs.MODEL}
+                    activeKey={tab}
                     items={tabItems}
                     onChange={handleTabChange}
                   />

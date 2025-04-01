@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
@@ -94,6 +95,8 @@ export const getDashboardDetailPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DASHBOARD}
+          feedCount={feedCount}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDashboard}
           onUpdateFeedCount={handleFeedCount}
@@ -123,13 +126,11 @@ export const getDashboardDetailPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DASHBOARD>
-            entityType={EntityType.DASHBOARD}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DASHBOARD>
+          entityType={EntityType.DASHBOARD}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

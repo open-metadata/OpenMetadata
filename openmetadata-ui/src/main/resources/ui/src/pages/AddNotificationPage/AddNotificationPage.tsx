@@ -47,6 +47,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -60,6 +61,7 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -71,10 +73,10 @@ import {
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
 
 const AddNotificationPage = () => {
-  const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
+  const { t } = useTranslation();
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
@@ -222,9 +224,9 @@ const AddNotificationPage = () => {
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-containere',
         children: (
-          <div className="steps-form-container">
+          <div className="steps-form-container service-form-container">
             <Row className="page-container" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -347,7 +349,9 @@ const AddNotificationPage = () => {
         minWidth: 700,
         flex: 0.7,
       }}
-      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.notification-alert'),
+      })}
       secondPanel={{
         children: <></>,
         minWidth: 0,
@@ -357,4 +361,8 @@ const AddNotificationPage = () => {
   );
 };
 
-export default AddNotificationPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.notification-alert'),
+  })
+)(AddNotificationPage);

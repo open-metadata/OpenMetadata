@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Space, Typography } from 'antd';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
@@ -18,6 +18,7 @@ import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
+import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../components/common/ResizablePanels/ResizablePanels';
@@ -144,7 +145,24 @@ export const getQueryFilterToExcludeDomainTerms = (
 export const getQueryFilterForDomain = (domainFqn: string) => ({
   query: {
     bool: {
-      must: [{ prefix: { 'domain.fullyQualifiedName': domainFqn } }],
+      must: [
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'domain.fullyQualifiedName': domainFqn,
+                },
+              },
+              {
+                prefix: {
+                  'domain.fullyQualifiedName': `${domainFqn}.`,
+                },
+              },
+            ],
+          },
+        },
+      ],
       must_not: [
         {
           term: {
@@ -213,17 +231,20 @@ export const renderDomainLink = (
   showDomainHeading: boolean,
   textClassName?: string
 ) => (
-  <Link
-    className={classNames(
-      'no-underline domain-link',
-      { 'text-xs': !showDomainHeading },
-      textClassName
-    )}
-    data-testid="domain-link"
-    style={{ color: '#535862', marginBottom: '8px' }}
-    to={getDomainPath(domain?.fullyQualifiedName)}>
-    {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
-  </Link>
+  <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
+    <Link
+      className={classNames(
+        'no-underline domain-link domain-link-text font-medium',
+        { 'text-sm': !showDomainHeading },
+        textClassName
+      )}
+      data-testid="domain-link"
+      to={getDomainPath(domain?.fullyQualifiedName)}>
+      {isUndefined(domainDisplayName)
+        ? getEntityName(domain)
+        : domainDisplayName}
+    </Link>
+  </Tooltip>
 );
 
 export const initializeDomainEntityRef = (
@@ -445,6 +466,24 @@ export const getDomainDetailTabs = ({
               />
             ),
           },
+          {
+            label: (
+              <TabsLabel
+                id={EntityTabs.CUSTOM_PROPERTIES}
+                name={i18n.t('label.custom-property-plural')}
+              />
+            ),
+            key: EntityTabs.CUSTOM_PROPERTIES,
+            children: (
+              <CustomPropertyTable<EntityType.DOMAIN>
+                entityType={EntityType.DOMAIN}
+                hasEditAccess={
+                  domainPermission.EditAll || domainPermission.EditCustomFields
+                }
+                hasPermission={domainPermission.ViewAll}
+              />
+            ),
+          },
         ]
       : []),
   ];
@@ -452,9 +491,9 @@ export const getDomainDetailTabs = ({
 
 export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
-    return <DomainExpertWidget />;
+    return <DomainExpertWidget newLook />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
-    return <DomainTypeWidget />;
+    return <DomainTypeWidget newLook />;
   }
 
   return (

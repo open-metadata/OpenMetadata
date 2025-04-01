@@ -32,10 +32,7 @@ import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
-import {
-  ENTITY_PATH,
-  getAddCustomPropertyPath,
-} from '../../constants/constants';
+import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -48,6 +45,7 @@ import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getAddCustomPropertyPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-properties-pageV1.less';
 
@@ -178,6 +176,9 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.storedProcedures:
         return PAGE_HEADERS.STORED_PROCEDURE_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.domains:
+        return PAGE_HEADERS.DOMAIN_CUSTOM_ATTRIBUTES;
+
       case ENTITY_PATH.glossaryTerm:
         return PAGE_HEADERS.GLOSSARY_TERM_CUSTOM_ATTRIBUTES;
 
@@ -283,10 +284,7 @@ const CustomEntityDetailV1 = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.custom-property')}>
-      <Row
-        className="page-container"
-        data-testid="custom-entity-container"
-        gutter={[0, 16]}>
+      <Row data-testid="custom-entity-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

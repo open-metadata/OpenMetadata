@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
-import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
@@ -37,6 +38,8 @@ interface ActivityFeedListV1Props {
   selectedThread?: Thread;
   onAfterClose?: () => void;
   onUpdateEntityDetails?: () => void;
+  handlePanelResize?: (isFullWidth: boolean) => void;
+  isFullWidth?: boolean;
 }
 
 const ActivityFeedListV1New = ({
@@ -51,10 +54,12 @@ const ActivityFeedListV1New = ({
   activeFeedId,
   hidePopover = false,
   isForFeedTab = false,
+  isFullWidth,
   emptyPlaceholderText,
   selectedThread,
   onAfterClose,
   onUpdateEntityDetails,
+  handlePanelResize,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -72,14 +77,24 @@ const ActivityFeedListV1New = ({
     }
   }, [entityThread, selectedThread, onFeedClick]);
 
+  useEffect(() => {
+    if (isEmpty(feedList) && handlePanelResize) {
+      handlePanelResize?.(true);
+    } else {
+      handlePanelResize?.(false);
+    }
+  }, [feedList]);
+
   const feeds = useMemo(
     () =>
       entityThread.map((feed) => (
         <FeedPanelBodyV1New
           feed={feed}
+          handlePanelResize={handlePanelResize}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
           isForFeedTab={isForFeedTab}
+          isFullWidth={isFullWidth}
           key={feed.id}
           showThread={showThread}
           onAfterClose={onAfterClose}
@@ -94,33 +109,42 @@ const ActivityFeedListV1New = ({
       hidePopover,
       isForFeedTab,
       showThread,
+      isFullWidth,
     ]
   );
-
-  if (isLoading) {
+  if (isLoading && isForFeedTab) {
     return <Loader />;
   }
 
-  if (isEmpty(entityThread)) {
+  if (isEmpty(entityThread) && !isLoading) {
     return (
       <div
-        className="h-full p-x-md"
+        className="p-x-md no-data-placeholder-container"
         data-testid="no-data-placeholder-container"
         id="feedData">
-        <ErrorPlaceHolder
-          icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
+        <ErrorPlaceHolderNew
+          icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph
-            className="tw-max-w-md"
+            className="placeholder-text"
             style={{ marginBottom: '0' }}>
             {emptyPlaceholderText}
           </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolderNew>
       </div>
     );
   }
 
-  return <>{feeds}</>;
+  return (
+    <div
+      className={classNames({
+        'feed-widget-padding': isForFeedTab,
+        'activity-feed-tab-padding': !isForFeedTab,
+      })}
+      id="feedData">
+      {feeds}
+    </div>
+  );
 };
 
 export default ActivityFeedListV1New;

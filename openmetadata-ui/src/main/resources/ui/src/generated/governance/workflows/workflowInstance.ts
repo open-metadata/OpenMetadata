@@ -17,11 +17,8 @@ export interface WorkflowInstance {
     /**
      * Timestamp on which the workflow instance ended.
      */
-    endedAt?: number;
-    /**
-     * If the Workflow Instance has errors, 'True'. Else, 'False'.
-     */
-    exception?: boolean;
+    endedAt?:   number;
+    exception?: string;
     /**
      * Unique identifier of this workflow instance state.
      */
@@ -30,6 +27,7 @@ export interface WorkflowInstance {
      * Timestamp on which the workflow instance started.
      */
     startedAt?: number;
+    status?:    WorkflowStatus;
     /**
      * Timestamp on which the workflow instance state was created.
      */
@@ -39,4 +37,11 @@ export interface WorkflowInstance {
      * Workflow Definition Id.
      */
     workflowDefinitionId?: string;
+}
+
+export enum WorkflowStatus {
+    Exception = "EXCEPTION",
+    Failure = "FAILURE",
+    Finished = "FINISHED",
+    Running = "RUNNING",
 }

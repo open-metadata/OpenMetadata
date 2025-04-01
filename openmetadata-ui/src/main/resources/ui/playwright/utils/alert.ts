@@ -274,7 +274,6 @@ export const addOwnerFilter = async ({
 
   // Search and select owner
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
-  await page.waitForSelector('.ant-select-dropdown:visible');
   await page.fill(
     '[data-testid="owner-name-select"] [role="combobox"]',
     ownerName,

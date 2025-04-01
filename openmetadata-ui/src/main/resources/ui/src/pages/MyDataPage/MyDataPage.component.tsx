@@ -211,8 +211,8 @@ const MyDataPage = () => {
   return (
     <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
       <ReactGridLayout
-        className="bg-white"
         cols={4}
+        containerPadding={[0, 0]}
         isDraggable={false}
         isResizable={false}
         margin={[

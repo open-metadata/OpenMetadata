@@ -8,7 +8,7 @@ slug: /connectors/dashboard/powerbi
   stage="PROD"
   platform="OpenMetadata"
   availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage", "Column Lineage"]
-  unavailableFeatures=["Owners", "Tags"]
+  unavailableFeatures=["Owners", "Tags", "Usage"]
 / %}
 
 In this section, we provide guides and references to use the PowerBI connector.
@@ -17,6 +17,8 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/powerbi/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/powerbi/yaml"} /%}
 
@@ -29,6 +31,14 @@ To access the PowerBI APIs and import dashboards, charts, and datasets from Powe
 
 {% note %}
 PowerBI dataflows are not yet supported.
+{% /note %}
+
+{% note %}
+OpenMetadata does not support Power BI usage ingestion because the Power BI Usage API does not support Service Principal authentication.
+{% /note %}
+
+{% note %}
+When configuring Azure Authentication, ensure that "Allow public client flows" is enabled. This setting is required to support authentication for public client applications.
 {% /note %}
 
 ### PowerBI Admin and Non-Admin APIs:
@@ -179,4 +189,4 @@ Refer to the section [here](/connectors/dashboard/powerbi#powerbi-admin-and-nona
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/dashboard/dashboard-lineage.md" /%}

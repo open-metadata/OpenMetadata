@@ -46,12 +46,22 @@
   overflow: hidden;
 
   .profiler-item {
-    width: 36px;
-    height: 36px;
     margin-right: 4px;
     border-radius: 4px;
-    line-height: 36px;
-    font-size: 14px;
+
+    &.medium {
+      width: 36px;
+      height: 36px;
+      line-height: 36px;
+      font-size: 14px;
+    }
+
+    &.small {
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      font-size: 12px;
+    }
 
     &.green {
       border: 1px solid @green-5;
@@ -258,14 +268,15 @@
 }
 
 .react-flow .lineage-column-node-handle {
-  width: 20px;
+  width: 30px;
   border-radius: 0;
   border-color: @lineage-border;
-  background: @white;
-  top: 1px;
+  background: transparent;
+  top: 5px;
   height: 25px;
   transform: none;
   border: none;
+  z-index: 1; // Adding as column text and data type should be behind handles
 
   &.react-flow__handle-left {
     left: 0;
@@ -277,9 +288,7 @@
 }
 
 .custom-node-column-container {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 12px;
+  padding: 6px;
   background: @white;
   position: relative;
   font-size: 12px;

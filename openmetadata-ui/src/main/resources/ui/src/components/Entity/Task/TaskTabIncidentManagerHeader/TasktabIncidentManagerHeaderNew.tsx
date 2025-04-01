@@ -26,8 +26,9 @@ import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testC
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { OwnerLabelNew } from '../../../common/OwnerLabel/OwnerLabelNew.component';
-import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+
+import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
+import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './task-tab-incident-manager-header.style.less';
@@ -89,11 +90,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
       return {
         className: toLower(status.testCaseResolutionStatusType),
         title: (
-          <div>
+          <div className="incident-title">
             <Typography.Paragraph className="m-b-0">
               {status.testCaseResolutionStatusType}
             </Typography.Paragraph>
-            <Typography.Paragraph className="m-b-0">
+            <Typography.Paragraph className="m-b-0 incident-details">
               {details}
               {status.updatedAt && (
                 <Typography.Text className="text-grey-muted text-xss">
@@ -120,35 +121,40 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
   return (
     <Row data-testid="incident-manager-task-header-container" gutter={[8, 16]}>
       <Row className="m-l-0" gutter={[16, 16]}>
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+        <Col className="flex items-center gap-2 text-grey-muted" span={8}>
           <UserIcon height={16} />
           <Typography.Text className="incident-manager-details-label @grey-8">
             {t('label.created-by')}
           </Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2" span={12}>
-          <ProfilePicture name={thread.createdBy ?? ''} width="24" />
+        <Col className="flex items-center gap-2" span={16}>
+          <ProfilePictureNew
+            avatarType="outlined"
+            name={thread.createdBy ?? ''}
+            width="24"
+          />
           <Typography.Text>{thread.createdBy}</Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+        <Col className="flex items-center gap-2 text-grey-muted" span={8}>
           <AssigneesIcon height={16} />
           <Typography.Text className="incident-manager-details-label @grey-8">
             {`${t('label.assignee-plural')} `}
           </Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2" span={12}>
+        <Col className="flex items-center gap-2" span={16}>
           {thread?.task?.assignees?.length === 1 ? (
             <div className="d-flex items-center gap-2">
-              <ProfilePicture
+              <ProfilePictureNew
+                avatarType="outlined"
                 name={thread?.task?.assignees[0].displayName ?? ''}
                 width="24"
               />
-              <Typography.Text className="text-md text-grey-body">
+              <Typography.Text className="text-grey-body">
                 {thread?.task?.assignees[0].displayName}
               </Typography.Text>
             </div>
           ) : (
-            <OwnerLabelNew
+            <UserAvatarGroup
               avatarSize={24}
               className="p-t-05"
               owners={thread?.task?.assignees}
@@ -156,19 +162,19 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           )}
         </Col>
 
-        <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+        <Col className="flex items-center gap-2 text-grey-muted" span={8}>
           <SeverityIcon height={16} />
           <Typography.Text className="incident-manager-details-label">
             {' '}
             {`${t('label.severity')} `}
           </Typography.Text>
         </Col>
-        <Col className="flex items-center gap-2" span={12}>
+        <Col className="flex items-center gap-2" span={16}>
           <Severity severity={latestTestCaseResolutionStatus?.severity} />
         </Col>
 
         {isResolved && (
-          <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+          <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <FailureReasonIcon height={16} />
             <Typography.Text className="incident-manager-details-label">{`${t(
               'label.failure-reason'
@@ -176,7 +182,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         {isResolved && (
-          <Col className="flex items-center gap-2" span={12}>
+          <Col className="flex items-center gap-2" span={16}>
             <Typography.Text className="text-sm incident-manager-text">
               {latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
                 ?.testCaseFailureReason ?? NO_DATA_PLACEHOLDER}
@@ -184,7 +190,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         {isResolved && (
-          <Col className="flex items-center gap-2 text-grey-muted" span={12}>
+          <Col className="flex items-center gap-2 text-grey-muted" span={8}>
             <FailureCommentIcon height={16} />
             <Typography.Text className="incident-manager-details-label">
               {' '}
@@ -193,7 +199,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
           </Col>
         )}
         {isResolved && (
-          <Col className="flex items-center gap-2 " span={12}>
+          <Col className="flex items-center gap-2 " span={16}>
             <RichTextEditorPreviewerV1
               markdown={
                 latestTestCaseResolutionStatus?.testCaseResolutionStatusDetails
@@ -202,7 +208,7 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
             />
           </Col>
         )}
-        <Col span={24}>
+        <Col className="p-l-0" span={24}>
           <div className="task-resolution-steps-container-new">
             <Steps
               className="task-resolution-steps w-full"

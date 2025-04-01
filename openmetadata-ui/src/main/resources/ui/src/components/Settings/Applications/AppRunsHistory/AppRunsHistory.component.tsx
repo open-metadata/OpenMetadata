@@ -38,18 +38,11 @@ import {
   AppRunRecord,
   Status,
 } from '../../../../generated/entity/applications/appRunRecord';
-import {
-  PipelineState,
-  PipelineStatus,
-} from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationRuns } from '../../../../rest/applicationAPI';
-import {
-  getStatusFromPipelineState,
-  getStatusTypeForApplication,
-} from '../../../../utils/ApplicationUtils';
+import { getStatusTypeForApplication } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
   formatDuration,
@@ -61,7 +54,6 @@ import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -163,48 +155,41 @@ const AppRunsHistory = forwardRef(
     };
 
     const getActionButton = useCallback(
-      (record: AppRunRecordWithId, index: number) => {
-        if (
-          appData?.appType === AppType.Internal ||
-          (isExternalApp && index === 0)
-        ) {
-          return (
-            <>
-              <Button
-                className="p-0"
-                data-testid="logs"
-                disabled={showLogAction(record)}
-                size="small"
-                type="link"
-                onClick={() => handleRowExpandable(record.id)}>
-                {t('label.log-plural')}
-              </Button>
-              <Button
-                className="m-l-xs p-0"
-                data-testid="app-historical-config"
-                size="small"
-                type="link"
-                onClick={() => showAppRunConfig(record)}>
-                {t('label.config')}
-              </Button>
-              {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
-              {(record.status === Status.Running ||
-                record.status === Status.ActiveError) &&
-                Boolean(appData?.supportsInterrupt) && (
-                  <Button
-                    className="m-l-xs p-0"
-                    data-testid="stop-button"
-                    size="small"
-                    type="link"
-                    onClick={() => setIsStopModalOpen(true)}>
-                    {t('label.stop')}
-                  </Button>
-                )}
-            </>
-          );
-        } else {
-          return NO_DATA_PLACEHOLDER;
-        }
+      (record: AppRunRecordWithId) => {
+        return (
+          <>
+            <Button
+              className="p-0"
+              data-testid="logs"
+              disabled={showLogAction(record)}
+              size="small"
+              type="link"
+              onClick={() => handleRowExpandable(record.id)}>
+              {t('label.log-plural')}
+            </Button>
+            <Button
+              className="m-l-xs p-0"
+              data-testid="app-historical-config"
+              size="small"
+              type="link"
+              onClick={() => showAppRunConfig(record)}>
+              {t('label.config')}
+            </Button>
+            {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
+            {(record.status === Status.Running ||
+              record.status === Status.ActiveError) &&
+              Boolean(appData?.supportsInterrupt) && (
+                <Button
+                  className="m-l-xs p-0"
+                  data-testid="stop-button"
+                  size="small"
+                  type="link"
+                  onClick={() => setIsStopModalOpen(true)}>
+                  {t('label.stop')}
+                </Button>
+              )}
+          </>
+        );
       },
       [showLogAction, appData, isExternalApp, handleRowExpandable]
     );
@@ -215,7 +200,11 @@ const AppRunsHistory = forwardRef(
           title: t('label.run-at'),
           dataIndex: 'timestamp',
           key: 'timestamp',
-          render: (_, record) => formatDateTime(record.timestamp),
+          render: (_, record) => {
+            return isExternalApp
+              ? formatDateTime(record.startTime)
+              : formatDateTime(record.timestamp);
+          },
         },
         {
           title: t('label.run-type'),
@@ -230,13 +219,17 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'executionTime',
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
+            if (isExternalApp && record.executionTime) {
+              return formatDuration(record.executionTime);
+            }
+
             if (record.startTime) {
               const endTime = record.endTime || Date.now(); // Use current time in epoch milliseconds if endTime is not present
               const ms = getIntervalInMilliseconds(record.startTime, endTime);
 
               return formatDuration(ms);
             } else {
-              return '-';
+              return NO_DATA_PLACEHOLDER;
             }
           },
         },
@@ -264,7 +257,7 @@ const AppRunsHistory = forwardRef(
           title: t('label.action-plural'),
           dataIndex: 'actions',
           key: 'actions',
-          render: (_, record, index) => getActionButton(record, index),
+          render: (_, record) => getActionButton(record),
         },
       ],
       [
@@ -290,17 +283,14 @@ const AppRunsHistory = forwardRef(
             const { data } = await getApplicationRuns(fqn, {
               startTs: startDay,
               endTs: currentTime,
+              limit: maxRecords ?? pageSize,
             });
 
             setAppRunsHistoryData(
               data
                 .map((item) => ({
                   ...item,
-                  status: getStatusFromPipelineState(
-                    (item as PipelineStatus).pipelineState ??
-                      PipelineState.Failed
-                  ),
-                  id: (item as PipelineStatus).runId ?? '',
+                  id: `${item.appId}-${item.runType}-${item.timestamp}`,
                 }))
                 .slice(0, maxRecords)
             );
@@ -395,8 +385,17 @@ const AppRunsHistory = forwardRef(
         <Row gutter={[16, 16]}>
           <Col span={24}>
             <Table
-              bordered
               columns={tableColumn}
+              customPaginationProps={{
+                isNumberBased: true,
+                showPagination: showPagination && paginationVisible,
+                currentPage,
+                isLoading,
+                pageSize,
+                paging,
+                pagingHandler: handleAppHistoryPageChange,
+                onShowSizeChange: handlePageSizeChange,
+              }}
               data-testid="app-run-history-table"
               dataSource={appRunsHistoryData}
               expandable={{
@@ -418,19 +417,6 @@ const AppRunsHistory = forwardRef(
               rowKey="id"
               size="small"
             />
-          </Col>
-          <Col span={24}>
-            {showPagination && paginationVisible && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
           </Col>
         </Row>
         {isStopModalOpen && (

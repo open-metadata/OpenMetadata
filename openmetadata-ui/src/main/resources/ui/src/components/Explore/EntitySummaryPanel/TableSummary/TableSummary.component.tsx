@@ -103,16 +103,16 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
 
     return isUndefined(tableDetails.profile) ? (
       <Typography.Text
-        className="text-grey-body text-sm"
+        className="text-sm no-data-chip-placeholder"
         data-testid="no-profiler-enabled-message">
         {t('message.no-profiler-enabled-summary-message')}
       </Typography.Text>
     ) : (
       <div className="d-flex justify-between">
         <div className="profiler-item green" data-testid="test-passed">
-          <div className="text-xs text-grey-muted">{`${t(
-            'label.test-plural'
-          )} ${t('label.passed')}`}</div>
+          <div className="text-xs">{`${t('label.test-plural')} ${t(
+            'label.passed'
+          )}`}</div>
           <div
             className="font-semibold text-lg"
             data-testid="test-passed-value">
@@ -120,9 +120,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           </div>
         </div>
         <div className="profiler-item amber" data-testid="test-aborted">
-          <div className="text-xs text-grey-muted">{`${t(
-            'label.test-plural'
-          )} ${t('label.aborted')}`}</div>
+          <div className="text-xs">{`${t('label.test-plural')} ${t(
+            'label.aborted'
+          )}`}</div>
           <div
             className="font-semibold text-lg"
             data-testid="test-aborted-value">
@@ -130,9 +130,9 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
           </div>
         </div>
         <div className="profiler-item red" data-testid="test-failed">
-          <div className="text-xs text-grey-muted">{`${t(
-            'label.test-plural'
-          )} ${t('label.failed')}`}</div>
+          <div className="text-xs">{`${t('label.test-plural')} ${t(
+            'label.failed'
+          )}`}</div>
           <div
             className="font-semibold text-lg"
             data-testid="test-failed-value">
@@ -177,15 +177,12 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
   }, [tableDetails.id]);
 
   return (
-    <Row
-      className="p-md border-radius-card"
-      gutter={[0, 8]}
-      style={{ background: '#f5f5f5' }}>
+    <Row className="p-md border-radius-card summary-panel-card" gutter={[0, 8]}>
       <Col span={24}>
         <Typography.Text
           className="summary-panel-section-title"
           data-testid="profiler-header">
-          {t('label.profiler-amp-data-quality')}
+          {t('label.data-quality')}
         </Typography.Text>
       </Col>
       <Col span={24}>{profilerSummary}</Col>

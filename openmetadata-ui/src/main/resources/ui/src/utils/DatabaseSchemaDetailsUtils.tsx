@@ -17,6 +17,7 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
@@ -24,6 +25,7 @@ import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -50,6 +52,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
   fetchDatabaseSchemaDetails,
   handleFeedCount,
   tableCount,
+  labelMap,
 }: DatabaseSchemaPageTabProps): TabProps[] => {
   return [
     {
@@ -58,7 +61,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
           count={tableCount}
           id={EntityTabs.TABLE}
           isActive={activeTab === EntityTabs.TABLE}
-          name={t('label.table-plural')}
+          name={labelMap[EntityTabs.TABLE] || t('label.table-plural')}
         />
       ),
       key: EntityTabs.TABLE,
@@ -70,7 +73,10 @@ export const getDataBaseSchemaPageBaseTabs = ({
           count={storedProcedureCount}
           id={EntityTabs.STORED_PROCEDURE}
           isActive={activeTab === EntityTabs.STORED_PROCEDURE}
-          name={t('label.stored-procedure-plural')}
+          name={
+            labelMap[EntityTabs.STORED_PROCEDURE] ||
+            t('label.stored-procedure-plural')
+          }
         />
       ),
       key: EntityTabs.STORED_PROCEDURE,
@@ -82,7 +88,10 @@ export const getDataBaseSchemaPageBaseTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-plural')}
+          name={
+            labelMap[EntityTabs.ACTIVITY_FEED] ||
+            t('label.activity-feed-and-task-plural')
+          }
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -91,6 +100,8 @@ export const getDataBaseSchemaPageBaseTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DATABASE_SCHEMA}
+          feedCount={feedCount}
+          layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDatabaseSchemaDetails}
           onUpdateFeedCount={handleFeedCount}
@@ -101,20 +112,21 @@ export const getDataBaseSchemaPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={
+            labelMap[EntityTabs.CUSTOM_PROPERTIES] ||
+            t('label.custom-property-plural')
+          }
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
-            className=""
-            entityType={EntityType.DATABASE_SCHEMA}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DATABASE_SCHEMA>
+          className=""
+          entityType={EntityType.DATABASE_SCHEMA}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+          isVersionView={false}
+        />
       ),
     },
   ];
@@ -122,7 +134,8 @@ export const getDataBaseSchemaPageBaseTabs = ({
 
 export const ExtraDatabaseSchemaDropdownOptions = (
   fqn: string,
-  permission: OperationPermission
+  permission: OperationPermission,
+  deleted: boolean
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const history = useHistory();
@@ -130,7 +143,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
   const { ViewAll, EditAll } = permission;
 
   return [
-    ...(EditAll
+    ...(EditAll && !deleted
       ? [
           {
             label: (
@@ -154,7 +167,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll
+    ...(ViewAll && !deleted
       ? [
           {
             label: (
@@ -169,6 +182,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportDatabaseSchemaDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />

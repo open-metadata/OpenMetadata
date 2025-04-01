@@ -34,8 +34,6 @@ import { QueryVote } from '../../components/Database/TableQueries/TableQueries.i
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  getEntityDetailsPath,
-  getVersionPath,
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
   ROUTES,
@@ -78,6 +76,7 @@ import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
@@ -114,9 +113,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN,
-        databaseSchemaPermission
+        databaseSchemaPermission,
+        databaseSchema?.deleted ?? false
       ),
-    [databaseSchemaPermission, decodedDatabaseSchemaFQN]
+    [
+      databaseSchemaPermission,
+      decodedDatabaseSchemaFQN,
+      databaseSchema?.deleted,
+    ]
   );
 
   const { version: currentVersion, id: databaseSchemaId = '' } = useMemo(
@@ -495,7 +499,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
       })}>
@@ -508,7 +511,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             {isSchemaDetailsLoading ? (
               <Skeleton
                 active
@@ -545,7 +548,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             <Col span={24}>
               <Tabs
                 activeKey={activeTab}
-                className="entity-details-page-tabs"
+                className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
                 onChange={activeTabHandler}

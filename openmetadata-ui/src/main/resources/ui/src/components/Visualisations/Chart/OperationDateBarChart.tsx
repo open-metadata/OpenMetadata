@@ -30,13 +30,14 @@ import {
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
 import { CustomTooltip } from '../../../utils/DataInsightUtils';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
 
 const OperationDateBarChart = ({
   chartCollection,
   name,
+  noDataPlaceholderText,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -51,7 +52,10 @@ const OperationDateBarChart = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder className="mt-0-important" />
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            placeholderText={noDataPlaceholderText}
+          />
         </Col>
       </Row>
     );
@@ -74,7 +78,7 @@ const OperationDateBarChart = ({
           content={
             <CustomTooltip
               customValueKey="data"
-              dateTimeFormatter={formatDateTime}
+              dateTimeFormatter={formatDateTimeLong}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value)}
             />

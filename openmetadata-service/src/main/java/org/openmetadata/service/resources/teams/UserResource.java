@@ -600,7 +600,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
         if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
-          User created = addHref(uriInfo, repository.create(uriInfo, user));
+          User created =
+              addHref(
+                  uriInfo,
+                  repository.create(uriInfo, user.withLastLoginTime(System.currentTimeMillis())));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
           throw new CustomExceptionMessage(
@@ -936,6 +939,28 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     decryptOrNullify(securityContext, (User) response.getEntity());
     return response;
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteUserAsync",
+      summary = "Asynchronously delete a user",
+      description = "Users can't be deleted but are soft-deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -1415,7 +1440,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("team")
           String team) {
-    return exportCsvInternalAsync(securityContext, team);
+    return exportCsvInternalAsync(securityContext, team, false);
   }
 
   @GET
@@ -1443,7 +1468,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("team")
           String team)
       throws IOException {
-    return exportCsvInternal(securityContext, team);
+    return exportCsvInternal(securityContext, team, false);
   }
 
   @PUT
@@ -1479,7 +1504,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, team, csv, dryRun);
+    return importCsvInternal(securityContext, team, csv, dryRun, false);
   }
 
   @PUT
@@ -1514,7 +1539,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, team, csv, dryRun);
+    return importCsvInternalAsync(securityContext, team, csv, dryRun, false);
   }
 
   public void validateEmailAlreadyExists(String email) {

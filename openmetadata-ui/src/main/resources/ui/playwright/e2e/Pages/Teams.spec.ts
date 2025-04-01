@@ -21,6 +21,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   descriptionBoxReadOnly,
@@ -263,8 +264,7 @@ test.describe('Teams Page', () => {
       await page.locator('[data-testid="saveAssociatedTag"]').click();
       await patchTeamResponse;
 
-      // Validate the updated display name
-      await expect(page.locator('[data-testid="team-heading"]')).toHaveText(
+      await expect(page.getByTestId('team-heading')).toHaveText(
         teamDetails.updatedName
       );
 
@@ -342,9 +342,9 @@ test.describe('Teams Page', () => {
       await fetchOrganizationResponse;
 
       // Check if the table does not contain the team name
-      await expect(page.locator('table')).not.toContainText(
-        teamDetails?.displayName ?? ''
-      );
+      await expect(
+        page.getByRole('cell', { name: teamDetails?.displayName ?? '' })
+      ).not.toBeVisible();
 
       // Click on the show deleted button
       await page.locator('[data-testid="show-deleted"]').click();
@@ -397,7 +397,7 @@ test.describe('Teams Page', () => {
       'true'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });
@@ -423,7 +423,7 @@ test.describe('Teams Page', () => {
       'false'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });

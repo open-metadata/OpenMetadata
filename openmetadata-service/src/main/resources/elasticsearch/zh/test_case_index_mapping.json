@@ -454,6 +454,9 @@
       "updatedBy": {
         "type": "text"
       },
+      "createdBy": {
+        "type": "text"
+      },
       "href": {
         "type": "text"
       },

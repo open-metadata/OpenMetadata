@@ -81,16 +81,17 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   };
 
-  const handleSingleDomainSave = async () => {
-    const selectedFqn = selectedDomains[0]?.fullyQualifiedName;
+  const handleSingleDomainSave = async (domains?: Domain[]) => {
+    const availableDomains = domains ?? selectedDomains;
+    const selectedFqn = availableDomains[0]?.fullyQualifiedName;
     const initialFqn = value?.[0];
 
     if (selectedFqn !== initialFqn) {
       setIsSubmitLoading(true);
       let retn: EntityReference[] = [];
-      if (selectedDomains.length > 0) {
+      if (availableDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
-          selectedDomains[0],
+          availableDomains[0],
           EntityType.DOMAIN
         );
         retn = [domain];
@@ -136,6 +137,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       }
 
       setSelectedDomains(selectedData);
+      handleSingleDomainSave(selectedData);
     }
   };
 
@@ -239,25 +241,25 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
       {treeContent}
 
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-        <Button
-          className="update-btn"
-          data-testid="saveAssociatedTag"
-          htmlType="submit"
-          loading={isSubmitLoading}
-          size="small"
-          type="default"
-          onClick={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}>
-          {t('label.update')}
-        </Button>
-        <Button
-          data-testid="cancelAssociatedTag"
-          size="small"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Space>
+      {isMultiple ? (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            type="default"
+            onClick={handleMultiDomainSave}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            type="default"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      ) : null}
     </div>
   );
 };

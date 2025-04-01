@@ -183,6 +183,7 @@ public class DataAssetsWorkflow {
     if (!dataAssetsConfig.getEnabled()) {
       return;
     }
+    LOG.info("[Data Insights] Processing Data Assets Insights.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 
@@ -190,9 +191,13 @@ public class DataAssetsWorkflow {
     contextData.put(END_TIMESTAMP_KEY, endTimestamp);
 
     for (PaginatedEntitiesSource source : sources) {
-      deleteBasedOnDataRetentionPolicy(getDataStreamName(source.getEntityType()));
-      deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
-      contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
+      deleteBasedOnDataRetentionPolicy(
+          getDataStreamName(searchRepository.getClusterAlias(), source.getEntityType()));
+      deleteDataBeforeInserting(
+          getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
+      contextData.put(
+          DATA_STREAM_KEY,
+          getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
       contextData.put(
           ENTITY_TYPE_FIELDS_KEY,

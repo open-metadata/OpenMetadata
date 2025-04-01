@@ -26,13 +26,18 @@ import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdow
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
-import { Aggregations } from '../interface/search.interface';
+import { SearchIndex } from '../enums/search.enum';
+import { Aggregations, Bucket } from '../interface/search.interface';
 import {
   EsBoolQuery,
   QueryFieldInterface,
   QueryFilterInterface,
   TabsInfoData,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import {
+  getAggregateFieldOptions,
+  postAggregateFieldOptions,
+} from '../rest/miscAPI';
 
 /**
  * It takes an array of filters and a data lookup and returns a new object with the filters grouped by
@@ -316,4 +321,48 @@ export const getQuickFilterObjectForEntities = (
       label: value,
     })),
   };
+};
+
+export const getAggregationOptions = async (
+  index: SearchIndex | SearchIndex[],
+  key: string,
+  value: string,
+  filter: string,
+  isIndependent: boolean
+) => {
+  return isIndependent
+    ? postAggregateFieldOptions(index, key, value, filter)
+    : getAggregateFieldOptions(index, key, value, filter);
+};
+
+export const updateTreeDataWithCounts = (
+  exploreTreeNodes: ExploreTreeNode[],
+  entityCounts: Bucket[]
+) => {
+  return exploreTreeNodes.map((node) => {
+    if ((node.data?.childEntities ?? []).length > 0) {
+      let totalCount = 0;
+      node.data?.childEntities?.forEach((child) => {
+        const count = entityCounts.find(
+          (count) => count.key === child
+        )?.doc_count;
+        totalCount += count ?? 0;
+      });
+      node.totalCount = totalCount;
+    }
+
+    if (node.children) {
+      let totalCount = 0;
+      node.children.forEach((child) => {
+        const count = entityCounts.find(
+          (count) => count.key === child.key
+        )?.doc_count;
+        child.count = count ?? 0;
+        totalCount += child.count;
+      });
+      node.totalCount = totalCount;
+    }
+
+    return node;
+  });
 };

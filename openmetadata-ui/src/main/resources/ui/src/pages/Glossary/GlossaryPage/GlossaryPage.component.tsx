@@ -61,15 +61,16 @@ import {
   updateGlossaryVotes,
 } from '../../../rest/glossaryAPI';
 import Fqn from '../../../utils/Fqn';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
-  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
+  const { t } = useTranslation();
   const history = useHistory();
   const { action } = useParams<{ action: EntityAction }>();
   const [initialised, setInitialised] = useState(false);
@@ -482,7 +483,8 @@ const GlossaryPage = () => {
     <ResizableLeftPanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         minWidth: 280,
         flex: 0.13,
         children: (
@@ -511,7 +513,8 @@ const GlossaryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         children: glossaryElement,
         minWidth: 700,
         flex: 0.7,
@@ -527,14 +530,14 @@ const GlossaryPage = () => {
           />
         ),
         className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
+          'content-resizable-panel-container entity-summary-resizable-right-panel-container bg-white',
         minWidth: 400,
         flex: 0.3,
       }}
     />
   );
 
-  return <div className="m--t-sm">{resizableLayout}</div>;
+  return <div>{resizableLayout}</div>;
 };
 
-export default withPageLayout('glossary')(GlossaryPage);
+export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);
