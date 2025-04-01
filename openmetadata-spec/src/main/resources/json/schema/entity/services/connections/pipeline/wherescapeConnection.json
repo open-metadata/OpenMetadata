@@ -27,7 +27,7 @@
         "type": "string",
         "format": "uri"
       },
-      "connection": {
+      "metastore": {
         "title": "Metadata Database Connection",
         "description": "Underlying database connection",
         "oneOf": [
