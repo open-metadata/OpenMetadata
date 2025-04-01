@@ -248,7 +248,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
             data-testid="saveAssociatedTag"
             htmlType="submit"
             loading={isSubmitLoading}
-            type="primary"
+            type="default"
             onClick={handleMultiDomainSave}>
             {t('label.update')}
           </Button>
