@@ -132,10 +132,10 @@ const MarketPlacePage = () => {
       </Row>
 
       <Row className="m-t-lg" justify="center">
-        <Col span={18}>
+        <Col span={20}>
           <Row className="marketplace-card-container" gutter={[20, 20]}>
             {applicationData?.map((item) => (
-              <Col key={item.fullyQualifiedName} lg={12} sm={24}>
+              <Col key={item.fullyQualifiedName} lg={8} md={12} sm={24}>
                 <ApplicationCard
                   appName={item.fullyQualifiedName ?? ''}
                   description={item.description ?? ''}

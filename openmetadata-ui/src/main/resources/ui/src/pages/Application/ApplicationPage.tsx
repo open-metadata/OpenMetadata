@@ -164,11 +164,11 @@ const ApplicationPage = () => {
           </Space>
         </Col>
       </Row>
-      <Row className="m-t-lg">
+      <Row className="m-t-lg" gutter={[20, 20]}>
         {isLoading &&
-          [1, 2, 3].map((key) => (
-            <Col key={key} span={8}>
-              <Card className="w-400">
+          [1, 2, 3, 4].map((key) => (
+            <Col key={key} lg={8} md={12} sm={24} xl={6}>
+              <Card>
                 <Skeleton active paragraph title />
               </Card>
             </Col>
