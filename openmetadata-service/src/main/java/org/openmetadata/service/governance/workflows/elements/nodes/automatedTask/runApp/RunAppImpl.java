@@ -6,7 +6,6 @@ import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.json.JsonPatch;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -74,11 +73,8 @@ public class RunAppImpl {
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
       updatedApp.setAppConfiguration(config);
-      deployIngestionPipeline(pipelineServiceClient, updatedApp);
-      //      updateApp(appRepository, app, updatedApp);
       boolean result =
           runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
-      //      updateApp(appRepository, updatedApp, app);
       deployIngestionPipeline(pipelineServiceClient, app);
       return result;
     }
@@ -149,11 +145,6 @@ public class RunAppImpl {
       }
     }
     return JsonUtils.getMap(config);
-  }
-
-  private void updateApp(AppRepository repository, App originalApp, App updatedApp) {
-    JsonPatch patch = JsonUtils.getJsonPatch(originalApp, updatedApp);
-    repository.patch(null, originalApp.getId(), "admin", patch);
   }
 
   // Internal App Logic
