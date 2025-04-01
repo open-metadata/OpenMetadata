@@ -220,7 +220,8 @@ public class RunAppImpl {
     ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
 
     pipelineServiceClient.deployPipeline(
-        ingestionPipeline, (ServiceEntityInterface) ingestionPipeline.getService());
+        ingestionPipeline,
+        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED));
 
     return ingestionPipeline;
   }
@@ -231,10 +232,12 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    pipelineServiceClient.runPipeline(
-        ingestionPipeline, (ServiceEntityInterface) ingestionPipeline.getService());
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    pipelineServiceClient.runPipeline(
+        ingestionPipeline,
+        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED));
 
     if (waitForCompletion) {
       return waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);
