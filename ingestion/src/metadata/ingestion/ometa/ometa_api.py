@@ -17,6 +17,8 @@ working with OpenMetadata entities.
 import traceback
 from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
@@ -87,6 +89,16 @@ class EmptyPayloadException(Exception):
     Raise when receiving no data, even if no exception
     during the API call is received
     """
+
+
+class OpenMetadataSettings(BaseSettings):
+    """OpenMetadataConnection settings wrapper"""
+
+    model_config = SettingsConfigDict(
+        env_prefix="OPENMETADATA__", env_nested_delimiter="__", case_sensitive=True
+    )
+
+    connection: OpenMetadataConnection
 
 
 class OpenMetadata(
@@ -161,6 +173,11 @@ class OpenMetadata(
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
+
+    @classmethod
+    def from_env(cls) -> "OpenMetadata":
+        settings = OpenMetadataSettings()
+        return cls(settings.connection)
 
     @staticmethod
     def get_suffix(entity: Type[T]) -> str:
