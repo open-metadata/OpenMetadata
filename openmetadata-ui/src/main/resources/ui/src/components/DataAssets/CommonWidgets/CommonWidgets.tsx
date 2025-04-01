@@ -20,10 +20,15 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
-import { Chart } from '../../../generated/entity/data/chart';
-import { Column } from '../../../generated/entity/data/container';
+import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
+import { Topic } from '../../../generated/entity/data/topic';
 import {
   ChangeDescription,
   EntityReference,
@@ -139,10 +144,31 @@ export const CommonWidgets = ({
     };
   }, [updatedData, updatedData?.tags]);
 
-  const { columns = [], charts = [] } = data as unknown as {
-    columns: Array<Column>;
-    charts: Array<Chart>;
-  };
+  const isDescriptionExpanded = useMemo(() => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return isEmpty((data as unknown as Table).columns);
+      case EntityType.DASHBOARD:
+        return isEmpty((data as unknown as Dashboard).charts);
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return isEmpty((data as unknown as DashboardDataModel).columns);
+      case EntityType.MLMODEL:
+        return isEmpty((data as unknown as Mlmodel).mlFeatures);
+      case EntityType.PIPELINE:
+        return isEmpty((data as unknown as Pipeline).tasks);
+      case EntityType.TOPIC:
+        return isEmpty((data as unknown as Topic).messageSchema?.schemaFields);
+      case EntityType.SEARCH_INDEX:
+        return isEmpty((data as unknown as SearchIndex).fields);
+      case EntityType.STORED_PROCEDURE:
+        return isEmpty((data as unknown as StoredProcedure).code);
+      case EntityType.DOMAIN:
+      case EntityType.METRIC:
+        return true;
+      default:
+        return false;
+    }
+  }, [data, entityType]);
 
   const {
     editTagsPermission,
@@ -267,9 +293,9 @@ export const CommonWidgets = ({
         entityName={entityName}
         entityType={type}
         hasEditAccess={editDescriptionPermission}
-        isDescriptionExpanded={isEmpty(columns) && isEmpty(charts)}
+        isDescriptionExpanded={isDescriptionExpanded}
         owner={owners}
-        removeBlur={widgetConfig.h > 1}
+        removeBlur={type === EntityType.DOMAIN}
         showActions={!deleted}
         onDescriptionUpdate={async (value: string) => {
           if (value !== description) {
@@ -284,9 +310,8 @@ export const CommonWidgets = ({
     type,
     editDescriptionPermission,
     deleted,
-    columns,
     owners,
-    widgetConfig.h,
+    isDescriptionExpanded,
   ]);
 
   const widget = useMemo(() => {

@@ -129,7 +129,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // store the left side panel widget
   const leftPanelWidget = useMemo(() => {
-    return layout.find((widget) =>
+    return layout?.find((widget) =>
       widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
     );
   }, [layout]);
