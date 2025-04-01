@@ -98,7 +98,7 @@ const DataQualityPage = () => {
               <Row
                 className="page-container"
                 data-testid="data-insight-container"
-                gutter={[16, 16]}>
+                gutter={[0, 16]}>
                 <Col span={24}>
                   <Typography.Title
                     className="m-b-md p-x-md"
@@ -135,7 +135,7 @@ const DataQualityPage = () => {
               </Row>
             </DataQualityProvider>
           ),
-          className: 'content-resizable-panel-container p-t-sm bg-white',
+          className: 'content-resizable-panel-container p-t-sm',
           minWidth: 800,
           flex: 0.87,
         }}
