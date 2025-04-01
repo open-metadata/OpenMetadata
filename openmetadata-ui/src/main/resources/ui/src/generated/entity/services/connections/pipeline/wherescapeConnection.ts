@@ -17,7 +17,7 @@ export interface WherescapeConnection {
     /**
      * Underlying database connection
      */
-    connection: Connection;
+    databaseConnection: Connection;
     /**
      * Pipeline Service Management/UI URI.
      */
