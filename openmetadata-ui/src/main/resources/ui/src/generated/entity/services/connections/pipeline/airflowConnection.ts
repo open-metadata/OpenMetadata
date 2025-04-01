@@ -51,6 +51,8 @@ export interface AirflowConnection {
  * Postgres Database Connection Config
  *
  * SQLite Database Connection Config
+ *
+ * Mssql Database Connection Config
  */
 export interface MetadataDatabaseConnection {
     /**
@@ -88,6 +90,8 @@ export interface MetadataDatabaseConnection {
      * Host and port of the source service.
      *
      * Host and port of the SQLite service. Blank for in-memory database.
+     *
+     * Host and port of the MSSQL service.
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
@@ -122,6 +126,9 @@ export interface MetadataDatabaseConnection {
      * metadata in Postgres.
      *
      * Username to connect to SQLite. Blank for in-memory database.
+     *
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
      */
     username?: string;
     /**
@@ -137,6 +144,8 @@ export interface MetadataDatabaseConnection {
     /**
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     sslMode?:            SSLMode;
@@ -147,9 +156,15 @@ export interface MetadataDatabaseConnection {
     databaseMode?: string;
     /**
      * Password to connect to SQLite. Blank for in-memory database.
+     *
+     * Password to connect to MSSQL.
      */
     password?:                      string;
     supportsViewLineageExtraction?: boolean;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
 }
 
 /**
@@ -396,6 +411,9 @@ export interface SchemaFilterPatternObject {
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     PostgresqlPsycopg2 = "postgresql+psycopg2",
@@ -443,6 +461,7 @@ export enum SSLMode {
  */
 export enum Type {
     Backend = "Backend",
+    Mssql = "Mssql",
     Mysql = "Mysql",
     Postgres = "Postgres",
     SQLite = "SQLite",

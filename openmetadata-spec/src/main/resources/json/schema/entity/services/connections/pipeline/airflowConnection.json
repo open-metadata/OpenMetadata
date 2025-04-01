@@ -47,6 +47,9 @@
         },
         {
           "$ref": "../database/sqliteConnection.json"
+        },
+        {
+          "$ref": "../database/mssqlConnection.json"
         }
       ]
     },
