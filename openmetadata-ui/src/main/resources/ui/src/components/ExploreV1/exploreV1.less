@@ -55,6 +55,7 @@
     position: sticky;
     top: 0;
     overflow-y: auto;
+    flex: 0 0 400px;
   }
 
   .explore-main-container {
@@ -102,6 +103,18 @@
 
     .ant-tree-treenode {
       padding: 0;
+    }
+  }
+
+  @media (min-width: 1750px) {
+    .explore-right-panel {
+      flex: 0 0 500px;
+    }
+  }
+
+  @media (min-width: 2200px) {
+    .explore-right-panel {
+      flex: 0 0 630px;
     }
   }
 }
