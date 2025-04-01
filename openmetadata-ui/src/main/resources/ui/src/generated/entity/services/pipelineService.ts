@@ -174,6 +174,8 @@ export interface PipelineConnection {
 /**
  * Airflow Metadata Database Connection Config
  *
+ * Wherescape Metadata Database Connection Config
+ *
  * Glue Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
@@ -214,6 +216,8 @@ export interface Connection {
      * Underlying database connection. See
      * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
      * supported backends.
+     *
+     * Underlying database connection
      *
      * Matillion Auth Configuration
      */
@@ -521,6 +525,10 @@ export interface AzureCredentials {
  *
  * SQLite Database Connection Config
  *
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ *
  * Matillion Auth Configuration
  *
  * Matillion ETL Auth Config.
@@ -529,7 +537,7 @@ export interface MetadataDatabaseConnection {
     /**
      * Service Type
      */
-    type?: Type;
+    type?: MssqlType;
     /**
      * Choose Auth Config Type.
      */
@@ -554,6 +562,8 @@ export interface MetadataDatabaseConnection {
      *
      * Host and port of the SQLite service. Blank for in-memory database.
      *
+     * Host and port of the MSSQL service.
+     *
      * Matillion Host
      */
     hostPort?:                string;
@@ -561,7 +571,7 @@ export interface MetadataDatabaseConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?: Scheme;
+    scheme?: MssqlScheme;
     /**
      * SSL Configuration details.
      */
@@ -582,6 +592,9 @@ export interface MetadataDatabaseConnection {
      *
      * Username to connect to SQLite. Blank for in-memory database.
      *
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     *
      * Username to connect to the Matillion. This user should have privileges to read all the
      * metadata in Matillion.
      */
@@ -599,6 +612,8 @@ export interface MetadataDatabaseConnection {
     /**
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
      */
     ingestAllDatabases?: boolean;
     sslMode?:            SSLMode;
@@ -610,10 +625,16 @@ export interface MetadataDatabaseConnection {
     /**
      * Password to connect to SQLite. Blank for in-memory database.
      *
+     * Password to connect to MSSQL.
+     *
      * Password to connect to the Matillion.
      */
     password?:                      string;
     supportsViewLineageExtraction?: boolean;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
 }
 
 /**
@@ -715,7 +736,10 @@ export interface AwsCredentials {
 /**
  * SQLAlchemy driver scheme options.
  */
-export enum Scheme {
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
     PgspiderPsycopg2 = "pgspider+psycopg2",
     PostgresqlPsycopg2 = "postgresql+psycopg2",
@@ -761,9 +785,10 @@ export enum SSLMode {
  *
  * Service type.
  */
-export enum Type {
+export enum MssqlType {
     Backend = "Backend",
     MatillionETL = "MatillionETL",
+    Mssql = "Mssql",
     Mysql = "Mysql",
     Postgres = "Postgres",
     SQLite = "SQLite",
@@ -883,6 +908,7 @@ export enum PipelineServiceType {
     Spark = "Spark",
     Spline = "Spline",
     Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**

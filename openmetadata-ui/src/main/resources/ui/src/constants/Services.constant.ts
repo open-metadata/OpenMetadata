@@ -406,6 +406,7 @@ export const BETA_SERVICES = [
   StorageServiceType.Gcs,
   DatabaseServiceType.SapERP,
   DatabaseServiceType.Cassandra,
+  PipelineServiceType.Wherescape,
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
