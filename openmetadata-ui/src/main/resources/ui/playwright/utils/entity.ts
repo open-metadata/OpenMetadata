@@ -414,8 +414,8 @@ export const assignTagToChildren = async ({
   rowSelector?: string;
 }) => {
   await page
+    .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
-    .getByTestId('entity-tags')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
