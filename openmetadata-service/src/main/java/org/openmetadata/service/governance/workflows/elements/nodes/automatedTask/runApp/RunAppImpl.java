@@ -74,10 +74,12 @@ public class RunAppImpl {
     } else {
       App updatedApp = JsonUtils.deepCopy(app, App.class);
       updatedApp.setAppConfiguration(config);
-      updateApp(appRepository, app, updatedApp);
+      deployIngestionPipeline(pipelineServiceClient, updatedApp);
+      //      updateApp(appRepository, app, updatedApp);
       boolean result =
           runApp(pipelineServiceClient, updatedApp, waitForCompletion, startTime, timeoutMillis);
-      updateApp(appRepository, updatedApp, app);
+      //      updateApp(appRepository, updatedApp, app);
+      deployIngestionPipeline(pipelineServiceClient, app);
       return result;
     }
   }
@@ -152,10 +154,6 @@ public class RunAppImpl {
   private void updateApp(AppRepository repository, App originalApp, App updatedApp) {
     JsonPatch patch = JsonUtils.getJsonPatch(originalApp, updatedApp);
     repository.patch(null, originalApp.getId(), "admin", patch);
-    // Update App Configuration.
-    ApplicationHandler.getInstance()
-        .configureApplication(
-            updatedApp, repository.getDaoCollection(), Entity.getSearchRepository());
   }
 
   // Internal App Logic
@@ -203,6 +201,48 @@ public class RunAppImpl {
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
+  private IngestionPipeline deployIngestionPipeline(
+      PipelineServiceClientInterface pipelineServiceClient, App app) {
+    IngestionPipelineRepository repository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    EntityReference pipelineRef = app.getPipelines().get(0);
+
+    OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
+
+    IngestionPipeline ingestionPipeline = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
+    ingestionPipeline.setOpenMetadataServerConnection(
+        new OpenMetadataConnectionBuilder(config).build());
+
+    Map<String, Object> ingestionPipelineConfig =
+        JsonUtils.readOrConvertValue(ingestionPipeline.getSourceConfig().getConfig(), Map.class);
+    ingestionPipelineConfig.put("appConfig", app.getAppConfiguration());
+    ingestionPipeline.getSourceConfig().setConfig(ingestionPipelineConfig);
+
+    pipelineServiceClient.deployPipeline(
+        ingestionPipeline, (ServiceEntityInterface) ingestionPipeline.getService());
+
+    return ingestionPipeline;
+  }
+
+  private boolean runIngestionPipeline(
+      PipelineServiceClientInterface pipelineServiceClient,
+      IngestionPipeline ingestionPipeline,
+      boolean waitForCompletion,
+      long startTime,
+      long timeoutMillis) {
+    pipelineServiceClient.runPipeline(
+        ingestionPipeline, (ServiceEntityInterface) ingestionPipeline.getService());
+    IngestionPipelineRepository repository =
+        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    if (waitForCompletion) {
+      return waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);
+    } else {
+      return true;
+    }
+  }
+
   // External App Logic
   private boolean runApp(
       PipelineServiceClientInterface pipelineServiceClient,
@@ -210,27 +250,9 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    EntityReference pipelineRef = app.getPipelines().get(0);
-
-    IngestionPipelineRepository repository =
-        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-    OpenMetadataApplicationConfig config = repository.getOpenMetadataApplicationConfig();
-
-    IngestionPipeline ingestionPipeline = repository.get(null, pipelineRef.getId(), EMPTY_FIELDS);
-    ingestionPipeline.setOpenMetadataServerConnection(
-        new OpenMetadataConnectionBuilder(config).build());
-
-    ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
-
-    pipelineServiceClient.deployPipeline(ingestionPipeline, service);
-    pipelineServiceClient.runPipeline(ingestionPipeline, service);
-
-    if (waitForCompletion) {
-      return waitForCompletion(repository, ingestionPipeline, startTime, timeoutMillis);
-    } else {
-      return true;
-    }
+    IngestionPipeline ingestionPipeline = deployIngestionPipeline(pipelineServiceClient, app);
+    return runIngestionPipeline(
+        pipelineServiceClient, ingestionPipeline, waitForCompletion, startTime, timeoutMillis);
   }
 
   private boolean waitForCompletion(
