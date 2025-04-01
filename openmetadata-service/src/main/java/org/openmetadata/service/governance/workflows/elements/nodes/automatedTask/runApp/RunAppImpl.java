@@ -99,14 +99,14 @@ public class RunAppImpl {
           (JsonUtils.convertValue(config, CollateAIAppConfig.class))
               .withFilter(
                   String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"terms\":{\"Tier.TagFQN\":[\"Tier.Tier1\", \"Tier.Tier2\"]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
                       service.getName()))
               .withPatchIfEmpty(true);
       case "CollateAIQualityAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAIQualityAgentAppConfig.class))
               .withFilter(
                   String.format(
-                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"terms\":{\"Tier.TagFQN\":[\"Tier.Tier1\", \"Tier.Tier2\"]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
+                      "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}},{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}]}},{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"service.displayName.keyword\":\"%s\"}}]}}]}}}",
                       service.getName()));
       case "CollateAITierAgentApplication" -> config =
           (JsonUtils.convertValue(config, CollateAITierAgentAppConfig.class))
