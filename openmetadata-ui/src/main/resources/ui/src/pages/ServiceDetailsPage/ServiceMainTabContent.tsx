@@ -236,11 +236,11 @@ function ServiceMainTabContent({
   }, [data]);
 
   return (
-    <Row gutter={[0, 16]} wrap={false}>
+    <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
       <Col className="tab-content-height-with-resizable-panel" span={24}>
         <ResizablePanels
           firstPanel={{
-            className: 'entity-resizable-panel-container bg-white',
+            className: 'entity-resizable-panel-container',
             children: (
               <div className="p-t-sm m-x-lg">
                 <Row gutter={[16, 16]}>
@@ -346,7 +346,7 @@ function ServiceMainTabContent({
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
             className:
-              'entity-resizable-right-panel-container entity-resizable-panel-container bg-white',
+              'entity-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
       </Col>

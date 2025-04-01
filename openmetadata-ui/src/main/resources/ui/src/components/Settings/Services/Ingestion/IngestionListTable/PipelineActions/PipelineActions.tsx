@@ -147,6 +147,7 @@ function PipelineActions({
       className="pipeline-actions-container"
       data-tesid="pipeline-actions"
       gutter={[8, 8]}
+      justify="space-between"
       wrap={false}>
       {playPauseButton}
       <Col>

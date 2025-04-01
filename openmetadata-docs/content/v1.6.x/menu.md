@@ -472,6 +472,8 @@ site_menu:
     url: /connectors/dashboard/microstrategy
   - category: Connectors / Dashboard / MicroStrategy / Run Externally
     url: /connectors/dashboard/microstrategy/yaml
+  - category: Connectors / Dashboard / MicroStrategy / Troubleshooting
+    url: /connectors/dashboard/microstrategy/troubleshooting
   - category: Connectors / Dashboard / Sigma
     url: /connectors/dashboard/sigma
   - category: Connectors / Dashboard / Sigma / Run Externally
@@ -480,12 +482,16 @@ site_menu:
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
     url: /connectors/dashboard/mode/yaml
+  - category: Connectors / Dashboard / Mode / Troubleshooting
+    url: /connectors/dashboard/mode/troubleshooting
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / Run Externally
     url: /connectors/dashboard/powerbi/yaml
   - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
+  - category: Connectors / Dashboard / PowerBI / Troubleshooting
+    url: /connectors/dashboard/powerbi/troubleshooting
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -498,6 +504,8 @@ site_menu:
     url: /connectors/dashboard/qlikcloud/yaml
   - category: Connectors / Dashboard / Qlik Cloud / API Keys
     url: /connectors/dashboard/qlikcloud/api_keys
+  - category: Connectors / Dashboard / Qlik Cloud / Troubleshooting
+    url: /connectors/dashboard/qlikcloud/troubleshooting
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
