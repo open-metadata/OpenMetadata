@@ -113,7 +113,7 @@ const EntityHeaderTitle = ({
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
         className={`d-flex flex-col gap-2 ${
-          deleted || badge ? 'w-max-full-140' : 'entity-header-content'
+          deleted || badge ? 'w-max-full-140' : ''
         }`}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
@@ -197,13 +197,15 @@ const EntityHeaderTitle = ({
   );
 
   return link && !isTourRoute ? (
-    <Link
-      className="no-underline d-inline-block w-full "
-      data-testid="entity-link"
-      target={openEntityInNewPage ? '_blank' : '_self'}
-      to={link}>
-      {content}
-    </Link>
+    <div className="w-full">
+      <Link
+        className="no-underline d-inline-block w-40  "
+        data-testid="entity-link"
+        target={openEntityInNewPage ? '_blank' : '_self'}
+        to={link}>
+        {content}
+      </Link>
+    </div>
   ) : (
     content
   );

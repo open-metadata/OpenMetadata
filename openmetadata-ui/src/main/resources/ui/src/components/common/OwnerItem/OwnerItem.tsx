@@ -56,17 +56,15 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
         marginLeft: index === 0 || isCompactView ? 0 : '-4px',
       }}>
       {!isCompactView ? (
-        <>
-          <UserPopOverCard userName={owner.name ?? ''}>
-            <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
-              <OwnerAvatar
-                inheritedIcon={inheritedIcon}
-                isCompactView={isCompactView}
-                owner={owner}
-              />
-            </Link>
-          </UserPopOverCard>
-        </>
+        <UserPopOverCard userName={owner.name ?? ''}>
+          <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
+            <OwnerAvatar
+              inheritedIcon={inheritedIcon}
+              isCompactView={isCompactView}
+              owner={owner}
+            />
+          </Link>
+        </UserPopOverCard>
       ) : (
         <>
           <div className="owner-avatar-icon d-flex">
