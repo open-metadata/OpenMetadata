@@ -182,7 +182,6 @@ export const SelectableList = ({
   const handleUpdate = useCallback(
     async (updateItems: EntityReference[]) => {
       setUpdating(true);
-
       try {
         await onUpdate?.(updateItems);
       } finally {
@@ -257,7 +256,7 @@ export const SelectableList = ({
                 size="small"
                 type="primary"
                 onClick={handleUpdateClick}>
-                {updating ? 'updating...' : t('label.update')}
+                {t('label.update')}
               </Button>
             </Space>
           </div>

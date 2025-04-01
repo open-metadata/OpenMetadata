@@ -45,7 +45,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
       title={t('label.inherited-entity', {
         entity: t('label.owner-plural'),
       })}>
-      <InheritIcon className="inherit-icon cursor-pointer" width={10} />
+      <InheritIcon className="inherit-icon cursor-pointer" width={8} />
     </Tooltip>
   ) : null;
 

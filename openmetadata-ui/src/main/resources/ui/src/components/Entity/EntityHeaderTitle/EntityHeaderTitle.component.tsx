@@ -78,25 +78,29 @@ const EntityHeaderTitle = ({
       ),
     [showOnlyDisplayName, displayName, name]
   );
-  const renderBadges = () => (
-    <>
-      {isDisabled && (
-        <Badge
-          className="m-l-xs badge-grey"
-          count={t('label.disabled')}
-          data-testid="disabled"
-        />
-      )}
-      {deleted && (
-        <Col className="text-xs" flex="100px">
-          <span className="deleted-badge-button" data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
-            {t('label.deleted')}
-          </span>
-        </Col>
-      )}
-      {badge && <Col>{badge}</Col>}
-    </>
+
+  const badges = useMemo(
+    () => (
+      <>
+        {isDisabled && (
+          <Badge
+            className="m-l-xs badge-grey"
+            count={t('label.disabled')}
+            data-testid="disabled"
+          />
+        )}
+        {deleted && (
+          <Col className="text-xs" flex="100px">
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              {t('label.deleted')}
+            </span>
+          </Col>
+        )}
+        {badge && <Col>{badge}</Col>}
+      </>
+    ),
+    [isDisabled, deleted, badge, t]
   );
 
   const content = (
@@ -128,7 +132,7 @@ const EntityHeaderTitle = ({
                 {stringToHTML(displayName ?? name)}
               </Typography.Text>
             </Tooltip>
-            {renderBadges()}
+            {badges}
           </div>
         ) : null}
 
@@ -180,7 +184,7 @@ const EntityHeaderTitle = ({
                   loading={isFollowingLoading}
                   onClick={handleFollowingClick}>
                   <Typography.Text>
-                    {isFollowing ? 'Following' : 'Follow'}
+                    {isFollowing ? 'Unfollow' : 'Follow'}
                   </Typography.Text>
                 </Button>
               </Tooltip>
@@ -188,13 +192,13 @@ const EntityHeaderTitle = ({
         </div>
       </Col>
 
-      {isEmpty(displayName) ? renderBadges() : null}
+      {isEmpty(displayName) ? badges : null}
     </Row>
   );
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block w-full"
+      className="no-underline d-inline-block w-full "
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

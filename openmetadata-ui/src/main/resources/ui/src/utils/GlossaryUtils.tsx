@@ -450,7 +450,7 @@ export const glossaryTermTableColumnsWidth = (
   const fallbackWidth = 200;
 
   return {
-    name: calculatePercentageFromValue(tableWidth, 40) || fallbackWidth,
+    name: calculatePercentageFromValue(tableWidth, 20) || fallbackWidth,
     description:
       calculatePercentageFromValue(
         tableWidth,
@@ -459,7 +459,7 @@ export const glossaryTermTableColumnsWidth = (
     reviewers: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
     synonyms: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
     owners: calculatePercentageFromValue(tableWidth, 17) || fallbackWidth,
-    status: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+    status: calculatePercentageFromValue(tableWidth, 20) || fallbackWidth,
   };
 };
 

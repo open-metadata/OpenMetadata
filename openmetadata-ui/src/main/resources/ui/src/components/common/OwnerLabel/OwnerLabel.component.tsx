@@ -107,7 +107,10 @@ export const OwnerLabel = ({
           )}
 
           {/* Owner avatars list */}
-          <div className={`d-flex items-center ${isCompactView && 'gap-2'}`}>
+          <div
+            className={`d-flex flex-wrap items-center ${
+              isCompactView && 'gap-2'
+            }`}>
             {visibleOwners.map((owner, index) => (
               <OwnerItem
                 className={className}
