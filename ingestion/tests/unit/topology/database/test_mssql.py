@@ -308,7 +308,9 @@ class MssqlUnitTest(TestCase):
         self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
         self.mssql._inspector_map[
             self.thread_id
-        ].get_columns = lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
+        ].get_columns = (
+            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
+        )
         self.mssql._inspector_map[
             self.thread_id
         ].get_pk_constraint = lambda table_name, schema_name: []

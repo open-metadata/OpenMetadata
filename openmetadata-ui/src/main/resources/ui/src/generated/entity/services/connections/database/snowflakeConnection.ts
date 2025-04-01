@@ -50,6 +50,10 @@ export interface SnowflakeConnection {
      */
     includeTransientTables?: boolean;
     /**
+     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     */
+    includeStreams?: boolean;
+    /**
      * Password to connect to Snowflake.
      */
     password?: string;

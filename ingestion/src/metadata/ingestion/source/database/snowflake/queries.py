@@ -143,6 +143,18 @@ from (
 where ROW_NUMBER = 1
 """
 
+SNOWFLAKE_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_GET_STREAM = """
+SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
+"""
+
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
@@ -248,6 +260,10 @@ SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1
 
 SNOWFLAKE_TEST_GET_VIEWS = """
 SELECT TABLE_NAME FROM "{database_name}".information_schema.views LIMIT 1
+"""
+
+SNOWFLAKE_TEST_GET_STREAMS = """
+SHOW STREAMS IN DATABASE "{database_name}"
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
@@ -389,6 +405,15 @@ ORDER BY PROCEDURE_START_TIME DESC
 SNOWFLAKE_GET_TABLE_DDL = """
 SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
 """
+
+SNOWFLAKE_GET_VIEW_DEFINITION = """
+SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
+"""
+
+SNOWFLAKE_GET_STREAM_DEFINITION = """
+SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
+"""
+
 SNOWFLAKE_QUERY_LOG_QUERY = """
     SELECT
         QUERY_ID,

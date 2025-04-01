@@ -85,8 +85,8 @@ class SnowflakeStoredProcedure(BaseModel):
 
 
 class SnowflakeTable(BaseModel):
-    """Models the items returned from the Table and View Queries used to get the entities to process.
-    :name: Holds the table/view name.
+    """Models the items returned from the Table, View and Stream Queries used to get the entities to process.
+    :name: Holds the table/view/stream name.
     :deleted: Holds either a datetime if the table was deleted or None.
     """
 
@@ -95,7 +95,7 @@ class SnowflakeTable(BaseModel):
 
 
 class SnowflakeTableList(BaseModel):
-    """Understands how to return the deleted and not deleted tables/views from a given list."""
+    """Understands how to return the deleted and not deleted tables/views/streams from a given list."""
 
     tables: List[SnowflakeTable]
 

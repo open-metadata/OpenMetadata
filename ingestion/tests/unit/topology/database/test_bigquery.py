@@ -676,7 +676,7 @@ class BigqueryUnitTest(TestCase):
                 ]  # pylint: disable=cell-var-from-loop
             )
             self.bq_source.inspector.get_columns = (
-                lambda table_name, schema, db_name: MOCK_COLUMN_DATA[
+                lambda table_name, schema, table_type, db_name: MOCK_COLUMN_DATA[
                     i
                 ]  # pylint: disable=cell-var-from-loop
             )
