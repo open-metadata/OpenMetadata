@@ -49,6 +49,7 @@ class SnowflakeLineageSource(
             OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
             OR (QUERY_TYPE = 'ALTER' and query_text ILIKE '%%alter%%table%%swap%%')
             OR (QUERY_TYPE = 'CREATE_TABLE' and query_text ILIKE '%%clone%%')
+            OR (QUERY_TYPE = 'CREATE_VIEW' and query_text ILIKE '%%create%%temporary%%view%%')
         )
     """
 

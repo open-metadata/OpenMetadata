@@ -143,6 +143,10 @@
     "domains" : {
       "description": "Domain the User belongs to. This is inherited by the team the user belongs to.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "lastLoginTime": {
+      "description": "Last time the user logged in.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     }
   },
   "additionalProperties": false,

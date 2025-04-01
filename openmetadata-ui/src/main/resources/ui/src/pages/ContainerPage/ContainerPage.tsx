@@ -538,7 +538,7 @@ const ContainerPage = () => {
         entity: t('label.container'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -562,7 +562,7 @@ const ContainerPage = () => {
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={tab}
               className="tabs-new"

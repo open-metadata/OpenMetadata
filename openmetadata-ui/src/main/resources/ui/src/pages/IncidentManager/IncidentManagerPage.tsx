@@ -27,7 +27,7 @@ const IncidentManagerPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.incident-manager')}>
-      <Row className="p-x-lg p-b-lg p-t-md" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title
             className="m-b-md"
