@@ -428,7 +428,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Teradata,
   StorageServiceType.Gcs,
   DatabaseServiceType.SapERP,
-  PipelineServiceType.Flink,
+  PipelineServiceType.Wherescape,
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Synapse,
 ];
