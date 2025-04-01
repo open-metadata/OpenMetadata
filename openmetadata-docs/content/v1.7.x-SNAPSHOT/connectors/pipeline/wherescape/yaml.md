@@ -94,7 +94,7 @@ source:
 ```
 ```yaml {% srNumber=6 %}
       # Connection needs to be Mssql
-      databaseConnection:
+      connection:
         type: Mssql
         username: user
         authType:

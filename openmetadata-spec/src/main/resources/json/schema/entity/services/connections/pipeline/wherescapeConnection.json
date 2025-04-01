@@ -27,7 +27,7 @@
         "type": "string",
         "format": "uri"
       },
-      "databaseConnection": {
+      "connection": {
         "title": "Metadata Database Connection",
         "description": "Underlying database connection",
         "oneOf": [
@@ -42,6 +42,6 @@
       }
     },
     "additionalProperties": false,
-    "required": ["databaseConnection"]
+    "required": ["connection"]
   }
   
