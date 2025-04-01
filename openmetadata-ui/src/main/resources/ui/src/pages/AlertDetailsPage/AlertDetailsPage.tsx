@@ -356,7 +356,7 @@ function AlertDetailsPage({
 
               <Col span={24}>
                 <Row justify="space-between">
-                  <Col span={21}>
+                  <Col span={20}>
                     <Row gutter={[16, 16]}>
                       <Col span={24}>
                         <EntityHeaderTitle

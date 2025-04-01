@@ -16,6 +16,11 @@
   .data-assets-explore-widget-body {
     height: 265px;
     overflow-x: hidden;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     .service-card.ant-card {
       height: 100%;

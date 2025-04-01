@@ -28,6 +28,11 @@
   & > .ant-layout-sider {
     height: 100vh;
     overflow-y: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 

@@ -21,6 +21,8 @@
   width: 100%;
   width: 100%;
   overflow-x: hidden;
+  border: 1px solid @blue-15;
+  border-radius: @border-radius-sm;
 
   .custom-menu.ant-menu-root.ant-menu-inline {
     .ant-menu-item {
@@ -51,8 +53,8 @@
     height: @user-profile-page-panel-height;
     overflow-y: scroll;
     background-color: @white;
-    border-radius: 12px;
-    border: 1px solid @grey-15;
+    border-radius: 0px;
+    border-left: 1px solid @grey-15;
     .full-width {
       flex: 0;
     }
@@ -95,7 +97,11 @@
   .three-panel-layout {
     border-radius: 0px;
     margin-right: 0px;
-    border: 0.5px solid #eaecf5;
+    border: 0px;
+  }
+
+  .three-panel-layout.right-container {
+    border-left: 1px solid @grey-15;
   }
 
   .hide-panel {

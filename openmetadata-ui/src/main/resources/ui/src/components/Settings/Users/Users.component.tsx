@@ -363,7 +363,7 @@ const Users = ({
               />
             </div>
           </Row>
-          <Row gutter={[16, 16]}>
+          <Row className="tabs-content" gutter={[16, 16]}>
             <Col span={24}>
               {tabs.find((tab) => tab.key === currentTab)?.children}
             </Col>
