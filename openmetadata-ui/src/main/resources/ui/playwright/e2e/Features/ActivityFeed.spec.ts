@@ -727,6 +727,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await resolveTask;
       await toastNotification(page2, /Task resolved successfully/);
 
+      await page2.waitForLoadState('networkidle');
       checkTaskCountInActivityFeed(page2, 0, 2);
 
       await afterActionUser2();
