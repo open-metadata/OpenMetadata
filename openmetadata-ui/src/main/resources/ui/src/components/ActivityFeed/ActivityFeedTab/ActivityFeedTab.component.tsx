@@ -282,9 +282,12 @@ export const ActivityFeedTab = ({
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
+      if (!feed && (isTaskActiveTab || isMentionTabSelected)) {
+        setIsFullWidth(false);
+      }
       setActiveThread(feed);
     },
-    [setActiveThread]
+    [setActiveThread, isTaskActiveTab, isMentionTabSelected]
   );
 
   useEffect(() => {
