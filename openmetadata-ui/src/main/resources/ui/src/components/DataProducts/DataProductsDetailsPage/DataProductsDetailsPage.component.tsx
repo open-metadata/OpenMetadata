@@ -433,19 +433,17 @@ const DataProductsDetailsPage = ({
                   firstPanel={{
                     className: 'domain-resizable-panel-container',
                     children: (
-                      <div className="p-x-md p-y-md">
-                        <AssetsTabs
-                          assetCount={assetCount}
-                          entityFqn={dataProduct.fullyQualifiedName}
-                          isSummaryPanelOpen={false}
-                          permissions={dataProductPermission}
-                          ref={assetTabRef}
-                          type={AssetsOfEntity.DATA_PRODUCT}
-                          onAddAsset={() => setAssetModelVisible(true)}
-                          onAssetClick={handleAssetClick}
-                          onRemoveAsset={handleAssetSave}
-                        />
-                      </div>
+                      <AssetsTabs
+                        assetCount={assetCount}
+                        entityFqn={dataProduct.fullyQualifiedName}
+                        isSummaryPanelOpen={false}
+                        permissions={dataProductPermission}
+                        ref={assetTabRef}
+                        type={AssetsOfEntity.DATA_PRODUCT}
+                        onAddAsset={() => setAssetModelVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
                     ),
                     minWidth: 800,
                     flex: 0.87,

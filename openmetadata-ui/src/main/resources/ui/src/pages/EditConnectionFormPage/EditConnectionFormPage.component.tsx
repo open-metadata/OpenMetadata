@@ -200,7 +200,7 @@ function EditConnectionFormPage() {
     );
   }
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <div>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <Space className="p-b-xs">
@@ -257,7 +257,8 @@ function EditConnectionFormPage() {
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
       }}
       hideSecondPanel={!serviceDetails?.serviceType}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}

@@ -274,9 +274,10 @@ const AddGlossary = ({
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div className="">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
@@ -347,7 +348,7 @@ const AddGlossary = ({
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

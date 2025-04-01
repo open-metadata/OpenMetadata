@@ -25,9 +25,9 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
+import { ReactComponent as IconSearch } from '../../assets/svg/ic-search-primary.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
-import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
@@ -188,7 +188,7 @@ export const GlobalSearchBar = () => {
                 : t('label.use-natural-language-search')
             }>
             <Button
-              className={classNames('nlp-button', 'w-6', 'h-6', {
+              className={classNames('nav-search-button', 'w-6', 'h-6', {
                 active: isNLPActive,
               })}
               data-testid="nlp-suggestions-button"
@@ -269,26 +269,19 @@ export const GlobalSearchBar = () => {
       {entitiesSelect}
 
       {searchValue ? (
-        <Icon
-          alt="icon-cancel"
-          className={classNames('align-middle', {
-            'text-primary': !isSearchBlur,
-          })}
-          component={IconCloseCircleOutlined}
+        <Button
+          className="nav-search-button w-6 h-6 flex-center"
           data-testid="cancel-icon"
-          style={{ fontSize: '16px' }}
+          icon={<IconCloseCircleOutlined style={{ color: '#1570EF' }} />}
+          type="text"
           onClick={handleClear}
         />
       ) : (
-        <Icon
-          alt="icon-search"
-          className={classNames('align-middle', {
-            'text-grey-3': isSearchBlur,
-            'text-primary': !isSearchBlur,
-          })}
-          component={IconSearch}
+        <Button
+          className="nav-search-button w-6 h-6 flex-center"
           data-testid="search-icon"
-          style={{ fontSize: '16px' }}
+          icon={<Icon component={IconSearch} />}
+          type="text"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();

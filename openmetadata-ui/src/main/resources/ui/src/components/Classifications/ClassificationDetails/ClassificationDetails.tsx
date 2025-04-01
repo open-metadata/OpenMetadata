@@ -383,9 +383,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="p-t-sm p-x-md" data-testid="tags-container">
+      <div className="p-t-sm" data-testid="tags-container">
         {currentClassification && (
-          <Row className="p-l-lg" data-testid="header" wrap={false}>
+          <Row data-testid="header" wrap={false}>
             <Col flex="auto">
               <EntityHeaderTitle
                 badge={

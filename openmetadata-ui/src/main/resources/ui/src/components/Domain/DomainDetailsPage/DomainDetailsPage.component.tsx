@@ -612,7 +612,7 @@ const DomainDetailsPage = ({
         className="domain-details"
         data-testid="domain-details"
         gutter={[0, 12]}>
-        <Col className="p-x-md p-l-xl" flex="auto">
+        <Col flex="auto">
           <EntityHeader
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
@@ -622,7 +622,7 @@ const DomainDetailsPage = ({
             titleColor={domain.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="320px">
+        <Col flex="320px">
           <div style={{ textAlign: 'right' }}>
             {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
@@ -707,7 +707,7 @@ const DomainDetailsPage = ({
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
-          <Col className="p-x-md" span={24}>
+          <Col span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}

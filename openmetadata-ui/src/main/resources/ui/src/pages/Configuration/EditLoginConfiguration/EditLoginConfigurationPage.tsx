@@ -158,7 +158,7 @@ const EditLoginConfiguration = () => {
   }, []);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <div>
       <TitleBreadcrumb titleLinks={breadcrumb} />
       <Form
         className="m-t-md"
@@ -219,7 +219,8 @@ const EditLoginConfiguration = () => {
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.login-configuration'),
