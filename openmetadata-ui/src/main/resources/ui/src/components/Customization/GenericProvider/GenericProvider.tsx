@@ -86,12 +86,13 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   );
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const pageType = ENTITY_PAGE_TYPE_MAP[type];
+  const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
   const { tab } = useParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage)
   );
+  const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
 
   useEffect(() => {
     setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
@@ -124,7 +125,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   // Filter the widgets we need to hide widgets which doesn't render anything
   const filterWidgets = useCallback((widgets: string[]) => {
-    setLayout((prev) => prev.filter((widget) => !widgets.includes(widget.i)));
+    setFilteredKeys((prev) => [...prev, ...widgets]);
   }, []);
 
   // store the left side panel widget
@@ -164,6 +165,15 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     });
   }, [isTabExpanded, leftPanelWidget]);
 
+  const filteredLayout = useMemo(() => {
+    return layout.filter((widget) => !filteredKeys.includes(widget.i));
+  }, [layout, filteredKeys]);
+
+  useEffect(() => {
+    // on unmount remove filterKeys
+    return () => setFilteredKeys([]);
+  }, [tab]);
+
   const values = useMemo(
     () => ({
       data,
@@ -173,7 +183,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       permissions,
       currentVersionData,
       onThreadLinkSelect,
-      layout: layout,
+      layout: filteredLayout,
       filterWidgets,
     }),
     [
@@ -184,7 +194,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       permissions,
       currentVersionData,
       onThreadLinkSelect,
-      layout,
+      filteredLayout,
       filterWidgets,
     ]
   );

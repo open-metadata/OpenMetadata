@@ -22,6 +22,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
@@ -165,6 +166,8 @@ export const CommonWidgets = ({
           (data as unknown as StoredProcedure).code ??
             (data as unknown as StoredProcedure).storedProcedureCode
         );
+      case EntityType.GLOSSARY:
+        return (data as unknown as Glossary).termCount === 0;
       case EntityType.DOMAIN:
       case EntityType.METRIC:
         return true;
