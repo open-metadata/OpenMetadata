@@ -50,6 +50,12 @@ def _(elements, compiler, **kwargs):
     ]
     return "percentile_cont(%s , %s) OVER()" % (col, percentile)
 
+@compiles(MedianFn, Dialects.Databricks)
+def _(elements, compiler, **kwargs):
+    col, _, percentile = [
+        compiler.process(element, **kwargs) for element in elements.clauses
+    ]
+    return "percentile_approx(%s , %s)" % (col, percentile)
 
 @compiles(MedianFn, Dialects.ClickHouse)
 def _(elements, compiler, **kwargs):
