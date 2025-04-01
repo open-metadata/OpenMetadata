@@ -106,6 +106,7 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -113,20 +114,20 @@ import {
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
 
-const GlossaryTermTab = ({
-  refreshGlossaryTerms,
-  permissions,
-  isGlossary,
-  termsLoading,
-  onAddGlossaryTerm,
-  onEditGlossaryTerm,
-  className,
-}: GlossaryTermTabProps) => {
+const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const { currentUser } = useApplicationStore();
   const tableRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    onAddGlossaryTerm,
+    onEditGlossaryTerm,
+    termsLoading,
+    refreshGlossaryTerms,
+  } = useGlossaryStore();
+  const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Thread[]>
@@ -192,9 +193,13 @@ const GlossaryTermTab = ({
       return;
     }
 
+    const entityType = isGlossary
+      ? EntityType.GLOSSARY
+      : EntityType.GLOSSARY_TERM;
+
     try {
       const { data } = await getAllFeeds(
-        `<#E::${EntityType.GLOSSARY}::${activeGlossary.fullyQualifiedName}>`,
+        `<#E::${entityType}::${activeGlossary.fullyQualifiedName}>`,
         undefined,
         ThreadType.Task,
         undefined,
@@ -830,7 +835,7 @@ const GlossaryTermTab = ({
     if (tableRef.current) {
       setTableWidth(tableRef.current.offsetWidth);
     }
-  }, []);
+  }, [tableRef.current]);
 
   if (termsLoading) {
     return <Loader />;
@@ -839,7 +844,7 @@ const GlossaryTermTab = ({
   if (isEmpty(glossaryTerms)) {
     return (
       <ErrorPlaceHolder
-        className="m-t-xlg"
+        className="m-t-xlg p-md p-b-lg"
         doc={GLOSSARIES_DOCS}
         heading={t('label.glossary-term')}
         permission={permissions.Create}
@@ -875,7 +880,9 @@ const GlossaryTermTab = ({
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
-              loading={isTableLoading}
+              // Loading is set to true if the table is not loaded or the table width is not set,
+              // as we are using the table width to calculate the column width
+              loading={isTableLoading || !tableRef.current?.offsetWidth}
               pagination={false}
               ref={tableRef}
               rowKey="fullyQualifiedName"

@@ -534,6 +534,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           }}
           pagination={false}
           rowKey="id"
+          scroll={{ x: true }}
           size="small"
           onChange={handleTableChange}
         />

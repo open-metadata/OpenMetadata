@@ -71,6 +71,7 @@ export const getApiCollectionDetailsPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.API_COLLECTION}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchAPICollectionDetails}
@@ -90,15 +91,13 @@ export const getApiCollectionDetailsPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: apiCollection && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.API_COLLECTION>
-            className=""
-            entityType={EntityType.API_COLLECTION}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.API_COLLECTION>
+          className=""
+          entityType={EntityType.API_COLLECTION}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+          isVersionView={false}
+        />
       ),
     },
   ];

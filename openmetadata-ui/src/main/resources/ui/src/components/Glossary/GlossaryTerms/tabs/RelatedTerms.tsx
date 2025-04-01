@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Card, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import { isArray, isEmpty, isUndefined } from 'lodash';
@@ -107,7 +107,7 @@ const RelatedTerms = () => {
     return data.map((value) => ({
       ...value,
       value: value.id,
-      label: value.displayName || value.name,
+      label: getEntityName(value),
       key: value.id,
     }));
   };
@@ -137,7 +137,7 @@ const RelatedTerms = () => {
         }
         versionData={versionStatus}
         onClick={() => {
-          handleRelatedTermClick(entity.fullyQualifiedName || '');
+          handleRelatedTermClick(entity.fullyQualifiedName ?? '');
         }}
       />
     ),
@@ -229,34 +229,39 @@ const RelatedTerms = () => {
     ]
   );
 
-  return (
-    <div className="flex flex-col" data-testid="related-term-container">
-      <div className="d-flex items-center">
-        <Typography.Text className="right-panel-label">
-          {t('label.related-term-plural')}
-        </Typography.Text>
-        {permissions.EditAll && selectedOption.length > 0 && (
-          <Tooltip
-            title={
-              permissions.EditAll
-                ? t('label.edit-entity', {
-                    entity: t('label.related-term-plural'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="cursor-pointer flex-center m-l-xss"
-              data-testid="edit-button"
-              disabled={!permissions.EditAll}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={() => setIsIconVisible(false)}
-            />
-          </Tooltip>
-        )}
-      </div>
+  const header = (
+    <div className="d-flex items-center">
+      <Typography.Text className="text-sm font-medium">
+        {t('label.related-term-plural')}
+      </Typography.Text>
+      {permissions.EditAll && selectedOption.length > 0 && (
+        <Tooltip
+          title={
+            permissions.EditAll
+              ? t('label.edit-entity', {
+                  entity: t('label.related-term-plural'),
+                })
+              : NO_PERMISSION_FOR_ACTION
+          }>
+          <Button
+            className="cursor-pointer flex-center m-l-xss"
+            data-testid="edit-button"
+            disabled={!permissions.EditAll}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+            size="small"
+            type="text"
+            onClick={() => setIsIconVisible(false)}
+          />
+        </Tooltip>
+      )}
+    </div>
+  );
 
+  return (
+    <Card
+      className="new-header-border-card"
+      data-testid="related-term-container"
+      title={header}>
       {isIconVisible ? (
         relatedTermsContainer
       ) : (
@@ -273,7 +278,7 @@ const RelatedTerms = () => {
           onSubmit={handleRelatedTermsSave}
         />
       )}
-    </div>
+    </Card>
   );
 };
 

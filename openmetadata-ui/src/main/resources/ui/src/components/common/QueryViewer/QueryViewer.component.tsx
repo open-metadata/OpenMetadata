@@ -45,7 +45,7 @@ const QueryViewer = ({
 
   return (
     <Card
-      className="m-md w-auto dbt-tab-container"
+      className="w-auto dbt-tab-container"
       extra={
         <Space className="m-y-xs">
           <Tag className="query-lines" data-testid="query-line">
