@@ -2366,8 +2366,12 @@ public class ElasticSearchClient implements SearchClient {
                 .createParser(
                     EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        BoolQueryBuilder newQuery;
+        if (!nullOrEmpty(searchSourceBuilder.query())) {
+          newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        } else {
+          newQuery = QueryBuilders.boolQuery().filter(filter);
+        }
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);

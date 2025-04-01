@@ -28,6 +28,11 @@
   & > .ant-layout-sider {
     height: 100vh;
     overflow-y: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
@@ -35,14 +40,17 @@
   display: flex;
   flex-direction: column;
 
-  &.ant-menu-root {
-    height: calc(100vh - @layout-header-height);
-  }
-
   &.ant-menu.ant-menu-vertical,
   &.ant-menu.ant-menu-inline {
     border: none;
     padding: 0 0 0 16px;
+    overflow: hidden;
+
+    .ant-menu-submenu-vertical {
+      &.ant-menu-submenu-active {
+        border: none;
+      }
+    }
 
     .ant-menu-submenu.ant-menu-submenu-inline {
       &.ant-menu-submenu-active:not(.ant-menu-submenu-open):not(.ant-menu-submenu-selected) {
@@ -258,6 +266,7 @@
     width: 100%;
     border-radius: 12px;
     margin-bottom: 8px;
+    padding-bottom: 0 !important;
 
     &.ant-menu-submenu-selected:not(.ant-menu-submenu-open) {
       color: @active-color;
@@ -286,6 +295,7 @@
     line-height: 0 !important;
     margin-bottom: 0px;
     margin-top: 0px;
+    border-radius: 12px;
 
     .ant-menu-title-content {
       .anticon {
@@ -299,5 +309,27 @@
       display: flex;
       align-items: center;
     }
+  }
+}
+
+.left-sidebar-layout {
+  height: calc(
+    100vh - @layout-header-height
+  ); // Adjust based on your header height
+
+  .menu-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .top-menu {
+    flex-grow: 1;
+    margin-bottom: 16px; // Adds space between top and bottom menus
+  }
+
+  .bottom-menu {
+    flex-shrink: 0;
   }
 }

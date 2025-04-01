@@ -369,7 +369,7 @@ class HiveUnitTest(TestCase):
 
     def test_yield_table(self):
         self.hive.inspector.get_columns = (
-            lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
+            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         )
         assert EXPECTED_TABLE == [
             either.right

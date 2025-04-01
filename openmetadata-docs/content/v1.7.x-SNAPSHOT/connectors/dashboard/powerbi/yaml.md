@@ -35,6 +35,10 @@ PowerBI dataflows are not yet supported.
 OpenMetadata does not support Power BI usage ingestion because the Power BI Usage API does not support Service Principal authentication.
 {% /note %}
 
+{% note %}
+When configuring Azure Authentication, ensure that "Allow public client flows" is enabled. This setting is required to support authentication for public client applications.
+{% /note %}
+
 ### PowerBI Admin and Non-Admin APIs:
 
 While configuring the PowerBI ingestion you can choose whether to use the PowerBI Admin APIs to retrieve the metadata or use the PowerBI Non-Admin APIs. Please check below for the the difference in their functionality:

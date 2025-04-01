@@ -267,6 +267,7 @@ function PipelineActionsDropdown({
         trigger={['click']}
         onOpenChange={(value) => setIsOpen(value)}>
         <Button
+          className="pipeline-actions-dropdown-button"
           data-testid="more-actions"
           icon={<MoreIcon />}
           type="link"
