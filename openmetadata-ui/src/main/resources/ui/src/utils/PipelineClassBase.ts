@@ -35,9 +35,7 @@ import {
 } from './PipelineDetailsUtils';
 
 export interface PipelineDetailPageTabProps {
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;

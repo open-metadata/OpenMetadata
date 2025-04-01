@@ -23,9 +23,20 @@
   .data-asset-header-metadata {
     border-radius: 12px;
     border: 0.5px solid @grey-300;
-    padding: 20px;
-    gap: 28px;
+    padding: 16px 20px;
+    gap: 16px;
+    display: flex;
     background-color: @background-color;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+  }
+
+  .data-asset-header-less-items {
+    justify-content: initial;
+
+    .ant-divider {
+      margin: 0 20px 0 100px;
+    }
   }
   .ant-space-item {
     .entity-no-tier {
@@ -83,7 +94,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 148px;
+    max-width: 148px;
   }
 
   .ant-btn-group {
@@ -131,6 +142,6 @@
   }
   .tier-container,
   .extra-info-container {
-    width: 148px;
+    max-width: 148px;
   }
 }

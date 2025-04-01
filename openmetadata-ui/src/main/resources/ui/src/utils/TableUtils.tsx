@@ -754,7 +754,7 @@ export const getTableDetailPageBaseTabs = ({
   activeTab,
   deleted,
   tableDetails,
-  totalFeedCount,
+  feedCount,
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
@@ -784,7 +784,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          count={totalFeedCount}
+          count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
@@ -799,8 +799,9 @@ export const getTableDetailPageBaseTabs = ({
         <ActivityFeedTab
           refetchFeed
           columns={tableDetails?.columns}
-          entityFeedTotalCount={totalFeedCount}
+          entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TABLE}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={tableDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
@@ -957,13 +958,11 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TABLE>
-            entityType={EntityType.TABLE}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TABLE>
+          entityType={EntityType.TABLE}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

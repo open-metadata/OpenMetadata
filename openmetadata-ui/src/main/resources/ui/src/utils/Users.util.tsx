@@ -20,7 +20,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
-import { ERROR_MESSAGE } from '../constants/constants';
+import { ERROR_MESSAGE, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { MASKED_EMAIL } from '../constants/User.constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getIsErrorMatch } from './CommonUtils';
@@ -188,4 +188,15 @@ export const getUserCreationErrorMessage = ({
   }
 
   return t('server.create-entity-error', { entity });
+};
+
+export const getEmptyTextFromUserProfileItem = (item: string) => {
+  const messages = {
+    roles: t('message.no-roles-assigned'),
+    teams: t('message.no-teams-assigned'),
+    inheritedRoles: t('message.no-inherited-roles-found'),
+    personas: t('message.no-persona-assigned'),
+  };
+
+  return messages[item as keyof typeof messages] || NO_DATA_PLACEHOLDER;
 };

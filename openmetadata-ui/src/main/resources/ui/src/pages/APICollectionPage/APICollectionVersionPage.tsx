@@ -329,14 +329,12 @@ const APICollectionVersionPage = () => {
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityType={EntityType.API_COLLECTION}
-              hasEditAccess={false}
-              hasPermission={viewVersionPermission}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.API_COLLECTION}
+            hasEditAccess={false}
+            hasPermission={viewVersionPermission}
+          />
         ),
       },
     ],

@@ -175,8 +175,9 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
 export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
   switch (pageType) {
     case PageType.GlossaryTerm:
-    case PageType.Glossary:
       return customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(tab);
+    case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getDefaultWidgetForTab(tab);
     case PageType.Table:
       return tableClassBase.getDefaultLayout(tab);
     case PageType.Topic:
@@ -354,6 +355,10 @@ export const getWidgetsFromKey = (
       return metricDetailsClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.MlModel:
       return mlModelClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.GlossaryTerm:
+      return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -393,6 +398,7 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
     case PageType.MlModel:
       return mlModelClassBase.getWidgetHeight(widgetName);
     case PageType.Glossary:
+      return customizeGlossaryPageClassBase.getWidgetHeight(widgetName);
     case PageType.GlossaryTerm:
       return customizeGlossaryTermPageClassBase.getWidgetHeight(widgetName);
     default:

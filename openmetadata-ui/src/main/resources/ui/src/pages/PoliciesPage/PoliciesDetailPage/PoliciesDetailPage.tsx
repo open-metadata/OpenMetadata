@@ -384,7 +384,7 @@ const PoliciesDetailPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.policy'),
       })}>
-      <div className="page-container" data-testid="policy-details-container">
+      <div data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         <>

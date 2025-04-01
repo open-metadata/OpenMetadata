@@ -464,7 +464,7 @@ const APICollectionPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             {isAPICollectionLoading ? (
               <Skeleton
                 active
@@ -498,7 +498,7 @@ const APICollectionPage: FunctionComponent = () => {
             permissions={apiCollectionPermission}
             type={EntityType.API_COLLECTION}
             onUpdate={handleAPICollectionUpdate}>
-            <Col className="p-x-lg" span={24}>
+            <Col span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"

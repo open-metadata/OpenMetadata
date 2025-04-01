@@ -69,9 +69,9 @@ const DataQualityPage = () => {
   };
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
+        className="content-height-with-resizable-panel bg-white"
         firstPanel={{
           className: 'content-resizable-panel-container',
           minWidth: 280,
@@ -98,7 +98,7 @@ const DataQualityPage = () => {
               <Row
                 className="page-container"
                 data-testid="data-insight-container"
-                gutter={[16, 16]}>
+                gutter={[0, 16]}>
                 <Col span={24}>
                   <Typography.Title
                     className="m-b-md p-x-md"
