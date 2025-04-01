@@ -30,6 +30,8 @@ site_menu:
     url: /connectors/api/rest
   - category: Connectors / API / REST / Run Externally
     url: /connectors/api/rest/yaml
+  - category: Connectors / API / REST / Troubleshooting
+    url: /connectors/api/rest/troubleshooting
   - category: Connectors / Database
     url: /connectors/database
   - category: Connectors / Database / ADLS Datalake
@@ -251,36 +253,52 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Domo Dashboard / Troubleshooting
+    url: /connectors/dashboard/domo-dashboard/troubleshooting
   - category: Connectors / Dashboard / Lightdash
     url: /connectors/dashboard/lightdash
   - category: Connectors / Dashboard / Lightdash / Run Externally
     url: /connectors/dashboard/lightdash/yaml
+  - category: Connectors / Dashboard / Lightdash / Troubleshooting
+    url: /connectors/dashboard/lightdash/troubleshooting
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
     url: /connectors/dashboard/looker/yaml
+  - category: Connectors / Dashboard / Looker / Troubleshooting
+    url: /connectors/dashboard/looker/troubleshooting
   - category: Connectors / Dashboard / Metabase
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / Metabase / Troubleshooting
+    url: /connectors/dashboard/metabase/troubleshooting
   - category: Connectors / Dashboard / MicroStrategy
     url: /connectors/dashboard/microstrategy
   - category: Connectors / Dashboard / MicroStrategy / Run Externally
     url: /connectors/dashboard/microstrategy/yaml
+  - category: Connectors / Dashboard / MicroStrategy / Troubleshooting
+    url: /connectors/dashboard/microstrategy/troubleshooting
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
     url: /connectors/dashboard/mode/yaml
+  - category: Connectors / Dashboard / Mode / Troubleshooting
+    url: /connectors/dashboard/mode/troubleshooting
   - category: Connectors / Dashboard / PowerBI
     url: /connectors/dashboard/powerbi
   - category: Connectors / Dashboard / PowerBI / Run Externally
     url: /connectors/dashboard/powerbi/yaml
   - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
+  - category: Connectors / Dashboard / PowerBI / Troubleshooting
+    url: /connectors/dashboard/powerbi/troubleshooting
   - category: Connectors / Dashboard / PowerBI Report Server
     url: /connectors/dashboard/powerbireportserver
   - category: Connectors / Dashboard / PowerBI Report Server / Run Externally
     url: /connectors/dashboard/powerbireportserver/yaml
+  - category: Connectors / Dashboard / PowerBI Report Server / Troubleshooting
+    url: /connectors/dashboard/powerbireportserver/troubleshooting
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -293,6 +311,8 @@ site_menu:
     url: /connectors/dashboard/qlikcloud/yaml
   - category: Connectors / Dashboard / Qlik Cloud / API Keys
     url: /connectors/dashboard/qlikcloud/api_keys
+  - category: Connectors / Dashboard / Qlik Cloud / Troubleshooting
+    url: /connectors/dashboard/qlikcloud/troubleshooting
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
@@ -655,6 +675,8 @@ site_menu:
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / Table Constraint
+    url: /how-to-guides/data-discovery/table-constraint
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
     url: /how-to-guides/data-discovery/openmetadata-extension
   - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
@@ -817,6 +839,36 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
+  - category: How-to Guides / Data Governance / Workflows
+    url: /how-to-guides/data-governance/workflows
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows
+    url: /how-to-guides/data-governance/workflows/default-workflows
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Glossary Approval Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/glossary-approval
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Table Certification Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/table-certification
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Dashboard Certification Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/dashboard-certification
+  - category: How-to Guides / Data Governance / Workflows / Elements
+    url: /how-to-guides/data-governance/workflows/elements
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers
+    url: /how-to-guides/data-governance/workflows/elements/triggers
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers / Event Based Entity Trigger
+    url: /how-to-guides/data-governance/workflows/elements/triggers/event-based-entity-trigger
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers / Periodic Batch Entity Trigger
+    url: /how-to-guides/data-governance/workflows/elements/triggers/periodic-batch-entity-trigger
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes
+    url: /how-to-guides/data-governance/workflows/elements/nodes
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Check Entity Attributes
+    url: /how-to-guides/data-governance/workflows/elements/nodes/check-entity-attributes
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Create User Task
+    url: /how-to-guides/data-governance/workflows/elements/nodes/create-user-task
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Set Asset Certification
+    url: /how-to-guides/data-governance/workflows/elements/nodes/set-asset-certification
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Set Glossary Term Status
+    url: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
+  - category: How-to Guides / Data Governance / Workflows / How to Edit a Workflow
+    url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
   - category: How-to Guides / Data Governance / Metrics
     url: /how-to-guides/data-governance/metrics
 

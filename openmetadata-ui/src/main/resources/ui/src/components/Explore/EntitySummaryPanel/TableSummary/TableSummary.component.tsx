@@ -182,7 +182,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         <Typography.Text
           className="summary-panel-section-title"
           data-testid="profiler-header">
-          {t('label.profiler-amp-data-quality')}
+          {t('label.data-quality')}
         </Typography.Text>
       </Col>
       <Col span={24}>{profilerSummary}</Col>
