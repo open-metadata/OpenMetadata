@@ -229,7 +229,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="flex-center tab-content-height border-default border-radius-sm">
         <ErrorPlaceHolder
           className={className}
           placeholderText={
@@ -311,7 +311,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
     if (newLook) {
       return (
-        <Card className="w-full new-header-border-card" title={header}>
+        <Card
+          className="w-full new-header-border-card no-scrollbar"
+          title={header}>
           {propertyList}
         </Card>
       );
@@ -326,27 +328,26 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (
-    <Row
-      className="custom-properties-card p-x"
-      data-testid="custom-properties-card"
-      gutter={[16, 16]}>
-      {dataSourceColumns.map((columns, colIndex) => (
-        <Col key={colIndex} span={8}>
-          {columns.map((record) => (
-            <div key={record.name} style={{ marginBottom: '16px' }}>
-              <PropertyValue
-                extension={extensionObject.extensionObject}
-                hasEditPermissions={hasEditAccess}
-                isRenderedInRightPanel={isRenderedInRightPanel}
-                isVersionView={isVersionView}
-                property={record}
-                versionDataKeys={extensionObject.addedKeysList}
-                onExtensionUpdate={onExtensionUpdate}
-              />
-            </div>
-          ))}
-        </Col>
-      ))}
-    </Row>
+    <div className="custom-properties-card">
+      <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+        {dataSourceColumns.map((columns, colIndex) => (
+          <Col key={colIndex} span={8}>
+            {columns.map((record) => (
+              <div key={record.name} style={{ marginBottom: '16px' }}>
+                <PropertyValue
+                  extension={extensionObject.extensionObject}
+                  hasEditPermissions={hasEditAccess}
+                  isRenderedInRightPanel={isRenderedInRightPanel}
+                  isVersionView={isVersionView}
+                  property={record}
+                  versionDataKeys={extensionObject.addedKeysList}
+                  onExtensionUpdate={onExtensionUpdate}
+                />
+              </div>
+            ))}
+          </Col>
+        ))}
+      </Row>
+    </div>
   ) : null;
 };
