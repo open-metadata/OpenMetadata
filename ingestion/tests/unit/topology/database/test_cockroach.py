@@ -1,6 +1,7 @@
 """
 Test Cockroach using the topology
 """
+
 import types
 from unittest import TestCase
 from unittest.mock import patch
@@ -9,7 +10,12 @@ from sqlalchemy.types import VARCHAR
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    DataType,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -242,14 +248,14 @@ class cockroachUnitTest(TestCase):
     def test_datatype(self):
         inspector = types.SimpleNamespace()
         inspector.get_columns = (
-            lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
+            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         )
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
 
         result, _, _ = self.cockroach_source.get_columns_and_constraints(
-            "public", "user", "cockroach", inspector
+            "public", "user", "cockroach", inspector, TableType.Regular
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])

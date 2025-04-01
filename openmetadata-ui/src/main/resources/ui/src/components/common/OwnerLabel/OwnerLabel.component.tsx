@@ -42,6 +42,49 @@ export const OwnerLabel = ({
   const [showAllOwners, setShowAllOwners] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  const ownerElementsNonCompactView = useMemo(() => {
+    if (!isCompactView) {
+      if (showLabel || onUpdate) {
+        return (
+          <div className="d-flex items-center gap-2">
+            {showLabel && (
+              <Typography.Text
+                className={classNames(
+                  'no-owner font-medium text-sm',
+                  className
+                )}>
+                {placeHolder ?? t('label.owner-plural')}
+              </Typography.Text>
+            )}
+            {onUpdate && (
+              <UserTeamSelectableList
+                hasPermission={Boolean(hasPermission)}
+                multiple={multiple}
+                owner={owners}
+                tooltipText={tooltipText}
+                onUpdate={(updatedUsers) => {
+                  onUpdate(updatedUsers);
+                }}
+              />
+            )}
+          </div>
+        );
+      }
+    }
+
+    return null;
+  }, [
+    isCompactView,
+    showLabel,
+    onUpdate,
+    placeHolder,
+    hasPermission,
+    multiple,
+    owners,
+    tooltipText,
+    className,
+  ]);
+
   const ownerElements = useMemo(() => {
     const hasOwners = owners && owners.length > 0;
 
@@ -81,30 +124,7 @@ export const OwnerLabel = ({
             { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
             className
           )}>
-          {!isCompactView && (
-            <div className="d-flex items-center gap-2">
-              {showLabel && (
-                <Typography.Text
-                  className={classNames(
-                    'no-owner font-medium text-sm',
-                    className
-                  )}>
-                  {placeHolder ?? t('label.owner-plural')}
-                </Typography.Text>
-              )}
-              {onUpdate && (
-                <UserTeamSelectableList
-                  hasPermission={Boolean(hasPermission)}
-                  multiple={multiple}
-                  owner={owners}
-                  tooltipText={tooltipText}
-                  onUpdate={async (updatedUsers) => {
-                    await onUpdate(updatedUsers);
-                  }}
-                />
-              )}
-            </div>
-          )}
+          {ownerElementsNonCompactView}
 
           {/* Owner avatars list */}
           <div
@@ -164,6 +184,7 @@ export const OwnerLabel = ({
     isDropdownOpen,
     tooltipText,
     multiple,
+    ownerElementsNonCompactView,
   ]);
 
   return ownerElements;

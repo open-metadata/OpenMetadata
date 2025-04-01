@@ -150,7 +150,7 @@ const EntityHeaderTitle = ({
               {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
-                  className="anticon vertical-baseline m-l-xss"
+                  className="anticon vertical-middle m-l-xss"
                   height={14}
                   width={14}
                 />

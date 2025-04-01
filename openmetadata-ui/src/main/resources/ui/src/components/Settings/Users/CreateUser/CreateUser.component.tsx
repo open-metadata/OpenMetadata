@@ -439,19 +439,21 @@ const CreateUser = ({
         </>
       )}
 
-      <div className="m-t-xs">
-        {getField(domainsField)}
-        {selectedDomain && selectedDomain.length > 0 && (
-          <DomainLabel
-            multiple
-            domain={selectedDomain}
-            entityFqn=""
-            entityId=""
-            entityType={EntityType.USER}
-            hasPermission={false}
-          />
-        )}
-      </div>
+      {!isBot && (
+        <div className="m-t-xs">
+          {getField(domainsField)}
+          {selectedDomain && selectedDomain.length > 0 && (
+            <DomainLabel
+              multiple
+              domain={selectedDomain}
+              entityFqn=""
+              entityId=""
+              entityType={EntityType.USER}
+              hasPermission={false}
+            />
+          )}
+        </div>
+      )}
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
