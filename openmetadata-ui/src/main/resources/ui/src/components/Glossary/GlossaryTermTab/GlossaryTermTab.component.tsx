@@ -828,10 +828,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   }, [tableContainerRef.current]);
 
-  if (termsLoading) {
-    return <Loader />;
-  }
-
   if (isEmpty(glossaryTerms)) {
     return (
       // If there is no terms, the table container ref is not set, so we need to use a div to set the width
@@ -875,7 +871,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
-              loading={isTableLoading}
+              loading={isTableLoading || termsLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
               // Had to pass empty object to override default styling from Table component

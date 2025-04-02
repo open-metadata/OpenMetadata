@@ -67,7 +67,7 @@ const Table = <T extends Record<string, unknown>>(
     string[]
   >(rest.defaultVisibleColumns ?? []);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
-    () => ({ columns: propsColumns, minWidth: 150 }),
+    () => ({ columns: propsColumns, minWidth: 80 }),
     [propsColumns]
   );
 
