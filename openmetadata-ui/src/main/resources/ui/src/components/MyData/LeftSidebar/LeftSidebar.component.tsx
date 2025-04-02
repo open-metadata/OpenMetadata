@@ -12,10 +12,9 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Layout, Menu, MenuProps, Typography } from 'antd';
-import { MenuItemType } from 'antd/lib/menu/hooks/useItems';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import { debounce, noop } from 'lodash';
+import { noop } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -36,12 +35,15 @@ import LeftSidebarItem from './LeftSidebarItem.component';
 
 const { Sider } = Layout;
 
-const LeftSidebar = () => {
+const LeftSidebar = ({
+  isSidebarCollapsed,
+}: {
+  isSidebarCollapsed: boolean;
+}) => {
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { onLogoutHandler } = useApplicationStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
   const { i18n } = useTranslation();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
@@ -82,17 +84,6 @@ const LeftSidebar = () => {
     [handleLogoutClick]
   );
 
-  const handleMouseOver = debounce(() => {
-    if (!isSidebarCollapsed) {
-      return;
-    }
-    setIsSidebarCollapsed(false);
-  }, 100);
-
-  const handleMouseOut = useCallback(() => {
-    setIsSidebarCollapsed(true);
-  }, []);
-
   const menuItems = useMemo(() => {
     return [
       ...sideBarItems.map((item) => {
@@ -109,15 +100,10 @@ const LeftSidebar = () => {
           }),
         };
       }),
-      {
-        type: 'divider',
-      },
-      ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
     ];
   }, [sideBarItems]);
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
-    setIsSidebarCollapsed(true);
     setOpenKeys([]);
   }, []);
 
@@ -129,12 +115,10 @@ const LeftSidebar = () => {
         'sidebar-open': !isSidebarCollapsed,
       })}
       collapsed={isSidebarCollapsed}
-      collapsedWidth={84}
+      collapsedWidth={72}
       data-testid="left-sidebar"
       trigger={null}
-      width={228}
-      onMouseEnter={handleMouseOver}
-      onMouseLeave={handleMouseOut}>
+      width={228}>
       <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage
@@ -148,17 +132,40 @@ const LeftSidebar = () => {
         </Link>
       </div>
 
-      <Menu
-        inlineIndent={16}
-        items={menuItems as MenuItemType[]}
-        mode="inline"
-        openKeys={openKeys}
-        rootClassName="left-sidebar-menu"
-        selectedKeys={selectedKeys}
-        subMenuCloseDelay={1}
-        onClick={handleMenuClick}
-        onOpenChange={setOpenKeys}
-      />
+      <div className="left-sidebar-layout">
+        <div className="menu-container">
+          <div className="top-menu">
+            <Menu
+              inlineIndent={16}
+              items={menuItems}
+              mode="inline"
+              openKeys={openKeys}
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+              onClick={handleMenuClick}
+              onOpenChange={setOpenKeys}
+            />
+          </div>
+
+          <div className="bottom-menu">
+            <Menu
+              inlineIndent={16}
+              items={[
+                {
+                  type: 'divider',
+                  style: {
+                    margin: '8px 0',
+                  },
+                },
+                ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
+              ]}
+              mode="inline"
+              rootClassName="left-sidebar-menu"
+              selectedKeys={selectedKeys}
+            />
+          </div>
+        </div>
+      </div>
 
       {showConfirmLogoutModal && (
         <Modal

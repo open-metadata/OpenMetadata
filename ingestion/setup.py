@@ -34,6 +34,7 @@ VERSIONS = {
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -138,6 +139,7 @@ base_requirements = {
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
+    VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "PyYAML~=6.0",
@@ -435,6 +437,23 @@ e2e_test = {
     "pytest-base-url",
 }
 
+# Define playwright_dependencies as a set of packages required for Playwright tests
+# These packages correspond to the ingestion connectors used in Playwright tests
+playwright_dependencies = {
+    *plugins["mysql"],
+    *plugins["bigquery"],
+    *plugins["kafka"],
+    *plugins["mlflow"],
+    *plugins["snowflake"],
+    *plugins["superset"],
+    *plugins["postgres"],
+    *plugins["redshift"],
+    *plugins["airflow"],
+    *plugins["datalake-s3"],
+    *e2e_test
+    # Add other plugins as needed for Playwright tests
+}
+
 extended_testing = {
     "Faker",  # For Sample Data Generation
 }
@@ -464,6 +483,7 @@ setup(
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
                 "airflow",

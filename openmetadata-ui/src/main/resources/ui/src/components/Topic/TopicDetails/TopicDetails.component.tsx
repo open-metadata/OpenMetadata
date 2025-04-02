@@ -289,6 +289,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TOPIC}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTopic}
@@ -296,7 +297,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       sampleDataTab: !viewSampleDataPermission ? (
-        <div className="m-t-xlg">
+        <div className="border-default border-radius-sm p-y-lg">
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
         </div>
       ) : (
@@ -322,13 +323,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </LineageProvider>
       ),
       customPropertiesTab: topicDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TOPIC>
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TOPIC>
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
       viewSampleDataPermission,
       activeTab,
@@ -376,7 +375,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         entity: t('label.topic'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -400,7 +399,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

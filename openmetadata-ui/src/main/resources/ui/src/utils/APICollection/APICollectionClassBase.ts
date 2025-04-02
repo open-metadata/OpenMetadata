@@ -36,9 +36,7 @@ import {
 
 export interface APICollectionDetailPageTabProps {
   activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   apiCollection: APICollection;
   fetchAPICollectionDetails: () => Promise<void>;
   getEntityFeedCount: () => void;

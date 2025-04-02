@@ -136,7 +136,7 @@ const AddDomain = () => {
       firstPanel={{
         className: 'content-resizable-panel-container',
         children: (
-          <div className="max-width-md w-9/10 domain-form-container">
+          <div className="max-width-md w-9/10 domain-form-container service-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
@@ -163,7 +163,7 @@ const AddDomain = () => {
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
         minWidth: 400,
         flex: 0.3,
       }}

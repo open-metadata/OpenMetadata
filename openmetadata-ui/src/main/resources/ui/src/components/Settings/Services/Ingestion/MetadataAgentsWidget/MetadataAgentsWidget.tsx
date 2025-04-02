@@ -175,49 +175,45 @@ function MetadataAgentsWidget({
   ]);
 
   return (
-    <div className="service-agents-widget">
-      <Card className="metadata-agents-widget">
-        <div className="p-md flex items-center justify-between">
-          <div className="flex gap-4 items-center">
-            <div className="agent-icon-container">
-              <MetadataAgentIcon height={16} width={16} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <Typography.Text className="font-medium text-md">
-                {t('label.metadata-agent-plural')}
-              </Typography.Text>
-              <Typography.Text className="text-grey-muted text-sm">
-                {t('message.metadata-agents-table-description')}
-              </Typography.Text>
-            </div>
+    <Card className="metadata-agents-widget">
+      <div className="p-md flex items-center justify-between">
+        <div className="flex gap-4 items-center">
+          <div className="agent-icon-container">
+            <MetadataAgentIcon height={16} width={16} />
           </div>
-          <div className="flex-center">{renderAddIngestionButton}</div>
+          <div className="flex flex-col gap-1">
+            <Typography.Text className="font-medium text-md">
+              {t('label.metadata-agent-plural')}
+            </Typography.Text>
+            <Typography.Text className="text-grey-muted text-sm">
+              {t('message.metadata-agents-table-description')}
+            </Typography.Text>
+          </div>
         </div>
+        <div className="flex-center">{renderAddIngestionButton}</div>
+      </div>
 
-        <IngestionListTable
-          airflowInformation={airflowInformation}
-          bordered={false}
-          deployIngestion={deployIngestion}
-          handleEnableDisableIngestion={handleEnableDisableIngestion}
-          handleIngestionListUpdate={handleIngestionListUpdate}
-          handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
-          ingestionData={ingestionPipelineList}
-          ingestionPagingInfo={ingestionPagingInfo}
-          isLoading={isLoading}
-          isNumberBasedPaging={!isEmpty(searchText)}
-          pipelineIdToFetchStatus={pipelineIdToFetchStatus}
-          pipelineType={pipelineType}
-          searchText={searchText}
-          serviceCategory={serviceCategory}
-          serviceName={serviceName}
-          tableClassName="metadata-agents-widget-table"
-          tableContainerClassName="m-b-0"
-          triggerIngestion={triggerIngestion}
-          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-          onPageChange={onPageChange}
-        />
-      </Card>
-    </div>
+      <IngestionListTable
+        airflowInformation={airflowInformation}
+        deployIngestion={deployIngestion}
+        handleEnableDisableIngestion={handleEnableDisableIngestion}
+        handleIngestionListUpdate={handleIngestionListUpdate}
+        handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
+        ingestionData={ingestionPipelineList}
+        ingestionPagingInfo={ingestionPagingInfo}
+        isLoading={isLoading}
+        isNumberBasedPaging={!isEmpty(searchText)}
+        pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+        pipelineType={pipelineType}
+        searchText={searchText}
+        serviceCategory={serviceCategory}
+        serviceName={serviceName}
+        tableContainerClassName="metadata-agents-widget-table"
+        triggerIngestion={triggerIngestion}
+        onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+        onPageChange={onPageChange}
+      />
+    </Card>
   );
 }
 

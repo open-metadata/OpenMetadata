@@ -37,9 +37,7 @@ import {
 export interface SearchIndexDetailPageTabProps {
   searchIndexDetails: SearchIndex;
   viewAllPermission: boolean;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   getEntityFeedCount: () => Promise<void>;
   fetchSearchIndexDetails: () => Promise<void>;

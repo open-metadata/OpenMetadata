@@ -128,6 +128,9 @@ jest.mock('./useGlossary.store', () => ({
   useGlossaryStore: jest.fn().mockImplementation(() => ({
     activeGlossary: mockedGlossaryTerms[0],
     updateActiveGlossary: jest.fn(),
+    setGlossaryFunctionRef: jest.fn(),
+    termsLoading: false,
+    setTermsLoading: jest.fn(),
   })),
 }));
 

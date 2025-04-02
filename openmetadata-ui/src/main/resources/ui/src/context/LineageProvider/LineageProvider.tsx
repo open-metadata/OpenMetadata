@@ -55,6 +55,7 @@ import {
 } from '../../components/Lineage/Lineage.interface';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { ROUTES } from '../../constants/constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import {
   ELEMENT_DELETE_STATE,
@@ -65,6 +66,7 @@ import { EntityLineageNodeType, EntityType } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { Table } from '../../generated/entity/data/table';
 import { LineageLayer } from '../../generated/settings/settings';
 import {
   ColumnLineage,
@@ -81,6 +83,7 @@ import {
   getPlatformLineage,
   updateLineageEdge,
 } from '../../rest/lineageAPI';
+import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import {
   addLineageHandler,
   centerNodePosition,
@@ -94,6 +97,7 @@ import {
   getConnectedNodesEdges,
   getEdgeDataFromEdge,
   getELKLayoutedElements,
+  getEntityTypeFromPlatformView,
   getLineageEdge,
   getLineageEdgeForAPI,
   getLoadingStatusValue,
@@ -206,6 +210,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
     return searchData.layers as LineageLayer[] | undefined;
   }, [location.search]);
+
+  const isPlatformLineagePage = useMemo(() => {
+    return location.pathname === ROUTES.PLATFORM_LINEAGE;
+  }, [location]);
 
   const fetchDataQualityLineage = async (
     fqn: string,
@@ -346,7 +354,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const fetchPlatformLineage = useCallback(
-    async (view: 'service' | 'domain', config?: LineageConfig) => {
+    async (view: string, config?: LineageConfig) => {
       try {
         setLoading(true);
         setInit(false);
@@ -423,6 +431,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onPlatformViewChange = useCallback((view: LineagePlatformView) => {
     setPlatformView(view);
+    if (view !== LineagePlatformView.None) {
+      setActiveLayer([]);
+    }
   }, []);
 
   const exportLineageData = useCallback(
@@ -438,16 +449,30 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const onExportClick = useCallback(() => {
-    if (decodedFqn) {
+    if (decodedFqn || isPlatformLineagePage) {
       showModal({
-        name: decodedFqn,
-        exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
+        ...(isPlatformLineagePage
+          ? {
+              name: `${t('label.lineage')}_${getCurrentISODate()}`,
+              exportTypes: [ExportTypes.PNG],
+            }
+          : {
+              name: decodedFqn,
+              exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
+            }),
         documentSelector: '.react-flow__viewport',
         viewport: getViewportForLineageExport(nodes),
         onExport: exportLineageData,
       });
     }
-  }, [entityType, decodedFqn, lineageConfig, queryFilter, nodes]);
+  }, [
+    entityType,
+    decodedFqn,
+    lineageConfig,
+    queryFilter,
+    nodes,
+    isPlatformLineagePage,
+  ]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: LineageDirection) => {
@@ -540,6 +565,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onUpdateLayerView = useCallback((layers: LineageLayer[]) => {
     setActiveLayer(layers);
+    if (
+      layers.includes(LineageLayer.ColumnLevelLineage) ||
+      layers.includes(LineageLayer.DataObservability)
+    ) {
+      setPlatformView(LineagePlatformView.None);
+    }
   }, []);
 
   const updateEntityData = useCallback(
@@ -1329,17 +1360,26 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           entity?.domain.type,
           lineageConfig
         );
+      } else if (
+        platformView === LineagePlatformView.DataProduct &&
+        ((entity as Table)?.dataProducts ?? [])?.length > 0
+      ) {
+        fetchLineageData(
+          (entity as Table)?.dataProducts?.[0]?.fullyQualifiedName ?? '',
+          (entity as Table)?.dataProducts?.[0]?.type ?? '',
+          lineageConfig
+        );
       } else if (platformView === LineagePlatformView.None) {
         fetchLineageData(decodedFqn, entityType, lineageConfig);
       } else if (isPlatformLineage) {
         fetchPlatformLineage(
-          platformView === LineagePlatformView.Domain ? 'domain' : 'service',
+          getEntityTypeFromPlatformView(platformView),
           lineageConfig
         );
       }
     } else if (isPlatformLineage) {
       fetchPlatformLineage(
-        platformView === LineagePlatformView.Domain ? 'domain' : 'service',
+        getEntityTypeFromPlatformView(platformView),
         lineageConfig
       );
     }

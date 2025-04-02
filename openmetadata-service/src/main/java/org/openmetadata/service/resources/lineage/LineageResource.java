@@ -261,7 +261,7 @@ public class LineageResource {
       @Parameter(description = "view (service or domain)")
           @QueryParam("view")
           @Pattern(
-              regexp = "service|domain|all",
+              regexp = "service|domain|dataProduct|all",
               message = "Invalid type. Allowed values: service, domain.")
           String view,
       @Parameter(
@@ -273,6 +273,12 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
+    if (Entity.getSearchRepository().getIndexMapping(view) != null) {
+      view =
+          Entity.getSearchRepository()
+              .getIndexMapping(view)
+              .getIndexName(Entity.getSearchRepository().getClusterAlias());
+    }
     return Entity.getSearchRepository().searchPlatformLineage(view, queryFilter, deleted);
   }
 

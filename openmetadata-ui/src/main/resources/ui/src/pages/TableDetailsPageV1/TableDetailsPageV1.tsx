@@ -495,7 +495,7 @@ const TableDetailsPageV1: React.FC = () => {
       activeTab,
       deleted,
       tableDetails,
-      totalFeedCount: feedCount.totalCount,
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
@@ -777,7 +777,7 @@ const TableDetailsPageV1: React.FC = () => {
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <Col data-testid="entity-page-header" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -799,7 +799,7 @@ const TableDetailsPageV1: React.FC = () => {
             />
           </Col>
           {/* Entity Tabs */}
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
               className="tabs-new"
