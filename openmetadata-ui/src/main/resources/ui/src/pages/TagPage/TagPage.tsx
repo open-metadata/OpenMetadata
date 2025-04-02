@@ -433,7 +433,7 @@ const TagPage = () => {
               className: 'tag-resizable-panel-container',
               children: (
                 <div className="tag-overview-tab">
-                  <Row className="p-md">
+                  <Row>
                     <Col span={24}>
                       <DescriptionV1
                         removeBlur

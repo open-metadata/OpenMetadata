@@ -13,6 +13,8 @@
 
 @import url('../../../styles/variables.less');
 
+@reflex-card-gap: 20px;
+
 body.reflex-col-resize {
   cursor: col-resize;
 }
@@ -235,6 +237,8 @@ h2.rotated-header {
 }
 
 .left-panel-splitter {
+  margin-right: @reflex-card-gap;
+
   .panel-grabber-vertical {
     margin-left: -10px;
 
@@ -245,8 +249,10 @@ h2.rotated-header {
 }
 
 .right-panel-splitter {
+  margin-left: @reflex-card-gap;
+
   .panel-grabber-vertical {
-    margin-left: 30px; // Gap between cards is 20px + 10px for positioning
+    margin-left: 10px;
 
     .handle-icon-vertical {
       margin-left: 0px;
@@ -263,15 +269,6 @@ h2.rotated-header {
 .full-width {
   flex-grow: 1 !important;
 }
-
-// .splitter {
-//   background-color: transparent !important;
-//   border-left: 1px solid @border-color;
-// }
-
-// .splitter.collapsed {
-//   border-left: none;
-// }
 
 .hidden {
   display: none;
@@ -327,12 +324,6 @@ h2.rotated-header {
   .ant-card-body {
     flex: 1;
     overflow: auto;
-  }
-}
-
-.resizable-panels-layout {
-  .resizable-second-panel {
-    padding-left: 20px;
   }
 }
 

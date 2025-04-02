@@ -622,65 +622,59 @@ const TableQueries: FC<TableQueriesProp> = ({
                           />
                         ) : (
                           <SortDescendingOutlined className="text-sm text-grey-muted" />
-                        )
-                      }
-                      type="text"
-                      onClick={() =>
-                        handleSortOderChange(
-                          isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                        )
-                      }
-                    />
-                    {addButton}
+                        )}
+                      </Button>
+                      {addButton}
+                    </Space>
                   </Space>
-                </Space>
-              </Col>
+                </Col>
 
-              {isLoading.query ? (
-                <Loader />
-              ) : (
-                <>
-                  {queryTabBody}
-                  {showPagination && (
-                    <Col span={24}>
-                      <PaginationComponent
-                        hideOnSinglePage
-                        showSizeChanger
-                        className="text-center m-b-sm"
-                        current={currentPage}
-                        data-testid="query-pagination"
-                        pageSize={pageSize}
-                        pageSizeOptions={[10, 25, 50]}
-                        total={paging.total}
-                        onChange={pagingHandler}
-                        onShowSizeChange={handlePageSizeChange}
-                      />
-                    </Col>
-                  )}
-                </>
-              )}
-            </Row>
-          ),
-          minWidth: 800,
-          flex: 0.87,
-        }}
-        hideSecondPanel={!selectedQuery}
-        secondPanel={{
-          children: selectedQuery && (
-            <TableQueryRightPanel
-              isLoading={isLoading.rightPanel}
-              permission={queryPermissions}
-              query={selectedQuery}
-              onQueryUpdate={handleQueryUpdate}
-            />
-          ),
-          minWidth: 400,
-          flex: 0.13,
-          className:
-            'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
-        }}
-      />
-    </div>
+                {isLoading.query ? (
+                  <Loader />
+                ) : (
+                  <>
+                    {queryTabBody}
+                    {showPagination && (
+                      <Col span={24}>
+                        <PaginationComponent
+                          hideOnSinglePage
+                          showSizeChanger
+                          className="text-center m-b-sm"
+                          current={currentPage}
+                          data-testid="query-pagination"
+                          pageSize={pageSize}
+                          pageSizeOptions={[10, 25, 50]}
+                          total={paging.total}
+                          onChange={pagingHandler}
+                          onShowSizeChange={handlePageSizeChange}
+                        />
+                      </Col>
+                    )}
+                  </>
+                )}
+              </Row>
+            ),
+            minWidth: 800,
+            flex: 0.87,
+          }}
+          hideSecondPanel={!selectedQuery}
+          secondPanel={{
+            children: selectedQuery && (
+              <TableQueryRightPanel
+                isLoading={isLoading.rightPanel}
+                permission={queryPermissions}
+                query={selectedQuery}
+                onQueryUpdate={handleQueryUpdate}
+              />
+            ),
+            minWidth: 400,
+            flex: 0.13,
+            className:
+              'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
+          }}
+        />
+      </Col>
+    </Row>
   );
 };
 

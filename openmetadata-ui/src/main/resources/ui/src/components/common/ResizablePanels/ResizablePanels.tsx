@@ -61,9 +61,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           }}>
           <PanelContainer overlay={firstPanel.overlay}>
             {isFirstPanelWrapInCard ? (
-              <Card className="card-body-border-none">
-                {firstPanel.children}
-              </Card>
+              <Card>{firstPanel.children}</Card>
             ) : (
               firstPanel.children
             )}
