@@ -94,9 +94,13 @@ public class MainWorkflow {
             .add(edgeDefinition.getFrom());
       }
 
+      Set<String> globalVariables = workflowDefinition.getTrigger().getOutput();
+      // 'stepsToRetry' is always global;
+      globalVariables.add("stepsToRetry");
+
       this.nodeMap = nodeMap;
       this.incomingEdgesMap = incomingEdgesMap;
-      this.globalVariables = workflowDefinition.getTrigger().getOutput();
+      this.globalVariables = globalVariables;
       this.workflowTriggerType = workflowDefinition.getTrigger().getType();
     }
 

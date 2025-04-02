@@ -6,23 +6,29 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.UUID;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+import javax.ws.rs.core.UriInfo;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.Collection;
@@ -125,5 +131,28 @@ public class WorkflowInstanceResource
       filter.addQueryParam("entityLink", entityLink);
     }
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
+  }
+
+  @POST
+  @Path("/{id}/retry")
+  @Operation(
+      operationId = "retryWorkflowInstanceFromStep",
+      summary = "Retry a Workflow Instance from a given Step",
+      description = "Retry a Workflow Instance from a given Step.",
+      responses = {@ApiResponse(responseCode = "200", description = "Retry Message sent")})
+  public Response redeploy(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Workflow Definition Name", schema = @Schema(type = "String"))
+          @QueryParam("workflowDefinitionName")
+          String workflowDefinitionName,
+      @Parameter(description = "Step to Retry", schema = @Schema(type = "string"))
+          @QueryParam("stepToRetry")
+          String stepToRetry,
+      @Context SecurityContext securityContext) {
+    WorkflowHandler.getInstance().retryWorkflowInstance(workflowDefinitionName, id, stepToRetry);
+    return Response.status(Response.Status.OK).build();
   }
 }

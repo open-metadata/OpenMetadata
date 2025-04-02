@@ -11,6 +11,7 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ManualRetryTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
@@ -21,6 +22,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.End
 import org.openmetadata.service.governance.workflows.elements.nodes.gateway.ParallelGateway;
 import org.openmetadata.service.governance.workflows.elements.nodes.startEvent.StartEvent;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserApprovalTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.manualRetry.ManualRetryTask;
 
 public class NodeFactory {
   public static NodeInterface createNode(
@@ -41,6 +43,8 @@ public class NodeFactory {
       case RUN_APP_TASK -> new RunAppTask((RunAppTaskDefinition) nodeDefinition, config);
       case PARALLEL_GATEWAY -> new ParallelGateway(
           (ParallelGatewayDefinition) nodeDefinition, config);
+      case MANUAL_RETRY_TASK -> new ManualRetryTask(
+          (ManualRetryTaskDefinition) nodeDefinition, config);
     };
   }
 }
