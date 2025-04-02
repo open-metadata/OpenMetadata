@@ -859,6 +859,7 @@ class TableauSource(DashboardServiceSource):
                         [
                             TableAndQuery(table=table, query=custom_sql_table.query)
                             for table in from_entities
+                            if table is not None
                         ]
                     )
 
