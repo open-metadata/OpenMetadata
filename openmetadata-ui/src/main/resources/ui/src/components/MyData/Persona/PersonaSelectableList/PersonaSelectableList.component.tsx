@@ -28,6 +28,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../../utils/EntityUtils';
+import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
@@ -210,6 +211,7 @@ export const PersonaSelectableList = ({
               popupClassName="persona-custom-dropdown-class"
               ref={dropdownRef as any}
               style={{ width: '100%' }}
+              tagRender={TagRenderer}
               onChange={(selectedIds) => {
                 const selectedPersonasList = selectOptions.filter((persona) =>
                   selectedIds.includes(persona.id)
