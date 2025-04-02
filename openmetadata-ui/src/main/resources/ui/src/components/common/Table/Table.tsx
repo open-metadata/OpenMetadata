@@ -244,6 +244,7 @@ const Table = <T extends Record<string, unknown>>(
                     trigger={['click']}
                     onOpenChange={setIsDropdownVisible}>
                     <Button
+                      className="remove-button-background-hover"
                       data-testid="column-dropdown"
                       icon={<Icon component={ColumnIcon} />}
                       size="small"

@@ -647,7 +647,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           trigger={['click']}
           onOpenChange={setIsStatusDropdownVisible}>
           <Button
-            className="text-primary"
+            className="text-primary remove-button-background-hover"
             data-testid="glossary-status-dropdown"
             size="small"
             type="text">
@@ -664,12 +664,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           type="text"
           onClick={toggleExpandAll}>
           <Space align="center" size={4}>
-            {isAllExpanded ? (
-              <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            ) : (
-              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            )}
-
+            <Icon
+              className="text-primary"
+              component={isAllExpanded ? DownUpArrowIcon : UpDownArrowIcon}
+              height="14px"
+            />
             {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
           </Space>
         </Button>
