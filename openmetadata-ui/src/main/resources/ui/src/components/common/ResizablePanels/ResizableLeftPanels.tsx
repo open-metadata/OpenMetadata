@@ -16,7 +16,6 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
-import { ReactComponent as SidebarExpandedIcon } from '../../../assets/svg/ic-sidebar-expanded.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import PanelContainer from './PanelContainer/PanelContainer';
 import './resizable-panels.less';
@@ -58,23 +57,12 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
             <PanelContainer overlay={firstPanel.overlay}>
               <Card
                 className="reflex-card card-padding-0"
-                extra={
-                  !isLeftPanelCollapsed && (
-                    <Tooltip placement="bottom" title={t('label.collapse')}>
-                      <Button
-                        className="p-0 header-collapse-button"
-                        data-testid="header-collapse-button"
-                        type="text"
-                        onClick={handleCollapse}>
-                        <SidebarExpandedIcon height={20} width={20} />
-                      </Button>
-                    </Tooltip>
-                  )
-                }
                 title={
-                  <Typography.Text strong className="m-b-0 text-sm">
-                    {firstPanel.title ?? ''}
-                  </Typography.Text>
+                  firstPanel.title && (
+                    <Typography.Text strong className="m-b-0 text-sm">
+                      {firstPanel.title}
+                    </Typography.Text>
+                  )
                 }>
                 {firstPanel.children}
               </Card>
