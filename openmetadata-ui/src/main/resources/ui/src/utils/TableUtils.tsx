@@ -751,7 +751,7 @@ export const getColumnSelections = (
   userFqn: string,
   type: string | undefined,
   entityType: string | undefined,
-  isDefaultColumns: boolean,
+  isFullViewTable: boolean,
   defaultColumns: string[] | undefined
 ) => {
   if (!userFqn) {
@@ -766,7 +766,7 @@ export const getColumnSelections = (
   if (key) {
     if (selectedColumns[key]) {
       return selectedColumns[key];
-    } else if (isDefaultColumns) {
+    } else if (!isFullViewTable) {
       localStorage.setItem(
         storageKey,
         JSON.stringify({

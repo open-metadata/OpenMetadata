@@ -90,11 +90,6 @@ const Table = <T extends Record<string, unknown>>(
     [loading]
   );
 
-  const isDefaultColumns = useMemo(
-    () => !isEmpty(defaultVisibleColumns),
-    [defaultVisibleColumns]
-  );
-
   // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
   const isFullViewTable = useMemo(
     () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
@@ -247,12 +242,12 @@ const Table = <T extends Record<string, unknown>>(
       currentUser?.fullyQualifiedName ?? '',
       type,
       entityType,
-      isDefaultColumns,
+      isFullViewTable,
       defaultVisibleColumns
     );
 
     setColumnDropdownSelections(selections);
-  }, [type, entityType, defaultVisibleColumns, isDefaultColumns]);
+  }, [type, entityType, defaultVisibleColumns, isFullViewTable]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
