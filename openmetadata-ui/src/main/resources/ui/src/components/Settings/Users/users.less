@@ -332,7 +332,7 @@
 
   .ant-select-item-option-selected,
   .ant-select-selection-item {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .ant-select:not(.ant-select-customize-input) {
@@ -467,4 +467,37 @@
     stroke-width: 0.5px;
     vertical-align: text-top;
   }
+}
+.selected-chip-tag-remove {
+  margin-left: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  svg {
+    width: 10px;
+    height: 10px;
+    color: @grey-4;
+  }
+}
+.domain-link {
+  max-width: 180px;
+  display: inline-block;
+
+  .domain-link-name {
+    color: @text-color;
+    font-weight: 400;
+
+    &:hover {
+      color: @blue-9;
+    }
+  }
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
 }

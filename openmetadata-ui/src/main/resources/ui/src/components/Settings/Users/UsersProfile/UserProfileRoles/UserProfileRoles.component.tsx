@@ -231,7 +231,7 @@ const UserProfileRoles = ({
                     dropdownMatchSelectWidth={false}
                     filterOption={handleSearchFilterOption}
                     loading={isLoading}
-                    maxTagCount={4}
+                    maxTagCount={3}
                     maxTagPlaceholder={(omittedValues) => (
                       <span className="max-tag-text">
                         {t('label.plus-count-more', {

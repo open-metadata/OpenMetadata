@@ -37,6 +37,7 @@ import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
+import { TagRenderer } from '../TagRenderer/TagRenderer';
 import './domain-selectable.less';
 import {
   DomainSelectableTreeProps,
@@ -227,7 +228,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           className="custom-domain-edit-select"
           dropdownRender={() => treeContent}
           dropdownStyle={{ maxHeight: '200px' }}
-          maxTagCount={2}
+          maxTagCount={3}
           maxTagPlaceholder={(omittedValues) => (
             <span className="max-tag-text">
               {t('label.plus-count-more', { count: omittedValues.length })}
@@ -241,7 +242,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           placeholder="Select a domain"
           popupClassName="domain-custom-dropdown-class"
           ref={dropdownRef as any}
-          style={{}}
+          tagRender={TagRenderer}
           value={
             selectedDomains
               ?.map((domain) => domain.fullyQualifiedName)
