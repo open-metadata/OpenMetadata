@@ -225,16 +225,18 @@ const GlossaryTermsV1 = ({
               ),
               key: EntityTabs.ASSETS,
               children: (
-                <AssetsTabs
-                  assetCount={assetCount}
-                  entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                  isSummaryPanelOpen={isSummaryPanelOpen}
-                  permissions={assetPermissions}
-                  ref={assetTabRef}
-                  onAddAsset={() => setAssetModalVisible(true)}
-                  onAssetClick={onAssetClick}
-                  onRemoveAsset={handleAssetSave}
-                />
+                <div className="p-md">
+                  <AssetsTabs
+                    assetCount={assetCount}
+                    entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                    isSummaryPanelOpen={isSummaryPanelOpen}
+                    permissions={assetPermissions}
+                    ref={assetTabRef}
+                    onAddAsset={() => setAssetModalVisible(true)}
+                    onAssetClick={onAssetClick}
+                    onRemoveAsset={handleAssetSave}
+                  />
+                </div>
               ),
             },
             {

@@ -25,6 +25,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
@@ -81,6 +82,7 @@ export const GlobalSearchBar = () => {
         listHeight={300}
         popupClassName="global-search-select-menu"
         size="small"
+        suffixIcon={<DropDownIcon width={12} />}
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {searchClassBase.getGlobalSearchOptions().map(({ value, label }) => (
@@ -188,7 +190,7 @@ export const GlobalSearchBar = () => {
                 : t('label.use-natural-language-search')
             }>
             <Button
-              className={classNames('nlp-button', 'w-6', 'h-6', {
+              className={classNames('nav-search-button', 'w-6', 'h-6', {
                 active: isNLPActive,
               })}
               data-testid="nlp-suggestions-button"
@@ -267,7 +269,7 @@ export const GlobalSearchBar = () => {
       </Popover>
 
       {entitiesSelect}
-
+      <Divider className="h-5 m-r-md" type="vertical" />
       {searchValue ? (
         <Icon
           alt="icon-cancel"
@@ -283,7 +285,7 @@ export const GlobalSearchBar = () => {
         <Icon
           alt="icon-search"
           className={classNames('align-middle', {
-            'text-grey-3': isSearchBlur,
+            'text-color': isSearchBlur,
             'text-primary': !isSearchBlur,
           })}
           component={IconSearch}

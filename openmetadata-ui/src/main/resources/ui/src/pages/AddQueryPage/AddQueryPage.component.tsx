@@ -226,9 +226,10 @@ const AddQueryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div>
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />
             <div className="m-t-md">
               <Typography.Paragraph
@@ -326,7 +327,7 @@ const AddQueryPage = () => {
             </Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

@@ -85,7 +85,6 @@ describe('Test GlossaryLeftPanel component', () => {
     expect(
       await screen.findByTestId('glossary-left-panel')
     ).toBeInTheDocument();
-    expect(await screen.findByText('label.glossary')).toBeInTheDocument();
     expect(
       await screen.findByText(mockedGlossaries[0].displayName)
     ).toBeInTheDocument();

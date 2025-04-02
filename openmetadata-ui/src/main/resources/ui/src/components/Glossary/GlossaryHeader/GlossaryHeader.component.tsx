@@ -473,7 +473,7 @@ const GlossaryHeader = ({
     if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
-          className="m-l-xs"
+          className="m-l-xs h-10"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -484,7 +484,7 @@ const GlossaryHeader = ({
         <>
           {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
             <Dropdown
-              className="m-l-xs"
+              className="m-l-xs h-10"
               menu={{
                 items: addButtonContent,
               }}
@@ -570,10 +570,10 @@ const GlossaryHeader = ({
           />
         </Col>
         <Col flex="360px">
-          <div className="d-flex gap-2 justify-end">
+          <div className="d-flex gap-3 justify-end">
             {!isVersionView && createButtons}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {updateVote && (
                 <Voting
                   voteStatus={voteStatus}
@@ -582,7 +582,7 @@ const GlossaryHeader = ({
                 />
               )}
 
-              {selectedData && selectedData.version && (
+              {selectedData?.version && (
                 <Tooltip
                   title={t(
                     `label.${
@@ -629,10 +629,14 @@ const GlossaryHeader = ({
                         : t('label.glossary-term'),
                     })}>
                     <Button
-                      className="glossary-manage-dropdown-button tw-px-1.5"
+                      className="glossary-manage-dropdown-button"
                       data-testid="manage-button"
                       icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                        <IconDropdown
+                          className="vertical-align-inherit manage-dropdown-icon"
+                          height={16}
+                          width={16}
+                        />
                       }
                       onClick={() => setShowActions(true)}
                     />

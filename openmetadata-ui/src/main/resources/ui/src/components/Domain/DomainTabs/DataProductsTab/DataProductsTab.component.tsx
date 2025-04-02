@@ -109,7 +109,7 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
-          className="m-t-xlg"
+          className="m-t-xlg p-md p-b-lg"
           heading={t('label.data-product')}
           permission={permissions.Create}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -124,7 +124,7 @@ const DataProductsTab = forwardRef(
         firstPanel={{
           className: 'domain-resizable-panel-container',
           children: (
-            <div className="p-x-md p-y-md">
+            <>
               {dataProducts.data.map((dataProduct) => (
                 <ExploreSearchCard
                   className={classNames(
@@ -141,7 +141,7 @@ const DataProductsTab = forwardRef(
                   }}
                 />
               ))}
-            </div>
+            </>
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
         }}

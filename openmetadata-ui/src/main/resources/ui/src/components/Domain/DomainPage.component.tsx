@@ -222,6 +222,7 @@ const DomainPage = () => {
           className: 'content-resizable-panel-container',
           minWidth: 280,
           flex: 0.13,
+          title: t('label.domain-plural'),
           children: <DomainsLeftPanel domains={rootDomains} />,
         }}
         pageTitle={t('label.domain')}

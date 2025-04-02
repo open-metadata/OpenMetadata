@@ -63,7 +63,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Space className="w-full justify-between items-start p-l-md">
+        <Space className="w-full justify-between items-start">
           <div data-testid="data-insight-header">
             <Typography.Title level={5}>
               {t('label.data-insight-plural')}

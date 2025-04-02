@@ -21,7 +21,13 @@
   background: #fdfdfd;
   padding: 6px 20px;
 
-  .nlp-button {
+  .global-search-select {
+    .ant-select-arrow {
+      color: @text-color;
+    }
+  }
+
+  .nav-search-button {
     border: 0.5px solid @nlp-border-color !important;
     border-radius: 8px;
     background-color: @blue-11 !important;
@@ -29,6 +35,7 @@
     svg {
       width: 14px;
       height: 14px;
+      fill: transparent;
     }
 
     &.active {
