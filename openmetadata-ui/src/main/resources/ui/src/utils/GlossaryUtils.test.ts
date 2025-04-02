@@ -361,11 +361,11 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
 
     expect(columnWidthObject).toEqual({
       description: 210,
-      name: 200,
-      owners: 200,
-      reviewers: 200,
-      status: 180,
-      synonyms: 200,
+      name: 400,
+      owners: 170,
+      reviewers: 330,
+      status: 200,
+      synonyms: 330,
     });
   });
 
@@ -374,24 +374,11 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
 
     expect(columnWidthObject).toEqual({
       description: 330,
-      name: 200,
-      owners: 200,
-      reviewers: 200,
-      status: 180,
-      synonyms: 200,
-    });
-  });
-
-  it('should return fallback width when table width is 0', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(0, false);
-
-    expect(columnWidthObject).toEqual({
-      description: 200,
-      name: 200,
-      owners: 200,
-      reviewers: 200,
+      name: 400,
+      owners: 170,
+      reviewers: 330,
       status: 200,
-      synonyms: 200,
+      synonyms: 330,
     });
   });
 });

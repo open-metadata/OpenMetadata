@@ -21,6 +21,7 @@ import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy'
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { TeamsSelectableProps } from './TeamsSelectable.interface';
 
 const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
@@ -124,6 +125,7 @@ const TeamsSelectableNew = forwardRef<any, TeamsSelectableProps>(
           ref={ref as any}
           showCheckedStrategy={TreeSelect.SHOW_CHILD}
           style={{ width: '100%' }}
+          tagRender={TagRenderer}
           treeData={teamsTree}
           treeLine={{ showLeafIcon }}
           treeNodeFilterProp="title"

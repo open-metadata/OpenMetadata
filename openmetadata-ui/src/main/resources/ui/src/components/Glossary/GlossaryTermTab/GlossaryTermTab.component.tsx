@@ -117,8 +117,8 @@ import {
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const { currentUser } = useApplicationStore();
-  const tableRef = useRef<HTMLDivElement>(null);
-  const [tableWidth, setTableWidth] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -239,8 +239,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [isGlossary, activeGlossary]);
 
   const tableColumnsWidth = useMemo(
-    () => glossaryTermTableColumnsWidth(tableWidth, permissions.Create),
-    [permissions.Create, tableWidth]
+    () => glossaryTermTableColumnsWidth(containerWidth, permissions.Create),
+    [permissions.Create, containerWidth]
   );
 
   const updateGlossaryTermStatus = (
@@ -810,10 +810,23 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, []);
 
   useEffect(() => {
-    if (tableRef.current) {
-      setTableWidth(tableRef.current.offsetWidth);
+    if (!tableContainerRef.current) {
+      return undefined;
     }
-  }, [tableRef.current]);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setContainerWidth(width);
+      }
+    });
+
+    resizeObserver.observe(tableContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [tableContainerRef.current]);
 
   if (termsLoading) {
     return <Loader />;
@@ -821,19 +834,22 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   if (isEmpty(glossaryTerms)) {
     return (
-      <ErrorPlaceHolder
-        className="m-t-xlg p-md p-b-lg"
-        doc={GLOSSARIES_DOCS}
-        heading={t('label.glossary-term')}
-        permission={permissions.Create}
-        placeholderText={t('message.no-glossary-term')}
-        type={
-          permissions.Create && glossaryTermStatus === Status.Approved
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
-        }
-        onClick={handleAddGlossaryTermClick}
-      />
+      // If there is no terms, the table container ref is not set, so we need to use a div to set the width
+      <div ref={tableContainerRef}>
+        <ErrorPlaceHolder
+          className="m-t-xlg p-md p-b-lg"
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary-term')}
+          permission={permissions.Create}
+          placeholderText={t('message.no-glossary-term')}
+          type={
+            permissions.Create && glossaryTermStatus === Status.Approved
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+          }
+          onClick={handleAddGlossaryTermClick}
+        />
+      </div>
     );
   }
 
@@ -843,7 +859,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   return (
     <Row className={className} gutter={[0, 16]}>
-      <Col span={24}>
+      {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
+      <Col className="w-full" ref={tableContainerRef} span={24}>
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
@@ -858,11 +875,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
-              // Loading is set to true if the table is not loaded or the table width is not set,
-              // as we are using the table width to calculate the column width
-              loading={isTableLoading || !tableRef.current?.offsetWidth}
+              loading={isTableLoading}
               pagination={false}
-              ref={tableRef}
               rowKey="fullyQualifiedName"
               // Had to pass empty object to override default styling from Table component
               scroll={{}}
