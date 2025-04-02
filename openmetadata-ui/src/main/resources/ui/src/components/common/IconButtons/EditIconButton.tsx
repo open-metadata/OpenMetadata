@@ -41,10 +41,11 @@ export const EditIconButton = ({
           {...props}
         />
       ) : (
-        <Icon
+        <Button
           className={className}
-          component={EditIcon}
-          style={{ color: DE_ACTIVE_COLOR }}
+          icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+          size="small"
+          type="text"
           {...props}
         />
       )}

@@ -62,9 +62,7 @@ export const OwnerLabel = ({
                 multiple={multiple}
                 owner={owners}
                 tooltipText={tooltipText}
-                onUpdate={(updatedUsers) => {
-                  onUpdate(updatedUsers);
-                }}
+                onUpdate={onUpdate}
               />
             )}
           </div>
@@ -160,9 +158,7 @@ export const OwnerLabel = ({
             multiple={multiple}
             owner={owners}
             tooltipText={tooltipText}
-            onUpdate={(updatedUsers) => {
-              onUpdate(updatedUsers);
-            }}
+            onUpdate={onUpdate}
           />
         )}
       </div>

@@ -237,7 +237,7 @@ const Table = <T extends Record<string, unknown>>(
               {!isFullViewTable && (
                 <DndProvider backend={HTML5Backend}>
                   <Dropdown
-                    className="custom-column-dropdown-menu"
+                    className="custom-column-dropdown-menu text-primary"
                     menu={menu}
                     open={isDropdownVisible}
                     placement="bottomRight"
@@ -245,7 +245,9 @@ const Table = <T extends Record<string, unknown>>(
                     onOpenChange={setIsDropdownVisible}>
                     <Button
                       data-testid="column-dropdown"
-                      icon={<Icon component={ColumnIcon} />}>
+                      icon={<Icon component={ColumnIcon} />}
+                      size="small"
+                      type="text">
                       {t('label.column-plural')}
                     </Button>
                   </Dropdown>

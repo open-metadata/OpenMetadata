@@ -647,8 +647,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           trigger={['click']}
           onOpenChange={setIsStatusDropdownVisible}>
           <Button
-            className="custom-status-dropdown-btn"
-            data-testid="glossary-status-dropdown">
+            className="text-primary"
+            data-testid="glossary-status-dropdown"
+            size="small"
+            type="text">
             <Space>
               {t('label.status')}
               <DownOutlined />

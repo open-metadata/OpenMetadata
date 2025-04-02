@@ -361,7 +361,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
 
     expect(columnWidthObject).toEqual({
       description: 210,
-      name: 400,
+      name: 200,
       owners: 170,
       reviewers: 330,
       status: 200,
@@ -374,7 +374,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
 
     expect(columnWidthObject).toEqual({
       description: 330,
-      name: 400,
+      name: 200,
       owners: 170,
       reviewers: 330,
       status: 200,
