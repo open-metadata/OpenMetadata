@@ -28,6 +28,12 @@ class ApplicationsClassBase {
           },
         },
       },
+      entityLink: {
+        'ui:widget': 'hidden',
+      },
+      type: {
+        'ui:widget': 'hidden',
+      },
     };
   }
   public importAppLogo(appName: string) {

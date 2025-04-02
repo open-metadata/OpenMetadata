@@ -229,23 +229,39 @@ export const renderDomainLink = (
   domain: EntityReference,
   domainDisplayName: ReactNode,
   showDomainHeading: boolean,
-  textClassName?: string
-) => (
-  <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
-    <Link
-      className={classNames(
-        'no-underline domain-link domain-link-text font-medium',
-        { 'text-sm': !showDomainHeading },
-        textClassName
-      )}
-      data-testid="domain-link"
-      to={getDomainPath(domain?.fullyQualifiedName)}>
-      {isUndefined(domainDisplayName)
-        ? getEntityName(domain)
-        : domainDisplayName}
-    </Link>
-  </Tooltip>
-);
+  textClassName?: string,
+  trimLink?: boolean
+) => {
+  const displayName = isUndefined(domainDisplayName)
+    ? getEntityName(domain)
+    : domainDisplayName;
+
+  return (
+    <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
+      <Link
+        className={classNames(
+          'no-underline domain-link domain-link-text font-medium',
+          {
+            'text-sm': !showDomainHeading,
+            'text-truncate': trimLink,
+          },
+          textClassName
+        )}
+        data-testid="domain-link"
+        to={getDomainPath(domain?.fullyQualifiedName)}>
+        {trimLink ? (
+          <Typography.Text
+            className="domain-link-name"
+            ellipsis={{ tooltip: false }}>
+            {displayName}
+          </Typography.Text>
+        ) : (
+          <>{displayName}</>
+        )}
+      </Link>
+    </Tooltip>
+  );
+};
 
 export const initializeDomainEntityRef = (
   domains: EntityReference[],

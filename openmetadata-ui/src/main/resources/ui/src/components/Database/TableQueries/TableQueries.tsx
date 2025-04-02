@@ -486,9 +486,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <div
-        className="flex-center font-medium mt-24 p-b-md"
-        data-testid="no-queries">
+      <div className="query-placeholder-container" data-testid="no-queries">
         <ErrorPlaceHolder
           buttonId="add-query-btn"
           doc={USAGE_DOCS}
@@ -503,9 +501,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   if (isTableDeleted) {
     return (
-      <div
-        className="flex-center font-medium mt-24 p-b-md"
-        data-testid="no-queries">
+      <div className="query-placeholder-container" data-testid="no-queries">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           {t('message.field-data-is-not-available-for-deleted-entities', {
             field: t('label.query-plural'),
@@ -625,63 +621,66 @@ const TableQueries: FC<TableQueriesProp> = ({
                             style={{ fontSize: '14px' }}
                           />
                         ) : (
-                          <SortDescendingOutlined
-                            className="text-base text-grey-muted"
-                            style={{ fontSize: '14px' }}
-                          />
-                        )}
-                      </Button>
-                      {addButton}
-                    </Space>
+                          <SortDescendingOutlined className="text-sm text-grey-muted" />
+                        )
+                      }
+                      type="text"
+                      onClick={() =>
+                        handleSortOderChange(
+                          isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
+                        )
+                      }
+                    />
+                    {addButton}
                   </Space>
-                </Col>
+                </Space>
+              </Col>
 
-                {isLoading.query ? (
-                  <Loader />
-                ) : (
-                  <>
-                    {queryTabBody}
-                    {showPagination && (
-                      <Col span={24}>
-                        <PaginationComponent
-                          hideOnSinglePage
-                          showSizeChanger
-                          className="text-center m-b-sm"
-                          current={currentPage}
-                          data-testid="query-pagination"
-                          pageSize={pageSize}
-                          pageSizeOptions={[10, 25, 50]}
-                          total={paging.total}
-                          onChange={pagingHandler}
-                          onShowSizeChange={handlePageSizeChange}
-                        />
-                      </Col>
-                    )}
-                  </>
-                )}
-              </Row>
-            ),
-            minWidth: 800,
-            flex: 0.87,
-          }}
-          hideSecondPanel={!selectedQuery}
-          secondPanel={{
-            children: selectedQuery && (
-              <TableQueryRightPanel
-                isLoading={isLoading.rightPanel}
-                permission={queryPermissions}
-                query={selectedQuery}
-                onQueryUpdate={handleQueryUpdate}
-              />
-            ),
-            minWidth: 400,
-            flex: 0.13,
-            className:
-              'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
-          }}
-        />
-      </Col>
-    </Row>
+              {isLoading.query ? (
+                <Loader />
+              ) : (
+                <>
+                  {queryTabBody}
+                  {showPagination && (
+                    <Col span={24}>
+                      <PaginationComponent
+                        hideOnSinglePage
+                        showSizeChanger
+                        className="text-center m-b-sm"
+                        current={currentPage}
+                        data-testid="query-pagination"
+                        pageSize={pageSize}
+                        pageSizeOptions={[10, 25, 50]}
+                        total={paging.total}
+                        onChange={pagingHandler}
+                        onShowSizeChange={handlePageSizeChange}
+                      />
+                    </Col>
+                  )}
+                </>
+              )}
+            </Row>
+          ),
+          minWidth: 800,
+          flex: 0.87,
+        }}
+        hideSecondPanel={!selectedQuery}
+        secondPanel={{
+          children: selectedQuery && (
+            <TableQueryRightPanel
+              isLoading={isLoading.rightPanel}
+              permission={queryPermissions}
+              query={selectedQuery}
+              onQueryUpdate={handleQueryUpdate}
+            />
+          ),
+          minWidth: 400,
+          flex: 0.13,
+          className:
+            'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
+        }}
+      />
+    </div>
   );
 };
 

@@ -22,6 +22,11 @@
   .entity-resizable-panel-container {
     height: @entity-details-tab-height;
     overflow-y: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
@@ -53,6 +58,11 @@
   .content-resizable-panel-container {
     height: @page-height;
     overflow-y: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 

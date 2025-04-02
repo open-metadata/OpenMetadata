@@ -14,7 +14,6 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { mockTableEntityDetails } from '../mocks/TableSummary.mock';
 import TableSummary from './TableSummary.component';
@@ -41,11 +40,7 @@ jest.mock('../../../../rest/tableAPI', () => ({
     .mockImplementation(() => mockTableEntityDetails),
 }));
 jest.mock('../../../../rest/testAPI', () => ({
-  getTestCaseExecutionSummary: jest.fn().mockImplementation(() => ({
-    success: 0,
-    failed: 0,
-    aborted: 0,
-  })),
+  getTestCaseExecutionSummary: jest.fn(),
 }));
 
 jest.mock('../SummaryList/SummaryList.component', () =>
@@ -88,7 +83,7 @@ describe('TableSummary component tests', () => {
     expect(profilerHeader).toBeInTheDocument();
 
     expect(noProfilerPlaceholder).toContainHTML(
-      'message.no-profiler-enabled-summary-message'
+      'message.no-data-quality-enabled-summary-message'
     );
   });
 
@@ -108,15 +103,16 @@ describe('TableSummary component tests', () => {
     expect(profilerHeader).toBeInTheDocument();
 
     expect(noProfilerPlaceholder).toContainHTML(
-      'message.no-profiler-enabled-summary-message'
+      'message.no-data-quality-enabled-summary-message'
     );
   });
 
   it('Profiler data should be displayed for tables with profiler data available', async () => {
-    (getLatestTableProfileByFqn as jest.Mock).mockImplementationOnce(() =>
+    (getTestCaseExecutionSummary as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
-        ...mockTableEntityDetails,
-        profile: { rowCount: 30, columnCount: 2, timestamp: 38478857 },
+        success: 0,
+        failed: 0,
+        aborted: 0,
       })
     );
 
@@ -142,12 +138,6 @@ describe('TableSummary component tests', () => {
   });
 
   it('column test case count should appear', async () => {
-    (getLatestTableProfileByFqn as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ...mockTableEntityDetails,
-        profile: { rowCount: 30, timestamp: 38478857 },
-      })
-    );
     (getTestCaseExecutionSummary as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         success: 3,
