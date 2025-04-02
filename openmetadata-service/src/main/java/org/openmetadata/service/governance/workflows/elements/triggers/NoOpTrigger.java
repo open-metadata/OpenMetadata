@@ -15,6 +15,7 @@ import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.ErrorEventDefinition;
+import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.IOParameter;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
@@ -54,6 +55,9 @@ public class NoOpTrigger implements TriggerInterface {
     runtimeExceptionBoundaryEvent.addEventDefinition(runtimeExceptionDefinition);
 
     runtimeExceptionBoundaryEvent.setAttachedToRef(workflowTrigger);
+    for (FlowableListener listener : getWorkflowInstanceListeners(List.of("end"))) {
+      runtimeExceptionBoundaryEvent.getExecutionListeners().add(listener);
+    }
     process.addFlowElement(runtimeExceptionBoundaryEvent);
 
     EndEvent errorEndEvent =
