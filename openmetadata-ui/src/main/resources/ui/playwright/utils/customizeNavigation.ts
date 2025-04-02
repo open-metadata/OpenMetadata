@@ -53,6 +53,7 @@ export const validateLeftSidebarWithHiddenItems = async (
 
       if (items) {
         await page.hover('[data-testid="left-sidebar"]');
+        await page.waitForTimeout(300);
         await page.click(`[data-testid="${items[0]}"]`);
 
         if (hiddenItems.includes(items[1])) {
@@ -73,9 +74,11 @@ export const validateLeftSidebarWithHiddenItems = async (
       }
       hiddenItems.includes(item)
         ? await expect(
-            page.getByTestId(`app-bar-item-${item}`)
+            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
           ).not.toBeVisible()
-        : await expect(page.getByTestId(`app-bar-item-${item}`)).toBeVisible();
+        : await expect(
+            page.getByTestId('left-sidebar').getByTestId(`app-bar-item-${item}`)
+          ).toBeVisible();
     }
   }
 };

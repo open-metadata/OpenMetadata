@@ -11,14 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  Dropdown,
-  Space,
-  Table as AntdTable,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -46,6 +39,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
+import TableComponent from '../../common/Table/Table';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { RowData } from './RowData';
 import './sample-data-table.less';
@@ -220,12 +214,12 @@ const SampleDataTable = ({
 
   return (
     <div
-      className={classNames('m-md', {
+      className={classNames('p-md border-default border-radius-sm', {
         'h-70vh overflow-hidden': isTourPage,
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-b-md justify-end w-full">
+      <Space className="m-y-xss justify-end w-full">
         {hasPermission && (
           <Dropdown
             menu={{
@@ -253,8 +247,7 @@ const SampleDataTable = ({
         )}
       </Space>
 
-      <AntdTable
-        bordered
+      <TableComponent
         columns={sampleData?.columns}
         data-testid="sample-data-table"
         dataSource={sampleData?.rows}

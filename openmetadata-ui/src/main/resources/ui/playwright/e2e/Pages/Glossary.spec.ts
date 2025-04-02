@@ -23,6 +23,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   getRandomLastName,
   redirectToHomePage,
   toastNotification,
@@ -145,6 +146,8 @@ test.describe('Glossary tests', () => {
         await expect(firstNotification).toContainText(
           glossary1.data.fullyQualifiedName
         );
+
+        await clickOutside(page1);
 
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
         await redirectToHomePage(page1);
@@ -368,10 +371,9 @@ test.describe('Glossary tests', () => {
       );
 
       // Verify the Owner
-      const ownerSelector = `td:nth-child(4) a[data-testid="owner-link"]`;
-      const ownerText = await termRow.locator(ownerSelector).textContent();
-
-      expect(ownerText).toBe(`${owner1.data.firstName}${owner1.data.lastName}`);
+      await expect(
+        page.getByTestId(owner1.responseData?.['displayName'])
+      ).toBeVisible();
 
       await checkGlossaryTermDetails(
         page,

@@ -663,7 +663,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tag-tabs"
+            className="tabs-new"
             items={tabItems}
             onChange={activeTabHandler}
           />

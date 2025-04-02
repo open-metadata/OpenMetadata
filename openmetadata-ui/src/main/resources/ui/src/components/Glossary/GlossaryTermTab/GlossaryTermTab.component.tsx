@@ -49,7 +49,6 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -99,12 +98,15 @@ import {
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
+import { ownerTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -112,20 +114,20 @@ import {
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
 
-const GlossaryTermTab = ({
-  refreshGlossaryTerms,
-  permissions,
-  isGlossary,
-  termsLoading,
-  onAddGlossaryTerm,
-  onEditGlossaryTerm,
-  className,
-}: GlossaryTermTabProps) => {
+const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const { currentUser } = useApplicationStore();
-  const tableRef = useRef<HTMLDivElement>(null);
-  const [tableWidth, setTableWidth] = useState(0);
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    onAddGlossaryTerm,
+    onEditGlossaryTerm,
+    termsLoading,
+    refreshGlossaryTerms,
+  } = useGlossaryStore();
+  const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
   const [termTaskThreads, setTermTaskThreads] = useState<
     Record<string, Thread[]>
@@ -191,9 +193,13 @@ const GlossaryTermTab = ({
       return;
     }
 
+    const entityType = isGlossary
+      ? EntityType.GLOSSARY
+      : EntityType.GLOSSARY_TERM;
+
     try {
       const { data } = await getAllFeeds(
-        `<#E::${EntityType.GLOSSARY}::${activeGlossary.fullyQualifiedName}>`,
+        `<#E::${entityType}::${activeGlossary.fullyQualifiedName}>`,
         undefined,
         ThreadType.Task,
         undefined,
@@ -237,8 +243,8 @@ const GlossaryTermTab = ({
   }, [isGlossary, activeGlossary]);
 
   const tableColumnsWidth = useMemo(
-    () => glossaryTermTableColumnsWidth(tableWidth, permissions.Create),
-    [permissions.Create, tableWidth]
+    () => glossaryTermTableColumnsWidth(containerWidth, permissions.Create),
+    [permissions.Create, containerWidth]
   );
 
   const updateGlossaryTermStatus = (
@@ -369,7 +375,7 @@ const GlossaryTermTab = ({
         width: tableColumnsWidth.description,
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewerV1
+            <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
               maxLength={120}
@@ -413,13 +419,7 @@ const GlossaryTermTab = ({
           );
         },
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.OWNERS,
-        width: tableColumnsWidth.owners,
-        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
-      },
+      ...ownerTableObject<ModifiedGlossaryTerm>(),
       {
         title: t('label.status'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
@@ -832,10 +832,23 @@ const GlossaryTermTab = ({
   }, []);
 
   useEffect(() => {
-    if (tableRef.current) {
-      setTableWidth(tableRef.current.offsetWidth);
+    if (!tableContainerRef.current) {
+      return undefined;
     }
-  }, []);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        setContainerWidth(width);
+      }
+    });
+
+    resizeObserver.observe(tableContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [tableContainerRef.current]);
 
   if (termsLoading) {
     return <Loader />;
@@ -843,19 +856,22 @@ const GlossaryTermTab = ({
 
   if (isEmpty(glossaryTerms)) {
     return (
-      <ErrorPlaceHolder
-        className="m-t-xlg"
-        doc={GLOSSARIES_DOCS}
-        heading={t('label.glossary-term')}
-        permission={permissions.Create}
-        placeholderText={t('message.no-glossary-term')}
-        type={
-          permissions.Create && glossaryTermStatus === Status.Approved
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
-        }
-        onClick={handleAddGlossaryTermClick}
-      />
+      // If there is no terms, the table container ref is not set, so we need to use a div to set the width
+      <div ref={tableContainerRef}>
+        <ErrorPlaceHolder
+          className="m-t-xlg p-md p-b-lg"
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary-term')}
+          permission={permissions.Create}
+          placeholderText={t('message.no-glossary-term')}
+          type={
+            permissions.Create && glossaryTermStatus === Status.Approved
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+          }
+          onClick={handleAddGlossaryTermClick}
+        />
+      </div>
     );
   }
 
@@ -865,11 +881,11 @@ const GlossaryTermTab = ({
 
   return (
     <Row className={className} gutter={[0, 16]}>
-      <Col span={24}>
+      {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
+      <Col className="w-full" ref={tableContainerRef} span={24}>
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
-              bordered
               resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
@@ -883,7 +899,6 @@ const GlossaryTermTab = ({
               extraTableFilters={extraTableFilters}
               loading={isTableLoading}
               pagination={false}
-              ref={tableRef}
               rowKey="fullyQualifiedName"
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}

@@ -521,7 +521,6 @@ function SearchIndexDetailsPage() {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.search-index'),
       })}
@@ -529,7 +528,7 @@ function SearchIndexDetailsPage() {
         entity: t('label.search-index'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -557,7 +556,7 @@ function SearchIndexDetailsPage() {
           <Col span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

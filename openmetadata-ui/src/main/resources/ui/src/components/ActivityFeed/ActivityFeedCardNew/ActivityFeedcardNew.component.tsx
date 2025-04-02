@@ -102,14 +102,10 @@ const ActivityFeedCardNew = ({
     setIsEditPost(!isEditPost);
   };
 
-  const { isUserOrTeam, showEntityLink } = useMemo(() => {
+  const { isUserOrTeam } = useMemo(() => {
     return {
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
-      showEntityLink: ![
-        CardStyle.EntityCreated,
-        CardStyle.EntityDeleted,
-      ].includes(feed.cardStyle ?? CardStyle.Default),
     };
   }, [entityFQN, entityType, feed.cardStyle]);
   const renderEntityLink = useMemo(() => {
@@ -137,7 +133,7 @@ const ActivityFeedCardNew = ({
           </Link>
         </UserPopOverCard>
       );
-    } else if (showEntityLink) {
+    } else {
       return (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <div
@@ -162,32 +158,8 @@ const ActivityFeedCardNew = ({
           </div>
         </EntityPopOverCard>
       );
-    } else {
-      return (
-        <div
-          className={classNames('break-word header-link d-flex', {
-            'items-start': showThread,
-            'items-center': !showThread,
-            ' m-t-xss':
-              showThread && feed.entityRef?.type === EntityType.CONTAINER,
-          })}>
-          {searchClassBase.getEntityIcon(entityType ?? '') && (
-            <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
-              {searchClassBase.getEntityIcon(entityType ?? '')}
-            </span>
-          )}
-          <Typography.Text
-            className={classNames('text-sm', {
-              'max-one-line': !showThread,
-            })}>
-            {feed?.entityRef
-              ? getEntityName(feed.entityRef)
-              : entityDisplayName(entityType, entityFQN)}
-          </Typography.Text>
-        </div>
-      );
     }
-  }, [feed.cardStyle, entityType, entityFQN, showEntityLink, isUserOrTeam]);
+  }, [feed.cardStyle, entityType, entityFQN, isUserOrTeam]);
   const feedHeaderText = getFeedHeaderTextFromCardStyle(
     feed.fieldOperation,
     feed.cardStyle,

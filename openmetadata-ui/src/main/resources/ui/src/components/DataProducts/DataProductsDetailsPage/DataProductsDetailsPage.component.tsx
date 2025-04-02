@@ -33,6 +33,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -477,18 +478,16 @@ const DataProductsDetailsPage = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <div className="p-md">
-            <CustomPropertyTable<EntityType.DATA_PRODUCT>
-              entityType={EntityType.DATA_PRODUCT}
-              hasEditAccess={
-                (dataProductPermission.EditAll ||
-                  dataProductPermission.EditCustomFields) &&
-                !isVersionsView
-              }
-              hasPermission={dataProductPermission.ViewAll}
-              isVersionView={isVersionsView}
-            />
-          </div>
+          <CustomPropertyTable<EntityType.DATA_PRODUCT>
+            entityType={EntityType.DATA_PRODUCT}
+            hasEditAccess={
+              (dataProductPermission.EditAll ||
+                dataProductPermission.EditCustomFields) &&
+              !isVersionsView
+            }
+            hasPermission={dataProductPermission.ViewAll}
+            isVersionView={isVersionsView}
+          />
         ),
       },
     ];
@@ -620,13 +619,13 @@ const DataProductsDetailsPage = ({
           data={dataProduct}
           isVersionView={isVersionsView}
           permissions={dataProductPermission}
-          type={EntityType.DATA_PRODUCT}
+          type={EntityType.DATA_PRODUCT as CustomizeEntityType}
           onUpdate={onUpdate}>
           <Col span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-              className="domain-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

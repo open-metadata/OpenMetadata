@@ -25,6 +25,10 @@ button {
   }
 }
 
+.ant-btn.ant-btn-default {
+  border-color: @blue-15;
+}
+
 .ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
   background: @primary-color;
   color: @white;
@@ -77,4 +81,24 @@ button {
   border: 1px solid @primary-color;
   color: @primary-color;
   background: transparent;
+}
+
+.ant-btn.ant-btn-icon-only.bordered {
+  border: 1px solid @border-light;
+  background-color: @white;
+
+  &.ant-btn-sm {
+    width: 20px;
+    height: 20px;
+    border-radius: @border-radius-base;
+    svg {
+      width: 12px;
+      height: 12px;
+      vertical-align: text-top;
+    }
+  }
+
+  svg {
+    color: @grey-600;
+  }
 }

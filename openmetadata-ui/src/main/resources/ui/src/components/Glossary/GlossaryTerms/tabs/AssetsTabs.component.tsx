@@ -442,7 +442,13 @@ const AssetsTabs = forwardRef(
       ) {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon height={140} width={140} />}>
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }>
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
                 <Typography.Paragraph>
@@ -455,7 +461,13 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon className="h-32 w-32" />}
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph>
               {noDataPlaceholder ??
@@ -650,7 +662,7 @@ const AssetsTabs = forwardRef(
         activeEntity &&
         permissions.Create &&
         data.length > 0 && (
-          <div className="w-full d-flex justify-between items-center">
+          <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -850,7 +862,7 @@ const AssetsTabs = forwardRef(
             )}
             {isLoading ? (
               <Col span={24}>
-                <Space direction="vertical" size={16}>
+                <Space className="w-full" direction="vertical" size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
@@ -879,7 +891,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && permissions?.EditAll && (
+        {!isLoading && permissions?.EditAll && assetCount > 0 && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

@@ -266,7 +266,7 @@ export const searchTeam = async (
   if (searchWillBeEmpty) {
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   } else {
-    await expect(page.locator('table')).toContainText(teamName);
+    await expect(page.getByRole('cell', { name: teamName })).toBeVisible();
   }
 };
 

@@ -88,7 +88,7 @@ describe('Test CustomField Table Component', () => {
 
     const tableRow = await findAllByRole('row');
 
-    expect(tableRow).toHaveLength(mockProperties.length + 1);
+    expect(tableRow).toHaveLength(mockProperties.length);
   });
 
   it('Test delete property flow', async () => {
@@ -111,7 +111,7 @@ describe('Test CustomField Table Component', () => {
 
     const tableRow = await screen.findAllByRole('row');
 
-    expect(tableRow).toHaveLength(mockProperties.length + 1);
+    expect(tableRow).toHaveLength(mockProperties.length);
 
     const dataRow = tableRow[1];
 

@@ -340,12 +340,12 @@ function AlertDetailsPage({
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container ',
         children: loadingCount ? (
           <Loader />
         ) : (
           <div
-            className="steps-form-container"
+            className="steps-form-container service-form-container"
             data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"
@@ -356,7 +356,7 @@ function AlertDetailsPage({
 
               <Col span={24}>
                 <Row justify="space-between">
-                  <Col span={21}>
+                  <Col span={20}>
                     <Row gutter={[16, 16]}>
                       <Col span={24}>
                         <EntityHeaderTitle

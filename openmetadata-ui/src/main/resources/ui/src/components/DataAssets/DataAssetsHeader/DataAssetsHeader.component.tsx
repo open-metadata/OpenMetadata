@@ -20,7 +20,6 @@ import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -31,10 +30,7 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  DE_ACTIVE_COLOR,
-} from '../../../constants/constants';
+import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -54,6 +50,7 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
+  getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
 import EntityLink from '../../../utils/EntityLink';
@@ -72,6 +69,7 @@ import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -386,6 +384,11 @@ export const DataAssetsHeader = ({
     [entityType, dataAsset, entityName, parentContainers]
   );
 
+  const showCompressedExtraInfoItems = useMemo(
+    () => getEntityExtraInfoLength(extraInfo) <= 1,
+    [extraInfo]
+  );
+
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
       return;
@@ -587,7 +590,10 @@ export const DataAssetsHeader = ({
         </Col>
 
         <Col span={24}>
-          <div className="d-flex data-asset-header-metadata  flex-wrap ">
+          <div
+            className={classNames('data-asset-header-metadata ', {
+              'data-asset-header-less-items': showCompressedExtraInfoItems,
+            })}>
             {showDomain && (
               <>
                 <DomainLabel
@@ -627,22 +633,14 @@ export const DataAssetsHeader = ({
                         </span>
 
                         {editTierPermission && (
-                          <Tooltip
+                          <EditIconButton
+                            newLook
+                            data-testid="edit-tier"
+                            size="small"
                             title={t('label.edit-entity', {
                               entity: t('label.tier'),
-                            })}>
-                            <Button
-                              className="flex-center edit-tier-button p-0"
-                              data-testid="edit-tier"
-                              icon={
-                                <EditIcon
-                                  color={DE_ACTIVE_COLOR}
-                                  width="12px"
-                                />
-                              }
-                              type="text"
-                            />
-                          </Tooltip>
+                            })}
+                          />
                         )}
                       </div>
 
@@ -661,22 +659,14 @@ export const DataAssetsHeader = ({
                           {t('label.tier')}
                         </span>
                         {editTierPermission && (
-                          <Tooltip
+                          <EditIconButton
+                            newLook
+                            data-testid="edit-tier"
+                            size="small"
                             title={t('label.edit-entity', {
                               entity: t('label.tier'),
-                            })}>
-                            <Button
-                              className="flex-center edit-tier-button p-0"
-                              data-testid="edit-tier"
-                              icon={
-                                <EditIcon
-                                  color={DE_ACTIVE_COLOR}
-                                  width="12px"
-                                />
-                              }
-                              type="text"
-                            />
-                          </Tooltip>
+                            })}
+                          />
                         )}
                       </div>
                       <span

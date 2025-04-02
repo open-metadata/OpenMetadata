@@ -483,7 +483,8 @@ const GlossaryPage = () => {
     <ResizableLeftPanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         minWidth: 280,
         flex: 0.13,
         children: (
@@ -512,7 +513,8 @@ const GlossaryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         children: glossaryElement,
         minWidth: 700,
         flex: 0.7,
@@ -528,14 +530,14 @@ const GlossaryPage = () => {
           />
         ),
         className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
+          'content-resizable-panel-container entity-summary-resizable-right-panel-container bg-white',
         minWidth: 400,
         flex: 0.3,
       }}
     />
   );
 
-  return <div className="m--t-sm">{resizableLayout}</div>;
+  return <div>{resizableLayout}</div>;
 };
 
 export default withPageLayout(i18n.t('label.glossary'))(GlossaryPage);

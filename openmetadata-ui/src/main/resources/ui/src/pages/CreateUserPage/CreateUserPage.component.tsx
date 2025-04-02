@@ -214,8 +214,9 @@ const CreateUserPage = () => {
 
   return (
     <PageLayoutV1
+      center
       pageTitle={t('label.create-entity', { entity: t('label.user') })}>
-      <div className="max-width-md w-9/10 service-form-container">
+      <div className="service-form-container w-800">
         <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
         <div className="m-t-md">
           <CreateUserComponent

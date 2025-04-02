@@ -81,7 +81,6 @@ import {
 } from '../../../utils/TableUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -395,10 +394,6 @@ const SchemaTable = () => {
     >;
   }, [data]);
 
-  const handleSearchAction = (searchValue: string) => {
-    setSearchText(searchValue);
-  };
-
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -421,7 +416,7 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className="m-b-0 d-block text-grey-muted break-word"
+                  className="m-b-0 d-block break-word"
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
@@ -604,21 +599,21 @@ const SchemaTable = () => {
     }
   }, [data, decodedEntityFqn]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('message.find-in-table'),
+      value: searchText,
+      onSearch: (value: string) => setSearchText(value),
+      onClear: () => setSearchText(''),
+    }),
+    [searchText]
+  );
+
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={8}>
-        <Searchbar
-          removeMargin
-          placeholder={t('message.find-in-table')}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearchAction}
-        />
-      </Col>
+    <Row gutter={[0, 16]}>
       <Col id="schemaDetails" span={24}>
         <Table
-          bordered
-          className="m-b-sm align-table-filter-left"
+          className="align-table-filter-left"
           columns={columns}
           data-testid="entity-table"
           dataSource={data}
@@ -634,6 +629,7 @@ const SchemaTable = () => {
           pagination={false}
           rowKey="fullyQualifiedName"
           scroll={TABLE_SCROLL_VALUE}
+          searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         />

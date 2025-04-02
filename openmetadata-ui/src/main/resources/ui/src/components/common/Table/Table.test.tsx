@@ -26,6 +26,10 @@ jest.mock('../../../utils/CustomizeColumnUtils', () => ({
   getReorderedColumns: jest.fn().mockImplementation((_, columns) => columns),
 }));
 
+jest.mock('../SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>SearchBar</div>)
+);
+
 const mockColumns = [
   {
     title: 'Column 1',

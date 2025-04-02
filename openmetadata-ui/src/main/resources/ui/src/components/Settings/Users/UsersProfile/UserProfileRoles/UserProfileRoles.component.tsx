@@ -197,7 +197,7 @@ const UserProfileRoles = ({
           <RoleIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium">
             {t('label.role-plural')}
           </Typography.Text>
           <Popover
@@ -231,7 +231,7 @@ const UserProfileRoles = ({
                     dropdownMatchSelectWidth={false}
                     filterOption={handleSearchFilterOption}
                     loading={isLoading}
-                    maxTagCount={4}
+                    maxTagCount={3}
                     maxTagPlaceholder={(omittedValues) => (
                       <span className="max-tag-text">
                         {t('label.plus-count-more', {

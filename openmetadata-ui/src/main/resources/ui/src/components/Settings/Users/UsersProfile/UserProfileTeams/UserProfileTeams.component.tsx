@@ -121,7 +121,7 @@ const UserProfileTeams = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium">
             {t('label.team-plural')}
           </Typography.Text>
 
@@ -151,7 +151,7 @@ const UserProfileTeams = ({
                   <TeamsSelectableNew
                     filterJoinable
                     handleDropdownChange={handleDropdownChange}
-                    maxValueCount={4}
+                    maxValueCount={3}
                     ref={teamsSelectableRef}
                     selectedTeams={selectedTeams}
                     onSelectionChange={setSelectedTeams}

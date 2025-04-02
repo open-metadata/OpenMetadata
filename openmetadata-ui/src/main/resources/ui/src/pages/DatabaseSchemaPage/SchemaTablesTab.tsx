@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -64,10 +62,8 @@ function SchemaTablesTab({
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
-  const pagingInfo = usePaging(PAGE_SIZE);
   const { data: databaseSchemaDetails, permissions: databaseSchemaPermission } =
     useGenericContext<DatabaseSchema>();
-
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
@@ -75,11 +71,13 @@ function SchemaTablesTab({
   const {
     paging,
     pageSize,
+    showPagination,
     handlePagingChange,
     currentPage,
+    handlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = pagingInfo;
+  } = usePaging(PAGE_SIZE);
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -196,7 +194,7 @@ function SchemaTablesTab({
         key: 'description',
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewerV1 markdown={text} />
+            <RichTextEditorPreviewerNew markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
@@ -240,61 +238,53 @@ function SchemaTablesTab({
   }, [databaseSchemaDetails.deleted]);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <TableAntd
-          bordered
-          columns={tableColumn}
-          data-testid="databaseSchema-tables"
-          dataSource={tableData}
-          extraTableFilters={
-            !isVersionView && (
-              <>
-                <span>
-                  <Switch
-                    checked={tableFilters.showDeletedTables}
-                    data-testid="show-deleted"
-                    onClick={handleShowDeletedTables}
-                  />
-                  <Typography.Text className="m-l-xs">
-                    {t('label.deleted')}
-                  </Typography.Text>
-                </span>
-
-                {getBulkEditButton(
-                  permissions.table.EditAll && !databaseSchemaDetails.deleted,
-                  handleEditTable
-                )}
-              </>
-            )
-          }
-          loading={tableDataLoading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                className="mt-0-important"
-                type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+    <TableAntd
+      columns={tableColumn}
+      customPaginationProps={{
+        showPagination,
+        currentPage,
+        isLoading: tableDataLoading,
+        pageSize,
+        paging,
+        pagingHandler: tablePaginationHandler,
+        onShowSizeChange: handlePageSizeChange,
+      }}
+      data-testid="databaseSchema-tables"
+      dataSource={tableData}
+      extraTableFilters={
+        !isVersionView && (
+          <>
+            <span>
+              <Switch
+                checked={tableFilters.showDeletedTables}
+                data-testid="show-deleted"
+                onClick={handleShowDeletedTables}
               />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-        />
-      </Col>
-      {!isUndefined(pagingInfo) && pagingInfo.showPagination && (
-        <Col span={24}>
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={tableDataLoading}
-            pageSize={pagingInfo.pageSize}
-            paging={pagingInfo.paging}
-            pagingHandler={tablePaginationHandler}
-            onShowSizeChange={pagingInfo.handlePageSizeChange}
+              <Typography.Text className="m-l-xs">
+                {t('label.deleted')}
+              </Typography.Text>
+            </span>
+
+            {getBulkEditButton(
+              permissions.table.EditAll && !databaseSchemaDetails.deleted,
+              handleEditTable
+            )}
+          </>
+        )
+      }
+      loading={tableDataLoading}
+      locale={{
+        emptyText: (
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
-        </Col>
-      )}
-    </Row>
+        ),
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+    />
   );
 }
 
