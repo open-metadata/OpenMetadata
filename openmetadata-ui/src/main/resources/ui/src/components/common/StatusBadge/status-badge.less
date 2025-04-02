@@ -15,7 +15,7 @@
 
 .status-badge {
   border-radius: 16px;
-  padding: 6px 12px;
+  padding: 6px 16px;
   text-align: center;
   max-width: fit-content;
   display: flex;
@@ -42,6 +42,11 @@
   &.running {
     color: @blue-21;
     background-color: @blue-22;
+  }
+
+  &.inReview {
+    color: @blue-9;
+    background-color: @blue-11;
   }
 
   &.stopped,

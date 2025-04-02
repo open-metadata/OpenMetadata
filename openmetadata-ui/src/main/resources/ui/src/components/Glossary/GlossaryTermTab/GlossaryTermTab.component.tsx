@@ -656,7 +656,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           </Button>
         </Dropdown>
         <Button
-          className="text-primary"
+          className="text-primary remove-button-background-hover"
           data-testid="expand-collapse-all-button"
           size="small"
           type="text"
@@ -876,8 +876,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               loading={isTableLoading || termsLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
-              // Had to pass empty object to override default styling from Table component
-              scroll={{}}
+              // Had to pass y: 'auto' to override default styling from Table component
+              scroll={{ y: 'auto' }}
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               onHeaderRow={onTableHeader}
