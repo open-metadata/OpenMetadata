@@ -144,7 +144,6 @@ const ContainerChildren: FC<ContainerChildrenProps> = ({ isReadOnly }) => {
       }}
       data-testid="container-list-table"
       dataSource={containerChildrenData}
-      entityType={EntityType.CONTAINER}
       loading={isChildrenLoading}
       locale={{
         emptyText: <ErrorPlaceHolder className="p-y-md" />,

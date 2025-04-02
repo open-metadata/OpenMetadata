@@ -405,7 +405,6 @@ export const DashboardChartTable = () => {
         data-testid="charts-table"
         dataSource={charts}
         defaultVisibleColumns={DEFAULT_DASHBOARD_CHART_VISIBLE_COLUMNS}
-        entityType={EntityType.DASHBOARD}
         pagination={false}
         rowKey="id"
         scroll={{ x: 1200 }}

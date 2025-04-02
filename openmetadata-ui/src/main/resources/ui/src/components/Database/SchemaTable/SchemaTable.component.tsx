@@ -618,7 +618,6 @@ const SchemaTable = () => {
           data-testid="entity-table"
           dataSource={data}
           defaultVisibleColumns={DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS}
-          entityType={EntityType.TABLE}
           expandable={expandableConfig}
           extraTableFilters={getBulkEditButton(
             tablePermissions.EditAll && !deleted,

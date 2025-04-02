@@ -16,7 +16,6 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
@@ -98,7 +97,6 @@ const SubDomainsTable = ({
       columns={columns}
       containerClassName="m-t-md"
       dataSource={subDomains}
-      entityType={EntityType.DOMAIN}
       pagination={false}
       rowKey="fullyQualifiedName"
       size="small"

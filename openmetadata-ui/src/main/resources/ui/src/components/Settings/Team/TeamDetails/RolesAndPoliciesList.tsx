@@ -82,7 +82,7 @@ const ListEntities = ({
         key: 'description',
         width: 300,
         render: (_, record) => (
-          <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
+          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
         ),
       },
       {
@@ -122,7 +122,6 @@ const ListEntities = ({
       className="list-table"
       columns={columns}
       dataSource={list}
-      entityType={type}
       pagination={false}
       rowKey="id"
       size="small"

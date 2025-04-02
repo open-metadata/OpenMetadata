@@ -322,7 +322,6 @@ const ObservabilityAlertsPage = () => {
               onShowSizeChange: handlePageSizeChange,
             }}
             dataSource={alerts}
-            entityType={EntityType.SUBSCRIPTION}
             loading={loading}
             locale={{
               emptyText: (

@@ -351,7 +351,6 @@ const SearchIndexFieldsTable = ({
         data-testid="search-index-fields-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS}
-        entityType={EntityType.SEARCH_INDEX}
         expandable={expandableConfig}
         extraTableFilters={
           <ToggleExpandButton

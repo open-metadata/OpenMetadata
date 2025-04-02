@@ -282,7 +282,7 @@ function ServiceMainTabContent({
                           defaultVisibleColumns={
                             DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
                           }
-                          entityType={EntityType.SERVICE}
+                          entityType={serviceCategory}
                           extraTableFilters={
                             <>
                               <span>

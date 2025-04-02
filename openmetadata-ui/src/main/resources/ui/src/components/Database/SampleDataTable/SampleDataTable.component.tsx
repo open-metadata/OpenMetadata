@@ -251,7 +251,6 @@ const SampleDataTable = ({
         columns={sampleData?.columns}
         data-testid="sample-data-table"
         dataSource={sampleData?.rows}
-        entityType={EntityType.SAMPLE_DATA}
         pagination={false}
         rowKey="name"
         scroll={{ y: 'calc(100vh - 160px)' }}

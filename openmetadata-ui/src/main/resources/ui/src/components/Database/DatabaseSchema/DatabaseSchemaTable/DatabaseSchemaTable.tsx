@@ -316,7 +316,6 @@ export const DatabaseSchemaTable = ({
       data-testid="database-databaseSchemas"
       dataSource={schemas}
       defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
-      entityType={EntityType.DATABASE_SCHEMA}
       extraTableFilters={
         <>
           <span>

@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { ReactComponent as FailBadgeIcon } from '../../../../assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessBadgeIcon } from '../../../../assets/svg/success-badge.svg';
-import { EntityType } from '../../../../enums/entity.enum';
 import { Status } from '../../../../generated/type/csvImportResult';
 import { parseCSV } from '../../../../utils/EntityImport/EntityImportUtils';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -207,7 +206,6 @@ export const UserImportResult = ({
       columns={columns}
       data-testid="import-result-table"
       dataSource={parsedRecords}
-      entityType={EntityType.USER}
       loading={loading}
       pagination={false}
       rowKey="name*"

@@ -17,7 +17,6 @@ import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { EntityType } from '../../enums/entity.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostActiveUsers } from '../../generated/dataInsight/type/mostActiveUsers';
@@ -142,7 +141,6 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         className="data-insight-table-wrapper"
         columns={columns}
         dataSource={mostActiveUsers}
-        entityType={EntityType.DATA_INSIGHT_CHART}
         loading={isLoading}
         locale={{
           emptyText: <EmptyGraphPlaceholder />,

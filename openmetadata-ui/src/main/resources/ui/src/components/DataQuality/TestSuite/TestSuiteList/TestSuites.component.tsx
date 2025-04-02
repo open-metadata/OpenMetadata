@@ -343,7 +343,6 @@ export const TestSuites = () => {
           }}
           data-testid="test-suite-table"
           dataSource={testSuites}
-          entityType={EntityType.TEST_SUITE}
           loading={isLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,

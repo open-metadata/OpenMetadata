@@ -502,7 +502,6 @@ const ClassificationDetails = forwardRef(
           }}
           data-testid="table"
           dataSource={tags}
-          entityType={EntityType.CLASSIFICATION}
           loading={isTagsLoading}
           locale={{
             emptyText: (

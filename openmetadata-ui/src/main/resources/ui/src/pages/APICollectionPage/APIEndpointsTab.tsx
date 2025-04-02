@@ -185,7 +185,6 @@ function APIEndpointsTab({
       data-testid="databaseSchema-tables"
       dataSource={apiEndpoints}
       defaultVisibleColumns={DEFAULT_API_ENDPOINT_TAB_VISIBLE_COLUMNS}
-      entityType={EntityType.API_ENDPOINT}
       extraTableFilters={
         !isVersionView && (
           <span>

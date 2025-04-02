@@ -272,7 +272,6 @@ const MetricListPage = () => {
               onShowSizeChange: handlePageSizeChange,
             }}
             dataSource={metrics}
-            entityType={EntityType.METRIC}
             loading={loadingMore}
             locale={{
               emptyText: (

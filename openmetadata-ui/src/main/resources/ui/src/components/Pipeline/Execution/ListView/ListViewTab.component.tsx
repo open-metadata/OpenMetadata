@@ -13,7 +13,6 @@
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../../enums/entity.enum';
 import {
   PipelineStatus,
   StatusType,
@@ -73,7 +72,6 @@ const ListView = ({
       columns={columns}
       data-testid="list-view-table"
       dataSource={tableData}
-      entityType={EntityType.PIPELINE}
       loading={loading}
       locale={{
         emptyText: <FilterTablePlaceHolder />,

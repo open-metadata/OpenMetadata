@@ -231,7 +231,6 @@ const ModelTab = () => {
         data-testid="data-model-column-table"
         dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
-        entityType={EntityType.DASHBOARD_DATA_MODEL}
         pagination={false}
         rowKey="name"
         scroll={{ x: 1200 }}

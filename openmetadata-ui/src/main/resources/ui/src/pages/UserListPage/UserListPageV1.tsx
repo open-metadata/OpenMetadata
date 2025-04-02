@@ -480,7 +480,6 @@ const UserListPageV1 = () => {
             }}
             data-testid="user-list-table"
             dataSource={userList}
-            entityType={EntityType.USER}
             extraTableFilters={
               <span>
                 <Switch

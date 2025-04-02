@@ -19,7 +19,6 @@ import React, { useEffect, useMemo } from 'react';
 import Table from '../../../components/common/Table/Table';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import {
   PartitionColumnDetails,
   Table as TableType,
@@ -86,7 +85,6 @@ export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
       columns={columns}
       data-testid="partitioned-column-table"
       dataSource={partitionColumnDetails}
-      entityType={EntityType.TABLE}
       pagination={false}
       rowKey="name"
       size="small"

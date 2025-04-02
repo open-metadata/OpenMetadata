@@ -18,7 +18,6 @@ import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { EntityType } from '../../enums/entity.enum';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { MostViewedEntities } from '../../generated/dataInsight/type/mostViewedEntities';
@@ -136,7 +135,6 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
         className="data-insight-table-wrapper"
         columns={columns}
         dataSource={mostViewedEntities}
-        entityType={EntityType.DATA_INSIGHT_CHART}
         loading={isLoading}
         locale={{
           emptyText: <EmptyGraphPlaceholder />,

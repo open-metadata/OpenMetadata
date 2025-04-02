@@ -42,6 +42,7 @@ import {
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
@@ -66,6 +67,7 @@ const Table = <T extends Record<string, unknown>>(
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
+  const { type } = useGenericContext();
   const { currentUser } = useApplicationStore();
   const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
@@ -111,19 +113,19 @@ const Table = <T extends Record<string, unknown>>(
           `selectedColumns-${currentUser?.fullyQualifiedName}`
         ) ?? '{}'
       );
-      if (entityType) {
+      if (type || entityType) {
         localStorage.setItem(
           `selectedColumns-${currentUser?.fullyQualifiedName}`,
           JSON.stringify({
             ...selectedColumns,
-            [entityType]: updatedSelections,
+            [type ?? entityType]: updatedSelections,
           })
         );
       }
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, entityType]
+    [columnDropdownSelections, type, entityType]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -238,21 +240,21 @@ const Table = <T extends Record<string, unknown>>(
       localStorage.getItem(storageKey) ?? '{}'
     );
 
-    if (entityType) {
-      if (selectedColumns[entityType]) {
-        setColumnDropdownSelections(selectedColumns[entityType]);
+    if (type || entityType) {
+      if (selectedColumns[type ?? entityType]) {
+        setColumnDropdownSelections(selectedColumns[type ?? entityType]);
       } else if (defaultVisibleColumns) {
         setColumnDropdownSelections(defaultVisibleColumns);
         localStorage.setItem(
           storageKey,
           JSON.stringify({
             ...selectedColumns,
-            [entityType]: defaultVisibleColumns,
+            [type ?? entityType]: defaultVisibleColumns,
           })
         );
       }
     }
-  }, [entityType, defaultVisibleColumns]);
+  }, [type, entityType, defaultVisibleColumns]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>

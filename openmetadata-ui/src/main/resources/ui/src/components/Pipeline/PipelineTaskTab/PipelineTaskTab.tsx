@@ -311,7 +311,6 @@ export const PipelineTaskTab = () => {
           data-testid="task-table"
           dataSource={tasksInternal}
           defaultVisibleColumns={DEFAULT_PIPELINE_VISIBLE_COLUMNS}
-          entityType={EntityType.PIPELINE}
           pagination={false}
           rowKey="name"
           scroll={{ x: 1200 }}

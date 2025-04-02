@@ -310,7 +310,6 @@ const PoliciesListPage = () => {
             }}
             data-testid="policies-list-table"
             dataSource={policies}
-            entityType={EntityType.POLICY}
             loading={isLoading}
             locale={{
               emptyText: (
