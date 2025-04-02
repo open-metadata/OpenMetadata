@@ -132,10 +132,11 @@ const DomainSelectableList = ({
                 : NO_PERMISSION_FOR_ACTION
             }>
             <Button
-              className="d-flex align-center justify-center "
+              className="flex-center"
               data-testid="add-domain"
               disabled={!hasPermission}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
               type="text"
             />
           </Tooltip>

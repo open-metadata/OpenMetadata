@@ -1237,8 +1237,8 @@ test.describe('Glossary tests', () => {
 
       expect(columnText).toEqual(
         columnText.includes('Actions')
-          ? ['Terms', 'Description', 'Status', 'Owners', 'Actions']
-          : ['Terms', 'Description', 'Status', 'Owners']
+          ? ['Terms', 'Description', 'Owners', 'Status', 'Actions']
+          : ['Terms', 'Description', 'Owners', 'Status']
       );
     } finally {
       await glossaryTerm1.delete(apiContext);

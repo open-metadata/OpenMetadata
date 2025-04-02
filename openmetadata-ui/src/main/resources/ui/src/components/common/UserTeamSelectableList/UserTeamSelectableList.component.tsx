@@ -159,8 +159,11 @@ export const UserTeamSelectableList = ({
       updateData = updateItems;
     }
 
-    await onUpdate(updateData);
-    setPopupVisible(false);
+    try {
+      await onUpdate(updateData);
+    } finally {
+      setPopupVisible(false);
+    }
   };
 
   // Fetch and store count for Users tab
