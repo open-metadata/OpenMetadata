@@ -747,6 +747,41 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
+export const getColumnSelections = (
+  userFqn: string,
+  type: string | undefined,
+  entityType: string | undefined,
+  isDefaultColumns: boolean,
+  defaultColumns: string[] | undefined
+) => {
+  if (!userFqn) {
+    return [];
+  }
+
+  const storageKey = `selectedColumns-${userFqn}`;
+  const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
+
+  const key = type ?? entityType;
+
+  if (key) {
+    if (selectedColumns[key]) {
+      return selectedColumns[key];
+    } else if (isDefaultColumns) {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          ...selectedColumns,
+          [key]: defaultColumns,
+        })
+      );
+
+      return defaultColumns;
+    }
+  }
+
+  return [];
+};
+
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isTourOpen,

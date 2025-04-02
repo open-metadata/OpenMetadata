@@ -41,7 +41,10 @@ import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import {
+  getColumnSelections,
+  getTableExpandableConfig,
+} from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
@@ -85,6 +88,11 @@ const Table = <T extends Record<string, unknown>>(
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
     [loading]
+  );
+
+  const isDefaultColumns = useMemo(
+    () => !isEmpty(defaultVisibleColumns),
+    [defaultVisibleColumns]
   );
 
   // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
@@ -235,26 +243,16 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
-    const storageKey = `selectedColumns-${currentUser?.fullyQualifiedName}`;
-    const selectedColumns = JSON.parse(
-      localStorage.getItem(storageKey) ?? '{}'
+    const selections = getColumnSelections(
+      currentUser?.fullyQualifiedName ?? '',
+      type,
+      entityType,
+      isDefaultColumns,
+      defaultVisibleColumns
     );
 
-    if (type || entityType) {
-      if (selectedColumns[type ?? entityType]) {
-        setColumnDropdownSelections(selectedColumns[type ?? entityType]);
-      } else if (defaultVisibleColumns) {
-        setColumnDropdownSelections(defaultVisibleColumns);
-        localStorage.setItem(
-          storageKey,
-          JSON.stringify({
-            ...selectedColumns,
-            [type ?? entityType]: defaultVisibleColumns,
-          })
-        );
-      }
-    }
-  }, [type, entityType, defaultVisibleColumns]);
+    setColumnDropdownSelections(selections);
+  }, [type, entityType, defaultVisibleColumns, isDefaultColumns]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
