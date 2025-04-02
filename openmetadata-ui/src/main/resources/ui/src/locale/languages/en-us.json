@@ -445,7 +445,7 @@
     "edit-entity-name": "Edit {{entityType}}: \"{{entityName}}\"",
     "edit-glossary-display-name": "Edit Glossary Display Name",
     "edit-glossary-name": "Edit Glossary Name",
-    "edit-profile": "Edit Profile",
+    "edit-name": "Edit Name",
     "edit-suggestion": "Edit Suggestion",
     "edit-widget-plural": "Edit Widgets",
     "edit-workflow-agent": "Edit {{workflow}} Agent",
