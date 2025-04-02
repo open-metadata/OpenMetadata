@@ -1231,7 +1231,7 @@ export const filterStatus = async (
   const rows = glossaryTermsTable.locator(
     'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
   );
-  const statusColumnIndex = 3;
+  const statusColumnIndex = 2;
 
   for (let i = 0; i < (await rows.count()); i++) {
     const statusCell = rows

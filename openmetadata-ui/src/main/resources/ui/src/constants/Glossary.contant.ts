@@ -12,6 +12,7 @@
  */
 
 import { Status } from '../generated/entity/data/glossaryTerm';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const GLOSSARY_TERM_TABLE_COLUMNS_KEYS = {
   NAME: 'name',
@@ -36,8 +37,8 @@ export const STATIC_VISIBLE_COLUMNS = [
 
 export const GLOSSARY_TERM_STATUS_OPTIONS = [
   {
-    value: '',
-    text: 'All',
+    value: 'all',
+    text: i18n.t('label.all'),
   },
   ...Object.values(Status).map((status) => ({
     value: status,

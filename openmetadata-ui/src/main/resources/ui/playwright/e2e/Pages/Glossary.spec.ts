@@ -361,7 +361,7 @@ test.describe('Glossary tests', () => {
       const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
 
       // Verify the Reviewer
-      const reviewerSelector = `td:nth-child(3) a[data-testid="owner-link"]`;
+      const reviewerSelector = `td:nth-child(4) a[data-testid="owner-link"]`;
       const reviewerText = await termRow
         .locator(reviewerSelector)
         .textContent();
@@ -1228,8 +1228,8 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
-      const dragColumn = 'Owners';
-      const dropColumn = 'Status';
+      const dragColumn = 'Status';
+      const dropColumn = 'Owners';
       await dragAndDropColumn(page, dragColumn, dropColumn);
       await page.waitForSelector('thead th', { state: 'visible' });
       const columnHeaders = page.locator('thead th');
@@ -1237,8 +1237,8 @@ test.describe('Glossary tests', () => {
 
       expect(columnText).toEqual(
         columnText.includes('Actions')
-          ? ['Terms', 'Description', 'Status', 'Owners', 'Actions']
-          : ['Terms', 'Description', 'Status', 'Owners']
+          ? ['Terms', 'Description', 'Owners', 'Status', 'Actions']
+          : ['Terms', 'Description', 'Owners', 'Status']
       );
     } finally {
       await glossaryTerm1.delete(apiContext);

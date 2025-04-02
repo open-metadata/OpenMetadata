@@ -519,15 +519,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     (key: string, checked: boolean) => {
       const setCheckedList = setStatusDropdownSelection;
 
-      const optionsToUse = GLOSSARY_TERM_STATUS_OPTIONS as { value: string }[];
+      const optionsToUse = GLOSSARY_TERM_STATUS_OPTIONS;
 
       if (key === 'all') {
         if (checked) {
           const newCheckedList = [
             'all',
-            ...optionsToUse.map((option) => {
-              return (option as { value: string }).value ?? '';
-            }),
+            ...optionsToUse.map((option) => option.value),
           ];
           setCheckedList(newCheckedList);
         } else {
@@ -586,15 +584,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               <Checkbox.Group
                 className="glossary-col-sel-checkbox-group"
                 value={statusDropdownSelection}>
-                <Checkbox
-                  className="custom-glossary-col-sel-checkbox"
-                  key="all"
-                  value="all"
-                  onChange={(e) =>
-                    handleCheckboxChange('all', e.target.checked)
-                  }>
-                  <p className="glossary-dropdown-label">{t('label.all')}</p>
-                </Checkbox>
                 {GLOSSARY_TERM_STATUS_OPTIONS.map((option) => (
                   <div key={option.value}>
                     <Checkbox
