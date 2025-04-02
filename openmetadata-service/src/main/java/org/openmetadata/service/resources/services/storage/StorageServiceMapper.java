@@ -10,6 +10,6 @@ public class StorageServiceMapper implements EntityMapper<StorageService, Create
     return copy(new StorageService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection())
-        .withIngestionAgent(create.getIngestionAgent());
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

@@ -30,7 +30,7 @@ export interface CreateMetadataService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */
