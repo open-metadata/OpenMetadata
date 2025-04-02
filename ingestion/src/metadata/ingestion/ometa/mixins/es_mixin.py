@@ -446,6 +446,11 @@ class ESMixin(Generic[T]):
                                                         "tableType": TableType.Dynamic.value
                                                     }
                                                 },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.Stream.value
+                                                    }
+                                                },
                                             ]
                                         }
                                     }

@@ -620,13 +620,15 @@ export const ActivityFeedTab = ({
           onFeedClick={handleFeedClick}
         />
         {loader}
-        <div
-          className="w-full"
-          data-testid="observer-element"
-          id="observer-element"
-          ref={elementRef as RefObject<HTMLDivElement>}
-          style={{ height: '2px' }}
-        />
+        {entityThread.length > 0 && (
+          <div
+            className="w-full"
+            data-testid="observer-element"
+            id="observer-element"
+            ref={elementRef as RefObject<HTMLDivElement>}
+            style={{ height: '2px' }}
+          />
+        )}
       </div>
 
       <div

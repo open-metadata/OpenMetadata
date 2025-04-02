@@ -20,7 +20,8 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 - **`queryTag`** *(string)*: Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session.
 - **`privateKey`** *(string, format: password)*: Connection to Snowflake instance via Private Key.
 - **`snowflakePrivatekeyPassphrase`** *(string, format: password)*: Snowflake Passphrase Key used with Private Key.
-- **`includeTransientTables`** *(boolean)*: Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables. Default: `true`.
+- **`includeTransientTables`** *(boolean)*: Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables. Default: `false`.
+- **`includeStreams`** *(boolean)*: Optional configuration for ingestion of streams, By default, it will skip the streams. Default: `false`.
 - **`clientSessionKeepAlive`** *(boolean)*: Optional configuration for ingestion to keep the client session active in case the ingestion process runs for longer durations. Default: `false`.
 - **`connectionOptions`**: Refer to *[../connectionBasicType.json#/definitions/connectionOptions](#/connectionBasicType.json#/definitions/connectionOptions)*.
 - **`connectionArguments`**: Refer to *[../connectionBasicType.json#/definitions/connectionArguments](#/connectionBasicType.json#/definitions/connectionArguments)*.
