@@ -623,10 +623,10 @@ const DomainDetailsPage = ({
           />
         </Col>
         <Col flex="320px">
-          <div style={{ textAlign: 'right' }}>
+          <div className="d-flex gap-3 justify-end">
             {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
-                className="m-l-xs"
+                className="m-l-xs h-10"
                 data-testid="domain-details-add-button-menu"
                 menu={{
                   items: addButtonContent,
@@ -642,7 +642,7 @@ const DomainDetailsPage = ({
               </Dropdown>
             )}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {domain?.version && (
                 <Tooltip
                   title={t(
