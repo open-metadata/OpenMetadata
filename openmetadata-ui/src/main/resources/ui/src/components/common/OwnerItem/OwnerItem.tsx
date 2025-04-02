@@ -57,7 +57,10 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
       }}>
       {!isCompactView ? (
         <UserPopOverCard userName={owner.name ?? ''}>
-          <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
+          <Link
+            className="d-flex no-underline"
+            data-testid="owner-link"
+            to={ownerPath}>
             <OwnerAvatar isCompactView={isCompactView} owner={owner} />
           </Link>
         </UserPopOverCard>

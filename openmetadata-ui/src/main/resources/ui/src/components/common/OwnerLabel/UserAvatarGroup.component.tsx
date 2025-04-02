@@ -16,8 +16,10 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import ProfilePictureNew from '../ProfilePicture/ProfilePictureNew';
 import './owner-label.less';
 
@@ -56,14 +58,17 @@ export const UserAvatarGroup = ({
       items: remainingOwners.map((owner) => ({
         key: owner.id,
         label: (
-          <div className="d-flex items-center gap-2">
+          <Link
+            className="d-flex items-center gap-2 no-underline"
+            data-testid="owner-link"
+            to={getOwnerPath(owner)}>
             <ProfilePictureNew
               avatarType="outlined"
               name={owner.displayName ?? ''}
               size={avatarSize}
             />
             <Typography.Text>{owner.displayName}</Typography.Text>
-          </div>
+          </Link>
         ),
       })),
     };

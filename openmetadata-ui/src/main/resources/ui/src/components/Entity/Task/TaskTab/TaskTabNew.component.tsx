@@ -47,7 +47,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
@@ -115,6 +115,7 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
@@ -841,13 +842,18 @@ export const TaskTabNew = ({
               {t('label.created-by')}
             </Typography.Text>
           </Col>
-          <Col className="flex items-center gap-2" span={16}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              name={taskThread.createdBy ?? ''}
-              width="24"
-            />
-            <Typography.Text>{taskThread.createdBy}</Typography.Text>
+          <Col span={16}>
+            <Link
+              className="d-flex items-center gap-2 no-underline"
+              data-testid="owner-link"
+              to={getUserPath(taskThread.createdBy ?? '')}>
+              <ProfilePictureNew
+                avatarType="outlined"
+                name={taskThread.createdBy ?? ''}
+                width="24"
+              />
+              <Typography.Text>{taskThread.createdBy}</Typography.Text>
+            </Link>
           </Col>
 
           {isEditAssignee ? (

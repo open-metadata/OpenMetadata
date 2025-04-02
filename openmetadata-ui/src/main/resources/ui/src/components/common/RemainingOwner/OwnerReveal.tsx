@@ -13,7 +13,9 @@
 import { Button, Dropdown } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerRevealProps } from './OwnerReveal.interface';
@@ -60,18 +62,23 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
             key: owner.id,
             label: (
               <UserPopOverCard userName={owner.name ?? ''}>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <ProfilePicture
-                      displayName={getEntityName(owner)}
-                      key="profile-picture"
-                      name={owner.name ?? ''}
-                      type="circle"
-                      width="32"
-                    />
+                <Link
+                  className="d-flex no-underline"
+                  data-testid="owner-link"
+                  to={getOwnerPath(owner)}>
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <ProfilePicture
+                        displayName={getEntityName(owner)}
+                        key="profile-picture"
+                        name={owner.name ?? ''}
+                        type="circle"
+                        width="32"
+                      />
+                    </div>
+                    <span>{getEntityName(owner)}</span>
                   </div>
-                  <span>{getEntityName(owner)}</span>
-                </div>
+                </Link>
               </UserPopOverCard>
             ),
           })),
