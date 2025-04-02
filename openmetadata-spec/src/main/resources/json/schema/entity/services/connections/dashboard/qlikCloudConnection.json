@@ -33,6 +33,18 @@
         "type": "string",
         "format": "uri"
       },
+      "spaceTypes": {
+        "title": "Space Types",
+        "description": "Space types of Qlik Cloud to filter the dashboards ingested into the platform.",
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "enum": ["Managed", "Shared", "Personal"]
+        },
+        "default": ["Managed", "Shared", "Personal"],
+        "minItems": 1
+      },
       "dashboardFilterPattern": {
         "description": "Regex to exclude or include dashboards that matches the pattern.",
         "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
