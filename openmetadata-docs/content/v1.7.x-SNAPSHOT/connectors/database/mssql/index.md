@@ -7,7 +7,7 @@ slug: /connectors/database/mssql
 name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion"]
 unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 
@@ -23,6 +23,7 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
 
@@ -123,3 +124,15 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
+
+## Reverse Metadata Ingestion
+
+{% note %}
+This feature is specific to Collate and requires the Collate Enterprise License.
+{% /note %}
+
+MSSQL supports the following reverse metadata ingestion features:
+- Description updates (Schema, Table, Column)
+- Owner management (Database, Schema)
+
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
