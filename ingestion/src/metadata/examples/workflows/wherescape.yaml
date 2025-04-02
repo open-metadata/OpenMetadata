@@ -4,7 +4,7 @@ source:
   serviceConnection:
     config:
       type: Wherescape
-      connection:
+      databaseConnection:
         type: Mssql
         username: mssql_username
         password: mssql_password
