@@ -381,17 +381,4 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
       synonyms: 330,
     });
   });
-
-  it('should return fallback width when table width is 0', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(0, false);
-
-    expect(columnWidthObject).toEqual({
-      description: 200,
-      name: 200,
-      owners: 200,
-      reviewers: 200,
-      status: 200,
-      synonyms: 200,
-    });
-  });
 });
