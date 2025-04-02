@@ -226,7 +226,7 @@
       "description": "Type of the application when pipelineType is 'application'.",
       "type": "string"
     },
-    "ingestionAgent" : {
+    "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../../type/entityReference.json"
     }
