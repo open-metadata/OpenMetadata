@@ -18,6 +18,9 @@ from typing import Iterable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -32,6 +35,8 @@ from metadata.utils import fqn
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
+PUBLIC_SCHEMA = "public"
 
 
 def get_host_from_host_port(uri: str) -> str:
@@ -64,7 +69,7 @@ def get_view_lineage(
         schema_name=schema_name,
         table_name=table_name,
     )
-    table_entity = metadata.get_by_name(
+    table_entity: Table = metadata.get_by_name(
         entity=Table,
         fqn=table_fqn,
     )
@@ -79,6 +84,11 @@ def get_view_lineage(
         lineage_parser = LineageParser(
             view_definition, dialect, timeout_seconds=timeout_seconds
         )
+
+        if table_entity.serviceType == DatabaseServiceType.Postgres:
+            # For Postgres, if schema is not defined, we need to use the public schema
+            schema_name = PUBLIC_SCHEMA
+
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from get_lineage_by_query(
                 metadata,

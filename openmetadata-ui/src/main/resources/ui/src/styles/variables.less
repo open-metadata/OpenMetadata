@@ -90,6 +90,7 @@
 @blue-17: #0968da;
 @blue-18: #e3e3e3;
 @blue-19: #d1e9ff;
+@blue-20: #d5d9eb;
 
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
@@ -122,22 +123,27 @@
 @font-size-base: 14px;
 @box-shadow-base: 0px 2px 10px rgba(0, 0, 0, 0.12);
 @white: #fff;
-@border-radius-base: 4px;
-@border-radius-xs: 8px;
-@border-radius-sm: 12px;
-@border-radius-md: 16px;
-@border-radius-lg: 20px;
-@border-radius-xl: 24px;
 @checkbox-size: 14px;
 @switch-height: 16px;
 @switch-sm-height: 12px;
 @switch-min-width: 30px;
 @switch-sm-min-width: 23px;
-@padding-xlg: 48px;
+
+// Sizes to use commonly for padding, margin, etc.
+@size-xxs: 4px;
+@size-xs: 8px;
+@size-sm: 12px;
+@size-md: 16px;
+@size-mlg: 20px;
+@size-lg: 24px;
+@size-xl: 36px;
+@size-2xl: 48px;
+@size-3xl: 64px;
+
 @margin-xlg: 48px;
 @body-bg-color: #f8f9fa;
 @body-dark-bg-color: #f1f1f3;
-@border-color: #0000001a;
+@border-color: @blue-15;
 @border-color-1: #e9eaeb;
 @border-color-2: #d5d7da;
 @border-color-3: #d4d4d8;
@@ -195,7 +201,7 @@
 @font-family: 'Inter', 'Poppins', sans-serif;
 
 // Sizing
-@page-height: calc(100vh - @om-navbar-height);
+@page-height: calc(100vh - @om-navbar-height - @padding-mlg);
 @left-side-panel-width: 230px;
 
 // 172px - navbar height
@@ -245,20 +251,29 @@
 @severity-4-background: rgba(255, 206, 41, 0.1);
 @severity-5-background: rgba(181, 198, 33, 0.1);
 
+// Border Radius
+@border-radius-base: @size-xxs;
+@border-radius-xs: @size-xs;
+@border-radius-sm: @size-sm;
+@border-radius-md: @size-md;
+@border-radius-lg: @size-mlg;
+@border-radius-xl: @size-lg;
+
 // vertical paddings
-@padding-lg: 24px; // containers
-@padding-mlg: 20px; // small containers and buttons
-@padding-md: 16px; // small containers and buttons
-@padding-sm: 12px; // Form controls and items
-@padding-xs: 8px; // small items
-@padding-xss: 4px; // more small
+@padding-lg: @size-lg; // containers
+@padding-mlg: @size-mlg; // small containers and buttons
+@padding-md: @size-md; // small containers and buttons
+@padding-sm: @size-sm; // Form controls and items
+@padding-xs: @size-xs; // small items
+@padding-xss: @size-xxs; // more small
 
 // vertical margins
-@margin-lg: 24px; // containers
-@margin-md: 16px; // small containers and buttons
-@margin-sm: 12px; // Form controls and items
-@margin-xs: 8px; // small items
-@margin-xss: 4px; // more small
+@margin-lg: @size-lg; // containers
+@margin-mlg: @size-mlg; // small containers and buttons
+@margin-md: @size-md; // small containers and buttons
+@margin-sm: @size-sm; // Form controls and items
+@margin-xs: @size-xs; // small items
+@margin-xss: @size-xxs; // more small
 
 @error-bg-color: rgb(from @error-color r g b / 0.1);
 @success-bg-color: rgb(from @success-color r g b / 0.1);

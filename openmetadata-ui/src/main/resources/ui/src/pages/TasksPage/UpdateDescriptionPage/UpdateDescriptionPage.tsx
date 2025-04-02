@@ -208,7 +208,7 @@ const UpdateDescription = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm bg-white"
+      className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 700,

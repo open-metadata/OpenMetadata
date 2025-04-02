@@ -25,6 +25,10 @@ button {
   }
 }
 
+.ant-btn.ant-btn-default {
+  border-color: @blue-15;
+}
+
 .ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
   background: @primary-color;
   color: @white;
@@ -87,6 +91,7 @@ button {
     width: 20px;
     height: 20px;
     border-radius: @border-radius-base;
+
     svg {
       width: 12px;
       height: 12px;
@@ -96,5 +101,34 @@ button {
 
   svg {
     color: @grey-600;
+  }
+}
+
+.ant-btn-group.spaced {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+
+  .ant-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    min-width: 50px;
+    padding: 10px 16px;
+    background-color: @background-color;
+    border-radius: 8px;
+    box-shadow: 0px 1px 2px 0px #0a0d120f, 0px 1px 3px 0px #0a0d121a;
+
+    &:hover {
+      background-color: @blue-11;
+      border-color: @primary-color;
+    }
+  }
+
+  > .ant-btn:first-child:not(:last-child),
+  > span:first-child:not(:last-child) > .ant-btn {
+    border-radius: 8px;
   }
 }
