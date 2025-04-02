@@ -612,7 +612,7 @@ const DomainDetailsPage = ({
         className="domain-details"
         data-testid="domain-details"
         gutter={[0, 12]}>
-        <Col className="p-x-md p-l-xl" flex="auto">
+        <Col flex="auto">
           <EntityHeader
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
@@ -622,11 +622,11 @@ const DomainDetailsPage = ({
             titleColor={domain.style?.color}
           />
         </Col>
-        <Col className="p-x-md" flex="320px">
-          <div style={{ textAlign: 'right' }}>
+        <Col flex="320px">
+          <div className="d-flex gap-3 justify-end">
             {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
-                className="m-l-xs"
+                className="m-l-xs h-10"
                 data-testid="domain-details-add-button-menu"
                 menu={{
                   items: addButtonContent,
@@ -642,7 +642,7 @@ const DomainDetailsPage = ({
               </Dropdown>
             )}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {domain?.version && (
                 <Tooltip
                   title={t(
@@ -707,7 +707,7 @@ const DomainDetailsPage = ({
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
-          <Col className="p-x-md" span={24}>
+          <Col span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}

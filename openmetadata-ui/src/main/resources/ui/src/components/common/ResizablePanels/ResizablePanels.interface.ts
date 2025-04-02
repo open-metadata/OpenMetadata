@@ -30,6 +30,8 @@ export interface PanelProps {
   flex?: number;
   overlay?: Overlay;
   onStopResize?: (newFlex: number | undefined) => void;
+  title?: string;
+  wrapInCard?: boolean;
 }
 
 export interface Overlay {

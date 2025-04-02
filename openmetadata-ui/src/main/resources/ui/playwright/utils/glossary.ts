@@ -598,6 +598,21 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
+  await expect(page.locator('[data-testid="loader"]')).toBeHidden();
+
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Terms')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Description')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Owners')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Status')
+  ).toBeVisible();
+
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {

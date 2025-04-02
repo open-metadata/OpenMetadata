@@ -69,14 +69,6 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const readMoreRenderElement = useMemo(
     () => (
       <div data-testid="read-more-element">
-        {isOpen && (
-          <div className="m-t-xs d-flex flex-wrap gap-2">
-            {sortedTagsBySource
-              .slice(sizeCap)
-              .map((tag) => getTagsElement(tag))}
-          </div>
-        )}
-
         {hasMoreElement && (
           <Button
             className="show-more-tags-button"
@@ -135,15 +127,18 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
     return <>{sortedTagsBySource.map(getTagsElement)}</>;
   }
 
+  // Display tags based on open state
+  const displayedTags = isOpen
+    ? sortedTagsBySource
+    : sortedTagsBySource.slice(0, sizeCap);
+
   return (
     <>
       <div className="d-flex flex-wrap gap-2">
-        {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
+        {displayedTags.map(getTagsElement)}
+        {displayType === DisplayType.POPOVER && popoverRenderElement}
       </div>
-      {displayType === DisplayType.POPOVER
-        ? popoverRenderElement
-        : readMoreRenderElement}
-      {}
+      {displayType === DisplayType.READ_MORE && readMoreRenderElement}
     </>
   );
 };
