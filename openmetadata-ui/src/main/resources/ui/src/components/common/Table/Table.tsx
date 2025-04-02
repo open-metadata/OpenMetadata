@@ -44,6 +44,7 @@ import {
 import {
   getColumnSelections,
   getTableExpandableConfig,
+  handleColumnSelections,
 } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
@@ -90,6 +91,8 @@ const Table = <T extends Record<string, unknown>>(
     [loading]
   );
 
+  const entityKey = useMemo(() => type ?? entityType, [type, entityType]);
+
   // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
   const isFullViewTable = useMemo(
     () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
@@ -106,29 +109,17 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      const updatedSelections = selected
-        ? [...columnDropdownSelections, key]
-        : columnDropdownSelections.filter((item) => item !== key);
-
-      // Updating localStorage
-      const selectedColumns = JSON.parse(
-        localStorage.getItem(
-          `selectedColumns-${currentUser?.fullyQualifiedName}`
-        ) ?? '{}'
+      const updatedSelections = handleColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        currentUser?.fullyQualifiedName ?? '',
+        entityKey
       );
-      if (type || entityType) {
-        localStorage.setItem(
-          `selectedColumns-${currentUser?.fullyQualifiedName}`,
-          JSON.stringify({
-            ...selectedColumns,
-            [type ?? entityType]: updatedSelections,
-          })
-        );
-      }
 
       setColumnDropdownSelections(updatedSelections);
     },
-    [columnDropdownSelections, type, entityType]
+    [columnDropdownSelections, entityKey]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -240,14 +231,13 @@ const Table = <T extends Record<string, unknown>>(
   useEffect(() => {
     const selections = getColumnSelections(
       currentUser?.fullyQualifiedName ?? '',
-      type,
-      entityType,
+      entityKey,
       isFullViewTable,
       defaultVisibleColumns
     );
 
     setColumnDropdownSelections(selections);
-  }, [type, entityType, defaultVisibleColumns, isFullViewTable]);
+  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>

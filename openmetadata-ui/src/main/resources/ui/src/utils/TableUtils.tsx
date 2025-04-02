@@ -749,7 +749,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
 
 export const getColumnSelections = (
   userFqn: string,
-  type: string | undefined,
   entityType: string | undefined,
   isFullViewTable: boolean,
   defaultColumns: string[] | undefined
@@ -761,17 +760,15 @@ export const getColumnSelections = (
   const storageKey = `selectedColumns-${userFqn}`;
   const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
 
-  const key = type ?? entityType;
-
-  if (key) {
-    if (selectedColumns[key]) {
-      return selectedColumns[key];
+  if (entityType) {
+    if (selectedColumns[entityType]) {
+      return selectedColumns[entityType];
     } else if (!isFullViewTable) {
       localStorage.setItem(
         storageKey,
         JSON.stringify({
           ...selectedColumns,
-          [key]: defaultColumns,
+          [entityType]: defaultColumns,
         })
       );
 
@@ -780,6 +777,34 @@ export const getColumnSelections = (
   }
 
   return [];
+};
+
+export const handleColumnSelections = (
+  selected: boolean,
+  key: string,
+  columnDropdownSelections: string[],
+  userFqn: string,
+  entityType: string | undefined
+) => {
+  const updatedSelections = selected
+    ? [...columnDropdownSelections, key]
+    : columnDropdownSelections.filter((item) => item !== key);
+
+  // Updating localStorage
+  const selectedColumns = JSON.parse(
+    localStorage.getItem(`selectedColumns-${userFqn}`) ?? '{}'
+  );
+  if (entityType) {
+    localStorage.setItem(
+      `selectedColumns-${userFqn}`,
+      JSON.stringify({
+        ...selectedColumns,
+        [entityType]: updatedSelections,
+      })
+    );
+  }
+
+  return updatedSelections;
 };
 
 export const getTableDetailPageBaseTabs = ({
