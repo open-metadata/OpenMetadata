@@ -591,6 +591,18 @@ export const checkIfExpandViewSupported = (
         (!activeTab && firstTab.key === EntityTabs.API_ENDPOINT) ||
         activeTab === EntityTabs.API_ENDPOINT
       );
+
+    case PageType.StoredProcedure:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.CODE) ||
+        activeTab === EntityTabs.CODE
+      );
+
+    case PageType.MlModel:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
+        activeTab === EntityTabs.FEATURES
+      );
     default:
       return false;
   }
