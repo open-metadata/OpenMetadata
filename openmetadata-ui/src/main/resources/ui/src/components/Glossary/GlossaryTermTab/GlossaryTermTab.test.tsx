@@ -81,6 +81,7 @@ jest.mock('../useGlossary.store', () => ({
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     permissions: MOCK_PERMISSIONS,
+    type: 'glossary',
   })),
 }));
 

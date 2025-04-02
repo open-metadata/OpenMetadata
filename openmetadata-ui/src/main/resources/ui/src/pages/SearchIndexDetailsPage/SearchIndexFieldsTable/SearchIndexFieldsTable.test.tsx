@@ -48,6 +48,15 @@ jest.mock(
 );
 
 jest.mock(
+  '../../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    useGenericContext: jest.fn().mockReturnValue({
+      type: 'searchIndex',
+    }),
+  })
+);
+
+jest.mock(
   '../../../components/Database/TableDescription/TableDescription.component',
   () => jest.fn().mockImplementation(() => <div>testTableDescription</div>)
 );

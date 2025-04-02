@@ -128,6 +128,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       EditAll: true,
     },
     onUpdate: mockOnUpdate,
+    type: 'topic',
   })),
 }));
 

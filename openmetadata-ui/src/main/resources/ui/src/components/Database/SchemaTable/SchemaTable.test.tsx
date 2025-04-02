@@ -71,6 +71,7 @@ const mockGenericContextProps = {
     tableConstraints: mockTableConstraints,
   } as Table,
   permissions: DEFAULT_ENTITY_PERMISSION,
+  type: 'table',
 };
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
