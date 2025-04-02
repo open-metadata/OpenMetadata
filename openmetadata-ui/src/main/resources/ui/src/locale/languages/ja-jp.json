@@ -445,7 +445,7 @@
     "edit-entity-name": "{{entityType}}: \"{{entityName}}\" を編集",
     "edit-glossary-display-name": "Edit Glossary Display Name",
     "edit-glossary-name": "Edit Glossary Name",
-    "edit-profile": "プロフィールを編集",
+    "edit-name": "名前を編集",
     "edit-suggestion": "提案を編集",
     "edit-widget-plural": "ウィジェットを編集",
     "edit-workflow-agent": "{{workflow}}エージェントを編集",

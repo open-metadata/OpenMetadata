@@ -445,7 +445,7 @@
     "edit-entity-name": "ערוך {{entityType}}: \"{{entityName}}\"",
     "edit-glossary-display-name": "ערוך שם תצוגת מילון מונחים",
     "edit-glossary-name": "ערוך שם מילון מונחים",
-    "edit-profile": "ערוך פרופיל",
+    "edit-name": "ערוך שם",
     "edit-suggestion": "ערוך הצעה",
     "edit-widget-plural": "ערוך ווידג'טים",
     "edit-workflow-agent": "ערוך סוכן {{workflow}}",

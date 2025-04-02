@@ -445,7 +445,7 @@
     "edit-entity-name": "{{entityType}} bewerken: \"{{entityName}}\"",
     "edit-glossary-display-name": "Weergavenaam van het woordenboek bewerken",
     "edit-glossary-name": "Naam van het woordenboek bewerken",
-    "edit-profile": "Profiel bewerken",
+    "edit-name": "Naam bewerken",
     "edit-suggestion": "Suggestie bewerken",
     "edit-widget-plural": "Widgets bewerken",
     "edit-workflow-agent": "{{workflow}} Agent bewerken",

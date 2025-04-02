@@ -445,7 +445,7 @@
     "edit-entity-name": "แก้ไข {{entityType}}: \"{{entityName}}\"",
     "edit-glossary-display-name": "แก้ไขชื่อแสดงสารานุกรม",
     "edit-glossary-name": "แก้ไขชื่อสารานุกรม",
-    "edit-profile": "แก้ไขโปรไฟล์",
+    "edit-name": "แก้ไขชื่อ",
     "edit-suggestion": "แก้ไขข้อเสนอแนะ",
     "edit-widget-plural": "แก้ไขวิดเจ็ต",
     "edit-workflow-agent": "แก้ไขเอเจนต์ {{workflow}}",

@@ -445,7 +445,7 @@
     "edit-entity-name": "{{entityType}} संपादित करा: \"{{entityName}}\"",
     "edit-glossary-display-name": "शब्दकोश प्रदर्शन नाव संपादित करा",
     "edit-glossary-name": "शब्दकोश नाव संपादित करा",
-    "edit-profile": "प्रोफाइल संपादित करा",
+    "edit-name": "नाव संपादित करा",
     "edit-suggestion": "सूचना संपादित करा",
     "edit-widget-plural": "विजेट्स संपादित करा",
     "edit-workflow-agent": "{{workflow}} एजंट संपादित करा",

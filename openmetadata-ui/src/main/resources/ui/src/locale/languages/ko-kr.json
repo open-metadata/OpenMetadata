@@ -445,7 +445,7 @@
     "edit-entity-name": "{{entityType}} 수정: \"{{entityName}}\"",
     "edit-glossary-display-name": "용어집 표시 이름 수정",
     "edit-glossary-name": "용어집 이름 수정",
-    "edit-profile": "Edit Profile",
+    "edit-name": "이름 편집",
     "edit-suggestion": "Edit Suggestion",
     "edit-widget-plural": "위젯 수정",
     "edit-workflow-agent": "{{workflow}} 에이전트 편집",

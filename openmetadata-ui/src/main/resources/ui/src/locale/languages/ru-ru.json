@@ -445,7 +445,7 @@
     "edit-entity-name": "Редактировать {{entityType}}: \"{{entityName}}\"",
     "edit-glossary-display-name": "Изменить отображаемое имя глоссария",
     "edit-glossary-name": "Изменить название глоссария",
-    "edit-profile": "Редактировать профиль",
+    "edit-name": "Редактировать имя",
     "edit-suggestion": "Редактировать предложение",
     "edit-widget-plural": "Редактировать виджеты",
     "edit-workflow-agent": "Редактировать {{workflow}} агент",
