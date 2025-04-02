@@ -172,6 +172,7 @@ export const selectDataProduct = async (
 
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await checkDomainDisplayName(page, domain.displayName);
   await page.getByTestId('assets').click();
 };
