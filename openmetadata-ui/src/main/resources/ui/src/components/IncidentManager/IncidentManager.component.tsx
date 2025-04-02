@@ -62,7 +62,9 @@ import {
 import {
   formatDateTime,
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import {
   getEntityName,
@@ -113,8 +115,10 @@ const IncidentManager = ({
       isLoading: true,
     });
   const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
-    startTs: getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days),
-    endTs: getCurrentMillis(),
+    startTs: getStartOfDayInMillis(
+      getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
+    ),
+    endTs: getEndOfDayInMillis(getCurrentMillis()),
     ...searchParams,
   });
   const [users, setUsers] = useState<{
@@ -415,7 +419,7 @@ const IncidentManager = ({
           ]
         : []),
       {
-        title: t('label.execution-time'),
+        title: t('label.last-updated'),
         dataIndex: 'timestamp',
         key: 'timestamp',
         width: 150,
