@@ -48,6 +48,7 @@ const UserPage = () => {
   const { currentUser, updateCurrentUser } = useApplicationStore();
 
   const fetchUserData = async () => {
+    setIsLoading(true);
     try {
       const res = await getUserByName(username, {
         fields: [
@@ -179,7 +180,7 @@ const UserPage = () => {
     fetchUserData();
   }, [username]);
 
-  if (isLoading) {
+  if (userData?.name !== username || isLoading) {
     return <Loader />;
   }
 
