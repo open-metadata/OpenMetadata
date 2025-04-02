@@ -641,7 +641,7 @@ export const ActivityFeedTab = ({
           : !loading && (
               <div className="p-x-md no-data-placeholder-container d-flex justify-center items-center h-full">
                 <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon height={140} width={140} />}
+                  icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
                   <Typography.Paragraph className="placeholder-text">
                     {getRightPanelPlaceholder}
