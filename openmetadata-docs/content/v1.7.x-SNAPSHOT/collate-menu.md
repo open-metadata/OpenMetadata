@@ -369,6 +369,10 @@ site_menu:
     url: /connectors/pipeline/airflow/mwaa
   - category: Connectors / Pipeline / Airflow / GCS Composer
     url: /connectors/pipeline/airflow/gcs-composer
+  - category: Connectors / Pipeline / Wherescape
+    url: /connectors/pipeline/wherescape
+  - category: Connectors / Pipeline / Wherescape / Run Externally
+    url: /connectors/pipeline/wherescape/yaml
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
@@ -1624,6 +1628,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airbyteconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / AirflowConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airflowconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / WherebyteConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/wherebyteconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / BackendConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/backendconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / CustomPipelineConnection
