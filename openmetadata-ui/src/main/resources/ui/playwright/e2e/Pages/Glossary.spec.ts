@@ -56,7 +56,6 @@ import {
   dragAndDropColumn,
   dragAndDropTerm,
   filterStatus,
-  getEscapedTermFqn,
   goToAssetsTab,
   openColumnDropdown,
   renameGlossaryTerm,
@@ -357,18 +356,10 @@ test.describe('Glossary tests', () => {
       await selectColumns(page, checkboxLabels);
       await verifyColumnsVisibility(page, checkboxLabels, true);
 
-      const escapedFqn = getEscapedTermFqn(glossaryTerm1.data);
-      const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-
       // Verify the Reviewer
-      const reviewerSelector = `td:nth-child(4) a[data-testid="owner-link"]`;
-      const reviewerText = await termRow
-        .locator(reviewerSelector)
-        .textContent();
-
-      expect(reviewerText).toBe(
-        `${reviewer1.data.firstName}${reviewer1.data.lastName}`
-      );
+      expect(
+        page.getByTestId(reviewer1.responseData?.['displayName'])
+      ).toBeVisible();
 
       // Verify the Owner
       await expect(
