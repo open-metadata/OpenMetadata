@@ -808,7 +808,7 @@ const AssetsTabs = forwardRef(
       <>
         <div
           className={classNames(
-            'assets-tab-container relative bg-white p-box border-radius-card h-full'
+            'assets-tab-container relative bg-white p-b-box border-radius-card h-full'
           )}
           data-testid="table-container"
           id="asset-tab">

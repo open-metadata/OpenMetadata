@@ -473,7 +473,9 @@ const NavBar = ({
               }}
               placement="bottomRight"
               trigger={['click']}>
-              <Button className="flex-center gap-2 p-0 font-medium" type="text">
+              <Button
+                className="flex-center gap-2 p-x-xs font-medium"
+                type="text">
                 {upperCase(
                   (language || SupportedLocales.English).split('-')[0]
                 )}{' '}
