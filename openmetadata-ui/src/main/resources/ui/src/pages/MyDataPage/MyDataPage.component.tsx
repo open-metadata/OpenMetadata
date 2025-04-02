@@ -202,9 +202,9 @@ const MyDataPage = () => {
 
   if (showWelcomeScreen) {
     return (
-      <div className="bg-white full-height">
+      <PageLayoutV1 pageTitle={t('label.my-data')}>
         <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
-      </div>
+      </PageLayoutV1>
     );
   }
 
