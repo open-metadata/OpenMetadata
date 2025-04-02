@@ -426,10 +426,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         width: tableColumnsWidth.reviewers,
         render: (reviewers: EntityReference[]) => (
           <OwnerLabel
+            isCompactView={false}
             owners={reviewers}
             placeHolder={t('label.no-entity', {
               entity: t('label.reviewer-plural'),
             })}
+            showLabel={false}
           />
         ),
       },

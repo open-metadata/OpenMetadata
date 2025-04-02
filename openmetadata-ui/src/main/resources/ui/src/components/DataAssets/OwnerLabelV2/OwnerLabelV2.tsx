@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
@@ -63,14 +63,13 @@ export const OwnerLabelV2 = <
             )}
         </div>
       }>
-      <Space className="m-r-xss" size={4}>
-        {getOwnerVersionLabel(
-          data,
-          isVersionView ?? false,
-          TabSpecificField.OWNERS,
-          permissions.EditOwners || permissions.EditAll
-        )}
-      </Space>
+      {getOwnerVersionLabel(
+        data,
+        isVersionView ?? false,
+        TabSpecificField.OWNERS,
+        permissions.EditOwners || permissions.EditAll
+      )}
+
       {data.owners?.length === 0 &&
         (permissions.EditOwners || permissions.EditAll) && (
           <UserTeamSelectableList
