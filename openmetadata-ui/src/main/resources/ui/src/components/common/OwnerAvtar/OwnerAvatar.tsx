@@ -60,7 +60,6 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
 
       {inheritedIcon && !isCompactView && (
         <div className="inherited-icon-styling flex-center">
-          {' '}
           {inheritedIcon}
         </div>
       )}

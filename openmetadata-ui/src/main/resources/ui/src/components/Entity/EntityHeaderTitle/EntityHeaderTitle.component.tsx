@@ -100,7 +100,7 @@ const EntityHeaderTitle = ({
         {badge && <Col>{badge}</Col>}
       </>
     ),
-    [isDisabled, deleted, badge, t]
+    [isDisabled, deleted, badge]
   );
 
   const content = (
@@ -184,7 +184,7 @@ const EntityHeaderTitle = ({
                   loading={isFollowingLoading}
                   onClick={handleFollowingClick}>
                   <Typography.Text>
-                    {isFollowing ? 'Unfollow' : 'Follow'}
+                    {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
                   </Typography.Text>
                 </Button>
               </Tooltip>
