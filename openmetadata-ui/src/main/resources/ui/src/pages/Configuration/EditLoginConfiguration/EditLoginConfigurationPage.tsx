@@ -158,7 +158,7 @@ const EditLoginConfiguration = () => {
   }, []);
 
   const firstPanelChildren = (
-    <div>
+    <>
       <TitleBreadcrumb titleLinks={breadcrumb} />
       <Form
         className="m-t-md"
@@ -193,7 +193,7 @@ const EditLoginConfiguration = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (

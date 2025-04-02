@@ -277,7 +277,7 @@ const AddGlossary = ({
         className:
           'content-resizable-panel-container max-width-md w-9/10 service-form-container',
         children: (
-          <div className="">
+          <>
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
             <Typography.Title
               className="m-t-md"
@@ -338,7 +338,7 @@ const AddGlossary = ({
                 </Space>
               </Form>
             </div>
-          </div>
+          </>
         ),
         minWidth: 700,
         flex: 0.7,

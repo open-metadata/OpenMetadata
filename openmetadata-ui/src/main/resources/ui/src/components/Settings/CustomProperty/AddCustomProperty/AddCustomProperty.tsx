@@ -453,7 +453,7 @@ const AddCustomProperty = () => {
   ];
 
   const firstPanelChildren = (
-    <div>
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Form
         className="m-t-md"
@@ -502,7 +502,7 @@ const AddCustomProperty = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (

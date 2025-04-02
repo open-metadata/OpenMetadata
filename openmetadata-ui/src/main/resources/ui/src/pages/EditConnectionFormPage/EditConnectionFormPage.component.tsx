@@ -200,7 +200,7 @@ function EditConnectionFormPage() {
     );
   }
   const firstPanelChildren = (
-    <div>
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <Space className="p-b-xs">
@@ -247,7 +247,7 @@ function EditConnectionFormPage() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 
   return (

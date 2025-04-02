@@ -284,7 +284,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
         className:
           'content-resizable-panel-container max-width-md w-9/10 service-form-container',
         children: (
-          <div>
+          <>
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <div className="m-t-md">
               {addIngestion ? (
@@ -316,7 +316,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                 </Row>
               )}
             </div>
-          </div>
+          </>
         ),
         minWidth: 700,
         flex: 0.6,

@@ -124,7 +124,7 @@ const EditUrlConfigurationPage = () => {
   }, []);
 
   const firstPanelChildren = (
-    <div>
+    <>
       <TitleBreadcrumb titleLinks={breadcrumb} />
       <Form
         className="m-t-md"
@@ -167,7 +167,7 @@ const EditUrlConfigurationPage = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (

@@ -146,7 +146,7 @@ function EditEmailConfigPage() {
   }, []);
 
   const firstPanelChildren = (
-    <div>
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         {loading ? (
@@ -161,7 +161,7 @@ function EditEmailConfigPage() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (

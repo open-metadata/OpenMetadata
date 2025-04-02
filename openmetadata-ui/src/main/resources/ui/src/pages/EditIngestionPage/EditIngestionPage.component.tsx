@@ -253,7 +253,7 @@ const EditIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div>
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -281,7 +281,7 @@ const EditIngestionPage = () => {
           onUpdateIngestion={onEditIngestionSave}
         />
       </div>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (

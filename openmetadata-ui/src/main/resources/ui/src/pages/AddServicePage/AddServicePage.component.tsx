@@ -223,7 +223,7 @@ const AddServicePage = () => {
   );
 
   const firstPanelChildren = (
-    <div>
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <div data-testid="add-new-service-container">
@@ -296,7 +296,7 @@ const AddServicePage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 
   useEffect(() => {
