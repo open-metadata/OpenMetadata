@@ -59,7 +59,7 @@
         "title": "Number of Runs",
         "description": "Number of runs to fetch from DBT cloud",
         "type": "integer",
-        "default": null
+        "default": 100
       },
       "token": {
         "title": "Token",
