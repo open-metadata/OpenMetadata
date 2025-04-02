@@ -1847,6 +1847,8 @@
     "no-closed-task": "Keine geschlossenen Aufgaben.",
     "no-config-available": "Keine Verbindungskonfigurationen verfügbar.",
     "no-config-plural": "Keine Konfigurationen.",
+    "no-conversations": "Keine Konversationen!",
+    "no-conversations-description": "Sie haben derzeit keine offenen Aufgaben. Es gibt keine Details oder Konversationen anzuzeigen.",
     "no-custom-properties-entity": "Derzeit sind keine benutzerdefinierten Eigenschaften für das {{entity}} Data Asset definiert. Um zu erfahren, wie man benutzerdefinierte Eigenschaften hinzufügt, lesen Sie bitte <0>{{docs}}</0>",
     "no-customization-available": "Keine Anpassung für diesen Tab verfügbar",
     "no-data": "Keine Daten",

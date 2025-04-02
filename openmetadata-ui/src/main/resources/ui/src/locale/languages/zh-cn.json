@@ -1847,6 +1847,8 @@
     "no-closed-task": "没有关闭的任务",
     "no-config-available": "没有可用的连接配置",
     "no-config-plural": "No Configs.",
+    "no-conversations": "没有对话！",
+    "no-conversations-description": "您目前没有开放的任务。没有可显示的详细信息或对话。",
     "no-custom-properties-entity": "当前没有为 {{entity}} 数据资产定义自定义属性。要了解如何添加自定义属性，请参考 <0>{{docs}}</0>",
     "no-customization-available": "No customization available for this tab",
     "no-data": "没有数据",

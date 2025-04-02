@@ -1847,6 +1847,8 @@
     "no-closed-task": "Nenhuma Tarefa Concluída",
     "no-config-available": "Nenhuma Configuração de Conexão disponível.",
     "no-config-plural": "Nenhuma Configuração.",
+    "no-conversations": "Sem conversas!",
+    "no-conversations-description": "Não tem tarefas abertas no momento. Não há detalhes ou conversas para mostrar.",
     "no-custom-properties-entity": "Atualmente, não existem Propriedades Personalizadas definidas para o Ativo de Dados {{entity}}. Para descobrir como adicionar Propriedades Personalizadas, consulte <0>{{docs}}</0>",
     "no-customization-available": "No customization available for this tab",
     "no-data": "Sem dados",

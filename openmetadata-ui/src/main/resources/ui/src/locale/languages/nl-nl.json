@@ -1847,6 +1847,8 @@
     "no-closed-task": "Geen gesloten taken",
     "no-config-available": "Geen connectieconfiguraties beschikbaar.",
     "no-config-plural": "Geen configuraties.",
+    "no-conversations": "Geen gesprekken!",
+    "no-conversations-description": "Je hebt momenteel geen open taken. Er zijn geen details of gesprekken om weer te geven.",
     "no-custom-properties-entity": "Er zijn momenteel geen aangepaste eigenschappen gedefinieerd voor het {{entity}} Data Asset. Raadpleeg <0>{{docs}}</0> voor meer informatie over het toevoegen van aangepaste eigenschappen.",
     "no-customization-available": "No customization available for this tab",
     "no-data": "Geen data",

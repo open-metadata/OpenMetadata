@@ -1847,6 +1847,8 @@
     "no-closed-task": "هیچ وظیفه بسته‌ای وجود ندارد.",
     "no-config-available": "هیچ پیکربندی اتصالی در دسترس نیست.",
     "no-config-plural": "هیچ پیکربندی‌ای وجود ندارد.",
+    "no-conversations": "بدون گفتگو!",
+    "no-conversations-description": "شما در حال حاضر هیچ کار باز ندارید. هیچ جزئیات یا گفتگویی برای نمایش وجود ندارد.",
     "no-custom-properties-entity": "در حال حاضر هیچ ویژگی سفارشی برای دارایی داده {{entity}} تعریف نشده است. برای یادگیری نحوه افزودن ویژگی‌های سفارشی، لطفاً به <0>{{docs}}</0> مراجعه کنید.",
     "no-customization-available": "No customization available for this tab",
     "no-data": "بدون داده",
