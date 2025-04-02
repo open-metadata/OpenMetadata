@@ -1820,6 +1820,31 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void authorizedTestCaseResolutionFlow(TestInfo test)
+      throws HttpResponseException, ParseException {
+    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+    // Add failed test case, which will create a NEW incident
+    postTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Now, we should be good to create an ASSIGNED status
+    CreateTestCaseResolutionStatus createAssignedIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
+    createTestCaseFailureStatus(createAssignedIncident);
+
+    createTestCaseFailureStatus(
+        createAssignedIncident.withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+  }
+
+  @Test
   void testInferSeverity() {
     IncidentSeverityClassifierInterface severityClassifier =
         IncidentSeverityClassifierInterface.getInstance();
