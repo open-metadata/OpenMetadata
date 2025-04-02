@@ -443,23 +443,21 @@ export const ActivityFeedTab = ({
     ) {
       return (
         <div id="feed-panel">
-          <div>
-            <FeedPanelBodyV1New
-              isOpenInDrawer
-              showActivityFeedEditor
-              showThread
-              componentsVisibility={{
-                showThreadIcon: true,
-                showRepliesContainer: true,
-              }}
-              feed={selectedThread}
-              handlePanelResize={handlePanelResize}
-              hidePopover={false}
-              isFullWidth={isFullWidth}
-              onAfterClose={handleAfterTaskClose}
-              onUpdateEntityDetails={onUpdateEntityDetails}
-            />
-          </div>
+          <FeedPanelBodyV1New
+            isOpenInDrawer
+            showActivityFeedEditor
+            showThread
+            componentsVisibility={{
+              showThreadIcon: true,
+              showRepliesContainer: true,
+            }}
+            feed={selectedThread}
+            handlePanelResize={handlePanelResize}
+            hidePopover={false}
+            isFullWidth={isFullWidth}
+            onAfterClose={handleAfterTaskClose}
+            onUpdateEntityDetails={onUpdateEntityDetails}
+          />
         </div>
       );
     }
