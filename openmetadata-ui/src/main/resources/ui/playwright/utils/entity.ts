@@ -746,7 +746,7 @@ export const followEntity = async (
   await followResponse;
 
   await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Following'
+    'Unfollow'
   );
 };
 

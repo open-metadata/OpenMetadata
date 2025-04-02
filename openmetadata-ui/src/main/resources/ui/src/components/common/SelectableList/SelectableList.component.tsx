@@ -182,8 +182,11 @@ export const SelectableList = ({
   const handleUpdate = useCallback(
     async (updateItems: EntityReference[]) => {
       setUpdating(true);
-      await onUpdate?.(updateItems);
-      setUpdating(false);
+      try {
+        await onUpdate?.(updateItems);
+      } finally {
+        setUpdating(false);
+      }
     },
     [setUpdating, onUpdate]
   );

@@ -17,7 +17,7 @@ import { isArray, isNil, toLower } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { TERM_ADMIN } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, TERM_ADMIN } from '../../../constants/constants';
 import { useAuth } from '../../../hooks/authHooks';
 import { getEntityName } from '../../../utils/EntityUtils';
 import RolesElement from '../RolesElement/RolesElement.component';
@@ -93,7 +93,7 @@ const RolesCard = ({
               <Button
                 className="m-l-xs"
                 data-testid="edit-roles"
-                icon={<EditIcon width={16} />}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width={16} />}
                 type="text"
                 onClick={() => setIsRolesEdit(true)}
               />
