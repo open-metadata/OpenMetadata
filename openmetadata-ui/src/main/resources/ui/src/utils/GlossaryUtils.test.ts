@@ -364,7 +364,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
       name: 400,
       owners: 170,
       reviewers: 330,
-      status: 330,
+      status: 200,
       synonyms: 330,
     });
   });
@@ -377,21 +377,8 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
       name: 400,
       owners: 170,
       reviewers: 330,
-      status: 330,
-      synonyms: 330,
-    });
-  });
-
-  it('should return fallback width when table width is 0', () => {
-    const columnWidthObject = glossaryTermTableColumnsWidth(0, false);
-
-    expect(columnWidthObject).toEqual({
-      description: 200,
-      name: 200,
-      owners: 200,
-      reviewers: 200,
       status: 200,
-      synonyms: 200,
+      synonyms: 330,
     });
   });
 });

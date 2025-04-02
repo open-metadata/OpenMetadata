@@ -91,7 +91,7 @@ const DomainSelectableListNew = ({
     }
   };
 
-  const [popoverHeight, setPopoverHeight] = useState<number>(136);
+  const [popoverHeight, setPopoverHeight] = useState<number>(156);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {

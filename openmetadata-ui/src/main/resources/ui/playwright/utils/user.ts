@@ -19,8 +19,8 @@ import {
 import { VISIT_SERVICE_PAGE_DETAILS } from '../constant/service';
 import {
   GlobalSettingOptions,
-  SETTING_CUSTOM_PROPERTIES_PATH,
   SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
