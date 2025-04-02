@@ -145,6 +145,8 @@ export const CommonWidgets = ({
     };
   }, [updatedData, updatedData?.tags]);
 
+  // To determine if Description is expanded or not
+  // Typically needed when description schema, charts or any other table is empty will expand description by default
   const isDescriptionExpanded = useMemo(() => {
     switch (entityType) {
       case EntityType.TABLE:

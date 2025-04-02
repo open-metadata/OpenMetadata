@@ -98,16 +98,19 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
   }, [customizedPage, tab, pageType]);
 
-  const onThreadPanelClose = () => {
+  const onThreadPanelClose = useCallback(() => {
     setThreadLink('');
-  };
+  }, [setThreadLink]);
 
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
+  const onThreadLinkSelect = useCallback(
+    (link: string, threadType?: ThreadType) => {
+      setThreadLink(link);
+      if (threadType) {
+        setThreadType(threadType);
+      }
+    },
+    [setThreadLink, setThreadType]
+  );
 
   // Create a thread
   const createThread = async (data: CreateThread) => {
@@ -124,9 +127,12 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   };
 
   // Filter the widgets we need to hide widgets which doesn't render anything
-  const filterWidgets = useCallback((widgets: string[]) => {
-    setFilteredKeys((prev) => [...prev, ...widgets]);
-  }, []);
+  const filterWidgets = useCallback(
+    (widgets: string[]) => {
+      setFilteredKeys((prev) => [...prev, ...widgets]);
+    },
+    [setFilteredKeys]
+  );
 
   // store the left side panel widget
   const leftPanelWidget = useMemo(() => {
