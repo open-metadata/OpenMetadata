@@ -25,7 +25,11 @@ import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/R
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { NO_DATA_PLACEHOLDER, ROUTES } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  ROUTES,
+} from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -256,7 +260,7 @@ const ObservabilityAlertsPage = () => {
                     <Button
                       className="flex flex-center"
                       data-testid={`alert-edit-${record.name}`}
-                      icon={<EditIcon width={16} />}
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
                       type="text"
                     />
                   </Link>

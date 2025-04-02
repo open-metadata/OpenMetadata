@@ -62,9 +62,7 @@ export const OwnerLabel = ({
                 multiple={multiple}
                 owner={owners}
                 tooltipText={tooltipText}
-                onUpdate={(updatedUsers) => {
-                  onUpdate(updatedUsers);
-                }}
+                onUpdate={onUpdate}
               />
             )}
           </div>
@@ -128,9 +126,10 @@ export const OwnerLabel = ({
 
           {/* Owner avatars list */}
           <div
-            className={`d-flex items-center flex-wrap ${
+            className={classNames(
+              'd-flex flex-wrap items-center',
               isCompactView && 'gap-2'
-            }`}>
+            )}>
             {visibleOwners.map((owner, index) => (
               <OwnerItem
                 className={className}
@@ -163,9 +162,7 @@ export const OwnerLabel = ({
             multiple={multiple}
             owner={owners}
             tooltipText={tooltipText}
-            onUpdate={(updatedUsers) => {
-              onUpdate(updatedUsers);
-            }}
+            onUpdate={onUpdate}
           />
         )}
       </div>
