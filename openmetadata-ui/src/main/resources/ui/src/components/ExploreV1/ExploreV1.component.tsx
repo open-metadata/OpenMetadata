@@ -435,7 +435,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Col>
 
               {showSummaryPanel && entityDetails && !loading && (
-                <Col className="explore-right-panel">
+                <Col className="explore-right-panel" flex="400px">
                   <EntitySummaryPanel
                     entityDetails={{ details: entityDetails }}
                     handleClosePanel={handleClosePanel}
