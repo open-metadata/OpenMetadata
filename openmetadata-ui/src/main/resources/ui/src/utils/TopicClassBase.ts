@@ -111,7 +111,7 @@ class TopicClassBase {
           {
             h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
             i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
+            w: 1,
             x: 0,
             y: 0,
             static: false,
@@ -119,9 +119,9 @@ class TopicClassBase {
           {
             h: this.defaultWidgetHeight[DetailPageWidgetKeys.TOPIC_SCHEMA],
             i: DetailPageWidgetKeys.TOPIC_SCHEMA,
-            w: 6,
+            w: 1,
             x: 0,
-            y: 0,
+            y: 1,
             static: false,
           },
         ],
