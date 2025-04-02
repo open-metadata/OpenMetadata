@@ -488,6 +488,7 @@ const GlossaryPage = () => {
           'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         minWidth: 280,
         flex: 0.13,
+        title: t('label.glossary'),
         children: (
           <>
             <GlossaryLeftPanel glossaries={glossaries} />
@@ -515,10 +516,11 @@ const GlossaryPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className:
-          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
+          'content-resizable-panel-container' + (previewAsset ? '' : ''),
         children: glossaryElement,
         minWidth: 700,
         flex: 0.7,
+        wrapInCard: false,
       }}
       hideSecondPanel={!previewAsset}
       pageTitle={t('label.glossary')}
@@ -531,7 +533,7 @@ const GlossaryPage = () => {
           />
         ),
         className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container bg-white',
+          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

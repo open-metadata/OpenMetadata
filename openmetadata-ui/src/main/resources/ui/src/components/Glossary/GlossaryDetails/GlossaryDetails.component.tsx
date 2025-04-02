@@ -159,14 +159,14 @@ const GlossaryDetails = ({
       className="glossary-details p-t-sm"
       data-testid="glossary-details"
       gutter={[0, 16]}>
-      <Col className="p-l-lg" span={24}>
+      <Col span={24}>
         <GlossaryHeader
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
         />
       </Col>
-      <Col className="p-l-lg" span={24}>
+      <Col span={24}>
         <Tabs
           activeKey={activeTab}
           className="tabs-new"
