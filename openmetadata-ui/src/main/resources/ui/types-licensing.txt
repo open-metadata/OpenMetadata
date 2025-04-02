@@ -10,32 +10,3 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../styles/variables.less');
-
-.grid-container {
-  .react-grid-item {
-    & > div {
-      height: 100%;
-    }
-
-    .ant-card.ant-card-bordered,
-    .ant-card.new-description-card {
-      height: 100%;
-    }
-  }
-
-  &.custom-tab {
-    background: @white;
-    border-radius: @border-radius-sm;
-    margin-top: @padding-sm;
-  }
-
-  > #KnowledgePanel\.LeftPanel {
-    background: white;
-    padding: 0 16px;
-    border-radius: 12px;
-    border: 1px solid @blue-15;
-    box-shadow: 0px 0px 0px 4px @grey-10;
-    box-shadow: 0px 1px 2px 0px #0a0d120d;
-  }
-}
