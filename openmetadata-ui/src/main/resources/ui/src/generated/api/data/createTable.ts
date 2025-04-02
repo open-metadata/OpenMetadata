@@ -735,6 +735,7 @@ export interface TableConstraint {
 }
 
 export enum ConstraintType {
+    ClusterKey = "CLUSTER_KEY",
     DistKey = "DIST_KEY",
     ForeignKey = "FOREIGN_KEY",
     PrimaryKey = "PRIMARY_KEY",

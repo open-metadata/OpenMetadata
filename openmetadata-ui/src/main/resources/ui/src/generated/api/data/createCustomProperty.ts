@@ -25,6 +25,10 @@ export interface CreateCustomProperty {
      */
     description?: string;
     /**
+     * Display Name that identifies the custom property.
+     */
+    displayName?: string;
+    /**
      * Name that identifies this Custom Property model.
      */
     name: string;

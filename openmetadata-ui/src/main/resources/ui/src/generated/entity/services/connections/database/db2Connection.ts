@@ -27,6 +27,14 @@ export interface Db2Connection {
      */
     hostPort: string;
     /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?: string;
+    /**
      * Password to connect to DB2.
      */
     password?:                string;

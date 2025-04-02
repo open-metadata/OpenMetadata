@@ -421,7 +421,7 @@ export interface AzureCredentials {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  */
 export interface MetadataDatabaseConnection {
     /**
@@ -512,7 +512,6 @@ export interface MetadataDatabaseConnection {
      */
     password?:                      string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -751,9 +750,9 @@ export enum MssqlType {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
