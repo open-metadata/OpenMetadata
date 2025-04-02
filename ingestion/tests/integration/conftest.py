@@ -6,6 +6,9 @@ import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    AutoClassificationConfigType,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseMetadataConfigType,
 )
@@ -74,6 +77,29 @@ def profiler_config(db_service, workflow_config, sink_config):
                     "type": "Profiler",
                     "timeoutSeconds": 600,
                     "threadCount": 1,  # easier for debugging
+                }
+            },
+        },
+        "processor": {
+            "type": "orm-profiler",
+            "config": {},
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+
+
+@pytest.fixture(scope="module")
+def classifier_config(db_service, workflow_config, sink_config):
+    return {
+        "source": {
+            "type": db_service.connection.config.type.value.lower(),
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": AutoClassificationConfigType.AutoClassification.value,
+                    "storeSampleData": True,
+                    "enableAutoClassification": True,
                 }
             },
         },
