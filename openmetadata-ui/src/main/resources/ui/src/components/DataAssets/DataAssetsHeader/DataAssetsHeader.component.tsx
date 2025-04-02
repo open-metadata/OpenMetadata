@@ -511,7 +511,7 @@ export const DataAssetsHeader = ({
             <Col className="flex items-center">
               <Space className="">
                 <ButtonGroup
-                  className="data-asset-button-group "
+                  className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
                   {onUpdateVote && (
