@@ -437,6 +437,23 @@ e2e_test = {
     "pytest-base-url",
 }
 
+# Define playwright_dependencies as a set of packages required for Playwright tests
+# These packages correspond to the ingestion connectors used in Playwright tests
+playwright_dependencies = {
+    *plugins["mysql"],
+    *plugins["bigquery"],
+    *plugins["kafka"],
+    *plugins["mlflow"],
+    *plugins["snowflake"],
+    *plugins["superset"],
+    *plugins["postgres"],
+    *plugins["redshift"],
+    *plugins["airflow"],
+    *plugins["datalake-s3"],
+    *e2e_test
+    # Add other plugins as needed for Playwright tests
+}
+
 extended_testing = {
     "Faker",  # For Sample Data Generation
 }
@@ -466,6 +483,7 @@ setup(
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
                 "airflow",
