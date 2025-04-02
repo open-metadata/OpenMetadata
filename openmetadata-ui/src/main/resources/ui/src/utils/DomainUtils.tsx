@@ -447,20 +447,18 @@ export const getDomainDetailTabs = ({
                 firstPanel={{
                   className: 'domain-resizable-panel-container',
                   children: (
-                    <div className="p-x-md p-y-md">
-                      <AssetsTabs
-                        assetCount={assetCount}
-                        entityFqn={domain.fullyQualifiedName}
-                        isSummaryPanelOpen={false}
-                        permissions={domainPermission}
-                        queryFilter={queryFilter}
-                        ref={assetTabRef}
-                        type={AssetsOfEntity.DOMAIN}
-                        onAddAsset={() => setAssetModalVisible(true)}
-                        onAssetClick={handleAssetClick}
-                        onRemoveAsset={handleAssetSave}
-                      />
-                    </div>
+                    <AssetsTabs
+                      assetCount={assetCount}
+                      entityFqn={domain.fullyQualifiedName}
+                      isSummaryPanelOpen={false}
+                      permissions={domainPermission}
+                      queryFilter={queryFilter}
+                      ref={assetTabRef}
+                      type={AssetsOfEntity.DOMAIN}
+                      onAddAsset={() => setAssetModalVisible(true)}
+                      onAssetClick={handleAssetClick}
+                      onRemoveAsset={handleAssetSave}
+                    />
                   ),
                   minWidth: 800,
                   flex: 0.87,
