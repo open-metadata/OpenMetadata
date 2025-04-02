@@ -32,6 +32,15 @@ class Tile(BaseModel):
     reportId: Optional[str] = None
 
 
+class PowerBIUser(BaseModel):
+    """
+    PowerBI User Model
+    """
+
+    displayName: Optional[str] = None
+    email: Optional[str] = Field(alias="emailAddress", default=None)
+
+
 class PowerBIDashboard(BaseModel):
     """
     PowerBI PowerBIDashboard Model
@@ -43,6 +52,7 @@ class PowerBIDashboard(BaseModel):
     webUrl: Optional[str] = None
     embedUrl: Optional[str] = None
     tiles: Optional[List[Tile]] = []
+    users: Optional[List[PowerBIUser]] = []
 
 
 class PowerBIReport(BaseModel):
@@ -54,6 +64,7 @@ class PowerBIReport(BaseModel):
     id: str
     name: str
     datasetId: Optional[str] = None
+    users: Optional[List[PowerBIUser]] = []
 
 
 class DashboardsResponse(BaseModel):
@@ -162,6 +173,7 @@ class Dataset(BaseModel):
     name: str
     tables: Optional[List[PowerBiTable]] = []
     description: Optional[str] = None
+    users: Optional[List[PowerBIUser]] = []
 
 
 class DatasetResponse(BaseModel):
