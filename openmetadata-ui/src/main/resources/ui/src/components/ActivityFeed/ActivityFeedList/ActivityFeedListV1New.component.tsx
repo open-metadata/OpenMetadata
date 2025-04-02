@@ -116,7 +116,7 @@ const ActivityFeedListV1New = ({
     return <Loader />;
   }
 
-  if (isEmpty(entityThread) && !isLoading) {
+  if (isEmpty(entityThread) && isEmpty(feedList) && !isLoading) {
     return (
       <div
         className="p-x-md no-data-placeholder-container"
