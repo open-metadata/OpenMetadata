@@ -223,7 +223,10 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         # path needs to include the database AND schema in some of the connectors
         if hasattr(db_service.connection.config, "supportsDatabase"):
             kwargs["path"] = f"/{database}"
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake}:
+        # this can be found by going to:
+        # https://github.com/open-metadata/collate-data-diff/blob/main/data_diff/databases/<connector>.py
+        # and looking at the `CONNECT_URI_HELPER` variable
+        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             kwargs["path"] = f"/{database}/{schema}"
         return url._replace(**kwargs).geturl()
 
