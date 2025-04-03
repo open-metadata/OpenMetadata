@@ -601,15 +601,20 @@
 }
 
 .task-filter-icon {
-  stroke: @grey-8;
   cursor: pointer;
-
-  &.disabled {
-    cursor: not-allowed;
-    stroke: @grey-300;
-
-    path {
+  &.ant-btn.ant-btn-default {
+    border: 1px solid @grey-15;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &.disabled {
+      cursor: not-allowed;
       stroke: @grey-300;
+      border-radius: 8px;
+      border: 1px solid @grey-10;
+      background: @white;
     }
   }
 }
