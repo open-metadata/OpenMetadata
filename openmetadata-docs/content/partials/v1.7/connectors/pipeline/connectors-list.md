@@ -16,5 +16,6 @@
 {% connectorInfoCard name="NiFi" stage="PROD" href="/connectors/pipeline/nifi" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Spline" stage="BETA" href="/connectors/pipeline/spline" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Stitch" stage="PROD" href="/connectors/pipeline/stitch" platform="Collate" / %}
+{% connectorInfoCard name="Wherescape" stage="BETA" href="/connectors/pipeline/wherescape" platform="Collate" / %}
 
 {% /connectorsListContainer %}
