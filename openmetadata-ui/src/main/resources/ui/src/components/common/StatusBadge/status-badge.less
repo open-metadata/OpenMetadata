@@ -15,7 +15,7 @@
 
 .status-badge {
   border-radius: 16px;
-  padding: 6px 12px;
+  padding: @padding-xs @padding-md;
   text-align: center;
   max-width: fit-content;
   display: flex;
@@ -40,8 +40,13 @@
 
   &.started,
   &.running {
-    color: @orange-2;
-    background-color: @orange-1;
+    color: @blue-21;
+    background-color: @blue-22;
+  }
+
+  &.inReview {
+    color: @blue-9;
+    background-color: @blue-11;
   }
 
   &.stopped,
@@ -49,10 +54,8 @@
     color: @grey-19;
     background-color: @grey-9;
   }
-
   svg {
-    margin-top: 2px;
-    margin-bottom: -3px;
+    font-size: 12px;
   }
 }
 

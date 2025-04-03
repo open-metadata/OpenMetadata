@@ -135,7 +135,7 @@ const DocumentationTab = ({
         ...domain,
         description: updatedHTML,
       };
-      onUpdate(updatedTableDetails);
+      await onUpdate(updatedTableDetails);
     }
   };
 

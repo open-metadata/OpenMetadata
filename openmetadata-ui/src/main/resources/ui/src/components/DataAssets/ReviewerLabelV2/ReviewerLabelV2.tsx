@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Tooltip, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { t } from 'i18next';
 import React, { useMemo } from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -63,7 +62,7 @@ export const ReviewerLabelV2 = <
   };
 
   const header = (
-    <div className="d-flex items-center">
+    <div className="d-flex items-center gap-2">
       <Typography.Text
         className="text-sm font-medium"
         data-testid="heading-name">
@@ -79,18 +78,14 @@ export const ReviewerLabelV2 = <
           owner={assignedReviewers ?? []}
           popoverProps={{ placement: 'topLeft' }}
           onUpdate={handleReviewerSave}>
-          <Tooltip
+          <EditIconButton
+            newLook
+            data-testid="edit-reviewer-button"
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.reviewer-plural'),
-            })}>
-            <Button
-              className="cursor-pointer flex-center m-l-xss"
-              data-testid="edit-reviewer-button"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-            />
-          </Tooltip>
+            })}
+          />
         </UserTeamSelectableList>
       )}
     </div>

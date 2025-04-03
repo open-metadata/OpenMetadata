@@ -11,22 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Tooltip, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import { isArray, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
@@ -45,6 +40,7 @@ import {
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
+import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
@@ -230,29 +226,20 @@ const RelatedTerms = () => {
   );
 
   const header = (
-    <div className="d-flex items-center">
+    <div className="d-flex items-center gap-2">
       <Typography.Text className="text-sm font-medium">
         {t('label.related-term-plural')}
       </Typography.Text>
       {permissions.EditAll && selectedOption.length > 0 && (
-        <Tooltip
-          title={
-            permissions.EditAll
-              ? t('label.edit-entity', {
-                  entity: t('label.related-term-plural'),
-                })
-              : NO_PERMISSION_FOR_ACTION
-          }>
-          <Button
-            className="cursor-pointer flex-center m-l-xss"
-            data-testid="edit-button"
-            disabled={!permissions.EditAll}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setIsIconVisible(false)}
-          />
-        </Tooltip>
+        <EditIconButton
+          newLook
+          data-testid="edit-button"
+          size="small"
+          title={t('label.edit-entity', {
+            entity: t('label.related-term-plural'),
+          })}
+          onClick={() => setIsIconVisible(false)}
+        />
       )}
     </div>
   );

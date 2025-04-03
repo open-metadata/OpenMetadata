@@ -46,7 +46,7 @@ export const OwnerLabel = ({
     if (!isCompactView) {
       if (showLabel || onUpdate) {
         return (
-          <div className="d-flex items-center gap-2">
+          <div className="d-flex items-center gap-2 m-b-xs">
             {showLabel && (
               <Typography.Text
                 className={classNames(
@@ -112,48 +112,44 @@ export const OwnerLabel = ({
 
     return (
       <div
-        className={classNames('d-flex owner-label-heading gap-2 items-center', {
+        className={classNames({
           'owner-label-container': !isCompactView,
         })}
         data-testid="owner-label">
+        {/* Owner avatars list */}
+        {ownerElementsNonCompactView}
         <div
           className={classNames(
-            `d-inline-flex ${!isCompactView ? 'flex-col' : 'flex-wrap'} gap-2`,
-            { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
+            'd-flex items-center w-full flex-wrap',
+            {
+              'gap-2': isCompactView,
+              inherited: Boolean(owners.some((owner) => owner?.inherited)),
+            },
             className
           )}>
-          {ownerElementsNonCompactView}
+          {visibleOwners.map((owner, index) => (
+            <OwnerItem
+              className={className}
+              index={index}
+              isCompactView={isCompactView}
+              key={owner.id}
+              owner={owner}
+              ownerDisplayName={ownerDisplayName?.[index]}
+            />
+          ))}
 
-          {/* Owner avatars list */}
-          <div
-            className={classNames(
-              'd-flex flex-wrap items-center',
-              isCompactView && 'gap-2'
-            )}>
-            {visibleOwners.map((owner, index) => (
-              <OwnerItem
-                className={className}
-                index={index}
-                isCompactView={isCompactView}
-                key={owner.id}
-                owner={owner}
-                ownerDisplayName={ownerDisplayName?.[index]}
-              />
-            ))}
-
-            {/* Show more button/dropdown */}
-            {showMoreButton && (
-              <OwnerReveal
-                isCompactView={isCompactView}
-                isDropdownOpen={isDropdownOpen}
-                owners={owners.slice(maxVisibleOwners)}
-                remainingCount={remainingOwnersCount}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
-            )}
-          </div>
+          {/* Show more button/dropdown */}
+          {showMoreButton && (
+            <OwnerReveal
+              isCompactView={isCompactView}
+              isDropdownOpen={isDropdownOpen}
+              owners={owners.slice(maxVisibleOwners)}
+              remainingCount={remainingOwnersCount}
+              setIsDropdownOpen={setIsDropdownOpen}
+              setShowAllOwners={setShowAllOwners}
+              showAllOwners={showAllOwners}
+            />
+          )}
         </div>
 
         {isCompactView && onUpdate && (

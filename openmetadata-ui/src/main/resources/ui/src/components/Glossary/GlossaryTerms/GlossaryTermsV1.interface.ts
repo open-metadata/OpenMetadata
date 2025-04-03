@@ -23,4 +23,6 @@ export interface GlossaryTermsV1Props {
   isSummaryPanelOpen: boolean;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   refreshActiveGlossaryTerm?: () => void;
+  isTabExpanded: boolean;
+  toggleTabExpanded: () => void;
 }
