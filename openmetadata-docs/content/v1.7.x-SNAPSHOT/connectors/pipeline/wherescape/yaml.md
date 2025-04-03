@@ -15,7 +15,7 @@ In this section, we provide guides and references to use the Wherescape connecto
 
 Configure and schedule Wherescape metadata workflows from the OpenMetadata UI:
 
-
+- [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
