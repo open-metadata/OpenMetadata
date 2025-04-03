@@ -40,14 +40,15 @@ export interface ContainerDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
-  feedCount: { totalCount: number };
+  feedCount: FeedCounts;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   tab: EntityTabs;
   deleted: boolean;
-  containerData: Container;
+  containerData?: Container;
   fetchContainerDetail: (containerFQN: string) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
+  childrenCount: number;
 }
 
 type ContainerWidgetKeys =

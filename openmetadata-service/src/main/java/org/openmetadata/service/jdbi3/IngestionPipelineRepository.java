@@ -293,7 +293,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .map(
             pipelineStatus ->
                 pipelineStatus.withConfig(
-                    Optional.ofNullable(pipelineStatus.getConfig().getOrDefault("appConfig", null))
+                    Optional.ofNullable(pipelineStatus.getConfig())
+                        .map(m -> m.getOrDefault("appConfig", null))
                         .map(JsonUtils::getMap)
                         .orElse(null)));
   }

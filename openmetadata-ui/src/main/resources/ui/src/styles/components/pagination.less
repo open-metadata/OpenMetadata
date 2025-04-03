@@ -15,7 +15,6 @@
 .pagination-container,
 .ant-pagination {
   .ant-pagination-item {
-    width: 40px;
     height: 40px;
     padding: 4px;
     border: none;
@@ -43,6 +42,7 @@
 
   .ant-pagination-next,
   .ant-pagination-prev {
+    margin-right: 0px;
     button {
       border: none;
     }
@@ -61,6 +61,11 @@
     }
   }
 
+  .ant-btn:disabled {
+    background-color: transparent;
+    border: transparent;
+    color: rgba(0, 0, 0, 0.25);
+  }
   .pagination-button {
     color: @grey-500;
     font-weight: @font-semibold;

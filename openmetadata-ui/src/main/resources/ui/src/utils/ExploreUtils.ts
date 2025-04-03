@@ -27,7 +27,7 @@ import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Aggregations } from '../interface/search.interface';
+import { Aggregations, Bucket } from '../interface/search.interface';
 import {
   EsBoolQuery,
   QueryFieldInterface,
@@ -333,4 +333,36 @@ export const getAggregationOptions = async (
   return isIndependent
     ? postAggregateFieldOptions(index, key, value, filter)
     : getAggregateFieldOptions(index, key, value, filter);
+};
+
+export const updateTreeDataWithCounts = (
+  exploreTreeNodes: ExploreTreeNode[],
+  entityCounts: Bucket[]
+) => {
+  return exploreTreeNodes.map((node) => {
+    if ((node.data?.childEntities ?? []).length > 0) {
+      let totalCount = 0;
+      node.data?.childEntities?.forEach((child) => {
+        const count = entityCounts.find(
+          (count) => count.key === child
+        )?.doc_count;
+        totalCount += count ?? 0;
+      });
+      node.totalCount = totalCount;
+    }
+
+    if (node.children) {
+      let totalCount = 0;
+      node.children.forEach((child) => {
+        const count = entityCounts.find(
+          (count) => count.key === child.key
+        )?.doc_count;
+        child.count = count ?? 0;
+        totalCount += child.count;
+      });
+      node.totalCount = totalCount;
+    }
+
+    return node;
+  });
 };

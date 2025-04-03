@@ -236,7 +236,7 @@ function ServiceMainTabContent({
   }, [data]);
 
   return (
-    <Row gutter={[0, 16]} wrap={false}>
+    <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
       <Col className="tab-content-height-with-resizable-panel" span={24}>
         <ResizablePanels
           firstPanel={{

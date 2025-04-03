@@ -217,9 +217,9 @@ const UpdateTag = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -329,7 +329,7 @@ const UpdateTag = () => {
         entity: i18n.t('label.tag'),
       })}
       secondPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container bg-white',
         minWidth: 60,
         flex: 0.4,
         children: (

@@ -11,7 +11,11 @@ if not sys.version_info >= (3, 9):
 
 
 def test_profiler(
-    patch_passwords_for_db_services, run_workflow, ingestion_config, profiler_config
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    profiler_config,
+    mysql_container,
 ):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)

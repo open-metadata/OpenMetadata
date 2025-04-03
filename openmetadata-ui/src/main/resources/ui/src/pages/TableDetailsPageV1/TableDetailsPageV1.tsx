@@ -24,6 +24,7 @@ import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.sv
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -123,6 +124,7 @@ const TableDetailsPageV1: React.FC = () => {
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const tableFqn = useMemo(
     () =>
@@ -495,7 +497,7 @@ const TableDetailsPageV1: React.FC = () => {
       activeTab,
       deleted,
       tableDetails,
-      totalFeedCount: feedCount.totalCount,
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
@@ -538,6 +540,11 @@ const TableDetailsPageV1: React.FC = () => {
     testCaseSummary,
     isViewTableType,
   ]);
+
+  const isExpandViewSupported = useMemo(
+    () => tabs[0].key === EntityTabs.SCHEMA || activeTab === EntityTabs.SCHEMA,
+    [tabs[0], activeTab]
+  );
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -751,6 +758,10 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded((prev) => !prev);
+  };
+
   if (loading || isLoading) {
     return <Loader />;
   }
@@ -770,14 +781,16 @@ const TableDetailsPageV1: React.FC = () => {
       })}
       title="Table details">
       <GenericProvider<Table>
+        customizedPage={customizedPage}
         data={tableDetails}
+        isTabExpanded={isTabExpanded}
         isVersionView={false}
         permissions={tablePermissions}
         type={EntityType.TABLE}
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <Col data-testid="entity-page-header" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -799,12 +812,21 @@ const TableDetailsPageV1: React.FC = () => {
             />
           </Col>
           {/* Entity Tabs */}
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    size="small"
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

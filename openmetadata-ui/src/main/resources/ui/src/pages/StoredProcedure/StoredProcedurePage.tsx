@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -56,6 +57,7 @@ import {
 } from '../../rest/storedProceduresAPI';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -75,7 +77,7 @@ const StoredProcedurePage = () => {
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
-  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
+  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: EntityTabs }>();
 
   const { fqn: decodedStoredProcedureFQN } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -83,6 +85,7 @@ const StoredProcedurePage = () => {
   const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.StoredProcedure
   );
@@ -485,6 +488,16 @@ const StoredProcedurePage = () => {
     handleFeedCount,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(tabs[0], activeTab, PageType.StoredProcedure),
+    [tabs[0], activeTab]
+  );
+
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateStoredProcedureVotes(id, data);
@@ -531,7 +544,7 @@ const StoredProcedurePage = () => {
         entity: t('label.stored-procedure'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
@@ -551,17 +564,28 @@ const StoredProcedurePage = () => {
         </Col>
 
         <GenericProvider<StoredProcedure>
+          customizedPage={customizedPage}
           data={storedProcedure}
+          isTabExpanded={isTabExpanded}
           permissions={storedProcedurePermissions}
           type={EntityType.STORED_PROCEDURE}
           onUpdate={handleStoreProcedureUpdate}>
           {/* Entity Tabs */}
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    size="small"
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={(activeKey: string) =>
                 handleTabChange(activeKey as EntityTabs)
               }

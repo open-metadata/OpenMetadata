@@ -50,6 +50,7 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
+  getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
 import EntityLink from '../../../utils/EntityLink';
@@ -383,6 +384,11 @@ export const DataAssetsHeader = ({
     [entityType, dataAsset, entityName, parentContainers]
   );
 
+  const showCompressedExtraInfoItems = useMemo(
+    () => getEntityExtraInfoLength(extraInfo) <= 1,
+    [extraInfo]
+  );
+
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
       return;
@@ -505,7 +511,7 @@ export const DataAssetsHeader = ({
             <Col className="flex items-center">
               <Space className="">
                 <ButtonGroup
-                  className="data-asset-button-group "
+                  className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
                   {onUpdateVote && (
@@ -584,7 +590,10 @@ export const DataAssetsHeader = ({
         </Col>
 
         <Col span={24}>
-          <div className="d-flex data-asset-header-metadata  flex-wrap ">
+          <div
+            className={classNames('data-asset-header-metadata ', {
+              'data-asset-header-less-items': showCompressedExtraInfoItems,
+            })}>
             {showDomain && (
               <>
                 <DomainLabel

@@ -196,19 +196,16 @@ export const hardDeleteUserProfilePage = async (
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
-  const toastPromises = [
-    page.waitForSelector('[data-testid="alert-bar"]'),
-    page.waitForSelector('[data-testid="alert-icon"]'),
-    page.waitForSelector('[data-testid="alert-icon-close"]'),
-  ];
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=true&recursive=true'
   );
   await page.click('[data-testid="confirm-button"]');
 
-  // Wait for both the delete response and all toast elements to appear
-  await Promise.all([deleteResponse, ...toastPromises]);
-  await toastNotification(page, /deleted successfully!/);
+  await deleteResponse;
+
+  await expect(page.getByTestId('alert-bar')).toHaveText(
+    /deleted successfully!/
+  );
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {

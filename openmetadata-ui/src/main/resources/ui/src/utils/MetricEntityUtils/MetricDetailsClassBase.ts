@@ -35,9 +35,7 @@ import {
 } from './MetricUtils';
 
 export interface MetricDetailPageTabProps {
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
@@ -62,7 +60,7 @@ class MetricDetailsClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.DESCRIPTION]: 6,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -100,7 +98,7 @@ class MetricDetailsClassBase {
 
     return [
       {
-        h: 6,
+        h: 6.3,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

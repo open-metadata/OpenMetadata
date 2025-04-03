@@ -145,7 +145,24 @@ export const getQueryFilterToExcludeDomainTerms = (
 export const getQueryFilterForDomain = (domainFqn: string) => ({
   query: {
     bool: {
-      must: [{ prefix: { 'domain.fullyQualifiedName': domainFqn } }],
+      must: [
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'domain.fullyQualifiedName': domainFqn,
+                },
+              },
+              {
+                prefix: {
+                  'domain.fullyQualifiedName': `${domainFqn}.`,
+                },
+              },
+            ],
+          },
+        },
+      ],
       must_not: [
         {
           term: {
@@ -212,23 +229,39 @@ export const renderDomainLink = (
   domain: EntityReference,
   domainDisplayName: ReactNode,
   showDomainHeading: boolean,
-  textClassName?: string
-) => (
-  <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
-    <Link
-      className={classNames(
-        'no-underline domain-link domain-link-text font-medium',
-        { 'text-sm': !showDomainHeading },
-        textClassName
-      )}
-      data-testid="domain-link"
-      to={getDomainPath(domain?.fullyQualifiedName)}>
-      {isUndefined(domainDisplayName)
-        ? getEntityName(domain)
-        : domainDisplayName}
-    </Link>
-  </Tooltip>
-);
+  textClassName?: string,
+  trimLink?: boolean
+) => {
+  const displayName = isUndefined(domainDisplayName)
+    ? getEntityName(domain)
+    : domainDisplayName;
+
+  return (
+    <Tooltip title={domainDisplayName ?? getEntityName(domain)}>
+      <Link
+        className={classNames(
+          'no-underline domain-link domain-link-text font-medium',
+          {
+            'text-sm': !showDomainHeading,
+            'text-truncate': trimLink,
+          },
+          textClassName
+        )}
+        data-testid="domain-link"
+        to={getDomainPath(domain?.fullyQualifiedName)}>
+        {trimLink ? (
+          <Typography.Text
+            className="domain-link-name"
+            ellipsis={{ tooltip: false }}>
+            {displayName}
+          </Typography.Text>
+        ) : (
+          <>{displayName}</>
+        )}
+      </Link>
+    </Tooltip>
+  );
+};
 
 export const initializeDomainEntityRef = (
   domains: EntityReference[],
@@ -414,20 +447,18 @@ export const getDomainDetailTabs = ({
                 firstPanel={{
                   className: 'domain-resizable-panel-container',
                   children: (
-                    <div className="p-x-md p-y-md">
-                      <AssetsTabs
-                        assetCount={assetCount}
-                        entityFqn={domain.fullyQualifiedName}
-                        isSummaryPanelOpen={false}
-                        permissions={domainPermission}
-                        queryFilter={queryFilter}
-                        ref={assetTabRef}
-                        type={AssetsOfEntity.DOMAIN}
-                        onAddAsset={() => setAssetModalVisible(true)}
-                        onAssetClick={handleAssetClick}
-                        onRemoveAsset={handleAssetSave}
-                      />
-                    </div>
+                    <AssetsTabs
+                      assetCount={assetCount}
+                      entityFqn={domain.fullyQualifiedName}
+                      isSummaryPanelOpen={false}
+                      permissions={domainPermission}
+                      queryFilter={queryFilter}
+                      ref={assetTabRef}
+                      type={AssetsOfEntity.DOMAIN}
+                      onAddAsset={() => setAssetModalVisible(true)}
+                      onAssetClick={handleAssetClick}
+                      onRemoveAsset={handleAssetSave}
+                    />
                   ),
                   minWidth: 800,
                   flex: 0.87,
@@ -458,16 +489,13 @@ export const getDomainDetailTabs = ({
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
-              <div className="m-sm">
-                <CustomPropertyTable<EntityType.DOMAIN>
-                  entityType={EntityType.DOMAIN}
-                  hasEditAccess={
-                    domainPermission.EditAll ||
-                    domainPermission.EditCustomFields
-                  }
-                  hasPermission={domainPermission.ViewAll}
-                />
-              </div>
+              <CustomPropertyTable<EntityType.DOMAIN>
+                entityType={EntityType.DOMAIN}
+                hasEditAccess={
+                  domainPermission.EditAll || domainPermission.EditCustomFields
+                }
+                hasPermission={domainPermission.ViewAll}
+              />
             ),
           },
         ]

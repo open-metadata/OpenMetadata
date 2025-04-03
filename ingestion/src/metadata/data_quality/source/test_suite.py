@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -195,7 +195,7 @@ class TestSuiteSource(Source):
             return
         # If there is no executable test suite yet for the table, we'll need to create one
         # Then, the suite won't have yet any tests
-        if not table.testSuite:
+        if not table.testSuite or table.testSuite.id.root is None:
             executable_test_suite = CreateTestSuiteRequest(
                 name=fqn.build(
                     None,
@@ -221,6 +221,14 @@ class TestSuiteSource(Source):
             test_suite: Optional[TestSuite] = self.metadata.get_by_id(
                 entity=TestSuite, entity_id=table.testSuite.id.root
             )
+            if test_suite is None:
+                yield Either(
+                    left=StackTraceError(
+                        name="Test Suite not found",
+                        error=f"Test Suite with id {table.testSuite.id.root} not found",
+                    )
+                )
+                return
             test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
         yield Either(
