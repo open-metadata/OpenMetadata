@@ -112,6 +112,13 @@ You can also create automatic event like showed below which runs every week to c
 CREATE EVENT mysql.cleanup_general_log ON SCHEDULE EVERY 7 DAY DO DELETE FROM mysql.general_log WHERE event_time < NOW() - INTERVAL 7 DAY;
 ```
 
+Note: If you are using rds then you can rotate the `mysql.general_log` table manually by calling the `mysql.rds_rotate_general_log` procedure. You can rotate the `mysql.slow_log` table by calling the `mysql.rds_rotate_slow_log` procedure.
+
+You can also check below docs about more info on logs & its rotation methods.
+- [Rotating mysql query logs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/mysql-stored-proc-logging.html)
+- [RDS for MySQL database logs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.MySQL.LogFileSize.html#USER_LogAccess.MySQL.Generallog)
+- [Aurora for MySQL database logs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.MySQL.LogFileSize.html#USER_LogAccess.MySQL.Generallog)
+
 **Best Practices**:
 - Monitor log table size regularly
 - Implement a log rotation schedule
