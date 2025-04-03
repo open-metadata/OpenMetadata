@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -37,6 +37,7 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import {
+  filterDistributionChartItem,
   getPlatformInsightsChartDataFormattingMethod,
   getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
@@ -139,10 +140,10 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
 
       const piiDistributionChart = chartsData[
         SystemChartType.PIIDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
       const tierDistributionChart = chartsData[
         SystemChartType.TierDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
 
       setChartsResults({
         platformInsightsChart,
