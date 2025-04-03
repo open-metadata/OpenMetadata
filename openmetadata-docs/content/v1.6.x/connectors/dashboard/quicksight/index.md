@@ -18,6 +18,7 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/quicksight)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/quicksight/yaml"} /%}
 ## Requirements
@@ -169,5 +170,3 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
