@@ -19,6 +19,7 @@ import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { LIST_SIZE } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
   TAG_CONSTANT,
@@ -72,6 +73,7 @@ const TagsContainerV2 = ({
   defaultLabelType,
   defaultState,
   newLook = false,
+  sizeCap = LIST_SIZE,
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -187,6 +189,7 @@ const TagsContainerV2 = ({
         <TagsViewer
           displayType={displayType}
           showNoDataPlaceholder={showNoDataPlaceholder}
+          sizeCap={sizeCap}
           tagType={tagType}
           tags={tags?.[tagType] ?? []}
         />
@@ -277,7 +280,6 @@ const TagsContainerV2 = ({
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
                 <EditIconButton
                   data-testid="edit-button"
-                  newLook={newLook}
                   size="small"
                   title={t('label.edit-entity', {
                     entity:
@@ -346,6 +348,7 @@ const TagsContainerV2 = ({
         <TagsViewer
           displayType={displayType}
           showNoDataPlaceholder={showNoDataPlaceholder}
+          sizeCap={sizeCap}
           tags={tags?.[tagType] ?? []}
         />
         {showInlineEditButton ? editTagButton : null}

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -63,21 +63,22 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
             label: (
               <UserPopOverCard userName={owner.name ?? ''}>
                 <Link
-                  className="d-flex no-underline"
+                  className="d-flex no-underline items-center gap-2 relative"
                   data-testid="owner-link"
                   to={getOwnerPath(owner)}>
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <ProfilePicture
-                        displayName={getEntityName(owner)}
-                        key="profile-picture"
-                        name={owner.name ?? ''}
-                        type="circle"
-                        width="32"
-                      />
-                    </div>
-                    <span>{getEntityName(owner)}</span>
-                  </div>
+                  <ProfilePicture
+                    displayName={getEntityName(owner)}
+                    key="profile-picture"
+                    name={owner.name ?? ''}
+                    type="circle"
+                    width="32"
+                  />
+
+                  <Typography.Text
+                    className="w-36"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(owner)}{' '}
+                  </Typography.Text>
                 </Link>
               </UserPopOverCard>
             ),
