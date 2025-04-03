@@ -206,6 +206,7 @@ const ActivityFeedCardNew = ({
             <UserPopOverCard userName={feed.createdBy ?? ''}>
               <div className="d-flex items-center">
                 <ProfilePicture
+                  avatarType="outlined"
                   key={feed.id}
                   name={feed.createdBy ?? ''}
                   width={showThread ? '40' : '32'}
