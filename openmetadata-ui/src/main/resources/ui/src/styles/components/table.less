@@ -20,17 +20,24 @@
       color: @grey-4;
       text-transform: uppercase;
       border-right: none;
+      border-color: @border-color;
     }
     tr > td {
       color: @text-color;
     }
     background: @grey-1;
   }
+  .ant-table-body {
+    tr > td {
+      border-color: @border-color;
+    }
+  }
   .ant-table-cell {
     vertical-align: top;
   }
   .ant-table-bordered {
     table {
+      border-color: @border-color;
       tbody {
         tr {
           td {
