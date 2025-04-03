@@ -388,6 +388,7 @@ mock_dbtcloud_config = {
                 "accountId": "70403103922125",
                 "jobIds": ["70403103922125", "70403103922126"],
                 "projectIds": ["70403103922127", "70403103922128"],
+                "numberOfRuns": 10,
                 "token": "dbt_token",
             }
         },
