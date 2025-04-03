@@ -29,6 +29,7 @@ import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.sv
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
+import { ReactComponent as NoConversationsIcon } from '../../../assets/svg/no-conversations.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
@@ -40,6 +41,7 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import {
@@ -60,6 +62,7 @@ import {
   getEntityUserLink,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
@@ -282,9 +285,12 @@ export const ActivityFeedTab = ({
 
   const handleFeedClick = useCallback(
     (feed: Thread) => {
+      if (!feed && (isTaskActiveTab || isMentionTabSelected)) {
+        setIsFullWidth(false);
+      }
       setActiveThread(feed);
     },
-    [setActiveThread]
+    [setActiveThread, isTaskActiveTab, isMentionTabSelected]
   );
 
   useEffect(() => {
@@ -430,6 +436,82 @@ export const ActivityFeedTab = ({
     setIsFullWidth(isFullWidth);
   };
 
+  const getRightPanelContent = (selectedThread: Thread) => {
+    if (
+      activeTab !== ActivityFeedTabs.TASKS &&
+      selectedThread?.type !== ThreadType.Task
+    ) {
+      return (
+        <div id="feed-panel">
+          <FeedPanelBodyV1New
+            isOpenInDrawer
+            showActivityFeedEditor
+            showThread
+            componentsVisibility={{
+              showThreadIcon: true,
+              showRepliesContainer: true,
+            }}
+            feed={selectedThread}
+            handlePanelResize={handlePanelResize}
+            hidePopover={false}
+            isFullWidth={isFullWidth}
+            onAfterClose={handleAfterTaskClose}
+            onUpdateEntityDetails={onUpdateEntityDetails}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div id="task-panel">
+        {entityType === EntityType.TABLE ? (
+          <TaskTabNew
+            columns={columns}
+            entityType={EntityType.TABLE}
+            handlePanelResize={handlePanelResize}
+            isForFeedTab={isForFeedTab}
+            owners={owners}
+            taskThread={selectedThread}
+            onAfterClose={handleAfterTaskClose}
+            onUpdateEntityDetails={onUpdateEntityDetails}
+          />
+        ) : (
+          <TaskTabNew
+            entityType={isUserEntity ? entityTypeTask : entityType}
+            handlePanelResize={handlePanelResize}
+            hasGlossaryReviewer={hasGlossaryReviewer}
+            isForFeedTab={isForFeedTab}
+            owners={owners}
+            taskThread={selectedThread}
+            onAfterClose={handleAfterTaskClose}
+            onUpdateEntityDetails={onUpdateEntityDetails}
+          />
+        )}
+      </div>
+    );
+  };
+
+  const getRightPanelPlaceholder = useMemo(() => {
+    if (activeTab === ActivityFeedTabs.MENTIONS) {
+      return (
+        <Typography.Text className="placeholder-text m-t-0">
+          {t('message.no-mentions')}
+        </Typography.Text>
+      );
+    }
+
+    return (
+      <div className="d-flex flex-col gap-4">
+        <Typography.Text className="placeholder-title m-t-0">
+          {t('message.no-conversations')}
+        </Typography.Text>
+        <Typography.Text className="placeholder-text">
+          {t('message.no-conversations-description')}
+        </Typography.Text>
+      </div>
+    );
+  }, [activeTab, selectedThread]);
+
   return (
     <div className="activity-feed-tab">
       {layoutType === ActivityFeedLayoutType.THREE_PANEL && (
@@ -554,56 +636,19 @@ export const ActivityFeedTab = ({
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}>
         {loader}
-        {selectedThread &&
-          !loading &&
-          (activeTab !== ActivityFeedTabs.TASKS &&
-          selectedThread?.type !== ThreadType.Task ? (
-            <div id="feed-panel">
-              <div>
-                <FeedPanelBodyV1New
-                  isOpenInDrawer
-                  showActivityFeedEditor
-                  showThread
-                  componentsVisibility={{
-                    showThreadIcon: true,
-                    showRepliesContainer: true,
-                  }}
-                  feed={selectedThread}
-                  handlePanelResize={handlePanelResize}
-                  hidePopover={false}
-                  isFullWidth={isFullWidth}
-                  onAfterClose={handleAfterTaskClose}
-                  onUpdateEntityDetails={onUpdateEntityDetails}
-                />
+        {selectedThread && !loading
+          ? getRightPanelContent(selectedThread)
+          : !loading && (
+              <div className="p-x-md no-data-placeholder-container d-flex justify-center items-center h-full">
+                <ErrorPlaceHolderNew
+                  icon={<NoConversationsIcon />}
+                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+                  <Typography.Paragraph className="placeholder-text">
+                    {getRightPanelPlaceholder}
+                  </Typography.Paragraph>
+                </ErrorPlaceHolderNew>
               </div>
-            </div>
-          ) : (
-            <div id="task-panel">
-              {entityType === EntityType.TABLE ? (
-                <TaskTabNew
-                  columns={columns}
-                  entityType={EntityType.TABLE}
-                  handlePanelResize={handlePanelResize}
-                  isForFeedTab={isForFeedTab}
-                  owners={owners}
-                  taskThread={selectedThread}
-                  onAfterClose={handleAfterTaskClose}
-                  onUpdateEntityDetails={onUpdateEntityDetails}
-                />
-              ) : (
-                <TaskTabNew
-                  entityType={isUserEntity ? entityTypeTask : entityType}
-                  handlePanelResize={handlePanelResize}
-                  hasGlossaryReviewer={hasGlossaryReviewer}
-                  isForFeedTab={isForFeedTab}
-                  owners={owners}
-                  taskThread={selectedThread}
-                  onAfterClose={handleAfterTaskClose}
-                  onUpdateEntityDetails={onUpdateEntityDetails}
-                />
-              )}
-            </div>
-          ))}
+            )}
       </div>
     </div>
   );

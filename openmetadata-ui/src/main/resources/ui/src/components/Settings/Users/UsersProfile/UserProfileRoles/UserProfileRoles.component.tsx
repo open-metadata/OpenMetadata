@@ -39,6 +39,7 @@ import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
+import { TagRenderer } from '../../../../common/TagRenderer/TagRenderer';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
@@ -244,6 +245,7 @@ const UserProfileRoles = ({
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
                     ref={dropdownRef as any}
+                    tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}
                     onDropdownVisibleChange={(open) => {

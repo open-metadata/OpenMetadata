@@ -151,7 +151,7 @@ const ProfileSectionUserDetailsCard = ({
             {...ICON_DIMENSION_USER_PAGE}
           />
           <Typography.Text className="profile-manage-label">
-            {t('label.edit-profile')}
+            {t('label.edit-name')}
           </Typography.Text>
         </Button>
       )}
@@ -274,7 +274,7 @@ const ProfileSectionUserDetailsCard = ({
       )}
       {editProfile && (
         <ProfileEditModal
-          header={t('label.edit-profile')}
+          header={t('label.edit-name')}
           placeholder={t('label.enter-entity', {
             entity: t('label.description'),
           })}
