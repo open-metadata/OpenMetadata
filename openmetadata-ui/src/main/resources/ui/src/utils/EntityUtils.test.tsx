@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { AxiosError } from 'axios';
 import { startCase } from 'lodash';
 import React from 'react';
-import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
-import { ExportTypes } from '../constants/Export.constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -29,12 +26,10 @@ import {
   getEntityBreadcrumbs,
   getEntityLinkFromType,
   getEntityOverview,
-  handleExportFile,
   highlightEntityNameAndDescription,
   highlightSearchArrayElement,
   highlightSearchText,
 } from './EntityUtils';
-import exportUtilClassBase from './ExportUtilClassBase';
 import {
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,
@@ -56,7 +51,6 @@ import {
   getSettingPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { showErrorToast } from './ToastUtils';
 
 jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
@@ -465,47 +459,6 @@ describe('EntityUtils unit tests', () => {
       expect(getEntityDetailsPath).toHaveBeenCalledWith(
         EntityType.DATABASE,
         'sample_data.ecommerce_db'
-      );
-    });
-  });
-
-  describe('handleExportFile', () => {
-    const mockExportData: ExportData = {
-      name: 'test-export',
-      documentSelector: '#test-element',
-      exportTypes: [ExportTypes.PNG],
-      onExport: jest.fn(),
-    };
-
-    it('should successfully handle export when exportMethodBasedOnType succeeds', async () => {
-      (
-        exportUtilClassBase.exportMethodBasedOnType as jest.Mock
-      ).mockResolvedValue(undefined);
-
-      await handleExportFile(ExportTypes.PNG, mockExportData);
-
-      expect(exportUtilClassBase.exportMethodBasedOnType).toHaveBeenCalledWith({
-        exportType: ExportTypes.PNG,
-        exportData: mockExportData,
-      });
-      expect(showErrorToast).not.toHaveBeenCalled();
-    });
-
-    it('should handle error when exportMethodBasedOnType fails', async () => {
-      const mockError = new Error('Export failed') as AxiosError;
-      (
-        exportUtilClassBase.exportMethodBasedOnType as jest.Mock
-      ).mockRejectedValue(mockError);
-
-      await handleExportFile(ExportTypes.PNG, mockExportData);
-
-      expect(exportUtilClassBase.exportMethodBasedOnType).toHaveBeenCalledWith({
-        exportType: ExportTypes.PNG,
-        exportData: mockExportData,
-      });
-      expect(showErrorToast).toHaveBeenCalledWith(
-        mockError,
-        'message.error-generating-export-type'
       );
     });
   });

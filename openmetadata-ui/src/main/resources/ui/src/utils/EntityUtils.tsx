@@ -12,7 +12,6 @@
  */
 
 import { Popover, Space, Typography } from 'antd';
-import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
 import {
   isEmpty,
@@ -34,7 +33,6 @@ import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAsse
 import { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanel/DataAssetSummaryPanel.interface';
 import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
-import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   EntityServiceUnion,
   EntityWithServices,
@@ -51,7 +49,6 @@ import {
   PLACEHOLDER_ROUTE_FQN,
   ROUTES,
 } from '../constants/constants';
-import { ExportTypes } from '../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -118,9 +115,7 @@ import {
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
-import exportUtilClassBase from './ExportUtilClassBase';
 import Fqn from './Fqn';
-import i18n from './i18next/LocalUtil';
 import {
   getApplicationDetailsPath,
   getBotsPagePath,
@@ -153,7 +148,6 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
-import { showErrorToast } from './ToastUtils';
 
 export enum DRAWER_NAVIGATION_OPTIONS {
   explore = 'Explore',
@@ -2546,23 +2540,4 @@ export const updateNodeType = (
   }
 
   return node;
-};
-
-export const handleExportFile = async (
-  exportType: ExportTypes,
-  exportData: ExportData
-) => {
-  try {
-    await exportUtilClassBase.exportMethodBasedOnType({
-      exportType,
-      exportData,
-    });
-  } catch (error) {
-    showErrorToast(
-      error as AxiosError,
-      i18n.t('message.error-generating-export-type', {
-        exportType,
-      })
-    );
-  }
 };

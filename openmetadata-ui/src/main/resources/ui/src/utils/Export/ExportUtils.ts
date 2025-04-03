@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import { toPng } from 'html-to-image';
 import { isUndefined, lowerCase } from 'lodash';
 import { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import i18n from '../i18next/LocalUtil';
+import { showErrorToast } from '../ToastUtils';
 
 export const downloadImageFromBase64 = (
   dataUrl: string,
@@ -69,6 +71,11 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       downloadImageFromBase64(base64Image, name, ExportTypes.PNG);
     })
     .catch((error) => {
-      throw error;
+      showErrorToast(
+        error as AxiosError,
+        i18n.t('message.error-generating-export-type', {
+          exportType: ExportTypes.PNG,
+        })
+      );
     });
 };

@@ -13,6 +13,7 @@
 import { toPng } from 'html-to-image';
 import { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../../constants/Export.constants';
+import { showErrorToast } from '../ToastUtils';
 import {
   downloadImageFromBase64,
   exportPNGImageFromElement,
@@ -20,6 +21,10 @@ import {
 
 jest.mock('html-to-image', () => ({
   toPng: jest.fn(),
+}));
+
+jest.mock('../ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 describe('ExportUtils', () => {
@@ -140,8 +145,11 @@ describe('ExportUtils', () => {
       const error = new Error('PNG generation failed');
       (toPng as jest.Mock).mockRejectedValue(error);
 
-      await expect(exportPNGImageFromElement(mockExportData)).rejects.toThrow(
-        error
+      await exportPNGImageFromElement(mockExportData);
+
+      expect(showErrorToast).toHaveBeenCalledWith(
+        error,
+        'message.error-generating-export-type'
       );
     });
   });
