@@ -21,6 +21,7 @@ import {
   createNewPage,
   descriptionBox,
   getApiContext,
+  matchRequestParams,
   redirectToHomePage,
 } from '../../utils/common';
 import {
@@ -142,7 +143,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.getByRole('menuitem', { name: 'Reassign' }).click();
 
       const searchUserResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${user2.data.firstName}*${user2.data.lastName}*&index=user_search_index*`
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          matchRequestParams(response, 'POST', {
+            index: 'user_search_index,team_search_index',
+          })
       );
 
       await page.getByTestId('select-assignee').locator('div').click();
@@ -177,9 +182,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
           state: 'detached',
         });
 
-        const searchUserResponse = page.waitForResponse(
-          '/api/v1/search/query?q=*'
-        );
+        const searchUserResponse = page.waitForResponse('/api/v1/search/query');
+
         await page.fill(
           '[data-testid="owner-select-users-search-bar"]',
           assignee2.displayName
@@ -459,8 +463,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await incidentDetailsRes;
 
     await page.click('[data-testid="select-assignee"]');
+    // const searchUserResponse = page.waitForResponse(
+    //   `/api/v1/search/query?q=*${assigneeTestCase.userDisplayName}*index=user_search_index*`
+    // );
+
     const searchUserResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${assigneeTestCase.userDisplayName}*index=user_search_index*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'user_search_index',
+        })
     );
     await page
       .getByTestId('select-assignee')
@@ -511,8 +523,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await nonStatusFilterRes;
 
     await page.click('[data-testid="test-case-select"]');
+    // const testCaseResponse = page.waitForResponse(
+    //   `/api/v1/search/query?q=${testCase1}*index=test_case_search_index*`
+    // );
+
     const testCaseResponse = page.waitForResponse(
-      `/api/v1/search/query?q=${testCase1}*index=test_case_search_index*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'test_case_search_index',
+        })
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
     await testCaseResponse;

@@ -24,6 +24,7 @@ import { TagClass } from '../support/tag/TagClass';
 import {
   descriptionBox,
   getApiContext,
+  matchRequestParams,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
@@ -90,9 +91,17 @@ export const addAssetsToTag = async (
   );
 
   await page.getByTestId('assets').click();
+
   const initialFetchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=all&from=0&size=25&deleted=false**'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'all',
+        from: 0,
+        size: 25,
+      })
   );
+
   await page.getByTestId('data-classification-add-button').click();
 
   await initialFetchResponse;

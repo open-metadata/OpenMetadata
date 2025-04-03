@@ -22,6 +22,7 @@ import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import {
   clickOutside,
   descriptionBox,
+  matchRequestParams,
   redirectToHomePage,
   toastNotification,
 } from './common';
@@ -37,8 +38,11 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
+
   const waitForSearchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*index=dataAsset*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', { index: 'dataAsset' })
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await waitForSearchResponse;
@@ -64,8 +68,13 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'user_search_index',
+        })
     );
+
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
   }
@@ -80,8 +89,14 @@ export const addOwner = async ({
   }
 
   const searchUser = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'team_search_index',
+        query: `*${encodeURIComponent(owner)}*`,
+      })
   );
+
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
@@ -122,7 +137,11 @@ export const updateOwner = async ({
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchUser = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        query: `*${encodeURIComponent(owner)}*`,
+      })
   );
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
@@ -261,7 +280,12 @@ export const addMultiOwner = async (data: {
 
   for (const ownerName of owners) {
     const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user_search_index*'
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          query: `*${encodeURIComponent(ownerName)}* AND isBot:false`,
+          index: 'user_search_index',
+        })
     );
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
@@ -377,7 +401,11 @@ export const assignTag = async (
     .click();
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        query: `*${encodeURIComponent(tag)}* AND disabled:false`,
+      })
   );
   await page.locator('#tagsForm_tags').fill(tag);
   await searchTags;
@@ -420,7 +448,12 @@ export const assignTagToChildren = async ({
     .click();
 
   const searchTags = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'tag_search_index',
+        query: `*${encodeURIComponent(tag)}*`,
+      })
   );
 
   await page.locator('#tagsForm_tags').fill(tag);
@@ -554,9 +587,7 @@ export const assignGlossaryTerm = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
-  );
+  const searchGlossaryTerm = page.waitForResponse('/api/v1/search/query*');
 
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
@@ -599,7 +630,11 @@ export const assignGlossaryTermToChildren = async ({
     .click();
 
   const searchGlossaryTerm = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        query: `*${encodeURIComponent(glossaryTerm.displayName)}*`,
+      })
   );
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
@@ -1072,9 +1107,13 @@ export const checkForTableSpecificFields = async (
   page: Page,
   deleted?: boolean
 ) => {
-  const queryDataUrl = `/api/v1/search/query?q=*index=query_search_index*`;
-
-  const queryApi = page.waitForResponse(queryDataUrl);
+  const queryApi = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'query_search_index',
+      })
+  );
   // Click the table queries tab
   await page.click('[data-testid="table_queries"]');
 

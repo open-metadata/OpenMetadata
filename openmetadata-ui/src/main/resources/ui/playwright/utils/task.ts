@@ -12,7 +12,12 @@
  */
 import { expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { clickOutside, descriptionBox, toastNotification } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  matchRequestParams,
+  toastNotification,
+} from './common';
 
 export type TaskDetails = {
   term: string;
@@ -60,7 +65,11 @@ export const createDescriptionTask = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'user_search_index,team_search_index',
+        })
     );
 
     await assigneeField.fill(value.assignee);
@@ -113,7 +122,11 @@ export const createTagTask = async (
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.assignee}**&index=user_search_index%2Cteam_search_index`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'user_search_index,team_search_index',
+        })
     );
     await assigneeField.fill(value.assignee);
     await userSearchResponse;
@@ -133,7 +146,11 @@ export const createTagTask = async (
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${value.tag ?? tag}*&index=tag_search_index&*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'tag_search_index',
+        })
     );
     await suggestTags.fill(value.tag ?? tag);
 

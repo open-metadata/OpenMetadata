@@ -18,6 +18,7 @@ import {
   assignDomain,
   clickOutside,
   createNewPage,
+  matchRequestParams,
   redirectToHomePage,
 } from '../../utils/common';
 import { assignTag } from '../../utils/entity';
@@ -68,13 +69,23 @@ test('search dropdown should work properly for quick filters', async ({
     await page.click(`[data-testid="search-dropdown-${filter.label}"]`);
     await searchAndClickOnOption(page, filter, true);
 
-    const querySearchURL = `/api/v1/search/query?*index=dataAsset*query_filter=*should*${
-      filter.key
-    }*${(filter.value ?? '').replace(/ /g, '+').toLowerCase()}*`;
-
-    const queryRes = page.waitForResponse(querySearchURL);
+    const queryRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        matchRequestParams(response, 'POST', {
+          index: 'dataAssets',
+        })
+    );
     await page.click('[data-testid="update-btn"]');
-    await queryRes;
+    const res = await queryRes;
+
+    const requestBody = JSON.parse((await res.request().postData()) ?? '{}');
+
+    const queryFilter = requestBody.queryFilter;
+
+    expect(JSON.stringify(queryFilter)).toContain(filter.key);
+    expect(JSON.stringify(queryFilter)).toContain(filter.value);
+
     await page.click('[data-testid="clear-filters"]');
   }
 });
@@ -121,7 +132,11 @@ test('should persist quick filter on global search', async ({ page }) => {
   }
 
   const waitForSearchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*index=dataAsset*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      matchRequestParams(response, 'POST', {
+        index: 'dataAssets',
+      })
   );
 
   await page
