@@ -363,7 +363,7 @@ class ServiceBaseClass {
         .then((res) => res.json());
 
       // eslint-disable-next-line no-console
-      console.log(logsResponse.data.log);
+      console.log(logsResponse);
     }
 
     await expect(
