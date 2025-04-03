@@ -32,7 +32,6 @@ const CertificationTag = ({
 
     return (
       <Tooltip
-        className="cursor-pointer"
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
         <div
