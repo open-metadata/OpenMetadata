@@ -387,20 +387,20 @@
 }
 
 .task-toggle {
-  background: white;
-  border-radius: 8px;
+  background: @white;
+  border-radius: 12px;
   padding: 4px;
-  border: 1px solid #dce3ec;
+  border: 1px solid @grey-20;
 
   .ant-segmented-item {
     color: @text-color;
     transition: all 0.3s ease;
 
     &-selected {
-      background: #e6f1fe;
+      background: @blue-23;
       color: @blue-9;
       text-align: center;
-
+      border-radius: 12px;
       .ant-segmented-item-label {
         color: @blue-9;
       }
@@ -528,6 +528,7 @@
 
 .task-toggle.ant-segmented {
   background-color: @white;
+  border-radius: 12px;
 
   &:hover {
     .ant-segmented-item:not(.ant-segmented-item-selected) {
