@@ -11,6 +11,6 @@ public class DashboardServiceMapper
     return copy(new DashboardService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection())
-        .withIngestionRunner(create.getIngestionRunner());
+        .withIngestionAgent(create.getIngestionAgent());
   }
 }
