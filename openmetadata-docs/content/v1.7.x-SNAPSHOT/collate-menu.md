@@ -1628,8 +1628,6 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airbyteconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / AirflowConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/airflowconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / WherebyteConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/wherebyteconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / BackendConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/pipeline/backendconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Pipeline / CustomPipelineConnection

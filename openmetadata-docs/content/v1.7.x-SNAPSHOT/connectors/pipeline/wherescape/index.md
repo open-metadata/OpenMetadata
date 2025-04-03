@@ -15,7 +15,18 @@ In this section, we provide guides and references to use the Wherescape connecto
 
 Configure and schedule Wherescape metadata workflow from the OpenMetadata UI:
 
+- [Requirements](#requirements)
+- [Metadata Ingestion](#metadata-ingestion)
+    - [Connection Details](#connection-details)
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/wherescape/yaml"} /%}
+
+## Requirements
+To extract Wherescape metadata, we need the batabase connection details where the metadata is stored.
+
+- `API` Permission ( While Creating the User, from Admin -> User )
+- To retrieve lineage data, the user must be granted [Component-level permissions](https://docs.matillion.com/metl/docs/2932106/#component).
+- To enable lineage tracking in Matillion, **Matillion Enterprise Mode** is required. For detailed setup instructions and further information, refer to the official documentation: [Matillion Lineage Documentation](https://docs.matillion.com/metl/docs/2881895/).
 
 ## Metadata Ingestion
 
@@ -38,8 +49,11 @@ Configure and schedule Wherescape metadata workflow from the OpenMetadata UI:
 
 In terms of `connection` we support the following selections:
 
-- `Mssql`: Pass the required credentials to reach out this service. We
-    will create a connection to the pointed database and read Wherescape data from there.
+- **Microsoft SQL Server**: To connect to the Wherescape metadata database:
+  - Provide the SQL Server connection credentials including username and password
+  - Specify the database name where Wherescape metadata is stored
+  - Enter the host and port for the SQL Server instance
+  - The connector will establish a connection to this database to extract Wherescape pipeline metadata
 
 {% /extraContent %}
 
