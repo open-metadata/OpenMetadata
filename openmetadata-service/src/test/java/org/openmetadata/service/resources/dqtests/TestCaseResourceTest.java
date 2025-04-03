@@ -1820,7 +1820,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void unauthorizedTestCaseResolutionFlow(TestInfo test)
+  void authorizedTestCaseResolutionFlow(TestInfo test)
       throws HttpResponseException, ParseException {
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
     // Add failed test case, which will create a NEW incident
@@ -1840,13 +1840,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
     createTestCaseFailureStatus(createAssignedIncident);
 
-    assertResponseContains(
-        () ->
-            createTestCaseFailureStatus(
-                createAssignedIncident.withTestCaseResolutionStatusType(
-                    TestCaseResolutionStatusTypes.Ack)),
-        BAD_REQUEST,
-        "Incident with status [Assigned] cannot be moved to [Ack]");
+    createTestCaseFailureStatus(
+        createAssignedIncident.withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
   }
 
   @Test
