@@ -129,8 +129,6 @@ export interface TestServiceConnectionConnection {
  *
  * MongoDB Connection Config
  *
- * Cassandra Connection Config
- *
  * Couchbase Connection Config
  *
  * Greenplum Database Connection Config
@@ -150,8 +148,6 @@ export interface TestServiceConnectionConnection {
  * Synapse Database Connection Config
  *
  * Exasol Database Connection Config
- *
- * Cockroach Database Connection Config
  *
  * Looker Connection Config
  *
@@ -196,6 +192,8 @@ export interface TestServiceConnectionConnection {
  * OpenMetadata yet.
  *
  * Airflow Metadata Database Connection Config
+ *
+ * Wherescape Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -369,9 +367,6 @@ export interface ConfigClass {
      * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
      * host when using the `mongodb+srv` scheme.
      *
-     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
-     * host when using the `cassandra+srv` scheme.
-     *
      * Host and port of the Doris service.
      *
      * Host and port of the Teradata service.
@@ -379,8 +374,6 @@ export interface ConfigClass {
      * Host and Port of the SAP ERP instance.
      *
      * Host and port of the Azure Synapse service.
-     *
-     * Host and port of the Cockrooach service.
      *
      * URL to the Looker instance.
      *
@@ -508,9 +501,6 @@ export interface ConfigClass {
      *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
-     *
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
      */
     database?: string;
     /**
@@ -665,9 +655,6 @@ export interface ConfigClass {
      * Username to connect to MongoDB. This user should have privileges to read all the metadata
      * in MongoDB.
      *
-     * Username to connect to Cassandra. This user should have privileges to read all the
-     * metadata in Cassandra.
-     *
      * Username to connect to Couchbase. This user should have privileges to read all the
      * metadata in Couchbase.
      *
@@ -687,9 +674,6 @@ export interface ConfigClass {
      *
      * Username to connect to Exasol. This user should have privileges to read all the metadata
      * in Exasol.
-     *
-     * Username to connect to Cockroach. This user should have privileges to read all the
-     * metadata in Cockroach.
      *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
@@ -760,6 +744,10 @@ export interface ConfigClass {
      * Databricks compute resources URL.
      */
     httpPath?: string;
+    /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
     /**
      * License to connect to DB2.
      */
@@ -876,6 +864,10 @@ export interface ConfigClass {
      */
     account?: string;
     /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
+    /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
      */
@@ -969,7 +961,7 @@ export interface ConfigClass {
      *
      * Choose between mysql and postgres connection for alation database
      */
-    connection?: ConnectionObject;
+    connection?: ConfigConnection;
     /**
      * Couchbase connection Bucket options.
      */
@@ -1207,6 +1199,11 @@ export interface ConfigClass {
      */
     consumerConfig?: { [key: string]: any };
     /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: ConsumerConfigSSLClass;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;
@@ -1229,7 +1226,7 @@ export interface ConfigClass {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: SchemaRegistrySSLClass;
+    schemaRegistrySSL?: ConsumerConfigSSLClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -1251,6 +1248,10 @@ export interface ConfigClass {
      * Pipeline Service Number Of Status
      */
     numberOfStatus?: number;
+    /**
+     * Underlying database connection
+     */
+    databaseConnection?: DatabaseConnectionClass;
     /**
      * Fivetran API Secret.
      */
@@ -1627,8 +1628,6 @@ export enum AuthProvider {
  *
  * Azure Database Connection Config
  *
- * Configuration for connecting to DataStax Astra DB in the cloud.
- *
  * Types of methods used to authenticate to the tableau instance
  *
  * Basic Auth Credentials
@@ -1658,10 +1657,6 @@ export interface AuthConfigurationType {
      * JWT to connect to source.
      */
     jwt?: string;
-    /**
-     * Configuration for connecting to DataStax Astra DB in the cloud.
-     */
-    cloudConfig?: DataStaxAstraDBConfiguration;
     /**
      * Username to access the service.
      *
@@ -1772,30 +1767,6 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Configuration for connecting to DataStax Astra DB in the cloud.
- */
-export interface DataStaxAstraDBConfiguration {
-    /**
-     * Timeout in seconds for establishing new connections to Cassandra.
-     */
-    connectTimeout?: number;
-    /**
-     * Timeout in seconds for individual Cassandra requests.
-     */
-    requestTimeout?: number;
-    /**
-     * File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax
-     * Astra DB.
-     */
-    secureConnectBundle?: string;
-    /**
-     * The Astra DB application token used for authentication.
-     */
-    token?: string;
-    [property: string]: any;
 }
 
 /**
@@ -2045,7 +2016,7 @@ export interface SSLCertificatesByPath {
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate
      */
@@ -2066,6 +2037,9 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -2073,7 +2047,7 @@ export interface QlikCertificatesBy {
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface SchemaRegistrySSLClass {
+export interface ConsumerConfigSSLClass {
     /**
      * The CA certificate used for SSL validation.
      */
@@ -2413,11 +2387,11 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  *
  * Choose between mysql and postgres connection for alation database
  */
-export interface ConnectionObject {
+export interface ConfigConnection {
     /**
      * Database of the data source.
      *
@@ -2534,7 +2508,6 @@ export interface ConnectionObject {
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -2660,6 +2633,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -2769,6 +2745,78 @@ export interface GCPCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ */
+export interface DatabaseConnectionClass {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Database of the data source. This is optional parameter, if you would like to restrict
+     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the databases.
+     */
+    database: string;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Host and port of the MSSQL service.
+     */
+    hostPort?: string;
+    /**
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     */
+    password?:                string;
+    sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     MssqlScheme;
+    supportsDatabase?:           boolean;
+    supportsDataDiff?:           boolean;
+    supportsDBTExtraction?:      boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    /**
+     * Service Type
+     */
+    type?: MssqlType;
+    /**
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     */
+    username?: string;
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum MssqlType {
+    Mssql = "Mssql",
 }
 
 /**
@@ -2889,7 +2937,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  SchemaRegistrySSLClass;
+    sslConfig?:                  ConsumerConfigSSLClass;
     sslMode?:                    SSLMode;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
@@ -2946,9 +2994,9 @@ export enum HiveMetastoreConnectionDetailsType {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -3168,6 +3216,9 @@ export enum KafkaSecurityProtocol {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -3342,9 +3393,7 @@ export enum RESTType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
-    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
-    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
@@ -3432,6 +3481,7 @@ export enum RESTType {
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
     Vertica = "Vertica",
+    Wherescape = "Wherescape",
 }
 
 /**

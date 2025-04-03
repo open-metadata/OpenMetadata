@@ -86,6 +86,11 @@ export interface Connection {
      */
     consumerConfig?: { [key: string]: any };
     /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: Config;
+    /**
      * sasl.mechanism Consumer Config property
      */
     saslMechanism?: SaslMechanismType;
@@ -186,23 +191,13 @@ export interface AWSCredentials {
 }
 
 /**
- * sasl.mechanism Consumer Config property
- *
- * SASL Mechanism consumer config property
- */
-export enum SaslMechanismType {
-    Gssapi = "GSSAPI",
-    Oauthbearer = "OAUTHBEARER",
-    Plain = "PLAIN",
-    ScramSHA256 = "SCRAM-SHA-256",
-    ScramSHA512 = "SCRAM-SHA-512",
-}
-
-/**
- * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
  * Client SSL configuration
+ *
+ * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
+ * connection.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -219,6 +214,19 @@ export interface Config {
      * The private key associated with the SSL certificate.
      */
     sslKey?: string;
+}
+
+/**
+ * sasl.mechanism Consumer Config property
+ *
+ * SASL Mechanism consumer config property
+ */
+export enum SaslMechanismType {
+    Gssapi = "GSSAPI",
+    Oauthbearer = "OAUTHBEARER",
+    Plain = "PLAIN",
+    ScramSHA256 = "SCRAM-SHA-256",
+    ScramSHA512 = "SCRAM-SHA-512",
 }
 
 /**

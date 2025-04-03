@@ -66,8 +66,6 @@ export enum SubscriptionCategory {
  * This schema defines webhook for receiving events from OpenMetadata.
  *
  * This schema defines email config for receiving events from OpenMetadata.
- *
- * A generic map that can be deserialized later.
  */
 export interface Webhook {
     /**
@@ -109,7 +107,6 @@ export interface Webhook {
      * Send the Mails to Owners
      */
     sendToOwners?: boolean;
-    [property: string]: any;
 }
 
 /**

@@ -82,6 +82,10 @@ export interface ChangeEvent {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Version of the entity before this change. Note that not all changes result in entity
      * version change. When entity version is not changed, `previousVersion` is same as
      * `currentVersion`.
@@ -121,6 +125,8 @@ export interface ChangeEvent {
  * null.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
     /**
@@ -207,6 +213,10 @@ export interface ChangeEventClass {
      * Unique identifier for the event.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Version of the entity before this change. Note that not all changes result in entity
      * version change. When entity version is not changed, `previousVersion` is same as

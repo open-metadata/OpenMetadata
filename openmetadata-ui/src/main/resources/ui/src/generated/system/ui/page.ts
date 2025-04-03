@@ -38,10 +38,6 @@ export interface Page {
      * Persona this page belongs to.
      */
     persona?: EntityReference;
-    /**
-     * Tabs included in this page.
-     */
-    tabs?: Tab[];
 }
 
 /**
@@ -115,45 +111,18 @@ export enum EntityType {
  * This schema defines the type used for describing different types of pages.
  */
 export enum PageType {
-    Container = "Container",
-    Dashboard = "Dashboard",
-    DashboardDataModel = "DashboardDataModel",
-    Database = "Database",
-    DatabaseSchema = "DatabaseSchema",
-    Domain = "Domain",
-    Glossary = "Glossary",
-    GlossaryTerm = "GlossaryTerm",
+    ContainerLandingPage = "ContainerLandingPage",
+    DashboardDataModelLandingPage = "DashboardDataModelLandingPage",
+    DashboardLandingPage = "DashboardLandingPage",
+    DatabaseLandingPage = "DatabaseLandingPage",
+    DatabaseSchemaLandingPage = "DatabaseSchemaLandingPage",
+    DomainLandingPage = "DomainLandingPage",
+    GlossaryLandingPage = "GlossaryLandingPage",
+    GlossaryTermLandingPage = "GlossaryTermLandingPage",
     LandingPage = "LandingPage",
-    Pipeline = "Pipeline",
-    SearchIndex = "SearchIndex",
-    StoredProcedure = "StoredProcedure",
-    Table = "Table",
-    Topic = "Topic",
-}
-
-/**
- * This schema defines a Tab within a Page.
- */
-export interface Tab {
-    /**
-     * DisplayName of the tab.
-     */
-    displayName?: string;
-    /**
-     * Weather tab can be edit by the user or not.
-     */
-    editable?: boolean;
-    id:        string;
-    /**
-     * KnowledgePanels that are part of this Tab.
-     */
-    knowledgePanels?: EntityReference[];
-    /**
-     * Layout configuration for this tab.
-     */
-    layout: { [key: string]: any };
-    /**
-     * Name of the tab.
-     */
-    name: string;
+    PipelineLandingPage = "PipelineLandingPage",
+    SearchIndexLandingPage = "SearchIndexLandingPage",
+    StoredProcedureLandingPage = "StoredProcedureLandingPage",
+    TableLandingPage = "TableLandingPage",
+    TopicLandingPage = "TopicLandingPage",
 }

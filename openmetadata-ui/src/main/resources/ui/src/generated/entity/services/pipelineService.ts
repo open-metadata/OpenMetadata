@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * This schema defines the Pipeline Service entity, such as Airflow and Prefect.
  */
 export interface PipelineService {
@@ -140,11 +142,13 @@ export interface FieldChange {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: Connection;
+    config?: ConfigClass;
 }
 
 /**
  * Airflow Metadata Database Connection Config
+ *
+ * Wherescape Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -181,7 +185,7 @@ export interface PipelineConnection {
  *
  * Stitch Connection
  */
-export interface Connection {
+export interface ConfigClass {
     /**
      * Underlying database connection. See
      * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
@@ -214,8 +218,12 @@ export interface Connection {
      *
      * Custom pipeline service type
      */
-    type?:      PipelineServiceType;
-    awsConfig?: AWSCredentials;
+    type?: PipelineServiceType;
+    /**
+     * Underlying database connection
+     */
+    databaseConnection?: DatabaseConnectionClass;
+    awsConfig?:          AWSCredentials;
     /**
      * Airbyte API version.
      */
@@ -750,6 +758,78 @@ export enum InitialConsumerOffsets {
 }
 
 /**
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ */
+export interface DatabaseConnectionClass {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Database of the data source. This is optional parameter, if you would like to restrict
+     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the databases.
+     */
+    database: string;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Host and port of the MSSQL service.
+     */
+    hostPort?: string;
+    /**
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     */
+    password?:                string;
+    sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     MssqlScheme;
+    supportsDatabase?:           boolean;
+    supportsDataDiff?:           boolean;
+    supportsDBTExtraction?:      boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    /**
+     * Service Type
+     */
+    type?: MssqlType;
+    /**
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     */
+    username?: string;
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum MssqlType {
+    Mssql = "Mssql",
+}
+
+/**
  * We support username/password or client certificate authentication
  *
  * Configuration for connecting to Nifi Basic Auth.
@@ -855,6 +935,7 @@ export enum PipelineServiceType {
     Spark = "Spark",
     Spline = "Spline",
     Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**

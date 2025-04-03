@@ -205,7 +205,6 @@ export enum Language {
  * This schema defines the type of the type of Procedures
  */
 export enum StoredProcedureType {
-    StoredPackage = "StoredPackage",
     StoredProcedure = "StoredProcedure",
     Udf = "UDF",
 }

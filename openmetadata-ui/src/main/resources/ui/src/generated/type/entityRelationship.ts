@@ -81,6 +81,7 @@ export enum RelationshipType {
     ParentOf = "parentOf",
     ReactedTo = "reactedTo",
     RelatedTo = "relatedTo",
+    RelatesTo = "relatesTo",
     RepliedTo = "repliedTo",
     Reviews = "reviews",
     TestedBy = "testedBy",
