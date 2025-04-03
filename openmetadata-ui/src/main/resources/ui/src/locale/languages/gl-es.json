@@ -1645,6 +1645,7 @@
     "data-insight-report-send-success-message": "Informe de insights de datos enviado correctamente.",
     "data-insight-subtitle": "Obtén unha vista única da saúde de todos os teus activos de datos ao longo do tempo.",
     "database-service-name-message": "Engade os nomes dos servizos da base de datos para crear liñaxe.",
+    "day-one-application-in-progress": "A aplicación Day one xa está en execución.",
     "dbt-catalog-file-extract-path": "Ficheiro de catálogo dbt para extraer modelos dbt coas súas esquemas de columnas.",
     "dbt-cloud-type": "No caso de haber múltiples {{type}}s nunha conta dbt cloud, especifica o ID do {{type}} do que queres extraer os artefactos de execución",
     "dbt-ingestion-description": "Pódese configurar e despregar un fluxo de traballo dbt despois de configurar unha inxestión de metadatos. Pódense configurar varios pipelines dbt para o mesmo servizo de base de datos. O pipeline alimenta a pestana dbt da entidade Táboa, crea a liñaxe dos nós dbt e engade probas desde dbt. Engade a configuración de orixe dos ficheiros dbt para comezar.",

@@ -1645,6 +1645,7 @@
     "data-insight-report-send-success-message": "Rapport voor inzicht data-assets succesvol verzonden.",
     "data-insight-subtitle": "Bekijk in één overzicht de statushistorie van al uw data-assets.",
     "database-service-name-message": "Voeg de namen van databaseservices toe om herkomst vast te leggen.",
+    "day-one-application-in-progress": "Day one applicatie is al actief.",
     "dbt-catalog-file-extract-path": "Pad naar dbt-catalogusbestand om dbt-modellen met hun kolomschema's te extraheren.",
     "dbt-cloud-type": "In geval van meerdere {{type}}s in een dbt-cloudaccount, geef het id van de {{type}} op waaruit u de dbt-uitvoerartefacten wilt extraheren",
     "dbt-ingestion-description": "Een dbt-workflow kan worden geconfigureerd en ingezet nadat een metadataingestie is ingesteld. Voor dezelfde databaseservice kunnen meerdere dbt-pipelines worden ingesteld. De pipeline voedt het dbt-tabblad van de tabelentiteit, creëert lineage vanuit dbt-nodes en voegt tests toe vanuit dbt. Voeg de brondata van de dbt-bestanden toe om te beginnen.",

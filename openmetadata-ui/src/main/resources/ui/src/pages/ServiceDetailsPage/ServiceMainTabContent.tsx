@@ -132,7 +132,7 @@ function ServiceMainTabContent({
   const handleDescriptionUpdate = useCallback(async (updatedHTML: string) => {
     try {
       await onDescriptionUpdate(updatedHTML);
-    } catch (e) {
+    } catch {
       // Error
     }
   }, []);

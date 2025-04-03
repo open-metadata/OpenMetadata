@@ -203,6 +203,9 @@ export const DataAssetsHeader = ({
   badge,
   isDqAlertSupported,
   isCustomizedView = false,
+  disableRunAgentsButton = false,
+  afterTriggerAction,
+  isDayOneWorkflowStatusLoading = false,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
@@ -294,7 +297,7 @@ export const DataAssetsHeader = ({
           (node) => node?.fullyQualifiedName !== dataAsset?.fullyQualifiedName
         ) ?? [];
       setDqFailureCount(updatedNodes.length);
-    } catch (error) {
+    } catch {
       setDqFailureCount(0);
     }
   };
@@ -496,12 +499,48 @@ export const DataAssetsHeader = ({
       await triggerOnDemandApp(DAY_ONE_EXPERIENCE_APP_NAME, {
         entityLink,
       });
+
+      afterTriggerAction?.();
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDayOneTriggering(false);
     }
-  }, [serviceCategory]);
+  }, [serviceCategory, afterTriggerAction]);
+
+  const triggerDayOneApplicationButton = useMemo(() => {
+    if (!SERVICE_TYPES.includes(entityType)) {
+      return null;
+    }
+
+    const isDisabled = isDayOneWorkflowStatusLoading || disableRunAgentsButton;
+    const isLoading = isDayOneWorkflowStatusLoading || isDayOneTriggering;
+
+    return (
+      <Tooltip
+        title={
+          isDisabled
+            ? t('message.day-one-application-in-progress')
+            : t('message.trigger-day-one-application')
+        }>
+        <Button
+          className="font-semibold"
+          data-testid="trigger-day-one-application-button"
+          disabled={isDisabled}
+          icon={<Icon className="flex-center" component={TriggerIcon} />}
+          loading={isLoading}
+          type="primary"
+          onClick={triggerTheDayOneApplication}>
+          {t('label.run-agent-plural')}
+        </Button>
+      </Tooltip>
+    );
+  }, [
+    disableRunAgentsButton,
+    isDayOneWorkflowStatusLoading,
+    isDayOneTriggering,
+    triggerTheDayOneApplication,
+  ]);
 
   return (
     <>
@@ -540,24 +579,7 @@ export const DataAssetsHeader = ({
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
-                  {SERVICE_TYPES.includes(entityType) && (
-                    <Tooltip title={t('message.trigger-day-one-application')}>
-                      <Button
-                        className="font-semibold"
-                        data-testid="trigger-day-one-application-button"
-                        icon={
-                          <Icon
-                            className="flex-center"
-                            component={TriggerIcon}
-                          />
-                        }
-                        loading={isDayOneTriggering}
-                        type="primary"
-                        onClick={triggerTheDayOneApplication}>
-                        {t('label.run-agent-plural')}
-                      </Button>
-                    </Tooltip>
-                  )}
+                  {triggerDayOneApplicationButton}
                   {onUpdateVote && (
                     <Voting
                       disabled={deleted}
