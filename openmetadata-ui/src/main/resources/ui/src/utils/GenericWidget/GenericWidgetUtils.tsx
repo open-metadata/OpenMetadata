@@ -133,7 +133,9 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.CONTAINER_CHILDREN]: () => (
     <ContainerChildren isReadOnly />
   ),
-  [DetailPageWidgetKeys.CHARTS_TABLE]: () => <DashboardChartTable />,
+  [DetailPageWidgetKeys.CHARTS_TABLE]: () => (
+    <DashboardChartTable isCustomizationPage />
+  ),
   [DetailPageWidgetKeys.EXPERTS]: () => (
     <OwnerLabel
       hasPermission={false}
@@ -145,5 +147,7 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.API_SCHEMA]: () => <APIEndpointSchema />,
   [DetailPageWidgetKeys.CONTAINER_SCHEMA]: () => <ContainerWidget />,
-  [DetailPageWidgetKeys.DATABASE_SCHEMA]: () => <DatabaseSchemaTable />,
+  [DetailPageWidgetKeys.DATABASE_SCHEMA]: () => (
+    <DatabaseSchemaTable isCustomizationPage />
+  ),
 } as const;

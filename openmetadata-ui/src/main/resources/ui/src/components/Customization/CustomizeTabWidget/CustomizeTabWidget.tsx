@@ -330,7 +330,6 @@ export const CustomizeTabWidget = () => {
           newWidgetData,
           placeholderWidgetKey,
           widgetSize,
-          TAB_GRID_MAX_COLUMNS,
           currentPageType as PageType
         )
       );

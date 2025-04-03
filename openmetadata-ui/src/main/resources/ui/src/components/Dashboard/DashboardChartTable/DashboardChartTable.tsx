@@ -52,7 +52,11 @@ import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
 
-export const DashboardChartTable = () => {
+export const DashboardChartTable = ({
+  isCustomizationPage = false,
+}: {
+  isCustomizationPage?: boolean;
+}) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const { onThreadLinkSelect } = useGenericContext<Dashboard>();
@@ -390,8 +394,10 @@ export const DashboardChartTable = () => {
   );
 
   useEffect(() => {
-    initializeCharts();
-  }, [listChartIds]);
+    isCustomizationPage
+      ? setCharts(listChartIds as unknown as ChartType[])
+      : initializeCharts();
+  }, [listChartIds, isCustomizationPage]);
 
   if (isEmpty(charts)) {
     return <ErrorPlaceHolder />;

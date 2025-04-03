@@ -22,8 +22,15 @@ import MyDataImg from '../assets/img/my-data.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets.png';
+import ApiEndpointsImg from '../assets/img/widgets/api-endpoints.png';
+import ApiSchemaImg from '../assets/img/widgets/api-schema.png';
+import ContainerChildrenImg from '../assets/img/widgets/container-children.png';
+import ContainerSchemaImg from '../assets/img/widgets/container-schema.png';
 import CustomPropertyImg from '../assets/img/widgets/custom_properties.png';
+import ChartsTableImg from '../assets/img/widgets/dashboard-charts.png';
+import DataModelImg from '../assets/img/widgets/dashboard-data-model.png';
 import DataProductImg from '../assets/img/widgets/data-products.png';
+import DatabaseSchemaImg from '../assets/img/widgets/database-schema-table.png';
 import DescriptionLargeImg from '../assets/img/widgets/description-large.png';
 import DescriptionImg from '../assets/img/widgets/description.png';
 import DomainImg from '../assets/img/widgets/Domain.png';
@@ -272,6 +279,20 @@ class CustomizeMyDataPageClassBase {
         return SchemaImg;
       case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
         return TableConstraints;
+      case DetailPageWidgetKeys.API_ENDPOINTS:
+        return ApiEndpointsImg;
+      case DetailPageWidgetKeys.API_SCHEMA:
+        return ApiSchemaImg;
+      case DetailPageWidgetKeys.CONTAINER_SCHEMA:
+        return ContainerSchemaImg;
+      case DetailPageWidgetKeys.CONTAINER_CHILDREN:
+        return ContainerChildrenImg;
+      case DetailPageWidgetKeys.CHARTS_TABLE:
+        return ChartsTableImg;
+      case DetailPageWidgetKeys.DATA_MODEL:
+        return DataModelImg;
+      case DetailPageWidgetKeys.DATABASE_SCHEMA:
+        return DatabaseSchemaImg;
       default: {
         return '';
       }

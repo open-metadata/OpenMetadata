@@ -164,8 +164,8 @@ class APIEndpointClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.API_ENDPOINTS,
-        name: i18n.t('label.api-endpoint'),
+        fullyQualifiedName: DetailPageWidgetKeys.API_SCHEMA,
+        name: i18n.t('label.schema'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

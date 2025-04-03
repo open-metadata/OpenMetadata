@@ -185,6 +185,13 @@ class ContainerDetailsClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
+        fullyQualifiedName: DetailPageWidgetKeys.CONTAINER_SCHEMA,
+        name: i18n.t('label.schema'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      {
         fullyQualifiedName: DetailPageWidgetKeys.CONTAINER_CHILDREN,
         name: i18n.t('label.children'),
         data: {

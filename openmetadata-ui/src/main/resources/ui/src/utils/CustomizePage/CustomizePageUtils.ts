@@ -406,12 +406,50 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
   }
 };
 
+const calculateNewPosition = (
+  currentLayout: WidgetConfig[],
+  newWidget: { w: number; h: number },
+  maxCols = 8
+) => {
+  // Sort layout by y position to find last row
+  const sortedLayout = [...currentLayout].sort(
+    (a, b) => a.y + a.h - (b.y + b.h)
+  );
+
+  // Get the last widget
+  const lastWidget = sortedLayout[sortedLayout.length - 1];
+
+  if (!lastWidget) {
+    // If no widgets exist, start at 0,0
+    return { x: 0, y: 0 };
+  }
+
+  // Calculate next position
+  const lastRowY = lastWidget.y + lastWidget.h;
+  const lastRowWidgets = sortedLayout.filter(
+    (widget) => widget.y + widget.h === lastRowY
+  );
+
+  // Find the rightmost x position in the last row
+  const lastX = lastRowWidgets.reduce(
+    (maxX, widget) => Math.max(maxX, widget.x + widget.w),
+    0
+  );
+
+  // If there's room in the current row
+  if (lastX + newWidget.w <= maxCols) {
+    return { x: lastX, y: lastRowY - lastWidget.h };
+  }
+
+  // Otherwise, start a new row
+  return { x: 0, y: lastRowY };
+};
+
 export const getAddWidgetHandler =
   (
     newWidgetData: CommonWidgetType,
     placeholderWidgetKey: string,
     widgetWidth: number,
-    maxGridSize: number,
     pageType: PageType
   ) =>
   (currentLayout: Array<WidgetConfig>): WidgetConfig[] => {
@@ -440,22 +478,28 @@ export const getAddWidgetHandler =
         },
       ];
     } else {
-      return currentLayout.map((widget: WidgetConfig) => {
-        const widgetX =
-          widget.x + widgetWidth <= maxGridSize
-            ? widget.x
-            : maxGridSize - widgetWidth;
+      // To handle case of adding widget from top button instead of empty widget placeholder
+      const { x: widgetX, y: widgetY } = calculateNewPosition(
+        currentLayout.filter(
+          (widget) =>
+            widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+        ),
+        {
+          w: widgetWidth,
+          h: widgetHeight,
+        }
+      );
 
-        return widget.i === placeholderWidgetKey
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-              x: widgetX,
-            }
-          : widget;
-      });
+      return [
+        ...currentLayout,
+        {
+          i: widgetFQN,
+          h: widgetHeight,
+          w: widgetWidth,
+          x: widgetX,
+          y: widgetY,
+        },
+      ];
     }
   };
 
