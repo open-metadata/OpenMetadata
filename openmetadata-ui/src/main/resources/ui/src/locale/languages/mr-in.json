@@ -1498,6 +1498,7 @@
     "view-definition": "परिभाषा पहा",
     "view-detail-plural": "तपशील पहा",
     "view-entity": "{{entity}} पहा",
+    "view-in-service-type": "{{serviceType}} मध्ये पहा",
     "view-less": "कमी पहा",
     "view-more": "अधिक पहा",
     "view-new-count": "{{count}} नवीन पहा",

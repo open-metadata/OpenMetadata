@@ -1498,6 +1498,7 @@
     "view-definition": "Посмотреть определение",
     "view-detail-plural": "Просмотр деталей",
     "view-entity": "Посмотреть {{entity}}",
+    "view-in-service-type": "Просмотр в {{serviceType}}",
     "view-less": "Показать меньше",
     "view-more": "Посмотреть больше",
     "view-new-count": "Посмотреть {{count}} новых",

@@ -21,7 +21,6 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 
@@ -70,5 +69,4 @@ export interface ActivityFeedProviderContextType {
   ) => Promise<void>;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
-  initialAssignees: EntityReference[];
 }

@@ -1498,6 +1498,7 @@
     "view-definition": "Ansichtsdefinition",
     "view-detail-plural": "Details anzeigen",
     "view-entity": "{{entity}} anzeigen",
+    "view-in-service-type": "In {{serviceType}} anzeigen",
     "view-less": "Weniger anzeigen",
     "view-more": "Mehr anzeigen",
     "view-new-count": "{{count}} Neu anzeigen",

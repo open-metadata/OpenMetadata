@@ -1498,6 +1498,7 @@
     "view-definition": "ดูคำจำกัดความ",
     "view-detail-plural": "ดูรายละเอียด",
     "view-entity": "ดู {{entity}}",
+    "view-in-service-type": "ดูใน {{serviceType}}",
     "view-less": "ดูน้อยลง",
     "view-more": "ดูเพิ่มเติม",
     "view-new-count": "ดู {{count}} ใหม่",

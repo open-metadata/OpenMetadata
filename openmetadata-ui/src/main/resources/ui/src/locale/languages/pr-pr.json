@@ -1498,6 +1498,7 @@
     "view-definition": "مشاهده تعریف",
     "view-detail-plural": "مشاهده جزئیات",
     "view-entity": "مشاهده {{entity}}",
+    "view-in-service-type": "در {{serviceType}} مشاهده کنید",
     "view-less": "Ver menos",
     "view-more": "مشاهده بیشتر",
     "view-new-count": "مشاهده {{count}} جدید",

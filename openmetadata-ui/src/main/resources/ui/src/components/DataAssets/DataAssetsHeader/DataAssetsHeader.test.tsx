@@ -13,7 +13,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
-import { Container } from '../../../generated/entity/data/container';
+import {
+  Container,
+  StorageServiceType,
+} from '../../../generated/entity/data/container';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
@@ -42,6 +45,7 @@ const mockProps: DataAssetsHeaderProps = {
       name: 's3_storage_sample',
       type: 'storageService',
     },
+    serviceType: 'moc service' as StorageServiceType,
   } as Container,
   entityType: EntityType.CONTAINER,
   permissions: DEFAULT_ENTITY_PERMISSION,
@@ -261,7 +265,9 @@ describe('DataAssetsHeader component', () => {
     expect(sourceUrlButton).toBeInTheDocument();
     expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
     expect(sourceUrlLink).toHaveAttribute('target', '_blank');
-    expect(screen.getByText('label.source-url')).toBeInTheDocument();
+    expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
+
+    ``;
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {
