@@ -814,21 +814,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   useEffect(() => {
     if (!tableContainerRef.current) {
-      return undefined;
+      return;
     }
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width;
-        setContainerWidth(width);
-      }
-    });
-
-    resizeObserver.observe(tableContainerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
+    setContainerWidth(tableContainerRef.current.offsetWidth);
   }, [tableContainerRef.current]);
 
   if (isEmpty(glossaryTerms)) {
