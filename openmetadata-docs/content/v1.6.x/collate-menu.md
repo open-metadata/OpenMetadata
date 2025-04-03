@@ -375,6 +375,10 @@ site_menu:
     url: /connectors/pipeline/airflow/mwaa
   - category: Connectors / Pipeline / Airflow / GCS Composer
     url: /connectors/pipeline/airflow/gcs-composer
+  - category: Connectors / Pipeline / Wherescape
+    url: /connectors/pipeline/wherescape
+  - category: Connectors / Pipeline / Wherescape / Run Externally
+    url: /connectors/pipeline/wherescape/yaml
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
