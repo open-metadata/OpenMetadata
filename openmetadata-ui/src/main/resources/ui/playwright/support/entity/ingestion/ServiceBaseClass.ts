@@ -357,7 +357,7 @@ class ServiceBaseClass {
       .last()
       .textContent();
 
-    if (pipelineStatus?.toLowerCase() === 'success') {
+    if (pipelineStatus?.toLowerCase() === 'failed') {
       const logsResponse = page.waitForRequest(
         `/api/v1/services/ingestionPipelines/name/**`
       );
