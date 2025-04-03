@@ -53,6 +53,13 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
       <p data-testid="description">{markdown}</p>
     ))
 );
+jest.mock('../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn(),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'owners']),
+  handleUpdateTableColumnSelections: jest.fn(),
+}));
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest
     .fn()

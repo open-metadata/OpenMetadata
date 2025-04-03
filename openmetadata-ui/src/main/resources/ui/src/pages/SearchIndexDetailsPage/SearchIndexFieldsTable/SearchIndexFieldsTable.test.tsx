@@ -85,6 +85,16 @@ jest.mock('../../../utils/TableUtils', () => ({
   updateFieldDescription: jest.fn(),
   updateFieldTags: jest.fn(),
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue([
+      'name',
+      'description',
+      'dataTypeDisplay',
+      'tags',
+      'glossary',
+    ]),
+  handleUpdateTableColumnSelections: jest.fn(),
 }));
 
 describe('SearchIndexFieldsTable component', () => {

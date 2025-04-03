@@ -747,7 +747,7 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
-export const getColumnSelections = (
+export const getTableColumnConfigSelections = (
   userFqn: string,
   entityType: string | undefined,
   isFullViewTable: boolean,
@@ -779,7 +779,7 @@ export const getColumnSelections = (
   return [];
 };
 
-export const handleColumnSelections = (
+export const handleUpdateTableColumnSelections = (
   selected: boolean,
   key: string,
   columnDropdownSelections: string[],

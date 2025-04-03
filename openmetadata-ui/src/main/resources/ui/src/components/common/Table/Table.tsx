@@ -42,9 +42,9 @@ import {
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
 import {
-  getColumnSelections,
+  getTableColumnConfigSelections,
   getTableExpandableConfig,
-  handleColumnSelections,
+  handleUpdateTableColumnSelections,
 } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
@@ -109,7 +109,7 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      const updatedSelections = handleColumnSelections(
+      const updatedSelections = handleUpdateTableColumnSelections(
         selected,
         key,
         columnDropdownSelections,
@@ -229,7 +229,7 @@ const Table = <T extends Record<string, unknown>>(
   ]);
 
   useEffect(() => {
-    const selections = getColumnSelections(
+    const selections = getTableColumnConfigSelections(
       currentUser?.fullyQualifiedName ?? '',
       entityKey,
       isFullViewTable,
