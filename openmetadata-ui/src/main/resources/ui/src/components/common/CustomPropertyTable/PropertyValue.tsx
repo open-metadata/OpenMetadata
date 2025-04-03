@@ -760,7 +760,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       return (
         <RichTextEditorPreviewerV1
           className={isKeyAdded ? 'diff-added' : ''}
-          markdown={String(value) ?? ''}
+          markdown={String(value) || ''}
         />
       );
     }
