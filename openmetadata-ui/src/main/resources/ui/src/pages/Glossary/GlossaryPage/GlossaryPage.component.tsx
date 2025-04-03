@@ -169,6 +169,7 @@ const GlossaryPage = () => {
             TabSpecificField.REVIEWERS,
             TabSpecificField.VOTES,
             TabSpecificField.DOMAIN,
+            TabSpecificField.TERM_COUNT,
           ],
           limit: PAGE_SIZE_LARGE,
           ...(nextPage && { after: nextPage }),

@@ -85,7 +85,8 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
 
       {!isCompactView && (
         <div className="no-owner-text text-sm font-medium">
-          {t('label.no-entity', { entity: t('label.owner-plural') })}
+          {placeHolder ??
+            t('label.no-entity', { entity: t('label.owner-plural') })}
         </div>
       )}
     </div>
