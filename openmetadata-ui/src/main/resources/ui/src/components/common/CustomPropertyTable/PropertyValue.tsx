@@ -219,7 +219,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           <ModalWithMarkdownEditor
             header={header}
             placeholder={t('label.enter-property-value')}
-            value={value || ''}
+            value={value ?? ''}
             visible={showInput}
             onCancel={onHideInput}
             onSave={onInputSave}
@@ -760,13 +760,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       return (
         <RichTextEditorPreviewerV1
           className={isKeyAdded ? 'diff-added' : ''}
-          markdown={String(value) || ''}
+          markdown={String(value) ?? ''}
         />
       );
     }
     switch (propertyType.name) {
       case 'markdown':
-        return <RichTextEditorPreviewerV1 markdown={value || ''} />;
+        return <RichTextEditorPreviewerV1 markdown={value ?? ''} />;
 
       case 'enum':
         return (
