@@ -35,7 +35,8 @@ import { changePassword } from '../../rest/auth-API';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
-import ProfilePictureNew from '../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
 import ChangePasswordForm from '../Settings/Users/ChangePasswordForm';
 import './profile-details.less';
@@ -237,12 +238,15 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <ProfilePictureNew
-          avatarType="outlined"
-          data-testid="replied-user"
-          name={getEntityName(userData)}
-          width="80"
-        />
+        <UserPopOverCard userName={getEntityName(userData)}>
+          <div className="d-flex items-center">
+            <ProfilePicture
+              data-testid="replied-user"
+              name={getEntityName(userData)}
+              width="80"
+            />
+          </div>
+        </UserPopOverCard>
       </div>
       <div>
         <p className="profile-details-title" data-testid="user-display-name">

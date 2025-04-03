@@ -126,7 +126,8 @@ import {
 } from '../../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -875,11 +876,11 @@ export const TaskTabNew = ({
             </Typography.Text>
           </Col>
           <Col className="flex items-center gap-2" span={16}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              name={taskThread.createdBy ?? ''}
-              width="24"
-            />
+            <UserPopOverCard userName={taskThread.createdBy ?? ''}>
+              <div className="d-flex items-center">
+                <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
+              </div>
+            </UserPopOverCard>
             <Typography.Text>{taskThread.createdBy}</Typography.Text>
           </Col>
 
@@ -939,18 +940,25 @@ export const TaskTabNew = ({
               <Col className="flex items-center gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      name={taskThread?.task?.assignees[0].displayName ?? ''}
-                      width="24"
-                    />
+                    <UserPopOverCard
+                      userName={
+                        taskThread?.task?.assignees[0].displayName ?? ''
+                      }>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          name={
+                            taskThread?.task?.assignees[0].displayName ?? ''
+                          }
+                          width="24"
+                        />
+                      </div>
+                    </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
                       {taskThread?.task?.assignees[0].displayName}
                     </Typography.Text>
                   </div>
                 ) : (
                   <UserAvatarGroup
-                    avatarSize={24}
                     className="p-t-05"
                     owners={taskThread?.task?.assignees}
                   />
@@ -1114,12 +1122,15 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      key={taskThread.id}
-                      name={getEntityName(currentUser)}
-                      size={32}
-                    />
+                    <UserPopOverCard userName={getEntityName(currentUser)}>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          key={taskThread.id}
+                          name={getEntityName(currentUser)}
+                          width="32"
+                        />
+                      </div>
+                    </UserPopOverCard>
                   </div>
 
                   <Input

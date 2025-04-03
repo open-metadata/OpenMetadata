@@ -18,7 +18,8 @@ import React, { useCallback, useMemo } from 'react';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
-import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
@@ -85,11 +86,11 @@ function FeedCardFooterNew({
                     }}
                     type="text"
                     onClick={isForFeedTab ? showReplies : undefined}>
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      name={user}
-                      size={20}
-                    />
+                    <UserPopOverCard userName={user}>
+                      <div className="d-flex items-center">
+                        <ProfilePicture name={user} width="20" />
+                      </div>
+                    </UserPopOverCard>
                   </Button>
                 ))}
               </Avatar.Group>
