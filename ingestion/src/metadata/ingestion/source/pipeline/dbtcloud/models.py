@@ -34,8 +34,18 @@ class DBTJob(BaseModel):
     project_id: int
 
 
+class Pagination(BaseModel):
+    count: int
+    total_count: int
+
+
+class Extra(BaseModel):
+    pagination: Optional[Pagination] = None
+
+
 class DBTJobList(BaseModel):
     Jobs: List[DBTJob] = Field(alias="data")
+    extra: Optional[Extra] = None
 
 
 class DBTRun(BaseModel):
@@ -51,12 +61,14 @@ class DBTRun(BaseModel):
 
 class DBTRunList(BaseModel):
     Runs: Optional[List[DBTRun]] = Field([], alias="data")
+    extra: Optional[Extra] = None
 
 
 class DBTSources(BaseModel):
     name: Optional[str] = None
     dbtschema: Optional[str] = Field(None, alias="schema")
     database: Optional[str] = None
+    extra: Optional[Extra] = None
 
 
 class DBTModel(BaseModel):
@@ -70,3 +82,4 @@ class DBTModel(BaseModel):
 class DBTModelList(BaseModel):
     models: Optional[List[DBTModel]] = []
     seeds: Optional[List[DBTModel]] = []
+    extra: Optional[Extra] = None
