@@ -470,11 +470,15 @@ test.describe('User Profile Feed Interactions', () => {
       '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
     );
 
-    await adminPage
+    const avatar = adminPage
       .locator('[data-testid="message-container"]')
       .first()
-      .locator('[data-testid="profile-avatar"]')
-      .click();
+      .locator('[data-testid="profile-avatar"]');
+
+    await avatar.hover();
+    await adminPage.waitForSelector('.ant-popover-card');
+    await adminPage.getByTestId('user-name').nth(1).click();
+
     await userDetailsResponse;
     await userFeedResponse;
     const response = await userDetailsResponse;
