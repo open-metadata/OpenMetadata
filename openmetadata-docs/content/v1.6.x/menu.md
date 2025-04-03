@@ -478,6 +478,8 @@ site_menu:
     url: /connectors/dashboard/sigma
   - category: Connectors / Dashboard / Sigma / Run Externally
     url: /connectors/dashboard/sigma/yaml
+  - category: Connectors / Dashboard / Sigma / Troubleshooting
+    url: /connectors/dashboard/sigma/troubleshooting
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -498,6 +500,8 @@ site_menu:
     url: /connectors/dashboard/qliksense/yaml
   - category: Connectors / Dashboard / Qlik Sense / Export Certificates
     url: /connectors/dashboard/qliksense/certificates
+  - category: Connectors / Dashboard / Qlik Sense / Troubleshooting
+    url: /connectors/dashboard/qliksense/troubleshooting
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
@@ -510,20 +514,28 @@ site_menu:
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
     url: /connectors/dashboard/quicksight/yaml
+  - category: Connectors / Dashboard / QuickSight / Troubleshooting
+    url: /connectors/dashboard/quicksight/troubleshooting
   - category: Connectors / Dashboard / Redash
     url: /connectors/dashboard/redash
   - category: Connectors / Dashboard / Redash / Run Externally
     url: /connectors/dashboard/redash/yaml
+  - category: Connectors / Dashboard / Redash / Troubleshooting
+    url: /connectors/dashboard/redash/troubleshooting
   - category: Connectors / Dashboard / Superset
     url: /connectors/dashboard/superset
   - category: Connectors / Dashboard / Superset / Run Externally
     url: /connectors/dashboard/superset/yaml
   - category: Connectors / Dashboard / Superset / SSO
     url: /connectors/dashboard/superset/sso
+  - category: Connectors / Dashboard / Superset / Troubleshooting
+    url: /connectors/dashboard/superset/troubleshooting
   - category: Connectors / Dashboard / Tableau
     url: /connectors/dashboard/tableau
   - category: Connectors / Dashboard / Tableau / Run Externally
     url: /connectors/dashboard/tableau/yaml
+  - category: Connectors / Dashboard / Tableau / Troubleshooting
+    url: /connectors/dashboard/tableau/troubleshooting
 
   - category: Connectors / Messaging
     url: /connectors/messaging
