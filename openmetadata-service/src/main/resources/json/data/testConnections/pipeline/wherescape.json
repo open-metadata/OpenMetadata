@@ -1,0 +1,15 @@
+{
+    "name": "Wherescape",
+    "displayName": "Wherescape Test Connection",
+    "description": "This Test Connection validates the access against the server and basic metadata extraction of pipelines.",
+    "steps": [
+        {
+            "name": "CheckAccess",
+            "description":  "Check if the database is reachable to fetch the DAG details.",
+            "errorMessage": "Failed to connect to airflow, please validate the credentials",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+
+    ]
+}
