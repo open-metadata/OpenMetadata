@@ -27,6 +27,7 @@ const CertificationTag = ({
 }) => {
   if (certification.tagLabel.style?.iconURL) {
     const name = getEntityName(certification.tagLabel);
+    const actualName = certification.tagLabel.name ?? '';
     const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
 
     return (
@@ -52,9 +53,7 @@ const CertificationTag = ({
           {showName && (
             <span
               className={classNames('text-sm font-medium', {
-                'certification-bronze': name.toLowerCase() === 'bronze_medal',
-                'certification-silver': name.toLowerCase() === 'silver',
-                'certification-gold': name.toLowerCase() === 'gold',
+                [`${actualName.toLowerCase()}`]: Boolean(actualName),
               })}>
               {name}
             </span>
