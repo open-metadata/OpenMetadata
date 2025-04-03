@@ -105,7 +105,7 @@ class DbtcloudSource(PipelineServiceSource):
                     )
                     task_list.append(task)
                 self.context.get().latest_run_id = (
-                    task_list[-1].name if task_list else None
+                    task_list[0].name if task_list else None
                 )
             return task_list or None
         except Exception as exc:

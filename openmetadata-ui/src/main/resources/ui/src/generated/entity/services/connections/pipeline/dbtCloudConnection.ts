@@ -31,6 +31,10 @@ export interface DbtCloudConnection {
      */
     jobIds?: string[];
     /**
+     * Number of runs to fetch from DBT cloud
+     */
+    numberOfRuns?: number;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?: FilterPattern;
