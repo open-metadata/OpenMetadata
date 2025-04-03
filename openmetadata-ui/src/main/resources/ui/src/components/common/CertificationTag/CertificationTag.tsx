@@ -27,11 +27,11 @@ const CertificationTag = ({
 }) => {
   if (certification.tagLabel.style?.iconURL) {
     const name = getEntityName(certification.tagLabel);
+    const actualName = certification.tagLabel.name ?? '';
     const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
 
     return (
       <Tooltip
-        className="cursor-pointer"
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
         <div
@@ -50,7 +50,10 @@ const CertificationTag = ({
             src={tagSrc}
           />
           {showName && (
-            <span className="certification-name text-sm font-medium">
+            <span
+              className={classNames('text-sm font-medium', {
+                [`${actualName.toLowerCase()}`]: Boolean(actualName),
+              })}>
               {name}
             </span>
           )}

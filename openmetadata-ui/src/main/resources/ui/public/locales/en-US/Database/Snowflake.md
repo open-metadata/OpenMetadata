@@ -152,9 +152,16 @@ Enable this setting to ingest them during the metadata workflow.
 $$
 
 $$section
+### Include Streams $(id="includeStreams")
+
+In Snowflake, we have streams, which will be ignored during the ingestion by default.
+Enable this setting to ingest them during the metadata workflow.
+$$
+
+$$section
 ### Client Session Keep Alive $(id="clientSessionKeepAlive")
 
-Optional Configuration to keep the session active in case the ingestion job runs for longer duration. 
+Optional Configuration to keep the session active in case the ingestion job runs for longer duration.
 $$
 
 $$section
