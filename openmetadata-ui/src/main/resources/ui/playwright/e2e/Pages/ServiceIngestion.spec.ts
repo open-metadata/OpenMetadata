@@ -15,7 +15,18 @@ import test, { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
+import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
+import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
+import BigQueryIngestionClass from '../../support/entity/ingestion/BigQueryIngestionClass';
+import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
+import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
+import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
+import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
+import PostgresIngestionClass from '../../support/entity/ingestion/PostgresIngestionClass';
 import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
+import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
+import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
+import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
@@ -26,29 +37,28 @@ import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const table = new TableClass();
 const services = [
-  // ApiIngestionClass,
-  // S3IngestionClass,
-  // MetabaseIngestionClass,
-  // MysqlIngestionClass,
-  // BigQueryIngestionClass,
-  // KafkaIngestionClass,
-  // MlFlowIngestionClass,
-  // SnowflakeIngestionClass,
-  // SupersetIngestionClass,
-  // PostgresIngestionClass,
+  ApiIngestionClass,
+  S3IngestionClass,
+  MetabaseIngestionClass,
+  MysqlIngestionClass,
+  BigQueryIngestionClass,
+  KafkaIngestionClass,
+  MlFlowIngestionClass,
+  SnowflakeIngestionClass,
+  SupersetIngestionClass,
+  PostgresIngestionClass,
   RedshiftWithDBTIngestionClass,
 ];
 
-// if (process.env.PLAYWRIGHT_IS_OSS) {
-//   services.push(AirflowIngestionClass);
-// }
+if (process.env.PLAYWRIGHT_IS_OSS) {
+  services.push(AirflowIngestionClass);
+}
 
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
   trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
-  permissions: ['clipboard-read', 'clipboard-write'],
 });
 
 services.forEach((ServiceClass) => {

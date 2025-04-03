@@ -356,26 +356,14 @@ class ServiceBaseClass {
       .getByTestId('pipeline-status')
       .last()
       .textContent();
-
+    // add logs to console for failed pipelines
     if (pipelineStatus?.toLowerCase() === 'failed') {
-      const logsResponse = page.waitForRequest(
-        `/api/v1/services/ingestionPipelines/name/**`
-      );
-      await page
-        .locator(
-          `[data-row-key*="${workflowData.name}"] [data-testid="logs-button"]`
-        )
-        .click();
+      const logsResponse = await apiContext
+        .get(`/api/v1/services/ingestionPipelines/logs/${workflowData.id}/last`)
+        .then((res) => res.json());
 
-      await logsResponse;
-
-      await page.waitForSelector('[data-testid="lazy-log"]');
-      await page.click('[data-testid="download"]');
-      await page.click('[data-testid="copy-secret"]');
-      const clipboardData = await page.evaluate(() => {
-        return navigator.clipboard.readText();
-      });
-      console.log(`DBT logs: ${clipboardData}`);
+      // eslint-disable-next-line no-console
+      console.log(logsResponse.data.log);
     }
 
     await expect(
