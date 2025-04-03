@@ -346,10 +346,14 @@ site_menu:
     url: /connectors/messaging/kinesis
   - category: Connectors / Messaging / Kinesis / Run Externally
     url: /connectors/messaging/kinesis/yaml
+  - category: Connectors / Messaging / Kinesis / Troubleshooting
+    url: /connectors/messaging/kinesis/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Run Externally
     url: /connectors/messaging/redpanda/yaml
+  - category: Connectors / Messaging / Redpanda / Troubleshooting
+    url: /connectors/messaging/redpanda/troubleshooting
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
@@ -435,14 +439,20 @@ site_menu:
     url: /connectors/ml-model/mlflow
   - category: Connectors / ML Model / MLflow / Run Externally
     url: /connectors/ml-model/mlflow/yaml
+  - category: Connectors / ML Model / MLflow / Troubleshooting
+    url: /connectors/ml-model/mlflow/troubleshooting
   - category: Connectors / ML Model / Sagemaker
     url: /connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Run Externally
     url: /connectors/ml-model/sagemaker/yaml
+  - category: Connectors / ML Model / Sagemaker / Troubleshooting
+    url: /connectors/ml-model/sagemaker/troubleshooting
   - category: Connectors / ML Model / VertexAI
     url: /connectors/ml-model/vertexai
   - category: Connectors / ML Model / VertexAI / Run Externally
     url: /connectors/ml-model/vertexai/yaml
+  - category: Connectors / ML Model / VertexAI / Troubleshooting
+    url: /connectors/ml-model/vertexai/troubleshooting
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -472,18 +482,26 @@ site_menu:
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Amundsen / Run Externally
     url: /connectors/metadata/amundsen/yaml
+  - category: Connectors / Metadata / Amundsen / Troubleshooting
+    url: /connectors/metadata/amundsen/troubleshooting
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
+  - category: Connectors / Metadata / Atlas / Troubleshooting
+    url: /connectors/metadata/atlas/troubleshooting
   - category: Connectors / Metadata / Alation
     url: /connectors/metadata/alation
   - category: Connectors / Metadata / Alation / Run Externally
     url: /connectors/metadata/alation/yaml
+  - category: Connectors / Metadata / Alation / Troubleshooting
+    url: /connectors/metadata/alation/troubleshooting
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
     url: /connectors/metadata/alationsink/yaml
+  - category: Connectors / Metadata / Alation Sink / Troubleshooting
+    url: /connectors/metadata/alationsink/troubleshooting
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors

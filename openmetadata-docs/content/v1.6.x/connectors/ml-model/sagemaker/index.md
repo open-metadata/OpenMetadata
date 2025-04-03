@@ -17,6 +17,7 @@ Configure and schedule Sagemaker metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/ml-model/sagemaker/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/sagemaker/yaml"} /%}
 
@@ -137,5 +138,3 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
