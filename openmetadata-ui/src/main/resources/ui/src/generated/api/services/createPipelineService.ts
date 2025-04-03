@@ -34,7 +34,7 @@ export interface CreatePipelineService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionRunner?: EntityReference;
+    ingestionAgent?: EntityReference;
     /**
      * Life Cycle of the entity
      */

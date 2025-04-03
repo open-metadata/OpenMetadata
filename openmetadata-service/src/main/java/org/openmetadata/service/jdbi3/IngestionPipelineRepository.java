@@ -154,12 +154,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
-    if (ingestionPipeline.getIngestionRunner() != null) {
+    if (ingestionPipeline.getIngestionAgent() != null) {
       addRelationship(
           ingestionPipeline.getId(),
-          ingestionPipeline.getIngestionRunner().getId(),
+          ingestionPipeline.getIngestionAgent().getId(),
           entityType,
-          ingestionPipeline.getIngestionRunner().getType(),
+          ingestionPipeline.getIngestionAgent().getType(),
           Relationship.USES);
     }
   }
