@@ -587,7 +587,7 @@ const AssetsTabs = forwardRef(
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
                 className={classNames(
-                  'm-b-sm cursor-pointer',
+                  'cursor-pointer',
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
