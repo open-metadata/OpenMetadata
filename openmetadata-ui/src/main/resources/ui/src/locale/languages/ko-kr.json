@@ -1497,6 +1497,7 @@
     "view-definition": "정의 보기",
     "view-detail-plural": "View Details",
     "view-entity": "{{entity}} 보기",
+    "view-in-service-type": "View in {{serviceType}}",
     "view-less": "적게 보기",
     "view-more": "더 보기",
     "view-new-count": "{{count}}개 새 항목 보기",
