@@ -351,6 +351,33 @@ class ServiceBaseClass {
     await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
+    const pipelineStatus = await page
+      .locator(`[data-row-key*="${workflowData.name}"]`)
+      .getByTestId('pipeline-status')
+      .last()
+      .textContent();
+
+    if (pipelineStatus?.toLowerCase() === 'success') {
+      const logsResponse = page.waitForRequest(
+        `/api/v1/services/ingestionPipelines/name/**`
+      );
+      await page
+        .locator(
+          `[data-row-key*="${workflowData.name}"] [data-testid="logs-button"]`
+        )
+        .click();
+
+      await logsResponse;
+
+      await page.waitForSelector('[data-testid="lazy-log"]');
+      await page.click('[data-testid="download"]');
+      await page.click('[data-testid="copy-secret"]');
+      const clipboardData = await page.evaluate(() => {
+        return navigator.clipboard.readText();
+      });
+      console.log(`DBT logs: ${clipboardData}`);
+    }
+
     await expect(
       page
         .locator(`[data-row-key*="${workflowData.name}"]`)
