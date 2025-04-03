@@ -23,14 +23,21 @@ interface OwnerAvatarProps {
   owner: EntityReference;
   isCompactView: boolean;
   inheritedIcon?: React.ReactNode;
+  avatarSize?: number;
 }
 
 export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   owner,
   isCompactView,
   inheritedIcon,
+  avatarSize = 32,
 }) => {
   const displayName = getEntityName(owner);
+
+  const calculatedInheritedIconSize = Math.max(
+    12,
+    Math.floor(avatarSize * 0.5)
+  );
 
   return owner.type === OwnerType.TEAM ? (
     <div className="d-flex gap-2 items-center">
@@ -38,7 +45,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         className="owner-team-icon"
         component={IconTeamsGrey}
         data-testid={!isCompactView && getEntityName(owner)}
-        style={{ fontSize: isCompactView ? '16px' : '32px' }}
+        style={{ fontSize: isCompactView ? '16px' : `${avatarSize}px` }}
       />
       {!isCompactView && (
         <Typography.Text className=" text-sm">{displayName}</Typography.Text>
@@ -49,17 +56,23 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
       className="owner-avatar-icon"
       data-testid={!isCompactView && getEntityName(owner)}
       key={owner.id}
-      style={{ flexBasis: '32px' }}>
+      style={{ flexBasis: `${avatarSize}px` }}>
       <ProfilePicture
         displayName={displayName}
         key="profile-picture"
         name={owner.name ?? ''}
         type="circle"
-        width={isCompactView ? '18' : '32'}
+        width={isCompactView ? '18' : `${avatarSize}`}
       />
 
       {inheritedIcon && !isCompactView && (
-        <div className="inherited-icon-styling flex-center">
+        <div
+          className="inherited-icon-styling flex-center"
+          style={{
+            width: `${calculatedInheritedIconSize}px`,
+            height: `${calculatedInheritedIconSize}px`,
+            fontSize: `${calculatedInheritedIconSize}px`,
+          }}>
           {inheritedIcon}
         </div>
       )}
