@@ -57,6 +57,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
 
   return (
     <ReactGridLayout
+      autoSize
       className={classNames('grid-container bg-grey', {
         'custom-tab': !leftSideWidgetPresent,
       })}

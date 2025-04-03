@@ -207,6 +207,7 @@ export const DomainLabel = ({
           hasPermission={Boolean(hasPermission)}
           multiple={multiple}
           selectedDomain={activeDomain}
+          wrapInButton={false}
           onUpdate={onUpdate ?? handleDomainSave}
         />
       )

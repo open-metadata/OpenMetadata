@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { noop, uniqueId } from 'lodash';
+import { get, noop, uniqueId } from 'lodash';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import { PageType, Tab } from '../../generated/system/ui/page';
+import { Page, PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
@@ -506,4 +506,104 @@ export const getTabLabelMapFromTabs = (
 
 export const asyncNoop = async () => {
   noop();
+};
+
+export const getLayoutFromCustomizedPage = (
+  pageType: PageType,
+  tab: EntityTabs,
+  customizedPage?: Page | null
+) => {
+  if (!customizedPage) {
+    return getDefaultWidgetForTab(pageType, tab);
+  }
+
+  if (customizedPage?.tabs?.length) {
+    return tab
+      ? customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout
+      : get(customizedPage, 'tabs.0.layout', []);
+  } else {
+    return getDefaultWidgetForTab(pageType, tab);
+  }
+};
+
+export const checkIfExpandViewSupported = (
+  firstTab: NonNullable<TabsProps['items']>[number],
+  activeTab: EntityTabs,
+  pageType: PageType
+) => {
+  switch (pageType) {
+    case PageType.Table:
+    case PageType.Topic:
+    case PageType.APIEndpoint:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.SCHEMA) ||
+        activeTab === EntityTabs.SCHEMA
+      );
+
+    case PageType.Glossary:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.TERMS) ||
+        activeTab === EntityTabs.TERMS
+      );
+    case PageType.GlossaryTerm:
+    case PageType.Metric:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
+        activeTab === EntityTabs.OVERVIEW
+      );
+    case PageType.Dashboard:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.DETAILS) ||
+        activeTab === EntityTabs.DETAILS
+      );
+    case PageType.DashboardDataModel:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.MODEL) ||
+        activeTab === EntityTabs.MODEL
+      );
+    case PageType.Container:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
+        activeTab === EntityTabs.CHILDREN
+      );
+    case PageType.Database:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.SCHEMAS) ||
+        activeTab === EntityTabs.SCHEMAS
+      );
+    case PageType.SearchIndex:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.FIELDS) ||
+        activeTab === EntityTabs.FIELDS
+      );
+    case PageType.DatabaseSchema:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.TABLE) ||
+        activeTab === EntityTabs.TABLE
+      );
+    case PageType.Pipeline:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.TASKS) ||
+        activeTab === EntityTabs.TASKS
+      );
+    case PageType.APICollection:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.API_ENDPOINT) ||
+        activeTab === EntityTabs.API_ENDPOINT
+      );
+
+    case PageType.StoredProcedure:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.CODE) ||
+        activeTab === EntityTabs.CODE
+      );
+
+    case PageType.MlModel:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
+        activeTab === EntityTabs.FEATURES
+      );
+    default:
+      return false;
+  }
 };
