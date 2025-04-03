@@ -52,7 +52,9 @@ const CertificationTag = ({
           {showName && (
             <span
               className={classNames('text-sm font-medium', {
-                [`certification-${name.toLowerCase()}`]: Boolean(name),
+                'certification-bronze': name.toLowerCase() === 'bronze_medal',
+                'certification-silver': name.toLowerCase() === 'silver',
+                'certification-gold': name.toLowerCase() === 'gold',
               })}>
               {name}
             </span>
