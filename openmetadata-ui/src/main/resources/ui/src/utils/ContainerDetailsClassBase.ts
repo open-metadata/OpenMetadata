@@ -45,7 +45,7 @@ export interface ContainerDetailPageTabProps {
   handleFeedCount: (data: FeedCounts) => void;
   tab: EntityTabs;
   deleted: boolean;
-  containerData: Container;
+  containerData?: Container;
   fetchContainerDetail: (containerFQN: string) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
   childrenCount: number;
