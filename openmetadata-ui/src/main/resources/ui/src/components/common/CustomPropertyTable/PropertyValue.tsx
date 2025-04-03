@@ -1035,16 +1035,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               </Tooltip>
             )}
           </Col>
-          {!isRenderedInRightPanel && (
-            <Col span={24}>
-              <RichTextEditorPreviewerV1
-                className="text-grey-muted property-description"
-                markdown={property.description || ''}
-                maxLength={70}
-                reducePreviewLineClass="max-one-line"
-              />
-            </Col>
-          )}
         </Row>
       </Col>
 
