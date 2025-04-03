@@ -22,6 +22,7 @@ Configure and schedule Alation Sink metadata workflow from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Data Mapping and Assumptions](#data-mapping-and-assumptions)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/metadata/alationsink/troubleshooting)
 
 {% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
@@ -100,5 +101,3 @@ datasourceLinks: {
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
