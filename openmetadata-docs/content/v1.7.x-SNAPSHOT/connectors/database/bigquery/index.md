@@ -7,7 +7,7 @@ slug: /connectors/database/bigquery
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -24,7 +24,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-
+- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
@@ -163,3 +163,16 @@ We support cross-project lineage, but the data must be ingested within a single 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
+
+## Reverse Metadata Ingestion
+
+{% note %}
+This feature is specific to Collate and requires the Collate Enterprise License.
+{% /note %}
+
+BigQuery supports the following reverse metadata ingestion features:
+- Support for Description updates (Schema, Table)
+- Tag management (Schema, Table)
+
+
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
