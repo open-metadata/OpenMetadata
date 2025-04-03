@@ -9,13 +9,17 @@
     "databricksType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Databricks"],
+      "enum": [
+        "Databricks"
+      ],
       "default": "Databricks"
     },
     "databricksScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["databricks+connector"],
+      "enum": [
+        "databricks+connector"
+      ],
       "default": "databricks+connector"
     }
   },
@@ -64,7 +68,7 @@
       "type": "integer",
       "default": 120
     },
-    "queryHistoryTable":{
+    "queryHistoryTable": {
       "title": "Query History Table",
       "description": "Table name to fetch the query history.",
       "type": "string",
@@ -78,7 +82,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "type": "object",
@@ -95,7 +99,9 @@
           "items": {
             "type": "string"
           },
-          "default": ["^information_schema$"]
+          "default": [
+            "^information_schema$"
+          ]
         }
       }
     },
@@ -121,7 +127,9 @@
           "items": {
             "type": "string"
           },
-          "default": ["^system$"]
+          "default": [
+            "^system$"
+          ]
         }
       }
     },
@@ -156,5 +164,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "token"]
+  "required": [
+    "hostPort",
+    "token",
+    "httpPath"
+  ]
 }
