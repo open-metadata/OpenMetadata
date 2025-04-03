@@ -35,7 +35,7 @@ export interface CreateDatabaseService {
      * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
      * at runtime based on the Ingestion Agent of the service.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */

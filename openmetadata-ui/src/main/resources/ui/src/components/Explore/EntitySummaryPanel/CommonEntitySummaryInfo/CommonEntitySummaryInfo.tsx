@@ -43,7 +43,7 @@ function CommonEntitySummaryInfo({
                 <>
                   <Col span={8}>
                     <Typography.Text
-                      className="summary-item-key"
+                      className="summary-item-key font-semibold"
                       data-testid={`${info.name}-label`}>
                       {info.name}
                     </Typography.Text>

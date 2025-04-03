@@ -68,7 +68,7 @@ export interface IngestionPipeline {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Set the logging level for the workflow.
      */

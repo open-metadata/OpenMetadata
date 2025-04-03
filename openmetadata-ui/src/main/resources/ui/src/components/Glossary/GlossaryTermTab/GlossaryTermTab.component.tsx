@@ -419,7 +419,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           );
         },
       },
-      ...ownerTableObject<ModifiedGlossaryTerm>(),
       {
         title: t('label.status'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
@@ -458,6 +457,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         },
         onFilter: (value, record) => record.status === value,
       },
+      ...ownerTableObject<ModifiedGlossaryTerm>(),
     ];
     if (permissions.Create) {
       data.push({
@@ -667,8 +667,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           trigger={['click']}
           onOpenChange={setIsStatusDropdownVisible}>
           <Button
-            className="custom-status-dropdown-btn"
-            data-testid="glossary-status-dropdown">
+            className="text-primary"
+            data-testid="glossary-status-dropdown"
+            size="small"
+            type="text">
             <Space>
               {t('label.status')}
               <DownOutlined />
