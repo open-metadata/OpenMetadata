@@ -459,6 +459,8 @@ site_menu:
     url: /connectors/ml-model/vertexai
   - category: Connectors / ML Model / VertexAI / Run Externally
     url: /connectors/ml-model/vertexai/yaml
+  - category: Connectors / ML Model / VertexAI / Troubleshooting
+    url: /connectors/ml-model/vertexai/troubleshooting
 
   - category: Connectors / Storage
     url: /connectors/storage
