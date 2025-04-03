@@ -55,7 +55,10 @@ import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-t
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -114,7 +117,13 @@ import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/Acti
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { EntityType } from '../../../../enums/entity.enum';
+import { EntityReference } from '../../../../generated/tests/testCase';
+import { getUsers } from '../../../../rest/userAPI';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
@@ -156,7 +165,6 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
-    initialAssignees: usersList,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -234,6 +242,7 @@ export const TaskTabNew = ({
     noSuggestionTaskMenuOptions,
   ]);
 
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -816,6 +825,30 @@ export const TaskTabNew = ({
       setIsAssigneeLoading(false);
     }
   };
+
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users only when the task is a test case result and the assignees are getting edited
+    if (isTaskTestCaseResult && isEmpty(usersList) && isEditAssignee) {
+      fetchInitialAssign();
+    }
+  }, [isTaskTestCaseResult, usersList, isEditAssignee]);
 
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);

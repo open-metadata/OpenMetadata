@@ -15,7 +15,6 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
-  MOCK_INITIAL_ASSIGNEE,
   MOCK_TEST_CASE_DATA,
   MOCK_TEST_CASE_INCIDENT,
   MOCK_TEST_CASE_RESOLUTION_STATUS,
@@ -47,7 +46,6 @@ const mockUseActivityFeedProviderValue = {
   postFeed: jest.fn(),
   testCaseResolutionStatus: MOCK_TEST_CASE_RESOLUTION_STATUS,
   updateTestCaseIncidentStatus: jest.fn(),
-  initialAssignees: MOCK_INITIAL_ASSIGNEE,
 };
 
 const mockOnOwnerUpdate = jest.fn();

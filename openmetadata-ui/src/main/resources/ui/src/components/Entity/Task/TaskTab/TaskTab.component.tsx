@@ -51,11 +51,15 @@ import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
 import { TaskType } from '../../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../../generated/api/feed/resolveTask';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -64,6 +68,7 @@ import {
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../../generated/tests/testCase';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
@@ -85,8 +90,10 @@ import {
 } from '../../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import { getUsers } from '../../../../rest/userAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
@@ -149,7 +156,6 @@ export const TaskTab = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
-    initialAssignees: usersList,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -227,6 +233,7 @@ export const TaskTab = ({
     noSuggestionTaskMenuOptions,
   ]);
 
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -803,6 +810,30 @@ export const TaskTab = ({
       setIsAssigneeLoading(false);
     }
   };
+
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users only when the task is a test case result and the assignees are getting edited
+    if (isTaskTestCaseResult && isEmpty(usersList) && isEditAssignee) {
+      fetchInitialAssign();
+    }
+  }, [isTaskTestCaseResult, usersList, isEditAssignee]);
 
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
