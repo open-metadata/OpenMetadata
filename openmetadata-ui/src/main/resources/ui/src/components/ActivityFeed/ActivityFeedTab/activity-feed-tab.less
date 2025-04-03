@@ -600,12 +600,10 @@
   margin-left: @margin-xss;
 }
 
-.task-filter-icon {
+.feed-filter-icon {
   cursor: pointer;
   &.ant-btn.ant-btn-default {
     border: 1px solid @grey-15;
-    width: 44px;
-    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -615,6 +613,24 @@
       border-radius: 8px;
       border: 1px solid @grey-10;
       background: @white;
+    }
+    &:not(.disabled):hover {
+      border: 1px solid @blue-12;
+
+      svg {
+        stroke: @blue-12;
+        stroke-width: 0.2px;
+      }
+    }
+    &.selected,
+    &.ant-dropdown-open,
+    &.ant-popover-open {
+      border: 1px solid @blue-12;
+      background: @blue-11;
+      svg {
+        stroke: @blue-12;
+        stroke-width: 0.2px;
+      }
     }
   }
 }
