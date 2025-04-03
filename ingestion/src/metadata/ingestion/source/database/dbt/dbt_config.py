@@ -358,9 +358,7 @@ def _(config: DbtGcsConfig):
         from google.cloud import storage
 
         try:
-            set_google_credentials(
-                gcp_credentials=config.dbtSecurityConfig, single_project=True
-            )
+            set_google_credentials(gcp_credentials=config.dbtSecurityConfig)
         except (ValueError, GoogleAuthError) as cred_exc:
             logger.error(
                 f"Failed to set Google Cloud credentials: {str(cred_exc)}. "
