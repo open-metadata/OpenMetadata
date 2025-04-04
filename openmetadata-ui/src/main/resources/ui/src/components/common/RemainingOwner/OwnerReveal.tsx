@@ -34,7 +34,7 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
   const remainingCountLabel = `+${remainingCount}`;
 
   // Calculate font size based on avatar size
-  const fontSize = Math.max(12, Math.floor(avatarSize * 0.4)); // Reduced to 40% of avatar size
+  const fontSize = Math.max(8, Math.floor(avatarSize * 0.5)); // Reduced to 40% of avatar size
 
   const handleShowMoreToggle = () => {
     if (isCompactView) {
@@ -48,8 +48,13 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
         <Button
           className={`${
             !showAllOwners ? 'more-owners-button' : ''
-          } text-sm font-medium h-auto`}
+          } text-sm font-medium h-auto d-flex items-center flex-center`}
           size="small"
+          style={{
+            width: `${avatarSize}px`,
+            height: `${avatarSize}px`,
+            fontSize: `${fontSize}px`,
+          }}
           type="link"
           onClick={handleShowMoreToggle}>
           {showAllOwners ? t('label.less') : remainingCountLabel}
@@ -94,7 +99,7 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
         <Button
           className={`${
             !showAllOwners
-              ? 'more-owners-button d-flex items-center flex-center'
+              ? 'more-owners-button d-flex items-center flex-center d-flex items-center flex-center'
               : ''
           } text-sm font-medium h-auto`}
           size="small"
