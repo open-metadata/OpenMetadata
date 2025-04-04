@@ -25,7 +25,11 @@ const PermissionErrorPlaceholder = ({
   const { t } = useTranslation();
 
   return (
-    <div className={classNames('h-full flex-center', className)}>
+    <div
+      className={classNames(
+        'h-full flex-center border-default border-radius-sm',
+        className
+      )}>
       <Space
         align="center"
         data-testid="permission-error-placeholder"

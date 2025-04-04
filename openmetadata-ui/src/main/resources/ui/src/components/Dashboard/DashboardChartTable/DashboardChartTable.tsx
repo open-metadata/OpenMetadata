@@ -394,7 +394,7 @@ export const DashboardChartTable = () => {
   }, [listChartIds]);
 
   if (isEmpty(charts)) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 
   return (

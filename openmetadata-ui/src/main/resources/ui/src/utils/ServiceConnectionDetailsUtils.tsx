@@ -357,6 +357,6 @@ export const getKeyValues = ({
       });
     });
   } catch {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 };

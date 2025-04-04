@@ -25,7 +25,10 @@ const CustomNoDataPlaceHolder = ({
 }: NoDataPlaceholderProps) => {
   return (
     <div
-      className={classNames(className, 'flex-center flex-col w-full h-full')}
+      className={classNames(
+        className,
+        'flex-center flex-col w-full h-full border-default border-radius-sm'
+      )}
       data-testid="no-data-placeholder">
       {icon ? (
         icon
