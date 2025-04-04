@@ -450,6 +450,7 @@ playwright_dependencies = {
     *plugins["redshift"],
     *plugins["airflow"],
     *plugins["datalake-s3"],
+    *plugins["dbt"],
     *e2e_test
     # Add other plugins as needed for Playwright tests
 }

@@ -1497,6 +1497,7 @@
     "view-definition": "הצג תיאור",
     "view-detail-plural": "הצג פרטים",
     "view-entity": "הצג {{entity}}",
+    "view-in-service-type": "צפה ב-{{serviceType}}",
     "view-less": "הצג פחות",
     "view-more": "הצג עוד",
     "view-new-count": "הצג {{count}} חדש",
