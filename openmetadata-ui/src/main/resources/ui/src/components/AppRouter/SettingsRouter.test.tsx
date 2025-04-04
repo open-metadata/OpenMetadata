@@ -26,11 +26,6 @@ jest.mock('../../pages/AlertDetailsPage/AlertDetailsPage', () => ({
   default: jest.fn().mockReturnValue(<div>AlertDetailsPage</div>),
 }));
 
-jest.mock('../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage', () => ({
-  __esModule: true,
-  default: jest.fn().mockReturnValue(<div>AlertsActivityFeedPage</div>),
-}));
-
 jest.mock('../../pages/Application/ApplicationPage', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>ApplicationPage</div>),
