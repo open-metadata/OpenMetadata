@@ -24,6 +24,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/bigquery/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
 
