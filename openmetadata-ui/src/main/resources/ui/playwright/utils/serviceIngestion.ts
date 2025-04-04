@@ -14,7 +14,7 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { toastNotification } from './common';
+import { getApiContext, toastNotification } from './common';
 import { escapeESReservedCharacters } from './entity';
 
 export enum Services {
@@ -159,4 +159,26 @@ export const checkServiceFieldSectionHighlighting = async (
   field: string
 ) => {
   await page.waitForSelector(`[data-id="${field}"][data-highlighted="true"]`);
+};
+
+export const makeRetryRequest = async (data: {
+  url: string;
+  page: Page;
+  retries?: number;
+}) => {
+  const { url, page, retries = 3 } = data;
+  const { apiContext } = await getApiContext(page);
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await apiContext.get(url);
+
+      return response.json();
+    } catch (error) {
+      if (i === retries - 1) {
+        throw error;
+      }
+      await page.waitForTimeout(1000 * (i + 1)); // Exponential backoff
+    }
+  }
 };
