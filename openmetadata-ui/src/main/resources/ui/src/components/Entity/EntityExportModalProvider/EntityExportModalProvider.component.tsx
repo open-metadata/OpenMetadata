@@ -176,6 +176,13 @@ export const EntityExportModalProvider = ({
     [isBulkEdit]
   );
 
+  const handleClearCSVExportData = useCallback(() => {
+    setCSVExportData(undefined);
+    setCSVExportJob(undefined);
+    setExportData(null);
+    csvExportJobRef.current = undefined;
+  }, []);
+
   const handleCSVExportJobUpdate = useCallback(
     (response: Partial<CSVExportWebsocketResponse>) => {
       // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
@@ -222,7 +229,7 @@ export const EntityExportModalProvider = ({
   const providerValue = useMemo(
     () => ({
       csvExportData,
-      clearCSVExportData: () => setCSVExportData(undefined),
+      clearCSVExportData: handleClearCSVExportData,
       showModal,
       triggerExportForBulkEdit: (exportData: ExportData) => {
         setExportData(exportData);
