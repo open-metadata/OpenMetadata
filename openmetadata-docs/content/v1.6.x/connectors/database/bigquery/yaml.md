@@ -23,6 +23,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+- [Troubleshooting](/connectors/database/bigquery/troubleshooting)
 
 {% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
