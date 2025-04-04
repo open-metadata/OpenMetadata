@@ -92,7 +92,7 @@ const DailyActiveUsersChart: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="entity-active-user-card"
       id={DataInsightChartType.DailyActiveUsers}
       loading={isLoading}
