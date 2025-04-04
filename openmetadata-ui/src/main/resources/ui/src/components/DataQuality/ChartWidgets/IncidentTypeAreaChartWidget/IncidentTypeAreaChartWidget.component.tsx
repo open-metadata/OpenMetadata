@@ -61,7 +61,7 @@ const IncidentTypeAreaChartWidget = ({
         count: +item.stateId,
       }));
       setChartData(updatedData);
-    } catch (error) {
+    } catch {
       setChartData([]);
     } finally {
       setIsChartLoading(false);

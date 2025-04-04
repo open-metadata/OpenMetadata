@@ -72,7 +72,7 @@ const TestCaseStatusAreaChartWidget = ({
       });
 
       setChartData(updatedData);
-    } catch (error) {
+    } catch {
       setChartData([]);
     } finally {
       setIsChartLoading(false);

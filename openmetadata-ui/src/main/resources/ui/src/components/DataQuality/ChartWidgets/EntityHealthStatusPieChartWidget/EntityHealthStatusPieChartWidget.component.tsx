@@ -96,7 +96,7 @@ const EntityHealthStatusPieChartWidget = ({
       const total = parseInt(totalData[0].originEntityFQN);
 
       setEntityHealthStates({ unhealthy, healthy: total - unhealthy, total });
-    } catch (error) {
+    } catch {
       setEntityHealthStates(INITIAL_ENTITY_HEALTH_MATRIX);
     } finally {
       setIsLoading(false);

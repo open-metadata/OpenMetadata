@@ -105,7 +105,7 @@ const DataAssetsCoveragePieChartWidget = ({
         notCovered: total - covered,
         total: total,
       });
-    } catch (error) {
+    } catch {
       setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
     } finally {
       setIsLoading(false);

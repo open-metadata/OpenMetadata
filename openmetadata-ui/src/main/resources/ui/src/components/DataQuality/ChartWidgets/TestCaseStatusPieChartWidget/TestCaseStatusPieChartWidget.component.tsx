@@ -44,7 +44,7 @@ const TestCaseStatusPieChartWidget = ({
       const { data } = await fetchTestCaseSummary(chartFilter);
       const updatedData = transformToTestCaseStatusObject(data);
       setTestCaseSummary(updatedData);
-    } catch (error) {
+    } catch {
       setTestCaseSummary(INITIAL_TEST_SUMMARY);
     } finally {
       setIsTestCaseSummaryLoading(false);
