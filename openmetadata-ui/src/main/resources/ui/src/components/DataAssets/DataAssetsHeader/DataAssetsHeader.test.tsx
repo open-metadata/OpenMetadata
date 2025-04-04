@@ -319,6 +319,7 @@ describe('DataAssetsHeader component', () => {
           ...mockProps.dataAsset,
           serviceType: DatabaseServiceType.BigQuery,
         }}
+        disableRunAgentsButton={false}
         entityType={EntityType.DATABASE_SERVICE}
       />
     );
