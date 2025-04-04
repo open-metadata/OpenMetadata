@@ -112,7 +112,7 @@ const EntityHealthStatusPieChartWidget = ({
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <HealthCheckIcon height={20} width={20} />
-          <Typography.Text className="font-medium text-md text-grey-muted">
+          <Typography.Text className="font-medium text-md">
             {t('label.healthy-data-asset-plural')}
           </Typography.Text>
         </div>

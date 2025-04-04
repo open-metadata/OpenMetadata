@@ -36,7 +36,7 @@ const IncidentTypeAreaChartWidget = ({
 
     return (
       <>
-        <Typography.Paragraph className="text-xs text-grey-muted">
+        <Typography.Paragraph className="text-xs font-semibold">
           {title}
         </Typography.Paragraph>
         <Typography.Paragraph
