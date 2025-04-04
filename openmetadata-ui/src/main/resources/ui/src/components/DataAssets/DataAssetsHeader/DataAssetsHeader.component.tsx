@@ -539,20 +539,23 @@ export const DataAssetsHeader = ({
 
                   {(dataAsset as Table).sourceUrl && (
                     <Tooltip title={t('label.source-url')}>
-                      <Button
-                        className="source-url-button font-semibold"
-                        data-testid="source-url-button"
-                        icon={
-                          <Icon className="flex-center" component={LinkIcon} />
-                        }>
-                        <Typography.Link
-                          href={(dataAsset as Table).sourceUrl}
-                          target="_blank">
+                      <Typography.Link
+                        href={(dataAsset as Table).sourceUrl}
+                        target="_blank">
+                        <Button
+                          className="source-url-button font-semibold"
+                          data-testid="source-url-button"
+                          icon={
+                            <Icon
+                              className="flex-center"
+                              component={LinkIcon}
+                            />
+                          }>
                           {t('label.view-in-service-type', {
                             serviceType: (dataAsset as Table).serviceType,
                           })}
-                        </Typography.Link>
-                      </Button>
+                        </Button>
+                      </Typography.Link>
                     </Tooltip>
                   )}
                   <ManageButton
