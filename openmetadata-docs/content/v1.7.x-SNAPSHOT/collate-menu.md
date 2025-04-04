@@ -387,6 +387,8 @@ site_menu:
     url: /connectors/pipeline/wherescape
   - category: Connectors / Pipeline / Wherescape / Run Externally
     url: /connectors/pipeline/wherescape/yaml
+  - category: Connectors / Pipeline / Wherescape / Troubleshooting
+    url: /connectors/pipeline/wherescape/troubleshooting
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
@@ -412,6 +414,8 @@ site_menu:
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
     url: /connectors/pipeline/stitch/yaml
+  - category: Connectors / Pipeline / Stitch / Troubleshooting
+    url: /connectors/pipeline/stitch/troubleshooting
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -436,10 +440,14 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
+  - category: Connectors / Pipeline / Troubleshooting
+    url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
+  - category: Connectors / Pipeline / Spline / troubleshooting
+    url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / Flink
     url: /connectors/pipeline/flink
   - category: Connectors / Pipeline / Flink / Run Externally
@@ -472,14 +480,20 @@ site_menu:
     url: /connectors/storage/s3
   - category: Connectors / Storage / S3 Storage / Run Externally
     url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / S3 Storage / Troubleshooting
+    url: /connectors/storage/s3/troubleshooting
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
+  - category: Connectors / Storage / GCS / Troubleshooting
+    url: /connectors/storage/gcs/troubleshooting
   - category: Connectors / Storage / ADLS
     url: /connectors/storage/adls
   - category: Connectors / Storage / ADLS / Run Externally
     url: /connectors/storage/adls/yaml
+  - category: Connectors / Storage / ADLS / Troubleshooting
+    url: /connectors/storage/adls/troubleshooting
 
   - category: Connectors / Search
     url: /connectors/search
@@ -487,10 +501,14 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / Elasticsearch / Troubleshooting
+    url: /connectors/search/elasticsearch/troubleshooting
   - category: Connectors / Search / OpenSearch
     url: /connectors/search/opensearch
   - category: Connectors / Search / OpenSearch / Run Externally
     url: /connectors/search/opensearch/yaml
+  - category: Connectors / Search / OpenSearch / Troubleshooting
+    url: /connectors/search/opensearch/troubleshooting
 
   - category: Connectors / Metadata
     url: /connectors/metadata
