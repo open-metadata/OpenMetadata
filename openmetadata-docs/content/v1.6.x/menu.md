@@ -590,6 +590,8 @@ site_menu:
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
     url: /connectors/pipeline/kafkaconnect/yaml
+  - category: Connectors / Pipeline / KafkaConnect / Troubleshooting
+    url: /connectors/pipeline/kafkaconnect/troubleshooting
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -598,14 +600,20 @@ site_menu:
     url: /connectors/pipeline/domo-pipeline
   - category: Connectors / Pipeline / Domo Pipeline / Run Externally
     url: /connectors/pipeline/domo-pipeline/yaml
+  - category: Connectors / Pipeline / Domo Pipeline / Troubleshooting
+    url: /connectors/pipeline/domo-pipeline/troubleshooting
   - category: Connectors / Pipeline / Fivetran
     url: /connectors/pipeline/fivetran
   - category: Connectors / Pipeline / Fivetran / Run Externally
     url: /connectors/pipeline/fivetran/yaml
+  - category: Connectors / Pipeline / Fivetran / Troubleshooting
+    url: /connectors/pipeline/fivetran/troubleshooting
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Run Externally
     url: /connectors/pipeline/glue-pipeline/yaml
+  - category: Connectors / Pipeline / Glue Pipeline / Troubleshooting
+    url: /connectors/pipeline/glue-pipeline/troubleshooting
   - category: Connectors / Pipeline / Nifi
     url: /connectors/pipeline/nifi
   - category: Connectors / Pipeline / Nifi / Run Externally
@@ -622,6 +630,8 @@ site_menu:
     url: /connectors/pipeline/flink
   - category: Connectors / Pipeline / Flink / Run Externally
     url: /connectors/pipeline/flink/yaml
+  - category: Connectors / Pipeline / Flink / Troubleshooting
+    url: /connectors/pipeline/flink/troubleshooting
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
