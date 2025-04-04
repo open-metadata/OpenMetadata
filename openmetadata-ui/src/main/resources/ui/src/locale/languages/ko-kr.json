@@ -1646,7 +1646,6 @@
     "data-insight-report-send-success-message": "데이터 인사이트 보고서가 성공적으로 전송되었습니다.",
     "data-insight-subtitle": "시간에 따른 모든 데이터 자산의 상태를 한눈에 볼 수 있습니다.",
     "database-service-name-message": "계보 생성을 위해 데이터베이스 서비스 이름을 추가하세요.",
-    "day-one-application-in-progress": "Day one 애플리케이션이 이미 실행 중입니다.",
     "dbt-catalog-file-extract-path": "dbt 카탈로그 파일 경로를 입력하여 dbt 모델과 해당 열 스키마를 추출합니다.",
     "dbt-cloud-type": "dbt 클라우드 계정에 여러 개의 {{type}}이 있는 경우, dbt 실행 산출물을 추출할 {{type}}의 ID를 지정하세요.",
     "dbt-ingestion-description": "메타데이터 수집 설정 후 dbt 워크플로우를 구성 및 배포할 수 있습니다. 동일한 데이터베이스 서비스에 대해 여러 dbt 파이프라인을 설정할 수 있으며, 이 파이프라인은 테이블 엔터티의 dbt 탭에 데이터를 공급하고, dbt 노드에서 계보를 생성하며, 테스트를 추가합니다. 시작하려면 dbt 파일의 소스 구성을 추가하세요.",

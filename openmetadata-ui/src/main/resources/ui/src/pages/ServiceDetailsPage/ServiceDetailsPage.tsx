@@ -1044,7 +1044,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const disableRunAgentsButton = useMemo(
     () =>
-      workflowStatesData?.mainInstanceState.status === WorkflowStatus.Running,
+      workflowStatesData?.mainInstanceState.status &&
+      ![WorkflowStatus.Exception, WorkflowStatus.Failure].includes(
+        workflowStatesData?.mainInstanceState.status
+      ),
     [workflowStatesData?.mainInstanceState.status]
   );
 

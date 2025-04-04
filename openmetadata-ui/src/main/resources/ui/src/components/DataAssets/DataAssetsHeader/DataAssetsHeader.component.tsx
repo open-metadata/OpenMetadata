@@ -203,7 +203,7 @@ export const DataAssetsHeader = ({
   badge,
   isDqAlertSupported,
   isCustomizedView = false,
-  disableRunAgentsButton = false,
+  disableRunAgentsButton = true,
   afterTriggerAction,
   isDayOneWorkflowStatusLoading = false,
 }: DataAssetsHeaderProps) => {
@@ -517,12 +517,7 @@ export const DataAssetsHeader = ({
     const isLoading = isDayOneWorkflowStatusLoading || isDayOneTriggering;
 
     return (
-      <Tooltip
-        title={
-          isDisabled
-            ? t('message.day-one-application-in-progress')
-            : t('message.trigger-day-one-application')
-        }>
+      <Tooltip title={t('message.trigger-day-one-application')}>
         <Button
           className="font-semibold"
           data-testid="trigger-day-one-application-button"
