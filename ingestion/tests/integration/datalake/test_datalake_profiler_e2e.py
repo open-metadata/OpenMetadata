@@ -319,6 +319,8 @@ class TestDatalakeProfilerTestE2E:
         ingestion_config["source"]["sourceConfig"]["config"].update(
             {
                 "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
             }
         )
 
