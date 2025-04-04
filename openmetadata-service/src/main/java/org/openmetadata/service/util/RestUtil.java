@@ -75,8 +75,7 @@ public final class RestUtil {
             new OpenMetadataBaseUrlConfiguration()
                 .withOpenMetadataUrl(uriInfo.getBaseUri().toString()),
             OpenMetadataBaseUrlConfiguration.class);
-    String uriPath = URI.create(urlConfiguration.getOpenMetadataUrl() + "/") + collectionPath;
-    return URI.create(uriPath);
+    return URI.create(urlConfiguration.getOpenMetadataUrl() + "/" + collectionPath);
   }
 
   public static URI getHref(URI parent, String child) {
