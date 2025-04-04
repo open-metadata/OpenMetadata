@@ -55,12 +55,26 @@
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "failureContext": {
-      "description": "Failure Context for the Application.",
-      "type": "object"
+      "javaType": "org.openmetadata.schema.entity.app.FailureContext",
+      "description": "Container for messages regarding the failure of the application. Use the 'failure' field to get the error message. Additional properties are there for backward compatibility.",
+      "type": "object",
+      "properties": {
+        "failure": {
+          "$ref": "../../system/indexingError.json"
+        }
+      },
+      "additionalProperties": true
     },
     "successContext": {
+      "javaType": "org.openmetadata.schema.entity.app.SuccessContext",
       "description": "Success Context for the Application.",
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "stats": {
+          "description": "Stats for the application.",
+          "$ref": "../../system/eventPublisherJob.json#/definitions/stats"
+        }
+      }
     },
     "scheduleInfo": {
       "$ref": "./app.json#/definitions/appSchedule"
