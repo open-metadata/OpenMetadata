@@ -34,8 +34,8 @@ openmetadata:
       provider: "custom-oidc"
       publicKeys:
       - "{OMD-server-domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
-      - "{Keycloak-server-URL}/auth/realms/{your-realm-name}/protocol/openid-connect/certs"
-      authority: "{Keycloak-server-URL}/auth/realms/{your-realm-name}"      
+      - "{Keycloak-server-URL}/realms/{your-realm-name}/protocol/openid-connect/certs"
+      authority: "{Keycloak-server-URL}/realms/{your-realm-name}/protocol/openid-connect/auth"      
       clientId: "{Client ID}"                                        # Update your Client ID
       callbackUrl: "http://localhost:8585/callback"
 ```
@@ -59,11 +59,12 @@ openmetadata:
       provider: "custom-oidc"
       publicKeys:
       - "{OMD-server-domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
-      - "{Keycloak-server-URL}/auth/realms/{your-realm-name}/protocol/openid-connect/certs"
-      authority: "{Keycloak-server-URL}/auth/realms/{your-realm-name}"      
+      - "{Keycloak-server-URL}/realms/{your-realm-name}/protocol/openid-connect/certs"
+      authority: "{Keycloak-server-URL}/realms/{your-realm-name}/protocol/openid-connect/auth"      
       clientId: "{Client ID}"                                        # Update your Client ID
       callbackUrl: "http://localhost:8585/callback"
       oidcConfiguration:
+        enabled: true
         oidcType: "Keycloak"  
         clientId:
           secretRef: oidc-secrets
