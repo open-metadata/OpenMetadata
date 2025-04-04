@@ -121,7 +121,10 @@ export const EntityExportModalProvider = ({
       if (exportType !== ExportTypes.CSV) {
         await exportUtilClassBase.exportMethodBasedOnType({
           exportType,
-          exportData,
+          exportData: {
+            ...exportData,
+            name: fileName,
+          },
         });
 
         handleCancel();
