@@ -614,10 +614,14 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
+  - category: Connectors / Pipeline / Troubleshooting
+    url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
+  - category: Connectors / Pipeline / Spline / troubleshooting
+    url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / Flink
     url: /connectors/pipeline/flink
   - category: Connectors / Pipeline / Flink / Run Externally

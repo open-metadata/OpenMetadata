@@ -27,7 +27,6 @@ import { useLocation } from 'react-router-dom';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { handleExportFile } from '../../../utils/EntityUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
@@ -123,7 +122,10 @@ export const EntityExportModalProvider = ({
       setDownloading(true);
 
       if (exportType !== ExportTypes.CSV) {
-        await handleExportFile(exportType, exportData);
+        await exportUtilClassBase.exportMethodBasedOnType({
+          exportType,
+          exportData,
+        });
 
         handleCancel();
         setDownloading(false);
