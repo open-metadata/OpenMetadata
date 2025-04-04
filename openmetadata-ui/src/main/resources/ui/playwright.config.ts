@@ -74,7 +74,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup'],
-      testMatch: '**/BulkEditEntity.ts',
+      testMatch: '**/BulkEditEntity.spec.ts',
       grepInvert: /data-insight/,
     },
     {
