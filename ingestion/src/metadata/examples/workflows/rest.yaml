@@ -1,6 +1,6 @@
 source:
   type: rest
-  serviceName: fundcraft_document
+  serviceName: petstore_data
   serviceConnection:
     config:
       type: Rest
