@@ -141,7 +141,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       setTestConnectionStep(response.steps);
       setDialogOpen(true);
-    } catch (error) {
+    } catch {
       throw t('message.test-connection-cannot-be-triggered');
     }
   };
@@ -181,7 +181,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     try {
       await deleteWorkflowById(workflowId, true);
       setCurrentWorkflow(undefined);
-    } catch (error) {
+    } catch {
       // do not throw error for this API
     }
   };
