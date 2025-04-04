@@ -3,7 +3,7 @@ title: ADLS Datalake Connector Troubleshooting
 slug: /connectors/database/adls-datalake/troubleshooting
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the ADLS Datalake connector.
 
