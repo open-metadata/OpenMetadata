@@ -288,34 +288,59 @@ class ServiceBaseClass {
     // Queued status are not stored in DB. cc: @ulixius9
     await page.waitForTimeout(2000);
 
-    const response = await apiContext
-      .get(
-        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
-          this.serviceName
-        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
-          this.category
-        )}`
-      )
-      .then((res) => res.json());
+    const makeRequest = async (url: string, retries = 3) => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await apiContext.get(url);
+
+          return response.json();
+        } catch (error) {
+          if (i === retries - 1) {
+            throw error;
+          }
+          await page.waitForTimeout(1000 * (i + 1)); // Exponential backoff
+        }
+      }
+    };
+
+    const response = await makeRequest(
+      `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+        this.serviceName
+      }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
+        this.category
+      )}`
+    );
 
     const workflowData = response.data.filter(
       (d: { pipelineType: string }) => d.pipelineType === ingestionType
     )[0];
 
     const oneHourBefore = Date.now() - 86400000;
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 3;
 
     await expect
       .poll(
         async () => {
-          const response = await apiContext
-            .get(
+          try {
+            const response = await makeRequest(
               `/api/v1/services/ingestionPipelines/${encodeURIComponent(
                 workflowData.fullyQualifiedName
               )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
-            )
-            .then((res) => res.json());
+            );
+            consecutiveErrors = 0; // Reset error counter on success
 
-          return response.data[0]?.pipelineState;
+            return response.data[0]?.pipelineState;
+          } catch (error) {
+            consecutiveErrors++;
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(
+                `Failed to get pipeline status after ${MAX_CONSECUTIVE_ERRORS} consecutive attempts`
+              );
+            }
+
+            return 'running';
+          }
         },
         {
           // Custom expect message for reporting, optional.
@@ -339,7 +364,6 @@ class ServiceBaseClass {
     await page.waitForSelector('[data-testid="data-assets-header"]');
 
     await pipelinePromise;
-
     await statusPromise;
 
     await page.waitForSelector('[data-testid="agents"]');
