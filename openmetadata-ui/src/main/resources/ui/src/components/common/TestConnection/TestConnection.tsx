@@ -372,20 +372,21 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
+  const handleCloseErrorMessage = () => {
+    setErrorMessage(undefined);
+  };
+
   const handleTestConnection = () => {
     if (shouldValidateForm) {
       const isFormValid =
         onValidateFormRequiredFields && onValidateFormRequiredFields();
+      handleCloseErrorMessage();
       if (isFormValid) {
         testConnection();
       }
     } else {
       testConnection();
     }
-  };
-
-  const handleCloseErrorMessage = () => {
-    setErrorMessage(undefined);
   };
 
   const handleCancelTestConnectionModal = () => {
