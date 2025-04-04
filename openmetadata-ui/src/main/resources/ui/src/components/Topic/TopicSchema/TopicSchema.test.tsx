@@ -141,7 +141,7 @@ const mockTopicDetails = {
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
-    data: { ...mockTopicDetails, messageSchema: MESSAGE_SCHEMA },
+    data: mockTopicDetails,
     isVersionView: false,
     permissions: {
       EditAll: true,
