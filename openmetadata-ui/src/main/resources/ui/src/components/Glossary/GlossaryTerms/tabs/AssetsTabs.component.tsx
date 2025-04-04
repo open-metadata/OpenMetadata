@@ -41,8 +41,8 @@ import React, {
   useState,
 } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
@@ -587,7 +587,7 @@ const AssetsTabs = forwardRef(
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
                 className={classNames(
-                  'm-b-sm cursor-pointer',
+                  'cursor-pointer',
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
@@ -822,7 +822,10 @@ const AssetsTabs = forwardRef(
                       selectedKeys: selectedFilter,
                     }}
                     trigger={['click']}>
-                    <TaskFilterIcon className="cursor-pointer" />
+                    <Button
+                      className={classNames('feed-filter-icon')}
+                      icon={<FilterIcon height={16} />}
+                    />
                   </Dropdown>
                   <div className="flex-1">
                     <Searchbar
