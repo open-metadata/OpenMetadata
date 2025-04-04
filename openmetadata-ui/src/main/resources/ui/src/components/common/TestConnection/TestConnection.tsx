@@ -392,12 +392,6 @@ const TestConnection: FC<TestConnectionProps> = ({
   const handleCancelTestConnectionModal = () => {
     controller.abort();
     setDialogOpen(false);
-    handleCloseErrorMessage();
-  };
-
-  const handleConfirmTestConnectionModal = () => {
-    setDialogOpen(false);
-    handleCloseErrorMessage();
   };
 
   useEffect(() => {
@@ -514,7 +508,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={handleCancelTestConnectionModal}
-        onConfirm={handleConfirmTestConnectionModal}
+        onConfirm={() => setDialogOpen(false)}
         onTestConnection={handleTestConnection}
       />
     </>
