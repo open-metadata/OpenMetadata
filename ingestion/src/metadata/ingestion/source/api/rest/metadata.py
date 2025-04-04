@@ -41,6 +41,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.utils import fqn
+from metadata.utils.filters import filter_by_collection
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -76,21 +77,33 @@ class RestSource(ApiServiceSource):
         """
         try:
             self.json_response = self.connection.json()
+            collections_list = []
+            tags_collection_set = set()
             if self.json_response.get("tags", []):
                 # Works only if list of tags are present in schema so we can fetch collection names
                 for collection in self.json_response.get("tags", []):
                     if not collection.get("name"):
                         continue
-                    yield RESTCollection(**collection)
-            else:
-                # in other case collect tags from paths because we have to yield collection/tags first
-                collections_set = set()
-                for path, methods in self.json_response.get("paths", {}).items():
-                    for method_type, info in methods.items():
-                        collections_set.update({tag for tag in info.get("tags", [])})
-                for collection_name in collections_set:
-                    data = {"name": collection_name}
-                    yield RESTCollection(**data)
+                    collections_list.append(collection)
+                    tags_collection_set.update({collection.get("name")})
+            # iterate through paths if there's any missing collection not present in tags
+            collections_set = set()
+            for path, methods in self.json_response.get("paths", {}).items():
+                for method_type, info in methods.items():
+                    collections_set.update({tag for tag in info.get("tags", [])})
+            for collection_name in collections_set:
+                if collection_name not in tags_collection_set:
+                    collections_list.append({"name": collection_name})
+            for collection in collections_list:
+                if filter_by_collection(
+                    self.source_config.apiCollectionFilterPattern,
+                    collection.get("name"),
+                ):
+                    self.status.filter(
+                        collection.get("name"), "Collection filtered out"
+                    )
+                    continue
+                yield RESTCollection(**collection)
         except Exception as err:
             logger.error(f"Error while fetching collections from schema URL :{err}")
 
@@ -180,8 +193,8 @@ class RestSource(ApiServiceSource):
         try:
             endpoint = RESTEndpoint(**info)
             endpoint.url = self._generate_endpoint_url(endpoint.name)
-            if not endpoint.name:
-                endpoint.name = f"{path} - {method_type}"
+            endpoint.name = f"{path}/{method_type}"
+            endpoint.display_name = f"{path}"
             return endpoint
         except Exception as err:
             logger.warning(f"Error while parsing endpoint data: {err}")
