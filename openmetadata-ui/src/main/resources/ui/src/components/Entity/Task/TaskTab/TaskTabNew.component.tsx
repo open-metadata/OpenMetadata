@@ -47,7 +47,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
@@ -124,6 +124,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../../utils/EntityUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -875,13 +876,21 @@ export const TaskTabNew = ({
               {t('label.created-by')}
             </Typography.Text>
           </Col>
-          <Col className="flex items-center gap-2" span={16}>
-            <UserPopOverCard userName={taskThread.createdBy ?? ''}>
-              <div className="d-flex items-center">
-                <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
-              </div>
-            </UserPopOverCard>
-            <Typography.Text>{taskThread.createdBy}</Typography.Text>
+          <Col span={16}>
+            <Link
+              className="no-underline flex items-center gap-2"
+              to={getUserPath(taskThread.createdBy ?? '')}>
+              <UserPopOverCard userName={taskThread.createdBy ?? ''}>
+                <div className="d-flex items-center">
+                  <ProfilePicture
+                    name={taskThread.createdBy ?? ''}
+                    width="24"
+                  />
+                </div>
+              </UserPopOverCard>
+
+              <Typography.Text>{taskThread.createdBy}</Typography.Text>
+            </Link>
           </Col>
 
           {isEditAssignee ? (
