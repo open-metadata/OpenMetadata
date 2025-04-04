@@ -374,7 +374,10 @@ const RolesDetailPage = () => {
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 
-              <Tabs data-testid="tabs" defaultActiveKey="policies">
+              <Tabs
+                className="tabs-new"
+                data-testid="tabs"
+                defaultActiveKey="policies">
                 <TabPane key="policies" tab={t('label.policy-plural')}>
                   <Space
                     className="role-detail-tab w-full"

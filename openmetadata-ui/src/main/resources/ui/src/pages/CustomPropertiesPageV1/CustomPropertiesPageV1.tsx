@@ -292,7 +292,12 @@ const CustomEntityDetailV1 = () => {
           <PageHeader data={customPageHeader} />
         </Col>
         <Col className="global-settings-tabs" span={24}>
-          <Tabs items={tabs} key={tab} onChange={onTabChange} />
+          <Tabs
+            className="tabs-new"
+            items={tabs}
+            key={tab}
+            onChange={onTabChange}
+          />
         </Col>
       </Row>
     </PageLayoutV1>
