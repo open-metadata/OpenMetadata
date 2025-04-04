@@ -132,7 +132,7 @@ function ServiceMainTabContent({
   const handleDescriptionUpdate = useCallback(async (updatedHTML: string) => {
     try {
       await onDescriptionUpdate(updatedHTML);
-    } catch (e) {
+    } catch {
       // Error
     }
   }, []);
@@ -146,7 +146,7 @@ function ServiceMainTabContent({
         }
         const updatedData = {
           ...pageDataDetails,
-          displayName: entityData.displayName || undefined,
+          displayName: entityData.displayName ?? undefined,
         };
         const jsonPatch = compare(pageDataDetails, updatedData);
         const response = await callServicePatchAPI(

@@ -704,7 +704,7 @@ export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
     ...omit(tag, 'isRemovable'),
     labelType: LabelType.Manual,
     state: State.Confirmed,
-    source: tag.source || 'Classification',
+    source: tag.source ?? 'Classification',
     tagFQN: tag.tagFQN,
   }));
 
@@ -964,13 +964,13 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       isHidden: !(
-        tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
+        tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
       ),
       key: EntityTabs.DBT,
       children: (
         <QueryViewer
           sqlQuery={
-            get(tableDetails, 'dataModel.sql', '') ||
+            get(tableDetails, 'dataModel.sql', '') ??
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
