@@ -540,6 +540,7 @@ export const DataAssetsHeader = ({
                   {(dataAsset as Table).sourceUrl && (
                     <Tooltip title={t('label.source-url')}>
                       <Typography.Link
+                        className="cursor-pointer"
                         href={(dataAsset as Table).sourceUrl}
                         target="_blank">
                         <Button
