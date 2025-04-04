@@ -478,7 +478,10 @@ export const DataInsightChartCard = ({
   }
 
   return (
-    <Card className="data-insight-card" data-testid={`${type}-graph`} id={type}>
+    <Card
+      className="data-insight-card data-insight-card-chart"
+      data-testid={`${type}-graph`}
+      id={type}>
       <Row gutter={DI_STRUCTURE.rowContainerGutter}>
         <Col span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader

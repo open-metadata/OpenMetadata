@@ -227,7 +227,7 @@ const KPIChart: FC<Props> = ({
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="kpi-card"
       id="kpi-charts"
       loading={isLoading || isKpiLoading}

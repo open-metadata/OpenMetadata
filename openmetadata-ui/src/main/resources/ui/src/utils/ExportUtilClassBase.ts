@@ -13,7 +13,7 @@
 
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../constants/Export.constants';
-import { downloadImageFromBase64 } from './Export/ExportUtils';
+import { exportPNGImageFromElement } from './Export/ExportUtils';
 
 class ExportUtilClassBase {
   public getExportTypeOptions(): {
@@ -28,13 +28,11 @@ class ExportUtilClassBase {
 
   public exportMethodBasedOnType(data: {
     exportType: ExportTypes;
-    base64Image: string;
-    fileName: string;
-    exportData?: ExportData;
+    exportData: ExportData;
   }) {
-    const { exportType, base64Image, fileName } = data;
+    const { exportType, exportData } = data;
     if (exportType === ExportTypes.PNG) {
-      return downloadImageFromBase64(base64Image, fileName, exportType);
+      return exportPNGImageFromElement(exportData);
     }
 
     return null;

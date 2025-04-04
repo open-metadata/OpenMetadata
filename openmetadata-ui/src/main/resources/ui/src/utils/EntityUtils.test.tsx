@@ -69,6 +69,17 @@ jest.mock('./ServiceUtils', () => ({
   getServiceRouteFromServiceType: jest.fn(),
 }));
 
+jest.mock('./ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('./ExportUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    exportMethodBasedOnType: jest.fn(),
+  },
+}));
+
 describe('EntityUtils unit tests', () => {
   describe('highlightEntityNameAndDescription method', () => {
     it('highlightEntityNameAndDescription method should return the entity with highlighted name and description', () => {
