@@ -81,11 +81,16 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 jest.mock('../../../utils/TableUtils', () => ({
-  getTableExpandableConfig: jest.fn().mockReturnValue({
-    expandIcon: jest.fn(({ expandable }) =>
-      expandable ? <div data-testid="expand-icon">ExpandIcon</div> : null
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
     ),
-  }),
+  })),
   getTableColumnConfigSelections: jest
     .fn()
     .mockReturnValue([
@@ -104,12 +109,6 @@ jest.mock('../../../utils/TableUtils', () => ({
       'tags',
       'glossary',
     ]),
-  getAllRowKeysByKeyName: jest.fn().mockReturnValue([]),
-  makeData: jest.fn().mockReturnValue([]),
-  prepareConstraintIcon: jest
-    .fn()
-    .mockReturnValue(<span data-testid="constraints">Constraints</span>),
-  updateFieldTags: jest.fn(),
 }));
 
 const columnsWithDisplayName = [

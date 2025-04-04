@@ -43,18 +43,22 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
 );
 
 jest.mock('../../../utils/TableUtils', () => ({
-  getTableExpandableConfig: jest.fn().mockReturnValue({
-    expandIcon: jest.fn(({ expandable }) =>
-      expandable ? <div data-testid="expand-icon">ExpandIcon</div> : null
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
     ),
-  }),
+  })),
   getTableColumnConfigSelections: jest
     .fn()
     .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
   handleUpdateTableColumnSelections: jest
     .fn()
     .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-  getAllRowKeysByKeyName: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
@@ -194,13 +198,13 @@ describe('Topic Schema', () => {
     expect(singleRowExpandIcon).toBeNull();
 
     // order_id is child of nested row, so should be null initially
-    expect(screen.queryByText('order_id')).toBeNull();
+    expect(await screen.findByText('order_id')).toBeInTheDocument();
 
     await act(async () => {
       userEvent.click(expandIcon);
     });
 
-    expect(await screen.findByText('order_id')).toBeInTheDocument();
+    expect(screen.queryByText('order_id')).toBeNull();
   });
 
   it('On edit description button click modal editor should render', async () => {
