@@ -357,7 +357,7 @@ const Users = ({
             )}
             onChange={activeTabHandler}
           />
-          <Row gutter={[16, 16]}>
+          <Row className="users-tabs-container" gutter={[16, 16]}>
             <Col span={24}>
               {tabs.find((tab) => tab.key === currentTab)?.children}
             </Col>
