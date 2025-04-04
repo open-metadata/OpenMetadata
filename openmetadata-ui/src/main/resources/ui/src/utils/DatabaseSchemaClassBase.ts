@@ -162,7 +162,7 @@ class DatabaseSchemaClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        fullyQualifiedName: DetailPageWidgetKeys.TABLES,
         name: i18n.t('label.table-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],

@@ -36,15 +36,22 @@ import DescriptionImg from '../assets/img/widgets/description.png';
 import DomainImg from '../assets/img/widgets/Domain.png';
 import FrequentlyJoinedTablesImg from '../assets/img/widgets/frequently-joined-tables.png';
 import GlossaryTermImg from '../assets/img/widgets/glossary-terms.png';
+import MlModelFeaturesImg from '../assets/img/widgets/ml-features.png';
 import OwnersImg from '../assets/img/widgets/owners.png';
+import PipelineTasksImg from '../assets/img/widgets/pipeline-tasks.png';
 import ReferencesImg from '../assets/img/widgets/References.png';
+import RelatedMetricsImg from '../assets/img/widgets/related-metrics.png';
 import RelatedTermsImg from '../assets/img/widgets/RelatedTerms.png';
 import ReviewersImg from '../assets/img/widgets/Reviewers.png';
+import SchemaTablesImg from '../assets/img/widgets/schema-tables.png';
+import SearchIndexFieldsImg from '../assets/img/widgets/search-index-fields.png';
+import StoredProcedureCodeImg from '../assets/img/widgets/stored-procedure-code.png';
 import SynonymsImg from '../assets/img/widgets/Synonyms.png';
 import TableConstraints from '../assets/img/widgets/table-constraints.png';
-import SchemaImg from '../assets/img/widgets/table-schema.png';
+import TablesSchemaImg from '../assets/img/widgets/tables-schema.png';
 import TagsImg from '../assets/img/widgets/tags.png';
 import TermsImg from '../assets/img/widgets/Terms.png';
+import TopicSchemaImg from '../assets/img/widgets/topic-schema.png';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
   AnnouncementsWidgetProps,
@@ -276,7 +283,7 @@ class CustomizeMyDataPageClassBase {
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
         return GlossaryTermImg;
       case DetailPageWidgetKeys.TABLE_SCHEMA:
-        return SchemaImg;
+        return TablesSchemaImg;
       case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
         return TableConstraints;
       case DetailPageWidgetKeys.API_ENDPOINTS:
@@ -293,6 +300,20 @@ class CustomizeMyDataPageClassBase {
         return DataModelImg;
       case DetailPageWidgetKeys.DATABASE_SCHEMA:
         return DatabaseSchemaImg;
+      case DetailPageWidgetKeys.TABLES:
+        return SchemaTablesImg;
+      case DetailPageWidgetKeys.RELATED_METRICS:
+        return RelatedMetricsImg;
+      case DetailPageWidgetKeys.ML_MODEL_FEATURES:
+        return MlModelFeaturesImg;
+      case DetailPageWidgetKeys.PIPELINE_TASKS:
+        return PipelineTasksImg;
+      case DetailPageWidgetKeys.SEARCH_INDEX_FIELDS:
+        return SearchIndexFieldsImg;
+      case DetailPageWidgetKeys.STORED_PROCEDURE_CODE:
+        return StoredProcedureCodeImg;
+      case DetailPageWidgetKeys.TOPIC_SCHEMA:
+        return TopicSchemaImg;
       default: {
         return '';
       }
