@@ -146,7 +146,7 @@ function ServiceMainTabContent({
         }
         const updatedData = {
           ...pageDataDetails,
-          displayName: entityData.displayName || undefined,
+          displayName: entityData.displayName ?? undefined,
         };
         const jsonPatch = compare(pageDataDetails, updatedData);
         const response = await callServicePatchAPI(
@@ -281,6 +281,7 @@ function ServiceMainTabContent({
                         defaultVisibleColumns={
                           DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
                         }
+                        entityType={serviceCategory}
                         extraTableFilters={
                           <>
                             <span>
