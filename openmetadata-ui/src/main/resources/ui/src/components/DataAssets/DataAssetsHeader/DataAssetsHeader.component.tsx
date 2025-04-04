@@ -543,7 +543,7 @@ export const DataAssetsHeader = ({
                         href={(dataAsset as Table).sourceUrl}
                         target="_blank">
                         <Button
-                          className="source-url-button font-semibold"
+                          className="source-url-button cursor-pointer font-semibold"
                           data-testid="source-url-button"
                           icon={
                             <Icon
