@@ -34,7 +34,7 @@ export interface CreateDashboardService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionRunner?: EntityReference;
+    ingestionAgent?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */
@@ -345,10 +345,6 @@ export interface Connection {
      * MicroStrategy Project Name
      */
     projectName?: string;
-    /**
-     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
-     */
-    spaceTypes?: SpaceType[];
     /**
      * token to connect to Qlik Cloud.
      */
@@ -1089,12 +1085,6 @@ export interface GCPImpersonateServiceAccountValues {
      */
     lifetime?: number;
     [property: string]: any;
-}
-
-export enum SpaceType {
-    Managed = "Managed",
-    Personal = "Personal",
-    Shared = "Shared",
 }
 
 /**

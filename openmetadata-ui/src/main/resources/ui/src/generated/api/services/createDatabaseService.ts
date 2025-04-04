@@ -35,7 +35,7 @@ export interface CreateDatabaseService {
      * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
      * at runtime based on the Ingestion Agent of the service.
      */
-    ingestionRunner?: EntityReference;
+    ingestionAgent?: EntityReference;
     /**
      * Name that identifies the this entity instance uniquely
      */
@@ -661,10 +661,6 @@ export interface ConfigClass {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
-    /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
-     */
-    includeStreams?: boolean;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.

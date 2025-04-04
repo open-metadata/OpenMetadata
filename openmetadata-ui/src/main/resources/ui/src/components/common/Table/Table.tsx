@@ -67,7 +67,7 @@ const Table = <T extends Record<string, unknown>>(
     string[]
   >(rest.defaultVisibleColumns ?? []);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
-    () => ({ columns: propsColumns, minWidth: 150 }),
+    () => ({ columns: propsColumns, minWidth: 80 }),
     [propsColumns]
   );
 
@@ -244,6 +244,7 @@ const Table = <T extends Record<string, unknown>>(
                     trigger={['click']}
                     onOpenChange={setIsDropdownVisible}>
                     <Button
+                      className="remove-button-background-hover"
                       data-testid="column-dropdown"
                       icon={<Icon component={ColumnIcon} />}
                       size="small"
@@ -279,7 +280,8 @@ const Table = <T extends Record<string, unknown>>(
           {...resizingTableProps}
           scroll={{
             y: 740,
-            x: resizingTableProps.scroll?.x || rest.scroll?.x,
+            x: resizingTableProps.scroll?.x ?? rest.scroll?.x,
+            ...rest.scroll,
           }}
         />
       </Col>

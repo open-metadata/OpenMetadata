@@ -38,7 +38,7 @@ import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -203,12 +203,15 @@ const ActivityFeedCardNew = ({
               'items-start':
                 showThread && feed.entityRef?.type === EntityType.CONTAINER,
             })}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              key={feed.id}
-              name={feed.createdBy ?? ''}
-              size={showThread ? 40 : 32}
-            />
+            <UserPopOverCard userName={feed.createdBy ?? ''}>
+              <div className="d-flex items-center">
+                <ProfilePicture
+                  key={feed.id}
+                  name={feed.createdBy ?? ''}
+                  width={showThread ? '40' : '32'}
+                />
+              </div>
+            </UserPopOverCard>
             <Space className="d-flex flex-col align-start gap-2" size={0}>
               <Space
                 className={classNames('d-flex align-center gap-2', {
@@ -307,12 +310,15 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <ProfilePictureNew
-                  avatarType="outlined"
-                  key={feed.id}
-                  name={getEntityName(currentUser)}
-                  size={32}
-                />
+                <UserPopOverCard userName={getEntityName(currentUser)}>
+                  <div className="d-flex items-center">
+                    <ProfilePicture
+                      key={feed.id}
+                      name={getEntityName(currentUser)}
+                      width="32"
+                    />
+                  </div>
+                </UserPopOverCard>
               </div>
 
               <Input

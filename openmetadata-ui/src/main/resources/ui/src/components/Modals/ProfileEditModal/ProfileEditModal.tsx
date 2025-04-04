@@ -89,7 +89,7 @@ export const ProfileEditModal: FunctionComponent<ProfileEditModalProps> = ({
       open={visible}
       title={
         <Typography.Text className="modal-header">
-          {t('label.edit-profile')}
+          {t('label.edit-name')}
         </Typography.Text>
       }
       onCancel={onCancel}>

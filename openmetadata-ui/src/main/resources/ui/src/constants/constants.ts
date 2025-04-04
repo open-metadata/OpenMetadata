@@ -370,7 +370,7 @@ export const ERROR_MESSAGE = {
 };
 
 export const ICON_DIMENSION = {
-  with: 14,
+  width: 14,
   height: 14,
   fontSize: 14,
 };

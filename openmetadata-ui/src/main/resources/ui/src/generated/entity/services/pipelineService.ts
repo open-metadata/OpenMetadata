@@ -59,7 +59,7 @@ export interface PipelineService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionRunner?: EntityReference;
+    ingestionAgent?: EntityReference;
     /**
      * Name that identifies this pipeline service.
      */

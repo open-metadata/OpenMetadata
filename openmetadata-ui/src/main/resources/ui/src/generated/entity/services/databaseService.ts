@@ -60,7 +60,7 @@ export interface DatabaseService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionRunner?: EntityReference;
+    ingestionAgent?: EntityReference;
     /**
      * Name that identifies this database service.
      */
@@ -776,10 +776,6 @@ export interface ConfigClass {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
-    /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
-     */
-    includeStreams?: boolean;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
