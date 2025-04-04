@@ -175,7 +175,6 @@ export const getDataAssetsHeaderInfo = (
                 type="vertical"
               />
               <ExtraInfoLabel
-                showAsATag
                 label={t('label.state')}
                 value={pipelineDetails.state}
               />
@@ -613,7 +612,6 @@ export const getDataAssetsHeaderInfo = (
                 type="vertical"
               />
               <ExtraInfoLabel
-                showAsATag
                 label={t('label.type')}
                 value={tableDetails.tableType}
               />

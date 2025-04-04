@@ -90,13 +90,11 @@ export const ExtraInfoLabel = ({
   label,
   value,
   dataTestId,
-  showAsATag = false,
   inlineLayout = false,
 }: {
   label: string;
   value: string | number | React.ReactNode;
   dataTestId?: string;
-  showAsATag?: boolean;
   inlineLayout?: boolean;
 }) => {
   if (inlineLayout) {
@@ -123,10 +121,7 @@ export const ExtraInfoLabel = ({
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <div
-          className={classNames('font-medium extra-info-value', {
-            showAsATag: showAsATag,
-          })}>
+        <div className={classNames('font-medium extra-info-value')}>
           {value}
         </div>
       </Typography.Text>
@@ -553,7 +548,9 @@ export const DataAssetsHeader = ({
                         <Typography.Link
                           href={(dataAsset as Table).sourceUrl}
                           target="_blank">
-                          {t('label.source-url')}
+                          {t('label.view-in-service-type', {
+                            serviceType: (dataAsset as Table).serviceType,
+                          })}
                         </Typography.Link>
                       </Button>
                     </Tooltip>
@@ -627,7 +624,7 @@ export const DataAssetsHeader = ({
                   data-testid="header-tier-container">
                   {tier ? (
                     <div className="d-flex flex-col gap-2">
-                      <div className="d-flex items-center gap-1">
+                      <div className="tier-heading-container d-flex items-center gap-1">
                         <span className="entity-no-tier ">
                           {t('label.tier')}
                         </span>
@@ -654,7 +651,7 @@ export const DataAssetsHeader = ({
                     </div>
                   ) : (
                     <div className="flex items-center flex-col gap-2">
-                      <div className="d-flex items-center gap-1">
+                      <div className="tier-heading-container d-flex items-center gap-1">
                         <span className="entity-no-tier">
                           {t('label.tier')}
                         </span>

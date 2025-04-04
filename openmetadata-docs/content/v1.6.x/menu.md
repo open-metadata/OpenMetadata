@@ -253,6 +253,8 @@ site_menu:
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Run Externally
     url: /connectors/database/athena/yaml
+  - category: Connectors / Database / Athena / Troubleshooting
+    url: /connectors/database/athena/troubleshooting
   - category: Connectors / Database / AzureSQL
     url: /connectors/database/azuresql
   - category: Connectors / Database / AzureSQL / Run Externally
@@ -263,22 +265,30 @@ site_menu:
     url: /connectors/database/bigquery
   - category: Connectors / Database / BigQuery / Run Externally
     url: /connectors/database/bigquery/yaml
+  - category: Connectors / Database / BigQuery / Troubleshooting
+    url: /connectors/database/bigquery/troubleshooting
   - category: Connectors / Database / BigQuery / Create Credentials
     url: /connectors/database/bigquery/create-credentials
   - category: Connectors / Database / BigTable
     url: /connectors/database/bigtable
   - category: Connectors / Database / BigTable / Run Externally
     url: /connectors/database/bigtable/yaml
+  - category: Connectors / Database / BigTable / Troubleshooting
+    url: /connectors/database/bigtable/troubleshooting
   - category: Connectors / Database / BigTable / Roles
     url: /connectors/database/bigtable/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Clickhouse / Troubleshooting
+    url: /connectors/database/clickhouse/troubleshooting
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
     url: /connectors/database/couchbase/yaml
+  - category: Connectors / Database / Couchbase / Troubleshooting
+    url: /connectors/database/couchbase/troubleshooting
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Run Externally
@@ -549,10 +559,14 @@ site_menu:
     url: /connectors/messaging/kinesis
   - category: Connectors / Messaging / Kinesis / Run Externally
     url: /connectors/messaging/kinesis/yaml
+  - category: Connectors / Messaging / Kinesis / Troubleshooting
+    url: /connectors/messaging/kinesis/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Run Externally
     url: /connectors/messaging/redpanda/yaml
+  - category: Connectors / Messaging / Redpanda / Troubleshooting
+    url: /connectors/messaging/redpanda/troubleshooting
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
@@ -560,10 +574,14 @@ site_menu:
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Run Externally
     url: /connectors/pipeline/airbyte/yaml
+  - category: Connectors / Pipeline / Airbyte / Troubleshooting
+    url: /connectors/pipeline/airbyte/troubleshooting
   - category: Connectors / Pipeline / Airflow
     url: /connectors/pipeline/airflow
   - category: Connectors / Pipeline / Airflow / Run Externally
     url: /connectors/pipeline/airflow/yaml
+  - category: Connectors / Pipeline / Airflow / Troubleshooting
+    url: /connectors/search/airflow/troubleshooting
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -578,10 +596,14 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / Dagster / Troubleshooting
+    url: /connectors/pipeline/dagster/troubleshooting
   - category: Connectors / Pipeline / dbt Cloud
     url: /connectors/pipeline/dbtcloud
   - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
+  - category: Connectors / Pipeline / dbt Cloud / Troubleshooting
+    url: /connectors/pipeline/dbtcloud/troubleshooting
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
@@ -590,6 +612,8 @@ site_menu:
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
     url: /connectors/pipeline/databricks-pipeline/yaml
+  - category: Connectors / Pipeline / Databricks Pipeline / Troubleshooting
+    url: /connectors/pipeline/databricks-pipeline/troubleshooting
   - category: Connectors / Pipeline / Domo Pipeline
     url: /connectors/pipeline/domo-pipeline
   - category: Connectors / Pipeline / Domo Pipeline / Run Externally
@@ -610,10 +634,14 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
+  - category: Connectors / Pipeline / Troubleshooting
+    url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
+  - category: Connectors / Pipeline / Spline / troubleshooting
+    url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / Flink
     url: /connectors/pipeline/flink
   - category: Connectors / Pipeline / Flink / Run Externally
@@ -625,10 +653,14 @@ site_menu:
     url: /connectors/ml-model/mlflow
   - category: Connectors / ML Model / MLflow / Run Externally
     url: /connectors/ml-model/mlflow/yaml
+  - category: Connectors / ML Model / MLflow / Troubleshooting
+    url: /connectors/ml-model/mlflow/troubleshooting
   - category: Connectors / ML Model / Sagemaker
     url: /connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Run Externally
     url: /connectors/ml-model/sagemaker/yaml
+  - category: Connectors / ML Model / Sagemaker / Troubleshooting
+    url: /connectors/ml-model/sagemaker/troubleshooting
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -636,10 +668,14 @@ site_menu:
     url: /connectors/storage/s3
   - category: Connectors / Storage / S3 Storage / Run Externally
     url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / S3 Storage / Troubleshooting
+    url: /connectors/storage/s3/troubleshooting
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
+  - category: Connectors / Storage / GCS / Troubleshooting
+    url: /connectors/storage/gcs/troubleshooting
 
   - category: Connectors / Search
     url: /connectors/search
@@ -647,6 +683,8 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / Elasticsearch / Troubleshooting
+    url: /connectors/search/elasticsearch/troubleshooting
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -654,14 +692,20 @@ site_menu:
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Amundsen / Run Externally
     url: /connectors/metadata/amundsen/yaml
+  - category: Connectors / Metadata / Amundsen / Troubleshooting
+    url: /connectors/metadata/amundsen/troubleshooting
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
+  - category: Connectors / Metadata / Atlas / Troubleshooting
+    url: /connectors/metadata/atlas/troubleshooting
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
     url: /connectors/metadata/alationsink/yaml
+  - category: Connectors / Metadata / Alation Sink / Troubleshooting
+    url: /connectors/metadata/alationsink/troubleshooting
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
