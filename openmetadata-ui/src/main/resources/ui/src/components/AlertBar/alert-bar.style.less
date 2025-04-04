@@ -35,7 +35,6 @@
 }
 
 .alert-container {
-  backdrop-filter: blur(500px);
   height: 0px;
   color: @alert-text-color;
   border: 1px solid;
@@ -75,15 +74,11 @@
     display: flex;
     align-items: center;
     border-radius: 12px;
-    margin: 0 18px;
+    margin-bottom: 12px;
   }
 
   &.hide-alert {
     animation: resize-hide-animation 0.2s ease-in-out forwards;
-  }
-
-  &.full-width-alert {
-    margin: 0px;
   }
 
   &.info {

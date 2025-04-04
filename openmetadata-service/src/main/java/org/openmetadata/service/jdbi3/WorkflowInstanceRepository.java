@@ -7,10 +7,14 @@ import static org.openmetadata.service.governance.workflows.WorkflowVariableHand
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
   public WorkflowInstanceRepository() {
@@ -53,7 +57,45 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
 
     workflowInstance.setEndedAt(endedAt);
-    workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.FINISHED);
+
+    WorkflowDefinitionRepository workflowDefinitionRepository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    WorkflowDefinition workflowDefinition =
+        workflowDefinitionRepository.get(
+            null, workflowInstance.getWorkflowDefinitionId(), EntityUtil.Fields.EMPTY_FIELDS);
+
+    WorkflowInstanceStateRepository workflowInstanceStateRepository =
+        (WorkflowInstanceStateRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
+
+    String offset = null;
+    WorkflowInstance.WorkflowStatus workflowStatus = WorkflowInstance.WorkflowStatus.FINISHED;
+
+    do {
+      ResultList<WorkflowInstanceState> workflowInstanceStates =
+          workflowInstanceStateRepository.listWorkflowInstanceStateForInstance(
+              workflowDefinition.getName(),
+              workflowInstanceId,
+              offset,
+              workflowInstance.getStartedAt(),
+              workflowInstance.getEndedAt(),
+              100,
+              false);
+
+      if (workflowInstanceStates.getData().stream()
+          .anyMatch(
+              workflowInstanceState ->
+                  workflowInstanceState
+                      .getStatus()
+                      .equals(WorkflowInstance.WorkflowStatus.FAILURE))) {
+        workflowStatus = WorkflowInstance.WorkflowStatus.FAILURE;
+        break;
+      }
+
+      offset = workflowInstanceStates.getPaging().getAfter();
+    } while (offset != null);
+
+    workflowInstance.setStatus(workflowStatus);
 
     Optional<String> oException =
         Optional.ofNullable(

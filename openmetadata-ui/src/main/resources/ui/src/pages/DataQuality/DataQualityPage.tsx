@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { Card, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -69,7 +69,7 @@ const DataQualityPage = () => {
   };
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
         className="content-height-with-resizable-panel"
         firstPanel={{
@@ -94,48 +94,47 @@ const DataQualityPage = () => {
         pageTitle={t('label.data-quality')}
         secondPanel={{
           children: (
-            <DataQualityProvider>
-              <Row
-                className="page-container"
-                data-testid="data-insight-container"
-                gutter={[16, 16]}>
-                <Col span={24}>
-                  <Typography.Title
-                    className="m-b-md p-x-md"
-                    data-testid="page-title"
-                    level={5}>
-                    {t('label.data-quality')}
-                  </Typography.Title>
-                  <Typography.Paragraph
-                    className="text-grey-muted p-x-md"
-                    data-testid="page-sub-title">
-                    {t('message.page-sub-header-for-data-quality')}
-                  </Typography.Paragraph>
-                </Col>
-                <Col span={24}>
-                  <Switch>
-                    {tabDetailsComponent.map((tab) => (
-                      <Route
-                        exact
-                        component={tab.component}
-                        key={tab.key}
-                        path={tab.path}
-                      />
-                    ))}
+            <Card>
+              <DataQualityProvider>
+                <Row data-testid="data-insight-container" gutter={[0, 16]}>
+                  <Col span={24}>
+                    <Typography.Title
+                      className="m-b-md"
+                      data-testid="page-title"
+                      level={5}>
+                      {t('label.data-quality')}
+                    </Typography.Title>
+                    <Typography.Paragraph
+                      className="text-grey-muted"
+                      data-testid="page-sub-title">
+                      {t('message.page-sub-header-for-data-quality')}
+                    </Typography.Paragraph>
+                  </Col>
+                  <Col span={24}>
+                    <Switch>
+                      {tabDetailsComponent.map((tab) => (
+                        <Route
+                          exact
+                          component={tab.component}
+                          key={tab.key}
+                          path={tab.path}
+                        />
+                      ))}
 
-                    <Route exact path={ROUTES.DATA_QUALITY}>
-                      <Redirect
-                        to={getDataQualityPagePath(
-                          DataQualityClassBase.getDefaultActiveTab()
-                        )}
-                      />
-                    </Route>
-                  </Switch>
-                </Col>
-              </Row>
-            </DataQualityProvider>
+                      <Route exact path={ROUTES.DATA_QUALITY}>
+                        <Redirect
+                          to={getDataQualityPagePath(
+                            DataQualityClassBase.getDefaultActiveTab()
+                          )}
+                        />
+                      </Route>
+                    </Switch>
+                  </Col>
+                </Row>
+              </DataQualityProvider>
+            </Card>
           ),
-          className: 'content-resizable-panel-container p-t-sm',
+          className: 'content-resizable-panel-container',
           minWidth: 800,
           flex: 0.87,
         }}

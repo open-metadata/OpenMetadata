@@ -109,10 +109,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll `,
+            `page-layout-v1-center page-layout-v1-vertical-scroll p-x-box`,
             {
               'flex justify-center': center,
-              'p-t-sm': !alert,
             },
             mainContainerClassName
           )}
@@ -125,9 +124,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            <Col className={classNames({ 'p-t-sm': alert })} span={24}>
-              {children}
-            </Col>
+            <Col span={24}>{children}</Col>
           </Row>
         </Col>
         {rightPanel && (

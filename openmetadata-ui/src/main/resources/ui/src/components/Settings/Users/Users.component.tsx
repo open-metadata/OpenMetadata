@@ -304,7 +304,7 @@ const Users = ({
   }, [userData.id]);
 
   return (
-    <div className="p-t-xs bg-grey p-x-box" data-testid="user-profile">
+    <div data-testid="user-profile">
       <Row gutter={[20, 0]} wrap={false}>
         <Col flex="250px">
           <div className="profile-section">
@@ -363,7 +363,7 @@ const Users = ({
               />
             </div>
           </Row>
-          <Row gutter={[16, 16]}>
+          <Row className="tabs-content" gutter={[16, 16]}>
             <Col span={24}>
               {tabs.find((tab) => tab.key === currentTab)?.children}
             </Col>

@@ -521,9 +521,7 @@ export const validateGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
-  await taskCountRes;
 
   const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page
@@ -599,6 +597,21 @@ export const validateGlossaryTerm = async (
   const escapedFqn = term.fullyQualifiedName.replace(/\"/g, '\\"');
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
+
+  await expect(page.locator('[data-testid="loader"]')).toBeHidden();
+
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Terms')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Description')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Owners')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Status')
+  ).toBeVisible();
 
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
@@ -1233,7 +1246,7 @@ export const filterStatus = async (
   const rows = glossaryTermsTable.locator(
     'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
   );
-  const statusColumnIndex = 3;
+  const statusColumnIndex = 2;
 
   for (let i = 0; i < (await rows.count()); i++) {
     const statusCell = rows

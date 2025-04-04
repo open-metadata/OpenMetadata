@@ -42,6 +42,7 @@ import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -58,9 +59,14 @@ import {
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
-import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
+import {
+  GenericProvider,
+  useGenericContext,
+} from '../../Customization/GenericProvider/GenericProvider';
+import { GenericTab } from '../../Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
@@ -68,24 +74,20 @@ import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import AssetsTabs, { AssetsTabRef } from './tabs/AssetsTabs.component';
 import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
-import GlossaryOverviewTab from './tabs/GlossaryOverviewTab.component';
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
   handleGlossaryTermUpdate,
   handleGlossaryTermDelete,
-  permissions,
-  refreshGlossaryTerms,
   onAssetClick,
   isSummaryPanelOpen,
-  termsLoading,
-  onAddGlossaryTerm,
-  onEditGlossaryTerm,
   updateVote,
   refreshActiveGlossaryTerm,
   isVersionView,
+  isTabExpanded,
+  toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useParams<{ tab: string; version: string }>();
+  const { tab, version } = useParams<{ tab: EntityTabs; version: string }>();
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
@@ -94,7 +96,8 @@ const GlossaryTermsV1 = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { glossaryChildTerms } = useGlossaryStore();
+  const { glossaryChildTerms, onAddGlossaryTerm } = useGlossaryStore();
+  const { permissions } = useGenericContext<GlossaryTerm>();
   const childGlossaryTerms = glossaryChildTerms ?? [];
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
 
@@ -189,14 +192,7 @@ const GlossaryTermsV1 = ({
           </div>
         ),
         key: EntityTabs.OVERVIEW,
-        children: (
-          <GlossaryOverviewTab
-            editCustomAttributePermission={
-              !isVersionView &&
-              (permissions.EditAll || permissions.EditCustomFields)
-            }
-          />
-        ),
+        children: <GenericTab type={PageType.GlossaryTerm} />,
       },
       ...(!isVersionView
         ? [
@@ -219,11 +215,6 @@ const GlossaryTermsV1 = ({
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
                   isGlossary={false}
-                  permissions={permissions}
-                  refreshGlossaryTerms={refreshGlossaryTerms}
-                  termsLoading={termsLoading}
-                  onAddGlossaryTerm={onAddGlossaryTerm}
-                  onEditGlossaryTerm={onEditGlossaryTerm}
                 />
               ),
             },
@@ -238,16 +229,18 @@ const GlossaryTermsV1 = ({
               ),
               key: EntityTabs.ASSETS,
               children: (
-                <AssetsTabs
-                  assetCount={assetCount}
-                  entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                  isSummaryPanelOpen={isSummaryPanelOpen}
-                  permissions={assetPermissions}
-                  ref={assetTabRef}
-                  onAddAsset={() => setAssetModalVisible(true)}
-                  onAssetClick={onAssetClick}
-                  onRemoveAsset={handleAssetSave}
-                />
+                <div className="p-md">
+                  <AssetsTabs
+                    assetCount={assetCount}
+                    entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                    isSummaryPanelOpen={isSummaryPanelOpen}
+                    permissions={assetPermissions}
+                    ref={assetTabRef}
+                    onAddAsset={() => setAssetModalVisible(true)}
+                    onAssetClick={onAssetClick}
+                    onRemoveAsset={handleAssetSave}
+                  />
+                </div>
               ),
             },
             {
@@ -266,6 +259,7 @@ const GlossaryTermsV1 = ({
               children: (
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
+                  feedCount={feedCount}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
                   layoutType={ActivityFeedLayoutType.THREE_PANEL}
                   owners={glossaryTerm.owners}
@@ -286,17 +280,15 @@ const GlossaryTermsV1 = ({
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
               children: glossaryTerm && (
-                <div className="m-sm">
-                  <CustomPropertyTable<EntityType.GLOSSARY_TERM>
-                    entityType={EntityType.GLOSSARY_TERM}
-                    hasEditAccess={
-                      !isVersionView &&
-                      (permissions.EditAll || permissions.EditCustomFields)
-                    }
-                    hasPermission={permissions.ViewAll}
-                    isVersionView={isVersionView}
-                  />
-                </div>
+                <CustomPropertyTable<EntityType.GLOSSARY_TERM>
+                  entityType={EntityType.GLOSSARY_TERM}
+                  hasEditAccess={
+                    !isVersionView &&
+                    (permissions.EditAll || permissions.EditCustomFields)
+                  }
+                  hasPermission={permissions.ViewAll}
+                  isVersionView={isVersionView}
+                />
               ),
             },
           ]
@@ -312,7 +304,6 @@ const GlossaryTermsV1 = ({
     customizedPage?.tabs,
     glossaryTerm,
     permissions,
-    termsLoading,
     activeTab,
     assetCount,
     feedCount.conversationCount,
@@ -356,13 +347,21 @@ const GlossaryTermsV1 = ({
     };
   }, [glossaryTerm, isVersionView]);
 
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(tabItems[0], activeTab, PageType.GlossaryTerm),
+    [tabItems[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <GenericProvider
+      customizedPage={customizedPage}
       data={updatedGlossaryTerm}
+      isTabExpanded={isTabExpanded}
       isVersionView={isVersionView}
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
@@ -377,22 +376,24 @@ const GlossaryTermsV1 = ({
           />
         </Col>
 
-        <GenericProvider<GlossaryTerm>
-          data={updatedGlossaryTerm}
-          isVersionView={isVersionView}
-          permissions={permissions}
-          type={EntityType.GLOSSARY_TERM}
-          onUpdate={onTermUpdate}>
-          <Col span={24}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="glossary-tabs custom-tab-spacing"
-              items={tabItems}
-              onChange={activeTabHandler}
-            />
-          </Col>
-        </GenericProvider>
+        <Col span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="tabs-new"
+            items={tabItems}
+            tabBarExtraContent={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  size="small"
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
+            onChange={activeTabHandler}
+          />
+        </Col>
       </Row>
       {glossaryTerm.fullyQualifiedName && assetModalVisible && (
         <AssetSelectionModal

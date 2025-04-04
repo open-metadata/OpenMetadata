@@ -32,7 +32,7 @@ import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.compon
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { ROUTES } from '../../constants/constants';
+import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -340,12 +340,12 @@ function AlertDetailsPage({
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container ',
         children: loadingCount ? (
           <Loader />
         ) : (
           <div
-            className="steps-form-container"
+            className="steps-form-container service-form-container"
             data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"
@@ -356,7 +356,7 @@ function AlertDetailsPage({
 
               <Col span={24}>
                 <Row justify="space-between">
-                  <Col span={21}>
+                  <Col span={20}>
                     <Row gutter={[16, 16]}>
                       <Col span={24}>
                         <EntityHeaderTitle
@@ -408,7 +408,13 @@ function AlertDetailsPage({
                             <Button
                               className="flex flex-center"
                               data-testid="edit-button"
-                              icon={<EditIcon height={16} width={16} />}
+                              icon={
+                                <EditIcon
+                                  color={DE_ACTIVE_COLOR}
+                                  height={16}
+                                  width={16}
+                                />
+                              }
                               onClick={handleAlertEdit}
                             />
                           </Tooltip>

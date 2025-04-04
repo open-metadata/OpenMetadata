@@ -151,7 +151,7 @@ const UserProfileTeams = ({
                   <TeamsSelectableNew
                     filterJoinable
                     handleDropdownChange={handleDropdownChange}
-                    maxValueCount={4}
+                    maxValueCount={3}
                     ref={teamsSelectableRef}
                     selectedTeams={selectedTeams}
                     onSelectionChange={setSelectedTeams}

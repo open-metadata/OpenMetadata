@@ -361,7 +361,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.SCHEDULE,
               children: (
-                <div className="p-lg">
+                <div className="p-lg border-default border-radius-sm">
                   {appData && (
                     <AppSchedule
                       appData={appData}
@@ -392,12 +392,10 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.RECENT_RUNS,
               children: (
-                <div className="p-lg">
-                  <AppRunsHistory
-                    appData={appData}
-                    jsonSchema={jsonSchema as RJSFSchema}
-                  />
-                </div>
+                <AppRunsHistory
+                  appData={appData}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
               ),
             },
           ]
@@ -430,7 +428,7 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={t('label.application-plural')}>
-      <Row className="page-container">
+      <Row>
         <Col className="d-flex" flex="auto">
           <Button
             className="p-0"
@@ -476,7 +474,7 @@ const AppDetails = () => {
         </Col>
       </Row>
       <Row>
-        <Col className="page-container" span={24}>
+        <Col span={24}>
           <Space className="app-details-header w-full m-t-md" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
@@ -519,10 +517,10 @@ const AppDetails = () => {
             </div>
           </Space>
         </Col>
-        <Col className="p-0" span={24}>
+        <Col span={24}>
           <Tabs
             destroyInactiveTabPane
-            className="app-details-page-tabs entity-details-page-tabs"
+            className="app-details-page-tabs entity-details-page-tabs tabs-new"
             data-testid="tabs"
             items={tabs}
           />

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -78,6 +77,7 @@ export const getMlModelDetailsPageTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.MLMODEL}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={fetchEntityFeedCount}
           onUpdateEntityDetails={fetchMlModel}
@@ -94,10 +94,10 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.DETAILS,
       children: (
-        <Row className="p-md" gutter={[16, 16]}>
-          <Col span={12}>{getMlHyperParameters}</Col>
-          <Col span={12}>{getMlModelStore}</Col>
-        </Row>
+        <div className="p-md border-default border-radius-sm flex gap-4">
+          <div className="flex-half">{getMlHyperParameters}</div>
+          <div className="flex-half">{getMlModelStore}</div>
+        </div>
       ),
     },
     {
@@ -131,13 +131,11 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: mlModelDetail && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.MLMODEL>
-            entityType={EntityType.MLMODEL}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.MLMODEL>
+          entityType={EntityType.MLMODEL}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];

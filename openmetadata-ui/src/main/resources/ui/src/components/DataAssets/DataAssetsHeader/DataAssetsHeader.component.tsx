@@ -50,6 +50,7 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
+  getEntityExtraInfoLength,
   isDataAssetsWithServiceField,
 } from '../../../utils/DataAssetsHeader.utils';
 import EntityLink from '../../../utils/EntityLink';
@@ -89,13 +90,11 @@ export const ExtraInfoLabel = ({
   label,
   value,
   dataTestId,
-  showAsATag = false,
   inlineLayout = false,
 }: {
   label: string;
   value: string | number | React.ReactNode;
   dataTestId?: string;
-  showAsATag?: boolean;
   inlineLayout?: boolean;
 }) => {
   if (inlineLayout) {
@@ -122,10 +121,7 @@ export const ExtraInfoLabel = ({
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <div
-          className={classNames('font-medium extra-info-value', {
-            showAsATag: showAsATag,
-          })}>
+        <div className={classNames('font-medium extra-info-value')}>
           {value}
         </div>
       </Typography.Text>
@@ -383,6 +379,11 @@ export const DataAssetsHeader = ({
     [entityType, dataAsset, entityName, parentContainers]
   );
 
+  const showCompressedExtraInfoItems = useMemo(
+    () => getEntityExtraInfoLength(extraInfo) <= 1,
+    [extraInfo]
+  );
+
   const handleOpenTaskClick = () => {
     if (!dataAsset.fullyQualifiedName) {
       return;
@@ -505,7 +506,7 @@ export const DataAssetsHeader = ({
             <Col className="flex items-center">
               <Space className="">
                 <ButtonGroup
-                  className="data-asset-button-group "
+                  className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
                   {onUpdateVote && (
@@ -547,7 +548,9 @@ export const DataAssetsHeader = ({
                         <Typography.Link
                           href={(dataAsset as Table).sourceUrl}
                           target="_blank">
-                          {t('label.source-url')}
+                          {t('label.view-in-service-type', {
+                            serviceType: (dataAsset as Table).serviceType,
+                          })}
                         </Typography.Link>
                       </Button>
                     </Tooltip>
@@ -584,7 +587,10 @@ export const DataAssetsHeader = ({
         </Col>
 
         <Col span={24}>
-          <div className="d-flex data-asset-header-metadata  flex-wrap ">
+          <div
+            className={classNames('data-asset-header-metadata ', {
+              'data-asset-header-less-items': showCompressedExtraInfoItems,
+            })}>
             {showDomain && (
               <>
                 <DomainLabel
@@ -618,7 +624,7 @@ export const DataAssetsHeader = ({
                   data-testid="header-tier-container">
                   {tier ? (
                     <div className="d-flex flex-col gap-2">
-                      <div className="d-flex items-center gap-1">
+                      <div className="tier-heading-container d-flex items-center gap-1">
                         <span className="entity-no-tier ">
                           {t('label.tier')}
                         </span>
@@ -645,7 +651,7 @@ export const DataAssetsHeader = ({
                     </div>
                   ) : (
                     <div className="flex items-center flex-col gap-2">
-                      <div className="d-flex items-center gap-1">
+                      <div className="tier-heading-container d-flex items-center gap-1">
                         <span className="entity-no-tier">
                           {t('label.tier')}
                         </span>

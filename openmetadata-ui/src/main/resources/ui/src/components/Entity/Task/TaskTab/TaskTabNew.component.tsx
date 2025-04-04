@@ -55,7 +55,10 @@ import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-t
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -114,10 +117,17 @@ import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/Acti
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { EntityType } from '../../../../enums/entity.enum';
+import { EntityReference } from '../../../../generated/tests/testCase';
+import { getUsers } from '../../../../rest/userAPI';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../../utils/EntityUtils';
 import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -156,7 +166,6 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
-    initialAssignees: usersList,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -234,6 +243,7 @@ export const TaskTabNew = ({
     noSuggestionTaskMenuOptions,
   ]);
 
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -425,16 +435,18 @@ export const TaskTabNew = ({
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const [hasAddedComment, setHasAddedComment] = useState<boolean>(false);
+  const [recentComment, setRecentComment] = useState<string>('');
+
   const onSave = () => {
     postFeed(comment, taskThread?.id ?? '')
       .catch(() => {
         // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
       })
       .finally(() => {
         setHasAddedComment(true);
         editorRef.current?.clearEditorValue();
         setShowFeedEditor(false);
+        setRecentComment(comment);
       });
   };
 
@@ -462,7 +474,7 @@ export const TaskTabNew = ({
       return;
     }
 
-    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : comment;
+    const updatedComment = isTaskGlossaryApproval ? 'Rejected' : recentComment;
     updateTask(TaskOperation.REJECT, taskDetails?.id + '', {
       comment: updatedComment,
     } as unknown as TaskDetails)
@@ -749,9 +761,7 @@ export const TaskTabNew = ({
                 }}
                 overlayClassName="task-action-dropdown"
                 onClick={() =>
-                  taskAction.key === TaskActionMode.EDIT
-                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
-                    : onTaskResolve()
+                  handleMenuItemClick({ key: taskAction.key } as MenuInfo)
                 }>
                 {taskAction.label}
               </Dropdown.Button>
@@ -817,6 +827,30 @@ export const TaskTabNew = ({
     }
   };
 
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users only when the task is a test case result and the assignees are getting edited
+    if (isTaskTestCaseResult && isEmpty(usersList) && isEditAssignee) {
+      fetchInitialAssign();
+    }
+  }, [isTaskTestCaseResult, usersList, isEditAssignee]);
+
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
     setOptions(assigneeOptions);
@@ -842,11 +876,11 @@ export const TaskTabNew = ({
             </Typography.Text>
           </Col>
           <Col className="flex items-center gap-2" span={16}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              name={taskThread.createdBy ?? ''}
-              width="24"
-            />
+            <UserPopOverCard userName={taskThread.createdBy ?? ''}>
+              <div className="d-flex items-center">
+                <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
+              </div>
+            </UserPopOverCard>
             <Typography.Text>{taskThread.createdBy}</Typography.Text>
           </Col>
 
@@ -906,18 +940,25 @@ export const TaskTabNew = ({
               <Col className="flex items-center gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      name={taskThread?.task?.assignees[0].displayName ?? ''}
-                      width="24"
-                    />
+                    <UserPopOverCard
+                      userName={
+                        taskThread?.task?.assignees[0].displayName ?? ''
+                      }>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          name={
+                            taskThread?.task?.assignees[0].displayName ?? ''
+                          }
+                          width="24"
+                        />
+                      </div>
+                    </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
                       {taskThread?.task?.assignees[0].displayName}
                     </Typography.Text>
                   </div>
                 ) : (
                   <UserAvatarGroup
-                    avatarSize={24}
                     className="p-t-05"
                     owners={taskThread?.task?.assignees}
                   />
@@ -998,7 +1039,6 @@ export const TaskTabNew = ({
 
   const closeFeedEditor = () => {
     setShowFeedEditor(false);
-    setComment('');
   };
 
   useEffect(() => {
@@ -1082,12 +1122,15 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      key={taskThread.id}
-                      name={getEntityName(currentUser)}
-                      size={32}
-                    />
+                    <UserPopOverCard userName={getEntityName(currentUser)}>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          key={taskThread.id}
+                          name={getEntityName(currentUser)}
+                          width="32"
+                        />
+                      </div>
+                    </UserPopOverCard>
                   </div>
 
                   <Input

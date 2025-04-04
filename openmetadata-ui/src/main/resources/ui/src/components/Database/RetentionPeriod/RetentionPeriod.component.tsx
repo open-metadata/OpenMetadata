@@ -132,10 +132,9 @@ const RetentionPeriod = ({
                     entity: t('label.retention-period'),
                   })}>
                   <Button
-                    className="edit-retention-period-button p-0"
+                    className="remove-button-default-styling  flex-center edit-retention-period-button p-0"
                     data-testid="edit-retention-period-button"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
+                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
                     type="text"
                     onClick={() => setIsEdit(true)}
                   />

@@ -18,6 +18,7 @@ Configure and schedule VertexAI metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/ml-model/vertexai/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/vertexai/yaml"} /%}
 
@@ -94,5 +95,3 @@ Location refers to the geographical region where your resources, such as dataset
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
