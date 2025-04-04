@@ -106,6 +106,7 @@ public class RunAppTask implements NodeInterface {
         .addFieldExtension(inputNamespaceMapExpr)
         .addFieldExtension(pipelineServiceClientExpr)
         .setAsync(true)
+        .exclusive(true)
         .build();
   }
 
