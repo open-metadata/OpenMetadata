@@ -501,7 +501,7 @@ export const ActivityFeedTab = ({
 
     return (
       <div className="d-flex flex-col gap-4">
-        <Typography.Text className="placeholder-title m-t-0">
+        <Typography.Text className="placeholder-title m-t-md">
           {t('message.no-conversations')}
         </Typography.Text>
         <Typography.Text className="placeholder-text">
@@ -639,7 +639,7 @@ export const ActivityFeedTab = ({
         {selectedThread && !loading
           ? getRightPanelContent(selectedThread)
           : !loading && (
-              <div className="p-x-md no-data-placeholder-container d-flex justify-center items-center h-full">
+              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
