@@ -16,8 +16,10 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './owner-label.less';
@@ -57,7 +59,9 @@ export const UserAvatarGroup = ({
       items: remainingOwners.map((owner) => ({
         key: owner.id,
         label: (
-          <div className="d-flex items-center gap-2">
+          <Link
+            className="d-flex items-center gap-2 no-underlines"
+            to={getOwnerPath(owner)}>
             <UserPopOverCard userName={owner.displayName ?? ''}>
               <div className="d-flex items-center">
                 <ProfilePicture
@@ -67,8 +71,9 @@ export const UserAvatarGroup = ({
                 />
               </div>
             </UserPopOverCard>
+
             <Typography.Text>{owner.displayName}</Typography.Text>
-          </div>
+          </Link>
         ),
       })),
     };
