@@ -1146,7 +1146,8 @@ public class LineageRepository {
       updated.setUpdatedAt(System.currentTimeMillis());
       updated.setUpdatedBy(updatedBy);
 
-      String detailsJson = JsonUtils.pojoToJson(updated);
+      // Validate Lineage Details
+      String detailsJson = validateLineageDetails(from, to, updated);
       dao.relationshipDAO()
           .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
       addLineageToSearch(from, to, updated);
