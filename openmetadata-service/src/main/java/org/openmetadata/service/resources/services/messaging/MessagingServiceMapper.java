@@ -11,6 +11,6 @@ public class MessagingServiceMapper
     return copy(new MessagingService(), create, user)
         .withConnection(create.getConnection())
         .withServiceType(create.getServiceType())
-        .withIngestionAgent(create.getIngestionAgent());
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

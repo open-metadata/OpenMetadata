@@ -76,6 +76,7 @@ export enum EntityType {
   API_ENDPOINT = 'apiEndpoint',
   METRIC = 'metric',
   WORKFLOW_DEFINITION = 'workflowDefinition',
+  SERVICE = 'service',
 }
 
 export enum EntityLineageDirection {

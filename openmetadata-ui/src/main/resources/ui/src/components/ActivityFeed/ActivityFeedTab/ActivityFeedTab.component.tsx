@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Menu, Segmented, Space, Typography } from 'antd';
+import { Button, Dropdown, Menu, Segmented, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import {
@@ -23,17 +23,16 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
 import { ReactComponent as NoConversationsIcon } from '../../../assets/svg/no-conversations.svg';
-import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
-
-import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
+import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 import {
   COMMON_ICON_STYLES,
   ICON_DIMENSION,
@@ -502,7 +501,7 @@ export const ActivityFeedTab = ({
 
     return (
       <div className="d-flex flex-col gap-4">
-        <Typography.Text className="placeholder-title m-t-0">
+        <Typography.Text className="placeholder-title m-t-md">
           {t('message.no-conversations')}
         </Typography.Text>
         <Typography.Text className="placeholder-text">
@@ -591,12 +590,13 @@ export const ActivityFeedTab = ({
               }}
               overlayClassName="task-tab-custom-dropdown"
               trigger={['click']}>
-              <TaskFilterIcon
-                className={classNames('task-filter-icon', {
+              <Button
+                className={classNames('feed-filter-icon', {
                   'cursor-pointer': !isMentionTabSelected,
                   disabled: isMentionTabSelected,
                 })}
                 data-testid="user-profile-page-task-filter-icon"
+                icon={<FilterIcon height={16} />}
               />
             </Dropdown>
             {TaskToggle()}
@@ -639,7 +639,7 @@ export const ActivityFeedTab = ({
         {selectedThread && !loading
           ? getRightPanelContent(selectedThread)
           : !loading && (
-              <div className="p-x-md no-data-placeholder-container d-flex justify-center items-center h-full">
+              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
