@@ -90,10 +90,14 @@ site_menu:
     url: /connectors/database/db2
   - category: Connectors / Database / DB2 / Run Externally
     url: /connectors/database/db2/yaml
+  - category: Connectors / Database / DB2 / Troubleshooting
+    url: /connectors/database/db2/troubleshooting
   - category: Connectors / Database / DeltaLake
     url: /connectors/database/deltalake
   - category: Connectors / Database / DeltaLake / Run Externally
     url: /connectors/database/deltalake/yaml
+  - category: Connectors / Database / DeltaLake / Troubleshooting
+    url: /connectors/database/deltalake/troubleshooting
   - category: Connectors / Database / Domo Database
     url: /connectors/database/domo-database
   - category: Connectors / Database / Domo Database / Run Externally
@@ -104,18 +108,26 @@ site_menu:
     url: /connectors/database/doris
   - category: Connectors / Database / Doris / Run Externally
     url: /connectors/database/doris/yaml
+  - category: Connectors / Database / Doris / Troubleshooting
+    url: /connectors/database/doris/troubleshooting
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
   - category: Connectors / Database / Druid / Run Externally
     url: /connectors/database/druid/yaml
+  - category: Connectors / Database / Druid / Troubleshooting
+    url: /connectors/database/druid/troubleshooting
   - category: Connectors / Database / DynamoDB
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / DynamoDB / Troubleshooting
+    url: /connectors/database/dynamodb/troubleshooting
   - category: Connectors / Database / Exasol
     url: /connectors/database/exasol
   - category: Connectors / Database / Exasol / Run Externally
     url: /connectors/database/exasol/yaml
+  - category: Connectors / Database / Exasol / Troubleshooting
+    url: /connectors/database/exasol/troubleshooting
   - category: Connectors / Database / GCS Datalake
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
