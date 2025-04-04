@@ -103,83 +103,15 @@ After the migration is finished, you can revert this changes.
 
 # Backward Incompatible Changes
 
-## 1.6.0
+## 1.7.0
 
-### Ingestion Workflow Status
+### Removing support for Python 3.8
 
-We are updating how we compute the success percentage. Previously, we took into account for partial success the results
-of the Source (e.g., the tables we were able to properly retrieve from Snowflake, Redshift, etc.). This means that we had 
-an error threshold in there were if up to 90% of the tables were successfully ingested, we would still consider the
-workflow as successful. However, any errors when sending the information to OpenMetadata would be considered as a failure.
+Python 3.8 was [officially EOL on 2024-10-07](https://devguide.python.org/versions/). Some of our dependencies have already
+started removing support for higher versions, and are following suit to ensure we are using the latest and most stable
+versions of our dependencies.
 
-Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
-then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
+This means that for Release 1.7, the supported Python versions for the Ingestion Framework are 3.9, 3.10 and 3.11.
 
-# Database Metadata & Lineage Workflow
-
-With 1.6 Release we are moving the `View Lineage` & `Stored Procedure Lineage` computation from metadata workflow to lineage workflow.
-
-This means that we are removing the `overrideViewLineage` property from the `DatabaseServiceMetadataPipeline` schema which will be moved to the `DatabaseServiceQueryLineagePipeline` schema.
-
-### Profiler & Auto Classification Workflow
-
-We are creating a new `Auto Classification` workflow that will take care of managing the sample data and PII classification,
-which was previously done by the Profiler workflow. This change will allow us to have a more modular and scalable system.
-
-The Profiler workflow will now only focus on the profiling part of the data, while the Auto Classification will take care
-of the rest.
-
-This means that we are removing these properties from the `DatabaseServiceProfilerPipeline` schema:
-- `generateSampleData`
-- `processPiiSensitive`
-- `confidence`
-which will be moved to the new `DatabaseServiceAutoClassificationPipeline` schema.
-
-What you will need to do:
-- If you are using the **EXTERNAL** ingestion for the profiler (YAML configuration), you will need to update your configuration,
-removing these properties as well.
-- If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
-from the UI.
-
-### RBAC Policy Updates for `EditTags`
-
-We have given more granularity to the `EditTags` policy. Previously, it was a single policy that allowed the user to manage
-any kind of tagging to the assets, including adding tags, glossary terms, and Tiers. 
-
-Now, we have split this policy to give further control on which kind of tagging the user can manage. The `EditTags` policy has been
-split into:
-
-- `EditTags`: to add tags.
-- `EditGlossaryTerms`: to add Glossary Terms.
-- `EditTier`: to add Tier tags.
-
-### Collate - Metadata Actions for ML Tagging - Deprecation Notice
-
-Since we are introducing the `Auto Classification` workflow, **we are going to remove in 1.7 the `ML Tagging` action**
-from the Metadata Actions. That feature will be covered already by the `Auto Classification` workflow, which even brings
-more flexibility allow the on-the-fly usage of the sample data for classification purposes without having to store
-it in the database.
-
-### Service Spec for the Ingestion Framework
-
-This impacts users who maintain their own connectors for the ingestion framework that are **NOT** part of the
-[OpenMetadata python library (openmetadata-ingestion)](https://github.com/open-metadata/OpenMetadata/tree/ff261fb3738f3a56af1c31f7151af9eca7a602d5/ingestion/src/metadata/ingestion/source).
-Introducing the ["connector specifcication class (`ServiceSpec`)"](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/service_spec/service_spec.py). 
-The `ServiceSpec` class serves as the entrypoint for the connector and holds the references for the classes that will be used
-to ingest and process the metadata from the source.
-You can see [postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/service_spec.py) for an
-implementation example.
-
-
-### Fivetran
-
-The filtering of Fivetran pipelines now supports using their names instead of IDs. This change may affect existing configurations that rely on pipeline IDs for filtering.
-
-### DBT Cloud Pipeline Service
-
-We are removing the field `jobId` which we required to ingest dbt metadata from a specific job, instead of this we added a new field called `jobIds` which will accept multiple job ids to ingest metadata from multiple jobs.
-
-### MicroStrategy
-
-The `serviceType` for MicroStrategy connector is renamed from `Mstr` to `MicroStrategy`.
-
+We were already shipping our Docker images with Python 3.10, so this change should not affect you if you are using our Docker images.
+However, if you installed the `openmetadata-ingestion` package directly, please make sure to update your Python version to 3.9 or higher.
