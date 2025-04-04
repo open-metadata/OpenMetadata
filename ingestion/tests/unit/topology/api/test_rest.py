@@ -45,6 +45,7 @@ mock_rest_config = {
             "config": {
                 "type": "Rest",
                 "openAPISchemaURL": "https://petstore3.swagger.io/api/v3/openapi.json",
+                "docURL": "https://petstore3.swagger.io/",
             }
         },
         "sourceConfig": {
@@ -99,7 +100,7 @@ EXPECTED_COLLECTION_REQUEST = [
         right=CreateAPICollectionRequest(
             name=EntityName(root="pet"),
             description=Markdown(root="Everything about your Pets"),
-            endpointURL=Url("https://petstore3.swagger.io/api/v3/openapi.json#tag/pet"),
+            endpointURL=Url("https://petstore3.swagger.io/#/pet"),
             service=FullyQualifiedEntityName(root="openapi_rest"),
         )
     )
