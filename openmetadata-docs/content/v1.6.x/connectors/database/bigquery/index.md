@@ -162,6 +162,4 @@ the GCP credentials empty. This is why they are not marked as required.
 
 We support cross-project lineage, but the data must be ingested within a single service. This means you need to perform lineage ingestion for just one service while including multiple projects.
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
-
 {% partial file="/v1.6/connectors/database/related.md" /%}
