@@ -441,7 +441,7 @@ export interface MetadataDatabaseConnection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DatabaseFilterPatternObject;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -467,7 +467,7 @@ export interface MetadataDatabaseConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: SchemaFilterPatternObject;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -555,32 +555,9 @@ export interface AuthConfigurationType {
  *
  * Regex to only include/exclude databases that matches the pattern.
  *
- * Regex to only include/exclude tables that matches the pattern.
- *
  * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DatabaseFilterPatternObject {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
- * Regex exclude pipelines.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -669,29 +646,6 @@ export interface AwsCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-}
-
-/**
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface SchemaFilterPatternObject {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
 }
 
 /**

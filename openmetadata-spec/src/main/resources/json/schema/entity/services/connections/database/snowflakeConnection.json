@@ -68,7 +68,7 @@
       "description": "Session query tag used to monitor usage on snowflake. To use a query tag snowflake user should have enough privileges to alter the session.",
       "type": "string"
     },
-    "accountUsageSchema":{
+    "accountUsageSchema": {
       "title": "Account Usage Schema Name",
       "description": "Full name of the schema where the account usage data is stored.",
       "type": "string",
@@ -112,25 +112,13 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
-      "type": "object",
-      "properties": {
-        "includes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
-        },
-        "excludes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": ["^information_schema$"]
-        }
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$"]
       }
     },
     "tableFilterPattern": {
@@ -141,22 +129,10 @@
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
-      "type": "object",
-      "properties": {
-        "includes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": []
-        },
-        "excludes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": ["^snowflake$"]
-        }
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^snowflake$"]
       }
     },
     "supportsMetadataExtraction": {
@@ -197,14 +173,14 @@
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
     "creditCost": {
       "title": "Cost of Credit",
       "description": "Cost of credit for the Snowflake account.",
       "type": "number",
-      "default": 3.30
+      "default": 3.3
     }
   },
   "additionalProperties": false,

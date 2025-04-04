@@ -15,16 +15,14 @@
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "default": []
+          }
         },
         "excludes": {
           "description": "List of strings/regex patterns to match and exclude only database entities that match.",
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "default": []
+          }
         }
       },
       "additionalProperties": false
