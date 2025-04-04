@@ -17,6 +17,7 @@ Configure and schedule Domo-Pipeline metadata and profiler workflows from the Op
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/pipeline/domo-pipeline/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/domo-pipeline/yaml"} /%}
 
@@ -57,5 +58,3 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

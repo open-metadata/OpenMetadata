@@ -3,7 +3,7 @@ title: Nifi Connector Troubleshooting
 slug: /connectors/pipeline/nifi/troubleshooting
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the Nifi connector.
 
