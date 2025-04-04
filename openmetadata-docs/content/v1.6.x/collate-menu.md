@@ -361,10 +361,14 @@ site_menu:
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Run Externally
     url: /connectors/pipeline/airbyte/yaml
+  - category: Connectors / Pipeline / Airbyte / Troubleshooting
+    url: /connectors/pipeline/airbyte/troubleshooting
   - category: Connectors / Pipeline / Airflow
     url: /connectors/pipeline/airflow
   - category: Connectors / Pipeline / Airflow / Run Externally
     url: /connectors/pipeline/airflow/yaml
+  - category: Connectors / Pipeline / Airflow / Troubleshooting
+    url: /connectors/search/airflow/troubleshooting
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -385,10 +389,14 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / Dagster / Troubleshooting
+    url: /connectors/pipeline/dagster/troubleshooting
   - category: Connectors / Pipeline / dbt Cloud
     url: /connectors/pipeline/dbtcloud
   - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
+  - category: Connectors / Pipeline / dbt Cloud / Troubleshooting
+    url: /connectors/pipeline/dbtcloud/troubleshooting
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
@@ -402,6 +410,8 @@ site_menu:
     url: /connectors/pipeline/datafactory
   - category: Connectors / Pipeline / Azure Data Factory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
+  - category: Connectors / Pipeline / Azure Data Factory / Troubleshooting
+    url: /connectors/pipeline/datafactory/troubleshooting
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
@@ -412,6 +422,8 @@ site_menu:
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
     url: /connectors/pipeline/databricks-pipeline/yaml
+  - category: Connectors / Pipeline / Databricks Pipeline / Troubleshooting
+    url: /connectors/pipeline/databricks-pipeline/troubleshooting
   - category: Connectors / Pipeline / Domo Pipeline
     url: /connectors/pipeline/domo-pipeline
   - category: Connectors / Pipeline / Domo Pipeline / Run Externally

@@ -23,7 +23,7 @@ Configure and schedule Azure Data Factory metadata and profiler workflows from t
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/pipeline/datafactory/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/datafactory/yaml"} /%}
@@ -120,9 +120,6 @@ Steps to retrieve and display the lineage information for a Data Factory service
 2. Ingest Data Factory Service Metadata: Finally, Ingest your DData Factory service.
 
 By successfully completing these steps, the lineage information for the service will be displayed.
-
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a Data Factory service, follow these steps to diagnose the issue.
