@@ -32,6 +32,7 @@ export interface TableComponentProps<T> extends TableProps<T> {
   customPaginationProps?: NextPreviousProps & {
     showPagination: boolean;
   };
+  entityType?: string;
 }
 
 export interface TableColumnDropdownList {

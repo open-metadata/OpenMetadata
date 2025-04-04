@@ -53,6 +53,13 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
       <p data-testid="description">{markdown}</p>
     ))
 );
+jest.mock('../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn(),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'owners']),
+  handleUpdateTableColumnSelections: jest.fn(),
+}));
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest
     .fn()
@@ -81,6 +88,7 @@ jest.mock('../useGlossary.store', () => ({
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     permissions: MOCK_PERMISSIONS,
+    type: 'glossary',
   })),
 }));
 

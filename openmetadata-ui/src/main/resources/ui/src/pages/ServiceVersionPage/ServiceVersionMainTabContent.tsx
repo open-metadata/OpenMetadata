@@ -87,6 +87,7 @@ function ServiceVersionMainTabContent({
                 }}
                 data-testid="service-children-table"
                 dataSource={data}
+                entityType={entityType}
                 loading={isServiceLoading}
                 locale={{
                   emptyText: <ErrorPlaceHolder className="m-y-md" />,
