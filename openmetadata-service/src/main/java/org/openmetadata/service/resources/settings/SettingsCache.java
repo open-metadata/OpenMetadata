@@ -224,6 +224,17 @@ public class SettingsCache {
     }
   }
 
+  public static <T> T getSettingOrDefault(
+      SettingsType settingName, T defaultValue, Class<T> clazz) {
+    try {
+      String json = JsonUtils.pojoToJson(CACHE.get(settingName.toString()).getConfigValue());
+      return JsonUtils.readValue(json, clazz);
+    } catch (Exception ex) {
+      LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
+      return defaultValue;
+    }
+  }
+
   public static void cleanUp() {
     CACHE.invalidateAll();
     initialized = false;
