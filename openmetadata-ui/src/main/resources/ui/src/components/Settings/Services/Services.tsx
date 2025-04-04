@@ -470,7 +470,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   return (
     <Row
-      className="justify-center m-b-md"
+      className="justify-center"
       data-testid="services-container"
       gutter={[16, 16]}>
       <Col span={24}>

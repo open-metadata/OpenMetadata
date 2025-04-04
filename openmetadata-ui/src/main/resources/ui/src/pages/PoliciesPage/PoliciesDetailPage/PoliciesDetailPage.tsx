@@ -449,7 +449,7 @@ const PoliciesDetailPage = () => {
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 
-              <Tabs defaultActiveKey="rules">
+              <Tabs className="tabs-new" defaultActiveKey="rules">
                 <TabPane key="rules" tab={t('label.rule-plural')}>
                   {isEmpty(policy.rules) ? (
                     <ErrorPlaceHolder />
