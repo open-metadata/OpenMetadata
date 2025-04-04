@@ -121,6 +121,7 @@ class TableClassBase {
         h:
           this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
           this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA] +
+          // Padding for left panel container
           0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
