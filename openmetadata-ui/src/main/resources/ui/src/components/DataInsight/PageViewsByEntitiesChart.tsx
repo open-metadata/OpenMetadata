@@ -121,7 +121,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   return (
     <Card
-      className="data-insight-card"
+      className="data-insight-card data-insight-card-chart"
       data-testid="entity-page-views-card"
       id={DataInsightChartType.PageViewsByEntities}
       loading={isLoading}>

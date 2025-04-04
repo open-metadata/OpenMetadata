@@ -118,7 +118,7 @@ const FeedsFilterPopover = ({
       onOpenChange={setPopupVisible}>
       <Tooltip title={t('label.feed-filter-plural')}>
         <Button
-          className="flex-center"
+          className="feed-filter-icon"
           data-testid="filter-button"
           icon={<FilterIcon height={16} />}
         />
