@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons';
-import { Button, Col, Modal, Row, Space, Tabs, Typography } from 'antd';
+import { Button, Card, Col, Modal, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -49,10 +49,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AddAttributeModal from '../AddAttributeModal/AddAttributeModal';
-import './roles-detail.less';
 import RolesDetailPageList from './RolesDetailPageList.component';
-
-const { TabPane } = Tabs;
 
 type Attribute = 'policies' | 'teams' | 'users';
 
@@ -292,6 +289,67 @@ const RolesDetailPage = () => {
     }
   };
 
+  const tabItems = useMemo(() => {
+    return [
+      {
+        key: 'policies',
+        label: t('label.policy-plural'),
+        children: (
+          <Card>
+            <div className="flex justify-end m-b-md">
+              <Button
+                data-testid="add-policy"
+                type="primary"
+                onClick={() =>
+                  setAddAttribute({
+                    type: EntityType.POLICY,
+                    selectedData: role.policies || [],
+                  })
+                }>
+                {t('label.add-entity', {
+                  entity: t('label.policy'),
+                })}
+              </Button>
+            </div>
+
+            <RolesDetailPageList
+              hasAccess
+              list={role.policies ?? []}
+              type="policy"
+              onDelete={(record) =>
+                setEntity({ record, attribute: 'policies' })
+              }
+            />
+          </Card>
+        ),
+      },
+      {
+        key: 'teams',
+        label: t('label.team-plural'),
+        children: (
+          <RolesDetailPageList
+            hasAccess
+            list={role.teams ?? []}
+            type="team"
+            onDelete={(record) => setEntity({ record, attribute: 'teams' })}
+          />
+        ),
+      },
+      {
+        key: 'users',
+        label: t('label.user-plural'),
+        children: (
+          <RolesDetailPageList
+            hasAccess
+            list={role.users ?? []}
+            type="user"
+            onDelete={(record) => setEntity({ record, attribute: 'users' })}
+          />
+        ),
+      },
+    ];
+  }, [role]);
+
   useEffect(() => {
     init();
   }, [fqn, rolePermission]);
@@ -307,7 +365,6 @@ const RolesDetailPage = () => {
       })}>
       <div data-testid="role-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
-
         <>
           {isEmpty(role) ? (
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
@@ -328,7 +385,7 @@ const RolesDetailPage = () => {
               </div>
             </ErrorPlaceHolder>
           ) : (
-            <div className="roles-detail" data-testid="role-details">
+            <>
               <Row className="flex justify-between">
                 <Col span={23}>
                   <EntityHeaderTitle
@@ -377,57 +434,10 @@ const RolesDetailPage = () => {
               <Tabs
                 className="tabs-new"
                 data-testid="tabs"
-                defaultActiveKey="policies">
-                <TabPane key="policies" tab={t('label.policy-plural')}>
-                  <Space
-                    className="role-detail-tab w-full"
-                    direction="vertical">
-                    <Button
-                      data-testid="add-policy"
-                      type="primary"
-                      onClick={() =>
-                        setAddAttribute({
-                          type: EntityType.POLICY,
-                          selectedData: role.policies || [],
-                        })
-                      }>
-                      {t('label.add-entity', {
-                        entity: t('label.policy'),
-                      })}
-                    </Button>
-
-                    <RolesDetailPageList
-                      hasAccess
-                      list={role.policies ?? []}
-                      type="policy"
-                      onDelete={(record) =>
-                        setEntity({ record, attribute: 'policies' })
-                      }
-                    />
-                  </Space>
-                </TabPane>
-                <TabPane key="teams" tab={t('label.team-plural')}>
-                  <RolesDetailPageList
-                    hasAccess
-                    list={role.teams ?? []}
-                    type="team"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'teams' })
-                    }
-                  />
-                </TabPane>
-                <TabPane key="users" tab={t('label.user-plural')}>
-                  <RolesDetailPageList
-                    hasAccess
-                    list={role.users ?? []}
-                    type="user"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'users' })
-                    }
-                  />
-                </TabPane>
-              </Tabs>
-            </div>
+                defaultActiveKey="policies"
+                items={tabItems}
+              />
+            </>
           )}
         </>
 
