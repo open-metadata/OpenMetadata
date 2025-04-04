@@ -48,6 +48,15 @@ jest.mock(
 );
 
 jest.mock(
+  '../../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    useGenericContext: jest.fn().mockReturnValue({
+      type: 'searchIndex',
+    }),
+  })
+);
+
+jest.mock(
   '../../../components/Database/TableDescription/TableDescription.component',
   () => jest.fn().mockImplementation(() => <div>testTableDescription</div>)
 );
@@ -76,6 +85,16 @@ jest.mock('../../../utils/TableUtils', () => ({
   updateFieldDescription: jest.fn(),
   updateFieldTags: jest.fn(),
   getTableExpandableConfig: jest.fn().mockReturnValue({}),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue([
+      'name',
+      'description',
+      'dataTypeDisplay',
+      'tags',
+      'glossary',
+    ]),
+  handleUpdateTableColumnSelections: jest.fn(),
 }));
 
 describe('SearchIndexFieldsTable component', () => {
