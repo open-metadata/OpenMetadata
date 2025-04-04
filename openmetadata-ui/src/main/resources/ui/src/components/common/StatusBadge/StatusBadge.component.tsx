@@ -18,9 +18,10 @@ import './status-badge.less';
 import { StatusBadgeProps } from './StatusBadge.interface';
 
 const StatusBadge = ({ label, status, dataTestId }: StatusBadgeProps) => {
-  const StatusIcon =
-    icons[label as AllStatusTypes] ||
-    icons[label.toLowerCase() as AllStatusTypes];
+  const StatusIcon = label
+    ? icons[label as AllStatusTypes] ||
+      icons[label.toLowerCase() as AllStatusTypes]
+    : undefined;
 
   return (
     <div
