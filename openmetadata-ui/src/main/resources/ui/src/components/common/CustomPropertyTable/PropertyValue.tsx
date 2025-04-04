@@ -219,7 +219,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           <ModalWithMarkdownEditor
             header={header}
             placeholder={t('label.enter-property-value')}
-            value={value || ''}
+            value={value ?? ''}
             visible={showInput}
             onCancel={onHideInput}
             onSave={onInputSave}
@@ -766,7 +766,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
     switch (propertyType.name) {
       case 'markdown':
-        return <RichTextEditorPreviewerV1 markdown={value || ''} />;
+        return <RichTextEditorPreviewerV1 markdown={value ?? ''} />;
 
       case 'enum':
         return (
@@ -1035,16 +1035,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               </Tooltip>
             )}
           </Col>
-          {!isRenderedInRightPanel && (
-            <Col span={24}>
-              <RichTextEditorPreviewerV1
-                className="text-grey-muted property-description"
-                markdown={property.description || ''}
-                maxLength={70}
-                reducePreviewLineClass="max-one-line"
-              />
-            </Col>
-          )}
         </Row>
       </Col>
 
