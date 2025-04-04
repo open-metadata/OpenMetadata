@@ -21,7 +21,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/database/athena/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
@@ -237,8 +237,6 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 

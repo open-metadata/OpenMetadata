@@ -1,6 +1,6 @@
-## Troubleshooting
+# Troubleshooting
 
-### Workflow Deployment Error
+## Workflow Deployment Error
 
 If there were any errors during the workflow deployment process, the
 Ingestion Pipeline Entity will still be created, but no workflow will be
@@ -9,11 +9,11 @@ present in the Ingestion container.
 - You can then Edit the Ingestion Pipeline and **Deploy** it again.
 - From the Connection tab, you can also Edit the Service if needed.
 
-### Connector Debug Troubleshooting
+## Connector Debug Troubleshooting
 
 This section provides instructions to help resolve common issues encountered during connector setup and metadata ingestion in OpenMetadata. Below are some of the most frequently observed troubleshooting scenarios.
 
-### How to Enable Debug Logging for Any Ingestion
+## How to Enable Debug Logging for Any Ingestion
 
 To enable debug logging for any ingestion workflow in OpenMetadata:
 
@@ -56,6 +56,6 @@ Go to the **Ingestion tab** and click the three-dot menu on the right-hand side 
   caption="Schedule and Submit"
 /%}
 
-### Permission Issues
+## Permission Issues
 
 If you encounter permission-related errors during connector setup or metadata ingestion, ensure that all the prerequisites and access configurations specified for each connector are properly implemented. Refer to the connector-specific documentation to verify the required permissions.

@@ -3,7 +3,7 @@ title: AzureSQL Connector Troubleshooting
 slug: /connectors/database/azuresql/troubleshooting
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the AzureSQL connector.
 

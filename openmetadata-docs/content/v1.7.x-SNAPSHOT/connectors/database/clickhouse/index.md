@@ -23,10 +23,12 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
     - [Service Name](#service-name)
     - [Connection Options](#connection-options)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/database/clickhouse/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
 
 ## Requirements
@@ -91,8 +93,6 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 

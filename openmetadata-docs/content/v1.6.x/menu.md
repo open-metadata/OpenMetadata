@@ -253,6 +253,8 @@ site_menu:
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Run Externally
     url: /connectors/database/athena/yaml
+  - category: Connectors / Database / Athena / Troubleshooting
+    url: /connectors/database/athena/troubleshooting
   - category: Connectors / Database / AzureSQL
     url: /connectors/database/azuresql
   - category: Connectors / Database / AzureSQL / Run Externally
@@ -263,22 +265,30 @@ site_menu:
     url: /connectors/database/bigquery
   - category: Connectors / Database / BigQuery / Run Externally
     url: /connectors/database/bigquery/yaml
+  - category: Connectors / Database / BigQuery / Troubleshooting
+    url: /connectors/database/bigquery/troubleshooting
   - category: Connectors / Database / BigQuery / Create Credentials
     url: /connectors/database/bigquery/create-credentials
   - category: Connectors / Database / BigTable
     url: /connectors/database/bigtable
   - category: Connectors / Database / BigTable / Run Externally
     url: /connectors/database/bigtable/yaml
+  - category: Connectors / Database / BigTable / Troubleshooting
+    url: /connectors/database/bigtable/troubleshooting
   - category: Connectors / Database / BigTable / Roles
     url: /connectors/database/bigtable/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Clickhouse / Troubleshooting
+    url: /connectors/database/clickhouse/troubleshooting
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
     url: /connectors/database/couchbase/yaml
+  - category: Connectors / Database / Couchbase / Troubleshooting
+    url: /connectors/database/couchbase/troubleshooting
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Run Externally

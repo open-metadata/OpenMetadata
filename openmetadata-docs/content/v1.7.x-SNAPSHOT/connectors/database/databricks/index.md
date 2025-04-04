@@ -28,6 +28,8 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/databricks/troubleshooting)
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
@@ -71,8 +73,6 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
