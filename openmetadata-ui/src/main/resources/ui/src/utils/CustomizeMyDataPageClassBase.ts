@@ -33,20 +33,22 @@ import DataProductImg from '../assets/img/widgets/data-products.png';
 import DatabaseSchemaImg from '../assets/img/widgets/database-schema-table.png';
 import DescriptionLargeImg from '../assets/img/widgets/description-large.png';
 import DescriptionImg from '../assets/img/widgets/description.png';
-import DomainImg from '../assets/img/widgets/Domain.png';
+import DomainTypeImg from '../assets/img/widgets/domain-type.png';
+import DomainImg from '../assets/img/widgets/domain.png';
+import ExpertsImg from '../assets/img/widgets/experts.png';
 import FrequentlyJoinedTablesImg from '../assets/img/widgets/frequently-joined-tables.png';
 import GlossaryTermImg from '../assets/img/widgets/glossary-terms.png';
 import MlModelFeaturesImg from '../assets/img/widgets/ml-features.png';
 import OwnersImg from '../assets/img/widgets/owners.png';
 import PipelineTasksImg from '../assets/img/widgets/pipeline-tasks.png';
-import ReferencesImg from '../assets/img/widgets/References.png';
+import ReferencesImg from '../assets/img/widgets/references.png';
 import RelatedMetricsImg from '../assets/img/widgets/related-metrics.png';
-import RelatedTermsImg from '../assets/img/widgets/RelatedTerms.png';
-import ReviewersImg from '../assets/img/widgets/Reviewers.png';
+import RelatedTermsImg from '../assets/img/widgets/related-term.png';
+import ReviewersImg from '../assets/img/widgets/reviewers.png';
 import SchemaTablesImg from '../assets/img/widgets/schema-tables.png';
 import SearchIndexFieldsImg from '../assets/img/widgets/search-index-fields.png';
 import StoredProcedureCodeImg from '../assets/img/widgets/stored-procedure-code.png';
-import SynonymsImg from '../assets/img/widgets/Synonyms.png';
+import SynonymsImg from '../assets/img/widgets/synonyms.png';
 import TableConstraints from '../assets/img/widgets/table-constraints.png';
 import TablesSchemaImg from '../assets/img/widgets/tables-schema.png';
 import TagsImg from '../assets/img/widgets/tags.png';
@@ -250,14 +252,23 @@ class CustomizeMyDataPageClassBase {
       case LandingPageWidgetKeys.RECENTLY_VIEWED: {
         return RecentViewsImg;
       }
-      case DetailPageWidgetKeys.DESCRIPTION:
+      default: {
+        return this.getDetailPageWidgetImageFromKey(widgetKey, size);
+      }
+    }
+  }
+
+  public getGlossaryWidgetImageFromKey(
+    widgetKey: string,
+    size?: number
+  ): string {
+    switch (widgetKey) {
       case GlossaryTermDetailPageWidgetKeys.DESCRIPTION:
         if (size === WidgetWidths.large) {
           return DescriptionLargeImg;
         }
 
         return DescriptionImg;
-      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
       case GlossaryTermDetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return CustomPropertyImg;
       case GlossaryTermDetailPageWidgetKeys.DOMAIN:
@@ -276,6 +287,30 @@ class CustomizeMyDataPageClassBase {
         return TermsImg;
       case GlossaryTermDetailPageWidgetKeys.TAGS:
         return TagsImg;
+      default:
+        return '';
+    }
+  }
+
+  public getDetailPageWidgetImageFromKey(
+    widgetKey: string,
+    size?: number
+  ): string {
+    switch (widgetKey) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        if (size === WidgetWidths.large) {
+          return DescriptionLargeImg;
+        }
+
+        return DescriptionImg;
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return CustomPropertyImg;
+
+      case DetailPageWidgetKeys.OWNERS:
+        return OwnersImg;
+      case DetailPageWidgetKeys.EXPERTS:
+        return ExpertsImg;
+
       case DetailPageWidgetKeys.DATA_PRODUCTS:
         return DataProductImg;
       case DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES:
@@ -314,9 +349,10 @@ class CustomizeMyDataPageClassBase {
         return StoredProcedureCodeImg;
       case DetailPageWidgetKeys.TOPIC_SCHEMA:
         return TopicSchemaImg;
-      default: {
-        return '';
-      }
+      case DetailPageWidgetKeys.DOMAIN_TYPE:
+        return DomainTypeImg;
+      default:
+        return this.getGlossaryWidgetImageFromKey(widgetKey, size);
     }
   }
 

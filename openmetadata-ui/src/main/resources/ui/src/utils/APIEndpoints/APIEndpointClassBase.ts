@@ -97,7 +97,10 @@ class APIEndpointClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.API_SCHEMA] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

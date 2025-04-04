@@ -67,7 +67,7 @@ class ContainerDetailsClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.CONTAINER_CHILDREN]: 8,
-      [DetailPageWidgetKeys.CONTAINER_SCHEMA]: 8,
+      [DetailPageWidgetKeys.CONTAINER_SCHEMA]: 5,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -117,7 +117,10 @@ class ContainerDetailsClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.CONTAINER_SCHEMA] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

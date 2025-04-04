@@ -82,7 +82,7 @@ export const DashboardChartTable = ({
       );
 
       return chartPermission;
-    } catch (error) {
+    } catch {
       return DEFAULT_ENTITY_PERMISSION;
     }
   }, []);
@@ -394,9 +394,13 @@ export const DashboardChartTable = ({
   );
 
   useEffect(() => {
-    isCustomizationPage
-      ? setCharts(listChartIds as unknown as ChartType[])
-      : initializeCharts();
+    if (isCustomizationPage) {
+      setCharts(listChartIds as unknown as ChartType[]);
+
+      return;
+    }
+
+    initializeCharts();
   }, [listChartIds, isCustomizationPage]);
 
   if (isEmpty(charts)) {

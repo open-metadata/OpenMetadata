@@ -98,7 +98,7 @@ class DatabaseClassBase {
         h:
           this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
           this.defaultWidgetHeight[DetailPageWidgetKeys.DATABASE_SCHEMA] +
-          0.3,
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
