@@ -34,11 +34,6 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
 }) => {
   const displayName = getEntityName(owner);
 
-  const calculatedInheritedIconSize = Math.max(
-    12,
-    Math.floor(avatarSize * 0.5)
-  );
-
   return owner.type === OwnerType.TEAM ? (
     <div className="d-flex gap-2 items-center">
       <Icon
@@ -66,13 +61,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
       />
 
       {inheritedIcon && !isCompactView && (
-        <div
-          className="inherited-icon-styling flex-center"
-          style={{
-            width: `${calculatedInheritedIconSize}px`,
-            height: `${calculatedInheritedIconSize}px`,
-            fontSize: `${calculatedInheritedIconSize}px`,
-          }}>
+        <div className="inherited-icon-styling flex-center">
           {inheritedIcon}
         </div>
       )}

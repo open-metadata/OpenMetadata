@@ -124,7 +124,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../../utils/EntityUtils';
-import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -958,9 +958,11 @@ export const TaskTabNew = ({
                     </Typography.Text>
                   </div>
                 ) : (
-                  <UserAvatarGroup
-                    className="p-t-05"
+                  <OwnerLabel
+                    avatarSize={24}
+                    isCompactView={false}
                     owners={taskThread?.task?.assignees}
+                    showLabel={false}
                   />
                 )}
                 {(isCreator || hasEditAccess) &&
