@@ -39,7 +39,7 @@ const TestCaseStatusAreaChartWidget = ({
 
     return (
       <>
-        <Typography.Paragraph className="text-xs text-grey-muted">
+        <Typography.Paragraph className="text-xs font-semibold">
           {title}
         </Typography.Paragraph>
         <Typography.Paragraph
@@ -72,7 +72,7 @@ const TestCaseStatusAreaChartWidget = ({
       });
 
       setChartData(updatedData);
-    } catch (error) {
+    } catch {
       setChartData([]);
     } finally {
       setIsChartLoading(false);
