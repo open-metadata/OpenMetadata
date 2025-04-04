@@ -18,6 +18,7 @@ import {
   PlaywrightWorkerArgs,
   TestType,
 } from '@playwright/test';
+import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
   getApiContext,
@@ -30,6 +31,7 @@ import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   deleteService,
   getServiceCategoryFromService,
+  makeRetryRequest,
   Services,
   testConnection,
 } from '../../../utils/serviceIngestion';
@@ -288,28 +290,15 @@ class ServiceBaseClass {
     // Queued status are not stored in DB. cc: @ulixius9
     await page.waitForTimeout(2000);
 
-    const makeRequest = async (url: string, retries = 3) => {
-      for (let i = 0; i < retries; i++) {
-        try {
-          const response = await apiContext.get(url);
-
-          return response.json();
-        } catch (error) {
-          if (i === retries - 1) {
-            throw error;
-          }
-          await page.waitForTimeout(1000 * (i + 1)); // Exponential backoff
-        }
-      }
-    };
-
-    const response = await makeRequest(
-      `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
-        this.serviceName
-      }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
-        this.category
-      )}`
-    );
+    const response = await apiContext
+      .get(
+        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+          this.serviceName
+        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
+          this.category
+        )}`
+      )
+      .then((res) => res.json());
 
     const workflowData = response.data.filter(
       (d: { pipelineType: string }) => d.pipelineType === ingestionType
@@ -317,17 +306,17 @@ class ServiceBaseClass {
 
     const oneHourBefore = Date.now() - 86400000;
     let consecutiveErrors = 0;
-    const MAX_CONSECUTIVE_ERRORS = 3;
 
     await expect
       .poll(
         async () => {
           try {
-            const response = await makeRequest(
-              `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+            const response = await makeRetryRequest({
+              url: `/api/v1/services/ingestionPipelines/${encodeURIComponent(
                 workflowData.fullyQualifiedName
-              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
-            );
+              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`,
+              page,
+            });
             consecutiveErrors = 0; // Reset error counter on success
 
             return response.data[0]?.pipelineState;
