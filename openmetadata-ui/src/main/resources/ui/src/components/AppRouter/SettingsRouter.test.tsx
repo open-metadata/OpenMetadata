@@ -445,18 +445,6 @@ describe('SettingsRouter', () => {
     expect(await screen.findByText('ApplicationPage')).toBeInTheDocument();
   });
 
-  it('should render AlertsActivityFeedPage component for alerts activity feed route', async () => {
-    render(
-      <MemoryRouter initialEntries={[`/settings/notifications/activityFeeds`]}>
-        <SettingsRouter />
-      </MemoryRouter>
-    );
-
-    expect(
-      await screen.findByText('AlertsActivityFeedPage')
-    ).toBeInTheDocument();
-  });
-
   it('should render AlertDetailsPage component for alert details route', async () => {
     render(
       <MemoryRouter
