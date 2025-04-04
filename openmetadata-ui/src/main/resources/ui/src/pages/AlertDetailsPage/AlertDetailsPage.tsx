@@ -32,7 +32,7 @@ import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.compon
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -375,6 +375,7 @@ function AlertDetailsPage({
                             />
                           ) : (
                             <OwnerLabel
+                              isCompactView
                               hasPermission={editOwnersPermission}
                               owners={alertDetails?.owners}
                               onUpdate={onOwnerUpdate}
@@ -408,13 +409,7 @@ function AlertDetailsPage({
                             <Button
                               className="flex flex-center"
                               data-testid="edit-button"
-                              icon={
-                                <EditIcon
-                                  color={DE_ACTIVE_COLOR}
-                                  height={16}
-                                  width={16}
-                                />
-                              }
+                              icon={<EditIcon height={16} width={16} />}
                               onClick={handleAlertEdit}
                             />
                           </Tooltip>
