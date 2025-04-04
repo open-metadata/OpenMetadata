@@ -110,7 +110,8 @@ class TestSuiteSource(Source):
         if not table:
             logger.warning(
                 f"Table not found for FQN: {self.source_config.entityFullyQualifiedName.root}. "
-                "Please double check the entityFullyQualifiedName by copying it directly from the entity URL in the OpenMetadata UI. "
+                "Please double check the entityFullyQualifiedName"
+                "by copying it directly from the entity URL in the OpenMetadata UI. "
                 "The FQN should be in the format: service_name.database_name.schema_name.table_name"
             )
         return table
