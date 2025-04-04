@@ -13,11 +13,13 @@
 import { upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import {
-  EntityStats,
   EntityStatsData,
   EntityTypeSearchIndex,
 } from '../components/Settings/Applications/AppLogsViewer/AppLogsViewer.interface';
-import { Status } from '../generated/entity/applications/appRunRecord';
+import {
+  Status,
+  StepStats,
+} from '../generated/entity/applications/appRunRecord';
 
 export const getStatusTypeForApplication = (status: Status) => {
   switch (status) {
@@ -42,7 +44,9 @@ export const getStatusTypeForApplication = (status: Status) => {
       return StatusType.Stopped;
   }
 };
-export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
+export const getEntityStatsData = (data: {
+  [key: string]: StepStats;
+}): EntityStatsData[] => {
   const filteredRow = ['failedRecords', 'totalRecords', 'successRecords'];
 
   const result = Object.keys(data).reduce((acc, key) => {
