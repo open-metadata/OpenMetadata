@@ -16,9 +16,12 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
-import ProfilePictureNew from '../ProfilePicture/ProfilePictureNew';
+import { getOwnerPath } from '../../../utils/ownerUtils';
+import UserPopOverCard from '../PopOverCard/UserPopOverCard';
+import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './owner-label.less';
 
 export const UserAvatarGroup = ({
@@ -29,7 +32,7 @@ export const UserAvatarGroup = ({
   ownerDisplayName,
   placeHolder,
   maxVisibleOwners = 2,
-  avatarSize = 24,
+  avatarSize = '24',
 }: {
   owners?: EntityReference[];
   className?: string;
@@ -43,7 +46,7 @@ export const UserAvatarGroup = ({
     team: boolean;
   };
   tooltipText?: string;
-  avatarSize?: number;
+  avatarSize?: string;
 }) => {
   const { t } = useTranslation();
 
@@ -56,14 +59,21 @@ export const UserAvatarGroup = ({
       items: remainingOwners.map((owner) => ({
         key: owner.id,
         label: (
-          <div className="d-flex items-center gap-2">
-            <ProfilePictureNew
-              avatarType="outlined"
-              name={owner.displayName ?? ''}
-              size={avatarSize}
-            />
+          <Link
+            className="d-flex items-center gap-2 no-underlines"
+            to={getOwnerPath(owner)}>
+            <UserPopOverCard userName={owner.displayName ?? ''}>
+              <div className="d-flex items-center">
+                <ProfilePicture
+                  displayName={owner.displayName ?? ''}
+                  name={owner.displayName ?? ''}
+                  width={avatarSize}
+                />
+              </div>
+            </UserPopOverCard>
+
             <Typography.Text>{owner.displayName}</Typography.Text>
-          </div>
+          </Link>
         ),
       })),
     };
@@ -79,19 +89,22 @@ export const UserAvatarGroup = ({
           <Avatar.Group className="avatar-group">
             {visibleOwners.map((owner) => (
               <div className="avatar-overlap" key={owner.id}>
-                <ProfilePictureNew
-                  avatarType="outlined"
-                  displayName={owner.displayName ?? ''}
-                  name={owner.name ?? ''}
-                  size={avatarSize}
-                />
+                <UserPopOverCard userName={owner.displayName ?? ''}>
+                  <div className="d-flex items-center">
+                    <ProfilePicture
+                      displayName={owner.displayName ?? ''}
+                      name={owner.name ?? ''}
+                      width={avatarSize}
+                    />
+                  </div>
+                </UserPopOverCard>
               </div>
             ))}
             {remainingOwnersCount > 0 && (
               <Dropdown menu={remainingOwnersMenu} trigger={['click']}>
                 <Avatar
                   className="owner-count-avatar avatar-overlap"
-                  size={avatarSize}>
+                  size={Number(avatarSize)}>
                   <span>
                     {t('label.plus-symbol')}
                     {remainingOwnersCount}
