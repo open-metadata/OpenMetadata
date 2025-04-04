@@ -18,6 +18,7 @@ Configure and schedule Wherescape metadata workflow from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
     - [Connection Details](#connection-details)
+- [Troubleshooting](/connectors/pipeline/wherescape/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/wherescape/yaml"} /%}
 
@@ -70,5 +71,3 @@ In terms of `connection` we support the following selections:
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

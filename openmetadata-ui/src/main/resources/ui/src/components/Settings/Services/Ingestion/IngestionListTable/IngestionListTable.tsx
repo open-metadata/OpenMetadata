@@ -448,7 +448,7 @@ function IngestionListTable({
   return (
     <>
       <div
-        className={classNames('m-b-md', tableContainerClassName)}
+        className={classNames(tableContainerClassName)}
         data-testid="ingestion-table">
         <Table
           className={tableClassName}
