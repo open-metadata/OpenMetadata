@@ -5,7 +5,7 @@ WHERE json->>'createdBy' IS NULL;
 -- Made httpPath a required field for Databricks, updating records 
 -- where httpPath is NULL or missing to an empty string.  
 UPDATE
-    dbservice_entity2
+    dbservice_entity
 SET
     json = jsonb_set(
         json,
