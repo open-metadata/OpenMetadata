@@ -964,7 +964,7 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       isHidden: !(
-        tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
+        tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
       ),
       key: EntityTabs.DBT,
       children: (
