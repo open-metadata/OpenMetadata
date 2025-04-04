@@ -95,13 +95,11 @@ export const ExtraInfoLabel = ({
   label,
   value,
   dataTestId,
-  showAsATag = false,
   inlineLayout = false,
 }: {
   label: string;
   value: string | number | React.ReactNode;
   dataTestId?: string;
-  showAsATag?: boolean;
   inlineLayout?: boolean;
 }) => {
   if (inlineLayout) {
@@ -128,10 +126,7 @@ export const ExtraInfoLabel = ({
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <div
-          className={classNames('font-medium extra-info-value', {
-            showAsATag: showAsATag,
-          })}>
+        <div className={classNames('font-medium extra-info-value')}>
           {value}
         </div>
       </Typography.Text>
