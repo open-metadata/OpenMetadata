@@ -486,6 +486,8 @@ site_menu:
     url: /connectors/dashboard/sigma
   - category: Connectors / Dashboard / Sigma / Run Externally
     url: /connectors/dashboard/sigma/yaml
+  - category: Connectors / Dashboard / Sigma / Troubleshooting
+    url: /connectors/dashboard/sigma/troubleshooting
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -506,6 +508,8 @@ site_menu:
     url: /connectors/dashboard/qliksense/yaml
   - category: Connectors / Dashboard / Qlik Sense / Export Certificates
     url: /connectors/dashboard/qliksense/certificates
+  - category: Connectors / Dashboard / Qlik Sense / Troubleshooting
+    url: /connectors/dashboard/qliksense/troubleshooting
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
@@ -518,20 +522,28 @@ site_menu:
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
     url: /connectors/dashboard/quicksight/yaml
+  - category: Connectors / Dashboard / QuickSight / Troubleshooting
+    url: /connectors/dashboard/quicksight/troubleshooting
   - category: Connectors / Dashboard / Redash
     url: /connectors/dashboard/redash
   - category: Connectors / Dashboard / Redash / Run Externally
     url: /connectors/dashboard/redash/yaml
+  - category: Connectors / Dashboard / Redash / Troubleshooting
+    url: /connectors/dashboard/redash/troubleshooting
   - category: Connectors / Dashboard / Superset
     url: /connectors/dashboard/superset
   - category: Connectors / Dashboard / Superset / Run Externally
     url: /connectors/dashboard/superset/yaml
   - category: Connectors / Dashboard / Superset / SSO
     url: /connectors/dashboard/superset/sso
+  - category: Connectors / Dashboard / Superset / Troubleshooting
+    url: /connectors/dashboard/superset/troubleshooting
   - category: Connectors / Dashboard / Tableau
     url: /connectors/dashboard/tableau
   - category: Connectors / Dashboard / Tableau / Run Externally
     url: /connectors/dashboard/tableau/yaml
+  - category: Connectors / Dashboard / Tableau / Troubleshooting
+    url: /connectors/dashboard/tableau/troubleshooting
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -545,10 +557,14 @@ site_menu:
     url: /connectors/messaging/kinesis
   - category: Connectors / Messaging / Kinesis / Run Externally
     url: /connectors/messaging/kinesis/yaml
+  - category: Connectors / Messaging / Kinesis / Troubleshooting
+    url: /connectors/messaging/kinesis/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Run Externally
     url: /connectors/messaging/redpanda/yaml
+  - category: Connectors / Messaging / Redpanda / Troubleshooting
+    url: /connectors/messaging/redpanda/troubleshooting
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
@@ -606,10 +622,14 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
+  - category: Connectors / Pipeline / Troubleshooting
+    url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
+  - category: Connectors / Pipeline / Spline / troubleshooting
+    url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / Flink
     url: /connectors/pipeline/flink
   - category: Connectors / Pipeline / Flink / Run Externally
@@ -621,10 +641,14 @@ site_menu:
     url: /connectors/ml-model/mlflow
   - category: Connectors / ML Model / MLflow / Run Externally
     url: /connectors/ml-model/mlflow/yaml
+  - category: Connectors / ML Model / MLflow / Troubleshooting
+    url: /connectors/ml-model/mlflow/troubleshooting
   - category: Connectors / ML Model / Sagemaker
     url: /connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Run Externally
     url: /connectors/ml-model/sagemaker/yaml
+  - category: Connectors / ML Model / Sagemaker / Troubleshooting
+    url: /connectors/ml-model/sagemaker/troubleshooting
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -632,10 +656,14 @@ site_menu:
     url: /connectors/storage/s3
   - category: Connectors / Storage / S3 Storage / Run Externally
     url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / S3 Storage / Troubleshooting
+    url: /connectors/storage/s3/troubleshooting
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
+  - category: Connectors / Storage / GCS / Troubleshooting
+    url: /connectors/storage/gcs/troubleshooting
 
   - category: Connectors / Search
     url: /connectors/search
@@ -643,10 +671,14 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / Elasticsearch / Troubleshooting
+    url: /connectors/search/elasticsearch/troubleshooting
   - category: Connectors / Search / OpenSearch
     url: /connectors/search/opensearch
   - category: Connectors / Search / OpenSearch / Run Externally
     url: /connectors/search/opensearch/yaml
+  - category: Connectors / Search / OpenSearch / Troubleshooting
+    url: /connectors/search/opensearch/troubleshooting
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -654,14 +686,20 @@ site_menu:
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Amundsen / Run Externally
     url: /connectors/metadata/amundsen/yaml
+  - category: Connectors / Metadata / Amundsen / Troubleshooting
+    url: /connectors/metadata/amundsen/troubleshooting
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
+  - category: Connectors / Metadata / Atlas / Troubleshooting
+    url: /connectors/metadata/atlas/troubleshooting
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
     url: /connectors/metadata/alationsink/yaml
+  - category: Connectors / Metadata / Alation Sink / Troubleshooting
+    url: /connectors/metadata/alationsink/troubleshooting
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
@@ -689,6 +727,9 @@ site_menu:
 
   - category: Connectors / Ingestion / Workflows/ Metadata / Multithreading
     url: /connectors/ingestion/workflows/metadata/multithreading
+
+  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
+    url: /connectors/ingestion/workflows/reverse-metadata
 
   - category: Connectors / Ingestion / Workflows / Usage
     url: /connectors/ingestion/workflows/usage

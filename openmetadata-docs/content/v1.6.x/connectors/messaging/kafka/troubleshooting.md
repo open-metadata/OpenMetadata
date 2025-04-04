@@ -5,6 +5,8 @@ slug: /connectors/messaging/kafka/troubleshooting
 
 # Troubleshooting
 
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+
 ## Consumer and schema registry config
 
 When configuring the Kafka connector, we could need to pass extra parameters to the consumer or the schema registry to

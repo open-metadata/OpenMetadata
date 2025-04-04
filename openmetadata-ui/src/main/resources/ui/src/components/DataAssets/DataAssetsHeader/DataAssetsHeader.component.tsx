@@ -511,7 +511,7 @@ export const DataAssetsHeader = ({
             <Col className="flex items-center">
               <Space className="">
                 <ButtonGroup
-                  className="data-asset-button-group "
+                  className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
                   {onUpdateVote && (
@@ -553,7 +553,9 @@ export const DataAssetsHeader = ({
                         <Typography.Link
                           href={(dataAsset as Table).sourceUrl}
                           target="_blank">
-                          {t('label.source-url')}
+                          {t('label.view-in-service-type', {
+                            serviceType: (dataAsset as Table).serviceType,
+                          })}
                         </Typography.Link>
                       </Button>
                     </Tooltip>
@@ -627,7 +629,7 @@ export const DataAssetsHeader = ({
                   data-testid="header-tier-container">
                   {tier ? (
                     <div className="d-flex flex-col gap-2">
-                      <div className="d-flex items-center gap-1">
+                      <div className="tier-heading-container d-flex items-center gap-1">
                         <span className="entity-no-tier ">
                           {t('label.tier')}
                         </span>
@@ -654,7 +656,7 @@ export const DataAssetsHeader = ({
                     </div>
                   ) : (
                     <div className="flex items-center flex-col gap-2">
-                      <div className="d-flex items-center gap-1">
+                      <div className="tier-heading-container d-flex items-center gap-1">
                         <span className="entity-no-tier">
                           {t('label.tier')}
                         </span>

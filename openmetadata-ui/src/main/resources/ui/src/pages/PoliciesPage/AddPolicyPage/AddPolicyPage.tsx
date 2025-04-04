@@ -116,11 +116,10 @@ const AddPolicyPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-policy-container">
+          <div data-testid="add-policy-container">
             <TitleBreadcrumb titleLinks={ADD_POLICY_PAGE_BREADCRUMB} />
             <div className="m-t-md">
               <Typography.Paragraph
@@ -195,7 +194,7 @@ const AddPolicyPage = () => {
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

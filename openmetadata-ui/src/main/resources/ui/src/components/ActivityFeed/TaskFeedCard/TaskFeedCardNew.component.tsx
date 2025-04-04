@@ -361,7 +361,7 @@ const TaskFeedCard = ({
                   }`}>
                   <AssigneesIcon height={20} width={20} />
                   <UserAvatarGroup
-                    avatarSize={24}
+                    avatarSize="24"
                     className="p-t-05"
                     owners={feed?.task?.assignees}
                   />

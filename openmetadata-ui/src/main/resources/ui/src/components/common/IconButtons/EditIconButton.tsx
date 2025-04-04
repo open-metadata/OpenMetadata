@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as AlignRightIcon } from '../../../assets/svg/ic-align-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 
@@ -40,10 +41,11 @@ export const EditIconButton = ({
           {...props}
         />
       ) : (
-        <Icon
+        <Button
           className={className}
-          component={EditIcon}
-          style={{ color: DE_ACTIVE_COLOR }}
+          icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+          size="small"
+          type="text"
           {...props}
         />
       )}
@@ -101,6 +103,24 @@ export const CommentIconButton = ({
           {...props}
         />
       )}
+    </Tooltip>
+  );
+};
+
+export const AlignRightIconButton = ({
+  title,
+  className,
+  size,
+  ...props
+}: IconButtonPropsInternal) => {
+  return (
+    <Tooltip title={title}>
+      <Button
+        className={classNames('bordered', className)}
+        icon={<AlignRightIcon />}
+        size={size}
+        {...props}
+      />
     </Tooltip>
   );
 };

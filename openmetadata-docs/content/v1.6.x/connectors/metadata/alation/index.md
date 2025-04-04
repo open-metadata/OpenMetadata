@@ -20,6 +20,7 @@ Configure and schedule Alation metadata workflow from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Data Mapping and Assumptions](#data-mapping-and-assumptions)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/metadata/alation/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/alation/yaml"} /%}
 
@@ -151,5 +152,3 @@ To perform incremental ingestion, these arguments should be used together. For i
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
