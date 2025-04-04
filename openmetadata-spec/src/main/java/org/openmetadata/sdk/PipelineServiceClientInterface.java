@@ -105,6 +105,16 @@ public interface PipelineServiceClientInterface {
   PipelineServiceClientResponse runPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service);
 
+  /* Deploy run the pipeline at the pipeline service with ad-hoc custom configuration.
+   * This might not be supported by some pipeline service clients.*/
+  default PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      Map<String, Object> config) {
+    throw new UnsupportedOperationException(
+        "This operation is not supported by this pipeline service");
+  }
+
   /* Stop and delete a pipeline at the pipeline service */
   PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline);
 
