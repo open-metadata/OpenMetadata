@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Modal, Skeleton, Typography } from 'antd';
+import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -55,12 +55,31 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   onTeamExpand,
   isFetchingAllTeamAdvancedDetails,
   searchTerm,
+  showDeletedTeam,
+  onShowDeletedTeamChange,
+  handleAddTeamButtonClick,
+  createTeamPermission,
+  addTeam,
+  isTeamDeleted,
+  handleTeamSearch,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState<boolean>(false);
   const [movedTeam, setMovedTeam] = useState<MovedTeamProps>();
   const [isTableHovered, setIsTableHovered] = useState(false);
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-entity', {
+        entity: t('label.team'),
+      }),
+      searchValue: searchTerm,
+      typingInterval: 500,
+      onSearch: handleTeamSearch,
+    }),
+    [searchTerm, handleTeamSearch]
+  );
 
   const columns: ColumnsType<Team> = useMemo(() => {
     return [
@@ -252,7 +271,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   );
 
   return (
-    <>
+    <div className="team-list-container">
       <DndProvider backend={HTML5Backend}>
         <Table
           className={classNames('teams-list-table drop-over-background', {
@@ -263,12 +282,36 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           data-testid="team-hierarchy-table"
           dataSource={data}
           expandable={expandableConfig}
+          extraTableFilters={
+            <Space align="center">
+              <span>
+                <Switch
+                  checked={showDeletedTeam}
+                  data-testid="show-deleted"
+                  onClick={onShowDeletedTeamChange}
+                />
+                <Typography.Text className="m-l-xs">
+                  {t('label.deleted')}
+                </Typography.Text>
+              </span>
+
+              {createTeamPermission && !isTeamDeleted && (
+                <Button
+                  data-testid="add-team"
+                  type="primary"
+                  onClick={handleAddTeamButtonClick}>
+                  {addTeam}
+                </Button>
+              )}
+            </Space>
+          }
           loading={isTableLoading}
           locale={{
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
           rowKey="name"
+          searchProps={searchProps}
           size="small"
           onHeaderRow={onTableHeader}
           onRow={onTableRow}
@@ -297,7 +340,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           }}
         />
       </Modal>
-    </>
+    </div>
   );
 };
 
