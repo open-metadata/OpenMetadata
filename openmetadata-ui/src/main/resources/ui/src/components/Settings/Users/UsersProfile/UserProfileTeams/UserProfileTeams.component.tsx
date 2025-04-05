@@ -121,7 +121,7 @@ const UserProfileTeams = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="text-sm font-medium">
+          <Typography.Text className="text-sm font-medium p-l-xss">
             {t('label.team-plural')}
           </Typography.Text>
 

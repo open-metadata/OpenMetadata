@@ -37,6 +37,7 @@ export const OwnerLabel = ({
   },
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
+  avatarSize = 32,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -130,6 +131,7 @@ export const OwnerLabel = ({
           )}>
           {visibleOwners.map((owner, index) => (
             <OwnerItem
+              avatarSize={avatarSize}
               className={className}
               index={index}
               isCompactView={isCompactView}
@@ -142,6 +144,7 @@ export const OwnerLabel = ({
           {/* Show more button/dropdown */}
           {showMoreButton && (
             <OwnerReveal
+              avatarSize={avatarSize}
               isCompactView={isCompactView}
               isDropdownOpen={isDropdownOpen}
               owners={owners.slice(maxVisibleOwners)}
@@ -179,6 +182,7 @@ export const OwnerLabel = ({
     tooltipText,
     multiple,
     ownerElementsNonCompactView,
+    avatarSize,
   ]);
 
   return ownerElements;
