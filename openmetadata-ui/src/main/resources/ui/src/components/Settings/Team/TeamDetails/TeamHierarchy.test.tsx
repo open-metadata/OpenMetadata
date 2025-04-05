@@ -26,6 +26,12 @@ const teamHierarchyPropsData: TeamHierarchyProps = {
   currentTeam: MOCK_CURRENT_TEAM,
   onTeamExpand: jest.fn(),
   isFetchingAllTeamAdvancedDetails: false,
+  showDeletedTeam: false,
+  onShowDeletedTeamChange: jest.fn(),
+  handleAddTeamButtonClick: jest.fn(),
+  createTeamPermission: true,
+  isTeamDeleted: false,
+  handleTeamSearch: jest.fn(),
 };
 
 const mockShowErrorToast = jest.fn();

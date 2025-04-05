@@ -31,7 +31,6 @@ export interface TeamHierarchyProps {
   onShowDeletedTeamChange: () => void;
   handleAddTeamButtonClick: () => void;
   createTeamPermission: boolean;
-  addTeam: string;
   isTeamDeleted: boolean;
   handleTeamSearch: (text: string) => void;
 }

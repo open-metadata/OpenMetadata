@@ -59,7 +59,6 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   onShowDeletedTeamChange,
   handleAddTeamButtonClick,
   createTeamPermission,
-  addTeam,
   isTeamDeleted,
   handleTeamSearch,
 }) => {
@@ -300,7 +299,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
                   data-testid="add-team"
                   type="primary"
                   onClick={handleAddTeamButtonClick}>
-                  {addTeam}
+                  {t('label.add-entity', { entity: t('label.team') })}
                 </Button>
               )}
             </Space>

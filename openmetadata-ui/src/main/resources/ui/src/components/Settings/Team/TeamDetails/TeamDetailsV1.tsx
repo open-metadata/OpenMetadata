@@ -199,8 +199,6 @@ const TeamDetailsV1 = ({
     entity: t('label.role'),
   });
 
-  const addTeam = t('label.add-entity', { entity: t('label.team') });
-
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
     [currentTeam]
@@ -663,7 +661,6 @@ const TeamDetailsV1 = ({
       </ErrorPlaceHolder>
     ) : (
       <TeamHierarchy
-        addTeam={addTeam}
         createTeamPermission={createTeamPermission}
         currentTeam={currentTeam}
         data={childTeamList}
@@ -678,7 +675,6 @@ const TeamDetailsV1 = ({
       />
     );
   }, [
-    addTeam,
     searchTerm,
     isTeamDeleted,
     currentTeam,
