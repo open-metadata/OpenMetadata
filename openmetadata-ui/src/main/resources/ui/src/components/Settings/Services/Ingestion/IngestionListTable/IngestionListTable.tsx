@@ -362,7 +362,7 @@ function IngestionListTable({
         title: t('label.count'),
         dataIndex: 'count',
         key: 'count',
-        width: 220,
+        width: 300,
         render: (_: string, record: ModifiedIngestionPipeline) => {
           return isIngestionRunsLoading ? (
             <Skeleton.Input active size="small" />
@@ -378,6 +378,7 @@ function IngestionListTable({
         title: t('label.schedule'),
         dataIndex: 'schedule',
         key: 'schedule',
+        width: 150,
         render: renderScheduleField,
       },
       {
@@ -401,7 +402,7 @@ function IngestionListTable({
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: 90,
+        width: 100,
         render: renderStatusField,
       },
       ...(enableActions

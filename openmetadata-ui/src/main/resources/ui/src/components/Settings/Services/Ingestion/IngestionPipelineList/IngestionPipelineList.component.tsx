@@ -75,6 +75,7 @@ export const IngestionPipelineList = ({
         key: 'pipelineType',
         filterDropdown: ColumnFilter,
         filterIcon: columnFilterIcon,
+        width: 150,
         filters: map(PipelineType, (value) => ({
           text: startCase(value),
           value,

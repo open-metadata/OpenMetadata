@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Button,
@@ -1148,6 +1148,14 @@ const TeamDetailsV1 = ({
             accordion
             bordered={false}
             className="header-collapse-custom-collapse"
+            expandIcon={({ isActive }) => (
+              <span
+                className={classNames('ant-collapse-arrow', {
+                  'arrow-icon-non-organization': !isOrganization,
+                })}>
+                {isActive ? <DownOutlined /> : <RightOutlined />}
+              </span>
+            )}
             expandIconPosition="end">
             <Collapse.Panel
               className={classNames('collapse-panel-container', {
@@ -1174,7 +1182,7 @@ const TeamDetailsV1 = ({
           <Tabs
             destroyInactiveTabPane
             activeKey={currentTab}
-            className="tabs-new"
+            className="tabs-new p-md"
             items={tabs}
             onChange={updateActiveTab}
           />
