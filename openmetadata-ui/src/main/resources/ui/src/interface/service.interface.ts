@@ -145,4 +145,5 @@ export type ExtraInfoType = {
   href?: string;
   location?: string;
   type?: string;
+  headerKey?: string;
 };

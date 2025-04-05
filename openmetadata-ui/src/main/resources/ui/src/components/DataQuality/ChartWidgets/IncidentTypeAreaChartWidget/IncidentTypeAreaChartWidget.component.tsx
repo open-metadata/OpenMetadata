@@ -36,7 +36,7 @@ const IncidentTypeAreaChartWidget = ({
 
     return (
       <>
-        <Typography.Paragraph className="text-xs text-grey-muted">
+        <Typography.Paragraph className="text-xs font-semibold">
           {title}
         </Typography.Paragraph>
         <Typography.Paragraph
@@ -61,7 +61,7 @@ const IncidentTypeAreaChartWidget = ({
         count: +item.stateId,
       }));
       setChartData(updatedData);
-    } catch (error) {
+    } catch {
       setChartData([]);
     } finally {
       setIsChartLoading(false);
