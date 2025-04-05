@@ -242,12 +242,8 @@ const Table = <T extends Record<string, unknown>>(
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
-      <Col
-        className={classNames({
-          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
-        })}
-        span={24}>
-        <Row className="p-x-md">
+      <Col span={24}>
+        <Row className="p-md">
           <Col span={12}>
             <div className="h-full d-flex items-center">
               <div className="table-data-count-container">
