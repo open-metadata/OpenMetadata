@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, lowerCase } from 'lodash';
@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
+import { LINK_COLOR } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
@@ -127,7 +128,12 @@ const BotListV1 = ({
 
           return (
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
-              {stringToHTML(highlightSearchText(name, searchTerm))}
+              <Typography.Text
+                className="text-ellipsis bot-link"
+                ellipsis={{ tooltip: true }}
+                style={{ color: LINK_COLOR }}>
+                {stringToHTML(highlightSearchText(name, searchTerm))}
+              </Typography.Text>
             </Link>
           );
         },
