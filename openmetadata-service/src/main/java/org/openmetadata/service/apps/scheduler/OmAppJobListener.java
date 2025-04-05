@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -109,7 +110,9 @@ public class OmAppJobListener implements JobListener {
         JsonUtils.readOrConvertValue(
             jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION),
             AppRunRecord.class);
-    Object jobStats = jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS);
+    Stats jobStats =
+        JsonUtils.convertValue(
+            jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS), Stats.class);
     long endTime = System.currentTimeMillis();
     runRecord.withEndTime(endTime);
     runRecord.setExecutionTime(endTime - runRecord.getStartTime());
@@ -129,7 +132,7 @@ public class OmAppJobListener implements JobListener {
       if (runRecord.getSuccessContext() != null) {
         context = runRecord.getSuccessContext();
       }
-      context.getAdditionalProperties().put("stats", JsonUtils.getMap(jobStats));
+      context.setStats(jobStats);
       runRecord.setSuccessContext(context);
     } else {
       runRecord.withStatus(AppRunRecord.Status.FAILED);
