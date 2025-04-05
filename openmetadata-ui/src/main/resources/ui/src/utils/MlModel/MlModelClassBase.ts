@@ -170,8 +170,8 @@ class MlModelDetailsClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.RELATED_METRICS,
-        name: i18n.t('label.related-metrics'),
+        fullyQualifiedName: DetailPageWidgetKeys.ML_MODEL_FEATURES,
+        name: i18n.t('label.feature-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

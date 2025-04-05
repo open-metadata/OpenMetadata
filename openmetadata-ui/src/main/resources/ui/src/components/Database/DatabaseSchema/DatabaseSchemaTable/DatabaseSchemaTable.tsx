@@ -287,6 +287,7 @@ export const DatabaseSchemaTable = ({
   useEffect(() => {
     if (isCustomizationPage) {
       setSchemas(DATABASE_SCHEMAS_DUMMY_DATA);
+      setIsLoading(false);
 
       return;
     }

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as AlignRightIcon } from '../../../assets/svg/ic-align-right.svg';
+import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 
@@ -116,9 +116,10 @@ export const AlignRightIconButton = ({
   return (
     <Tooltip title={title}>
       <Button
-        className={classNames('bordered', className)}
-        icon={<AlignRightIcon />}
+        className={classNames('border-none tab-expand-icon', className)}
+        icon={<ExpandIcon />}
         size={size}
+        type="text"
         {...props}
       />
     </Tooltip>

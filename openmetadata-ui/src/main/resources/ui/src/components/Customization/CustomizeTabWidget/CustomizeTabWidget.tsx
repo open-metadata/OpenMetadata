@@ -330,7 +330,6 @@ export const CustomizeTabWidget = () => {
           newWidgetData,
           placeholderWidgetKey,
           widgetSize,
-          TAB_GRID_MAX_COLUMNS,
           currentPageType as PageType
         )
       );
@@ -382,7 +381,7 @@ export const CustomizeTabWidget = () => {
           }
           title={t('label.customize-tab-plural')}>
           <DndProvider backend={HTML5Backend}>
-            <Space wrap size={16}>
+            <div className="d-flex flex-wrap gap-4">
               {items.map((item, index) => (
                 <TabItem
                   index={index}
@@ -419,7 +418,7 @@ export const CustomizeTabWidget = () => {
                   </Button>
                 </Dropdown>
               ))}
-            </Space>
+            </div>
           </DndProvider>
         </Card>
       </Col>

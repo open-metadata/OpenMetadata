@@ -108,7 +108,7 @@ class DomainClassBase {
 
     return [
       {
-        h: 4.3,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] + 0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

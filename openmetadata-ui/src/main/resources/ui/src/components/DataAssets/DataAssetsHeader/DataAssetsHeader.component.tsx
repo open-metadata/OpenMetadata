@@ -538,7 +538,11 @@ export const DataAssetsHeader = ({
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
-        <Col className="d-flex flex-col gap-3" span={24}>
+        <Col
+          className={classNames('d-flex flex-col gap-3 ', {
+            'p-l-xs': isCustomizedView,
+          })}
+          span={24}>
           <TitleBreadcrumb
             loading={isBreadcrumbLoading}
             titleLinks={breadcrumbs.map((link) =>

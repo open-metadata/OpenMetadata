@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Col, Space, Tooltip, Typography } from 'antd';
+import { Card, Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep } from 'lodash';
 import React, { useMemo, useState } from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import FormItemLabel from '../../common/Form/FormItemLabel';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
 
@@ -49,10 +48,7 @@ export const DomainTypeWidget = ({
   };
 
   const header = (
-    <div
-      className={classNames('d-flex items-center ', {
-        'm-b-xss': !newLook,
-      })}>
+    <div className={classNames('d-flex items-center gap-2')}>
       <Typography.Text
         className="right-panel-label"
         data-testid="domainType-heading-name">
@@ -66,19 +62,15 @@ export const DomainTypeWidget = ({
       </Typography.Text>
 
       {editAllPermission && domain.domainType && (
-        <Tooltip
+        <EditIconButton
+          data-testid="edit-domainType-button"
+          newLook={newLook}
+          size="small"
           title={t('label.edit-entity', {
             entity: t('label.domain-type'),
-          })}>
-          <Button
-            className="cursor-pointer flex-center m-l-xss"
-            data-testid="edit-domainType-button"
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
-            onClick={() => setEditDomainType(true)}
-          />
-        </Tooltip>
+          })}
+          onClick={() => setEditDomainType(true)}
+        />
       )}
     </div>
   );

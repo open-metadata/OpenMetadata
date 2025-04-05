@@ -280,6 +280,7 @@ const TagsContainerV2 = ({
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
                 <EditIconButton
                   data-testid="edit-button"
+                  newLook={newLook}
                   size="small"
                   title={t('label.edit-entity', {
                     entity:

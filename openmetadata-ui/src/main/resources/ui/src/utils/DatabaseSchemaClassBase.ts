@@ -62,7 +62,7 @@ class DatabaseSchemaClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.TABLES]: 8,
+      [DetailPageWidgetKeys.TABLES]: 8.5,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -98,7 +98,10 @@ class DatabaseSchemaClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.TABLES] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -162,7 +165,7 @@ class DatabaseSchemaClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        fullyQualifiedName: DetailPageWidgetKeys.TABLES,
         name: i18n.t('label.table-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
