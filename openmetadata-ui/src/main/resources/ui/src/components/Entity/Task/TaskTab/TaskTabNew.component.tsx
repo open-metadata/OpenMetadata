@@ -327,12 +327,12 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-sm entity-link header-link"
+              className="break-all text-sm entity-link header-link whitespace-normal"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss entity-type header-link">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
