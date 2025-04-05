@@ -16,7 +16,7 @@ import { Button, Dropdown } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right-full.svg';
+import { ReactComponent as ArrowRightOutlined } from '../../../assets/svg/arrow-right.svg';
 import { ReactComponent as DownOutlined } from '../../../assets/svg/ic-arrow-down.svg';
 import {
   ICON_DIMENSION,
@@ -99,7 +99,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
           <Icon
             className="rotate-inverse"
             component={ArrowRightOutlined}
-            style={ICON_DIMENSION}
+            style={{ fontSize: '12px', marginTop: '-3px' }}
           />
         }
         type="text"
@@ -119,7 +119,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         type="text"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
-        <Icon component={ArrowRightOutlined} style={ICON_DIMENSION} />
+        <Icon component={ArrowRightOutlined} style={{ fontSize: '12px' }} />
       </Button>
       {onShowSizeChange && (
         <Dropdown
