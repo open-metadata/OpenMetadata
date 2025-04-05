@@ -58,12 +58,12 @@
       {
         "name": "database.displayName",
         "type": "terms",
-        "field": "database.displayName.keyword"
+        "field": "database.displayName"
       },
       {
         "name": "databaseSchema.displayName",
         "type": "terms",
-        "field": "databaseSchema.displayName.keyword"
+        "field": "databaseSchema.displayName"
       }
     ],
     "highlightFields": [
