@@ -147,6 +147,7 @@ def _get_schema_column_info(
             all_columns[key].append(col)
     return dict(all_columns)
 
+
 def _handle_array_type(attype):
     return (
         # strip '[]' from integer[], etc.
