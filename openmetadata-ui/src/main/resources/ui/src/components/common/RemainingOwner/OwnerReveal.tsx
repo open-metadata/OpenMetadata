@@ -28,9 +28,13 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
   showAllOwners,
   setIsDropdownOpen,
   setShowAllOwners,
+  avatarSize = 32,
 }) => {
   const { t } = useTranslation();
   const remainingCountLabel = `+${remainingCount}`;
+
+  // Calculate font size based on avatar size
+  const fontSize = Math.max(8, Math.floor(avatarSize * 0.5)); // Reduced to 50% of avatar size
 
   const handleShowMoreToggle = () => {
     if (isCompactView) {
@@ -44,8 +48,13 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
         <Button
           className={`${
             !showAllOwners ? 'more-owners-button' : ''
-          } text-sm font-medium h-auto`}
+          } text-sm font-medium h-auto d-flex items-center flex-center`}
           size="small"
+          style={{
+            width: `${avatarSize}px`,
+            height: `${avatarSize}px`,
+            fontSize: `${fontSize}px`,
+          }}
           type="link"
           onClick={handleShowMoreToggle}>
           {showAllOwners ? t('label.less') : remainingCountLabel}
@@ -71,7 +80,7 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
                     key="profile-picture"
                     name={owner.name ?? ''}
                     type="circle"
-                    width="32"
+                    width={avatarSize.toString()}
                   />
 
                   <Typography.Text
@@ -89,9 +98,16 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
         onOpenChange={setIsDropdownOpen}>
         <Button
           className={`${
-            !showAllOwners ? 'more-owners-button' : ''
+            !showAllOwners
+              ? 'more-owners-button d-flex items-center flex-center d-flex items-center flex-center'
+              : ''
           } text-sm font-medium h-auto`}
           size="small"
+          style={{
+            width: `${avatarSize}px`,
+            height: `${avatarSize}px`,
+            fontSize: `${fontSize}px`,
+          }}
           type="link"
           onClick={handleShowMoreToggle}>
           {showAllOwners ? t('label.less') : remainingCountLabel}

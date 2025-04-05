@@ -27,7 +27,7 @@ import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
-import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -159,9 +159,11 @@ const TaskTabIncidentManagerHeaderNew = ({ thread }: { thread: Thread }) => {
               </Typography.Text>
             </div>
           ) : (
-            <UserAvatarGroup
-              className="p-t-05"
+            <OwnerLabel
+              avatarSize={24}
+              isCompactView={false}
               owners={thread?.task?.assignees}
+              showLabel={false}
             />
           )}
         </Col>

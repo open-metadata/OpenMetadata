@@ -27,6 +27,7 @@ interface OwnerItemProps {
   isCompactView: boolean;
   className?: string;
   ownerDisplayName?: ReactNode;
+  avatarSize?: number;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
@@ -35,6 +36,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   isCompactView,
   className,
   ownerDisplayName,
+  avatarSize = 32,
 }) => {
   const { t } = useTranslation();
   const displayName = getEntityName(owner);
@@ -62,6 +64,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             data-testid="owner-link"
             to={ownerPath}>
             <OwnerAvatar
+              avatarSize={avatarSize}
               inheritedIcon={inheritedIcon}
               isCompactView={isCompactView}
               owner={owner}
@@ -71,7 +74,11 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
       ) : (
         <>
           <div className="owner-avatar-icon d-flex">
-            <OwnerAvatar isCompactView={isCompactView} owner={owner} />
+            <OwnerAvatar
+              avatarSize={avatarSize}
+              isCompactView={isCompactView}
+              owner={owner}
+            />
           </div>
           <Link
             className={classNames(

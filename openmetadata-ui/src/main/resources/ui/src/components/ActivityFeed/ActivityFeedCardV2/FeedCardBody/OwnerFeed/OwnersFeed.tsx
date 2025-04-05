@@ -25,7 +25,7 @@ import {
 import { Owner } from '../../../../../generated/entity/feed/owner';
 import { Thread } from '../../../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { UserAvatarGroup } from '../../../../common/OwnerLabel/UserAvatarGroup.component';
+import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
@@ -88,9 +88,12 @@ function OwnersFeed({
                   ))}
                 </Row>
               ) : (
-                <UserAvatarGroup
+                <OwnerLabel
+                  avatarSize={24}
+                  isCompactView={false}
                   maxVisibleOwners={maxVisibleOwners}
                   owners={updatedOwner}
+                  showLabel={false}
                 />
               )}
             </Col>
@@ -130,9 +133,12 @@ function OwnersFeed({
                   ))}
                 </Row>
               ) : (
-                <UserAvatarGroup
+                <OwnerLabel
+                  avatarSize={24}
+                  isCompactView={false}
                   maxVisibleOwners={maxVisibleOwners}
                   owners={previousOwner}
+                  showLabel={false}
                 />
               )}
             </Col>
