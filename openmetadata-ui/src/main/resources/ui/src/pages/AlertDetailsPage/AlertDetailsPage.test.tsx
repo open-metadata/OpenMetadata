@@ -136,10 +136,8 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest
-    .fn()
-    .mockImplementation(({ firstPanel }) => <div>{firstPanel.children}</div>)
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
 jest.mock(

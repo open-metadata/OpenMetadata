@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -216,7 +217,7 @@ const CreateUserPage = () => {
     <PageLayoutV1
       center
       pageTitle={t('label.create-entity', { entity: t('label.user') })}>
-      <div className="service-form-container w-800">
+      <Card className="service-form-container w-800">
         <TitleBreadcrumb titleLinks={slashedBreadcrumbList} />
         <div className="m-t-md">
           <CreateUserComponent
@@ -227,7 +228,7 @@ const CreateUserPage = () => {
             onSave={handleAddUserSave}
           />
         </div>
-      </div>
+      </Card>
     </PageLayoutV1>
   );
 };
