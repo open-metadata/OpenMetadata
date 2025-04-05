@@ -308,7 +308,8 @@ public class CreateIngestionPipelineImpl {
     return new DatabaseServiceMetadataPipeline()
         .withDatabaseFilterPattern(defaultFilters.get(DATABASE_FILTER_PATTERN))
         .withSchemaFilterPattern(defaultFilters.get(SCHEMA_FILTER_PATTERN))
-        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN));
+        .withTableFilterPattern(defaultFilters.get(TABLE_FILTER_PATTERN))
+        .withIncludeDDL(true);
   }
 
   private static DatabaseServiceQueryUsagePipeline getDatabaseServiceQueryUsagePipeline(
