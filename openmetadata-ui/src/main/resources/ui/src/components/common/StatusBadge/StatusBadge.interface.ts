@@ -20,6 +20,7 @@ export enum StatusType {
   Stopped = 'stopped',
   Pending = 'pending',
   InReview = 'inReview',
+  Deprecated = 'deprecated',
 }
 
 export interface StatusBadgeProps {

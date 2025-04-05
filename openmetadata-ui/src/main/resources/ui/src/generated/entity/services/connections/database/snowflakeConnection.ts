@@ -49,10 +49,6 @@ export interface SnowflakeConnection {
      */
     includeStreams?: boolean;
     /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
-     */
-    includeStreams?: boolean;
-    /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
      */
