@@ -18,6 +18,8 @@ Configure and schedule DynamoDB metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/database/dynamodb/troubleshooting)
+
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/dynamodb/yaml"} /%}
 
@@ -138,7 +140,5 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

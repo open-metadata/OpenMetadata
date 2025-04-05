@@ -19,6 +19,7 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/domo-database/troubleshoot)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/domo-database/yaml"} /%}
 
@@ -59,7 +60,5 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}
