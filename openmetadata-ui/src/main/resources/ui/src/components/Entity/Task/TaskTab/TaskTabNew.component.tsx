@@ -55,10 +55,7 @@ import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-t
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -980,7 +977,7 @@ export const TaskTabNew = ({
                   <Button
                     className="flex-center p-0 h-auto"
                     data-testid="edit-assignees"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    icon={<EditIcon width="14px" />}
                     size="small"
                     type="text"
                     onClick={() => setIsEditAssignee(true)}

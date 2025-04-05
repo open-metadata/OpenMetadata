@@ -186,7 +186,7 @@ export const getDeleteIcon = (arg: {
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={16} />;
+  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
 };
 
 export const getUsageCountLink = (tagFQN: string) => {

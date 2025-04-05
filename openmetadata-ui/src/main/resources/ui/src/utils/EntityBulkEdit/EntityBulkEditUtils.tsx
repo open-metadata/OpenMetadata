@@ -53,7 +53,7 @@ export const getBulkEditButton = (
 ) => {
   return hasPermission ? (
     <Button
-      className="text-primary p-0"
+      className="text-primary p-0 remove-button-background-hover"
       data-testid="bulk-edit-table"
       icon={<Icon component={IconEdit} />}
       type="text"
