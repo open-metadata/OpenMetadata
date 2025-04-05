@@ -9,13 +9,17 @@
     "databricksType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Databricks"],
+      "enum": [
+        "Databricks"
+      ],
       "default": "Databricks"
     },
     "databricksScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["databricks+connector"],
+      "enum": [
+        "databricks+connector"
+      ],
       "default": "databricks+connector"
     }
   },
@@ -84,7 +88,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^information_schema$"]
+        "excludes": [
+          "^information_schema$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -98,7 +104,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^system$"]
+        "excludes": [
+          "^system$"
+        ]
       }
     },
     "supportsUsageExtraction": {
@@ -132,5 +140,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "token"]
+  "required": [
+    "hostPort",
+    "token",
+    "httpPath"
+  ]
 }

@@ -48,6 +48,7 @@ mock_databricks_config = {
                 "databaseSchema": "default",
                 "token": "123sawdtesttoken",
                 "hostPort": "localhost:443",
+                "httpPath": "/sql/1.0/warehouses/abcdedfg",
                 "connectionArguments": {"http_path": "/sql/1.0/warehouses/abcdedfg"},
             }
         },

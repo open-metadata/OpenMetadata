@@ -237,6 +237,7 @@ def test_databricks():
             "config": {
                 "token": "<databricks token>",
                 "hostPort": "localhost:443",
+                "httpPath": "<http path of databricks cluster>",
                 "connectionArguments": {
                     "http_path": "<http path of databricks cluster>"
                 },
