@@ -27,6 +27,13 @@ export interface TeamHierarchyProps {
   ) => void;
   isFetchingAllTeamAdvancedDetails: boolean;
   searchTerm?: string;
+  showDeletedTeam: boolean;
+  onShowDeletedTeamChange: () => void;
+  handleAddTeamButtonClick: () => void;
+  createTeamPermission: boolean;
+  addTeam: string;
+  isTeamDeleted: boolean;
+  handleTeamSearch: (text: string) => void;
 }
 
 export interface MovedTeamProps {

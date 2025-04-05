@@ -14,8 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Pagination, PaginationProps } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right-full.svg';
-import { ICON_DIMENSION } from '../../constants/constants';
+import { ReactComponent as ArrowRightOutlined } from '../../assets/svg/arrow-right.svg';
 
 const PaginationComponent = (props: PaginationProps) => {
   const { t } = useTranslation();
@@ -33,7 +32,7 @@ const PaginationComponent = (props: PaginationProps) => {
             <Icon
               className="rotate-inverse"
               component={ArrowRightOutlined}
-              style={ICON_DIMENSION}
+              style={{ fontSize: '12px' }}
             />
           }
           type="text">
@@ -48,7 +47,7 @@ const PaginationComponent = (props: PaginationProps) => {
           data-testid="next"
           type="text">
           <span> {t('label.next')}</span>
-          <Icon component={ArrowRightOutlined} style={ICON_DIMENSION} />
+          <Icon component={ArrowRightOutlined} style={{ fontSize: '12px' }} />
         </Button>
       );
     }
