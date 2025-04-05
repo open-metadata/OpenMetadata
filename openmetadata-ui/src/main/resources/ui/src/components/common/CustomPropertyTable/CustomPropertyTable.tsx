@@ -211,7 +211,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Skeleton active />;
+    return (
+      <div className="p-lg border-default border-radius-sm">
+        <Skeleton active />
+      </div>
+    );
   }
 
   if (!hasPermission) {
@@ -229,7 +233,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="flex-center tab-content-height border-default border-radius-sm">
+      <div className="flex-center tab-content-height">
         <ErrorPlaceHolder
           className={className}
           placeholderText={

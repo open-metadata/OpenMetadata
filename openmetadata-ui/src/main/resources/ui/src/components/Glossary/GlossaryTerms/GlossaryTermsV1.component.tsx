@@ -222,25 +222,23 @@ const GlossaryTermsV1 = ({
               label: (
                 <div data-testid="assets">
                   {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
-                  <span className="p-l-xs ">
+                  <span className="p-l-xs">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>
               ),
               key: EntityTabs.ASSETS,
               children: (
-                <div className="p-md">
-                  <AssetsTabs
-                    assetCount={assetCount}
-                    entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                    isSummaryPanelOpen={isSummaryPanelOpen}
-                    permissions={assetPermissions}
-                    ref={assetTabRef}
-                    onAddAsset={() => setAssetModalVisible(true)}
-                    onAssetClick={onAssetClick}
-                    onRemoveAsset={handleAssetSave}
-                  />
-                </div>
+                <AssetsTabs
+                  assetCount={assetCount}
+                  entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  isSummaryPanelOpen={isSummaryPanelOpen}
+                  permissions={assetPermissions}
+                  ref={assetTabRef}
+                  onAddAsset={() => setAssetModalVisible(true)}
+                  onAssetClick={onAssetClick}
+                  onRemoveAsset={handleAssetSave}
+                />
               ),
             },
             {
