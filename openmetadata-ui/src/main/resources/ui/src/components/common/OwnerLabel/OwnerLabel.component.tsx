@@ -115,6 +115,7 @@ export const OwnerLabel = ({
       <div
         className={classNames({
           'owner-label-container': !isCompactView,
+          'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
         data-testid="owner-label">
         {/* Owner avatars list */}

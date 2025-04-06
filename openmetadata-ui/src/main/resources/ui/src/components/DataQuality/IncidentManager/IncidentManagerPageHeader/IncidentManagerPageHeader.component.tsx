@@ -265,6 +265,7 @@ const IncidentManagerPageHeader = ({
           )}: `}</span>
 
           <TestCaseIncidentManagerStatus
+            newLook
             data={testCaseStatusData}
             hasPermission={hasEditStatusPermission}
             onSubmit={onIncidentStatusUpdate}
@@ -297,6 +298,7 @@ const IncidentManagerPageHeader = ({
           <span className="text-grey-muted">{`${t('label.severity')}: `}</span>
 
           <Severity
+            newLook
             hasPermission={hasEditStatusPermission}
             severity={testCaseStatusData.severity}
             onSubmit={handleSeverityUpdate}
