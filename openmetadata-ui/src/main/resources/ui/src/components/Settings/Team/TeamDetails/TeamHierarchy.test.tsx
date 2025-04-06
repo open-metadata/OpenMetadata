@@ -77,6 +77,10 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast),
 }));
 
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () =>
+  jest.fn().mockImplementation(() => <div>SearchBar</div>)
+);
+
 describe('Team Hierarchy page', () => {
   it('Initially, Table should load', async () => {
     await act(async () => {

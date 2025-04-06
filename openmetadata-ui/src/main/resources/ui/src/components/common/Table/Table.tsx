@@ -251,7 +251,7 @@ const Table = <T extends Record<string, unknown>>(
                 <AppBadge
                   className="total-count-badge"
                   label={(
-                    customPaginationProps?.paging.total ??
+                    customPaginationProps?.paging?.total ??
                     (rest.dataSource ?? []).length
                   ).toString()}
                 />
