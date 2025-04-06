@@ -18,6 +18,7 @@ Configure and schedule Elasticsearch metadata workflow from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/search/elasticsearch/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/search/elasticsearch/yaml"} /%}
 
@@ -92,5 +93,3 @@ We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/gu
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

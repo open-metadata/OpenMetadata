@@ -47,7 +47,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
@@ -55,7 +55,7 @@ import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-t
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -114,10 +114,18 @@ import ActivityFeedEditorNew from '../../../ActivityFeed/ActivityFeedEditor/Acti
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
+import { EntityType } from '../../../../enums/entity.enum';
+import { EntityReference } from '../../../../generated/tests/testCase';
+import { getUsers } from '../../../../rest/userAPI';
+import {
+  getEntityName,
+  getEntityReferenceListFromEntities,
+} from '../../../../utils/EntityUtils';
+import { getUserPath } from '../../../../utils/RouterUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import ProfilePictureNew from '../../../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import TaskTabIncidentManagerHeaderNew from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNew';
 import './task-tab-new.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -156,7 +164,6 @@ export const TaskTabNew = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
-    initialAssignees: usersList,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -234,6 +241,7 @@ export const TaskTabNew = ({
     noSuggestionTaskMenuOptions,
   ]);
 
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -316,12 +324,12 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-sm entity-link header-link"
+              className="break-all text-sm entity-link header-link whitespace-normal"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss entity-type header-link">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -817,6 +825,30 @@ export const TaskTabNew = ({
     }
   };
 
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users only when the task is a test case result and the assignees are getting edited
+    if (isTaskTestCaseResult && isEmpty(usersList) && isEditAssignee) {
+      fetchInitialAssign();
+    }
+  }, [isTaskTestCaseResult, usersList, isEditAssignee]);
+
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
     setOptions(assigneeOptions);
@@ -841,13 +873,21 @@ export const TaskTabNew = ({
               {t('label.created-by')}
             </Typography.Text>
           </Col>
-          <Col className="flex items-center gap-2" span={16}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              name={taskThread.createdBy ?? ''}
-              width="24"
-            />
-            <Typography.Text>{taskThread.createdBy}</Typography.Text>
+          <Col span={16}>
+            <Link
+              className="no-underline flex items-center gap-2"
+              to={getUserPath(taskThread.createdBy ?? '')}>
+              <UserPopOverCard userName={taskThread.createdBy ?? ''}>
+                <div className="d-flex items-center">
+                  <ProfilePicture
+                    name={taskThread.createdBy ?? ''}
+                    width="24"
+                  />
+                </div>
+              </UserPopOverCard>
+
+              <Typography.Text>{taskThread.createdBy}</Typography.Text>
+            </Link>
           </Col>
 
           {isEditAssignee ? (
@@ -906,20 +946,29 @@ export const TaskTabNew = ({
               <Col className="flex items-center gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      name={taskThread?.task?.assignees[0].displayName ?? ''}
-                      width="24"
-                    />
+                    <UserPopOverCard
+                      userName={
+                        taskThread?.task?.assignees[0].displayName ?? ''
+                      }>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          name={
+                            taskThread?.task?.assignees[0].displayName ?? ''
+                          }
+                          width="24"
+                        />
+                      </div>
+                    </UserPopOverCard>
                     <Typography.Text className="text-grey-body">
                       {taskThread?.task?.assignees[0].displayName}
                     </Typography.Text>
                   </div>
                 ) : (
-                  <UserAvatarGroup
+                  <OwnerLabel
                     avatarSize={24}
-                    className="p-t-05"
+                    isCompactView={false}
                     owners={taskThread?.task?.assignees}
+                    showLabel={false}
                   />
                 )}
                 {(isCreator || hasEditAccess) &&
@@ -928,7 +977,7 @@ export const TaskTabNew = ({
                   <Button
                     className="flex-center p-0 h-auto"
                     data-testid="edit-assignees"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    icon={<EditIcon width="14px" />}
                     size="small"
                     type="text"
                     onClick={() => setIsEditAssignee(true)}
@@ -1081,12 +1130,15 @@ export const TaskTabNew = ({
               taskThread?.task?.status === ThreadTaskStatus.Open && (
                 <div className="d-flex gap-2">
                   <div className="profile-picture">
-                    <ProfilePictureNew
-                      avatarType="outlined"
-                      key={taskThread.id}
-                      name={getEntityName(currentUser)}
-                      size={32}
-                    />
+                    <UserPopOverCard userName={getEntityName(currentUser)}>
+                      <div className="d-flex items-center">
+                        <ProfilePicture
+                          key={taskThread.id}
+                          name={getEntityName(currentUser)}
+                          width="32"
+                        />
+                      </div>
+                    </UserPopOverCard>
                   </div>
 
                   <Input

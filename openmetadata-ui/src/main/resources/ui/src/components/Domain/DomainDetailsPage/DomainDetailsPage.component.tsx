@@ -78,6 +78,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -102,6 +103,7 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
@@ -125,7 +127,7 @@ const DomainDetailsPage = ({
   const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { tab: activeTab, version } =
-    useParams<{ tab: string; version: string }>();
+    useParams<{ tab: EntityTabs; version: string }>();
   const { fqn: domainFqn } = useFqn();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
@@ -150,7 +152,7 @@ const DomainDetailsPage = ({
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
-
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
   const breadcrumbs = useMemo(() => {
@@ -520,7 +522,7 @@ const DomainDetailsPage = ({
       subDomains,
       dataProductsCount,
       assetCount,
-      activeTab: activeTab as EntityTabs,
+      activeTab,
       onAddDataProduct,
       isSubDomainsLoading,
       queryFilter,
@@ -602,6 +604,14 @@ const DomainDetailsPage = ({
     );
   }, [domain, isSubDomain]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Domain),
+    [tabs[0], activeTab]
+  );
   if (isLoading) {
     return <Loader />;
   }
@@ -703,7 +713,9 @@ const DomainDetailsPage = ({
         </Col>
 
         <GenericProvider<Domain>
+          customizedPage={customizedPage}
           data={domain}
+          isTabExpanded={isTabExpanded}
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
@@ -714,6 +726,17 @@ const DomainDetailsPage = ({
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

@@ -1,10 +1,12 @@
 ---
 title: Reverse Metadata Ingestion Collate | Feature & Configuration
 slug: /connectors/ingestion/workflows/reverse-metadata
-collate: true
 ---
 
 # Reverse Metadata Ingestion
+{% note %}
+This feature is specific to Collate and requires the Collate Enterprise License.
+{% /note %}
 
 Reverse metadata ingestion is an advanced feature in OpenMetadata that facilitates bi-directional synchronization between OpenMetadata and the source database systems. While standard ingestion pulls metadata into OpenMetadata, reverse ingestion enables pushing metadata changes made within OpenMetadata back to the source systems. This ensures consistency and alignment across the entire data infrastructure.
 

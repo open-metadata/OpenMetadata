@@ -44,6 +44,8 @@ site_menu:
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Run Externally
     url: /connectors/database/athena/yaml
+  - category: Connectors / Database / Athena / Troubleshooting
+    url: /connectors/database/athena/troubleshooting
   - category: Connectors / Database / AzureSQL
     url: /connectors/database/azuresql
   - category: Connectors / Database / AzureSQL / Run Externally
@@ -54,30 +56,42 @@ site_menu:
     url: /connectors/database/bigquery
   - category: Connectors / Database / BigQuery / Run Externally
     url: /connectors/database/bigquery/yaml
+  - category: Connectors / Database / BigQuery / Troubleshooting
+    url: /connectors/database/bigquery/troubleshooting
   - category: Connectors / Database / BigQuery / Create Credentials
     url: /connectors/database/bigquery/create-credentials
   - category: Connectors / Database / BigTable
     url: /connectors/database/bigtable
   - category: Connectors / Database / BigTable / Run Externally
     url: /connectors/database/bigtable/yaml
+  - category: Connectors / Database / BigTable / Troubleshooting
+    url: /connectors/database/bigtable/troubleshooting
   - category: Connectors / Database / BigTable / Roles
     url: /connectors/database/bigtable/roles
   - category: Connectors / Database / Cassandra
     url: /connectors/database/cassandra
   - category: Connectors / Database / Cassandra / Run Externally
     url: /connectors/database/cassandra/yaml
+  - category: Connectors / Database / Cassandra / Troubleshooting
+    url: /connectors/database/cassandra/troubleshooting
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Clickhouse / Troubleshooting
+    url: /connectors/database/clickhouse/troubleshooting
   - category: Connectors / Database / Cockroach
     url: /connectors/database/cockroach
   - category: Connectors / Database / Cockroach / Run Externally
     url: /connectors/database/cockroach/yaml
+  - category: Connectors / Database / Cockroach / Troubleshooting
+    url: /connectors/database/cockroach/troubleshooting
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
     url: /connectors/database/couchbase/yaml
+  - category: Connectors / Database / Couchbase / Troubleshooting
+    url: /connectors/database/couchbase/troubleshooting
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Run Externally
@@ -305,6 +319,8 @@ site_menu:
     url: /connectors/dashboard/qliksense/yaml
   - category: Connectors / Dashboard / Qlik Sense / Export Certificates
     url: /connectors/dashboard/qliksense/certificates
+  - category: Connectors / Dashboard / Qlik Sense / Troubleshooting
+    url: /connectors/dashboard/qliksense/troubleshooting
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
@@ -317,20 +333,28 @@ site_menu:
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
     url: /connectors/dashboard/quicksight/yaml
+  - category: Connectors / Dashboard / QuickSight / Troubleshooting
+    url: /connectors/dashboard/quicksight/troubleshooting
   - category: Connectors / Dashboard / Redash
     url: /connectors/dashboard/redash
   - category: Connectors / Dashboard / Redash / Run Externally
     url: /connectors/dashboard/redash/yaml
+  - category: Connectors / Dashboard / Redash / Troubleshooting
+    url: /connectors/dashboard/redash/troubleshooting
   - category: Connectors / Dashboard / Superset
     url: /connectors/dashboard/superset
   - category: Connectors / Dashboard / Superset / Run Externally
     url: /connectors/dashboard/superset/yaml
   - category: Connectors / Dashboard / Superset / SSO
     url: /connectors/dashboard/superset/sso
+  - category: Connectors / Dashboard / Superset / Troubleshooting
+    url: /connectors/dashboard/superset/troubleshooting
   - category: Connectors / Dashboard / Tableau
     url: /connectors/dashboard/tableau
   - category: Connectors / Dashboard / Tableau / Run Externally
     url: /connectors/dashboard/tableau/yaml
+  - category: Connectors / Dashboard / Tableau / Troubleshooting
+    url: /connectors/dashboard/tableau/troubleshooting
 
   - category: Connectors / Messaging
     url: /connectors/messaging
@@ -344,10 +368,14 @@ site_menu:
     url: /connectors/messaging/kinesis
   - category: Connectors / Messaging / Kinesis / Run Externally
     url: /connectors/messaging/kinesis/yaml
+  - category: Connectors / Messaging / Kinesis / Troubleshooting
+    url: /connectors/messaging/kinesis/troubleshooting
   - category: Connectors / Messaging / Redpanda
     url: /connectors/messaging/redpanda
   - category: Connectors / Messaging / Redpanda / Run Externally
     url: /connectors/messaging/redpanda/yaml
+  - category: Connectors / Messaging / Redpanda / Troubleshooting
+    url: /connectors/messaging/redpanda/troubleshooting
 
   - category: Connectors / Pipeline
     url: /connectors/pipeline
@@ -355,10 +383,14 @@ site_menu:
     url: /connectors/pipeline/airbyte
   - category: Connectors / Pipeline / Airbyte / Run Externally
     url: /connectors/pipeline/airbyte/yaml
+  - category: Connectors / Pipeline / Airbyte / Troubleshooting
+    url: /connectors/pipeline/airbyte/troubleshooting
   - category: Connectors / Pipeline / Airflow
     url: /connectors/pipeline/airflow
   - category: Connectors / Pipeline / Airflow / Run Externally
     url: /connectors/pipeline/airflow/yaml
+  - category: Connectors / Pipeline / Airflow / Troubleshooting
+    url: /connectors/search/airflow/troubleshooting
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -369,47 +401,73 @@ site_menu:
     url: /connectors/pipeline/airflow/mwaa
   - category: Connectors / Pipeline / Airflow / GCS Composer
     url: /connectors/pipeline/airflow/gcs-composer
+  - category: Connectors / Pipeline / Wherescape
+    url: /connectors/pipeline/wherescape
+  - category: Connectors / Pipeline / Wherescape / Run Externally
+    url: /connectors/pipeline/wherescape/yaml
+  - category: Connectors / Pipeline / Wherescape / Troubleshooting
+    url: /connectors/pipeline/wherescape/troubleshooting
   - category: Connectors / Pipeline / Dagster
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / Dagster / Troubleshooting
+    url: /connectors/pipeline/dagster/troubleshooting
   - category: Connectors / Pipeline / dbt Cloud
     url: /connectors/pipeline/dbtcloud
   - category: Connectors / Pipeline / dbt Cloud / Run Externally
     url: /connectors/pipeline/dbtcloud/yaml
+  - category: Connectors / Pipeline / dbt Cloud / Troubleshooting
+    url: /connectors/pipeline/dbtcloud/troubleshooting
   - category: Connectors / Pipeline / KafkaConnect
     url: /connectors/pipeline/kafkaconnect
   - category: Connectors / Pipeline / KafkaConnect / Run Externally
     url: /connectors/pipeline/kafkaconnect/yaml
+  - category: Connectors / Pipeline / KafkaConnect / Troubleshooting
+    url: /connectors/pipeline/kafkaconnect/troubleshooting
   - category: Connectors / Pipeline / Matillion
     url: /connectors/pipeline/matillion
 
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
+  - category: Connectors / Pipeline / Troubleshooting
+    url: /connectors/pipeline/matillion/troubleshooting
   - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
   - category: Connectors / Pipeline / Azure Data Factory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
+  - category: Connectors / Pipeline / Azure Data Factory / Troubleshooting
+    url: /connectors/pipeline/datafactory/troubleshooting
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
   - category: Connectors / Pipeline / Stitch / Run Externally
     url: /connectors/pipeline/stitch/yaml
+  - category: Connectors / Pipeline / Stitch / Troubleshooting
+    url: /connectors/pipeline/stitch/troubleshooting
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
     url: /connectors/pipeline/databricks-pipeline/yaml
+  - category: Connectors / Pipeline / Databricks Pipeline / Troubleshooting
+    url: /connectors/pipeline/databricks-pipeline/troubleshooting
   - category: Connectors / Pipeline / Domo Pipeline
     url: /connectors/pipeline/domo-pipeline
   - category: Connectors / Pipeline / Domo Pipeline / Run Externally
     url: /connectors/pipeline/domo-pipeline/yaml
+  - category: Connectors / Pipeline / Domo Pipeline / Troubleshooting
+    url: /connectors/pipeline/domo-pipeline/troubleshooting
   - category: Connectors / Pipeline / Fivetran
     url: /connectors/pipeline/fivetran
   - category: Connectors / Pipeline / Fivetran / Run Externally
     url: /connectors/pipeline/fivetran/yaml
+  - category: Connectors / Pipeline / Fivetran / Troubleshooting
+    url: /connectors/pipeline/fivetran/troubleshooting
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Run Externally
     url: /connectors/pipeline/glue-pipeline/yaml
+  - category: Connectors / Pipeline / Glue Pipeline / Troubleshooting
+    url: /connectors/pipeline/glue-pipeline/troubleshooting
   - category: Connectors / Pipeline / Nifi
     url: /connectors/pipeline/nifi
   - category: Connectors / Pipeline / Nifi / Run Externally
@@ -418,14 +476,20 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
+  - category: Connectors / Pipeline / Troubleshooting
+    url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
+  - category: Connectors / Pipeline / Spline / troubleshooting
+    url: /connectors/pipeline/spline/troubleshooting
   - category: Connectors / Pipeline / Flink
     url: /connectors/pipeline/flink
   - category: Connectors / Pipeline / Flink / Run Externally
     url: /connectors/pipeline/flink/yaml
+  - category: Connectors / Pipeline / Flink / Troubleshooting
+    url: /connectors/pipeline/flink/troubleshooting
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
@@ -433,14 +497,20 @@ site_menu:
     url: /connectors/ml-model/mlflow
   - category: Connectors / ML Model / MLflow / Run Externally
     url: /connectors/ml-model/mlflow/yaml
+  - category: Connectors / ML Model / MLflow / Troubleshooting
+    url: /connectors/ml-model/mlflow/troubleshooting
   - category: Connectors / ML Model / Sagemaker
     url: /connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Run Externally
     url: /connectors/ml-model/sagemaker/yaml
+  - category: Connectors / ML Model / Sagemaker / Troubleshooting
+    url: /connectors/ml-model/sagemaker/troubleshooting
   - category: Connectors / ML Model / VertexAI
     url: /connectors/ml-model/vertexai
   - category: Connectors / ML Model / VertexAI / Run Externally
     url: /connectors/ml-model/vertexai/yaml
+  - category: Connectors / ML Model / VertexAI / Troubleshooting
+    url: /connectors/ml-model/vertexai/troubleshooting
 
   - category: Connectors / Storage
     url: /connectors/storage
@@ -448,14 +518,20 @@ site_menu:
     url: /connectors/storage/s3
   - category: Connectors / Storage / S3 Storage / Run Externally
     url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / S3 Storage / Troubleshooting
+    url: /connectors/storage/s3/troubleshooting
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
+  - category: Connectors / Storage / GCS / Troubleshooting
+    url: /connectors/storage/gcs/troubleshooting
   - category: Connectors / Storage / ADLS
     url: /connectors/storage/adls
   - category: Connectors / Storage / ADLS / Run Externally
     url: /connectors/storage/adls/yaml
+  - category: Connectors / Storage / ADLS / Troubleshooting
+    url: /connectors/storage/adls/troubleshooting
 
   - category: Connectors / Search
     url: /connectors/search
@@ -463,10 +539,14 @@ site_menu:
     url: /connectors/search/elasticsearch
   - category: Connectors / Search / Elasticsearch / Run Externally
     url: /connectors/search/elasticsearch/yaml
+  - category: Connectors / Search / Elasticsearch / Troubleshooting
+    url: /connectors/search/elasticsearch/troubleshooting
   - category: Connectors / Search / OpenSearch
     url: /connectors/search/opensearch
   - category: Connectors / Search / OpenSearch / Run Externally
     url: /connectors/search/opensearch/yaml
+  - category: Connectors / Search / OpenSearch / Troubleshooting
+    url: /connectors/search/opensearch/troubleshooting
 
   - category: Connectors / Metadata
     url: /connectors/metadata
@@ -474,18 +554,26 @@ site_menu:
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Amundsen / Run Externally
     url: /connectors/metadata/amundsen/yaml
+  - category: Connectors / Metadata / Amundsen / Troubleshooting
+    url: /connectors/metadata/amundsen/troubleshooting
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
+  - category: Connectors / Metadata / Atlas / Troubleshooting
+    url: /connectors/metadata/atlas/troubleshooting
   - category: Connectors / Metadata / Alation
     url: /connectors/metadata/alation
   - category: Connectors / Metadata / Alation / Run Externally
     url: /connectors/metadata/alation/yaml
+  - category: Connectors / Metadata / Alation / Troubleshooting
+    url: /connectors/metadata/alation/troubleshooting
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
     url: /connectors/metadata/alationsink/yaml
+  - category: Connectors / Metadata / Alation Sink / Troubleshooting
+    url: /connectors/metadata/alationsink/troubleshooting
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
@@ -548,8 +636,6 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects
   - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
     url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
-  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
-    url: /connectors/ingestion/workflows/reverse-metadata
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually

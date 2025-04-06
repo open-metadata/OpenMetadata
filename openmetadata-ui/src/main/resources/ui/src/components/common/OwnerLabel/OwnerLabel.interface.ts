@@ -28,4 +28,5 @@ export interface OwnerLabelProps {
   };
   tooltipText?: string;
   isCompactView?: boolean;
+  avatarSize?: number;
 }
