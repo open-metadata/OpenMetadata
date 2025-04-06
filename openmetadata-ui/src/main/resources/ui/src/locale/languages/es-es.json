@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "Excluya o incluya explícitamente {{filterPattern}} mediante la adición de una lista de expresiones regulares separadas por comas.",
     "filter-pattern-info": "Elija incluir o excluir {{filterPattern}} como parte de la ingestión de metadatos.",
     "filter-pattern-placeholder": "Para agregar un patrón de filtro, simplemente escríbalo y presione Enter",
+    "filter-task-name-description": "Filtrar por nombre de tarea",
     "find-apps-to-improve-data": "Encuentra aplicaciones para mejorar tus datos",
     "find-in-table": "Buscar en la tabla",
     "fosters-collaboration-among-producers-and-consumers": "Fomenta la colaboración entre los productores y consumidores de datos.",

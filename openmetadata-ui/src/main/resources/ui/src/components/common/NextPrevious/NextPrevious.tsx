@@ -97,9 +97,8 @@ const NextPrevious: FC<NextPreviousProps> = ({
         disabled={computePrevDisableState() || isLoading}
         icon={
           <Icon
-            className="rotate-inverse"
+            className="pagination-prev-icon"
             component={ArrowRightOutlined}
-            style={{ fontSize: '12px', marginTop: '-3px' }}
           />
         }
         type="text"
@@ -119,7 +118,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         type="text"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
-        <Icon component={ArrowRightOutlined} style={{ fontSize: '12px' }} />
+        <Icon className="pagination-next-icon" component={ArrowRightOutlined} />
       </Button>
       {onShowSizeChange && (
         <Dropdown

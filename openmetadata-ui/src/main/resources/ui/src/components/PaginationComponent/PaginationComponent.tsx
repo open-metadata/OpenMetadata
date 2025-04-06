@@ -30,9 +30,8 @@ const PaginationComponent = (props: PaginationProps) => {
           data-testid="previous"
           icon={
             <Icon
-              className="rotate-inverse"
+              className="pagination-prev-icon"
               component={ArrowRightOutlined}
-              style={{ fontSize: '12px' }}
             />
           }
           type="text">
@@ -47,7 +46,10 @@ const PaginationComponent = (props: PaginationProps) => {
           data-testid="next"
           type="text">
           <span> {t('label.next')}</span>
-          <Icon component={ArrowRightOutlined} style={{ fontSize: '12px' }} />
+          <Icon
+            className="pagination-next-icon"
+            component={ArrowRightOutlined}
+          />
         </Button>
       );
     }

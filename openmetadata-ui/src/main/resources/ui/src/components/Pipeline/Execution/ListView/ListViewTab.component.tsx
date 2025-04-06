@@ -49,7 +49,7 @@ const ListView = ({
   const searchProps = useMemo(
     () => ({
       removeMargin: true,
-      placeholder: 'Filter by task name',
+      placeholder: t('message.filter-task-name-description'),
       searchValue: searchString,
       typingInterval: 500,
       onSearch: handleSearch,
