@@ -304,4 +304,6 @@ class StoredProcedureLineageMixin(ABC):
         logger.info("Processing Lineage for Stored Procedures")
         producer_fn = self.procedure_lineage_generator
         processor_fn = self.procedure_lineage_processor
-        yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
+        yield from self.generate_lineage_in_thread(
+            producer_fn, processor_fn, max_threads=self.source_config.threads
+        )
