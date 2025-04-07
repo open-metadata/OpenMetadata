@@ -36,7 +36,6 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
-import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
@@ -67,7 +66,6 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
-  const { t } = useTranslation();
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
