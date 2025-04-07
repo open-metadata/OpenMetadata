@@ -12,6 +12,7 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { capitalize, get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
@@ -771,6 +772,10 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getInsightsManageExtraOptions(): ItemType[] {
+    return [];
   }
 
   public getExtraInfo(): Promise<void> {
