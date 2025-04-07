@@ -252,6 +252,8 @@ class NoSQLProfiler(TestCase):
         auto_workflow_config["source"]["sourceConfig"]["config"].update(
             {
                 "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
             }
         )
         auto_workflow_config["processor"] = {
@@ -345,6 +347,8 @@ class NoSQLProfiler(TestCase):
         auto_workflow_config["source"]["sourceConfig"]["config"].update(
             {
                 "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
             }
         )
         auto_workflow_config["processor"] = {
