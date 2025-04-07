@@ -1717,10 +1717,11 @@ export const getViewportForBoundsReactFlow = (
   return { x: translateX, y: translateY, zoom: scale };
 };
 
-export const getViewportForLineageExport = (nodes: Node[]): ExportViewport => {
-  const exportElement = document.querySelector(
-    '.react-flow__viewport'
-  ) as HTMLElement;
+export const getViewportForLineageExport = (
+  nodes: Node[],
+  documentSelector: string
+): ExportViewport => {
+  const exportElement = document.querySelector(documentSelector) as HTMLElement;
 
   const imageWidth = exportElement.scrollWidth;
   const imageHeight = exportElement.scrollHeight;
