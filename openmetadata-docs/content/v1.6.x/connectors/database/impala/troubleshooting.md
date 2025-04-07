@@ -3,7 +3,7 @@ title: Impala Connector Troubleshooting
 slug: /connectors/database/impala/troubleshooting
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the Impala connector.
 
