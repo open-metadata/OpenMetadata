@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "הגדר {{activity}} באופן מפורש {{filterPattern}} על ידי הוספת רשימה של רגקס מופרדות בפסיקים.",
     "filter-pattern-info": "בחר לכלול או לא לכלול {{filterPattern}} כחלק מתהליך הקליטה של המטא-דאטה.",
     "filter-pattern-placeholder": "כדי להוסיף דפוס מסנן, פשוט הקלד אותו ולחץ על Enter",
+    "filter-task-name-description": "סנן לפי שם משימה",
     "find-apps-to-improve-data": "מצא אפליקציות לשיפור הנתונים שלך",
     "find-in-table": "מצא בטבלה",
     "fosters-collaboration-among-producers-and-consumers": "קבע מטרות וקודקודים מפתיעים לקידום תרבות הנתונים של החברה שלך. קידום תרבות של שיפור רגעי עם דוחות זמינים לצפייה כדי למזער בריאות הנתונים.",

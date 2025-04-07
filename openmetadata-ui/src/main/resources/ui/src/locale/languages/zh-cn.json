@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "通过添加逗号分隔的正则表达式列表明确{{activity}} {{filterPattern}}",
     "filter-pattern-info": "选择包含或排除{{filterPattern}}作为元数据提取的一部分",
     "filter-pattern-placeholder": "输入并按回车键, 即可新建一个过滤器",
+    "filter-task-name-description": "按任务名称过滤",
     "find-apps-to-improve-data": "查找应用以改进您的数据",
     "find-in-table": "在数据表中查找",
     "fosters-collaboration-among-producers-and-consumers": "促进数据生产者和使用者之间的合作",

@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "Expliciet {{activity}} {{filterPattern}} door een lijst met door komma's gescheiden regex toe te voegen.",
     "filter-pattern-info": "Kies ervoor om {{filterPattern}} wel of niet op te nemen als onderdeel van de metadataingestie.",
     "filter-pattern-placeholder": "Voeg een filterpatroon toe door het eenvoudig in te typen en op Enter te drukken",
+    "filter-task-name-description": "Filter op taaknaam",
     "find-apps-to-improve-data": "Zoek naar applicaties om je data te verbeteren",
     "find-in-table": "Zoeken in tabel",
     "fosters-collaboration-among-producers-and-consumers": "Stel organisatiedoelen en KPI's om proactief de datacultuur van je bedrijf te stimuleren. Bevorder een cultuur van continue verbetering met tijdige rapporten om de status van de data te volgen.",
