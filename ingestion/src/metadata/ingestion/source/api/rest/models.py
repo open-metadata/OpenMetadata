@@ -13,7 +13,7 @@ OpenAPI REST API Models
 """
 from typing import Optional
 
-from pydantic import AnyUrl, BaseModel, Field
+from pydantic import AnyUrl, BaseModel
 
 from metadata.generated.schema.entity.data.apiEndpoint import ApiRequestMethod
 from metadata.generated.schema.type import basic
@@ -32,10 +32,11 @@ class RESTCollection(BaseModel):
 class RESTEndpoint(BaseModel):
     """REST endpoint model"""
 
-    name: Optional[str] = Field(None, alias="operationId")
+    name: Optional[str] = None
     display_name: Optional[str] = None
     description: Optional[basic.Markdown] = None
     url: Optional[AnyUrl] = None
+    operationId: Optional[str] = None
     request_method: Optional[ApiRequestMethod] = None
     request_schema: Optional[APISchema] = None
     response_schema: Optional[APISchema] = None

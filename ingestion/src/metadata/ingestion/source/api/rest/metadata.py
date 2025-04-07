@@ -41,6 +41,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.utils import fqn
+from metadata.utils.filters import filter_by_collection
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -76,21 +78,33 @@ class RestSource(ApiServiceSource):
         """
         try:
             self.json_response = self.connection.json()
+            collections_list = []
+            tags_collection_set = set()
             if self.json_response.get("tags", []):
                 # Works only if list of tags are present in schema so we can fetch collection names
                 for collection in self.json_response.get("tags", []):
                     if not collection.get("name"):
                         continue
-                    yield RESTCollection(**collection)
-            else:
-                # in other case collect tags from paths because we have to yield collection/tags first
-                collections_set = set()
-                for path, methods in self.json_response.get("paths", {}).items():
-                    for method_type, info in methods.items():
-                        collections_set.update({tag for tag in info.get("tags", [])})
-                for collection_name in collections_set:
-                    data = {"name": collection_name}
-                    yield RESTCollection(**data)
+                    collections_list.append(collection)
+                    tags_collection_set.update({collection.get("name")})
+            # iterate through paths if there's any missing collection not present in tags
+            collections_set = set()
+            for path, methods in self.json_response.get("paths", {}).items():
+                for method_type, info in methods.items():
+                    collections_set.update({tag for tag in info.get("tags", [])})
+            for collection_name in collections_set:
+                if collection_name not in tags_collection_set:
+                    collections_list.append({"name": collection_name})
+            for collection in collections_list:
+                if filter_by_collection(
+                    self.source_config.apiCollectionFilterPattern,
+                    collection.get("name"),
+                ):
+                    self.status.filter(
+                        collection.get("name"), "Collection filtered out"
+                    )
+                    continue
+                yield RESTCollection(**collection)
         except Exception as err:
             logger.error(f"Error while fetching collections from schema URL :{err}")
 
@@ -126,7 +140,9 @@ class RestSource(ApiServiceSource):
         for path, methods in filtered_endpoints.items():
             for method_type, info in methods.items():
                 try:
-                    endpoint = self._prepare_endpoint_data(path, method_type, info)
+                    endpoint = self._prepare_endpoint_data(
+                        path, method_type, info, collection
+                    )
                     if not endpoint:
                         continue
                     yield Either(
@@ -176,12 +192,14 @@ class RestSource(ApiServiceSource):
             )
             return None
 
-    def _prepare_endpoint_data(self, path, method_type, info) -> Optional[RESTEndpoint]:
+    def _prepare_endpoint_data(
+        self, path, method_type, info, collection
+    ) -> Optional[RESTEndpoint]:
         try:
             endpoint = RESTEndpoint(**info)
-            endpoint.url = self._generate_endpoint_url(endpoint.name)
-            if not endpoint.name:
-                endpoint.name = f"{path} - {method_type}"
+            endpoint.name = f"{path}/{method_type}"
+            endpoint.display_name = f"{path}"
+            endpoint.url = self._generate_endpoint_url(collection, endpoint)
             return endpoint
         except Exception as err:
             logger.warning(f"Error while parsing endpoint data: {err}")
@@ -190,20 +208,39 @@ class RestSource(ApiServiceSource):
     def _generate_collection_url(self, collection_name: str) -> Optional[AnyUrl]:
         """generate collection url"""
         try:
-            if collection_name:
-                return AnyUrl(
-                    f"{self.config.serviceConnection.root.config.openAPISchemaURL}#tag/{collection_name}"
+            base_url = self.config.serviceConnection.root.config.docURL
+            if not base_url:
+                logger.debug(
+                    f"Could not generate collection url for {collection_name}"
+                    " because docURL is not present"
                 )
+                return self.config.serviceConnection.root.config.openAPISchemaURL
+            base_url = str(base_url)
+            if base_url.endswith("#/") or base_url.endswith("#"):
+                base_url = base_url.split("#")[0]
+            return AnyUrl(f"{clean_uri(base_url)}/#/{collection_name}")
+        except Exception as err:
+            logger.warning(
+                f"Error while generating collection url for {collection_name}: {err}"
+            )
+        return self.config.serviceConnection.root.config.openAPISchemaURL
+
+    def _generate_endpoint_url(
+        self, collection: RESTCollection, endpoint: RESTEndpoint
+    ) -> AnyUrl:
+        """generate endpoint url"""
+        try:
+            if not collection.url or not endpoint.operationId:
+                logger.debug(
+                    f"Could not generate endpoint url for {str(endpoint.name)},"
+                    f" collection url: {str(collection.url)},"
+                    f" endpoint operation id: {str(endpoint.operationId)}"
+                )
+                return self.config.serviceConnection.root.config.openAPISchemaURL
+            return AnyUrl(f"{str(collection.url)}/{endpoint.operationId}")
         except Exception as err:
             logger.warning(f"Error while generating collection url: {err}")
-        return None
-
-    def _generate_endpoint_url(self, endpoint_name: str) -> AnyUrl:
-        """generate endpoint url"""
-        base_url = self.config.serviceConnection.root.config.openAPISchemaURL
-        if endpoint_name:
-            return AnyUrl(f"{base_url}#operation/{endpoint_name}")
-        return AnyUrl(base_url)
+        return self.config.serviceConnection.root.config.openAPISchemaURL
 
     def _get_api_request_method(self, method_type: str) -> Optional[str]:
         """fetch endpoint request method"""
