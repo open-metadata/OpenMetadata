@@ -20,7 +20,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { LINK_COLOR } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
@@ -52,8 +51,8 @@ import Table from '../../../common/Table/Table';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
+import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
-
 const BotListV1 = ({
   showDeleted,
   handleAddBotClick,
@@ -130,8 +129,7 @@ const BotListV1 = ({
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
               <Typography.Text
                 className="text-ellipsis bot-link"
-                ellipsis={{ tooltip: true }}
-                style={{ color: LINK_COLOR }}>
+                ellipsis={{ tooltip: true }}>
                 {stringToHTML(highlightSearchText(name, searchTerm))}
               </Typography.Text>
             </Link>
@@ -315,7 +313,7 @@ const BotListV1 = ({
           onSearch={handleSearch}
         />
       </Col>
-      <Col span={24}>
+      <Col className="bot-list-v1-container" span={24}>
         <Table
           columns={columns}
           customPaginationProps={{

@@ -17,7 +17,7 @@ export interface DomainSelectableTreeProps {
   value?: string[]; // array of fqn
   onSubmit: (option: EntityReference[]) => Promise<void>;
   visible: boolean;
-  onCancel: (event?: React.SyntheticEvent) => void;
+  onCancel: () => void;
   isMultiple?: boolean;
   initialDomains?: EntityReference[];
   dropdownRef?: React.RefObject<HTMLDivElement>;
