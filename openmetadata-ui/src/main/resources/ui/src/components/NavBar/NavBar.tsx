@@ -412,7 +412,7 @@ const NavBar = ({
                 isSidebarCollapsed ? t('label.expand') : t('label.collapse')
               }>
               <Button
-                className="mr-2"
+                className="mr-2 w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
                 icon={
                   isSidebarCollapsed ? (
