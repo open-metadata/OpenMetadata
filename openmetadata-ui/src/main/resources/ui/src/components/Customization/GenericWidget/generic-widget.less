@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 @import (reference) url('../../../styles/variables.less');
-@import (reference) url('antd/dist/antd.variable.less');
+@import (reference) url('../../../styles/components/card.less');
 
 .generic-widget-card {
   height: 100%;
@@ -23,8 +23,6 @@
   }
 
   .ant-card-body {
-    // calculate body height
-    max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
-    overflow-y: auto;
+    .scrollable-card-body-sm();
   }
 }

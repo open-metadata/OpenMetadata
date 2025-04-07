@@ -30,51 +30,10 @@
   }
 }
 
-.reflex-container {
-  .entity-summary-resizable-right-panel-container {
-    .summary-panel-container {
-      height: 100%;
-      border: none;
-
-      .ant-card-body {
-        padding: 0;
-      }
-
-      .ant-card-head {
-        padding: 0;
-      }
-    }
-
-    z-index: 10;
-    overflow-y: auto;
-  }
-}
-
 // resizable panel with full height
 .content-height-with-resizable-panel {
   height: @page-height;
   overflow-y: hidden;
-
-  .content-resizable-panel-container {
-    height: @page-height;
-    overflow-y: scroll;
-    scrollbar-width: none;
-
-    &::-webkit-scrollbar {
-      display: none;
-    }
-  }
-}
-
-// resizable panel in explore page
-.explore-content-height-resizable-panel {
-  height: @explore-content-height-resizable-panel;
-  overflow-y: hidden;
-
-  .explore-resizable-panel-container {
-    height: @explore-content-height-resizable-panel;
-    overflow-y: scroll;
-  }
 }
 
 // resizable panel in domain page

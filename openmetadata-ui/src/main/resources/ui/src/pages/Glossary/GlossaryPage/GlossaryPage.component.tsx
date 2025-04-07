@@ -515,8 +515,7 @@ const GlossaryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className:
-          'content-resizable-panel-container' + (previewAsset ? '' : ''),
+        className: 'content-resizable-panel-container',
         children: glossaryElement,
         minWidth: 700,
         flex: 0.7,
@@ -525,6 +524,7 @@ const GlossaryPage = () => {
       hideSecondPanel={!previewAsset}
       pageTitle={t('label.glossary')}
       secondPanel={{
+        wrapInCard: false,
         children: previewAsset && (
           <EntitySummaryPanel
             entityDetails={previewAsset}

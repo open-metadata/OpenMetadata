@@ -483,6 +483,7 @@ const TagPage = () => {
           <ResizablePanels
             className="tag-height-with-resizable-panel"
             firstPanel={{
+              wrapInCard: false,
               className: 'tag-resizable-panel-container',
               children: (
                 <AssetsTabs
@@ -510,6 +511,7 @@ const TagPage = () => {
             }}
             hideSecondPanel={!previewAsset}
             secondPanel={{
+              wrapInCard: false,
               children: previewAsset && (
                 <EntitySummaryPanel
                   entityDetails={previewAsset}

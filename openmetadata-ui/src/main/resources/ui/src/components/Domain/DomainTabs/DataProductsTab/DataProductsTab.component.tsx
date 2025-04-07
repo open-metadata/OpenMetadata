@@ -147,6 +147,7 @@ const DataProductsTab = forwardRef(
         }}
         pageTitle={t('label.domain')}
         secondPanel={{
+          wrapInCard: false,
           children: selectedCard && (
             <EntitySummaryPanel
               entityDetails={{
