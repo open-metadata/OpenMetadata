@@ -421,7 +421,9 @@ class OMetaLineageMixin(Generic[T]):
         entity: Type[T],
         fqn: str,
     ) -> None:
-
+        """
+        Patch the processed lineage flag for an entity
+        """
         try:
             patch = [
                 {
