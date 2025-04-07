@@ -73,7 +73,7 @@ export const DataAssetSummaryPanel = ({
         : dataAsset,
       highlights
     );
-  }, [dataAsset, entityType, highlights]);
+  }, [dataAsset, entityType, highlights, charts]);
 
   const isEntityDeleted = useMemo(() => dataAsset.deleted, [dataAsset]);
 

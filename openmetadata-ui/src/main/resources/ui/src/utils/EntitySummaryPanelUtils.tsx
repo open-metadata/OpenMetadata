@@ -456,7 +456,9 @@ export const getEntityChildDetails = (
 
       return (
         <>
-          <Row className="p-md border-radius-card" gutter={[0, 8]}>
+          <Row
+            className="p-md border-radius-card summary-panel-card"
+            gutter={[0, 8]}>
             <Col span={24}>
               <Typography.Text
                 className="summary-panel-section-title"
@@ -469,7 +471,9 @@ export const getEntityChildDetails = (
             </Col>
           </Row>
 
-          <Row className="p-md border-radius-card" gutter={[0, 8]}>
+          <Row
+            className="p-md border-radius-card summary-panel-card"
+            gutter={[0, 8]}>
             <Col span={24}>
               <Typography.Text
                 className="summary-panel-section-title"
