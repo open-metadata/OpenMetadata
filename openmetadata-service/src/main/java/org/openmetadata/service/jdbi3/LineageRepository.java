@@ -790,7 +790,9 @@ public class LineageRepository {
                 pipeline.getType(), pipeline.getId(), Include.NON_DELETED);
         updated.withPipeline(pipeline);
       }
-      String detailsJson = JsonUtils.pojoToJson(updated);
+
+      // Validate Lineage Details
+      String detailsJson = validateLineageDetails(from, to, updated);
       dao.relationshipDAO()
           .insert(fromId, toId, fromEntity, toEntity, Relationship.UPSTREAM.ordinal(), detailsJson);
       addLineageToSearch(from, to, updated);
