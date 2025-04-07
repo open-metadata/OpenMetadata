@@ -45,7 +45,7 @@ export interface DatabricksConnection {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?: string;
+    httpPath: string;
     /**
      * Table name to fetch the query history.
      */

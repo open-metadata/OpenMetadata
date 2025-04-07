@@ -129,6 +129,7 @@ class SourceConnectionTest(TestCase):
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
             token="KlivDTACWXKmZVfN1qIM",
+            httpPath="/sql/1.0/warehouses/abcdedfg",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
@@ -144,6 +145,7 @@ class SourceConnectionTest(TestCase):
             scheme=DatabricksScheme.databricks_connector,
             hostPort="1.1.1.1:443",
             token="KlivDTACWXKmZVfN1qIM",
+            httpPath="/sql/1.0/warehouses/abcdedfg",
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 

@@ -87,6 +87,7 @@ mock_databricks_config = {
             "config": {
                 "token": "random_token",
                 "hostPort": "localhost:443",
+                "httpPath": "sql/1.0/endpoints/path",
                 "connectionArguments": {
                     "http_path": "sql/1.0/endpoints/path",
                 },
