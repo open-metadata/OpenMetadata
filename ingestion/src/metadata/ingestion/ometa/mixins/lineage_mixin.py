@@ -14,6 +14,7 @@ Mixin class containing Lineage specific methods
 To be used by OpenMetadata class
 """
 import functools
+import json
 import traceback
 from copy import deepcopy
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
@@ -421,16 +422,19 @@ class OMetaLineageMixin(Generic[T]):
     ) -> None:
 
         try:
-            original_entity = self.get_by_name(entity=entity, fqn=fqn)
-            if not original_entity:
-                return
+            patch = [
+                {
+                    "op": "add",
+                    "path": "/processedLineage",
+                    "value": True,
+                }
+            ]
 
-            updated_entity = original_entity.model_copy(deep=True)
-            updated_entity.processedLineage = True
-
-            self.patch(
-                entity=entity, source=original_entity, destination=updated_entity
+            res = self.client.patch(
+                path=f"{self.get_suffix(entity)}/name/{fqn}",
+                data=json.dumps(patch),
             )
+            return entity(**res)
         except Exception as exc:
             logger.debug(f"Error while patching lineage processed flag: {exc}")
             logger.debug(traceback.format_exc())
