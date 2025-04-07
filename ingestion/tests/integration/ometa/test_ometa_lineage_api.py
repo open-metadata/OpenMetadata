@@ -267,9 +267,9 @@ class OMetaLineageTest(TestCase):
                     columnsLineage=[
                         ColumnLineage(
                             fromColumns=[
-                                f"{self.table1_entity.fullyQualifiedName.root}.another"
+                                f"{self.table1_entity.fullyQualifiedName.root}.name"
                             ],
-                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.another",
+                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.name",
                         )
                     ],
                 ),
