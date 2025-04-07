@@ -19,6 +19,7 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-salesforce-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/salesforce/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/salesforce/yaml"} /%}
 

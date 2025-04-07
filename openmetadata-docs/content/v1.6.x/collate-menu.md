@@ -186,14 +186,20 @@ site_menu:
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Run Externally
     url: /connectors/database/mysql/yaml
+  - category: Connectors / Database / MySQL / Troubleshooting
+    url: /connectors/database/mysql/troubleshooting
   - category: Connectors / Database / Oracle
     url: /connectors/database/oracle
   - category: Connectors / Database / Oracle / Run Externally
     url: /connectors/database/oracle/yaml
+  - category: Connectors / Database / Oracle / Troubleshooting
+    url: /connectors/database/oracle/troubleshooting
   - category: Connectors / Database / PinotDB
     url: /connectors/database/pinotdb
   - category: Connectors / Database / PinotDB / Run Externally
     url: /connectors/database/pinotdb/yaml
+  - category: Connectors / Database / PinotDB / Troubleshooting
+    url: /connectors/database/pinotdb/troubleshooting
   - category: Connectors / Database / PostgreSQL
     url: /connectors/database/postgres
   - category: Connectors / Database / PostgreSQL / Run Externally
@@ -214,6 +220,8 @@ site_menu:
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
+  - category: Connectors / Database / Salesforce / Troubleshooting
+    url: /connectors/database/salesforce/troubleshooting
   - category: Connectors / Database / SAP HANA
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP HANA / Run Externally
@@ -222,16 +230,22 @@ site_menu:
     url: /connectors/database/sap-erp
   - category: Connectors / Database / SAP ERP / Run Externally
     url: /connectors/database/sap-erp/yaml
+  - category: Connectors / Database / SAP ERP / Troubleshooting
+    url: /connectors/database/sap-erp/troubleshooting
   - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
     url: /connectors/database/sap-erp/setup-sap-apis
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
     url: /connectors/database/sas/yaml
+  - category: Connectors / Database / SAS / Troubleshooting
+    url: /connectors/database/sas/troubleshooting
   - category: Connectors / Database / SingleStore
     url: /connectors/database/singlestore
   - category: Connectors / Database / SingleStore / Run Externally
     url: /connectors/database/singlestore/yaml
+  - category: Connectors / Database / SingleStore / Troubleshooting
+    url: /connectors/database/singlestore/troubleshooting
   - category: Connectors / Database / Snowflake
     url: /connectors/database/snowflake
   - category: Connectors / Database / Snowflake / Run Externally

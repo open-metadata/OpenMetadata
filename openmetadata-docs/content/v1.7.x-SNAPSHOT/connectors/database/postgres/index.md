@@ -24,6 +24,7 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/postgres/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
 

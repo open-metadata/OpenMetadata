@@ -22,6 +22,8 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/oracle/troubleshooting)
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
 
 ## Requirements
@@ -129,8 +131,6 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
