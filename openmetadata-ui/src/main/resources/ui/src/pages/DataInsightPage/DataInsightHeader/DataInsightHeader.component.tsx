@@ -11,21 +11,25 @@
  *  limitations under the License.
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
+import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
 import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import dataInsightClassBase from '../DataInsightClassBase';
 import { useDataInsightProvider } from '../DataInsightProvider';
 import { DataInsightHeaderProps } from './DataInsightHeader.interface';
 
@@ -56,6 +60,11 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
     [permissions]
   );
 
+  const extraDropdownContent = useMemo(
+    () => dataInsightClassBase.getManageExtraOptions(),
+    []
+  );
+
   const handleAddKPI = () => {
     history.push(ROUTES.ADD_KPI);
   };
@@ -63,7 +72,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <Space className="w-full justify-between items-start p-l-md">
+        <Space className="w-full justify-between items-start">
           <div data-testid="data-insight-header">
             <Typography.Title level={5}>
               {t('label.data-insight-plural')}
@@ -73,16 +82,26 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
             </Typography.Text>
           </div>
 
-          {createKPIPermission && (
-            <Button
-              data-testid="add-kpi-btn"
-              type="primary"
-              onClick={handleAddKPI}>
-              {t('label.add-entity', {
-                entity: t('label.kpi-uppercase'),
-              })}
-            </Button>
-          )}
+          <div className="d-flex gap-2">
+            {createKPIPermission && (
+              <Button
+                data-testid="add-kpi-btn"
+                type="primary"
+                onClick={handleAddKPI}>
+                {t('label.add-entity', {
+                  entity: t('label.kpi-uppercase'),
+                })}
+              </Button>
+            )}
+
+            {!isEmpty(extraDropdownContent) ? (
+              <ManageButton
+                entityName={EntityType.KPI}
+                entityType={EntityType.KPI}
+                extraDropdownContent={extraDropdownContent}
+              />
+            ) : null}
+          </div>
         </Space>
       </Col>
       <Col span={24}>

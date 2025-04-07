@@ -11,16 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -28,14 +23,15 @@ import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
+import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import { TestCaseStatusModal } from '../../TestCaseStatusModal/TestCaseStatusModal.component';
 import '../incident-manager.style.less';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
 const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,
-  usersList,
   hasPermission,
+  newLook = false,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
 
@@ -76,11 +72,11 @@ const TestCaseIncidentManagerStatus = ({
             label={statusType}
           />
           {hasEditPermission && (
-            <Icon
-              {...ICON_DIMENSION}
-              component={EditIcon}
+            <EditIconButton
               data-testid="edit-resolution-icon"
-              style={{ color: DE_ACTIVE_COLOR }}
+              icon={<EditIcon width="14px" />}
+              newLook={newLook}
+              size="small"
               onClick={onEditStatus}
             />
           )}
@@ -92,7 +88,6 @@ const TestCaseIncidentManagerStatus = ({
           data={data}
           open={isEditStatus}
           testCaseFqn={data.testCaseReference?.fullyQualifiedName ?? ''}
-          usersList={usersList}
           onCancel={onCancel}
           onSubmit={onSubmit}
         />

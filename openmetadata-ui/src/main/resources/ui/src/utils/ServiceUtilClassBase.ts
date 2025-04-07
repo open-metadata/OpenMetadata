@@ -715,6 +715,14 @@ class ServiceUtilClassBase {
         return 'Custom Search';
       case this.DatabaseServiceTypeSmallCase.Cockroach:
         return 'Cockroach';
+      case this.DatabaseServiceTypeSmallCase.SapERP:
+        return 'SAP ERP';
+      case this.DatabaseServiceTypeSmallCase.Mssql:
+        return 'MSSQL';
+      case this.MlModelServiceTypeSmallCase.Mlflow:
+        return 'MLflow';
+      case this.StorageServiceTypeSmallCase.Adls:
+        return 'ADLS';
 
       default:
         return capitalize(serviceType);
@@ -765,8 +773,8 @@ class ServiceUtilClassBase {
     return widgets;
   }
 
-  public getExtraInfo() {
-    return null;
+  public getExtraInfo(): Promise<void> {
+    return Promise.resolve();
   }
 
   public getProperties(property: ObjectFieldTemplatePropertyType[]) {

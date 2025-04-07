@@ -14,10 +14,6 @@ Get started with your OpenMetadata service in a few simple steps:
 
 **Ready to begin? Let's get started!**
 
-## Requirements
-
-You should receive your initial OpenMetadata credentials from OpenMetadata support, or from your existing OpenMetadata admin. For any questions, please reach us via [slack](https://slack.open-metadata.org/). The following steps will provide initial set up information, with links to more detailed documentation.
-
 ## Step 1: Set up a Data Connector
 
 Once you have logged into your OpenMetadata instance, set up a data connector to start ingesting metadata. OpenMetadata provides [90+ turnkey connectors](/connectors) for a wide range of services, including:

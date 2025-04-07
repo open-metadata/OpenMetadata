@@ -13,10 +13,21 @@
 @import (reference) url('../../../styles/variables.less');
 
 .page-search-bar {
+  width: 100%;
   .ant-input-affix-wrapper {
     border-radius: 10px;
     border: 1px solid @border-color-6;
+    background: @grey-17;
     height: 40px;
+
+    .ant-input {
+      background: @grey-17;
+
+      &::placeholder {
+        color: @grey-21;
+        font-weight: 300;
+      }
+    }
   }
 
   .ant-input-affix-wrapper:focus,

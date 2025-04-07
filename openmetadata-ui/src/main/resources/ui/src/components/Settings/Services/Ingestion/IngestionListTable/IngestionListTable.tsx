@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Skeleton } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { FixedType } from 'rc-table/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -66,7 +66,11 @@ import Table from '../../../../common/Table/Table';
 import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
-import { IngestionListTableProps } from './IngestionListTable.interface';
+import './ingestion-list-table.less';
+import {
+  IngestionListTableProps,
+  ModifiedIngestionPipeline,
+} from './IngestionListTable.interface';
 import IngestionStatusCount from './IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from './PipelineActions/PipelineActions';
 
@@ -122,6 +126,16 @@ function IngestionListTable({
   const handleIsConfirmationModalOpen = useCallback(
     (value: boolean) => setIsConfirmationModalOpen(value),
     []
+  );
+
+  const data: ModifiedIngestionPipeline[] = useMemo(
+    () =>
+      ingestionData.map((item) => ({
+        ...item,
+        runStatus: recentRunStatuses?.[item.name]?.[0]?.status?.[0],
+        runId: recentRunStatuses?.[item.name]?.[0]?.runId,
+      })),
+    [ingestionData, recentRunStatuses]
   );
 
   const deleteIngestion = useCallback(
@@ -248,7 +262,9 @@ function IngestionListTable({
   }, [handleDelete, deleteSelection]);
 
   useEffect(() => {
-    fetchIngestionPipelineExtraDetails();
+    if (!isEmpty(ingestionData)) {
+      fetchIngestionPipelineExtraDetails();
+    }
   }, [ingestionData]);
 
   useEffect(() => {
@@ -346,12 +362,14 @@ function IngestionListTable({
         title: t('label.count'),
         dataIndex: 'count',
         key: 'count',
-        width: 220,
-        render: (_: string, record: IngestionPipeline) => {
-          return (
+        width: 300,
+        render: (_: string, record: ModifiedIngestionPipeline) => {
+          return isIngestionRunsLoading ? (
+            <Skeleton.Input active size="small" />
+          ) : (
             <IngestionStatusCount
-              runId={recentRunStatuses[record.name]?.[0]?.runId}
-              summary={recentRunStatuses[record.name]?.[0]?.status?.[0]}
+              runId={record.runId}
+              summary={record.runStatus}
             />
           );
         },
@@ -360,6 +378,7 @@ function IngestionListTable({
         title: t('label.schedule'),
         dataIndex: 'schedule',
         key: 'schedule',
+        width: 150,
         render: renderScheduleField,
       },
       {
@@ -383,7 +402,7 @@ function IngestionListTable({
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: 90,
+        width: 100,
         render: renderStatusField,
       },
       ...(enableActions
@@ -392,7 +411,7 @@ function IngestionListTable({
               title: t('label.action-plural'),
               dataIndex: 'actions',
               key: 'actions',
-              width: 220,
+              width: 240,
               fixed: 'right' as FixedType,
               render: renderActionsField,
             },
@@ -400,6 +419,9 @@ function IngestionListTable({
         : []),
     ],
     [
+      customRenderNameField,
+      showDescriptionCol,
+      searchText,
       pipelineIdToFetchStatus,
       renderActionsField,
       enableActions,
@@ -427,49 +449,46 @@ function IngestionListTable({
 
   return (
     <>
-      <Row
-        className={classNames('m-b-md', tableContainerClassName)}
-        data-testid="ingestion-table"
-        gutter={[16, 16]}>
-        <Col span={24}>
-          <Table
-            className={tableClassName}
-            columns={tableColumn}
-            {...(!isUndefined(ingestionPagingInfo) &&
-            ingestionPagingInfo.showPagination &&
-            onPageChange
-              ? {
-                  customPaginationProps: {
-                    ...ingestionPagingInfo,
-                    isLoading,
-                    isNumberBased: isNumberBasedPaging,
-                    pagingHandler: onPageChange,
-                    showPagination: true,
-                    onShowSizeChange: ingestionPagingInfo.handlePageSizeChange,
-                  },
-                }
-              : {})}
-            data-testid="ingestion-list-table"
-            dataSource={ingestionData}
-            loading={isLoading}
-            locale={{
-              emptyText:
-                emptyPlaceholder ??
-                getErrorPlaceHolder(
-                  ingestionData.length,
-                  isPlatFormDisabled,
-                  theme,
-                  pipelineType
-                ),
-            }}
-            pagination={false}
-            rowKey="fullyQualifiedName"
-            scroll={{ x: 1300 }}
-            size="small"
-            {...extraTableProps}
-          />
-        </Col>
-      </Row>
+      <div
+        className={classNames('ingestion-list-table', tableContainerClassName)}
+        data-testid="ingestion-table">
+        <Table
+          columns={tableColumn}
+          containerClassName={tableClassName}
+          {...(!isUndefined(ingestionPagingInfo) &&
+          ingestionPagingInfo.showPagination &&
+          onPageChange
+            ? {
+                customPaginationProps: {
+                  ...ingestionPagingInfo,
+                  isLoading,
+                  isNumberBased: isNumberBasedPaging,
+                  pagingHandler: onPageChange,
+                  showPagination: true,
+                  onShowSizeChange: ingestionPagingInfo.handlePageSizeChange,
+                },
+              }
+            : {})}
+          data-testid="ingestion-list-table"
+          dataSource={data}
+          loading={isLoading}
+          locale={{
+            emptyText:
+              emptyPlaceholder ??
+              getErrorPlaceHolder(
+                ingestionData.length,
+                isPlatFormDisabled,
+                theme,
+                pipelineType
+              ),
+          }}
+          pagination={false}
+          rowKey="fullyQualifiedName"
+          scroll={{ x: 1300 }}
+          size="small"
+          {...extraTableProps}
+        />
+      </div>
 
       <EntityDeleteModal
         bodyText={ingestionDeleteMessage}

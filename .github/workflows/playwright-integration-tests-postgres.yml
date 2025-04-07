@@ -84,7 +84,7 @@ jobs:
         with:
           python-version: "3.9"
           args: "-d postgresql"
-          ingestion_dependency: "all"
+          ingestion_dependency: "playwright"
       - name: Run Playwright Integration Tests with browser ${{ matrix.browser-type }}
         env:
           E2E_REDSHIFT_HOST_PORT: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}

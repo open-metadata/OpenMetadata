@@ -40,6 +40,7 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
+import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
@@ -49,6 +50,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
   OPEN_METADATA,
   SERVICE_INGESTION_PIPELINE_TYPES,
@@ -78,6 +80,7 @@ import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
@@ -106,9 +109,17 @@ import {
 } from '../../rest/serviceAPI';
 import { getContainers } from '../../rest/storageAPI';
 import { getTopics } from '../../rest/topicsAPI';
+import {
+  getWorkflowInstancesForApplication,
+  getWorkflowInstanceStateById,
+} from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import {
+  getCurrentMillis,
+  getDayAgoStartGMTinMillis,
+} from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
@@ -173,6 +184,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const ingestionPagingInfo = usePaging(PAGE_SIZE_BASE);
   const collateAgentPagingInfo = usePaging(PAGE_SIZE_BASE);
   const pagingInfo = usePaging(PAGE_SIZE_BASE);
+  const [workflowStatesData, setWorkflowStatesData] =
+    useState<WorkflowStatesData>();
+  const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
 
   const {
     paging: collateAgentPaging,
@@ -229,9 +243,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
   );
+  const isDBService = useMemo(
+    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
+    [serviceCategory]
+  );
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget),
-    [CollateAIAgentsWidget]
+    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
+    [CollateAIAgentsWidget, isDBService]
   );
   const handleTypeFilterChange = useCallback(
     (type: Array<{ key: string; label: string }>) => {
@@ -334,11 +352,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         const isAgentTab = key === EntityTabs.AGENTS;
 
         if (isAgentTab) {
-          if (isCollateAIWidgetSupported) {
-            subTab = ServiceAgentSubTabs.COLLATE_AI;
-          } else {
-            subTab = ServiceAgentSubTabs.METADATA;
-          }
+          subTab = ServiceAgentSubTabs.METADATA;
         }
 
         history.push({
@@ -351,8 +365,47 @@ const ServiceDetailsPage: FunctionComponent = () => {
         });
       }
     },
-    [activeTab, decodedServiceFQN, serviceCategory, isCollateAIWidgetSupported]
+    [activeTab, decodedServiceFQN, serviceCategory]
   );
+
+  const fetchWorkflowInstanceStates = useCallback(async () => {
+    try {
+      setIsWorkflowStatusLoading(true);
+      const startTs = getDayAgoStartGMTinMillis(6);
+      const endTs = getCurrentMillis();
+      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
+      const workflowInstances = await getWorkflowInstancesForApplication({
+        startTs,
+        endTs,
+        workflowDefinitionName: SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+        entityLink: getEntityFeedLink(
+          entityType,
+          serviceDetails.fullyQualifiedName
+        ),
+      });
+
+      const workflowInstanceId = workflowInstances.data[0]?.id;
+
+      if (workflowInstanceId) {
+        const workflowInstanceStates = await getWorkflowInstanceStateById(
+          SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
+          workflowInstanceId,
+          {
+            startTs,
+            endTs,
+          }
+        );
+        setWorkflowStatesData({
+          mainInstanceState: workflowInstances.data[0],
+          subInstanceStates: workflowInstanceStates.data,
+        });
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsWorkflowStatusLoading(false);
+    }
+  }, [serviceDetails.fullyQualifiedName, serviceCategory]);
 
   const fetchCollateAgentsList = useCallback(
     async (paging?: Omit<Paging, 'total'>) => {
@@ -661,7 +714,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           default:
             break;
         }
-      } catch (error) {
+      } catch {
         setData([]);
         handlePagingChange(pagingObject);
       } finally {
@@ -989,6 +1042,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  const disableRunAgentsButton = useMemo(
+    () =>
+      workflowStatesData?.mainInstanceState.status &&
+      ![WorkflowStatus.Exception, WorkflowStatus.Failure].includes(
+        workflowStatesData?.mainInstanceState.status
+      ),
+    [workflowStatesData?.mainInstanceState.status]
+  );
+
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
     getOtherDetails({ limit: pageSize });
@@ -1037,6 +1099,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
     }
   }, [collateAgentPageSize]);
+
+  useEffect(() => {
+    fetchWorkflowInstanceStates();
+  }, [serviceDetails.fullyQualifiedName]);
 
   const agentCounts = useMemo(() => {
     return {
@@ -1124,67 +1190,61 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const testConnectionTab = useMemo(() => {
     return (
-      <Row className="p-md" gutter={[16, 16]}>
-        <Col className="p-x-lg" span={24}>
-          <Row>
-            <Col span={12}>
-              <AirflowMessageBanner />
-            </Col>
-            <Col span={12}>
-              <Space className="w-full justify-end">
-                <Tooltip
-                  title={
-                    servicePermission.EditAll
-                      ? t('label.edit-entity', {
-                          entity: t('label.connection'),
-                        })
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    ghost
-                    data-testid="edit-connection-button"
-                    disabled={!servicePermission.EditAll}
-                    type="primary"
-                    onClick={goToEditConnection}>
-                    {t('label.edit-entity', {
+      <div className="connection-tab-content">
+        <div className="flex items-center justify-between">
+          <AirflowMessageBanner />
+
+          <Space className="w-full justify-end">
+            <Tooltip
+              title={
+                servicePermission.EditAll
+                  ? t('label.edit-entity', {
                       entity: t('label.connection'),
-                    })}
-                  </Button>
-                </Tooltip>
-                {allowTestConn && isAirflowAvailable && (
-                  <Tooltip
-                    title={
-                      servicePermission.EditAll
-                        ? t('label.test-entity', {
-                            entity: t('label.connection'),
-                          })
-                        : t('message.no-permission-for-action')
-                    }>
-                    <TestConnection
-                      connectionType={serviceDetails?.serviceType ?? ''}
-                      getData={() => connectionDetails}
-                      isTestingDisabled={isTestingDisabled}
-                      serviceCategory={serviceCategory as ServiceCategory}
-                      serviceName={serviceDetails?.name}
-                      // validation is not required as we have all the data available and not in edit mode
-                      shouldValidateForm={false}
-                      showDetails={false}
-                    />
-                  </Tooltip>
-                )}
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-        <Col className="p-x-lg" span={24}>
-          <ServiceConnectionDetails
-            connectionDetails={connectionDetails ?? {}}
-            extraInfo={extraInfoData}
-            serviceCategory={serviceCategory}
-            serviceFQN={serviceDetails?.serviceType || ''}
-          />
-        </Col>
-      </Row>
+                    })
+                  : t('message.no-permission-for-action')
+              }>
+              <Button
+                ghost
+                data-testid="edit-connection-button"
+                disabled={!servicePermission.EditAll}
+                type="primary"
+                onClick={goToEditConnection}>
+                {t('label.edit-entity', {
+                  entity: t('label.connection'),
+                })}
+              </Button>
+            </Tooltip>
+            {allowTestConn && isAirflowAvailable && (
+              <Tooltip
+                title={
+                  servicePermission.EditAll
+                    ? t('label.test-entity', {
+                        entity: t('label.connection'),
+                      })
+                    : t('message.no-permission-for-action')
+                }>
+                <TestConnection
+                  connectionType={serviceDetails?.serviceType ?? ''}
+                  getData={() => connectionDetails}
+                  isTestingDisabled={isTestingDisabled}
+                  serviceCategory={serviceCategory as ServiceCategory}
+                  serviceName={serviceDetails?.name}
+                  // validation is not required as we have all the data available and not in edit mode
+                  shouldValidateForm={false}
+                  showDetails={false}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        </div>
+
+        <ServiceConnectionDetails
+          connectionDetails={connectionDetails ?? {}}
+          extraInfo={extraInfoData}
+          serviceCategory={serviceCategory}
+          serviceFQN={serviceDetails?.serviceType || ''}
+        />
+      </div>
     );
   }, [
     servicePermission.EditAll,
@@ -1215,7 +1275,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
         {
           name: t('label.insight-plural'),
           key: EntityTabs.INSIGHTS,
-          children: <ServiceInsightsTab serviceDetails={serviceDetails} />,
+          children: (
+            <ServiceInsightsTab
+              isWorkflowStatusLoading={isWorkflowStatusLoading}
+              serviceDetails={serviceDetails}
+              workflowStatesData={workflowStatesData}
+            />
+          ),
         },
         {
           name: getCountLabel(serviceCategory),
@@ -1304,6 +1370,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
     testConnectionTab,
     activeTab,
     isMetadataService,
+    workflowStatesData,
+    isWorkflowStatusLoading,
   ]);
 
   if (isLoading) {
@@ -1326,14 +1394,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row data-testid="service-page" gutter={[0, 12]}>
-          <Col className="" span={24}>
+          <Col span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={afterDomainUpdateAction}
+              afterTriggerAction={fetchWorkflowInstanceStates}
               dataAsset={serviceDetails}
+              disableRunAgentsButton={disableRunAgentsButton}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
+              isDayOneWorkflowStatusLoading={isWorkflowStatusLoading}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}

@@ -456,7 +456,7 @@ const SearchSettingsPage = () => {
 
       <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
-          <Col key={data.key} span={8}>
+          <Col key={data.key} lg={8} md={12} sm={24}>
             <SettingItemCard data={data} onClick={handleViewDetailClick} />
           </Col>
         ))}

@@ -228,7 +228,7 @@ export const getTourSteps = ({
           i18nKey="message.tour-step-click-on-entity-tab"
           renderElement={<strong />}
           values={{
-            text: i18next.t('label.profiler'),
+            text: i18next.t('label.data-observability'),
           }}
         />
       </p>

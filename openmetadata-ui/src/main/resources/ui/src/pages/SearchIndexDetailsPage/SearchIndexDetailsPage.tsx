@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -53,6 +54,7 @@ import {
 } from '../../rest/SearchIndexAPI';
 import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -80,7 +82,7 @@ function SearchIndexDetailsPage() {
     FEED_COUNT_INITIAL_DATA
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.SearchIndex);
-
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const [searchIndexPermissions, setSearchIndexPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
@@ -507,6 +509,14 @@ function SearchIndexDetailsPage() {
     }
   }, [decodedSearchIndexFQN, viewPermission]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.SearchIndex),
+    [tabs[0], activeTab]
+  );
   if (isLoading || loading) {
     return <Loader />;
   }
@@ -549,7 +559,9 @@ function SearchIndexDetailsPage() {
         </Col>
 
         <GenericProvider<SearchIndex>
+          customizedPage={customizedPage}
           data={searchIndexDetails}
+          isTabExpanded={isTabExpanded}
           permissions={searchIndexPermissions}
           type={EntityType.SEARCH_INDEX}
           onUpdate={onSearchIndexUpdate}>
@@ -559,6 +571,17 @@ function SearchIndexDetailsPage() {
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

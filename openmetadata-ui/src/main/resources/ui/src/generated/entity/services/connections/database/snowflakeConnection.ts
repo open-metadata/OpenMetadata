@@ -43,7 +43,11 @@ export interface SnowflakeConnection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DefaultDatabaseFilterPattern;
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     */
+    includeStreams?: boolean;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
@@ -70,7 +74,7 @@ export interface SnowflakeConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: DefaultSchemaFilterPattern;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -110,11 +114,22 @@ export interface SnowflakeConnection {
 
 /**
  * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
  */
-export interface DefaultDatabaseFilterPattern {
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
     excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
     includes?: string[];
-    [property: string]: any;
 }
 
 /**
@@ -196,35 +211,10 @@ export interface AwsCredentials {
 }
 
 /**
- * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DefaultSchemaFilterPattern {
-    excludes?: string[];
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum SnowflakeScheme {
     Snowflake = "snowflake",
-}
-
-/**
- * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only fetch entities that matches the pattern.
- */
-export interface FilterPattern {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
 }
 
 /**

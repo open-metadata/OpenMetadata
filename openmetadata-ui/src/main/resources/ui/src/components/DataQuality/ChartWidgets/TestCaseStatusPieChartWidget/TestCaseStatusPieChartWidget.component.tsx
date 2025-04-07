@@ -44,7 +44,7 @@ const TestCaseStatusPieChartWidget = ({
       const { data } = await fetchTestCaseSummary(chartFilter);
       const updatedData = transformToTestCaseStatusObject(data);
       setTestCaseSummary(updatedData);
-    } catch (error) {
+    } catch {
       setTestCaseSummary(INITIAL_TEST_SUMMARY);
     } finally {
       setIsTestCaseSummaryLoading(false);
@@ -107,7 +107,7 @@ const TestCaseStatusPieChartWidget = ({
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <TestCaseIcon color={PRIMARY_COLOR} height={20} width={20} />
-          <Typography.Text className="font-medium text-md text-grey-muted">
+          <Typography.Text className="font-medium text-md">
             {t('label.test-case-result')}
           </Typography.Text>
         </div>

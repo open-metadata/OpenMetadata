@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -65,6 +66,7 @@ import {
 } from '../../rest/databaseAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -94,24 +96,20 @@ const DatabaseDetails: FunctionComponent = () => {
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Database
   );
-
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
-
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
-
   const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
-
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const { version: currentVersion, deleted } = useMemo(
     () => database,
@@ -435,6 +433,15 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading || isDatabaseDetailsLoading || loading) {
     return <Loader />;
   }
@@ -474,7 +481,9 @@ const DatabaseDetails: FunctionComponent = () => {
             />
           </Col>
           <GenericProvider<Database>
+            customizedPage={customizedPage}
             data={database}
+            isTabExpanded={isTabExpanded}
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
@@ -484,6 +493,17 @@ const DatabaseDetails: FunctionComponent = () => {
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
                 onChange={activeTabHandler}
               />
             </Col>
