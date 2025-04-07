@@ -367,7 +367,7 @@ const GlossaryTermsV1 = ({
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
       <Row data-testid="glossary-term" gutter={[0, 8]}>
-        <Col className="p-x-md" span={24}>
+        <Col span={24}>
           <GlossaryHeader
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
