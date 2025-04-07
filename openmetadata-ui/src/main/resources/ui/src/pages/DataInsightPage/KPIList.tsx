@@ -231,8 +231,8 @@ const KPIList = () => {
   return (
     <>
       <Table
-        className="kpi-table"
         columns={columns}
+        containerClassName="kpi-table"
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,

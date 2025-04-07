@@ -269,8 +269,8 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   return (
     <Fragment>
       <Table
-        className="entity-custom-properties-table"
         columns={tableColumn}
+        containerClassName="entity-custom-properties-table"
         data-testid="entity-custom-properties-table"
         dataSource={customProperties}
         loading={isLoading}

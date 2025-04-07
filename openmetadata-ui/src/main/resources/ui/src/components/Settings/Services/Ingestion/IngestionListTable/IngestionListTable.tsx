@@ -453,8 +453,8 @@ function IngestionListTable({
         className={classNames('ingestion-list-table', tableContainerClassName)}
         data-testid="ingestion-table">
         <Table
-          className={tableClassName}
           columns={tableColumn}
+          containerClassName={tableClassName}
           {...(!isUndefined(ingestionPagingInfo) &&
           ingestionPagingInfo.showPagination &&
           onPageChange

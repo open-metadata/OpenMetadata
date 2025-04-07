@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "Explicitamente {{activity}} {{filterPattern}} adicionando uma lista de regex separados por vírgula.",
     "filter-pattern-info": "Escolha incluir ou excluir {{filterPattern}} como parte da ingestão de metadados.",
     "filter-pattern-placeholder": "Para adicionar um padrão de filtro, basta digitá-lo e pressionar Enter",
+    "filter-task-name-description": "Filtrar por nome da tarefa",
     "find-apps-to-improve-data": "Encontre aplicativos para melhorar seus dados",
     "find-in-table": "Encontrar na tabela",
     "fosters-collaboration-among-producers-and-consumers": "Estabeleça metas organizacionais e KPIs para impulsionar proativamente a cultura de dados da sua empresa. Fomente uma cultura de melhoria contínua com relatórios oportunos para monitorar a saúde dos dados.",

@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip } from 'antd';
+import { Space } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
@@ -95,27 +94,17 @@ const TableDescription = ({
       {descriptionContent}
 
       {!suggestionData && !isReadOnly ? (
-        <Space align="baseline" size="middle">
+        <div className="d-flex items-baseline gap-4">
           {hasEditPermission && (
-            <Tooltip
+            <EditIconButton
+              className="hover-cell-icon"
+              data-testid="edit-button"
+              size="small"
               title={t('label.edit-entity', {
                 entity: t('label.description'),
-              })}>
-              <Button
-                className="cursor-pointer hover-cell-icon"
-                data-testid="edit-button"
-                style={{
-                  color: DE_ACTIVE_COLOR,
-                  padding: 0,
-                  border: 'none',
-                  background: 'transparent',
-                }}
-                onClick={onClick}>
-                <EditIcon
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                />
-              </Button>
-            </Tooltip>
+              })}
+              onClick={onClick}
+            />
           )}
 
           <EntityTasks
@@ -125,7 +114,7 @@ const TableDescription = ({
             entityType={entityType}
             onThreadLinkSelect={onThreadLinkSelect}
           />
-        </Space>
+        </div>
       ) : null}
     </Space>
   );

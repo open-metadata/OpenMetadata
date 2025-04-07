@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "{{activity}} {{filterPattern}} путем добавления списка регулярных выражений, разделенных запятыми.",
     "filter-pattern-info": "Выберите, следует ли включить или исключить {{filterPattern}} при приеме метаданных.",
     "filter-pattern-placeholder": "Чтобы добавить шаблон фильтра, просто введите его и нажмите Enter.",
+    "filter-task-name-description": "Фильтровать по имени задачи",
     "find-apps-to-improve-data": "Find applications to improve your data",
     "find-in-table": "Найти в таблице",
     "fosters-collaboration-among-producers-and-consumers": "Способствует сотрудничеству между производителями и потребителями данных.",

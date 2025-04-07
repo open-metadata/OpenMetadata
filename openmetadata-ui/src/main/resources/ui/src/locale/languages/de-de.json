@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "Schließen Sie explizit {{filterPattern}} durch Hinzufügen einer Liste von durch Kommas getrennten regulären Ausdrücken {{activity}} ein oder aus.",
     "filter-pattern-info": "Wählen Sie aus, ob {{filterPattern}} als Teil der Metadaten-Erfassung ein- oder ausgeschlossen werden soll.",
     "filter-pattern-placeholder": "Um einen Filtermuster hinzuzufügen, geben Sie es einfach ein und drücken Sie Enter.",
+    "filter-task-name-description": "Nach Aufgabenname filtern",
     "find-apps-to-improve-data": "Finden Sie Anwendungsfälle, um Ihre Daten zu verbessern.",
     "find-in-table": "In Tabelle suchen",
     "fosters-collaboration-among-producers-and-consumers": "Setzen Sie Unternehmensziele und KPIs, um die Datenkultur Ihres Unternehmens proaktiv voranzutreiben. Fördern Sie eine Kultur kontinuierlicher Verbesserung mit rechtzeitigen Berichten zur Überwachung der Datenqualität.",

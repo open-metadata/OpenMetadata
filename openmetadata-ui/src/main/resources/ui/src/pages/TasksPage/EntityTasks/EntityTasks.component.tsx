@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -92,12 +91,9 @@ const EntityTasks = ({
             : ENTITY_TASKS_TOOLTIP[entityTaskType].request
         }>
         <IconRequest
-          className="hover-cell-icon cursor-pointer"
+          className="table-action-icon hover-cell-icon"
           data-testid="task-element"
-          height={14}
           name={t('label.request-tag-plural')}
-          style={{ color: DE_ACTIVE_COLOR }}
-          width={14}
           onClick={() => handleTask(hasData)}
         />
       </Tooltip>

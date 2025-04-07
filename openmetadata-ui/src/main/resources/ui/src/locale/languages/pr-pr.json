@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "{{activity}} {{filterPattern}} به‌طور صریح با افزودن لیستی از regex جدا شده با کاما.",
     "filter-pattern-info": "انتخاب کنید که آیا می‌خواهید {{filterPattern}} را به عنوان بخشی از استخراج متادیتا شامل کنید یا حذف کنید.",
     "filter-pattern-placeholder": "برای افزودن یک الگوی فیلتر، کافی است آن را تایپ کنید و Enter را فشار دهید.",
+    "filter-task-name-description": "نام وظیفه را فیلتر کنید",
     "find-apps-to-improve-data": "برنامه‌هایی برای بهبود داده‌های خود پیدا کنید.",
     "find-in-table": "پیدا کردن در جدول",
     "fosters-collaboration-among-producers-and-consumers": "اهداف سازمانی و KPIها را تعیین کنید تا فرهنگ داده شرکت خود را به صورت فعالانه هدایت کنید. با گزارش‌های به‌موقع برای نظارت بر سلامت داده‌ها، فرهنگ بهبود مستمر را تقویت کنید.",
