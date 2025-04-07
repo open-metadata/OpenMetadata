@@ -36,9 +36,12 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
+import { useTranslation } from 'react-i18next';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
@@ -64,6 +67,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
+  const { t } = useTranslation();
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
@@ -289,6 +293,16 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (treeData.length === 0) {
+    return (
+      <ErrorPlaceHolder
+        className="mt-48"
+        size={SIZE.MEDIUM}
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
   }
 
   return (
