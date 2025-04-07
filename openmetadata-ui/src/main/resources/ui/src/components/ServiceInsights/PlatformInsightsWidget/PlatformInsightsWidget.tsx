@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Skeleton, Typography } from 'antd';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
@@ -19,15 +19,12 @@ import { ReactComponent as ArrowDown } from '../../../assets/svg/down-full-arrow
 import { ReactComponent as ArrowUp } from '../../../assets/svg/up-full-arrow.svg';
 import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { PLATFORM_INSIGHTS_CHART } from '../../../constants/ServiceInsightsTab.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getServiceInsightsWidgetPlaceholder,
   getTitleByChartType,
 } from '../../../utils/ServiceInsightsTabUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getReadableCountString } from '../../../utils/ServiceUtils';
-import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import TotalDataAssetsWidget from '../TotalDataAssetsWidget/TotalDataAssetsWidget';
 import './platform-insights-widget.less';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
@@ -45,30 +42,14 @@ function PlatformInsightsWidget({
     return chartsData.every((chart) => chart.noRecords);
   }, [chartsData]);
 
-  const extraDropdownContent = useMemo(
-    () => serviceUtilClassBase.getInsightsManageExtraOptions(),
-    []
-  );
-
   return (
     <div className="service-insights-widget widget-flex-col platform-insights-card">
-      <div className="d-flex justify-between">
-        <div className="d-flex flex-col">
-          <Typography.Text className="font-medium text-lg">
-            {t('label.entity-insight-plural', { entity: t('label.platform') })}
-          </Typography.Text>
-          <Typography.Text className="text-grey-muted text-sm">
-            {t('message.platform-insight-description')}
-          </Typography.Text>
-        </div>
-        {!isEmpty(extraDropdownContent) ? (
-          <ManageButton
-            entityName={EntityType.DATA_INSIGHT_CHART}
-            entityType={EntityType.DATA_INSIGHT_CHART}
-            extraDropdownContent={extraDropdownContent}
-          />
-        ) : null}
-      </div>
+      <Typography.Text className="font-medium text-lg">
+        {t('label.entity-insight-plural', { entity: t('label.platform') })}
+      </Typography.Text>
+      <Typography.Text className="text-grey-muted text-sm">
+        {t('message.platform-insight-description')}
+      </Typography.Text>
 
       {/* Don't remove this class name, it is used for exporting the platform insights chart */}
       <Row className="m-t-lg export-platform-insights-chart" gutter={16}>
