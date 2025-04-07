@@ -188,7 +188,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
   }, [errorMessage]);
 
   return (
-    <div className="mt-12 text-base font-medium">
+    <div className="mt-12 mb-24 text-base font-medium">
       {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
         ? noRecordForES
         : elasticSearchError}
