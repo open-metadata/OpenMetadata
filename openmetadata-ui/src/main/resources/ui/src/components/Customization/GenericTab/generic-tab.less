@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 @import (reference) url('../../../styles/variables.less');
+@import (reference) url('antd/dist/antd.variable.less');
 
 .grid-container {
   .react-grid-item {
@@ -21,6 +22,17 @@
     .ant-card.ant-card-bordered,
     .ant-card.new-description-card {
       height: 100%;
+      .ant-card-body {
+        // calculate body height
+        max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
+        overflow-y: auto;
+      }
+
+      &.empty-widget-placeholder {
+        .ant-card-body {
+          max-height: initial;
+        }
+      }
     }
   }
 

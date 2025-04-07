@@ -57,7 +57,7 @@ const fetchTeamSuggestions = advancedSearchClassBase.autocomplete({
 });
 
 const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
-  const [teamsOptions, setTeamOptions] = useState<TeamStateType>({
+  const [teamsOptions, setTeamsOptions] = useState<TeamStateType>({
     defaultOptions: [],
     selectedOptions: [],
     options: [],
@@ -96,7 +96,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     setTierOptions((prev) => ({ ...prev, selectedOptions: tiers }));
     setChartFilter((previous) => ({
       ...previous,
-      tier: tiers.length ? tiers.map((tier) => tier.key).join(',') : undefined,
+      tier: tiers.length ? tiers.map((tier) => tier.key) : undefined,
     }));
   };
 
@@ -116,13 +116,13 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
   };
 
   const handleTeamChange = (teams: SearchDropdownOption[] = []) => {
-    setTeamOptions((prev) => ({
+    setTeamsOptions((prev) => ({
       ...prev,
       selectedOptions: teams,
     }));
     setChartFilter((previous) => ({
       ...previous,
-      team: teams.length ? teams.map((team) => team.key).join(',') : undefined,
+      team: teams.length ? teams.map((team) => team.key) : undefined,
     }));
   };
 
@@ -136,7 +136,10 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     const teamFilterOptions = hits.map((hit) => {
       const source = hit._source;
 
-      return { key: source.name, label: source.displayName ?? source.name };
+      return {
+        key: source.name,
+        label: getEntityName(source),
+      };
     });
 
     return teamFilterOptions;
@@ -147,7 +150,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
       setIsTeamLoading(true);
       try {
         const response = await fetchTeamOptions(query);
-        setTeamOptions((prev) => ({
+        setTeamsOptions((prev) => ({
           ...prev,
           options: response,
         }));
@@ -157,7 +160,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
         setIsTeamLoading(false);
       }
     } else {
-      setTeamOptions((prev) => ({
+      setTeamsOptions((prev) => ({
         ...prev,
         options: prev.defaultOptions,
       }));
@@ -186,7 +189,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
 
   const fetchDefaultTeamOptions = async () => {
     if (teamsOptions.defaultOptions.length) {
-      setTeamOptions((prev) => ({
+      setTeamsOptions((prev) => ({
         ...prev,
         options: [...prev.selectedOptions, ...prev.defaultOptions],
       }));
@@ -197,7 +200,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     try {
       setIsTeamLoading(true);
       const response = await fetchTeamOptions();
-      setTeamOptions((prev) => ({
+      setTeamsOptions((prev) => ({
         ...prev,
         defaultOptions: response,
         options: response,
@@ -252,15 +255,19 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     }
   };
 
+  const kpi = useMemo(() => {
+    return {
+      isLoading: isKpiLoading,
+      data: kpiList,
+    };
+  }, [isKpiLoading, kpiList]);
+
   const dataInsightHeaderProps = useMemo(
     () => ({
       chartFilter: chartFilter,
       selectedDaysFilter,
       onChartFilterChange: handleDateRangeChange,
-      kpi: {
-        isLoading: isKpiLoading,
-        data: kpiList,
-      },
+      kpi: kpi,
       teamFilter: {
         options: uniqBy(teamsOptions.options, 'key'),
         selectedKeys: teamsOptions.selectedOptions,
@@ -283,8 +290,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     [
       handleTeamSearch,
       chartFilter,
-      isKpiLoading,
-      kpiList,
+      kpi,
       handleDateRangeChange,
       handleTierSearch,
       fetchDefaultTierOptions,
