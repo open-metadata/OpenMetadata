@@ -415,6 +415,7 @@ class OMetaLineageMixin(Generic[T]):
                         f"Error while adding lineage: {lineage_request.left.error}"
                     )
 
+    @functools.lru_cache(maxsize=LRU_CACHE_SIZE)
     def patch_lineage_processed_flag(
         self,
         entity: Type[T],
@@ -429,12 +430,10 @@ class OMetaLineageMixin(Generic[T]):
                     "value": True,
                 }
             ]
-
-            res = self.client.patch(
+            self.client.patch(
                 path=f"{self.get_suffix(entity)}/name/{fqn}",
                 data=json.dumps(patch),
             )
-            return entity(**res)
         except Exception as exc:
             logger.debug(f"Error while patching lineage processed flag: {exc}")
             logger.debug(traceback.format_exc())
