@@ -384,7 +384,8 @@ export const getFormattedEntityData = (
 export const getEntityChildDetails = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
-  highlights?: SearchedDataProps['data'][number]['highlight']
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  loading?: boolean
 ) => {
   let childComponent;
   let heading;
@@ -467,7 +468,10 @@ export const getEntityChildDetails = (
               </Typography.Text>
             </Col>
             <Col span={24}>
-              <SummaryList formattedEntityData={formattedChartsData} />
+              <SummaryList
+                formattedEntityData={formattedChartsData}
+                loading={loading}
+              />
             </Col>
           </Row>
 
