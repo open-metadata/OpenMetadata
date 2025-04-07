@@ -10,18 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DefaultOptionType } from 'antd/lib/select';
-import { EntityReference } from '../../../generated/entity/type';
-
-export interface DomainSelectableTreeProps {
-  value?: string[]; // array of fqn
-  onSubmit: (option: EntityReference[]) => Promise<void>;
-  visible: boolean;
-  onCancel: () => void;
-  isMultiple?: boolean;
-  initialDomains?: EntityReference[];
-  dropdownRef?: React.RefObject<HTMLDivElement>;
-  handleDropdownChange?: (open: boolean) => void;
+@import (reference) url('../../../../styles/variables.less');
+.Bot-listV1-container {
+  .bot-link {
+    color: @blue-17;
+  }
 }
-
-export type TreeListItem = Omit<DefaultOptionType, 'label'>;
