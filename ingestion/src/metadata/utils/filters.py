@@ -295,3 +295,18 @@ def filter_by_classification(
     :return: True for filtering, False otherwise
     """
     return _filter(classification_pattern, classification_name)
+
+
+def filter_by_collection(
+    collection_pattern: Optional[FilterPattern], collection_name: str
+) -> bool:
+    """
+    Return True if the models needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param collection_pattern: Model defining collection filtering logic
+    :param collection_name: collection name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(collection_pattern, collection_name)

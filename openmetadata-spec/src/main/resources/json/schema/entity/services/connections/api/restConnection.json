@@ -33,6 +33,13 @@
       "type": "string",
       "format": "password"
     },
+    "docURL": {
+      "expose": true,
+      "title": "docURL",
+      "description": "Documentation URL for the schema.",
+      "type": "string",
+      "format": "uri"
+    },
     "apiCollectionFilterPattern": {
       "description": "Regex to only fetch api collections with names matching the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
