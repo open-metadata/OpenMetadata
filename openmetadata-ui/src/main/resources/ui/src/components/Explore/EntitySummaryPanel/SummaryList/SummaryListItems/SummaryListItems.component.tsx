@@ -35,7 +35,7 @@ function SummaryListItem({
       <div className="summary-list-item-container">
         <Row gutter={[0, 8]}>
           <Col
-            className="d-flex items-baseline justify-between gap-2"
+            className="d-flex items-baseline"
             data-testid="title-container"
             span={24}>
             {isColumnsData &&
@@ -46,7 +46,9 @@ function SummaryListItem({
                 iconClassName: 'm-r-xss',
                 iconWidth: '14px',
               })}
-            <Typography.Text ellipsis={{ tooltip: entityDetails.title }}>
+            <Typography.Text
+              className="m-r-xs"
+              ellipsis={{ tooltip: entityDetails.title }}>
               {entityDetails.title}
             </Typography.Text>
 
