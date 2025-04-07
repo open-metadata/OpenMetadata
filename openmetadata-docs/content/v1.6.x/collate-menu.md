@@ -120,14 +120,20 @@ site_menu:
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
     url: /connectors/database/gcs-datalake/yaml
+  - category: Connectors / Database / GCS Datalake / Troubleshooting
+    url: /connectors/database/gcs-datalake/troubleshooting
   - category: Connectors / Database / Glue
     url: /connectors/database/glue
   - category: Connectors / Database / Glue / Run Externally
     url: /connectors/database/glue/yaml
+  - category: Connectors / Database / Glue / Troubleshooting
+    url: /connectors/database/glue/troubleshooting
   - category: Connectors / Database / Greenplum
     url: /connectors/database/greenplum
   - category: Connectors / Database / Greenplum / Run Externally
     url: /connectors/database/greenplum/yaml
+  - category: Connectors / Database / Greenplum / Troubleshooting
+    url: /connectors/database/greenplum/troubleshooting
   - category: Connectors / Database / Hive
     url: /connectors/database/hive
   - category: Connectors / Database / Hive / Run Externally
@@ -138,6 +144,8 @@ site_menu:
     url: /connectors/database/iceberg
   - category: Connectors / Database / Iceberg / Run Externally
     url: /connectors/database/iceberg/yaml
+  - category: Connectors / Database / Iceberg / Troubleshooting
+    url: /connectors/database/iceberg/troubleshooting
   - category: Connectors / Database / Impala
     url: /connectors/database/impala
   - category: Connectors / Database / Impala / Run Externally
@@ -148,10 +156,14 @@ site_menu:
     url: /connectors/database/mariadb
   - category: Connectors / Database / MariaDB / Run Externally
     url: /connectors/database/mariadb/yaml
+  - category: Connectors / Database / MariaDB / Troubleshooting
+    url: /connectors/database/mariadb/troubleshooting
   - category: Connectors / Database / MongoDB
     url: /connectors/database/mongodb
   - category: Connectors / Database / MongoDB / Run Externally
     url: /connectors/database/mongodb/yaml
+  - category: Connectors / Database / MongoDB / Troubleshooting
+    url: /connectors/database/mongodb/troubleshooting
   - category: Connectors / Database / MSSQL
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
