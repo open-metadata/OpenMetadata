@@ -20,6 +20,7 @@ Configure and schedule Iceberg metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-rest-catalog-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/iceberg/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/iceberg/yaml"} /%}
 
@@ -211,7 +212,5 @@ When using `SSL` to establish secure connections between OpenMetadata and Rest C
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

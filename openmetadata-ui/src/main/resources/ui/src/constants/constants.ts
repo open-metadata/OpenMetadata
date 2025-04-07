@@ -35,6 +35,7 @@ export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
 export const WHITE_COLOR = '#ffffff';
 export const LIGHT_GREEN_COLOR = '#4CAF50';
+export const LINK_COLOR = '#0968da';
 
 export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
@@ -55,6 +56,7 @@ export const PAGE_SIZE_LARGE = 50;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
@@ -369,7 +371,7 @@ export const ERROR_MESSAGE = {
 };
 
 export const ICON_DIMENSION = {
-  with: 14,
+  width: 14,
   height: 14,
   fontSize: 14,
 };

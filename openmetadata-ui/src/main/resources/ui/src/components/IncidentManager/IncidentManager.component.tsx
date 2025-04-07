@@ -21,7 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
-import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -51,7 +51,6 @@ import {
 } from '../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getUsers } from '../../rest/userAPI';
 import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
@@ -59,12 +58,11 @@ import {
 import {
   formatDateTimeLong,
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityDetailsPath,
   getIncidentManagerDetailPagePath,
@@ -115,8 +113,10 @@ const IncidentManager = ({
       isLoading: true,
     });
   const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
-    startTs: getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days),
-    endTs: getCurrentMillis(),
+    startTs: getStartOfDayInMillis(
+      getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
+    ),
+    endTs: getEndOfDayInMillis(getCurrentMillis()),
     ...searchParams,
   });
   const [users, setUsers] = useState<{
@@ -130,9 +130,6 @@ const IncidentManager = ({
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { testCase: commonTestCasePermission } = permissions;
 
-  const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
-    []
-  );
   const [isPermissionLoading, setIsPermissionLoading] = useState(true);
   const [testCasePermissions, setTestCasePermissions] = useState<
     TestCasePermission[]
@@ -357,28 +354,6 @@ const IncidentManager = ({
     }
   };
 
-  const fetchInitialAssign = useCallback(async () => {
-    try {
-      const { data } = await getUsers({
-        limit: PAGE_SIZE_MEDIUM,
-
-        isBot: false,
-      });
-      const filterData = getEntityReferenceListFromEntities(
-        data,
-        EntityType.USER
-      );
-      setInitialAssignees(filterData);
-    } catch (error) {
-      setInitialAssignees([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    // fetch users once and store in state
-    fetchInitialAssign();
-  }, []);
-
   useEffect(() => {
     if (
       commonTestCasePermission?.ViewAll ||
@@ -464,7 +439,7 @@ const IncidentManager = ({
           ]
         : []),
       {
-        title: t('label.execution-time'),
+        title: t('label.last-updated'),
         dataIndex: 'timestamp',
         key: 'timestamp',
         width: 200,
@@ -489,7 +464,6 @@ const IncidentManager = ({
             <TestCaseIncidentManagerStatus
               data={record}
               hasPermission={hasPermission?.EditAll}
-              usersList={initialAssignees}
               onSubmit={handleStatusSubmit}
             />
           );
@@ -533,12 +507,7 @@ const IncidentManager = ({
         ),
       },
     ],
-    [
-      testCaseListData.data,
-      initialAssignees,
-      testCasePermissions,
-      isPermissionLoading,
-    ]
+    [testCaseListData.data, testCasePermissions, isPermissionLoading]
   );
 
   if (
@@ -606,8 +575,8 @@ const IncidentManager = ({
 
       <Col span={24}>
         <Table
-          className="test-case-table-container"
           columns={columns}
+          containerClassName="test-case-table-container"
           data-testid="test-case-incident-manager-table"
           dataSource={testCaseListData.data}
           loading={testCaseListData.isLoading}

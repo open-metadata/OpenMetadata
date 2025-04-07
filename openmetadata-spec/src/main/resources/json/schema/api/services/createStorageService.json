@@ -50,7 +50,7 @@
       "description": "Fully qualified name of the domain the Storage Service belongs to.",
       "type": "string"
     },
-    "ingestionAgent" : {
+    "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }

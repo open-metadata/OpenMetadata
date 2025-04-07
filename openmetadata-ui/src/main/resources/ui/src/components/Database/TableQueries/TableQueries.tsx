@@ -486,7 +486,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <div className="flex-center font-medium mt-24" data-testid="no-queries">
+      <div className="query-placeholder-container" data-testid="no-queries">
         <ErrorPlaceHolder
           buttonId="add-query-btn"
           doc={USAGE_DOCS}
@@ -501,7 +501,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   if (isTableDeleted) {
     return (
-      <div className="flex-center font-medium mt-24" data-testid="no-queries">
+      <div className="query-placeholder-container" data-testid="no-queries">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           {t('message.field-data-is-not-available-for-deleted-entities', {
             field: t('label.query-plural'),
@@ -513,7 +513,7 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const queryTabBody = isError.search ? (
     <Col
-      className="flex-center font-medium mt-24"
+      className="flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
       <ErrorPlaceHolder>
@@ -548,11 +548,7 @@ const TableQueries: FC<TableQueriesProp> = ({
           firstPanel={{
             className: 'entity-resizable-panel-container',
             children: (
-              <Row
-                className="p-x-md m-t-md"
-                data-testid="queries-container"
-                gutter={[8, 16]}
-                style={{ paddingRight: '36px' }}>
+              <Row data-testid="queries-container" gutter={[8, 16]}>
                 <Col span={24}>
                   <Space className="justify-between w-full">
                     <Space size={16}>
@@ -625,10 +621,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                             style={{ fontSize: '14px' }}
                           />
                         ) : (
-                          <SortDescendingOutlined
-                            className="text-base text-grey-muted"
-                            style={{ fontSize: '14px' }}
-                          />
+                          <SortDescendingOutlined className="text-sm text-grey-muted" />
                         )}
                       </Button>
                       {addButton}

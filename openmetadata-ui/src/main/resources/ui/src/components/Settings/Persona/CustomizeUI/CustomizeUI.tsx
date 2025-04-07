@@ -61,7 +61,7 @@ export const CustomizeUI = () => {
   }, [activeCat]);
 
   return (
-    <Row gutter={[16, 16]}>
+    <Row className="bg-grey" gutter={[16, 16]}>
       {items.map((value) => (
         <Col key={value.key} span={8}>
           <SettingItemCard data={value} onClick={handleCustomizeItemClick} />

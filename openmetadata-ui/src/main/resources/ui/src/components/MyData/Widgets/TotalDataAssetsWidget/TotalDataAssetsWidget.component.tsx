@@ -156,7 +156,7 @@ const TotalDataAssetsWidget = ({
 
   return (
     <Card
-      className="total-data-insight-card"
+      className="total-data-insight-card data-insight-card-chart"
       data-testid="total-assets-widget"
       id={SystemChartType.TotalDataAssets}
       loading={isLoading}>
@@ -240,9 +240,7 @@ const TotalDataAssetsWidget = ({
             </div>
           </Col>
           {isWidgetSizeLarge && (
-            <Col
-              className="overflow-y-scroll overflow-x-hidden h-max-full"
-              span={10}>
+            <Col className="total-entity-insight-summary-container" span={10}>
               <TotalEntityInsightSummary
                 entities={rightSideEntityList}
                 latestData={latestData}

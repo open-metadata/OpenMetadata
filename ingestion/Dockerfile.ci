@@ -73,6 +73,7 @@ COPY --chown=airflow:0 ingestion /home/airflow/ingestion
 COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airflow-apis
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
+COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
 
 USER airflow
 ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.10.txt"
