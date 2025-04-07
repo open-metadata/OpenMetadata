@@ -13,8 +13,8 @@
 import { Button, Modal, Popover, Typography } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/ic-edit-profile.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
@@ -35,7 +35,8 @@ import { changePassword } from '../../rest/auth-API';
 import { getEntityName } from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
-import ProfilePictureNew from '../common/ProfilePicture/ProfilePictureNew';
+import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
 import ChangePasswordForm from '../Settings/Users/ChangePasswordForm';
 import './profile-details.less';
@@ -237,12 +238,15 @@ const ProfileSectionUserDetailsCard = ({
       </Popover>
 
       <div className="m-t-sm">
-        <ProfilePictureNew
-          avatarType="outlined"
-          data-testid="replied-user"
-          name={getEntityName(userData)}
-          width="80"
-        />
+        <UserPopOverCard userName={getEntityName(userData)}>
+          <div className="d-flex items-center">
+            <ProfilePicture
+              data-testid="replied-user"
+              name={getEntityName(userData)}
+              width="80"
+            />
+          </div>
+        </UserPopOverCard>
       </div>
       <div>
         <p className="profile-details-title" data-testid="user-display-name">

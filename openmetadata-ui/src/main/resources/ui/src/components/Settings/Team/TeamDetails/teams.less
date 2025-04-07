@@ -14,7 +14,7 @@
 @import url('../../../../styles/variables.less');
 
 .team-list-container {
-  padding: 20px 0;
+  padding: 20px 0 10px 0;
   .ant-btn {
     border-radius: 4px;
   }
@@ -105,10 +105,14 @@
     .ant-collapse-arrow {
       top: 28px !important; // overriding from antd
       right: 0px !important;
-      padding: 8px;
+      padding: 6px;
       background-color: @background-color;
       border: 1px solid #d9d9d9;
       border-radius: 4px;
+    }
+
+    .ant-collapse-arrow.arrow-icon-non-organization {
+      top: 42px !important;
     }
 
     .domain-link {
@@ -120,7 +124,8 @@
     width: 100%;
     .teams-scroll-component {
       width: 100%;
-      height: calc(100vh - 120px);
+      max-height: calc(100vh - 120px);
+      padding: 8px 20px;
       overflow-y: scroll;
       scrollbar-width: none;
 

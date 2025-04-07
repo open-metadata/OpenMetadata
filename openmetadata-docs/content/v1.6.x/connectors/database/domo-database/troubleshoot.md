@@ -3,7 +3,7 @@ title: Domo Database Connector Troubleshooting
 slug: /connectors/database/domo-database/troubleshoot
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the Domo Database connector.
 

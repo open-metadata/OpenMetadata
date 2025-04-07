@@ -17,6 +17,8 @@ import { ServicesType } from '../../interface/service.interface';
 
 export interface ServiceInsightsTabProps {
   serviceDetails: ServicesType;
+  workflowStatesData?: WorkflowStatesData;
+  isWorkflowStatusLoading: boolean;
 }
 export interface WorkflowStatesData {
   mainInstanceState: WorkflowInstance;

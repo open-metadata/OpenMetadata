@@ -29,6 +29,7 @@ interface ListViewProps {
   status: string;
   loading: boolean;
   searchString: string | undefined;
+  handleSearch: (value: string) => void;
 }
 
 const ListView = ({
@@ -36,12 +37,24 @@ const ListView = ({
   status,
   loading,
   searchString,
+  handleSearch,
 }: ListViewProps) => {
   const { t } = useTranslation();
 
   const tableData = useMemo(
     () => getTableViewData(executions, status, searchString),
     [executions, status, searchString]
+  );
+
+  const searchProps = useMemo(
+    () => ({
+      removeMargin: true,
+      placeholder: t('message.filter-task-name-description'),
+      searchValue: searchString,
+      typingInterval: 500,
+      onSearch: handleSearch,
+    }),
+    [searchString, handleSearch]
   );
 
   const columns = useMemo(
@@ -78,6 +91,7 @@ const ListView = ({
       }}
       pagination={false}
       rowKey={(record) => `${record.name}-${record.status}-${record.key}`}
+      searchProps={searchProps}
     />
   );
 };

@@ -13,4 +13,5 @@
 export enum ExportTypes {
   CSV = 'CSV',
   PNG = 'PNG',
+  PDF = 'PDF',
 }
