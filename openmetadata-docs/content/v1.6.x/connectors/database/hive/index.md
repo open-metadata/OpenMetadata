@@ -22,6 +22,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/hive/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/hive/yaml"} /%}
 
@@ -104,7 +105,5 @@ To configure SSL for secure connections between OpenMetadata and a Hive database
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}
