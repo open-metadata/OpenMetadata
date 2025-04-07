@@ -225,6 +225,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
     if (!update || entity.getStatus() == null) {
+      checkDuplicateTerms(entity);
       // If parentTerm or glossary has reviewers set, the glossary term can only be created in
       // `Draft` mode
       entity.setStatus(!nullOrEmpty(parentReviewers) ? Status.DRAFT : Status.APPROVED);
@@ -1018,6 +1019,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     for (GlossaryTerm entity : entities) {
       entity.setChildrenCount(
           termIdCountMap.getOrDefault(entity.getId(), entity.getChildrenCount()));
+    }
+  }
+
+  private void checkDuplicateTerms(GlossaryTerm entity) {
+    int count =
+        daoCollection
+            .glossaryTermDAO()
+            .getGlossaryTermCountIgnoreCase(entity.getGlossary().getName(), entity.getName());
+    if (count > 0) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.duplicateGlossaryTerm(entity.getName()));
     }
   }
 

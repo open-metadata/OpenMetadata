@@ -1403,6 +1403,27 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertEquals(term1.getChildren().size(), children.get(0).getChildrenCount());
   }
 
+  @Test
+  void test_createDuplicateGlossaryTerm() throws IOException {
+    Glossary glossary = createGlossary("TestGlossary", null, null);
+
+    GlossaryTerm term1 = createTerm(glossary, null, "TestTerm");
+    CreateGlossaryTerm createDuplicateTerm =
+        new CreateGlossaryTerm()
+            .withName("TestTerm")
+            .withDescription("check creation of duplicate terms")
+            .withGlossary(glossary.getName());
+
+    HttpResponseException exception =
+        assertThrows(
+            HttpResponseException.class,
+            () -> createEntity(createDuplicateTerm, ADMIN_AUTH_HEADERS));
+    assertTrue(
+        exception
+            .getMessage()
+            .contains("A term with the name 'TestTerm' already exists in the glossary."));
+  }
+
   public Glossary createGlossary(
       TestInfo test, List<EntityReference> reviewers, List<EntityReference> owners)
       throws IOException {
