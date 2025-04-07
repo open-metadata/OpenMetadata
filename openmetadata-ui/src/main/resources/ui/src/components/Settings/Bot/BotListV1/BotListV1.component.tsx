@@ -313,7 +313,7 @@ const BotListV1 = ({
           onSearch={handleSearch}
         />
       </Col>
-      <Col className="Bot-listV1-container" span={24}>
+      <Col className="bot-list-v1-container" span={24}>
         <Table
           columns={columns}
           customPaginationProps={{
