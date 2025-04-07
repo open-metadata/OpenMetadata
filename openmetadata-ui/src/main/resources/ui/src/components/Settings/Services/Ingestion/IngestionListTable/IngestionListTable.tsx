@@ -66,6 +66,7 @@ import Table from '../../../../common/Table/Table';
 import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import { SelectedRowDetails } from '../ingestion.interface';
 import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
+import './ingestion-list-table.less';
 import {
   IngestionListTableProps,
   ModifiedIngestionPipeline,
@@ -449,7 +450,7 @@ function IngestionListTable({
   return (
     <>
       <div
-        className={classNames('m-b-md', tableContainerClassName)}
+        className={classNames('ingestion-list-table', tableContainerClassName)}
         data-testid="ingestion-table">
         <Table
           className={tableClassName}

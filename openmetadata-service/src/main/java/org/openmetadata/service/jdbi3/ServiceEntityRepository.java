@@ -84,16 +84,16 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void storeRelationships(T service) {
-    addIngestionAgentRelationship(service);
+    addIngestionRunnerRelationship(service);
   }
 
-  private void addIngestionAgentRelationship(T service) {
-    if (service.getIngestionAgent() != null) {
+  private void addIngestionRunnerRelationship(T service) {
+    if (service.getIngestionRunner() != null) {
       addRelationship(
           service.getId(),
-          service.getIngestionAgent().getId(),
+          service.getIngestionRunner().getId(),
           entityType,
-          service.getIngestionAgent().getType(),
+          service.getIngestionRunner().getType(),
           Relationship.USES);
     }
   }
@@ -134,7 +134,7 @@ public abstract class ServiceEntityRepository<
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateConnection();
-      updateIngestionAgent();
+      updateIngestionRunner();
     }
 
     private void updateConnection() {
@@ -170,13 +170,13 @@ public abstract class ServiceEntityRepository<
       }
     }
 
-    private void updateIngestionAgent() {
+    private void updateIngestionRunner() {
       UUID originalAgentId =
-          original.getIngestionAgent() != null ? original.getIngestionAgent().getId() : null;
+          original.getIngestionRunner() != null ? original.getIngestionRunner().getId() : null;
       UUID updatedAgentId =
-          updated.getIngestionAgent() != null ? updated.getIngestionAgent().getId() : null;
+          updated.getIngestionRunner() != null ? updated.getIngestionRunner().getId() : null;
       if (!Objects.equals(originalAgentId, updatedAgentId)) {
-        addIngestionAgentRelationship(updated);
+        addIngestionRunnerRelationship(updated);
         recordChange("ingestionAgent", originalAgentId, updatedAgentId, true);
       }
     }

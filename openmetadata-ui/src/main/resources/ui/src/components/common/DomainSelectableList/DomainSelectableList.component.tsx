@@ -95,10 +95,14 @@ const DomainSelectableList = ({
     [onUpdate, multiple]
   );
 
-  const handleCancel = useCallback(() => {
-    setPopupVisible(false);
-    onCancel?.();
-  }, [onCancel]);
+  const handleCancel = useCallback(
+    (e) => {
+      e.stopPropagation();
+      setPopupVisible(false);
+      onCancel?.();
+    },
+    [onCancel]
+  );
 
   const popoverContent = useMemo(() => {
     return (
