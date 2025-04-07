@@ -240,6 +240,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 <Col span={24}>
                   <Tabs
                     activeKey={tab}
+                    className="tabs-new"
                     items={tabItems}
                     onChange={handleTabChange}
                   />

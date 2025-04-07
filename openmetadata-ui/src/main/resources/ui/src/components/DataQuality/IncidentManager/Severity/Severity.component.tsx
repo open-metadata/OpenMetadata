@@ -11,28 +11,29 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
+import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import '../incident-manager.style.less';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
-const Severity = ({ severity, onSubmit, hasPermission }: SeverityProps) => {
+const Severity = ({
+  severity,
+  onSubmit,
+  hasPermission,
+  newLook = false,
+}: SeverityProps) => {
   const { t } = useTranslation();
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
@@ -70,11 +71,11 @@ const Severity = ({ severity, onSubmit, hasPermission }: SeverityProps) => {
             title={t('label.edit-entity', {
               entity: t('label.severity'),
             })}>
-            <Icon
-              {...ICON_DIMENSION}
-              component={EditIcon}
+            <EditIconButton
               data-testid="edit-severity-icon"
-              style={{ color: DE_ACTIVE_COLOR }}
+              icon={<EditIcon width="14px" />}
+              newLook={newLook}
+              size="small"
               onClick={onEditSeverity}
             />
           </Tooltip>

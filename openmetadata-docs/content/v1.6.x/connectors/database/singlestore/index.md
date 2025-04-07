@@ -21,6 +21,7 @@ Configure and schedule SingleStore metadata and profiler workflows from the Open
 - [Lineage](/how-to-guides/data-lineage/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/singlestore/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/singlestore/yaml"} /%}
 

@@ -68,6 +68,10 @@ jest.mock('../../utils/StringsUtils', () => ({
 
 jest.mock('../../utils/TableUtils', () => ({
   getTableExpandableConfig: jest.fn(),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description']),
+  handleUpdateTableColumnSelections: jest.fn(),
 }));
 
 jest.mock('../../rest/storedProceduresAPI', () => {
