@@ -22,6 +22,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
+- [Troubleshooting](/connectors/database/mysql/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
 
@@ -243,7 +244,5 @@ To establish secure connections between OpenMetadata and MySQL, navigate to the 
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}
