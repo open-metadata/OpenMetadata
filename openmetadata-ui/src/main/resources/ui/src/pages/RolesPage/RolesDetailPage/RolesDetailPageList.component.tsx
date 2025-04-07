@@ -115,8 +115,8 @@ const RolesDetailPageList = ({
 
   return (
     <Table
-      className="list-table"
       columns={columns}
+      containerClassName="list-table"
       dataSource={list}
       pagination={false}
       rowKey="id"

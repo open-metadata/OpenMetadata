@@ -1759,6 +1759,7 @@
     "filter-pattern-include-exclude-info": "เพิ่มหรือเรียงลำดับ {{activity}} {{filterPattern}} โดยการเพิ่มรายการของ regex ที่แยกด้วยเครื่องหมายจุลภาค",
     "filter-pattern-info": "เลือกที่จะรวมเข้าหรือยกเว้น {{filterPattern}} เป็นส่วนหนึ่งของการนำเข้าข้อมูลเมตา",
     "filter-pattern-placeholder": "ในการเพิ่มรูปแบบการกรอง เพียงแค่พิมพ์และกด Enter",
+    "filter-task-name-description": "กรองตามชื่องาน",
     "find-apps-to-improve-data": "ค้นหาแอปพลิเคชันเพื่อปรับปรุงข้อมูลของคุณ",
     "find-in-table": "ค้นหาในตาราง",
     "fosters-collaboration-among-producers-and-consumers": "ตั้งเป้าหมายองค์กรและ KPI เพื่อขับเคลื่อนวัฒนธรรมข้อมูลของบริษัทคุณแบบเชิงรุก ส่งเสริมวัฒนธรรมของการปรับปรุงอย่างต่อเนื่องด้วยรายงานที่ตรงเวลาเพื่อติดตามสุขภาพข้อมูล",
