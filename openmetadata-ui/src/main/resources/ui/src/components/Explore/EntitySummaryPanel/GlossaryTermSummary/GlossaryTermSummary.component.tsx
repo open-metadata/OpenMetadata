@@ -95,7 +95,7 @@ function GlossaryTermSummary({
           <Col span={24}>
             {reviewers.length > 0 ? (
               <Space wrap size={[8, 8]}>
-                <OwnerLabel owners={reviewers} />
+                <OwnerLabel avatarSize={18} owners={reviewers} />
               </Space>
             ) : (
               <Typography.Text
