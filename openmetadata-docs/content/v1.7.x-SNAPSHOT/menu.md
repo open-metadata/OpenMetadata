@@ -522,7 +522,7 @@ site_menu:
     url: /connectors/dashboard/lightdash
   - category: Connectors / Dashboard / Lightdash / Run Externally
     url: /connectors/dashboard/lightdash/yaml
-    - category: Connectors / Dashboard / Lightdash / Troubleshooting
+  - category: Connectors / Dashboard / Lightdash / Troubleshooting
     url: /connectors/dashboard/lightdash/troubleshooting
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
