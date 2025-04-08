@@ -217,7 +217,6 @@ function APIEndpointsTab({
       rowKey="id"
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-      tableHeader={t('label.endpoint')}
     />
   );
 }

@@ -33,8 +33,6 @@ export interface TableComponentProps<T> extends TableProps<T> {
     showPagination: boolean;
   };
   entityType?: string;
-
-  tableHeader?: string;
 }
 
 export interface TableColumnDropdownList {
