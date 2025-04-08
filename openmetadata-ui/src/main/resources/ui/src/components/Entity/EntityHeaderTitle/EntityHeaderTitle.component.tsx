@@ -127,7 +127,8 @@ const EntityHeaderTitle = ({
                   nameClassName,
                   'm-b-0 d-block display-xs font-semibold'
                 )}
-                data-testid="entity-header-display-name">
+                data-testid="entity-header-display-name"
+                ellipsis={{ tooltip: false }}>
                 {stringToHTML(displayName ?? name)}
               </Typography.Text>
             </Tooltip>
@@ -144,7 +145,8 @@ const EntityHeaderTitle = ({
                 'display-xs entity-header-name font-semibold': !displayName,
                 'text-md entity-header-display-name font-medium': displayName,
               })}
-              data-testid="entity-header-name">
+              data-testid="entity-header-name"
+              ellipsis={{ tooltip: false }}>
               {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
