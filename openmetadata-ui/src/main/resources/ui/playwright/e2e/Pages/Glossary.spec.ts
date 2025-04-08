@@ -63,6 +63,7 @@ import {
   selectActiveGlossaryTerm,
   selectColumns,
   toggleBulkActionColumnsSelection,
+  updateGlossaryReviewer,
   updateGlossaryTermDataFromTree,
   updateGlossaryTermOwners,
   updateGlossaryTermReviewers,
@@ -835,6 +836,72 @@ test.describe('Glossary tests', () => {
         }
       );
     } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Drag and Drop Glossary Term Approved Terms having reviewer', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    const user1 = new UserClass();
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+
+    try {
+      await user1.create(apiContext);
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await test.step('Update Glossary Term Reviewer', async () => {
+        await updateGlossaryReviewer(page, [
+          `${user1.data.firstName}${user1.data.lastName}`,
+        ]);
+      });
+
+      await test.step('Drag and Drop Glossary Term', async () => {
+        await dragAndDropTerm(
+          page,
+          glossaryTerm1.data.displayName,
+          glossaryTerm2.data.displayName
+        );
+
+        await confirmationDragAndDropGlossary(
+          page,
+          glossaryTerm1.data.name,
+          glossaryTerm2.data.name,
+          false,
+          true
+        );
+
+        await expect(
+          page.getByRole('cell', {
+            name: glossaryTerm1.responseData.displayName,
+          })
+        ).not.toBeVisible();
+
+        const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+
+        // verify the term is moved under the parent term
+        await page.getByTestId('expand-collapse-all-button').click();
+        await termRes;
+
+        await expect(
+          page.getByRole('cell', {
+            name: glossaryTerm1.responseData.displayName,
+          })
+        ).toBeVisible();
+      });
+    } finally {
+      await user1.delete(apiContext);
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
