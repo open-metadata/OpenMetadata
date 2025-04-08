@@ -67,6 +67,7 @@ const Table = <T extends Record<string, unknown>>(
     customPaginationProps,
     entityType,
     defaultVisibleColumns,
+    tableHeader,
     ...rest
   }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
@@ -247,7 +248,9 @@ const Table = <T extends Record<string, unknown>>(
           <Col span={12}>
             <div className="h-full d-flex items-center">
               <div className="table-data-count-container">
-                <Typography.Text>{t('label.table-plural')}</Typography.Text>
+                <Typography.Text>
+                  {tableHeader || t('label.table-plural')}
+                </Typography.Text>
                 <AppBadge
                   className="total-count-badge"
                   label={(
