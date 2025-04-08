@@ -36,11 +36,14 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import {
+  ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
+  SIZE,
+} from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ErrorPlaceHolderES from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
@@ -295,11 +298,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
   if (treeData.length === 0) {
     return (
-      <ErrorPlaceHolder
-        className="mt-48"
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
+      <div className="mt-48">
+        <ErrorPlaceHolderES
+          size={SIZE.MEDIUM}
+          type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        />
+      </div>
     );
   }
 
