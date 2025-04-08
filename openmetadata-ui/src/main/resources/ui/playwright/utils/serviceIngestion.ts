@@ -120,10 +120,7 @@ export const deleteService = async (
   await deleteResponse;
 
   // Closing the toast notification
-  await toastNotification(
-    page,
-    `Delete operation initiated for ${serviceName}`
-  );
+  await toastNotification(page, /deleted successfully!/);
 
   await page.waitForSelector(`[data-testid="service-name-${serviceName}"]`, {
     state: 'hidden',
