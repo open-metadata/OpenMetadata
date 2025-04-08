@@ -144,7 +144,7 @@ export const OwnerLabel = ({
           {/* Show more button/dropdown */}
           {showMoreButton && (
             <OwnerReveal
-              avatarSize={avatarSize}
+              avatarSize={isCompactView ? 24 : avatarSize}
               isCompactView={isCompactView}
               isDropdownOpen={isDropdownOpen}
               owners={owners.slice(maxVisibleOwners)}
