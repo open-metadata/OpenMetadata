@@ -37,10 +37,52 @@ export const OwnerLabel = ({
   },
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
+  avatarSize = 32,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const ownerElementsNonCompactView = useMemo(() => {
+    if (!isCompactView) {
+      if (showLabel || onUpdate) {
+        return (
+          <div className="d-flex items-center gap-2 m-b-xs">
+            {showLabel && (
+              <Typography.Text
+                className={classNames(
+                  'no-owner-heading font-medium text-sm',
+                  className
+                )}>
+                {placeHolder ?? t('label.owner-plural')}
+              </Typography.Text>
+            )}
+            {onUpdate && (
+              <UserTeamSelectableList
+                hasPermission={Boolean(hasPermission)}
+                multiple={multiple}
+                owner={owners}
+                tooltipText={tooltipText}
+                onUpdate={onUpdate}
+              />
+            )}
+          </div>
+        );
+      }
+    }
+
+    return null;
+  }, [
+    isCompactView,
+    showLabel,
+    onUpdate,
+    placeHolder,
+    hasPermission,
+    multiple,
+    owners,
+    tooltipText,
+    className,
+  ]);
 
   const ownerElements = useMemo(() => {
     const hasOwners = owners && owners.length > 0;
@@ -71,67 +113,47 @@ export const OwnerLabel = ({
 
     return (
       <div
-        className={classNames('d-flex owner-label-heading gap-2 items-center', {
+        className={classNames({
           'owner-label-container': !isCompactView,
+          'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
         data-testid="owner-label">
+        {/* Owner avatars list */}
+        {ownerElementsNonCompactView}
         <div
           className={classNames(
-            `d-inline-flex ${!isCompactView ? 'flex-col' : 'flex-wrap'} gap-2`,
-            { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
+            'd-flex items-center w-full flex-wrap',
+            {
+              'gap-2': isCompactView,
+              inherited: Boolean(owners.some((owner) => owner?.inherited)),
+            },
             className
           )}>
-          {!isCompactView && (
-            <div className="d-flex items-center gap-2">
-              {showLabel && (
-                <Typography.Text
-                  className={classNames(
-                    'no-owner font-medium text-sm',
-                    className
-                  )}>
-                  {placeHolder ?? t('label.owner-plural')}
-                </Typography.Text>
-              )}
-              {onUpdate && (
-                <UserTeamSelectableList
-                  hasPermission={Boolean(hasPermission)}
-                  multiple={multiple}
-                  owner={owners}
-                  tooltipText={tooltipText}
-                  onUpdate={(updatedUsers) => {
-                    onUpdate(updatedUsers);
-                  }}
-                />
-              )}
-            </div>
+          {visibleOwners.map((owner, index) => (
+            <OwnerItem
+              avatarSize={avatarSize}
+              className={className}
+              index={index}
+              isCompactView={isCompactView}
+              key={owner.id}
+              owner={owner}
+              ownerDisplayName={ownerDisplayName?.[index]}
+            />
+          ))}
+
+          {/* Show more button/dropdown */}
+          {showMoreButton && (
+            <OwnerReveal
+              avatarSize={isCompactView ? 24 : avatarSize}
+              isCompactView={isCompactView}
+              isDropdownOpen={isDropdownOpen}
+              owners={owners.slice(maxVisibleOwners)}
+              remainingCount={remainingOwnersCount}
+              setIsDropdownOpen={setIsDropdownOpen}
+              setShowAllOwners={setShowAllOwners}
+              showAllOwners={showAllOwners}
+            />
           )}
-
-          {/* Owner avatars list */}
-          <div className={`d-flex items-center ${isCompactView && 'gap-2'}`}>
-            {visibleOwners.map((owner, index) => (
-              <OwnerItem
-                className={className}
-                index={index}
-                isCompactView={isCompactView}
-                key={owner.id}
-                owner={owner}
-                ownerDisplayName={ownerDisplayName?.[index]}
-              />
-            ))}
-
-            {/* Show more button/dropdown */}
-            {showMoreButton && (
-              <OwnerReveal
-                isCompactView={isCompactView}
-                isDropdownOpen={isDropdownOpen}
-                owners={owners.slice(maxVisibleOwners)}
-                remainingCount={remainingOwnersCount}
-                setIsDropdownOpen={setIsDropdownOpen}
-                setShowAllOwners={setShowAllOwners}
-                showAllOwners={showAllOwners}
-              />
-            )}
-          </div>
         </div>
 
         {isCompactView && onUpdate && (
@@ -140,9 +162,7 @@ export const OwnerLabel = ({
             multiple={multiple}
             owner={owners}
             tooltipText={tooltipText}
-            onUpdate={(updatedUsers) => {
-              onUpdate(updatedUsers);
-            }}
+            onUpdate={onUpdate}
           />
         )}
       </div>
@@ -161,6 +181,8 @@ export const OwnerLabel = ({
     isDropdownOpen,
     tooltipText,
     multiple,
+    ownerElementsNonCompactView,
+    avatarSize,
   ]);
 
   return ownerElements;

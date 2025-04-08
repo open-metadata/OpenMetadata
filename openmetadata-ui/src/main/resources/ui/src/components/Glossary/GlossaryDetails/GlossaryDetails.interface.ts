@@ -21,4 +21,6 @@ export type GlossaryDetailsProps = {
   updateGlossary: (value: Glossary) => Promise<void>;
   updateVote?: (data: VotingDataProps) => Promise<void>;
   handleGlossaryDelete: (id: string) => Promise<void>;
+  toggleTabExpanded: () => void;
+  isTabExpanded: boolean;
 };

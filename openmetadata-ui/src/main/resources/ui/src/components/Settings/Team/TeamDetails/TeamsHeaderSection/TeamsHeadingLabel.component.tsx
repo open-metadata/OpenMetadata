@@ -152,10 +152,10 @@ const TeamsHeadingLabel = ({
                     : t('message.no-permission-for-action')
                 }>
                 <Button
-                  className="p-0 flex-center"
+                  className="p-0 edit-team-name flex-center"
                   data-testid="edit-team-name"
                   disabled={!hasEditDisplayNamePermission}
-                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
                   size="small"
                   type="text"
                   onClick={(e) => {

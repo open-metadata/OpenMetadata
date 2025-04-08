@@ -203,7 +203,7 @@ const DataProductsPage = () => {
     <>
       <PageLayoutV1
         className={classNames('data-product-page-layout', {
-          'version-data page-container': version,
+          'version-data': version,
         })}
         pageTitle={t('label.data-product')}>
         <DataProductsDetailsPage

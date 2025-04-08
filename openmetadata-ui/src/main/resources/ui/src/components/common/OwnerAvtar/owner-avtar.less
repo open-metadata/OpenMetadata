@@ -15,3 +15,39 @@
 .anticon.owner-team-icon {
   color: @grey-700;
 }
+
+.owner-avatar-icon {
+  position: relative;
+
+  .inherited-icon-styling {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background-color: white;
+    border-radius: 50%;
+
+    width: 16px;
+    height: 16px;
+    z-index: 1;
+    border: 1px solid @blue-9;
+    svg {
+      color: @blue-9;
+    }
+  }
+}
+
+// Styling for the avatar group layout (for the overlapping effect)
+.avatar-group {
+  display: flex;
+
+  .owner-avatar-icon {
+    margin-right: -8px;
+
+    border-radius: 50%;
+    overflow: hidden;
+
+    &:hover {
+      z-index: 2;
+    }
+  }
+}

@@ -44,6 +44,8 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
+import { Transi18next } from '../../../../../utils/CommonUtils';
+import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 import {
   getAddCustomMetricPath,
   getAddDataQualityTableTestPath,
@@ -104,6 +106,9 @@ const TableProfilerChart = ({
     useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
   const [isLoading, setIsLoading] = useState(true);
   const [profileMetrics, setProfileMetrics] = useState<TableProfile[]>([]);
+  const profilerDocsLink =
+    documentationLinksClassBase.getDocsURLS()
+      .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
 
   const addButtonContent = [
     {
@@ -128,6 +133,24 @@ const TableProfilerChart = ({
       },
     },
   ];
+
+  const noProfilerMessage = useMemo(() => {
+    return isProfilingEnabled ? (
+      t('message.profiler-is-enabled-but-no-data-available')
+    ) : (
+      <Transi18next
+        i18nKey="message.no-profiler-card-message-with-link"
+        renderElement={
+          <a
+            href={profilerDocsLink}
+            rel="noreferrer"
+            target="_blank"
+            title="Profiler Documentation"
+          />
+        }
+      />
+    );
+  }, [isProfilingEnabled]);
 
   const tableCustomMetricsProfiling = useMemo(
     () => calculateCustomMetrics(profileMetrics, customMetrics),
@@ -269,6 +292,7 @@ const TableProfilerChart = ({
           curveType="stepAfter"
           isLoading={isLoading}
           name="rowCount"
+          noDataPlaceholderText={noProfilerMessage}
           title={t('label.data-volume')}
         />
       </Col>
@@ -293,6 +317,7 @@ const TableProfilerChart = ({
               <OperationDateBarChart
                 chartCollection={operationDateMetrics}
                 name="operationDateMetrics"
+                noDataPlaceholderText={noProfilerMessage}
               />
             </Col>
           </Row>
@@ -316,6 +341,7 @@ const TableProfilerChart = ({
               <CustomBarChart
                 chartCollection={operationMetrics}
                 name="operationMetrics"
+                noDataPlaceholderText={noProfilerMessage}
               />
             </Col>
           </Row>

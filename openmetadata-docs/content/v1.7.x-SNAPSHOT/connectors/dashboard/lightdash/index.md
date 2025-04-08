@@ -18,6 +18,7 @@ Configure and schedule Lightdash metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/lightdash/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/lightdash/yaml"} /%}
 
@@ -67,5 +68,3 @@ To integrate Lightdash, ensure you are using OpenMetadata version 1.2.x or highe
 {% /stepsContainer %}
 
 {% partial file="/v1.7/connectors/dashboard/dashboard-lineage.md" /%}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

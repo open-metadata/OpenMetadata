@@ -19,6 +19,7 @@ Configure and schedule Cassandra metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-cassandra-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/cassandra/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
 
@@ -95,7 +96,5 @@ Under `Advanced Config`, after selecting the SSL mode, provide the CA certificat
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

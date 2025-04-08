@@ -17,13 +17,16 @@
   height: @entity-details-tab-height;
   overflow: hidden;
 }
+
 .reflex-container {
   .entity-resizable-panel-container {
     height: @entity-details-tab-height;
     overflow-y: scroll;
-  }
-  .entity-resizable-right-panel-container {
-    padding: 48px 8px 0 8px;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
@@ -31,13 +34,19 @@
   .entity-summary-resizable-right-panel-container {
     .summary-panel-container {
       height: 100%;
+      border: none;
+
+      .ant-card-body {
+        padding: 0;
+      }
+
+      .ant-card-head {
+        padding: 0;
+      }
     }
-    .ant-drawer-content-wrapper {
-      padding-top: 30px;
-    }
+
     z-index: 10;
     overflow-y: auto;
-    padding: 48px 8px 0 8px;
   }
 }
 
@@ -49,6 +58,11 @@
   .content-resizable-panel-container {
     height: @page-height;
     overflow-y: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 
@@ -56,6 +70,7 @@
 .explore-content-height-resizable-panel {
   height: @explore-content-height-resizable-panel;
   overflow-y: hidden;
+
   .explore-resizable-panel-container {
     height: @explore-content-height-resizable-panel;
     overflow-y: scroll;

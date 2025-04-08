@@ -25,8 +25,9 @@ import {
 import { Owner } from '../../../../../generated/entity/feed/owner';
 import { Thread } from '../../../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { UserAvatarGroup } from '../../../../common/OwnerLabel/UserAvatarGroup.component';
-import ProfilePictureNew from '../../../../common/ProfilePicture/ProfilePictureNew';
+import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
+import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
+import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
 interface OwnersFeedProps {
   feed: Thread;
@@ -69,27 +70,30 @@ function OwnersFeed({
               {updatedOwner.length <= maxVisibleOwners ? (
                 <Row wrap align="middle">
                   {updatedOwner.map((owner: EntityReference) => (
-                    <div
-                      className={`owner-chip d-flex items-center ${
-                        showThread && 'bg-white'
-                      }`}
-                      key={owner.id}>
-                      <ProfilePictureNew
-                        displayName={owner.displayName}
-                        name={owner.name ?? ''}
-                        size={24}
-                        width="24"
-                      />
-                      <Typography.Text className="owner-chip-text">
-                        {owner.displayName}
-                      </Typography.Text>
-                    </div>
+                    <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
+                      <div
+                        className={`owner-chip d-flex items-center ${
+                          showThread && 'bg-white'
+                        }`}>
+                        <ProfilePicture
+                          displayName={owner.displayName}
+                          name={owner.name ?? ''}
+                          width="24"
+                        />
+                        <Typography.Text className="owner-chip-text">
+                          {owner.displayName}
+                        </Typography.Text>
+                      </div>
+                    </UserPopOverCard>
                   ))}
                 </Row>
               ) : (
-                <UserAvatarGroup
+                <OwnerLabel
+                  avatarSize={24}
+                  isCompactView={false}
                   maxVisibleOwners={maxVisibleOwners}
                   owners={updatedOwner}
+                  showLabel={false}
                 />
               )}
             </Col>
@@ -111,27 +115,30 @@ function OwnersFeed({
               {previousOwner.length <= maxVisibleOwners ? (
                 <Row align="middle">
                   {previousOwner.map((owner: EntityReference) => (
-                    <div
-                      className={`owner-chip d-flex items-center ${
-                        showThread && 'bg-white'
-                      }`}
-                      key={owner.id}>
-                      <ProfilePictureNew
-                        displayName={owner.displayName}
-                        name={owner.name ?? ''}
-                        size={24}
-                        width="24"
-                      />
-                      <Typography.Text className="owner-chip-text">
-                        {owner.displayName}
-                      </Typography.Text>
-                    </div>
+                    <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
+                      <div
+                        className={`owner-chip d-flex items-center ${
+                          showThread && 'bg-white'
+                        }`}>
+                        <ProfilePicture
+                          displayName={owner.displayName}
+                          name={owner.name ?? ''}
+                          width="24"
+                        />
+                        <Typography.Text className="owner-chip-text">
+                          {owner.displayName}
+                        </Typography.Text>
+                      </div>
+                    </UserPopOverCard>
                   ))}
                 </Row>
               ) : (
-                <UserAvatarGroup
+                <OwnerLabel
+                  avatarSize={24}
+                  isCompactView={false}
                   maxVisibleOwners={maxVisibleOwners}
                   owners={previousOwner}
+                  showLabel={false}
                 />
               )}
             </Col>

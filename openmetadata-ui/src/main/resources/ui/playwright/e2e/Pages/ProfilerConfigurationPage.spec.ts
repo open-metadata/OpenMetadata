@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   PROFILER_EMPTY_RESPONSE_CONFIG,
   PROFILER_REQUEST_CONFIG,

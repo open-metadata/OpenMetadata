@@ -64,7 +64,7 @@ class SearchIndexClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: 11,
+      [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: 6,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -102,7 +102,10 @@ class SearchIndexClassBase {
 
     return [
       {
-        h: 13.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.SEARCH_INDEX_FIELDS] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

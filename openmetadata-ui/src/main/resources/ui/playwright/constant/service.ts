@@ -91,3 +91,5 @@ export const DBT = {
   dataQualityTest1: 'unique_customers_customer_id',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
+
+export const MAX_CONSECUTIVE_ERRORS = 3;

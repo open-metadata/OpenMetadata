@@ -71,7 +71,7 @@ const IncidentTimeChartWidget = ({
       }, [] as CustomAreaChartData[]);
 
       setChartData(updatedData);
-    } catch (error) {
+    } catch {
       setChartData([]);
     } finally {
       setIsChartLoading(false);
@@ -86,7 +86,7 @@ const IncidentTimeChartWidget = ({
     <Card
       data-testid={`incident-${incidentMetricType}-time-chart-widget`}
       loading={isChartLoading}>
-      <Typography.Paragraph className="text-xs text-grey-muted">
+      <Typography.Paragraph className="text-xs font-semibold">
         {title}
       </Typography.Paragraph>
 

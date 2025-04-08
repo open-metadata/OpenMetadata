@@ -3,7 +3,7 @@ title: Unity Catalog Connector Troubleshooting
 slug: /connectors/database/unity-catalog/troubleshooting
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ## Unity Catalog connection details
 

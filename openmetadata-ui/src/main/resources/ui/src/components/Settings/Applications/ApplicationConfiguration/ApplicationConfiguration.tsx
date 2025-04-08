@@ -54,23 +54,21 @@ const ApplicationConfiguration = ({
   };
 
   const formPanel = (
-    <div className="m-auto max-width-md w-full p-lg">
-      <FormBuilder
-        useSelectWidget
-        cancelText={t('label.back')}
-        formData={appData?.appConfiguration ?? {}}
-        hideCancelButton={!onCancel}
-        isLoading={isLoading}
-        okText={t('label.submit')}
-        schema={jsonSchema}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        uiSchema={UiSchema}
-        validator={validator}
-        onCancel={onCancel}
-        onFocus={handleFieldFocus}
-        onSubmit={onConfigSave}
-      />
-    </div>
+    <FormBuilder
+      useSelectWidget
+      cancelText={t('label.back')}
+      formData={appData?.appConfiguration ?? {}}
+      hideCancelButton={!onCancel}
+      isLoading={isLoading}
+      okText={t('label.submit')}
+      schema={jsonSchema}
+      serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+      uiSchema={UiSchema}
+      validator={validator}
+      onCancel={onCancel}
+      onFocus={handleFieldFocus}
+      onSubmit={onConfigSave}
+    />
   );
 
   const docPanel = (

@@ -21,6 +21,7 @@ Configure and schedule MariaDB metadata and profiler workflows from the OpenMeta
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
+- [Troubleshooting](/connectors/database/mariadb/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mariadb/yaml"} /%}
 
@@ -80,7 +81,5 @@ Executing the profiler workflow or data quality tests, will require the user to 
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

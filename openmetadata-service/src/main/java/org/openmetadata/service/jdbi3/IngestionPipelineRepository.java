@@ -154,12 +154,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void storeRelationships(IngestionPipeline ingestionPipeline) {
     addServiceRelationship(ingestionPipeline, ingestionPipeline.getService());
-    if (ingestionPipeline.getIngestionAgent() != null) {
+    if (ingestionPipeline.getIngestionRunner() != null) {
       addRelationship(
           ingestionPipeline.getId(),
-          ingestionPipeline.getIngestionAgent().getId(),
+          ingestionPipeline.getIngestionRunner().getId(),
           entityType,
-          ingestionPipeline.getIngestionAgent().getType(),
+          ingestionPipeline.getIngestionRunner().getType(),
           Relationship.USES);
     }
   }
@@ -293,7 +293,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         .map(
             pipelineStatus ->
                 pipelineStatus.withConfig(
-                    Optional.ofNullable(pipelineStatus.getConfig().getOrDefault("appConfig", null))
+                    Optional.ofNullable(pipelineStatus.getConfig())
+                        .map(m -> m.getOrDefault("appConfig", null))
                         .map(JsonUtils::getMap)
                         .orElse(null)));
   }

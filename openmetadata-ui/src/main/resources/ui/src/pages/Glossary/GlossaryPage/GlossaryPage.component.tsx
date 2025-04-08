@@ -41,7 +41,7 @@ import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityAction, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -169,6 +169,7 @@ const GlossaryPage = () => {
             TabSpecificField.REVIEWERS,
             TabSpecificField.VOTES,
             TabSpecificField.DOMAIN,
+            TabSpecificField.TERM_COUNT,
           ],
           limit: PAGE_SIZE_LARGE,
           ...(nextPage && { after: nextPage }),
@@ -450,6 +451,7 @@ const GlossaryPage = () => {
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary')}
           permission={createGlossaryPermission}
+          size={SIZE.X_LARGE}
           type={
             createGlossaryPermission
               ? ERROR_PLACEHOLDER_TYPE.CREATE
@@ -483,9 +485,11 @@ const GlossaryPage = () => {
     <ResizableLeftPanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container' + (previewAsset ? ' m-r-lg' : ''),
         minWidth: 280,
         flex: 0.13,
+        title: t('label.glossary'),
         children: (
           <>
             <GlossaryLeftPanel glossaries={glossaries} />
@@ -516,6 +520,7 @@ const GlossaryPage = () => {
         children: glossaryElement,
         minWidth: 700,
         flex: 0.7,
+        wrapInCard: false,
       }}
       hideSecondPanel={!previewAsset}
       pageTitle={t('label.glossary')}
@@ -528,7 +533,7 @@ const GlossaryPage = () => {
           />
         ),
         className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container bg-white',
+          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
