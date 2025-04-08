@@ -342,14 +342,14 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid fully qualified column name invalidColumn");
+        "Invalid column name invalidColumn");
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
     assertResponse(
         () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "Invalid fully qualified column name invalidColumn");
+        "Invalid column name invalidColumn");
 
     // Add column level lineage with multiple fromColumns (t1c1 + t3c1) to t2c1
     details.getColumnsLineage().clear();
