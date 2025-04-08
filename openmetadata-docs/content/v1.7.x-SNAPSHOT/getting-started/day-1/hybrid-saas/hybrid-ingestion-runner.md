@@ -29,7 +29,7 @@ Once your DevOps team has installed and configured the Hybrid Runner, follow the
 - Look for your runner in the list.
 - The status should display as **Connected**.
 
-ℹ️ If the runner is not connected, check your network/firewall configuration and validate the token/environment variables.
+> If the runner is not connected, check your network/firewall configuration and validate the token/environment variables.
 
 {% image
 src="/images/v1.7/getting-started/ingestion-runner-preferences.png"
@@ -50,7 +50,7 @@ src="/images/v1.7/getting-started/ingestion-runner-list.png"
 src="/images/v1.7/getting-started/ingestion-runner-service.png"
 /%}
 
-ℹ️ Choose "CollateSaaS" to run ingestion workflows within Collate’s SaaS environment, even if you're operating in hybrid mode.
+> Choose "CollateSaaS" to run ingestion workflows within Collate’s SaaS environment, even if you're operating in hybrid mode.
 
 ### 3. Manage Secrets Securely
 
@@ -69,12 +69,11 @@ username: secret:/my/database/username
 password: secret:/my/database/password
 ```
 
-✅ *Collate never stores or reads your secrets directly. The Hybrid Runner fetches them at runtime locally.*
-
 {% image
 src="/images/v1.7/getting-started/ingestion-runner-service.png"
 /%}
 
+> *Collate never stores or reads your secrets directly. The Hybrid Runner fetches them at runtime locally.*
 
 ## Troubleshooting
 
