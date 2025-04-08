@@ -413,6 +413,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
+            LOG.error("Encountered Exception while exporting.", e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
                 jobId, securityContext, e.getMessage());
           }
@@ -538,6 +539,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
+            LOG.error("Encountered Exception while importing.", e);
             WebsocketNotificationHandler.sendCsvImportFailedNotification(
                 jobId, securityContext, e.getMessage());
           }
