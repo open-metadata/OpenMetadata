@@ -256,11 +256,12 @@ const TagPage = () => {
 
   const onNameSave = async (obj: Tag) => {
     if (tagItem) {
-      const { displayName } = obj;
+      const { name, displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
 
       updatedDetails = {
         ...tagItem,
+        name: name?.trim(),
         displayName: displayName?.trim(),
       };
 
@@ -432,7 +433,7 @@ const TagPage = () => {
               className: 'tag-resizable-panel-container',
               children: (
                 <div className="tag-overview-tab">
-                  <Row className="p-md">
+                  <Row>
                     <Col span={24}>
                       <DescriptionV1
                         removeBlur
@@ -663,7 +664,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tag-tabs"
+            className="tabs-new"
             items={tabItems}
             onChange={activeTabHandler}
           />

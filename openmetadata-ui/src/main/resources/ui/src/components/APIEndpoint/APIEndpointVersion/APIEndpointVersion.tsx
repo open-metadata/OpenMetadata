@@ -161,14 +161,12 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityType={EntityType.API_ENDPOINT}
-              hasEditAccess={false}
-              hasPermission={entityPermissions.ViewAll}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.API_ENDPOINT}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
         ),
       },
     ],
@@ -207,6 +205,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
+                  className="tabs-new"
                   defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}

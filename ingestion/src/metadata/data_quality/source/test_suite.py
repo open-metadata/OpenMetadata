@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -96,13 +96,24 @@ class TestSuiteSource(Source):
         """
         # Logical test suites don't have associated tables
         if self.source_config.entityFullyQualifiedName is None:
+            logger.debug("No entity FQN provided, skipping table entity retrieval")
             return None
+
+        logger.info(
+            f"Retrieving table entity for FQN: {self.source_config.entityFullyQualifiedName.root}"
+        )
         table: Table = self.metadata.get_by_name(
             entity=Table,
             fqn=self.source_config.entityFullyQualifiedName.root,
             fields=["tableProfilerConfig", "testSuite", "serviceType"],
         )
-
+        if not table:
+            logger.warning(
+                f"Table not found for FQN: {self.source_config.entityFullyQualifiedName.root}. "
+                "Please double check the entityFullyQualifiedName"
+                "by copying it directly from the entity URL in the OpenMetadata UI. "
+                "The FQN should be in the format: service_name.database_name.schema_name.table_name"
+            )
         return table
 
     def _get_table_service_connection(self, table: Table) -> DatabaseConnection:
@@ -195,7 +206,10 @@ class TestSuiteSource(Source):
             return
         # If there is no executable test suite yet for the table, we'll need to create one
         # Then, the suite won't have yet any tests
-        if not table.testSuite:
+        if not table.testSuite or table.testSuite.id.root is None:
+            logger.info(
+                f"Creating new test suite for table {table.name.root} as no executable test suite exists"
+            )
             executable_test_suite = CreateTestSuiteRequest(
                 name=fqn.build(
                     None,
@@ -218,9 +232,18 @@ class TestSuiteSource(Source):
 
         # Otherwise, we pick the tests already registered in the suite
         else:
+            logger.info(f"Using existing test suite for table {table.name.root}")
             test_suite: Optional[TestSuite] = self.metadata.get_by_id(
                 entity=TestSuite, entity_id=table.testSuite.id.root
             )
+            if test_suite is None:
+                yield Either(
+                    left=StackTraceError(
+                        name="Test Suite not found",
+                        error=f"Test Suite with id {table.testSuite.id.root} not found",
+                    )
+                )
+                return
             test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
         yield Either(
@@ -234,6 +257,9 @@ class TestSuiteSource(Source):
 
     def _process_logical_suite(self):
         """Process logical test suite, collect all test cases and yield them in batches by table"""
+        logger.info(
+            f"Processing logical test suite for service name: {self.config.source.serviceName}"
+        )
         test_suite = self.metadata.get_by_name(
             entity=TestSuite, fqn=self.config.source.serviceName
         )
@@ -244,6 +270,10 @@ class TestSuiteSource(Source):
                     error=f"Test Suite with name {self.config.source.serviceName} not found",
                 )
             )
+            # Return early if test suite not found in TestSuiteSource
+            return
+
+        logger.info(f"Found test suite: {test_suite.name.root}")
         test_cases: List[TestCase] = self._get_test_cases_from_test_suite(test_suite)
         grouped_by_table = itertools.groupby(
             test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root)

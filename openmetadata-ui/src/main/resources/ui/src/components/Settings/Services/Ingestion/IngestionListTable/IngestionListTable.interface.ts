@@ -16,14 +16,16 @@ import { ColumnsType } from 'antd/lib/table';
 import { ReactNode } from 'react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  StepSummary,
+} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
 import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 
 export interface IngestionListTableProps {
-  bordered?: boolean;
   tableContainerClassName?: string;
   afterDeleteAction?: () => void;
   airflowInformation?: UseAirflowStatusProps;
@@ -59,4 +61,9 @@ export interface IngestionListTableProps {
   ) => ReactNode;
   tableClassName?: string;
   searchText?: string;
+}
+
+export interface ModifiedIngestionPipeline extends IngestionPipeline {
+  runStatus?: StepSummary;
+  runId?: string;
 }

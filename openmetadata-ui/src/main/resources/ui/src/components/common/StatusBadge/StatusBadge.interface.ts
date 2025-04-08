@@ -19,10 +19,13 @@ export enum StatusType {
   Started = 'started',
   Stopped = 'stopped',
   Pending = 'pending',
+  InReview = 'inReview',
+  Deprecated = 'deprecated',
 }
 
 export interface StatusBadgeProps {
   label: string;
   status: StatusType;
   dataTestId?: string;
+  className?: string;
 }

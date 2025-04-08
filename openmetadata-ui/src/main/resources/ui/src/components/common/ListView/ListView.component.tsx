@@ -21,6 +21,8 @@ import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_VISIBLE_COLUMNS,
 } from '../../../constants/TableKeys.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import Table from '../Table/Table';
 import { ListViewOptions, ListViewProps } from './ListView.interface';
@@ -32,6 +34,7 @@ export const ListView = <T extends object = any>({
   searchProps: { search, onSearch },
   handleDeletedSwitchChange,
   deleted = false,
+  customPaginationProps,
 }: ListViewProps<T>) => {
   const [currentView, setCurrentView] = useState<ListViewOptions>(
     ListViewOptions.TABLE
@@ -94,7 +97,9 @@ export const ListView = <T extends object = any>({
       <Col span={24}>
         {currentView === ListViewOptions.TABLE ? (
           <Table
+            customPaginationProps={customPaginationProps}
             defaultVisibleColumns={DEFAULT_SERVICE_VISIBLE_COLUMNS}
+            entityType={EntityType.SERVICE}
             staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
             {...tableProps}
           />
@@ -102,6 +107,13 @@ export const ListView = <T extends object = any>({
           cardRender
         )}
       </Col>
+      {currentView !== ListViewOptions.TABLE && (
+        <Col span={24}>
+          {customPaginationProps.showPagination && (
+            <NextPrevious {...customPaginationProps} />
+          )}
+        </Col>
+      )}
     </Row>
   );
 };

@@ -19,7 +19,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
@@ -101,7 +101,7 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
         <div className="cursor-pointer d-flex">
           <div>
             {text ? (
-              <RichTextEditorPreviewerV1 markdown={text} />
+              <RichTextEditorPreviewerNew markdown={text} />
             ) : (
               <span className="text-grey-muted">
                 {t('label.no-entity', {
@@ -167,9 +167,9 @@ export const getTagsTableColumn = ({
                 icon={
                   <EditIcon
                     data-testid="editTagDescription"
-                    height={16}
+                    height={14}
                     name="edit"
-                    width={16}
+                    width={14}
                   />
                 }
                 size="small"

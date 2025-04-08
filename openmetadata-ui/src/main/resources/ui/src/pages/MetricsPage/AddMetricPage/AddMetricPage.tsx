@@ -263,13 +263,12 @@ const AddMetricPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-metric-container">
+          <div data-testid="add-metric-container">
             <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />

@@ -321,7 +321,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   }, []);
 
   return (
-    <Row className="mt-4" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
         <Col>
           <Typography.Text type="secondary">
@@ -366,7 +366,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               )
             ) : (
               <Table
-                bordered
                 className={classNames('align-table-filter-left', className)}
                 columns={columns}
                 data-testid="topic-schema-fields-table"

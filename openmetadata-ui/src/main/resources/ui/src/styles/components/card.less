@@ -15,6 +15,7 @@
 
 .ant-card {
   background: @background-color;
+  border-color: @border-color;
 }
 
 .card-body-full {
@@ -39,6 +40,7 @@
 
 .card-body-border-none {
   border: none;
+
   .ant-card-head {
     border: none;
   }
@@ -58,4 +60,18 @@
 
 .ant-card-extra {
   padding: 0px;
+}
+
+.ant-card.new-header-border-card {
+  .ant-card-head {
+    background: @grey-50;
+    border-bottom: none;
+    border-radius: @border-radius-sm;
+  }
+
+  height: calc(100% - 52px - 20px);
+  overflow-y: auto;
+  border-radius: @border-radius-sm;
+  border: 1px solid @blue-15;
+  background: @white;
 }

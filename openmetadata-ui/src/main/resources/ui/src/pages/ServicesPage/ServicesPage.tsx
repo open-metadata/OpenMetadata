@@ -36,6 +36,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import './service-page.less';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
@@ -87,7 +88,7 @@ const ServicesPage = () => {
 
   return viewAllPermission ? (
     <PageLayoutV1 pageTitle={serviceName}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -95,6 +96,7 @@ const ServicesPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={search as string}
+            className="tabs-new services-tabs"
             items={[
               ...(serviceName === 'dataObservabilityServices'
                 ? []

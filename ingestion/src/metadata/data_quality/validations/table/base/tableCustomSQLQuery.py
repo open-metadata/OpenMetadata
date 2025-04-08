@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,6 +24,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.utils.helpers import evaluate_threshold
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -51,6 +52,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             str,
         )
 
+        operator = self.get_test_case_param_value(
+            self.test_case.parameterValues, "operator", str, "<="  # type: ignore
+        )
+
         threshold = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
             "threshold",
@@ -64,6 +69,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             Strategy,
         )
 
+        operator = cast(str, operator)  # satisfy mypy
         sql_expression = cast(str, sql_expression)  # satisfy mypy
         threshold = cast(int, threshold)  # satisfy mypy
         strategy = cast(Strategy, strategy)  # satisfy mypy
@@ -81,7 +87,11 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
                 [TestResultValue(name=RESULT_ROW_COUNT, value=None)],
             )
         len_rows = rows if isinstance(rows, int) else len(rows)
-        if len_rows <= threshold:
+        if evaluate_threshold(
+            threshold,
+            operator,
+            len_rows,
+        ):
             status = TestCaseStatus.Success
             result_value = len_rows
         else:

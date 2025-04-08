@@ -224,14 +224,13 @@ const EditKPIPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="edit-kpi-container">
-            <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
+          <div data-testid="edit-kpi-container">
+            <TitleBreadcrumb className="m-t-0 my-4" titleLinks={breadcrumb} />
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
@@ -452,7 +451,7 @@ const EditKPIPage = () => {
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </div>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

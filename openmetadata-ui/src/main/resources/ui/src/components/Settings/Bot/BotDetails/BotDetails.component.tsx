@@ -28,7 +28,11 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_LARGE,
+  TERM_ADMIN,
+} from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -186,7 +190,9 @@ const BotDetails: FC<BotsDetailProps> = ({
                             <Button
                               className="p-0"
                               data-testid="edit-displayName"
-                              icon={<EditIcon width={16} />}
+                              icon={
+                                <EditIcon color={DE_ACTIVE_COLOR} width={16} />
+                              }
                               type="text"
                               onClick={() => setIsDisplayNameEdit(true)}
                             />
@@ -252,7 +258,8 @@ const BotDetails: FC<BotsDetailProps> = ({
             </Typography.Text>
           </div>
         </div>
-      }>
+      }
+      rightPanelWidth={300}>
       <div className="p-sm p-x-md">
         <TitleBreadcrumb
           titleLinks={[

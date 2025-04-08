@@ -13,10 +13,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import React from 'react';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { PageType } from '../../../generated/system/ui/page';
 import { postThread } from '../../../rest/feedsAPI';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { GenericProvider, useGenericContext } from './GenericProvider';
 
@@ -24,6 +26,23 @@ import { GenericProvider, useGenericContext } from './GenericProvider';
 jest.mock('../../../rest/feedsAPI');
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('../../../hooks/useCustomPages', () => ({
+  useCustomPages: jest.fn().mockImplementation(() => ({
+    customizedPage: {
+      pageType: PageType.Table,
+      tabs: [],
+    },
+  })),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useParams: jest.fn().mockImplementation(() => ({ tab: EntityTabs.SCHEMA })),
+}));
+
+jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+  getLayoutFromCustomizedPage: jest.fn().mockImplementation(() => []),
 }));
 
 // Mock ActivityFeedProvider
@@ -70,27 +89,10 @@ describe('GenericProvider', () => {
 
   const defaultProps = {
     data: mockData,
-    type: EntityType.TABLE,
+    type: EntityType.TABLE as CustomizeEntityType,
     onUpdate: jest.fn(),
-    permissions: {
-      Create: true,
-      Delete: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-      EditLineage: true,
-      EditOwner: true,
-      EditTags: true,
-      EditTier: true,
-      ViewAll: true,
-      ViewBasic: true,
-    } as unknown as OperationPermission,
+    permissions: DEFAULT_ENTITY_PERMISSION,
   };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
 
   it('should render children and provide context values', () => {
     render(

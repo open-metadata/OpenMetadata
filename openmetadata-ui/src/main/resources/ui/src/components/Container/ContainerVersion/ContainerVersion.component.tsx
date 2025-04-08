@@ -18,6 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
@@ -253,10 +254,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
               currentVersionData={currentVersionData}
               data={currentVersionData}
               permissions={entityPermissions}
-              type={EntityType.CONTAINER}
+              type={EntityType.CONTAINER as CustomizeEntityType}
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
+                  className="tabs-new"
                   defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}

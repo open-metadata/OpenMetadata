@@ -19,7 +19,6 @@ import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import Table from '../../components/common/Table/Table';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
@@ -75,10 +74,20 @@ function ServiceVersionMainTabContent({
           <Col data-testid="table-container" span={24}>
             <Space className="w-full m-b-md" direction="vertical" size="middle">
               <Table
-                bordered
                 columns={tableColumn}
+                customPaginationProps={{
+                  currentPage,
+                  isLoading: isServiceLoading,
+                  showPagination:
+                    Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
+                    !isEmpty(data),
+                  pageSize: PAGE_SIZE,
+                  paging,
+                  pagingHandler,
+                }}
                 data-testid="service-children-table"
                 dataSource={data}
+                entityType={entityType}
                 loading={isServiceLoading}
                 locale={{
                   emptyText: <ErrorPlaceHolder className="m-y-md" />,
@@ -88,17 +97,6 @@ function ServiceVersionMainTabContent({
                 scroll={TABLE_SCROLL_VALUE}
                 size="small"
               />
-
-              {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                !isEmpty(data) && (
-                  <NextPrevious
-                    currentPage={currentPage}
-                    isLoading={isServiceLoading}
-                    pageSize={PAGE_SIZE}
-                    paging={paging}
-                    pagingHandler={pagingHandler}
-                  />
-                )}
             </Space>
           </Col>
         </Row>

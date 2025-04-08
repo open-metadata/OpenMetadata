@@ -48,8 +48,9 @@ export const getToken = async (page: Page) => {
 export const getAuthContext = async (token: string) => {
   return await request.newContext({
     // Default timeout is 30s making it to 1m for AUTs
-    timeout: 60000,
+    timeout: 90000,
     extraHTTPHeaders: {
+      Connection: 'keep-alive',
       Authorization: `Bearer ${token}`,
     },
   });
@@ -216,6 +217,8 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await glossaryResponse;
   await page.getByRole('menuitem', { name: glossaryName }).click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 export const getRandomFirstName = () => {

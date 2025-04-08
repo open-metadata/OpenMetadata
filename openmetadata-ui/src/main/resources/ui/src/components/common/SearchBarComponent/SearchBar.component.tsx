@@ -20,9 +20,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';
+import './search-bar.less';
 
-type Props = {
+export type SearchBarProps = {
   inputClassName?: string;
+  containerClassName?: string;
   onSearch: (text: string) => void;
   searchValue?: string;
   typingInterval?: number;
@@ -41,6 +43,7 @@ type Props = {
 
 const Searchbar = ({
   inputClassName = '',
+  containerClassName = '',
   onSearch,
   searchValue,
   typingInterval = 0,
@@ -52,7 +55,7 @@ const Searchbar = ({
   searchBarDataTestId,
   inputProps,
   urlSearchKey,
-}: Props) => {
+}: SearchBarProps) => {
   const [userSearch, setUserSearch] = useState('');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const [isSearchBlur, setIsSearchBlur] = useState(true);
@@ -95,7 +98,7 @@ const Searchbar = ({
 
   return (
     <div
-      className={classNames('page-search-bar', {
+      className={classNames('page-search-bar', containerClassName, {
         'm-b-md': !removeMargin,
       })}
       data-testid="search-bar-container">
@@ -108,8 +111,8 @@ const Searchbar = ({
           placeholder={placeholder}
           prefix={
             <Icon
-              className={classNames('align-middle', {
-                'text-grey-3': isSearchBlur,
+              className={classNames('align-middle m-r-xss', {
+                'text-black': isSearchBlur,
                 'text-primary': !isSearchBlur,
               })}
               component={IconSearchV1}

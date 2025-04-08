@@ -11,20 +11,27 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { CloseOutlined } from '@ant-design/icons';
+import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined, toLower } from 'lodash';
+import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
+import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
 import {
   getCurrentDayStartGMTinMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { getPlatformInsightsChartDataFormattingMethod } from '../../utils/ServiceInsightsTabUtils';
+import {
+  filterDistributionChartItem,
+  getPlatformInsightsChartDataFormattingMethod,
+  getStatusIconFromStatusType,
+} from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -34,7 +41,11 @@ import {
 import './service-insights-tab.less';
 import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
 
-const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
+const ServiceInsightsTab = ({
+  serviceDetails,
+  workflowStatesData,
+  isWorkflowStatusLoading,
+}: ServiceInsightsTabProps) => {
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
@@ -73,19 +84,15 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
       });
 
       const platformInsightsChart = PLATFORM_INSIGHTS_CHART.map(
-        getPlatformInsightsChartDataFormattingMethod(
-          chartsData,
-          sevenDaysAgoTimestampInMs,
-          currentTimestampInMs
-        )
+        getPlatformInsightsChartDataFormattingMethod(chartsData)
       );
 
       const piiDistributionChart = chartsData[
         SystemChartType.PIIDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
       const tierDistributionChart = chartsData[
         SystemChartType.TierDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
 
       setChartsResults({
         platformInsightsChart,
@@ -129,8 +136,35 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
     }
   };
 
+  const {
+    Icon: StatusIcon,
+    message,
+    description,
+  } = getStatusIconFromStatusType(
+    workflowStatesData?.mainInstanceState?.status
+  );
+
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
+      {!isWorkflowStatusLoading && !isUndefined(workflowStatesData) && (
+        <Alert
+          closable
+          showIcon
+          className={classNames(
+            'status-banner',
+            workflowStatesData?.mainInstanceState?.status ??
+              WorkflowStatus.Running
+          )}
+          closeIcon={<CloseOutlined className="text-md" />}
+          description={description}
+          icon={
+            <div className="status-banner-icon">
+              <StatusIcon height={20} width={20} />
+            </div>
+          }
+          message={message}
+        />
+      )}
       {arrayOfWidgets.map(
         ({ Widget, name }) =>
           !isUndefined(Widget) && (
@@ -147,6 +181,7 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
                 chartsData={getChartsDataFromWidgetName(name)}
                 isLoading={isLoading}
                 serviceName={serviceName}
+                workflowStatesData={workflowStatesData}
               />
             </Col>
           )

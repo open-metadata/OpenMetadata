@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -354,42 +354,103 @@ def _(config: DbtS3Config):
 def _(config: DbtGcsConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
-        from google.cloud import storage  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from google.auth.exceptions import DefaultCredentialsError, GoogleAuthError
+        from google.cloud import storage
 
-        set_google_credentials(
-            gcp_credentials=config.dbtSecurityConfig, single_project=True
-        )
-
-        client = storage.Client()
-        if not bucket_name:
-            buckets = client.list_buckets()
-        else:
-            buckets = [client.get_bucket(bucket_name)]
-        for bucket in buckets:
-            if prefix:
-                obj_list = client.list_blobs(bucket.name, prefix=prefix)
-            else:
-                obj_list = client.list_blobs(bucket.name)
-
-            yield from download_dbt_files(
-                blob_grouped_by_directory=get_blobs_grouped_by_dir(
-                    blobs=[blob.name for blob in obj_list]
-                ),
-                config=config,
-                client=client,
-                bucket_name=bucket.name,
+        try:
+            set_google_credentials(
+                gcp_credentials=config.dbtSecurityConfig, single_project=True
             )
+        except (ValueError, GoogleAuthError) as cred_exc:
+            logger.error(
+                f"Failed to set Google Cloud credentials: {str(cred_exc)}. "
+                "Please ensure your credentials are properly formatted and valid."
+            )
+            raise DBTConfigException(
+                "Invalid Google Cloud credentials. Please check the format and validity of your credentials."
+            ) from cred_exc
+
+        try:
+            client = storage.Client()
+        except DefaultCredentialsError as client_exc:
+            logger.error(
+                f"Failed to create Google Cloud Storage client: {str(client_exc)}. "
+                "Please ensure you have valid credentials configured."
+            )
+            raise DBTConfigException(
+                "Failed to initialize Google Cloud Storage client. Please verify your credentials."
+            ) from client_exc
+
+        if not bucket_name:
+            try:
+                buckets = client.list_buckets()
+            except Exception as bucket_exc:
+                logger.error(f"Failed to list GCS buckets: {str(bucket_exc)}")
+                raise DBTConfigException(
+                    "Unable to list GCS buckets. Please check your permissions and credentials."
+                ) from bucket_exc
+        else:
+            try:
+                buckets = [client.get_bucket(bucket_name)]
+            except Exception as bucket_exc:
+                logger.error(
+                    f"Failed to access GCS bucket {bucket_name}: {str(bucket_exc)}"
+                )
+                raise DBTConfigException(
+                    f"Unable to access GCS bucket {bucket_name}."
+                    "Please verify the bucket exists and you have proper permissions."
+                ) from bucket_exc
+
+        for bucket in buckets:
+            try:
+                obj_list = client.list_blobs(
+                    bucket.name, prefix=prefix if prefix else None
+                )
+
+                yield from download_dbt_files(
+                    blob_grouped_by_directory=get_blobs_grouped_by_dir(
+                        blobs=[blob.name for blob in obj_list]
+                    ),
+                    config=config,
+                    client=client,
+                    bucket_name=bucket.name,
+                )
+            except Exception as blob_exc:
+                logger.error(
+                    f"Failed to process blobs in bucket {bucket.name}: {str(blob_exc)}"
+                )
+                logger.debug(traceback.format_exc())
+
+    except DBTConfigException as dbt_exc:
+        raise dbt_exc
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise DBTConfigException(f"Error fetching dbt files from gcs: {exc}")
+        raise DBTConfigException(f"Error fetching dbt files from GCS: {exc}")
 
 
 @get_dbt_details.register
 def _(config: DbtAzureConfig):
     try:
         bucket_name, prefix = get_dbt_prefix_config(config)
+        # pylint: disable=import-outside-toplevel
+        from azure.core.exceptions import AzureError, ClientAuthenticationError
 
-        client = AzureClient(config.dbtSecurityConfig).create_blob_client()
+        try:
+            client = AzureClient(config.dbtSecurityConfig).create_blob_client()
+        except ClientAuthenticationError as auth_exc:
+            logger.error(
+                f"Failed to authenticate with Azure: {str(auth_exc)}. "
+                "Please check your Azure credentials and permissions."
+            )
+            raise DBTConfigException(
+                "Authentication failed with Azure. Please verify your credentials and permissions."
+            ) from auth_exc
+        except AzureError as azure_exc:
+            logger.error(f"Failed to create Azure client: {str(azure_exc)}")
+            raise DBTConfigException(
+                "Failed to initialize Azure client. Please check your Azure configuration."
+            ) from azure_exc
 
         if not bucket_name:
             container_dicts = client.list_containers()

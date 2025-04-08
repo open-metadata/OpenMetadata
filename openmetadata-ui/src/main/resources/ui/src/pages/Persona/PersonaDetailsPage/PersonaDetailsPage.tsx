@@ -197,7 +197,7 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md page-container" gutter={[0, 16]}>
+      <Row className="m-b-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
             <div className="w-full">
@@ -232,9 +232,13 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <DescriptionV1
+            newLook
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
+            hasEditAccess={
+              entityPermission.EditAll || entityPermission.EditDescription
+            }
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionUpdate}
           />
@@ -242,6 +246,7 @@ export const PersonaDetailsPage = () => {
         <Col span={24}>
           <Tabs
             activeKey={activeKey}
+            className="tabs-new"
             items={tabItems}
             tabBarExtraContent={
               activeKey === 'users' && (

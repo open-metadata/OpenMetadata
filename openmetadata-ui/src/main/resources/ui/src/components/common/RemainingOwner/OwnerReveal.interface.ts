@@ -20,4 +20,5 @@ export interface OwnerRevealProps {
   showAllOwners: boolean;
   setIsDropdownOpen: (isOpen: boolean) => void;
   setShowAllOwners: React.Dispatch<React.SetStateAction<boolean>>;
+  avatarSize?: number;
 }

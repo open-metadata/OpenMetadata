@@ -63,6 +63,7 @@ import {
   ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
+import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
@@ -1653,14 +1654,21 @@ export const removeUnconnectedNodes = (
   let updatedNodes = [...nodes];
 
   if (targetNode && sourceNode) {
+    // Check both incoming and outgoing edges for source node
     const outgoersSourceNode = getOutgoers(sourceNode, nodes, edges);
+    const incomersSourceNode = getIncomers(sourceNode, nodes, edges);
+
+    // Check both incoming and outgoing edges for target node
+    const outgoersTargetNode = getOutgoers(targetNode, nodes, edges);
     const incomersTargetNode = getIncomers(targetNode, nodes, edges);
 
-    if (outgoersSourceNode.length === 1) {
+    // Remove source node if it has no other connections
+    if (outgoersSourceNode.length + incomersSourceNode.length <= 1) {
       updatedNodes = updatedNodes.filter((n) => n.id !== sourceNode.id);
     }
 
-    if (incomersTargetNode.length === 1) {
+    // Remove target node if it has no other connections
+    if (outgoersTargetNode.length + incomersTargetNode.length <= 1) {
       updatedNodes = updatedNodes.filter((n) => n.id !== targetNode.id);
     }
   }
@@ -1709,10 +1717,11 @@ export const getViewportForBoundsReactFlow = (
   return { x: translateX, y: translateY, zoom: scale };
 };
 
-export const getViewportForLineageExport = (nodes: Node[]): ExportViewport => {
-  const exportElement = document.querySelector(
-    '.react-flow__viewport'
-  ) as HTMLElement;
+export const getViewportForLineageExport = (
+  nodes: Node[],
+  documentSelector: string
+): ExportViewport => {
+  const exportElement = document.querySelector(documentSelector) as HTMLElement;
 
   const imageWidth = exportElement.scrollWidth;
   const imageHeight = exportElement.scrollHeight;
@@ -1747,4 +1756,17 @@ export const getLineageEntityExclusionFilter = () => {
       },
     },
   };
+};
+
+export const getEntityTypeFromPlatformView = (
+  platformView: LineagePlatformView
+): string => {
+  switch (platformView) {
+    case LineagePlatformView.DataProduct:
+      return EntityType.DATA_PRODUCT;
+    case LineagePlatformView.Domain:
+      return EntityType.DOMAIN;
+    default:
+      return 'service';
+  }
 };

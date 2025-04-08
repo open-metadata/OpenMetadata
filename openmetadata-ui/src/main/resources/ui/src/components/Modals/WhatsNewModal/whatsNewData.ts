@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_6_6'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_6_8'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1685,6 +1685,56 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 -   Don't overwrite query to execute
 -   Fixed external app logs
 -   Fixed incremental lineage processing when processedLineage is null`,
+    },
+  },
+  {
+    id: 63,
+    version: 'v1.6.7',
+    description: 'Released on 28th March 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   Lineage Improvements
+-   Added Tableau Custom SQL lineage support
+-   Added column count validation when creating table-type custom property
+-   Transformed Reserved keywords like quotes to OM compatible
+-   Added missing timestamp indexes for time series tables
+-   Enhancing FQN Handling: Support for Quoted Identifiers`,
+
+      Fixes: `-   Fixed potential Okta login issues by clearing state to avoid login errors
+-   Fixed MariaDB profiling with Time datatype
+-   Fixed handling of Sample Data with non-utf8 characters
+-   Fixed test connection showing timeout after successful connection
+-   Fixed DBT logs and improved error handling
+-   Fixed Test Suite 'NoneType' object has no attribute 'id' handling
+-   Fixed delete entity relation live indexing
+-   Fixed Data Insights Data Stream deletion on OpenSearch
+-   Fixed soft delete and restore functionality
+-   Corrected childrenCount for Organizations in Teams
+-   Fixed custom dashboard issue with term type of data
+-   Lower training window for Collate Anomaly detection model ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 64,
+    version: 'v1.6.8',
+    description: 'Released on 8th April 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-  Added support for Wherescape connector.${CollateIconWithLinkMD}
+      -  PowerBI owners ingestion for assets, improved filter query performance.
+      -  REST connector enhancements.
+      -  Implement column validation in lineage patch api.
+      `,
+      Fixes: `-  Fixed tableau ingestion for null upstream table queries.
+      -  Fixed public schema lieage for postgres.
+      -  Fixed PowerBI filter query.
+      -  Fixed IncidentManager date filtering and update table column title.
+      -  Fixed dbt cloud latest run execution.
+      -  Fixed Unpinned google-cloud-secret-manager version in ingestion dependencies.
+      -  Fixed update query to fix domain asset update.
+      -  Fixed DQ for local webserver.${CollateIconWithLinkMD}
+      -  Fixed placeholder issue for empty metrics.${CollateIconWithLinkMD}
+      `,
     },
   },
 ];

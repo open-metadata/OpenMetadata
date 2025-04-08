@@ -125,7 +125,7 @@ const RecentlyViewed = ({
               </ErrorPlaceHolder>
             </div>
           ) : (
-            <div className="entity-list-body">
+            <div className="entity-list-body no-scrollbar">
               {data.map((item) => {
                 return (
                   <div

@@ -41,8 +41,8 @@ import React, {
   useState,
 } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
@@ -442,7 +442,13 @@ const AssetsTabs = forwardRef(
       ) {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon height={140} width={140} />}>
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }>
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
                 <Typography.Paragraph>
@@ -455,7 +461,13 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolderNew
-            icon={<AddPlaceHolderIcon className="h-32 w-32" />}
+            icon={
+              <AddPlaceHolderIcon
+                className="text-grey-14"
+                height={140}
+                width={140}
+              />
+            }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph>
               {noDataPlaceholder ??
@@ -575,7 +587,7 @@ const AssetsTabs = forwardRef(
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
                 className={classNames(
-                  'm-b-sm cursor-pointer',
+                  'cursor-pointer',
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
@@ -650,7 +662,7 @@ const AssetsTabs = forwardRef(
         activeEntity &&
         permissions.Create &&
         data.length > 0 && (
-          <div className="w-full d-flex justify-between items-center">
+          <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
               className="assets-checkbox p-x-sm"
               onChange={(e) => onSelectAll(e.target.checked)}>
@@ -796,7 +808,7 @@ const AssetsTabs = forwardRef(
       <>
         <div
           className={classNames(
-            'assets-tab-container relative bg-white p-box border-radius-card h-full'
+            'assets-tab-container relative bg-white p-b-box border-radius-card h-full'
           )}
           data-testid="table-container"
           id="asset-tab">
@@ -810,7 +822,10 @@ const AssetsTabs = forwardRef(
                       selectedKeys: selectedFilter,
                     }}
                     trigger={['click']}>
-                    <TaskFilterIcon className="cursor-pointer" />
+                    <Button
+                      className={classNames('feed-filter-icon')}
+                      icon={<FilterIcon height={16} />}
+                    />
                   </Dropdown>
                   <div className="flex-1">
                     <Searchbar
@@ -850,7 +865,7 @@ const AssetsTabs = forwardRef(
             )}
             {isLoading ? (
               <Col span={24}>
-                <Space direction="vertical" size={16}>
+                <Space className="w-full" direction="vertical" size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />
@@ -879,7 +894,7 @@ const AssetsTabs = forwardRef(
             }
           />
         </div>
-        {!isLoading && permissions?.EditAll && (
+        {!isLoading && permissions?.EditAll && assetCount > 0 && (
           <div
             className={classNames('asset-tab-delete-notification', {
               visible: selectedItems.size > 0,

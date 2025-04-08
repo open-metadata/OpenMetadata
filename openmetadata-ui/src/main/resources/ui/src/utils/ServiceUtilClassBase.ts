@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { capitalize, get, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import MetricIcon from '../assets/svg/metric.svg';
@@ -714,6 +715,14 @@ class ServiceUtilClassBase {
         return 'Custom Search';
       case this.DatabaseServiceTypeSmallCase.Cockroach:
         return 'Cockroach';
+      case this.DatabaseServiceTypeSmallCase.SapERP:
+        return 'SAP ERP';
+      case this.DatabaseServiceTypeSmallCase.Mssql:
+        return 'MSSQL';
+      case this.MlModelServiceTypeSmallCase.Mlflow:
+        return 'MLflow';
+      case this.StorageServiceTypeSmallCase.Adls:
+        return 'ADLS';
 
       default:
         return capitalize(serviceType);
@@ -762,6 +771,18 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getExtraInfo(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  public getProperties(property: ObjectFieldTemplatePropertyType[]) {
+    return {
+      properties: property,
+      additionalField: '',
+      additionalFieldContent: null,
+    };
   }
 
   public getEditConfigData(

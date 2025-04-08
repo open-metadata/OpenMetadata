@@ -13,24 +13,70 @@
 @import (reference) url('../../../styles/variables.less');
 
 .table-container {
+  height: initial !important;
+  border-radius: 12px;
+  background-color: @white;
+  border: 1px solid @border-color-1;
+  overflow: hidden;
+
+  .table-data-count-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .ant-typography {
+      font-size: 16px;
+      font-weight: 600;
+      color: @text-color;
+    }
+
+    .total-count-badge {
+      background-color: @blue-1;
+      padding: 6px 12px;
+
+      .ant-typography {
+        color: @primary-color;
+        font-size: 12px;
+        font-weight: 500;
+      }
+    }
+  }
+
+  .ant-table-body {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
   .custom-column-dropdown-menu {
     margin-right: 10px;
-    padding: 0;
     border: none;
     color: @primary-color;
 
     .ant-dropdown-menu {
       background-color: @white;
-      border-color: @grey-4;
+      border-color: @border-color;
     }
 
     .ant-dropdown-menu-item {
       padding-left: 0px;
       padding-right: 0px;
     }
+
     .ant-dropdown-menu-item:hover {
       background-color: @white;
       color: inherit;
     }
+  }
+
+  .pagination-container {
+    border-top: 1px solid @border-color;
+    padding: 16px 0;
   }
 }

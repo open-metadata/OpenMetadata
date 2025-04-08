@@ -33,8 +33,8 @@ describe('TeamImportResult component', () => {
     expect(
       await screen.findByTestId('import-result-table')
     ).toBeInTheDocument();
-    // header(1) + data(3)
-    expect(row).toHaveLength(4);
+    // only 3 row because of the header is excluded
+    expect(row).toHaveLength(3);
   });
 
   it('Component should render id no data provided', async () => {

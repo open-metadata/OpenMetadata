@@ -21,6 +21,7 @@ import React, {
   ReactNode,
   useEffect,
   useMemo,
+  useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAlertStore } from '../../hooks/useAlertStore';
@@ -60,8 +61,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   mainContainerClassName = '',
   pageContainerStyle = {},
 }: PageLayoutProp) => {
-  const { alert, resetAlert } = useAlertStore();
+  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
   const location = useLocation();
+  const [prevPath, setPrevPath] = useState<string | undefined>();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -76,12 +78,18 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   }, [leftPanel, rightPanel, leftPanelWidth, rightPanelWidth]);
 
   useEffect(() => {
-    if (alert && alert.type === 'error') {
-      setTimeout(() => {
+    if (prevPath !== location.pathname) {
+      if (isErrorTimeOut) {
         resetAlert();
-      }, 3000);
+      }
     }
-  }, [location.pathname, resetAlert]);
+  }, [location.pathname, resetAlert, isErrorTimeOut]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setPrevPath(location.pathname);
+    }, 3000);
+  }, [location.pathname]);
 
   return (
     <Fragment>
@@ -89,7 +97,8 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
       <Row
         className={className}
         data-testid="page-layout-v1"
-        style={{ ...pageContainerStyles, ...pageContainerStyle }}>
+        style={{ ...pageContainerStyles, ...pageContainerStyle }}
+        wrap={false}>
         {leftPanel && (
           <Col
             className="page-layout-leftpanel"
@@ -100,10 +109,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll `,
+            `page-layout-v1-center page-layout-v1-vertical-scroll p-x-box`,
             {
               'flex justify-center': center,
-              'p-t-sm': !alert,
             },
             mainContainerClassName
           )}
@@ -116,9 +124,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            <Col className={classNames({ 'p-t-sm': alert })} span={24}>
-              {children}
-            </Col>
+            <Col span={24}>{children}</Col>
           </Row>
         </Col>
         {rightPanel && (

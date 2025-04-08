@@ -1,7 +1,9 @@
-<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M19.8139 18.0554C19.8139 17.3754 19.2627 16.8242 18.5827 16.8242C17.9028 16.8242 17.3516 17.3754 17.3516 18.0554V22.4872C17.3516 23.1672 17.9028 23.7184 18.5827 23.7184C19.2627 23.7184 19.8139 23.1672 19.8139 22.4872V18.0554Z" fill="currentColor" fill-opacity="0.4"/>
-<path d="M19.7621 26.389C19.6124 25.9016 19.1672 25.5479 18.6573 25.5177C18.1425 25.4872 17.6528 25.7924 17.4514 26.2665C17.2492 26.7423 17.3738 27.3108 17.757 27.658C18.1322 27.9979 18.6962 28.0744 19.1467 27.8413C19.6679 27.5715 19.9345 26.9525 19.7621 26.389Z" fill="currentColor" fill-opacity="0.4"/>
-<path d="M15.3374 9.89085C16.793 7.36971 20.432 7.36972 21.8875 9.89085L31.7127 26.9085C33.1683 29.4296 31.3488 32.581 28.4376 32.581H8.78734C5.87618 32.581 4.05672 29.4296 5.51229 26.9085L15.3374 9.89085Z" stroke="currentColor" stroke-width="1.5"/>
-<circle cx="28.6974" cy="15.5646" r="6.30283" fill="white" stroke="currentColor" stroke-width="1.5"/>
-<path d="M28.6973 14.3027V16.1936" stroke="currentColor" stroke-opacity="0.4" stroke-width="2" stroke-linecap="round"/>
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M14.7273 10.7273V5C14.7273 3.89543 13.8318 3 12.7273 3H4C2.89543 3 2 3.89543 2 5V17.3636C2 18.4682 2.89543 19.3636 4 19.3636H8.81818" stroke="currentColor" stroke-width="1.2"/>
+<path d="M4.72656 6.63635H11.5447" stroke="currentColor" stroke-linecap="round"/>
+<path d="M4.72656 9.81818H11.5447" stroke="currentColor" stroke-linecap="round"/>
+<path d="M4.72656 12.5455H7.45384" stroke="currentColor" stroke-linecap="round"/>
+<path d="M20.132 19.6727H9.3236C9.00412 19.6727 8.81356 19.3167 8.99078 19.0509L14.395 10.9445C14.5533 10.7071 14.9023 10.707 15.0606 10.9445L20.4648 19.0509C20.6421 19.3167 20.4515 19.6727 20.132 19.6727Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+<path d="M14.8184 13.7273L14.8184 15.7273" stroke="currentColor" stroke-linecap="round"/>
+<circle cx="14.8184" cy="17.2273" r="0.5" fill="currentColor"/>
 </svg>

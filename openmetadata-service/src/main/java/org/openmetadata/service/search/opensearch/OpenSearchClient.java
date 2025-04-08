@@ -507,9 +507,7 @@ public class OpenSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    if (Boolean.TRUE.equals(request.getExplain())) {
-      searchSourceBuilder.explain(true);
-    }
+
     try {
       RequestOptions.Builder builder = RequestOptions.DEFAULT.toBuilder();
       builder.addHeader("Content-Type", "application/json");
@@ -1077,7 +1075,7 @@ public class OpenSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
       tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       responseMap.put("entity", tempMap);
     }
@@ -1138,7 +1136,7 @@ public class OpenSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
       tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       responseMap.put("entity", tempMap);
     }
@@ -1186,6 +1184,7 @@ public class OpenSearchClient implements SearchClient {
     return responseMap;
   }
 
+  @Override
   public Response searchSchemaEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
@@ -1288,7 +1287,7 @@ public class OpenSearchClient implements SearchClient {
       Map<String, Object> node = allNodes.get(nodeFailureId);
       if (node != null) {
         node.keySet().removeAll(FIELDS_TO_REMOVE);
-        node.remove("lineage");
+        node.remove("upstreamLineage");
         nodes.add(node);
       }
     }
@@ -1318,9 +1317,7 @@ public class OpenSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
-            .must(
-                QueryBuilders.termQuery(
-                    "lineage.fromEntity.fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
+            .must(QueryBuilders.termQuery("fqnHash.keyword", FullyQualifiedName.buildHash(fqn)))
             .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
 
     buildSearchSourceFilter(queryFilter, searchSourceBuilder);
@@ -1400,6 +1397,7 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
+  @Override
   public Response aggregate(String index, String fieldName, String value, String query)
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
@@ -2377,6 +2375,12 @@ public class OpenSearchClient implements SearchClient {
                 if (sslContext != null) {
                   httpAsyncClientBuilder.setSSLContext(sslContext);
                 }
+                // Enable TCP keep alive strategy
+                if (esConfig.getKeepAliveTimeoutSecs() != null
+                    && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                  httpAsyncClientBuilder.setKeepAliveStrategy(
+                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+                }
                 return httpAsyncClientBuilder;
               });
         }
@@ -2457,8 +2461,12 @@ public class OpenSearchClient implements SearchClient {
                 .createParser(
                     OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
         QueryBuilder filter = SearchSourceBuilder.fromXContent(filterParser).query();
-        BoolQueryBuilder newQuery =
-            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        BoolQueryBuilder newQuery;
+        if (!nullOrEmpty(searchSourceBuilder.query())) {
+          newQuery = QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(filter);
+        } else {
+          newQuery = QueryBuilders.boolQuery().filter(filter);
+        }
         searchSourceBuilder.query(newQuery);
       } catch (Exception ex) {
         LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);

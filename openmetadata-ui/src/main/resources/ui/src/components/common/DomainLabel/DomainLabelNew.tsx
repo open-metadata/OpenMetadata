@@ -121,10 +121,9 @@ export const DomainLabelNew = ({
                   title={t('label.inherited-entity', {
                     entity: t('label.domain'),
                   })}>
-                  <InheritIcon
-                    className="inherit-icon cursor-pointer"
-                    width={14}
-                  />
+                  <span className="inherit-icon-container d-flex items-center flex-center">
+                    <InheritIcon className="inherit-icon" height={8} />
+                  </span>
                 </Tooltip>
               ) : null;
 
@@ -134,7 +133,8 @@ export const DomainLabelNew = ({
                     domain,
                     domainDisplayName,
                     showDomainHeading,
-                    'chip-tag-link'
+                    'chip-tag-link',
+                    true
                   )}
                   {inheritedIcon && (
                     <div className="d-flex">{inheritedIcon}</div>
@@ -204,7 +204,7 @@ export const DomainLabelNew = ({
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium p-l-xss">
             {t('label.domain-plural')}
           </Typography.Text>
           {selectableList}
