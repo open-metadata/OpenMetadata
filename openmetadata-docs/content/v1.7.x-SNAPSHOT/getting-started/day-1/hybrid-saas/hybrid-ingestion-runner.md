@@ -12,11 +12,7 @@ The **Hybrid Ingestion Runner** is a component designed to enable Collate custom
 
 Before setting up the Hybrid Ingestion Runner, ensure the following:
 
-- Your Collate SaaS instance is available.
-- You have **[Argo Workflows](https://argoproj.github.io/workflows/)** deployed in your own cloud environment.
-- Network access between your own cloud and Collate SaaS server (outbound traffic from your cloud to Collate).
-- Java 17+ for the runner.
-- Docker.
+- Hybrid Runner has been setup
 - Secrets manager configured on your cloud.
 
 ## Configuration Steps for Admins
@@ -29,7 +25,7 @@ Once your DevOps team has installed and configured the Hybrid Runner, follow the
 - Look for your runner in the list.
 - The status should display as **Connected**.
 
-> If the runner is not connected, check your network/firewall configuration and validate the token/environment variables.
+> If the runner is not connected, reach out to Collate support.
 
 {% image
 src="/images/v1.7/getting-started/ingestion-runner-preferences.png"
@@ -54,26 +50,33 @@ src="/images/v1.7/getting-started/ingestion-runner-service.png"
 
 ### 3. Manage Secrets Securely
 
-Use your existing secrets manager to store credentials and reference them securely in Collate.
+Use your existing cloud provider's Secrets Manager to store sensitive credentials (like usernames and passwords), and reference them securely in Collate via the Hybrid Runner.
+
+Collate never stores or accesses these secrets directly—only the Hybrid Runner retrieves them at runtime from your own infrastructure.
 
 **Steps:**
 
-- Create the secret in your secrets manager:
-  - AWS Secrets Manager
-  - Azure Key Vault
-  - GCP Secret Manager
-- In the connection form, use the `secret:` prefix to reference the path:
+- Create your secret in your Secrets Manager of choice:
+  - **AWS Secrets Manager**
+  - **Azure Key Vault**
+  - **GCP Secret Manager**
+
+- In the service connection form in Collate, reference the secret using the `secret:` prefix followed by the full path to your secret.
+
+📌 **For example, in AWS Secrets Manager**, if your secret is stored at:
+```arn:aws:secretsmanager:us-east-1:123456789012:secret:my/database/credentials```
+
+And inside that secret, you have `username` and `password` keys, the reference in Collate would look like:
 
 ```yaml
-username: secret:/my/database/username
-password: secret:/my/database/password
+username: secret:/my/database/credentials/username
+password: secret:/my/database/credentials/password
 ```
 
 {% image
 src="/images/v1.7/getting-started/ingestion-runner-service.png"
 /%}
 
-> *Collate never stores or reads your secrets directly. The Hybrid Runner fetches them at runtime locally.*
 
 ## Troubleshooting
 
