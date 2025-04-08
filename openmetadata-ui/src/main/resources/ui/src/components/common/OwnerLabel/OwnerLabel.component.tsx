@@ -51,7 +51,7 @@ export const OwnerLabel = ({
             {showLabel && (
               <Typography.Text
                 className={classNames(
-                  'no-owner font-medium text-sm',
+                  'no-owner-heading font-medium text-sm',
                   className
                 )}>
                 {placeHolder ?? t('label.owner-plural')}
