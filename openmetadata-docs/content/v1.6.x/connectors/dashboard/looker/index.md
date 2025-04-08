@@ -91,5 +91,3 @@ When configuring, give repository access to `Only select repositories` and choos
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

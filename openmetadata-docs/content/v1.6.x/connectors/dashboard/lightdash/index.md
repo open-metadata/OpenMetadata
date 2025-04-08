@@ -68,5 +68,3 @@ To integrate Lightdash, ensure you are using OpenMetadata version 1.2.x or highe
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
