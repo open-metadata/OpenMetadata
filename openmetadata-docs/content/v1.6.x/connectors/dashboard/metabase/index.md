@@ -58,5 +58,3 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 {% /stepsContainer %}
 
 {% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

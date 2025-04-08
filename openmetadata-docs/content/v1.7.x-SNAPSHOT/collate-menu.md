@@ -262,10 +262,14 @@ site_menu:
     url: /connectors/database/snowflake
   - category: Connectors / Database / Snowflake / Run Externally
     url: /connectors/database/snowflake/yaml
+  - category: Connectors / Database / Snowflake / Troubleshooting
+    url: /connectors/database/snowflake/troubleshooting
   - category: Connectors / Database / SQLite
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / SQLite / Troubleshooting
+    url: /connectors/database/sqlite/troubleshooting
   - category: Connectors / Database / Synapse
     url: /connectors/database/synapse
   - category: Connectors / Database / Synapse / Run Externally
@@ -286,6 +290,8 @@ site_menu:
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
     url: /connectors/database/trino/yaml
+  - category: Connectors / Database / Trino / Troubleshooting
+    url: /connectors/database/trino/troubleshooting
   - category: Connectors / Database / Unity Catalog
     url: /connectors/database/unity-catalog
   - category: Connectors / Database / Unity Catalog / Run Externally
@@ -428,7 +434,7 @@ site_menu:
   - category: Connectors / Pipeline / Airflow / Run Externally
     url: /connectors/pipeline/airflow/yaml
   - category: Connectors / Pipeline / Airflow / Troubleshooting
-    url: /connectors/search/airflow/troubleshooting
+    url: /connectors/pipeline/airflow/troubleshooting
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -514,7 +520,7 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
-  - category: Connectors / Pipeline / Troubleshooting
+  - category: Connectors / Pipeline / Openlineage / Troubleshooting
     url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline

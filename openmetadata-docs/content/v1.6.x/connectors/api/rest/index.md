@@ -59,5 +59,3 @@ An OpenAPI schema URL typically refers to the URL where the OpenAPI Specificatio
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
