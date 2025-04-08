@@ -13,7 +13,7 @@ OpenMetadata being a full stack project, we use the following for development:
 - [Antlr 4.9.2](https://www.antlr.org/) - `sudo make install_antlr_cli`
 - [JQ](https://jqlang.github.io/jq/) - `brew install jq` (osx)  `apt-get install jq` (Ubuntu)
 - [Maven 3.5.x or higher](https://maven.apache.org/install.html) - (with Java JDK 11)
-- [Python 3.8 or 3.9](https://www.python.org/downloads/)
+- [Python 3.9 to 3.11](https://www.python.org/downloads/)
 - [Node 18.x](https://nodejs.org/en/download/)
 - [Yarn ^1.22.0](https://classic.yarnpkg.com/lang/en/docs/install/)
 - [Rpm (Optional, only to run RPM profile with maven)](https://macappstore.org/rpm/)
