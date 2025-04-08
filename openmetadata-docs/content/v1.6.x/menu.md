@@ -686,7 +686,7 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
-  - category: Connectors / Pipeline / Troubleshooting
+  - category: Connectors / Pipeline / Openlineage / Troubleshooting
     url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
