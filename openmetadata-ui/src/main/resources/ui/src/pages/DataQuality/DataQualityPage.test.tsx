@@ -52,6 +52,7 @@ jest.mock('./DataQualityClassBase', () => {
       },
     ]),
     getDefaultActiveTab: jest.fn().mockReturnValue('tables'),
+    getManageExtraOptions: jest.fn().mockReturnValue([]),
   };
 });
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
