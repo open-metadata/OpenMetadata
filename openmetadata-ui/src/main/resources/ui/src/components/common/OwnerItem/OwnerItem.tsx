@@ -76,6 +76,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           <div className="owner-avatar-icon d-flex">
             <OwnerAvatar
               avatarSize={avatarSize}
+              inheritedIcon={inheritedIcon}
               isCompactView={isCompactView}
               owner={owner}
             />
@@ -91,7 +92,6 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
               {ownerDisplayName ?? displayName}
             </span>
           </Link>
-          {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
         </>
       )}
     </div>
