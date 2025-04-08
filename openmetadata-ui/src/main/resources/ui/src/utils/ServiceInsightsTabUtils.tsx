@@ -292,7 +292,7 @@ export const filterDistributionChartItem = (item: {
 
   // clean start and end quotes
   let tag_name = Fqn.split(item.term)[1];
-  tag_name = tag_name.replace(/^(?:["']+)|(?:["']+)$/g, '');
+  tag_name = tag_name.replace(/(^["']+|["']+$)/g, '');
 
   return toLower(tag_name) === toLower(item.group);
 };
