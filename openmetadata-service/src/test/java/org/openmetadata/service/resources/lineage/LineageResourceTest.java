@@ -401,7 +401,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Invalid field name %s", f3FQN));
+        String.format("Invalid column name %s", f3FQN));
 
     LineageDetails topicToContainer = new LineageDetails();
     String f1c1 = CONTAINER.getDataModel().getColumns().get(0).getFullyQualifiedName();
@@ -418,7 +418,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Invalid fully qualified column name %s", f2c3FQN));
+        String.format("Invalid column name %s", f2c3FQN));
 
     LineageDetails containerToTable = new LineageDetails();
     List<ColumnLineage> containerToTableLineage = containerToTable.getColumnsLineage();
@@ -443,7 +443,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertResponse(
         () -> addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        String.format("Invalid feature name %s", m3f3));
+        String.format("Invalid column name %s", m3f3));
 
     LineageDetails tableToDashboard = new LineageDetails();
     String c1d1 = DASHBOARD.getCharts().get(0).getFullyQualifiedName();
