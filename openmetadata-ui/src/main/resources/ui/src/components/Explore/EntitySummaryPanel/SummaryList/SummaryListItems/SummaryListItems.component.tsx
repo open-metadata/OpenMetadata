@@ -46,7 +46,11 @@ function SummaryListItem({
                 iconClassName: 'm-r-xss',
                 iconWidth: '14px',
               })}
-            {entityDetails.title}
+            <Typography.Text
+              className="m-r-xs"
+              ellipsis={{ tooltip: entityDetails.title }}>
+              {entityDetails.title}
+            </Typography.Text>
 
             {entityDetails.type && (
               <AppBadge

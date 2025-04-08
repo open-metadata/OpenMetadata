@@ -56,6 +56,8 @@ export const DataAssetSummaryPanel = ({
     Record<string, number | string>
   >({});
   const [charts, setCharts] = useState<Chart[]>([]);
+  const [chartsDetailsLoading, setChartsDetailsLoading] =
+    useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
@@ -71,9 +73,10 @@ export const DataAssetSummaryPanel = ({
       entityType === EntityType.DASHBOARD
         ? ({ ...dataAsset, charts } as any)
         : dataAsset,
-      highlights
+      highlights,
+      entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
     );
-  }, [dataAsset, entityType, highlights]);
+  }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
   const isEntityDeleted = useMemo(() => dataAsset.deleted, [dataAsset]);
 
@@ -105,12 +108,14 @@ export const DataAssetSummaryPanel = ({
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
 
   const fetchChartsDetails = useCallback(async () => {
+    setChartsDetailsLoading(true);
     try {
       const chartDetails = await fetchCharts((dataAsset as Dashboard).charts);
-
       setCharts(chartDetails);
     } catch (err) {
       // Error
+    } finally {
+      setChartsDetailsLoading(false);
     }
   }, [dataAsset]);
 
