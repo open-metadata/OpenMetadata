@@ -23,6 +23,7 @@ import {
   AuthenticationMechanism,
   AuthType,
 } from '../../../../generated/entity/teams/user';
+import { useAuth } from '../../../../hooks/authHooks';
 import {
   createUserWithPut,
   getAuthMechanismForBotUser,
@@ -51,6 +52,7 @@ const AccessTokenCard: FC<MockProps> = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAuthMechanismEdit, setIsAuthMechanismEdit] =
     useState<boolean>(false);
+  const { isAdminUser } = useAuth();
   const [authenticationMechanism, setAuthenticationMechanism] =
     useState<PersonalAccessToken>(
       USER_DEFAULT_AUTHENTICATION_MECHANISM as PersonalAccessToken
@@ -227,8 +229,8 @@ const AccessTokenCard: FC<MockProps> = ({
         />
       ) : (
         <AuthMechanism
-          hasPermission
           authenticationMechanism={authenticationMechanismData}
+          hasPermission={Boolean(isAdminUser)}
           isBot={isBot}
           onEdit={handleAuthMechanismEdit}
           onTokenRevoke={disabled ? noop : () => setIsModalOpen(true)}

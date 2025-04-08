@@ -41,7 +41,8 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
 export const getToken = async (page: Page) => {
   return page.evaluate(
     () =>
-      JSON.parse(localStorage.getItem('om-session') ?? '{}')?.oidcIdToken ?? ''
+      JSON.parse(sessionStorage.getItem('om-session') ?? '{}')?.oidcIdToken ??
+      ''
   );
 };
 

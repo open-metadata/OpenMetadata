@@ -13,5 +13,7 @@
 import DOMPurify from 'dompurify';
 
 export const getSanitizeContent = (html: string): string => {
-  return DOMPurify.sanitize(html);
+  return DOMPurify.sanitize(html, {
+    FORBID_ATTR: ['href'],
+  });
 };

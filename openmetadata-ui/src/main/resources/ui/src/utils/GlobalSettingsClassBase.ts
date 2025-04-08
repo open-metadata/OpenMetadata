@@ -219,7 +219,10 @@ class GlobalSettingsClassBase {
       },
       {
         category: t('label.application-plural'),
-        isProtected: Boolean(isAdminUser),
+        isProtected: userPermissions.hasViewPermissions(
+          ResourceEntity.APPLICATION,
+          permissions
+        ),
         key: GlobalSettingOptions.APPLICATIONS,
         icon: ApplicationIcon,
         description: t('message.application-to-improve-data'),
@@ -289,14 +292,20 @@ class GlobalSettingsClassBase {
           {
             label: t('label.role-plural'),
             description: t('message.page-sub-header-for-roles'),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.ROLE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.ROLES}`,
             icon: RolesIcon,
           },
           {
             label: t('label.policy-plural'),
             description: t('message.page-sub-header-for-policies'),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.POLICY,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.POLICIES}`,
             icon: PoliciesIcon,
           },
@@ -387,7 +396,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-collection'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_COLLECTIONS}`,
             icon: APICollectionIcon,
           },
@@ -396,7 +408,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-endpoint'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
             icon: APIEndpointIcon,
           },
@@ -405,7 +420,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.data-product'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATA_PRODUCT}`,
             icon: DataProductIcon,
           },
@@ -414,7 +432,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.dashboard-data-model-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
             icon: DashboardDataModelIcon,
           },
@@ -423,7 +444,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASES}`,
             icon: DatabaseIcon,
           },
@@ -432,7 +456,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database-schema'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
             icon: SchemaIcon,
           },
@@ -441,7 +468,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.metric'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
             icon: MetricColoredIcon,
           },
@@ -450,7 +480,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.table-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TABLES}`,
             icon: TableIcon,
           },
@@ -459,7 +492,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.stored-procedure-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.STORED_PROCEDURES}`,
             icon: StoredProcedureIcon,
           },
@@ -468,7 +504,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.dashboard-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARDS}`,
             icon: DashboardIcon,
           },
@@ -477,7 +516,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.pipeline-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.PIPELINES}`,
             icon: PipelineIcon,
           },
@@ -486,7 +528,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.topic-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TOPICS}`,
             icon: MessagingIcon,
           },
@@ -495,7 +540,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.container-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CONTAINERS}`,
             icon: StorageIcon,
           },
@@ -504,7 +552,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.ml-model-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.MLMODELS}`,
             icon: MlModelIcon,
           },
@@ -513,7 +564,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.search-index-plural'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SEARCH_INDEXES}`,
             icon: SearchIcon,
           },
@@ -522,7 +576,10 @@ class GlobalSettingsClassBase {
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.glossary-term'),
             }),
-            isProtected: Boolean(isAdminUser),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.TYPE,
+              permissions
+            ),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
             icon: GlossaryIcon,
           },
@@ -531,7 +588,10 @@ class GlobalSettingsClassBase {
       {
         category: t('label.bot-plural'),
         description: t('message.page-sub-header-for-bots'),
-        isProtected: Boolean(isAdminUser),
+        isProtected: userPermissions.hasViewPermissions(
+          ResourceEntity.BOT,
+          permissions
+        ),
         key: GlobalSettingOptions.BOTS,
         icon: BotIcon,
       },

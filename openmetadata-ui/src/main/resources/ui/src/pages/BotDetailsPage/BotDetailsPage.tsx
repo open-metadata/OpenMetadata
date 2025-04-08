@@ -29,7 +29,6 @@ import { TabSpecificField } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
-import { useAuth } from '../../hooks/authHooks';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getBotByName,
@@ -44,18 +43,17 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const BotDetailsPage = () => {
   const { t } = useTranslation();
   const { fqn: botsName } = useFqn();
-  const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [botUserData, setBotUserData] = useState<User>({} as User);
   const [botData, setBotData] = useState<Bot>({} as Bot);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<number>(0);
   const [isError, setIsError] = useState(false);
   const [botPermission, setBotPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
 
   const fetchBotPermission = async (entityFqn: string) => {
-    setIsLoading(true);
+    setIsLoading((prev) => prev + 1);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.BOT,
@@ -65,19 +63,19 @@ const BotDetailsPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsLoading((prev) => prev - 1);
     }
   };
 
   const fetchBotsData = async () => {
     try {
-      setIsLoading(true);
+      setIsLoading((prev) => prev + 1);
       const botResponse = await getBotByName(botsName, {
         include: Include.All,
       });
 
       const botUserResponse = await getUserByName(
-        botResponse.botUser.fullyQualifiedName || '',
+        botResponse.botUser.fullyQualifiedName ?? '',
         {
           fields: [TabSpecificField.ROLES, TabSpecificField.PROFILE],
           include: Include.All,
@@ -89,7 +87,7 @@ const BotDetailsPage = () => {
       showErrorToast(error as AxiosError);
       setIsError(true);
     } finally {
-      setIsLoading(false);
+      setIsLoading((prev) => prev - 1);
     }
   };
 
@@ -147,7 +145,7 @@ const BotDetailsPage = () => {
     fetchBotPermission(botsName);
   }, [botsName]);
 
-  if (isLoading) {
+  if (isLoading > 0) {
     return <Loader />;
   }
 
@@ -166,7 +164,7 @@ const BotDetailsPage = () => {
     );
   }
 
-  if (!isAdminUser) {
+  if (!botPermission.ViewAll) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
