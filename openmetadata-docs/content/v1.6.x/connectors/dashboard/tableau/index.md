@@ -118,5 +118,3 @@ To establish secure connections between OpenMetadata and Tableau, navigate to th
   caption="SSL Configuration" /%}
 
 {% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

@@ -25,6 +25,8 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-redshift-connection-with-ssl-in-openmetadata)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/redshift/troubleshooting)
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
 
 ## Requirements
@@ -126,8 +128,6 @@ Under `Advanced Config`, specify the SSL mode appropriate for your connection, s
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 

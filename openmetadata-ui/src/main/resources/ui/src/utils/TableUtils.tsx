@@ -137,7 +137,7 @@ import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
+import { DE_ACTIVE_COLOR } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -557,21 +557,18 @@ export function getTableExpandableConfig<T>(
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
         <>
-          {isDraggable && (
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
-          )}
+          {isDraggable && <IconDrag className="drag-icon" />}
           <Icon
-            className="m-r-xs vertical-baseline"
+            className="table-expand-icon vertical-baseline"
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
         </>
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <IconDrag className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )

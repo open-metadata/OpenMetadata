@@ -37,6 +37,7 @@ export const OwnerLabel = ({
   },
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
+  avatarSize = 32,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -50,7 +51,7 @@ export const OwnerLabel = ({
             {showLabel && (
               <Typography.Text
                 className={classNames(
-                  'no-owner font-medium text-sm',
+                  'no-owner-heading font-medium text-sm',
                   className
                 )}>
                 {placeHolder ?? t('label.owner-plural')}
@@ -114,6 +115,7 @@ export const OwnerLabel = ({
       <div
         className={classNames({
           'owner-label-container': !isCompactView,
+          'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
         data-testid="owner-label">
         {/* Owner avatars list */}
@@ -129,6 +131,7 @@ export const OwnerLabel = ({
           )}>
           {visibleOwners.map((owner, index) => (
             <OwnerItem
+              avatarSize={avatarSize}
               className={className}
               index={index}
               isCompactView={isCompactView}
@@ -141,6 +144,7 @@ export const OwnerLabel = ({
           {/* Show more button/dropdown */}
           {showMoreButton && (
             <OwnerReveal
+              avatarSize={avatarSize}
               isCompactView={isCompactView}
               isDropdownOpen={isDropdownOpen}
               owners={owners.slice(maxVisibleOwners)}
@@ -178,6 +182,7 @@ export const OwnerLabel = ({
     tooltipText,
     multiple,
     ownerElementsNonCompactView,
+    avatarSize,
   ]);
 
   return ownerElements;

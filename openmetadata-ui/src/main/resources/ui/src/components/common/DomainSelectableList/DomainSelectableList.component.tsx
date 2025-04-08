@@ -131,6 +131,7 @@ const DomainSelectableList = ({
             title={t('label.edit-entity', {
               entity: t('label.domain'),
             })}
+            onClick={(e) => e.stopPropagation()}
           />
         )}
       </Popover>

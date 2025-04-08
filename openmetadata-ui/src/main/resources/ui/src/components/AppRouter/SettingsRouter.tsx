@@ -23,7 +23,6 @@ import { Operation } from '../../generated/entity/policies/accessControl/resourc
 import { TeamType } from '../../generated/entity/teams/team';
 import AddNotificationPage from '../../pages/AddNotificationPage/AddNotificationPage';
 import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
-import AlertsActivityFeedPage from '../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage';
 import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
@@ -373,16 +372,6 @@ const SettingsRouter = () => {
         exact
         component={ServicesPage}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AlertsActivityFeedPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ACTIVITY_FEED
-        )}
       />
 
       <AdminProtectedRoute

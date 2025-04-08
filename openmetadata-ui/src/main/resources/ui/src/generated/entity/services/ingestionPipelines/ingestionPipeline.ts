@@ -68,7 +68,7 @@ export interface IngestionPipeline {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Set the logging level for the workflow.
      */
@@ -2599,6 +2599,10 @@ export interface ConfigClass {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
+    /**
      * Open API Schema URL.
      */
     openAPISchemaURL?: string;
@@ -3159,6 +3163,10 @@ export interface ConfigClass {
      */
     projectName?: string;
     /**
+     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
+     */
+    spaceTypes?: SpaceType[];
+    /**
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
@@ -3456,6 +3464,10 @@ export interface ConfigClass {
      * Cost of credit for the Snowflake account.
      */
     creditCost?: number;
+    /**
+     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     */
+    includeStreams?: boolean;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
@@ -3880,6 +3892,10 @@ export interface ConfigClass {
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
+    /**
+     * Number of runs to fetch from DBT cloud
+     */
+    numberOfRuns?: number;
     /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
@@ -5359,6 +5375,12 @@ export enum KafkaSecurityProtocol {
     SSL = "SSL",
     SaslPlaintext = "SASL_PLAINTEXT",
     SaslSSL = "SASL_SSL",
+}
+
+export enum SpaceType {
+    Managed = "Managed",
+    Personal = "Personal",
+    Shared = "Shared",
 }
 
 /**

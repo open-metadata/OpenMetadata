@@ -59,7 +59,7 @@ export interface APIService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies this API service.
      */
@@ -180,6 +180,10 @@ export interface RESTConnection {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
     /**
      * Open API Schema URL.
      */

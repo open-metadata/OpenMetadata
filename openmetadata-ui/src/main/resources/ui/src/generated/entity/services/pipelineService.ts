@@ -59,7 +59,7 @@ export interface PipelineService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Name that identifies this pipeline service.
      */
@@ -392,6 +392,10 @@ export interface Connection {
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
+    /**
+     * Number of runs to fetch from DBT cloud
+     */
+    numberOfRuns?: number;
     /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
