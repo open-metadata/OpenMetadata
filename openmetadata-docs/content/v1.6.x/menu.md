@@ -459,10 +459,14 @@ site_menu:
     url: /connectors/database/snowflake
   - category: Connectors / Database / Snowflake / Run Externally
     url: /connectors/database/snowflake/yaml
+  - category: Connectors / Database / Snowflake / Troubleshooting
+    url: /connectors/database/snowflake/troubleshooting
   - category: Connectors / Database / SQLite
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / SQLite / Troubleshooting
+    url: /connectors/database/sqlite/troubleshooting
   - category: Connectors / Database / S3 Datalake
     url: /connectors/database/s3-datalake
   - category: Connectors / Database / S3 Datalake / Run Externally
@@ -477,6 +481,8 @@ site_menu:
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
     url: /connectors/database/trino/yaml
+  - category: Connectors / Database / Trino / Troubleshooting
+    url: /connectors/database/trino/troubleshooting
   - category: Connectors / Database / Unity Catalog
     url: /connectors/database/unity-catalog
   - category: Connectors / Database / Unity Catalog / Run Externally

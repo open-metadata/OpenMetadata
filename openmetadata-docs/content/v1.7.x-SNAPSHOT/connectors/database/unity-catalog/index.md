@@ -22,6 +22,8 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/unity-catalog/troubleshooting)
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/unity-catalog/yaml"} /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
@@ -61,8 +63,6 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
