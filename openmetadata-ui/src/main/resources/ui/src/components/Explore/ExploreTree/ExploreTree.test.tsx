@@ -22,7 +22,9 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn(),
+  useTranslation: jest.fn().mockReturnValue({
+    t: jest.fn().mockImplementation((key) => key),
+  }),
 }));
 
 describe('ExploreTree', () => {

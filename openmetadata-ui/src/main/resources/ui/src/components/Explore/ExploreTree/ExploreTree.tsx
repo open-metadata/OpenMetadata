@@ -299,7 +299,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   if (treeData.length === 0) {
     return (
       <ErrorPlaceHolder
-        className="mt-48 text-center"
+        className="h-min-80 d-flex flex-col justify-center"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph
