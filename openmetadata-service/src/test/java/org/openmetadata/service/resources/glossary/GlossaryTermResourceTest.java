@@ -586,14 +586,20 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void patch_usingFqn_addDeleteTags(TestInfo test) throws IOException {
-    // Create glossary term1 in glossary g1
+    Glossary glossary = createGlossary(getEntityName(test), null, null);
+
+    // Create glossary term1 in glossary
     CreateGlossaryTerm create =
-        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+        createRequest(getEntityName(test), "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(null)
+            .withSynonyms(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Create glossary term11 under term1 in glossary g1
+    // Create glossary term11 under term1 in glossary
     create =
         createRequest("t1", "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
             .withReviewers(null)
             .withSynonyms(null)
             .withParent(term1.getFullyQualifiedName());
@@ -708,17 +714,21 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void patch_addDeleteStyle(TestInfo test) throws IOException {
-    // Create glossary term1 in glossary g1
+    Glossary glossary = createGlossary(getEntityName(test), null, null);
+
+    // Create glossary term1 in glossary
     CreateGlossaryTerm create =
         createRequest(getEntityName(test), "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
             .withReviewers(null)
             .withSynonyms(null)
             .withStyle(null);
     GlossaryTerm term1 = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Create glossary term11 under term1 in glossary g1
+    // Create glossary term11 under term1 in glossary
     create =
         createRequest("t1", "", "", null)
+            .withGlossary(glossary.getFullyQualifiedName())
             .withSynonyms(null)
             .withReviewers(null)
             .withSynonyms(null)
@@ -1404,8 +1414,27 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  @Override
+  protected void post_entityAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
+    CreateGlossaryTerm create =
+        createRequest("post_entityAlreadyExists_409_conflict", "", "", null);
+    // Create first time using POST
+    createEntity(create, ADMIN_AUTH_HEADERS);
+    // Second time creating the same entity using POST should fail
+    HttpResponseException exception =
+        assertThrows(HttpResponseException.class, () -> createEntity(create, ADMIN_AUTH_HEADERS));
+    assertTrue(
+        exception
+            .getMessage()
+            .contains(
+                String.format(
+                    "A term with the name '%s' already exists in '%s' glossary.",
+                    create.getName(), create.getGlossary())));
+  }
+
+  @Test
   void test_createDuplicateGlossaryTerm() throws IOException {
-    Glossary glossary = createGlossary("TestGlossary", null, null);
+    Glossary glossary = createGlossary("TestDuplicateGlossary", null, null);
 
     GlossaryTerm term1 = createTerm(glossary, null, "TestTerm");
     CreateGlossaryTerm createDuplicateTerm =
@@ -1421,7 +1450,10 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(
         exception
             .getMessage()
-            .contains("A term with the name 'TestTerm' already exists in the glossary."));
+            .contains(
+                String.format(
+                    "A term with the name '%s' already exists in '%s' glossary.",
+                    term1.getName(), glossary.getName())));
   }
 
   public Glossary createGlossary(

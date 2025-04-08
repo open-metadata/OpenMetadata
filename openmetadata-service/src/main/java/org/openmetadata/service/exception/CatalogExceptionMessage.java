@@ -393,7 +393,8 @@ public final class CatalogExceptionMessage {
     return "query param " + key + " must be one of [" + enumValues + "]";
   }
 
-  public static String duplicateGlossaryTerm(String termName) {
-    return String.format("A term with the name '%s' already exists in the glossary.", termName);
+  public static String duplicateGlossaryTerm(String termName, String glossaryName) {
+    return String.format(
+        "A term with the name '%s' already exists in '%s' glossary.", termName, glossaryName);
   }
 }
