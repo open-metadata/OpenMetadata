@@ -522,7 +522,7 @@ site_menu:
     url: /connectors/dashboard/lightdash
   - category: Connectors / Dashboard / Lightdash / Run Externally
     url: /connectors/dashboard/lightdash/yaml
-    - category: Connectors / Dashboard / Lightdash / Troubleshooting
+  - category: Connectors / Dashboard / Lightdash / Troubleshooting
     url: /connectors/dashboard/lightdash/troubleshooting
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
@@ -639,7 +639,7 @@ site_menu:
   - category: Connectors / Pipeline / Airflow / Run Externally
     url: /connectors/pipeline/airflow/yaml
   - category: Connectors / Pipeline / Airflow / Troubleshooting
-    url: /connectors/search/airflow/troubleshooting
+    url: /connectors/pipeline/airflow/troubleshooting
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
