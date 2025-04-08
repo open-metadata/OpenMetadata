@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDa
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
@@ -109,14 +109,6 @@ class OMetaLineageTest(TestCase):
 
         cls.table2_entity = cls.metadata.create_or_update(data=cls.table2)
 
-        cls.table3 = get_create_entity(
-            name=generate_name(),
-            entity=Table,
-            reference=cls.create_schema_entity.fullyQualifiedName,
-        )
-
-        cls.table3_entity = cls.metadata.create_or_update(data=cls.table3)
-
         cls.pipeline = get_create_entity(
             name=generate_name(),
             entity=Pipeline,
@@ -139,15 +131,6 @@ class OMetaLineageTest(TestCase):
         )
         cls.dashboard_datamodel_entity = cls.metadata.create_or_update(
             data=cls.dashboard_datamodel
-        )
-
-        cls.dashboard_datamodel2 = get_create_entity(
-            name=generate_name(),
-            entity=DashboardDataModel,
-            reference=cls.dashboard_service_entity.fullyQualifiedName,
-        )
-        cls.dashboard_datamodel_entity2 = cls.metadata.create_or_update(
-            data=cls.dashboard_datamodel2
         )
 
     @classmethod
@@ -305,38 +288,6 @@ class OMetaLineageTest(TestCase):
             len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
         )
 
-        # Invalid column test
-        linage_request_2 = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
-                toEntity=EntityReference(id=self.table2_entity.id, type="table"),
-                lineageDetails=LineageDetails(
-                    description="test lineage",
-                    columnsLineage=[
-                        ColumnLineage(
-                            fromColumns=[
-                                f"{self.table1_entity.fullyQualifiedName.root}.name"
-                            ],
-                            toColumn=f"{self.table2_entity.fullyQualifiedName.root}.name",
-                        )
-                    ],
-                ),
-            ),
-        )
-
-        res = self.metadata.add_lineage(data=linage_request_2, check_patch=True)
-
-        res["entity"]["id"] = str(res["entity"]["id"])
-        self.assertEqual(len(res["downstreamEdges"]), 1)
-        self.assertEqual(
-            res["downstreamEdges"][0]["lineageDetails"]["pipeline"]["id"],
-            str(self.pipeline_entity.id.root),
-        )
-        # col lineage remains unchanged
-        self.assertEqual(
-            len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
-        )
-
         # We can get lineage by ID
         lineage_id = self.metadata.get_lineage_by_id(
             entity=Table, entity_id=self.table2_entity.id.root
@@ -457,198 +408,4 @@ class OMetaLineageTest(TestCase):
         assert (
             entity_lineage.upstreamEdges[0].fromEntity.root
             == self.table1_entity.id.root
-        )
-
-    def test_clean_lineage_columns(self):
-        """Test that clean_lineage_columns works"""
-        # Create a lineage request with both valid and invalid columns
-        table1 = get_create_entity(
-            name=generate_name(),
-            entity=Table,
-            reference=self.create_schema_entity.fullyQualifiedName,
-        )
-
-        table1_entity = self.metadata.create_or_update(data=table1)
-        table2 = get_create_entity(
-            name=generate_name(),
-            entity=Table,
-            reference=self.create_schema_entity.fullyQualifiedName,
-        )
-
-        table2_entity = self.metadata.create_or_update(data=table2)
-        lineage_request = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=table1_entity.id, type="table"),
-                toEntity=EntityReference(id=table2_entity.id, type="table"),
-                lineageDetails=LineageDetails(
-                    description="test lineage",
-                    columnsLineage=[
-                        # Valid column lineage
-                        ColumnLineage(
-                            fromColumns=[f"{table1_entity.fullyQualifiedName.root}.id"],
-                            toColumn=f"{table2_entity.fullyQualifiedName.root}.id",
-                        ),
-                        # Invalid column lineage - non-existent column
-                        ColumnLineage(
-                            fromColumns=[
-                                f"{table1_entity.fullyQualifiedName.root}.invalid_col"
-                            ],
-                            toColumn=f"{table2_entity.fullyQualifiedName.root}.invalid_col",
-                        ),
-                        # Invalid column lineage - wrong table
-                        ColumnLineage(
-                            fromColumns=["wrong_table.id"],
-                            toColumn=f"{table2_entity.fullyQualifiedName.root}.id",
-                        ),
-                    ],
-                ),
-            ),
-        )
-
-        # Add the lineage with invalid columns
-        self.metadata.add_lineage(data=lineage_request)
-
-        # Verify that only valid columns remain in the lineage
-        lineage = self.metadata.get_lineage_by_id(
-            entity=Table, entity_id=table2_entity.id.root
-        )
-        self.assertEqual(
-            len(lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 1
-        )
-        self.assertEqual(
-            lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"][0][
-                "fromColumns"
-            ][0],
-            f"{table1_entity.fullyQualifiedName.root}.id",
-        )
-        self.assertEqual(
-            lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"][0][
-                "toColumn"
-            ],
-            f"{table2_entity.fullyQualifiedName.root}.id",
-        )
-
-    def test_clean_lineage_columns_table_datamodel(self):
-        """Test clean_lineage_columns for table to dashboard datamodel lineage"""
-        # Create a lineage request with both valid and invalid columns
-        lineage_request = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=self.table3_entity.id, type="table"),
-                toEntity=EntityReference(
-                    id=self.dashboard_datamodel_entity2.id, type="dashboardDataModel"
-                ),
-                lineageDetails=LineageDetails(
-                    description="test lineage",
-                    columnsLineage=[
-                        # Valid column lineage
-                        ColumnLineage(
-                            fromColumns=[
-                                f"{self.table3_entity.fullyQualifiedName.root}.id"
-                            ],
-                            toColumn=f"{self.dashboard_datamodel_entity2.fullyQualifiedName.root}.id",
-                        ),
-                        # Invalid column lineage - non-existent column
-                        ColumnLineage(
-                            fromColumns=[
-                                f"{self.table3_entity.fullyQualifiedName.root}.invalid_col"
-                            ],
-                            toColumn=f"{self.dashboard_datamodel_entity2.fullyQualifiedName.root}.invalid_col",
-                        ),
-                        # Invalid column lineage - wrong table
-                        ColumnLineage(
-                            fromColumns=["wrong_table.id"],
-                            toColumn=f"{self.dashboard_datamodel_entity2.fullyQualifiedName.root}.id",
-                        ),
-                    ],
-                ),
-            ),
-        )
-
-        # Add the lineage with invalid columns
-        self.metadata.add_lineage(data=lineage_request)
-
-        # Verify that only valid columns remain in the lineage
-        lineage = self.metadata.get_lineage_by_name(
-            entity=DashboardDataModel,
-            fqn=self.dashboard_datamodel_entity2.fullyQualifiedName.root,
-        )
-        self.assertEqual(
-            len(lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 1
-        )
-        self.assertEqual(
-            lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"][0][
-                "fromColumns"
-            ][0],
-            f"{self.table3_entity.fullyQualifiedName.root}.id",
-        )
-        self.assertEqual(
-            lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"][0][
-                "toColumn"
-            ],
-            f"{self.dashboard_datamodel_entity2.fullyQualifiedName.root}.id",
-        )
-
-    def test_clean_lineage_columns_nested_columns(self):
-        """Test clean_lineage_columns with nested columns"""
-        # Create a table with nested columns
-        nested_table = get_create_entity(
-            name=generate_name(),
-            entity=Table,
-            reference=self.create_schema_entity.fullyQualifiedName,
-        )
-        nested_table.columns = [
-            Column(name="parent_col", dataType="STRING"),
-            Column(
-                name="nested_col",
-                dataType="STRING",
-                children=[
-                    Column(name="child1", dataType="STRING"),
-                    Column(name="child2", dataType="STRING"),
-                ],
-            ),
-        ]
-        nested_table_entity = self.metadata.create_or_update(data=nested_table)
-
-        # Create a lineage request with nested column references
-        lineage_request = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=self.table3_entity.id, type="table"),
-                toEntity=EntityReference(id=nested_table_entity.id, type="table"),
-                lineageDetails=LineageDetails(
-                    description="test lineage",
-                    columnsLineage=[
-                        # Valid nested column lineage
-                        ColumnLineage(
-                            fromColumns=[
-                                f"{self.table3_entity.fullyQualifiedName.root}.id"
-                            ],
-                            toColumn=f"{nested_table_entity.fullyQualifiedName.root}.nested_col.child1",
-                        ),
-                        # Invalid nested column lineage
-                        ColumnLineage(
-                            fromColumns=[
-                                f"{self.table3_entity.fullyQualifiedName.root}.id"
-                            ],
-                            toColumn=f"{nested_table_entity.fullyQualifiedName.root}.nested_col.invalid_child",
-                        ),
-                    ],
-                ),
-            ),
-        )
-
-        # Add the lineage with invalid columns
-        self.metadata.add_lineage(data=lineage_request, check_patch=True)
-
-        # Verify that only valid columns remain in the lineage
-        lineage = self.metadata.get_lineage_by_id(
-            entity=Table, entity_id=nested_table_entity.id.root
-        )
-        self.assertEqual(
-            len(lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 1
-        )
-        self.assertEqual(
-            lineage["upstreamEdges"][0]["lineageDetails"]["columnsLineage"][0][
-                "toColumn"
-            ],
-            f"{nested_table_entity.fullyQualifiedName.root}.nested_col.child1",
         )

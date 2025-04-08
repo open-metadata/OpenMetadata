@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import Icon from '@ant-design/icons';
 import classNames from 'classnames';
 import React from 'react';
@@ -17,7 +18,12 @@ import { AllStatusTypes, icons } from '../../../constants/StatusBadge.constant';
 import './status-badge.less';
 import { StatusBadgeProps } from './StatusBadge.interface';
 
-const StatusBadge = ({ label, status, dataTestId }: StatusBadgeProps) => {
+const StatusBadge = ({
+  label,
+  status,
+  dataTestId,
+  className,
+}: StatusBadgeProps) => {
   const StatusIcon = label
     ? icons[label as AllStatusTypes] ||
       icons[label.toLowerCase() as AllStatusTypes]
@@ -25,7 +31,7 @@ const StatusBadge = ({ label, status, dataTestId }: StatusBadgeProps) => {
 
   return (
     <div
-      className={classNames('status-badge', status)}
+      className={classNames('status-badge', status, className)}
       data-testid={dataTestId}>
       {StatusIcon && <Icon component={StatusIcon} />}
       <span className={`status-badge-label ${status}`}>{label}</span>

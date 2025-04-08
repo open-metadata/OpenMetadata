@@ -42,7 +42,6 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';
@@ -204,25 +203,13 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
         </Col>
         <Col span={24}>
           {view === PIPELINE_EXECUTION_TABS.LIST_VIEW ? (
-            <div>
-              <Row>
-                <Col className="mb-4" span={6}>
-                  <Searchbar
-                    removeMargin
-                    placeholder="Filter by task name"
-                    searchValue={searchValue}
-                    typingInterval={500}
-                    onSearch={handleSearch}
-                  />
-                </Col>
-              </Row>
-              <ListView
-                executions={executions}
-                loading={isLoading}
-                searchString={searchValue}
-                status={status}
-              />
-            </div>
+            <ListView
+              executions={executions}
+              handleSearch={handleSearch}
+              loading={isLoading}
+              searchString={searchValue}
+              status={status}
+            />
           ) : (
             <TreeViewTab
               endTime={endTime}
