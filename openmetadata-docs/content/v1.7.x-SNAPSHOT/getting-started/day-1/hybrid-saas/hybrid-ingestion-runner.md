@@ -46,7 +46,7 @@ src="/images/v1.7/getting-started/ingestion-runner-list.png"
 src="/images/v1.7/getting-started/ingestion-runner-service.png"
 /%}
 
-> Choose "CollateSaaS" to run ingestion workflows within Collate’s SaaS environment, even if you're operating in hybrid mode.
+> Choose "Collate SaaS Runner" to run ingestion workflows within Collate’s SaaS environment, even if you're operating in hybrid mode.
 
 ### 3. Manage Secrets Securely
 
