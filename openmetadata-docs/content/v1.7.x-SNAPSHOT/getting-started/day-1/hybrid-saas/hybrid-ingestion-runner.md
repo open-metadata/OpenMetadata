@@ -6,7 +6,7 @@ collate: true
 
 # Hybrid Ingestion Runner
 
-The **Hybrid Ingestion Runner** is a component designed to enable Collate customers operating in hybrid environments to securely execute ingestion workflows within their own cloud infrastructure. In this setup, your SaaS instance is hosted on Collate’s cloud, while tools like Argo Workflows are deployed within the your private cloud. The Hybrid Runner acts as a bridge between these two environments, allowing ingestion workflows to be triggered and managed remotely—without requiring the customer to share secrets or sensitive credentials with Collate. It securely receives workflow execution requests and orchestrates them locally, maintaining full control and data privacy within the customer’s environment.
+The **Hybrid Ingestion Runner** is a component designed to enable Collate customers operating in hybrid environments to securely execute ingestion workflows within their own cloud infrastructure. In this setup, your SaaS instance is hosted on Collate’s cloud, while tools like Argo Workflows are deployed within your private cloud. The Hybrid Runner acts as a bridge between these two environments, allowing ingestion workflows to be triggered and managed remotely—without requiring the customer to share secrets or sensitive credentials with Collate. It securely receives workflow execution requests and orchestrates them locally, maintaining full control and data privacy within the customer’s environment.
 
 ## Prerequisites
 
@@ -19,39 +19,84 @@ Before setting up the Hybrid Ingestion Runner, ensure the following:
 - Docker.
 - Secrets manager configured on your cloud.
 
-## How to Run the Hybrid Ingestion Runner
+## Configuration Steps for Admins
 
-On your cloud environment, run the Hybrid Runner which connects to the Collate's server and wraps calls to the Argo Workflows client.
+Once your DevOps team has installed and configured the Hybrid Runner, follow these steps as a Collate Admin to configure services and manage ingestion workflows.
 
-**Required environment variables**
+### 1. Validate Hybrid Runner Setup
 
-| Environment Variable   | Value                                                                              |
-|-----------------------|------------------------------------------------------------------------------------|
-| `AGENT_ID`            | `WestEu1Runner` # must be unique                                                   |
-| `ARGO_EXTRA_ENVS`     | `[AWS_DEFAULT_REGION:value, AWS_ACCESS_KEY_ID:value, AWS_SECRET_ACCESS_KEY:value]` |
-| `ARGO_INGESTION_IMAGE` | `openmetadata/collate-base:<version>`                                              |
-| `AUTH_TOKEN`          | Collate server access token                                                        |
-| `SERVER_URL`          | `wss://<collate_host>:<port>`                                                      |
+- Go to **Settings > Preferences > Ingestion Runners** in the Collate UI.
+- Look for your runner in the list.
+- The status should display as **Connected**.
 
-```bash
-aws ecr get-login-password --region us-east-2 | docker login -u AWS --password-stdin 118146679784.dkr.ecr.us-east-2.amazonaws.com
-docker pull 118146679784.dkr.ecr.us-east-2.amazonaws.com/hybrid-ingestion-runner:<version>
+ℹ️ If the runner is not connected, check your network/firewall configuration and validate the token/environment variables.
+
+{% image
+src="/images/v1.7/getting-started/ingestion-runner-preferences.png"
+/%}
+
+{% image
+src="/images/v1.7/getting-started/ingestion-runner-list.png"
+/%}
+
+### 2. Create a New Service
+
+- Navigate to **Settings > Services**.
+- Click **+ Add New Service**.
+- Fill in the service details.
+- In the “Ingestion Runner” dropdown, choose the hybrid runner.
+
+{% image
+src="/images/v1.7/getting-started/ingestion-runner-service.png"
+/%}
+
+ℹ️ Choose "CollateSaaS" to run ingestion workflows within Collate’s SaaS environment, even if you're operating in hybrid mode.
+
+### 3. Manage Secrets Securely
+
+Use your existing secrets manager to store credentials and reference them securely in Collate.
+
+**Steps:**
+
+- Create the secret in your secrets manager:
+  - AWS Secrets Manager
+  - Azure Key Vault
+  - GCP Secret Manager
+- In the connection form, use the `secret:` prefix to reference the path:
+
+```yaml
+username: secret:/my/database/username
+password: secret:/my/database/password
 ```
 
-The runner listens for incoming workflow execution messages and triggers them via Argo, providing status updates back to the server.
+✅ *Collate never stores or reads your secrets directly. The Hybrid Runner fetches them at runtime locally.*
 
-### Troubleshooting
+{% image
+src="/images/v1.7/getting-started/ingestion-runner-service.png"
+/%}
 
-#### The agent is not connecting to the server
 
-1. Ensure the server URL contains the `wss://` protocol.
-2. Your cloud has outbound traffic to Collate.
-3. `AUTH_TOKEN` contains a valid access token.
+## Troubleshooting
 
-#### Ingestion workflows are failing in Argo
+### The agent is not connecting to the server
 
-Check the `ARGO_INGESTION_IMAGE` has a valid image name and tag. Contact Collate support if needed.
+- Ensure the server URL contains the `wss://` protocol.
+- Your cloud has outbound traffic to Collate.
+- `AUTH_TOKEN` contains a valid access token.
 
-#### The runner is not able to trigger ingestions
+### Ingestion workflows are failing in Argo
 
-Verify the `ARGO_EXTRA_ENVS` variable contains the valid keys for the secrets manager.
+- Check the `ARGO_INGESTION_IMAGE` has a valid image name and tag.
+- Contact Collate support if needed.
+
+### The runner is not able to trigger ingestion
+
+- Verify the `ARGO_EXTRA_ENVS` variable contains the correct keys for the secrets manager.
+
+### General Troubleshooting Table
+
+| Issue                | Solution                                              |
+|----------------------|--------------------------------------------------------|
+| Runner not connected | Check token, endpoint, and network config              |
+| Secret not resolved  | Verify path and permissions in Secrets Manager         |
+| Ingestion stuck or failed | Check Argo logs and verify credentials and runner status |
