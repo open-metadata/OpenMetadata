@@ -285,7 +285,11 @@ class TableauClient:
             )
             if datasources_graphql_result:
                 resp = datasources_graphql_result.json()
-                if resp and resp.get("data"):
+                if (
+                    resp
+                    and resp.get("data")
+                    and len(resp["data"].get("workbooks", [])) > 0
+                ):
                     tableau_datasource_connection = TableauDatasourcesConnection(
                         **resp["data"]["workbooks"][0]
                     )
@@ -311,7 +315,9 @@ class TableauClient:
                 dashboard_id=dashboard_id, entities_per_page=1, offset=1
             )
             entities_per_page = min(50, self.pagination_limit)
-            indexes = math.ceil(tableau_datasource.totalCount / entities_per_page)
+            indexes = 0
+            if tableau_datasource:
+                indexes = math.ceil(tableau_datasource.totalCount / entities_per_page)
 
             # Paginate the results
             data_sources = []
