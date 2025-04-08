@@ -12,19 +12,6 @@
  */
 @import (reference) '../../styles/variables.less';
 
-.nav-bar-side-items {
-  .ant-btn-icon-only {
-    color: @text-color;
-
-    &:hover,
-    &:focus,
-    &:active {
-      background: transparent;
-      border: none;
-    }
-  }
-}
-
 .navbar-container {
   display: flex;
   align-items: center;
@@ -39,8 +26,8 @@
     }
   }
 
-  .appbar-search {
-    width: 40vw;
+  .search-container {
+    width: 35vw;
   }
 
   .app-user-icon {
@@ -105,5 +92,30 @@
 
   100% {
     transform: translate(-50%, 0);
+  }
+}
+
+.ant-btn.domain-nav-btn {
+  background-color: @white;
+  border: 1px solid @blue-15;
+  color: @text-color;
+  height: 40px;
+
+  .domain-text {
+    max-width: 15vw;
+    color: inherit;
+  }
+
+  &:hover,
+  &:focus {
+    background-color: @blue-11;
+    border: 1px solid @blue-19;
+    color: @text-color;
+  }
+
+  &.domain-active {
+    color: @primary-color;
+    border: 1px solid @primary-color;
+    background-color: @blue-11;
   }
 }

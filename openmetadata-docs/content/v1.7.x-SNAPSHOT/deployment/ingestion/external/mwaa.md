@@ -16,6 +16,12 @@ When running ingestion workflows from MWAA we have three approaches:
 
 We will now discuss pros and cons of each aspect and how to configure them.
 
+{% note %}
+
+OpenMetadata does not support using Amazon MWAA (Managed Workflows for Apache Airflow) for internal ingestion. This limitation exists because MWAA does not allow the installation of the `openmetadata-ingestion-rest-apis` plugin, which is required to expose the necessary REST APIs for initiating workflows.
+
+{% /note %}
+
 ## Ingestion Workflows as a Python Operator
 
 ### PROs

@@ -598,6 +598,21 @@ export const validateGlossaryTerm = async (
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
+  await expect(page.locator('[data-testid="loader"]')).toBeHidden();
+
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Terms')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Description')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Owners')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Status')
+  ).toBeVisible();
+
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
@@ -757,7 +772,8 @@ export const confirmationDragAndDropGlossary = async (
   page: Page,
   dragElement: string,
   dropElement: string,
-  isHeader = false
+  isHeader = false,
+  tickCheckbox = false
 ) => {
   await expect(
     page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
@@ -769,10 +785,14 @@ export const confirmationDragAndDropGlossary = async (
     }`
   );
 
+  if (tickCheckbox) {
+    await page.getByTestId('confirm-status-checkbox').click();
+  }
+
   const patchGlossaryTermResponse = page.waitForResponse(
     '/api/v1/glossaryTerms/*'
   );
-  await page.getByRole('button', { name: 'Confirm' }).click();
+  await page.getByRole('button', { name: 'Move' }).click();
   await patchGlossaryTermResponse;
 };
 
@@ -1231,7 +1251,7 @@ export const filterStatus = async (
   const rows = glossaryTermsTable.locator(
     'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
   );
-  const statusColumnIndex = 3;
+  const statusColumnIndex = 2;
 
   for (let i = 0; i < (await rows.count()); i++) {
     const statusCell = rows
@@ -1396,6 +1416,21 @@ export const updateGlossaryTermOwners = async (
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByTestId('save-glossary-term').click();
   await glossaryTermResponse;
+};
+
+export const updateGlossaryReviewer = async (
+  page: Page,
+  reviewers: string[]
+) => {
+  await addMultiOwner({
+    page,
+    ownerNames: reviewers,
+    activatorBtnDataTestId: 'Add',
+    resultTestId: 'glossary-reviewer',
+    endpoint: EntityTypeEndpoint.Glossary,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
 };
 
 export const updateGlossaryTermReviewers = async (

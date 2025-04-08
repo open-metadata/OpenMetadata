@@ -48,7 +48,7 @@ const StatusDataWidget = ({
       <div className="d-flex items-center gap-2">
         <IconSvg color={PRIMARY_COLOR} height={20} width={20} />
         <Typography.Text
-          className="font-medium text-md text-grey-muted"
+          className="font-medium text-md"
           data-testid="status-title">
           {statusData.title}
         </Typography.Text>

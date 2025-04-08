@@ -27,6 +27,7 @@ interface OwnerItemProps {
   isCompactView: boolean;
   className?: string;
   ownerDisplayName?: ReactNode;
+  avatarSize?: number;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
@@ -35,6 +36,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   isCompactView,
   className,
   ownerDisplayName,
+  avatarSize = 32,
 }) => {
   const { t } = useTranslation();
   const displayName = getEntityName(owner);
@@ -45,7 +47,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
       title={t('label.inherited-entity', {
         entity: t('label.owner-plural'),
       })}>
-      <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+      <InheritIcon className="inherit-icon cursor-pointer" width={8} />
     </Tooltip>
   ) : null;
 
@@ -57,14 +59,26 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
       }}>
       {!isCompactView ? (
         <UserPopOverCard userName={owner.name ?? ''}>
-          <Link className="d-flex" data-testid="owner-link" to={ownerPath}>
-            <OwnerAvatar isCompactView={isCompactView} owner={owner} />
+          <Link
+            className="d-flex no-underline"
+            data-testid="owner-link"
+            to={ownerPath}>
+            <OwnerAvatar
+              avatarSize={avatarSize}
+              inheritedIcon={inheritedIcon}
+              isCompactView={isCompactView}
+              owner={owner}
+            />
           </Link>
         </UserPopOverCard>
       ) : (
         <>
           <div className="owner-avatar-icon d-flex">
-            <OwnerAvatar isCompactView={isCompactView} owner={owner} />
+            <OwnerAvatar
+              avatarSize={avatarSize}
+              isCompactView={isCompactView}
+              owner={owner}
+            />
           </div>
           <Link
             className={classNames(
@@ -77,9 +91,9 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
               {ownerDisplayName ?? displayName}
             </span>
           </Link>
+          {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
         </>
       )}
-      {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
     </div>
   );
 };

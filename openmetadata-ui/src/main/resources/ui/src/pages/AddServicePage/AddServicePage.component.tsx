@@ -223,7 +223,7 @@ const AddServicePage = () => {
   );
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <div data-testid="add-new-service-container">
@@ -268,6 +268,7 @@ const AddServicePage = () => {
             {activeServiceStep === 3 && (
               <ConnectionConfigForm
                 cancelText={t('label.back')}
+                data={serviceConfig as ServicesType}
                 okText={t('label.next')}
                 serviceCategory={serviceCategory}
                 serviceType={serviceConfig.serviceType}
@@ -296,7 +297,7 @@ const AddServicePage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 
   useEffect(() => {
@@ -310,7 +311,8 @@ const AddServicePage = () => {
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className: 'content-resizable-panel-container',
+        className:
+          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
       }}
       hideSecondPanel={hideSecondPanel}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}

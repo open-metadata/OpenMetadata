@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getOwnerPath } from '../../../utils/ownerUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerRevealProps } from './OwnerReveal.interface';
@@ -26,9 +28,13 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
   showAllOwners,
   setIsDropdownOpen,
   setShowAllOwners,
+  avatarSize = 32,
 }) => {
   const { t } = useTranslation();
   const remainingCountLabel = `+${remainingCount}`;
+
+  // Calculate font size based on avatar size
+  const fontSize = Math.max(8, Math.floor(avatarSize * 0.5)); // Reduced to 50% of avatar size
 
   const handleShowMoreToggle = () => {
     if (isCompactView) {
@@ -42,8 +48,13 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
         <Button
           className={`${
             !showAllOwners ? 'more-owners-button' : ''
-          } text-sm font-medium h-auto`}
+          } text-sm font-medium h-auto d-flex items-center flex-center`}
           size="small"
+          style={{
+            width: `${avatarSize}px`,
+            height: `${avatarSize}px`,
+            fontSize: `${fontSize}px`,
+          }}
           type="link"
           onClick={handleShowMoreToggle}>
           {showAllOwners ? t('label.less') : remainingCountLabel}
@@ -60,18 +71,24 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
             key: owner.id,
             label: (
               <UserPopOverCard userName={owner.name ?? ''}>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <ProfilePicture
-                      displayName={getEntityName(owner)}
-                      key="profile-picture"
-                      name={owner.name ?? ''}
-                      type="circle"
-                      width="32"
-                    />
-                  </div>
-                  <span>{getEntityName(owner)}</span>
-                </div>
+                <Link
+                  className="d-flex no-underline items-center gap-2 relative"
+                  data-testid="owner-link"
+                  to={getOwnerPath(owner)}>
+                  <ProfilePicture
+                    displayName={getEntityName(owner)}
+                    key="profile-picture"
+                    name={owner.name ?? ''}
+                    type="circle"
+                    width={avatarSize.toString()}
+                  />
+
+                  <Typography.Text
+                    className="w-36"
+                    ellipsis={{ tooltip: true }}>
+                    {getEntityName(owner)}{' '}
+                  </Typography.Text>
+                </Link>
               </UserPopOverCard>
             ),
           })),
@@ -81,9 +98,16 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
         onOpenChange={setIsDropdownOpen}>
         <Button
           className={`${
-            !showAllOwners ? 'more-owners-button' : ''
+            !showAllOwners
+              ? 'more-owners-button d-flex items-center flex-center d-flex items-center flex-center'
+              : ''
           } text-sm font-medium h-auto`}
           size="small"
+          style={{
+            width: `${avatarSize}px`,
+            height: `${avatarSize}px`,
+            fontSize: `${fontSize}px`,
+          }}
           type="link"
           onClick={handleShowMoreToggle}>
           {showAllOwners ? t('label.less') : remainingCountLabel}

@@ -18,6 +18,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import AppLogo from '../AppLogo/AppLogo.component';
+import './application-card.less';
 import { ApplicationCardProps } from './ApplicationCard.interface';
 
 const ApplicationCard = ({
