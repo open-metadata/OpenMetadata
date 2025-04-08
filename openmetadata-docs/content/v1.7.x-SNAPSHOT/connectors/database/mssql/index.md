@@ -24,6 +24,7 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/mssql/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
 
@@ -120,8 +121,6 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 

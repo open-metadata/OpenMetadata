@@ -89,7 +89,6 @@ import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageBut
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -199,8 +198,6 @@ const TeamDetailsV1 = ({
   const addRole = t('label.add-entity', {
     entity: t('label.role'),
   });
-
-  const addTeam = t('label.add-entity', { entity: t('label.team') });
 
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
@@ -663,57 +660,21 @@ const TeamDetailsV1 = ({
         </Tooltip>
       </ErrorPlaceHolder>
     ) : (
-      <Row
-        className="team-list-container"
-        gutter={[0, 16]}
-        justify="space-between">
-        <Col span={8}>
-          <Searchbar
-            removeMargin
-            placeholder={t('label.search-entity', {
-              entity: t('label.team'),
-            })}
-            searchValue={searchTerm}
-            typingInterval={500}
-            onSearch={handleTeamSearch}
-          />
-        </Col>
-        <Col>
-          <Space align="center">
-            <span>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="show-deleted"
-                onClick={onShowDeletedTeamChange}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
-            </span>
-
-            {createTeamPermission && !isTeamDeleted && (
-              <Button
-                data-testid="add-team"
-                type="primary"
-                onClick={handleAddTeamButtonClick}>
-                {addTeam}
-              </Button>
-            )}
-          </Space>
-        </Col>
-        <Col span={24}>
-          <TeamHierarchy
-            currentTeam={currentTeam}
-            data={childTeamList}
-            isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
-            searchTerm={searchTerm}
-            onTeamExpand={onTeamExpand}
-          />
-        </Col>
-      </Row>
+      <TeamHierarchy
+        createTeamPermission={createTeamPermission}
+        currentTeam={currentTeam}
+        data={childTeamList}
+        handleAddTeamButtonClick={handleAddTeamButtonClick}
+        handleTeamSearch={handleTeamSearch}
+        isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isTeamDeleted={isTeamDeleted}
+        searchTerm={searchTerm}
+        showDeletedTeam={showDeletedTeam}
+        onShowDeletedTeamChange={onShowDeletedTeamChange}
+        onTeamExpand={onTeamExpand}
+      />
     );
   }, [
-    addTeam,
     searchTerm,
     isTeamDeleted,
     currentTeam,
@@ -1182,7 +1143,7 @@ const TeamDetailsV1 = ({
           <Tabs
             destroyInactiveTabPane
             activeKey={currentTab}
-            className="tabs-new p-md"
+            className="tabs-new"
             items={tabs}
             onChange={updateActiveTab}
           />

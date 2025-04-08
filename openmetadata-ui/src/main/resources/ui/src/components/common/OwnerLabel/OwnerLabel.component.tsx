@@ -51,7 +51,7 @@ export const OwnerLabel = ({
             {showLabel && (
               <Typography.Text
                 className={classNames(
-                  'no-owner font-medium text-sm',
+                  'no-owner-heading font-medium text-sm',
                   className
                 )}>
                 {placeHolder ?? t('label.owner-plural')}
@@ -115,6 +115,7 @@ export const OwnerLabel = ({
       <div
         className={classNames({
           'owner-label-container': !isCompactView,
+          'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
         data-testid="owner-label">
         {/* Owner avatars list */}

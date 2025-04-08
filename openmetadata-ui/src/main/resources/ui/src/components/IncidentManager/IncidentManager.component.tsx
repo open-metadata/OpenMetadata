@@ -575,8 +575,8 @@ const IncidentManager = ({
 
       <Col span={24}>
         <Table
-          className="test-case-table-container"
           columns={columns}
+          containerClassName="test-case-table-container"
           data-testid="test-case-incident-manager-table"
           dataSource={testCaseListData.data}
           loading={testCaseListData.isLoading}
