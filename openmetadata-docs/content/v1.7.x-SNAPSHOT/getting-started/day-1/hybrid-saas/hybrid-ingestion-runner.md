@@ -25,13 +25,13 @@ On your cloud environment, run the Hybrid Runner which connects to the Collate's
 
 **Required environment variables**
 
-| Environment Variable        | Value                                                                              |
-|----------------------------|------------------------------------------------------------------------------------|
-| `AGENT_ID`                 | `WestEu1Runner` # must be unique                                                   |
-| `ARGO_EXTRA_ENVS_NOOP`     | `[AWS_DEFAULT_REGION:value, AWS_ACCESS_KEY_ID:value, AWS_SECRET_ACCESS_KEY:value]` |
-| `ARGO_INGESTION_IMAGE`     | `openmetadata/collate-base:<version>`                                              |
-| `AUTH_TOKEN`               | Collate server access token                                                        |
-| `SERVER_URL`              | `wss://<collate_host>:<port>`                                                      |
+| Environment Variable   | Value                                                                              |
+|-----------------------|------------------------------------------------------------------------------------|
+| `AGENT_ID`            | `WestEu1Runner` # must be unique                                                   |
+| `ARGO_EXTRA_ENVS`     | `[AWS_DEFAULT_REGION:value, AWS_ACCESS_KEY_ID:value, AWS_SECRET_ACCESS_KEY:value]` |
+| `ARGO_INGESTION_IMAGE` | `openmetadata/collate-base:<version>`                                              |
+| `AUTH_TOKEN`          | Collate server access token                                                        |
+| `SERVER_URL`          | `wss://<collate_host>:<port>`                                                      |
 
 ```bash
 aws ecr get-login-password --region us-east-2 | docker login -u AWS --password-stdin 118146679784.dkr.ecr.us-east-2.amazonaws.com
@@ -40,3 +40,18 @@ docker pull 118146679784.dkr.ecr.us-east-2.amazonaws.com/hybrid-ingestion-runner
 
 The runner listens for incoming workflow execution messages and triggers them via Argo, providing status updates back to the server.
 
+### Troubleshooting
+
+#### The agent is not connecting to the server
+
+1. Ensure the server URL contains the `wss://` protocol.
+2. Your cloud has outbound traffic to Collate.
+3. `AUTH_TOKEN` contains a valid access token.
+
+#### Ingestion workflows are failing in Argo
+
+Check the `ARGO_INGESTION_IMAGE` has a valid image name and tag. Contact Collate support if needed.
+
+#### The runner is not able to trigger ingestions
+
+Verify the `ARGO_EXTRA_ENVS` variable contains the valid keys for the secrets manager.
