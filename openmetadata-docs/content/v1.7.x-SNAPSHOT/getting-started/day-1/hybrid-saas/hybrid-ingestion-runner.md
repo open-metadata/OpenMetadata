@@ -13,7 +13,7 @@ The **Hybrid Ingestion Runner** is a component designed to enable Collate custom
 Before setting up the Hybrid Ingestion Runner, ensure the following:
 
 - Your Collate SaaS instance is available.
-- You have **Argo Workflows** deployed in your own cloud environment.
+- You have **[Argo Workflows](https://argoproj.github.io/workflows/)** deployed in your own cloud environment.
 - Network access between your own cloud and Collate SaaS server (outbound traffic from your cloud to Collate).
 - Java 17+ for the runner.
 - Docker.
