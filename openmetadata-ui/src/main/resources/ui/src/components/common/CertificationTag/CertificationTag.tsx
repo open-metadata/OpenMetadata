@@ -16,6 +16,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagImageSrc, getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
 
@@ -30,7 +31,7 @@ const CertificationTag = ({
     const name = getEntityName(certification.tagLabel);
     const actualName = certification.tagLabel.name ?? '';
     const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
-    const tagLink = actualName ? `/tag/Certification.${actualName}` : '';
+    const tagLink = getClassificationTagPath(certification.tagLabel.tagFQN);
 
     return (
       <Tooltip
