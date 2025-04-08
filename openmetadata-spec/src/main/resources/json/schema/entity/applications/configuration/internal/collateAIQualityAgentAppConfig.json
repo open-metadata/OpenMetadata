@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/collateAIQualityAgentAppConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CollateAIQualityAgentAppConfig.json",
+  "title": "Collate AI Quality Agent",
   "description": "Configuration for the Collate AI Quality Agent.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.internal.CollateAIQualityAgentAppConfig",
@@ -22,12 +22,12 @@
     },
     "filter": {
       "title": "Filter",
-      "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+      "description": "You can use the UI Query Filter builder to select the assets that you want to generate the Data Quality Tests for. You can filter by any property of your tables: the service, database or schema they belong to, their name, owners, domain,... and even by Custom Properties!",
       "type": "string"
     },
     "active": {
       "title": "Active",
-      "description": "Whether the suggested tests should be active or not upon suggestion",
+      "description": "Whether the suggested tests should be active or after being created. You can review the tests being created on your tables and add the ones you want to execute to the Test Suite pipelines.",
       "type": "boolean",
       "default": false
     }

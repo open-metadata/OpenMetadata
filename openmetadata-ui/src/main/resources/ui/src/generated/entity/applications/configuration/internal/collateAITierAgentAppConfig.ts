@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 /**
- * Configuration for the Collate AI Quality Agent.
+ * The Collate AI Tier Agent will review the lineage and usage of your data and assign a
+ * Tier to it, helping you identify business critical assets quickly. We currently support
+ * Tables and will keep adding more assets in the future.
  */
 export interface CollateAITierAgentAppConfig {
     /**
-     * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
-     * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
+     * You can use the UI Query Filter builder to select the assets that you want to generate
+     * the Tier for. You can filter by any property of your tables: the service, database or
+     * schema they belong to, their name, owners, domain,... and even by Custom Properties!
      */
     filter: string;
     /**
-     * Patch the tier if it is empty, instead of raising a suggestion
+     * The Tier Agent will only suggest a Tier by default. By toggling this option, the Agent
+     * will automatically update the table with the Tier if there's no Tier assigned to it yet.
      */
     patchIfEmpty?: boolean;
     /**

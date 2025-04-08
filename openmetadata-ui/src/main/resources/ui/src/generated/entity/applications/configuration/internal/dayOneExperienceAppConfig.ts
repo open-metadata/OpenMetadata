@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 /**
- * Configuration for the Day One Experience Flow.
+ * The Day One Experience Application enables an automated workflow for onboarding new
+ * services faster. It will automatically create the necessary agents to extract the
+ * metadata from the source system and trigger them!
  */
 export interface DayOneExperienceAppConfig {
     /**
-     * Whether the Day One Experience flow should be active or not.
+     * Whether the Day One Experience should be applied when creating a new service or not.
      */
     active: boolean;
     /**

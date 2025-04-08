@@ -1,8 +1,8 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/internal/dayOneExperienceAppConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DayOneExperienceAppConfig",
-  "description": "Configuration for the Day One Experience Flow.",
+  "title": "Day One Experience",
+  "description": "The Day One Experience Application enables an automated workflow for onboarding new services faster. It will automatically create the necessary agents to extract the metadata from the source system and trigger them!",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.app.internal.DayOneExperienceAppConfig",
   "definitions": {
@@ -22,7 +22,7 @@
     },
     "active": {
       "title": "Active",
-      "description": "Whether the Day One Experience flow should be active or not.",
+      "description": "Whether the Day One Experience should be applied when creating a new service or not.",
       "type": "boolean",
       "default": true
     },

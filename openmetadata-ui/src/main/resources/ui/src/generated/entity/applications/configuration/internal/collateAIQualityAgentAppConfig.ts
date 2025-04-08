@@ -15,13 +15,16 @@
  */
 export interface CollateAIQualityAgentAppConfig {
     /**
-     * Whether the suggested tests should be active or not upon suggestion
+     * Whether the suggested tests should be active or after being created. You can review the
+     * tests being created on your tables and add the ones you want to execute to the Test Suite
+     * pipelines.
      */
     active?: boolean;
     /**
-     * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
-     * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
+     * You can use the UI Query Filter builder to select the assets that you want to generate
+     * the Data Quality Tests for. You can filter by any property of your tables: the service,
+     * database or schema they belong to, their name, owners, domain,... and even by Custom
+     * Properties!
      */
     filter: string;
     /**
