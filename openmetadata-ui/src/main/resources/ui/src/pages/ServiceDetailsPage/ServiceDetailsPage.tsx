@@ -59,11 +59,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { AgentType, App } from '../../generated/entity/applications/app';
@@ -294,9 +290,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const extraDropdownContent = useMemo(
     () =>
       entityUtilClassBase.getManageExtraOptions(
-        serviceCategory === 'databaseServices'
-          ? EntityType.DATABASE_SERVICE
-          : EntityType.ALL,
+        getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
         servicePermission,
         serviceDetails?.deleted ?? false
