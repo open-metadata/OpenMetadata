@@ -255,6 +255,7 @@
     "conversation-plural": "会話",
     "copied": "Copied",
     "copy": "Copy",
+    "copy-item": "{{item}}をコピー",
     "cost": "コスト",
     "cost-analysis": "Cost Analysis",
     "count": "Count",
