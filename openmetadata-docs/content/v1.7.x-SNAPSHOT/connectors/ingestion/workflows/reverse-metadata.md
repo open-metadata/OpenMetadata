@@ -1,7 +1,7 @@
 ---
 title: Reverse Metadata Ingestion Collate | Feature & Configuration
 slug: /connectors/ingestion/workflows/reverse-metadata
-# collate: true
+collate: true
 ---
 
 # Reverse Metadata Ingestion
