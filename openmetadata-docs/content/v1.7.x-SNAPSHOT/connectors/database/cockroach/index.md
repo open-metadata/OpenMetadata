@@ -62,8 +62,6 @@ Configure and schedule Cockroach metadata workflows from the OpenMetadata UI:
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
-
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
 **SSL Modes**
