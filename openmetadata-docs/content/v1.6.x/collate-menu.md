@@ -422,7 +422,7 @@ site_menu:
   - category: Connectors / Pipeline / Airflow / Run Externally
     url: /connectors/pipeline/airflow/yaml
   - category: Connectors / Pipeline / Airflow / Troubleshooting
-    url: /connectors/search/airflow/troubleshooting
+    url: /connectors/pipeline/airflow/troubleshooting
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
