@@ -89,10 +89,15 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
     return (
       <div className="text-center" data-testid="no-search-results">
         {isQuery ? (
-          <ErrorPlaceHolder size={size} type={ERROR_PLACEHOLDER_TYPE.FILTER} />
+          <ErrorPlaceHolder
+            className="border-none"
+            size={size}
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
         ) : ['glossaries', 'tags'].includes(tab) ? (
           <ErrorPlaceHolder
             permission
+            className="border-none"
             doc={tab === 'tags' ? TAGS_DOCS : GLOSSARIES_DOCS}
             heading={
               tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
@@ -104,7 +109,10 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
             }
           />
         ) : (
-          <ErrorPlaceHolder size={size} type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <ErrorPlaceHolder
+            className="border-none"
+            size={size}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
               {t('message.no-data-available-entity', {
                 entity: activeDomain,

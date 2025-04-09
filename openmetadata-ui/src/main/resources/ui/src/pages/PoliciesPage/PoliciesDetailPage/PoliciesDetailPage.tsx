@@ -372,7 +372,7 @@ const PoliciesDetailPage = () => {
     return (
       <Card>
         {isEmpty(policy.rules) ? (
-          <ErrorPlaceHolder />
+          <ErrorPlaceHolder className="border-none" />
         ) : (
           <>
             <div className="flex justify-end m-b-md">
@@ -530,7 +530,7 @@ const PoliciesDetailPage = () => {
 
         <>
           {isEmpty(policy) ? (
-            <ErrorPlaceHolder>
+            <ErrorPlaceHolder className="border-none">
               <div className="text-center">
                 <p>
                   {t('message.no-entity-found-for-name', {

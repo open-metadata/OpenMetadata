@@ -105,6 +105,7 @@ const RecentlyViewed = ({
           {isEmpty(data) ? (
             <div className="flex-center h-full">
               <ErrorPlaceHolder
+                className="border-none"
                 icon={
                   <RecentlyViewedEmptyIcon
                     height={SIZE.X_SMALL}

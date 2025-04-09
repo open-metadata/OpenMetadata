@@ -285,7 +285,7 @@ function SchemaTablesTab({
       locale={{
         emptyText: (
           <ErrorPlaceHolder
-            className="mt-0-important"
+            className="mt-0-important border-none"
             type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
         ),

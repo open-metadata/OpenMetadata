@@ -296,7 +296,7 @@ export const getKeyValues = ({
 
       // Handle non-object and array values
       if (!isObject(value) || isArray(value)) {
-        const { description, format, title } = schemaPropertyObject[key] || {};
+        const { description, format, title } = schemaPropertyObject[key] ?? {};
 
         return renderInputField(key, value, description, format, title);
       }
@@ -313,7 +313,7 @@ export const getKeyValues = ({
           key as ServiceConnectionFilterPatternFields
         )
       ) {
-        const { description, title } = schemaPropertyObject[key] || {};
+        const { description, title } = schemaPropertyObject[key] ?? {};
 
         return renderFilterPattern(key, value, description, title);
       }
@@ -351,12 +351,12 @@ export const getKeyValues = ({
       // Default object handling
       return getKeyValues({
         obj: value,
-        schemaPropertyObject: schemaPropertyObject[key]?.properties || {},
+        schemaPropertyObject: schemaPropertyObject[key]?.properties ?? {},
         schema,
         serviceCategory,
       });
     });
   } catch {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 };

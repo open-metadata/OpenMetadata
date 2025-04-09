@@ -215,7 +215,7 @@ const IncidentManager = ({
       }, [] as TestCasePermission[]);
 
       setTestCasePermissions(data);
-    } catch (error) {
+    } catch {
       // do nothing
     } finally {
       setIsPermissionLoading(false);
@@ -290,7 +290,7 @@ const IncidentManager = ({
       }));
 
       setUsers((pre) => ({ ...pre, options: suggestOptions }));
-    } catch (error) {
+    } catch {
       setUsers((pre) => ({ ...pre, options: [] }));
     }
   };
@@ -349,7 +349,7 @@ const IncidentManager = ({
         label: getEntityName(hit._source),
         value: hit._source.fullyQualifiedName,
       }));
-    } catch (error) {
+    } catch {
       return [];
     }
   };
@@ -514,7 +514,12 @@ const IncidentManager = ({
     !commonTestCasePermission?.ViewAll &&
     !commonTestCasePermission?.ViewBasic
   ) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (

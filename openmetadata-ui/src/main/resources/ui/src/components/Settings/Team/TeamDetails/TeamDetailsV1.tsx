@@ -246,7 +246,7 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important"
+        className="mt-0-important border-none"
         doc={doc}
         heading={heading}
         permission={permission}
@@ -292,7 +292,7 @@ const TeamDetailsV1 = ({
           };
         })
       );
-    } catch (error) {
+    } catch {
       setChildTeamList([]);
     }
   };
@@ -629,6 +629,7 @@ const TeamDetailsV1 = ({
 
     return currentTeam.childrenCount === 0 && !searchTerm ? (
       <ErrorPlaceHolder
+        className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>

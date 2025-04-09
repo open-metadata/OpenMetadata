@@ -83,7 +83,7 @@ const SubDomainsTable = ({
   if (isEmpty(subDomains) && !isLoading) {
     return (
       <ErrorPlaceHolder
-        className="m-t-xlg p-md p-b-lg"
+        className="p-md p-b-lg"
         heading={t('label.sub-domain')}
         permission={permissions.Create}
         type={ERROR_PLACEHOLDER_TYPE.CREATE}

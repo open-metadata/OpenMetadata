@@ -78,7 +78,7 @@ const DataProductsTab = forwardRef(
         if (data.length > 0) {
           setSelectedCard(data[0]);
         }
-      } catch (error) {
+      } catch {
         setDataProducts({
           data: [],
           paging: { total: 0 },
@@ -109,7 +109,7 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
-          className="m-t-xlg p-md p-b-lg"
+          className="p-md p-b-lg"
           heading={t('label.data-product')}
           permission={permissions.Create}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}

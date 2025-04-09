@@ -227,6 +227,7 @@ const KPIWidget = ({
       </Row>
       {isEmpty(kpiList) || isEmpty(kpiResults) ? (
         <ErrorPlaceHolder
+          className="border-none"
           icon={<KPIEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph style={{ marginBottom: '0' }}>

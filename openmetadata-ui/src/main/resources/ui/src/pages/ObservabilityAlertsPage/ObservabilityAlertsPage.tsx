@@ -145,7 +145,7 @@ const ObservabilityAlertsPage = () => {
         setAlerts(alertsList);
         handlePagingChange(paging);
         fetchAllAlertsPermission(alertsList);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
@@ -331,7 +331,7 @@ const ObservabilityAlertsPage = () => {
               emptyText: (
                 <ErrorPlaceHolder
                   permission
-                  className="p-y-md"
+                  className="p-y-md border-none"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
