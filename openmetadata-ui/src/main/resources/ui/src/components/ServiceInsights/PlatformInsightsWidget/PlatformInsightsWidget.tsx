@@ -86,7 +86,7 @@ function PlatformInsightsWidget({
                   height: 30,
                   width: 30,
                   theme,
-                  placeholderClassName: 'm-t-lg',
+                  placeholderClassName: 'm-t-lg border-none',
                 });
 
                 return (
