@@ -1248,7 +1248,7 @@ export const softDeleteEntity = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /Delete operation initiated for/);
+  await toastNotification(page, /deleted successfully!/);
 
   await page.reload();
 
@@ -1313,7 +1313,7 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await toastNotification(page, /Delete operation initiated for/);
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
