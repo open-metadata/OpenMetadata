@@ -23,7 +23,7 @@ Configure and schedule Delta Lake metadata and profiler workflows from the OpenM
 
 ## Requirements
 
-Delta Lake requires to run with Python 3.8, 3.9 or 3.10. We do not yet support the Delta connector
+Delta Lake requires to run with Python 3.9 or 3.10. We do not yet support the Delta connector
 for Python 3.11
 
 ### Python Requirements

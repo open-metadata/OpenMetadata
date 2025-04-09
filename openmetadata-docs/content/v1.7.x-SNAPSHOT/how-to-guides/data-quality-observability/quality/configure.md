@@ -20,7 +20,7 @@ You must have a running deployment of OpenMetadata to use this guide. OpenMetada
 
 To deploy OpenMetadata checkout the [deployment guide](/deployment)
 
-### Python (version 3.8.0 or later)
+### Python (version 3.9.0 or later)
 
 Please use the following command to check the version of Python you have.
 
