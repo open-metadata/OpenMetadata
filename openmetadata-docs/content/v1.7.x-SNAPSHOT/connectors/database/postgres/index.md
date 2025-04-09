@@ -23,7 +23,7 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/postgres/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
@@ -218,15 +218,36 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-PostgreSQL supports the following reverse metadata ingestion features:
-- Support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
+### Description Management
+
+PostgreSQL supports description updates at all levels:
+- Database level
+- Schema level
+- Table level
+- Column level
+
+### Owner Management
+
+PostgreSQL supports owner management at the following levels:
+- Database level
+- Schema level
+- Table level
+
+### Tag Management
+
+❌ Tag management is not supported for PostgreSQL.
+
+### Custom SQL Template
+
+PostgreSQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Examples will be provided in a future update.
 
 ### Requirements for Reverse Metadata
 
