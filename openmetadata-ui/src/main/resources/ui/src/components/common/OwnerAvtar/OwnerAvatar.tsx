@@ -57,10 +57,10 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         key="profile-picture"
         name={owner.name ?? ''}
         type="circle"
-        width={isCompactView ? '18' : `${avatarSize}`}
+        width={isCompactView ? '24' : `${avatarSize}`}
       />
 
-      {inheritedIcon && !isCompactView && (
+      {inheritedIcon && (
         <div className="inherited-icon-styling flex-center">
           {inheritedIcon}
         </div>

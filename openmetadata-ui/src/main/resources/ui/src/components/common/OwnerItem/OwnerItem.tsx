@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { EntityReference } from '../../../generated/entity/data/table';
@@ -38,24 +36,21 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   ownerDisplayName,
   avatarSize = 32,
 }) => {
-  const { t } = useTranslation();
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
 
   const inheritedIcon = owner?.inherited ? (
-    <Tooltip
-      title={t('label.inherited-entity', {
-        entity: t('label.owner-plural'),
-      })}>
-      <InheritIcon className="inherit-icon cursor-pointer" width={8} />
-    </Tooltip>
+    <InheritIcon className="inherit-icon cursor-pointer" width={8} />
   ) : null;
 
   return (
     <div
-      className="d-inline-flex items-center owner-avatar-container gap-1"
+      className={classNames('owner-avatar-container', {
+        'is-compact-view': isCompactView,
+        'stacked-view': !isCompactView,
+      })}
       style={{
-        marginLeft: index === 0 || isCompactView ? 0 : '-4px',
+        zIndex: !isCompactView ? index + 1 : undefined, // Lower index items will be underneath
       }}>
       {!isCompactView ? (
         <UserPopOverCard userName={owner.name ?? ''}>
@@ -76,6 +71,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
           <div className="owner-avatar-icon d-flex">
             <OwnerAvatar
               avatarSize={avatarSize}
+              inheritedIcon={inheritedIcon}
               isCompactView={isCompactView}
               owner={owner}
             />
@@ -91,7 +87,6 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
               {ownerDisplayName ?? displayName}
             </span>
           </Link>
-          {inheritedIcon && <div className="d-flex">{inheritedIcon}</div>}
         </>
       )}
     </div>
