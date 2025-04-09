@@ -835,7 +835,7 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteRes;
 
-  await toastNotification(page, /Delete operation initiated for/);
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
