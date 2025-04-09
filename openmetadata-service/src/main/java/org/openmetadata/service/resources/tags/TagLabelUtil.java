@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -105,14 +106,18 @@ public class TagLabelUtil {
       return tagLabels;
     }
 
-    // Filter out all the derived tags
     List<TagLabel> filteredTags =
-        tagLabels.stream().filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED).toList();
+        tagLabels.stream()
+            .filter(Objects::nonNull)
+            .filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED)
+            .toList();
 
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     EntityUtil.mergeTags(updatedTagLabels, filteredTags);
     for (TagLabel tagLabel : tagLabels) {
-      EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+      if (tagLabel != null) {
+        EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
+      }
     }
     updatedTagLabels.sort(compareTagLabel);
     return updatedTagLabels;

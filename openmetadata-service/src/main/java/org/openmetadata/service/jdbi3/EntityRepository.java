@@ -4156,7 +4156,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       if (targetFQN != null) {
         TagLabel tagLabel = tagFQNLabelMap.get(tagWithHash.getTagFQN());
-        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagLabel);
+        if (tagLabel != null) {
+          tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagLabel);
+        } else {
+          LOG.warn("Missing TagLabel for TagFQN in batch Fetch Tags: {}", tagWithHash.getTagFQN());
+        }
       }
     }
 
