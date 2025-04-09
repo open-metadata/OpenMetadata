@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.system.EntityError;
+import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityReference;
@@ -61,7 +62,7 @@ public class ReindexingUtil {
 
   public static Stats getInitialStatsForEntities(Set<String> entities) {
     Stats initialStats = new Stats();
-    StepStats entityLevelStat = new StepStats();
+    EntityStats entityLevelStat = new EntityStats();
     int total = 0;
 
     for (String entityType : entities) {
@@ -95,16 +96,6 @@ public class ReindexingUtil {
     return initialStats;
   }
 
-  public static int getSuccessFromBulkResponse(BulkResponse response) {
-    int success = 0;
-    for (BulkItemResponse bulkItemResponse : response) {
-      if (!bulkItemResponse.isFailed()) {
-        success++;
-      }
-    }
-    return success;
-  }
-
   public static List<EntityError> getErrorsFromBulkResponse(BulkResponse response) {
     List<EntityError> entityErrors = new ArrayList<>();
     for (BulkItemResponse bulkItemResponse : response) {
@@ -130,17 +121,6 @@ public class ReindexingUtil {
       }
     }
     return entityErrors;
-  }
-
-  public static int getSuccessFromBulkResponseEs(
-      es.org.elasticsearch.action.bulk.BulkResponse response) {
-    int success = 0;
-    for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
-      if (!bulkItemResponse.isFailed()) {
-        success++;
-      }
-    }
-    return success;
   }
 
   @SneakyThrows

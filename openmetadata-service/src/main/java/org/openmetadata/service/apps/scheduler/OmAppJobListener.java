@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -95,7 +96,7 @@ public class OmAppJobListener implements JobListener {
       // Insert new Record Run
       pushApplicationStatusUpdates(jobExecutionContext, runRecord, update);
     } catch (Exception e) {
-      LOG.info("Error while setting up the job context", e);
+      LOG.error("OmAppJobListener.jobToBeExecuted failed unexpectedly", e);
     }
   }
 
@@ -105,58 +106,63 @@ public class OmAppJobListener implements JobListener {
   @Override
   public void jobWasExecuted(
       JobExecutionContext jobExecutionContext, JobExecutionException jobException) {
-    AppRunRecord runRecord =
-        JsonUtils.readOrConvertValue(
-            jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION),
-            AppRunRecord.class);
-    Object jobStats = jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS);
-    long endTime = System.currentTimeMillis();
-    runRecord.withEndTime(endTime);
-    runRecord.setExecutionTime(endTime - runRecord.getStartTime());
+    try {
+      AppRunRecord runRecord =
+          JsonUtils.readOrConvertValue(
+              jobExecutionContext.getJobDetail().getJobDataMap().get(SCHEDULED_APP_RUN_EXTENSION),
+              AppRunRecord.class);
+      Stats jobStats =
+          JsonUtils.convertValue(
+              jobExecutionContext.getJobDetail().getJobDataMap().get(APP_RUN_STATS), Stats.class);
+      long endTime = System.currentTimeMillis();
+      runRecord.withEndTime(endTime);
+      runRecord.setExecutionTime(endTime - runRecord.getStartTime());
 
-    if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD) != null) {
-      runRecord.setServices(
-          JsonUtils.convertObjects(
-              jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
-              EntityReference.class));
-    }
-
-    if (jobException == null
-        && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
-            || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
-      runRecord.withStatus(AppRunRecord.Status.SUCCESS);
-      SuccessContext context = new SuccessContext();
-      if (runRecord.getSuccessContext() != null) {
-        context = runRecord.getSuccessContext();
-      }
-      context.getAdditionalProperties().put("stats", JsonUtils.getMap(jobStats));
-      runRecord.setSuccessContext(context);
-    } else {
-      runRecord.withStatus(AppRunRecord.Status.FAILED);
-      FailureContext context = new FailureContext();
-      if (runRecord.getFailureContext() != null) {
-        context = runRecord.getFailureContext();
-      }
-      if (jobException != null) {
-        Map<String, Object> failure = new HashMap<>();
-        failure.put("message", jobException.getMessage());
-        failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
-        context.withAdditionalProperty("failure", failure);
+      if (jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD) != null) {
+        runRecord.setServices(
+            JsonUtils.convertObjects(
+                jobExecutionContext.getJobDetail().getJobDataMap().get(SERVICES_FIELD),
+                EntityReference.class));
       }
 
-      runRecord.setFailureContext(context);
-    }
+      if (jobException == null
+          && !(runRecord.getStatus() == AppRunRecord.Status.FAILED
+              || runRecord.getStatus() == AppRunRecord.Status.ACTIVE_ERROR)) {
+        runRecord.withStatus(AppRunRecord.Status.SUCCESS);
+        SuccessContext context = new SuccessContext();
+        if (runRecord.getSuccessContext() != null) {
+          context = runRecord.getSuccessContext();
+        }
+        context.setStats(jobStats);
+        runRecord.setSuccessContext(context);
+      } else {
+        runRecord.withStatus(AppRunRecord.Status.FAILED);
+        FailureContext context = new FailureContext();
+        if (runRecord.getFailureContext() != null) {
+          context = runRecord.getFailureContext();
+        }
+        if (jobException != null) {
+          Map<String, Object> failure = new HashMap<>();
+          failure.put("message", jobException.getMessage());
+          failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
+          context.withAdditionalProperty("failure", failure);
+        }
 
-    // Push Update on WebSocket
-    String webSocketChannelName =
-        (String) jobExecutionContext.getJobDetail().getJobDataMap().get(WEBSOCKET_STATUS_CHANNEL);
-    if (!nullOrEmpty(webSocketChannelName) && WebSocketManager.getInstance() != null) {
-      WebSocketManager.getInstance()
-          .broadCastMessageToAll(webSocketChannelName, JsonUtils.pojoToJson(runRecord));
-    }
+        runRecord.setFailureContext(context);
+      }
+      // Push Update on WebSocket
+      String webSocketChannelName =
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get(WEBSOCKET_STATUS_CHANNEL);
+      if (!nullOrEmpty(webSocketChannelName) && WebSocketManager.getInstance() != null) {
+        WebSocketManager.getInstance()
+            .broadCastMessageToAll(webSocketChannelName, JsonUtils.pojoToJson(runRecord));
+      }
 
-    // Update App Run Record
-    pushApplicationStatusUpdates(jobExecutionContext, runRecord, true);
+      // Update App Run Record
+      pushApplicationStatusUpdates(jobExecutionContext, runRecord, true);
+    } catch (Exception e) {
+      LOG.error("OmAppJobListener.jobWasExecuted failed unexpectedly", e);
+    }
   }
 
   public AppRunRecord getAppRunRecordForJob(JobExecutionContext context) {
