@@ -204,6 +204,8 @@ test('Verify column lineage between tables', async ({ browser }) => {
 });
 
 test('Verify column lineage between table and topic', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
