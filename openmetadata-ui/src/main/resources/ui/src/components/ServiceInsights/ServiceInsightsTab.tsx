@@ -15,45 +15,37 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  PLATFORM_INSIGHTS_CHART,
-  SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
-} from '../../constants/ServiceInsightsTab.constants';
+import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { getMultiChartsPreviewByName } from '../../rest/DataInsightAPI';
 import {
-  getWorkflowInstancesForApplication,
-  getWorkflowInstanceStateById,
-} from '../../rest/workflowAPI';
-import {
   getCurrentDayStartGMTinMillis,
-  getCurrentMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink } from '../../utils/EntityUtils';
 import {
+  filterDistributionChartItem,
   getPlatformInsightsChartDataFormattingMethod,
   getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   ChartData,
   ChartSeriesData,
 } from './PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import './service-insights-tab.less';
-import {
-  ServiceInsightsTabProps,
-  WorkflowStatesData,
-} from './ServiceInsightsTab.interface';
+import { ServiceInsightsTabProps } from './ServiceInsightsTab.interface';
 
-const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
+const ServiceInsightsTab = ({
+  serviceDetails,
+  workflowStatesData,
+  isWorkflowStatusLoading,
+}: ServiceInsightsTabProps) => {
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
@@ -64,52 +56,10 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
     tierDistributionChart: ChartData[];
   }>();
   const [isLoading, setIsLoading] = useState(false);
-  const [workflowStatesData, setWorkflowStatesData] =
-    useState<WorkflowStatesData>();
-  const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(false);
 
   const serviceName = serviceDetails.name;
 
   const widgets = serviceUtilClassBase.getInsightsTabWidgets(serviceCategory);
-
-  const fetchWorkflowInstanceStates = async () => {
-    try {
-      setIsWorkflowStatusLoading(true);
-      const startTs = getDayAgoStartGMTinMillis(6);
-      const endTs = getCurrentMillis();
-      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
-      const workflowInstances = await getWorkflowInstancesForApplication({
-        startTs,
-        endTs,
-        workflowDefinitionName: SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
-        entityLink: getEntityFeedLink(
-          entityType,
-          serviceDetails.fullyQualifiedName
-        ),
-      });
-
-      const workflowInstanceId = workflowInstances.data[0]?.id;
-
-      if (workflowInstanceId) {
-        const workflowInstanceStates = await getWorkflowInstanceStateById(
-          SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME,
-          workflowInstanceId,
-          {
-            startTs,
-            endTs,
-          }
-        );
-        setWorkflowStatesData({
-          mainInstanceState: workflowInstances.data[0],
-          subInstanceStates: workflowInstanceStates.data,
-        });
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsWorkflowStatusLoading(false);
-    }
-  };
 
   const fetchChartsData = async () => {
     try {
@@ -139,10 +89,10 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
 
       const piiDistributionChart = chartsData[
         SystemChartType.PIIDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
       const tierDistributionChart = chartsData[
         SystemChartType.TierDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
 
       setChartsResults({
         platformInsightsChart,
@@ -157,7 +107,6 @@ const ServiceInsightsTab = ({ serviceDetails }: ServiceInsightsTabProps) => {
   };
 
   useEffect(() => {
-    fetchWorkflowInstanceStates();
     fetchChartsData();
   }, []);
 

@@ -291,9 +291,9 @@ public class MigrationUtil {
         "assets_with_pii_bar",
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
-            .withxAxisField("tags.tagFQN")
+            .withxAxisField("columns.tags.tagFQN")
             .withIncludeXAxisFiled("pii.*")
-            .withGroupBy("tags.name.keyword"),
+            .withGroupBy("columns.tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
     createChart(
@@ -330,8 +330,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
-                                + " pii.nonsensitive OR tags.tagFQN: pii.none')/count(k='id.keyword'))*100"))));
+                            "(count(q='columns.tags.tagFQN: pii.*')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_tier",

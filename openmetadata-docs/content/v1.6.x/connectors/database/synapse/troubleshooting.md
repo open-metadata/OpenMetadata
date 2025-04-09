@@ -4,7 +4,7 @@ slug: /connectors/database/synapse/troubleshooting
 collate: true
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the Synapse connector.
 

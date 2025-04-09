@@ -2599,6 +2599,10 @@ export interface ConfigClass {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
+    /**
      * Open API Schema URL.
      */
     openAPISchemaURL?: string;
@@ -3888,6 +3892,10 @@ export interface ConfigClass {
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
+    /**
+     * Number of runs to fetch from DBT cloud
+     */
+    numberOfRuns?: number;
     /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */

@@ -41,7 +41,7 @@ import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityAction, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -451,6 +451,7 @@ const GlossaryPage = () => {
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary')}
           permission={createGlossaryPermission}
+          size={SIZE.X_LARGE}
           type={
             createGlossaryPermission
               ? ERROR_PLACEHOLDER_TYPE.CREATE
@@ -515,8 +516,7 @@ const GlossaryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className:
-          'content-resizable-panel-container' + (previewAsset ? '' : ''),
+        className: 'content-resizable-panel-container',
         children: glossaryElement,
         minWidth: 700,
         flex: 0.7,

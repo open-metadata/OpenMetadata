@@ -74,7 +74,7 @@ class TableClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.TABLE_SCHEMA]: 8,
+      [DetailPageWidgetKeys.TABLE_SCHEMA]: 8.5,
       [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: 2,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
@@ -118,7 +118,11 @@ class TableClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA] +
+          // Padding for left panel container
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

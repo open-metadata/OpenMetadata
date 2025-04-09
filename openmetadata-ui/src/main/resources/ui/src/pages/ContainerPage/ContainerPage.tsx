@@ -581,7 +581,10 @@ const ContainerPage = () => {
               tabBarExtraContent={
                 isExpandViewSupported && (
                   <AlignRightIconButton
-                    size="small"
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     onClick={toggleTabExpanded}
                   />
                 )
