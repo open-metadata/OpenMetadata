@@ -36,3 +36,52 @@
     }
   }
 }
+
+// Global styling for segment toggle classs
+.segment-toggle {
+  background: @white;
+  border-radius: @size-sm;
+  border: 1px solid @grey-20;
+
+  .ant-segmented-item {
+    color: @text-color;
+    transition: all 0.3s ease;
+
+    &-selected {
+      background: @blue-23;
+      color: @blue-9;
+      text-align: center;
+      border-radius: @size-sm;
+      .ant-segmented-item-label {
+        color: @blue-9;
+      }
+
+      svg path {
+        fill: @blue-9;
+      }
+    }
+  }
+
+  &:hover {
+    background: none !important;
+  }
+
+  &:focus {
+    background: none !important;
+  }
+
+  .ant-segmented:not(.ant-segmented-disabled):hover,
+  .ant-segmented:not(.ant-segmented-disabled):focus {
+    background: none !important;
+  }
+}
+.segment-toggle.ant-segmented {
+  background-color: @white;
+  border-radius: @size-sm;
+
+  &:hover {
+    .ant-segmented-item:not(.ant-segmented-item-selected) {
+      background-color: @white;
+    }
+  }
+}
