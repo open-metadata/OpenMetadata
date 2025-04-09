@@ -3804,9 +3804,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagWithHash : tags) {
       String targetFQNHash = tagWithHash.getTargetFQNHash();
       String targetFQN = fqnHashToFqnMap.get(targetFQNHash);
-
-      if (targetFQN != null) {
-        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagWithHash.toTagLabel());
+      TagLabel taglabel = tagWithHash.toTagLabel();
+      if (targetFQN != null && taglabel != null) {
+        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(taglabel);
       }
     }
 
