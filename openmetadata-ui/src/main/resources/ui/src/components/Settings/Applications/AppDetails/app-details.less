@@ -13,8 +13,10 @@
 @import url('../../../../styles/variables.less');
 
 .app-details-page-tabs {
-  .ant-tabs-nav {
-    margin: 0 !important;
+  .ant-tabs-tabpane {
+    height: @app-details-page-tabs-height;
+    overflow-y: auto;
+    background-color: initial !important;
   }
 }
 
@@ -58,6 +60,7 @@
       display: none;
     }
   }
+
   // ****  Stats  ****
 
   .request-badge {
@@ -67,12 +70,14 @@
         color: @text-color;
       }
     }
+
     &.failed {
       .ant-badge-count {
         background-color: @red-3;
         color: @text-color;
       }
     }
+
     &.running {
       .ant-badge-count {
         background-color: @primary-color;

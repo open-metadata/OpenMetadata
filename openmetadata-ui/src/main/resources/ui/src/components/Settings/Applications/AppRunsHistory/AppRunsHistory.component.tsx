@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import validator from '@rjsf/validator-ajv8';
-import { Button, Col, Modal, Row, Space, Typography } from 'antd';
+import { Button, Modal, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -382,43 +382,40 @@ const AppRunsHistory = forwardRef(
 
     return (
       <>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Table
-              columns={tableColumn}
-              customPaginationProps={{
-                isNumberBased: true,
-                showPagination: showPagination && paginationVisible,
-                currentPage,
-                isLoading,
-                pageSize,
-                paging,
-                pagingHandler: handleAppHistoryPageChange,
-                onShowSizeChange: handlePageSizeChange,
-              }}
-              data-testid="app-run-history-table"
-              dataSource={appRunsHistoryData}
-              expandable={{
-                expandedRowRender: (record) => (
-                  <AppLogsViewer
-                    data={record}
-                    scrollHeight={maxRecords !== 1 ? 200 : undefined}
-                  />
-                ),
-                showExpandColumn: false,
-                rowExpandable: (record) => !showLogAction(record),
-                expandedRowKeys,
-              }}
-              loading={isLoading}
-              locale={{
-                emptyText: <ErrorPlaceHolder className="m-y-md" />,
-              }}
-              pagination={false}
-              rowKey="id"
-              size="small"
-            />
-          </Col>
-        </Row>
+        <Table
+          columns={tableColumn}
+          customPaginationProps={{
+            isNumberBased: true,
+            showPagination: showPagination && paginationVisible,
+            currentPage,
+            isLoading,
+            pageSize,
+            paging,
+            pagingHandler: handleAppHistoryPageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
+          data-testid="app-run-history-table"
+          dataSource={appRunsHistoryData}
+          expandable={{
+            expandedRowRender: (record) => (
+              <AppLogsViewer
+                data={record}
+                scrollHeight={maxRecords !== 1 ? 200 : undefined}
+              />
+            ),
+            showExpandColumn: false,
+            rowExpandable: (record) => !showLogAction(record),
+            expandedRowKeys,
+          }}
+          loading={isLoading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+
         {isStopModalOpen && (
           <StopScheduleModal
             appName={fqn}

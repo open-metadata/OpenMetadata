@@ -181,7 +181,7 @@ const AppInstall = () => {
     }
   };
 
-  const RenderSelectedTab = useCallback(() => {
+  const renderSelectedTab = useMemo(() => {
     if (!appData || !jsonSchema) {
       return <></>;
     }
@@ -215,7 +215,7 @@ const AppInstall = () => {
         );
       case 3:
         return (
-          <div className="w-3/5 p-md border rounded-4">
+          <div className="m-auto bg-white w-3/5 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <ScheduleInterval
               defaultSchedule={defaultValue}
@@ -260,15 +260,15 @@ const AppInstall = () => {
     <PageLayoutV1
       className="app-install-page"
       pageTitle={t('label.application-plural')}>
-      <Row>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <IngestionStepper
             activeStep={activeServiceStep}
             steps={stepperList}
           />
         </Col>
-        <Col span={24}>
-          <div className="p-md flex-center">{RenderSelectedTab()}</div>
+        <Col className="app-intall-page-tabs" span={24}>
+          {renderSelectedTab}
         </Col>
       </Row>
     </PageLayoutV1>

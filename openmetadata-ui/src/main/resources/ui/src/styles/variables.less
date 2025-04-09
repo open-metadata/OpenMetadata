@@ -220,7 +220,6 @@
 @data-asset-header-height-versions-page: 114px;
 @tab-height: 60px;
 
-// 172px - navbar height
 @entity-details-tab-height: calc(
   100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-md
 );
@@ -229,7 +228,18 @@
     @om-navbar-height - @size-md
 );
 
+@app-details-page-tabs-height: calc(
+  100vh - 132px - @tab-height - @om-navbar-height - @size-md
+);
+@app-install-page-tabs-height: calc(
+  100vh - 70px - @om-navbar-height - @size-md
+);
+
 @users-page-tabs-height: calc(100vh - @om-navbar-height - 58px);
+
+@services-page-tabs-height: calc(
+  100vh - 36px - @tab-height - @om-navbar-height - @size-md
+);
 /* navbar+tab_height+padding = 64+46+12  */
 
 @glossary-page-height: calc(

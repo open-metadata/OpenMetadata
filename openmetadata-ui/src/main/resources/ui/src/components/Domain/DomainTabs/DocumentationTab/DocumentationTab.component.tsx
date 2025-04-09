@@ -151,7 +151,7 @@ const DocumentationTab = ({
         wrapInCard: true,
         children: (
           <div className="d-flex flex-column gap-5 p-md">
-            <OwnerLabelV2 />
+            <OwnerLabelV2 dataTestId="domain-owner-name" />
 
             <TagsContainerV2
               newLook

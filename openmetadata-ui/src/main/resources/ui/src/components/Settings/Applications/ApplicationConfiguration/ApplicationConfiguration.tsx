@@ -81,7 +81,7 @@ const ApplicationConfiguration = ({
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="h-full content-height-with-resizable-panel"
       firstPanel={{
         children: formPanel,
         minWidth: 700,
