@@ -150,7 +150,9 @@ const AddServicePage = () => {
     setActiveServiceStep(4);
   };
 
-  const triggerTheDayOneApplication = async (serviceDetails: ServicesType) => {
+  const triggerTheSmartStartApplication = async (
+    serviceDetails: ServicesType
+  ) => {
     try {
       const entityType = getEntityTypeFromServiceCategory(serviceCategory);
       const entityLink = getEntityFeedLink(
@@ -182,7 +184,7 @@ const AddServicePage = () => {
     try {
       const serviceDetails = await postService(serviceCategory, configData);
 
-      await triggerTheDayOneApplication(serviceDetails);
+      await triggerTheSmartStartApplication(serviceDetails);
     } catch (error) {
       handleEntityCreationError({
         error: error as AxiosError,

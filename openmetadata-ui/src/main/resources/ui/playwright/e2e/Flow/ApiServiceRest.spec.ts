@@ -56,17 +56,15 @@ test.describe('API service', () => {
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
     await page.getByTestId('submit-btn').click();
 
-    const dayOneExperienceApplicationRequest = page.waitForRequest(
+    const smartStartApplicationRequest = page.waitForRequest(
       (request) =>
-        request
-          .url()
-          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.url().includes('/api/v1/apps/trigger/SmartStartApplication') &&
         request.method() === 'POST'
     );
 
     await page.getByTestId('submit-btn').getByText('Save').click();
 
-    await dayOneExperienceApplicationRequest;
+    await smartStartApplicationRequest;
 
     // step 3
     await expect(page.getByTestId('entity-header-name')).toHaveText(

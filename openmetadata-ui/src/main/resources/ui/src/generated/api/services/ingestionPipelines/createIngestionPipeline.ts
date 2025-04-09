@@ -1368,7 +1368,7 @@ export enum CollateAIAppConfigType {
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    DayOneExperienceApplication = "DayOneExperienceApplication",
+    SmartStartApplication = "SmartStartApplication",
     SearchIndexing = "SearchIndexing",
 }
 

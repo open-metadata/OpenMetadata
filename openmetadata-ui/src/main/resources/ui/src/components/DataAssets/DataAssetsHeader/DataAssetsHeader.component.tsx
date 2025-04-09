@@ -200,7 +200,7 @@ export const DataAssetsHeader = ({
   isCustomizedView = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
-  isDayOneWorkflowStatusLoading = false,
+  isSmartStartWorkflowStatusLoading = false,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
@@ -213,7 +213,7 @@ export const DataAssetsHeader = ({
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
-  const [isDayOneTriggering, setIsDayOneTriggering] = useState(false);
+  const [isSmartStartTriggering, setIsSmartStartTriggering] = useState(false);
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
@@ -482,9 +482,9 @@ export const DataAssetsHeader = ({
     selectedUserSuggestions,
   ]);
 
-  const triggerTheDayOneApplication = useCallback(async () => {
+  const triggerTheSmartStartApplication = useCallback(async () => {
     try {
-      setIsDayOneTriggering(true);
+      setIsSmartStartTriggering(true);
       const entityType = getEntityTypeFromServiceCategory(serviceCategory);
       const entityLink = getEntityFeedLink(
         entityType,
@@ -499,17 +499,19 @@ export const DataAssetsHeader = ({
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
-      setIsDayOneTriggering(false);
+      setIsSmartStartTriggering(false);
     }
   }, [serviceCategory, afterTriggerAction]);
 
-  const triggerDayOneApplicationButton = useMemo(() => {
+  const triggerSmartStartApplicationButton = useMemo(() => {
     if (!SERVICE_TYPES.includes(entityType)) {
       return null;
     }
 
-    const isDisabled = isDayOneWorkflowStatusLoading || disableRunAgentsButton;
-    const isLoading = isDayOneWorkflowStatusLoading || isDayOneTriggering;
+    const isDisabled =
+      isSmartStartWorkflowStatusLoading || disableRunAgentsButton;
+    const isLoading =
+      isSmartStartWorkflowStatusLoading || isSmartStartTriggering;
 
     return (
       <Tooltip title={t('message.trigger-day-one-application')}>
@@ -520,16 +522,16 @@ export const DataAssetsHeader = ({
           icon={<Icon className="flex-center" component={TriggerIcon} />}
           loading={isLoading}
           type="primary"
-          onClick={triggerTheDayOneApplication}>
+          onClick={triggerTheSmartStartApplication}>
           {t('label.run-agent-plural')}
         </Button>
       </Tooltip>
     );
   }, [
     disableRunAgentsButton,
-    isDayOneWorkflowStatusLoading,
-    isDayOneTriggering,
-    triggerTheDayOneApplication,
+    isSmartStartWorkflowStatusLoading,
+    isSmartStartTriggering,
+    triggerTheSmartStartApplication,
   ]);
 
   return (
@@ -573,7 +575,7 @@ export const DataAssetsHeader = ({
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
-                  {triggerDayOneApplicationButton}
+                  {triggerSmartStartApplicationButton}
                   {onUpdateVote && (
                     <Voting
                       disabled={deleted}

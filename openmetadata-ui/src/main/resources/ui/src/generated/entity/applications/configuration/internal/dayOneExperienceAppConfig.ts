@@ -34,5 +34,5 @@ export interface DayOneExperienceAppConfig {
  * Application type.
  */
 export enum DayOneExperienceAppType {
-    DayOneExperienceApplication = "DayOneExperienceApplication",
+    SmartStartApplication = "SmartStartApplication",
 }

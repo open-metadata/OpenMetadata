@@ -13,7 +13,7 @@
 import { Page } from '@playwright/test';
 import { JWT_EXPIRY_TIME_MAP } from '../constant/login';
 import { AdminClass } from '../support/user/AdminClass';
-import { enableDisableDay1ExperienceApplication } from './applications';
+import { enableDisableSmartStartApplication } from './applications';
 import { getApiContext } from './common';
 import { updateJWTTokenExpiryTime } from './login';
 import {
@@ -33,7 +33,7 @@ const initialSetup = async (page: Page) => {
   // update default Data consumer policy
   await updateDefaultDataConsumerPolicy(apiContext);
   // disable the day 1 experience application
-  await enableDisableDay1ExperienceApplication(apiContext, false);
+  await enableDisableSmartStartApplication(apiContext, false);
 
   await afterAction();
 };
