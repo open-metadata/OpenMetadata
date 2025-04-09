@@ -195,7 +195,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           showErrorToast(error as AxiosError);
         }
       }
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),

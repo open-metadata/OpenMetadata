@@ -78,7 +78,7 @@ const KPIList = () => {
       });
       setKpiList(response.data);
       setKpiPaging(response.paging);
-    } catch (err) {
+    } catch {
       setKpiList([]);
       setKpiPaging(pagingObject);
     } finally {

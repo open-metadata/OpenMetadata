@@ -75,7 +75,7 @@ const MyDataWidgetInternal = ({
 
         setData(ownedAssets.map((hit) => hit._source).slice(0, 8));
         setTotalOwnedAssetsCount(totalOwnedAssets);
-      } catch (err) {
+      } catch {
         setData([]);
       } finally {
         setIsLoading(false);

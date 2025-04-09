@@ -274,7 +274,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           (node) => node.totalCount !== undefined && node.totalCount > 0
         );
       });
-    } catch (error) {
+    } catch {
       // Do nothing
     } finally {
       setIsLoading(false);

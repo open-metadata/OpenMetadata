@@ -240,7 +240,7 @@ const AssetsTabs = forwardRef(
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
           hits[0] && setSelectedCard(hits[0]._source);
-        } catch (_) {
+        } catch {
           // Nothing here
         } finally {
           setIsLoading(false);

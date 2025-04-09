@@ -202,7 +202,7 @@ const TeamsPage = () => {
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);
-      } catch (error) {
+      } catch {
         // Error
       }
     }

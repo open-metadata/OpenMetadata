@@ -254,7 +254,7 @@ export const TestCases = () => {
       });
 
       setTierOptions(options);
-    } catch (error) {
+    } catch {
       setTierOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -286,7 +286,7 @@ export const TestCases = () => {
         });
 
       setTagOptions(options);
-    } catch (error) {
+    } catch {
       setTagOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -324,7 +324,7 @@ export const TestCases = () => {
         };
       });
       setTableOptions(options);
-    } catch (error) {
+    } catch {
       setTableOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -362,7 +362,7 @@ export const TestCases = () => {
         };
       });
       setServiceOptions(options);
-    } catch (error) {
+    } catch {
       setServiceOptions([]);
     } finally {
       setIsOptionsLoading(false);

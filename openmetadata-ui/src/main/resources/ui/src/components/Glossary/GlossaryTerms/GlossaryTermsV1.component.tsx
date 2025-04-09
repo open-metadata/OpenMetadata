@@ -150,7 +150,7 @@ const GlossaryTermsV1 = ({
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
+      } catch {
         setAssetCount(0);
       }
     }

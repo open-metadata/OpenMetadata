@@ -71,7 +71,7 @@ const PersonaPageLayout = () => {
 
       setPersona(data);
       handlePagingChange(paging);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);

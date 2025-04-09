@@ -86,7 +86,7 @@ const Users = ({
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
 
       setAssetCount(res.data.hits.total.value ?? 0);
-    } catch (error) {
+    } catch {
       setAssetCount(0);
     }
   };

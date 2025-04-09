@@ -145,7 +145,7 @@ const ObservabilityAlertsPage = () => {
         setAlerts(alertsList);
         handlePagingChange(paging);
         fetchAllAlertsPermission(alertsList);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );

@@ -30,9 +30,7 @@ const CustomNoDataPlaceHolder = ({
         'flex-center flex-col w-full h-full border-default border-radius-sm'
       )}
       data-testid="no-data-placeholder">
-      {icon ? (
-        icon
-      ) : (
+      {icon ?? (
         <NoDataFoundPlaceHolderIcon
           data-testid="no-data-image"
           height={size}
@@ -41,7 +39,7 @@ const CustomNoDataPlaceHolder = ({
       )}
 
       <div className="m-t-xs text-center text-sm font-normal">
-        {children ? children : ''}
+        {children ?? ''}
       </div>
     </div>
   );

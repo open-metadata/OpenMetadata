@@ -264,7 +264,7 @@ const RolesDetailPage = () => {
           (data) => data.id === id
         );
 
-        return existingData ? existingData : { id, type: addAttribute.type };
+        return existingData ?? { id, type: addAttribute.type };
       });
       const patch = compare(role, { ...role, policies: updatedPolicies });
       try {

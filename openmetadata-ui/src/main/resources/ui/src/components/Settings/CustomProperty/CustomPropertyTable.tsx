@@ -200,7 +200,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         width: 300,
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewerNew markdown={text || ''} />
+            <RichTextEditorPreviewerNew markdown={text ?? ''} />
           ) : (
             <Typography.Text
               className="text-grey-muted "

@@ -65,7 +65,7 @@ const DomainPage = () => {
         fields: 'parent',
       });
       updateDomains(data);
-    } catch (error) {
+    } catch {
       // silent fail
     } finally {
       updateDomainLoading(false);
