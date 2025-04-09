@@ -247,7 +247,16 @@ PostgreSQL supports owner management at the following levels:
 
 PostgreSQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
 
-Examples will be provided in a future update.
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update database owner
+ALTER DATABASE {database} OWNER TO {owner};
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
+
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
 
 ### Requirements for Reverse Metadata
 
@@ -258,5 +267,3 @@ In addition to the basic ingestion requirements, for reverse metadata ingestion 
 -- Grant superuser privilege to the user
 ALTER ROLE USER_NAME SUPERUSER;
 ```
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
