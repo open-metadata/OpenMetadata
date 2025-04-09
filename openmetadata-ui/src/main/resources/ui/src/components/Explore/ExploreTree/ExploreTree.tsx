@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tree, Typography } from 'antd';
+import { Tooltip, Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
@@ -53,24 +53,33 @@ import {
 } from './ExploreTree.interface';
 
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <div className="d-flex justify-between">
-    <Typography.Text
-      className={classNames({
-        'm-l-xss': node.data?.isRoot,
-      })}
-      data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
-      {node.title}
-    </Typography.Text>
-    {!isUndefined(node.count) && (
-      <span className="explore-node-count">{getCountBadge(node.count)}</span>
-    )}
-  </div>
+  <Tooltip
+    overlayInnerStyle={{ backgroundColor: 'white', color: 'black' }} // Custom styles
+    title={node.tooltipTitle}>
+    <div className="d-flex justify-between">
+      <Typography.Text
+        className={classNames({
+          'm-l-xss': node.data?.isRoot,
+        })}
+        data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+        {node.title}
+      </Typography.Text>
+      {!isUndefined(node.count) && (
+        <span className="explore-node-count">{getCountBadge(node.count)}</span>
+      )}
+    </div>
+  </Tooltip>
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { t } = useTranslation();
   const { tab } = useParams<UrlParams>();
-  const initTreeData = searchClassBase.getExploreTree();
+  const initTreeData = searchClassBase.getExploreTree().map((item) => ({
+    ...item,
+    title: <Typography.Text>{item.title}</Typography.Text>,
+    tooltipTitle: <Typography.Text>{item.title ?? ' '}</Typography.Text>,
+  }));
+
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -157,7 +166,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
-
+          let type = undefined;
           let logo = undefined;
           if (isEntityType) {
             logo = searchClassBase.getEntityIcon(
@@ -174,6 +183,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               />
             );
           } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+            type = 'Database';
             logo = searchClassBase.getEntityIcon(
               'database',
               'service-icon w-4 h-4'
@@ -181,6 +191,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
           ) {
+            type = 'Database Schema';
             logo = searchClassBase.getEntityIcon(
               'databaseSchema',
               'service-icon w-4 h-4'
@@ -194,11 +205,18 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           }
 
           return {
-            title: isEntityType
-              ? getPluralizeEntityName(bucket.key)
-              : bucket.key,
+            title: isEntityType ? (
+              <>{getPluralizeEntityName(bucket.key)}</>
+            ) : (
+              <>{bucket.key}</>
+            ),
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
+            tooltipTitle: (
+              <Typography.Text>
+                {bucket.key} {type && `(${type})`}
+              </Typography.Text>
+            ),
             icon: logo,
             isLeaf: bucketToFind === EntityFields.ENTITY_TYPE,
             data: {
@@ -216,7 +234,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           };
         });
 
-        setTreeData((origin) => updateTreeData(origin, treeNode.key, children));
+        setTreeData(
+          (origin) =>
+            updateTreeData(origin, treeNode.key, children) as typeof origin
+        );
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -272,7 +293,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
         return updatedData.filter(
           (node) => node.totalCount !== undefined && node.totalCount > 0
-        );
+        ) as typeof origin;
       });
     } catch (error) {
       // Do nothing
