@@ -125,7 +125,7 @@ describe('Test TableQueries Component', () => {
     });
     const queryCards = screen.queryAllByText('QueryCard');
     const noDataPlaceholder = await screen.findByTestId(
-      'create-error-placeholder-queries'
+      'create-error-placeholder-label.query-lowercase-plural'
     );
 
     expect(queryCards).toHaveLength(0);

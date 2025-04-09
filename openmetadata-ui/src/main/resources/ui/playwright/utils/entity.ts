@@ -1086,7 +1086,9 @@ export const checkForTableSpecificFields = async (
     await expect(addQueryButton).toBeEnabled();
   } else {
     // Check for the no data placeholder message
-    const noDataPlaceholder = page.getByTestId('no-data-placeholder');
+    const noDataPlaceholder = page
+      .getByTestId('no-queries')
+      .getByTestId('no-data-placeholder');
 
     await expect(noDataPlaceholder).toContainText(
       'Queries data is not available for deleted entities.'

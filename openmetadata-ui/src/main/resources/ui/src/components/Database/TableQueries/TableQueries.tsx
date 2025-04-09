@@ -499,11 +499,13 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   if (isTableDeleted) {
     return (
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        {t('message.field-data-is-not-available-for-deleted-entities', {
-          field: t('label.query-plural'),
-        })}
-      </ErrorPlaceHolder>
+      <div data-testid="no-queries">
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          {t('message.field-data-is-not-available-for-deleted-entities', {
+            field: t('label.query-plural'),
+          })}
+        </ErrorPlaceHolder>
+      </div>
     );
   }
 
