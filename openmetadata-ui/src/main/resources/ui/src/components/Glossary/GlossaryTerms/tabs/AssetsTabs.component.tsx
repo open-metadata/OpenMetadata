@@ -812,7 +812,11 @@ const AssetsTabs = forwardRef(
           )}
           data-testid="table-container"
           id="asset-tab">
-          <Row className="h-full filters-row gap-2 " gutter={[0, 20]}>
+          <Row
+            className={classNames('filters-row gap-2 ', {
+              'h-full': assetCount === 0,
+            })}
+            gutter={[0, 20]}>
             {assetCount > 0 && (
               <>
                 <Col className="d-flex items-center gap-3" span={24}>
