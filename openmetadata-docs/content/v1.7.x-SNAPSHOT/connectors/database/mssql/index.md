@@ -151,43 +151,33 @@ MSSQL supports owner management at the following levels:
 
 MSSQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
 
-Example custom SQL to handle tag updates using the 'labels' option:
+Here are examples of custom SQL queries for metadata changes:
 
 ```sql
-IF NOT EXISTS (SELECT 1
-               FROM {database}.sys.extended_properties
+-- Update schema description
+IF NOT EXISTS (SELECT 1 
+               FROM {database}.sys.extended_properties 
                WHERE name = N'MS_Description' And
-               major_id = OBJECT_ID('{database}.{schema}.{table}') AND
-               minor_id = (SELECT column_id
-FROM {database}.sys.columns
-WHERE object_id = OBJECT_ID('{database}.{schema}.{table}') AND name = '{column}')
+               major_id = SCHEMA_ID('{schema}') AND 
+               minor_id = 0
      		)
 BEGIN
-    EXEC {database}.{schema}.sp_addextendedproperty
-     @name = N'MS_Description',
-     @value = N{description},
-     @level0type = N'SCHEMA',
-     @level0name = N'{schema}',
-     @level1type = N'TABLE',
-     @level1name = N'{table}',
-      @level2type = N'COLUMN',
-     @level2name = N'{column}';
+    EXEC {database}.{schema}.sp_addextendedproperty 
+     @name = N'MS_Description', 
+     @value = N{description}, 
+     @level0type = N'SCHEMA', 
+     @level0name = N'{schema}'
 END
 ELSE
 BEGIN
-    EXEC {database}.{schema}.sp_updateextendedproperty
-     @name = N'MS_Description',
-     @value = N{description},
-     @level0type = N'SCHEMA',
-     @level0name = N'{schema}',
-     @level1type = N'TABLE',
-     @level1name = N'{table}',
-     @level2type = N'COLUMN',
-     @level2name = N'{column}';
+    EXEC {database}.{schema}.sp_updateextendedproperty 
+     @name = N'MS_Description', 
+     @value = N{description}, 
+     @level0type = N'SCHEMA', 
+     @level0name = N'{schema}'
 END;
-
-
-ALTER TABLE ` {project_id}.{dataset_id}.{table} ` SET OPTIONS (labels = {tags});
 ```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
