@@ -23,7 +23,7 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/mssql/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
@@ -124,14 +124,33 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-MSSQL supports the following reverse metadata ingestion features:
-- Description updates (Schema, Table, Column)
-- Owner management (Database, Schema)
+### Description Management
+
+MSSQL supports description updates at the following levels:
+- Schema level
+- Table level
+- Column level
+
+### Owner Management
+
+MSSQL supports owner management at the following levels:
+- Database level
+- Schema level
+
+### Tag Management
+
+❌ Tag management is not supported for MSSQL.
+
+### Custom SQL Template
+
+MSSQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Examples will be provided in a future update.
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
