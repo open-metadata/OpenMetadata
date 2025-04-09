@@ -44,7 +44,7 @@ logger = ingestion_logger()
 
 CHUNK_SIZE = 100
 
-THREAD_TIMEOUT = 3 * 60 * 10  # 30 minutes in seconds
+THREAD_TIMEOUT = 6 * 60 * 10  # 60 minutes in seconds
 
 
 class LineageSource(QueryParserSource, ABC):
