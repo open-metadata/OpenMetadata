@@ -294,6 +294,9 @@ class TableauClient:
                         **resp["data"]["workbooks"][0]
                     )
                     return tableau_datasource_connection.embeddedDatasourcesConnection
+            logger.warning(
+                f"No data sources(datamodels) found for dashboard {dashboard_id}"
+            )
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(
