@@ -194,6 +194,7 @@ import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
+import os.org.opensearch.search.aggregations.metrics.TopHits;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -1393,24 +1394,67 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     buildSearchSourceFilter(query, searchSourceBuilder);
+
+    // aggregation on keyword field for exact case matching
+    String aggregationField = fieldName.endsWith(".keyword") ? fieldName : fieldName + ".keyword";
+    String sourceField = fieldName.replace(".keyword", "");
+    String termsAggName = "agg";
+    String topHitsAggName = "top";
+
     searchSourceBuilder
         .aggregation(
-            AggregationBuilders.terms(fieldName)
-                .field(fieldName)
+            AggregationBuilders.terms(termsAggName)
+                .field(aggregationField)
                 .size(MAX_AGGREGATE_SIZE)
                 .includeExclude(new IncludeExclude(value.toLowerCase(), null))
-                .order(BucketOrder.key(true)))
-        .size(0);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client
-            .search(
-                new os.org.opensearch.action.search.SearchRequest(
-                        Entity.getSearchRepository().getIndexOrAliasName(index))
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT)
-            .toString();
-    return Response.status(OK).entity(response).build();
+                .order(BucketOrder.key(true))
+                .subAggregation(
+                    AggregationBuilders.topHits(topHitsAggName)
+                        .size(1)
+                        .fetchSource(new String[] {sourceField}, null)
+                        .sort(SortBuilders.fieldSort("_doc"))))
+        .size(0)
+        .timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    SearchResponse searchResponse =
+        client.search(
+            new os.org.opensearch.action.search.SearchRequest(
+                    Entity.getSearchRepository().getIndexOrAliasName(index))
+                .source(searchSourceBuilder),
+            RequestOptions.DEFAULT);
+
+    Terms termsAgg = searchResponse.getAggregations().get(termsAggName);
+    List<Map<String, Object>> buckets = new ArrayList<>();
+
+    for (Terms.Bucket bucket : termsAgg.getBuckets()) {
+      Map<String, Object> bucketData = new LinkedHashMap<>();
+      bucketData.put("key", bucket.getKeyAsString());
+      bucketData.put("doc_count", bucket.getDocCount());
+
+      TopHits topHits = bucket.getAggregations().get(topHitsAggName);
+      String fieldValue = "";
+      if (topHits != null && topHits.getHits().getHits().length > 0) {
+        Map<String, Object> source = topHits.getHits().getAt(0).getSourceAsMap();
+        Object valueInSource = getNestedField(source, sourceField);
+        fieldValue = valueInSource != null ? valueInSource.toString() : "";
+      }
+
+      bucketData.put("top_hits#" + fieldName, fieldValue);
+      buckets.add(bucketData);
+    }
+
+    return Response.status(Response.Status.OK).entity(JsonUtils.pojoToJson(buckets)).build();
+  }
+
+  // retrieves nested value from hits_source
+  private Object getNestedField(Map<String, Object> map, String path) {
+    String[] parts = path.split("\\.");
+    Object current = map;
+    for (String part : parts) {
+      if (!(current instanceof Map)) return null;
+      current = ((Map<?, ?>) current).get(part);
+    }
+    return current;
   }
 
   @Override
