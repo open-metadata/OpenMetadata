@@ -91,7 +91,7 @@ These are the available variables:
 | `owner` | The identifier of the owner being added or removed. This value can be a username or an email and depends on the source system. | Owner update | String |
 | `tag_key` | The key of the tag being added or removed (Classification) | Tag update | String |
 | `tag_value` | The value of the tag being added or removed | Tag update | String |
-| `tags` | Refers to a list of tags (e.g., BigQuery) | Always | List[String] |
+| `tags` | Refers to a list of tags (e.g., BigQuery). Example: [('my_tag', 'value'), ('env', 'prod')] | Always | List[Tuple[String, String]] |
 
 You can see examples of custom SQL templates in the specific connector documentation.
 

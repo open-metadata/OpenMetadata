@@ -151,6 +151,43 @@ MSSQL supports owner management at the following levels:
 
 MSSQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
 
-Examples will be provided in a future update.
+Example custom SQL to handle tag updates using the 'labels' option:
+
+```sql
+IF NOT EXISTS (SELECT 1
+               FROM {database}.sys.extended_properties
+               WHERE name = N'MS_Description' And
+               major_id = OBJECT_ID('{database}.{schema}.{table}') AND
+               minor_id = (SELECT column_id
+FROM {database}.sys.columns
+WHERE object_id = OBJECT_ID('{database}.{schema}.{table}') AND name = '{column}')
+     		)
+BEGIN
+    EXEC {database}.{schema}.sp_addextendedproperty
+     @name = N'MS_Description',
+     @value = N{description},
+     @level0type = N'SCHEMA',
+     @level0name = N'{schema}',
+     @level1type = N'TABLE',
+     @level1name = N'{table}',
+      @level2type = N'COLUMN',
+     @level2name = N'{column}';
+END
+ELSE
+BEGIN
+    EXEC {database}.{schema}.sp_updateextendedproperty
+     @name = N'MS_Description',
+     @value = N{description},
+     @level0type = N'SCHEMA',
+     @level0name = N'{schema}',
+     @level1type = N'TABLE',
+     @level1name = N'{table}',
+     @level2type = N'COLUMN',
+     @level2name = N'{column}';
+END;
+
+
+ALTER TABLE ` {project_id}.{dataset_id}.{table} ` SET OPTIONS (labels = {tags});
+```
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
