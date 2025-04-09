@@ -50,8 +50,7 @@ public class SmartStartApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     this.config =
-        JsonUtils.convertValue(
-            this.getApp().getAppConfiguration(), SmartStartAppConfig.class);
+        JsonUtils.convertValue(this.getApp().getAppConfiguration(), SmartStartAppConfig.class);
   }
 
   @Override
@@ -114,8 +113,7 @@ public class SmartStartApp extends AbstractNativeApplication {
     EntityReference adminReference =
         userRepository.findByName(getAppBot(), Include.NON_DELETED).getEntityReference();
 
-    String resourceFile =
-        "/applications/SmartStartApplication/collate/SmartStartWorkflow.json";
+    String resourceFile = "/applications/SmartStartApplication/collate/SmartStartWorkflow.json";
     resourceFile =
         resourceExists(resourceFile)
             ? resourceFile
