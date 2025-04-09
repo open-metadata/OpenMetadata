@@ -142,7 +142,10 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
+            <InlineEdit
+              className="w-full"
+              onCancel={props.onCancel}
+              onSave={props.onComplete}>
               <TagSuggestion
                 selectProps={{ className: 'w-48', size: 'small', style: {} }}
                 value={tags}
