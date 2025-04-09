@@ -39,6 +39,12 @@ public class AzureConfiguration {
   @JsonProperty("cdnKey")
   private String cdnKey;
 
+  @JsonProperty("customerName")
+  private String customerName;
+
+  @JsonProperty("blobEndpoint")
+  private String blobEndpoint;
+
   @AssertTrue(
       message =
           "Either useManagedIdentity must be true, or a connectionString must be provided, "

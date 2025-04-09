@@ -12,7 +12,7 @@
  */
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { Typography } from 'antd';
-import { first, isEmpty, last, round, sortBy } from 'lodash';
+import { first, isEmpty, last, round, sortBy, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React, { FunctionComponent } from 'react';
 import { ReactComponent as SuccessIcon } from '../assets/svg/ic-check-circle-new.svg';
@@ -35,6 +35,7 @@ import { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
 import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
+import Fqn from './Fqn';
 
 const { t } = i18n;
 
@@ -278,4 +279,20 @@ export const getServiceInsightsWidgetPlaceholder = ({
       </Typography.Paragraph>
     </ErrorPlaceHolder>
   );
+};
+
+export const filterDistributionChartItem = (item: {
+  term: string;
+  group: string;
+}) => {
+  if (Fqn.split(item.term).length !== 2) {
+    // Invalid Tag FQN
+    return false;
+  }
+
+  // clean start and end quotes
+  let tag_name = Fqn.split(item.term)[1];
+  tag_name = tag_name.replace(/(^["']+|["']+$)/g, '');
+
+  return toLower(tag_name) === toLower(item.group);
 };

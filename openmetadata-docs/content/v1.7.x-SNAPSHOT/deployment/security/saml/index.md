@@ -41,6 +41,15 @@ Every IDP provides this information, we can download the XML Metadata and config
 
 When configuring the Private Key for the Service Provider, ensure you use the actual key content enclosed within the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` block. Avoid using the Base64-encoded format of the key, as this is not the expected value.
 
+```yaml
+idp:
+      entityId: ${SAML_IDP_ENTITY_ID:-"<ID>"}
+      ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-"<SSO_LOGIN_URL"}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-"-----BEGIN PRIVATE KEY-----<Certificate>-----END PRIVATE KEY-----"}
+      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
+      nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress"}
+```
+
 {% /note %}
 
 {% note %}
