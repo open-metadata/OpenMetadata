@@ -47,16 +47,10 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
     <div
       className={classNames('owner-avatar-container', {
         'is-compact-view': isCompactView,
+        'stacked-view': !isCompactView,
       })}
       style={{
         zIndex: !isCompactView ? index + 1 : undefined, // Lower index items will be underneath
-        position: !isCompactView ? 'relative' : undefined,
-        ...(isCompactView && {
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: '4px',
-        }),
       }}>
       {!isCompactView ? (
         <UserPopOverCard userName={owner.name ?? ''}>
