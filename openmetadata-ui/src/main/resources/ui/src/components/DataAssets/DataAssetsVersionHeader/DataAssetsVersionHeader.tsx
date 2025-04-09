@@ -105,7 +105,7 @@ function DataAssetsVersionHeader({
   }, [currentVersionData]);
 
   return (
-    <Row className="p-x-lg" gutter={[8, 12]} justify="space-between">
+    <Row gutter={[8, 12]} justify="space-between">
       <Col className="self-center" span={21}>
         <Row gutter={[16, 12]}>
           <Col span={24}>

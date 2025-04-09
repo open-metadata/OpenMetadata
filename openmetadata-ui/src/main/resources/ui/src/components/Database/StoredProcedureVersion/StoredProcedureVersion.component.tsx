@@ -112,7 +112,7 @@ const StoredProcedureVersion = ({
         key: EntityTabs.CODE,
         label: <TabsLabel id={EntityTabs.CODE} name={t('label.code')} />,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -199,7 +199,7 @@ const StoredProcedureVersion = ({
               permissions={entityPermissions}
               type={EntityType.STORED_PROCEDURE}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"
                   defaultActiveKey={tab}

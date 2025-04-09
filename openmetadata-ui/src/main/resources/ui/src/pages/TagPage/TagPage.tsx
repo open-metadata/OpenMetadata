@@ -587,7 +587,7 @@ const TagPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={tagItem.name}>
-      <Row gutter={[0, 8]}>
+      <Row gutter={[0, 12]}>
         <Col span={24}>
           <Row
             className="data-classification"

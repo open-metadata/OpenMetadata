@@ -59,7 +59,7 @@ function ServiceVersionMainTabContent({
   );
 
   return (
-    <Row gutter={[0, 16]} wrap={false}>
+    <Row className="h-full" gutter={[0, 16]} wrap={false}>
       <Col className="p-t-sm m-x-lg" flex="auto">
         <Row gutter={[16, 16]}>
           <Col data-testid="description-container" span={24}>

@@ -59,7 +59,9 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
           {isFirstPanelWrapInCard ? (
-            <Card>{firstPanel.children}</Card>
+            <Card className="h-full overflow-y-auto">
+              {firstPanel.children}
+            </Card>
           ) : (
             firstPanel.children
           )}

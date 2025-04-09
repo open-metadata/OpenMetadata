@@ -216,7 +216,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (!hasPermission) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="flex-center">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </div>
     );
@@ -229,7 +229,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="flex-center tab-content-height border-default border-radius-sm">
+      <div className="h-full p-x-lg flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
           className={className}
           placeholderText={
@@ -328,7 +328,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (
-    <div className="custom-properties-card">
+    <div className="h-full custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
           <Col key={colIndex} span={8}>

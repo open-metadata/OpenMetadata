@@ -13,6 +13,8 @@
 
 @import (reference) url('../../styles/variables.less');
 
+@quick-filters-container-height: 86px;
+
 .explore-page {
   .sorting-dropdown-container {
     .ant-typography {
@@ -57,11 +59,14 @@
   }
 
   .explore-main-container {
+    height: 100%;
     overflow-y: auto;
   }
 
   .explore-data-container {
-    height: calc(100vh - 200px);
+    height: calc(
+      100vh - @om-navbar-height - @quick-filters-container-height - @size-mlg
+    );
     overflow-y: auto;
   }
 

@@ -115,7 +115,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
         ),
         key: EntityTabs.OVERVIEW,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -204,7 +204,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.METRIC as CustomizeEntityType}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
                   className="tabs-new"
                   defaultActiveKey={tab}
