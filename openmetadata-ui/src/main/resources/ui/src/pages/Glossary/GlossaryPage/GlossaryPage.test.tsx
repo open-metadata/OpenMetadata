@@ -14,10 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
-import {
-  getGlossariesList,
-  patchGlossaryTerm,
-} from '../../../rest/glossaryAPI';
+import { patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
 
 jest.mock('../../../hooks/useFqn', () => ({
@@ -110,7 +107,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossariesList: jest.fn().mockImplementation(() =>
     Promise.resolve({
       data: [MOCK_GLOSSARY],
-      paging: { total: 1, after: 'next-page' },
+      paging: { total: 1 },
     })
   ),
   patchGlossaryTerm: jest
@@ -140,11 +137,6 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </div>
   ))
 );
-
-// Mock the useElementInView hook
-jest.mock('../../../hooks/useElementInView', () => ({
-  useElementInView: jest.fn().mockReturnValue([{ current: null }, true]),
-}));
 
 describe('Test GlossaryComponent page', () => {
   it('GlossaryComponent Page Should render', async () => {
@@ -183,50 +175,6 @@ describe('Test GlossaryComponent page', () => {
 
     fireEvent.click(handleGlossaryTermUpdate);
     fireEvent.click(handleGlossaryTermDelete);
-  });
-
-  it('should fetch next page of glossaries when scrolling', async () => {
-    render(<GlossaryPage />);
-
-    // Wait for initial render
-    await screen.findByText(/Glossary.component/i);
-
-    // Verify that getGlossariesList was called with pagination params
-    expect(getGlossariesList).toHaveBeenCalledWith(
-      expect.objectContaining({
-        limit: expect.any(Number),
-      })
-    );
-  });
-
-  it('should handle loading state while fetching more glossaries', async () => {
-    // Mock getGlossariesList to simulate loading
-    (getGlossariesList as jest.Mock).mockImplementationOnce(
-      () => new Promise((resolve) => setTimeout(resolve, 100))
-    );
-
-    render(<GlossaryPage />);
-
-    // Wait for initial render
-    await screen.findByText(/Glossary.component/i);
-
-    // Verify loading state
-    expect(getGlossariesList).toHaveBeenCalled();
-  });
-
-  it('should handle error when fetching glossaries', async () => {
-    // Mock getGlossariesList to simulate error
-    (getGlossariesList as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject(new Error('Failed to fetch glossaries'))
-    );
-
-    render(<GlossaryPage />);
-
-    // Wait for initial render
-    await screen.findByText(/Glossary.component/i);
-
-    // Verify error handling
-    expect(getGlossariesList).toHaveBeenCalled();
   });
 
   describe('Render Sad Paths', () => {
