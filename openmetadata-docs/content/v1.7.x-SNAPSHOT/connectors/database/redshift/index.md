@@ -24,8 +24,8 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-redshift-connection-with-ssl-in-openmetadata)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
-- [Troubleshooting](/connectors/database/redshift/troubleshooting)
+- [Reverse Metadata](#reverse-metadata)
+troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
 
@@ -131,14 +131,42 @@ Under `Advanced Config`, specify the SSL mode appropriate for your connection, s
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-Redshift supports the following reverse metadata ingestion features:
-- Full support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
+### Description Management
+
+Redshift supports description updates at all levels:
+- Database level
+- Schema level
+- Table level
+- Column level
+
+### Owner Management
+
+Redshift supports owner management at the following levels:
+- Database level
+- Schema level
+- Table level
+
+### Tag Management
+
+❌ Tag management is not supported for Redshift.
+
+### Custom SQL Template
+
+Redshift supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update column description
+COMMENT ON COLUMN {database}.{schema}.{table}.{column} IS {description};
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

@@ -24,8 +24,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 - [Troubleshooting](/connectors/database/athena/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
-
+- [Reverse Metadata](#reverse-metadata)
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
 ## Requirements
@@ -240,13 +239,36 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-Athena supports the following reverse metadata ingestion features:
-- Table Description updates
+### Description Management
+
+Athena supports description updates at the following level:
+- Table level
+
+### Owner Management
+
+❌ Owner management is not supported for Athena.
+
+### Tag Management
+
+❌ Tag management is not supported for Athena.
+
+### Custom SQL Template
+
+Athena supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update table description
+ALTER TABLE {schema}.{table} SET TBLPROPERTIES ('comment' = {description});
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

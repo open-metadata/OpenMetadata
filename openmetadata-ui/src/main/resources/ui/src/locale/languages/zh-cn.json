@@ -255,6 +255,7 @@
     "conversation-plural": "对话",
     "copied": "已复制",
     "copy": "复制",
+    "copy-item": "复制 {{item}}",
     "cost": "成本",
     "cost-analysis": "成本分析",
     "count": "计数",
