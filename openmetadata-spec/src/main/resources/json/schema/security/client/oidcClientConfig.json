@@ -77,6 +77,10 @@
     "callbackUrl": {
       "description": "Callback Url.",
       "type": "string"
+    },
+    "maxAge": {
+      "description": "Validity for the JWT Token created from SAML Response",
+      "type": "string"
     }
   },
   "additionalProperties": false

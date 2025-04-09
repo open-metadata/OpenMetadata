@@ -128,6 +128,7 @@ public class AuthenticationCodeFlowHandler {
   private final ClientAuthentication clientAuthentication;
   private final String principalDomain;
   private final int tokenValidity;
+  private final String maxAge;
 
   public AuthenticationCodeFlowHandler(
       AuthenticationConfiguration authenticationConfiguration,
@@ -153,6 +154,7 @@ public class AuthenticationCodeFlowHandler {
     validatePrincipalClaimsMapping(claimsMapping);
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
+    this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -269,7 +271,10 @@ public class AuthenticationCodeFlowHandler {
         } else {
           params.put(OidcConfiguration.PROMPT, "login");
         }
-        params.put(OidcConfiguration.MAX_AGE, "0");
+
+        if (!nullOrEmpty(maxAge)) {
+          params.put(OidcConfiguration.MAX_AGE, maxAge);
+        }
 
         String location = buildLoginAuthenticationRequestUrl(params);
         LOG.debug("Authentication request url: {}", location);
