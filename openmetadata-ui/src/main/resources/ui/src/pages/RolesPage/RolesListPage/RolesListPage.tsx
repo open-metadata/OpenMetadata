@@ -312,6 +312,7 @@ const RolesListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.role')}
                   permission={addRolePermission}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

@@ -314,6 +314,7 @@ const PoliciesListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.policy')}
                   permission={addPolicyPermission}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

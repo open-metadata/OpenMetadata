@@ -337,7 +337,7 @@ export const DatabaseSchemaTable = ({
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        emptyText: <ErrorPlaceHolder className="m-y-md border-none" />,
       }}
       pagination={false}
       rowKey="id"

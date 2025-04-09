@@ -441,7 +441,7 @@ const AssetsTabs = forwardRef(
       ) {
         return (
           <ErrorPlaceHolderNew
-            className="p-lg border-default border-radius-sm"
+            className="p-lg "
             icon={
               <AddPlaceHolderIcon
                 className="text-grey-14"
@@ -461,6 +461,7 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolderNew
+            className="p-lg"
             icon={
               <AddPlaceHolderIcon
                 className="text-grey-14"

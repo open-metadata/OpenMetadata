@@ -139,6 +139,7 @@ const MyDataWidgetInternal = ({
         {isEmpty(data) ? (
           <div className="flex-center h-full">
             <ErrorPlaceHolder
+              className="border-none"
               icon={
                 <MyDataEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />
               }

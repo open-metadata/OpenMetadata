@@ -345,7 +345,7 @@ const Users = ({
         <Col flex="auto">
           <Tabs
             activeKey={currentTab}
-            className="tabs-new"
+            className="tabs-new m-b-xs"
             data-testid="tabs"
             items={tabs.map((tab) => ({
               key: tab.key,

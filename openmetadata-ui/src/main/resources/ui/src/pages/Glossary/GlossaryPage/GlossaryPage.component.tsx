@@ -437,7 +437,10 @@ const GlossaryPage = () => {
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
     return (
       <div className="d-flex justify-center items-center">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="mt-0-important border-none"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       </div>
     );
   }
@@ -447,7 +450,7 @@ const GlossaryPage = () => {
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           buttonId="add-glossary"
-          className="mt-0-important"
+          className="mt-0-important border-none"
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary')}
           permission={createGlossaryPermission}

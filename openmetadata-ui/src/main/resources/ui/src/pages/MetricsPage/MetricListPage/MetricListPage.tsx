@@ -276,7 +276,7 @@ const MetricListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
-                  className="p-y-md"
+                  className="p-y-md border-none"
                   heading={t('label.metric')}
                   permission={permission.Create}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

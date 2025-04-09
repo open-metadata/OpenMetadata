@@ -223,7 +223,10 @@ const KPIList = () => {
       viewKPIPermission ? (
         <EmptyGraphPlaceholder />
       ) : (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ),
     [viewKPIPermission]
   );

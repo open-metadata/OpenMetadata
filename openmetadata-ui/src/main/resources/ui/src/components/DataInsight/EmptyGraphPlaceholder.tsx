@@ -24,6 +24,7 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
 
   return (
     <ErrorPlaceHolder
+      className="border-none"
       icon={icon}
       size={SIZE.MEDIUM}
       type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
