@@ -179,6 +179,10 @@ Snowflake supports tag management at the following levels:
 
 Additionally, Snowflake supports automated masking policy application based on tags. For example, when you apply a `Sensitive` tag to a column in OpenMetadata, the corresponding masking policy will be automatically applied to that column in Snowflake.
 
+{% note %}
+While OpenMetadata differentiates between "classification" values and "tag" values, Snowflake's masking policies only support actions based on classification values (tag keys). Therefore, it is advised not to use PII.None along with tag masking policies.
+{% /note %}
+
 ```sql
 -- Create masking policy
 CREATE MASKING POLICY SENSITIVE_DATA AS (VAL STRING) RETURNS STRING -> CASE WHEN VAL IS NOT NULL THEN '**********' ELSE NULL END;
