@@ -30,6 +30,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import {
   ChangeDescription,
   EntityReference,
@@ -37,7 +38,10 @@ import {
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../utils/EntityUtils';
 import {
   getEntityVersionByField,
   getEntityVersionTags,
@@ -179,6 +183,7 @@ export const CommonWidgets = ({
   }, [data, entityType]);
 
   const {
+    editDataProductPermission,
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
@@ -186,6 +191,7 @@ export const CommonWidgets = ({
     viewAllPermission,
   } = useMemo(
     () => ({
+      editDataProductPermission: permissions.EditAll && !deleted,
       editTagsPermission:
         (permissions.EditTags || permissions.EditAll) && !deleted,
       editDescriptionPermission:
@@ -209,6 +215,14 @@ export const CommonWidgets = ({
     }),
     [permissions, deleted]
   );
+
+  const handleDataProductsSave = async (dataProducts: DataProduct[]) => {
+    const updatedDataProducts = dataProducts.map((dataProduct) =>
+      getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+    );
+
+    await onUpdate({ ...data, dataProducts: updatedDataProducts });
+  };
 
   const handleTagUpdateForGlossaryTerm = async (updatedTags?: TagLabel[]) => {
     setTagsUpdating(updatedTags);
@@ -331,7 +345,8 @@ export const CommonWidgets = ({
           newLook
           activeDomain={domain}
           dataProducts={dataProducts ?? []}
-          hasPermission={false}
+          hasPermission={editDataProductPermission}
+          onSave={handleDataProductsSave}
         />
       );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TAGS)) {

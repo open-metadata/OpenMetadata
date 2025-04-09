@@ -59,7 +59,11 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { AgentType, App } from '../../generated/entity/applications/app';
@@ -74,6 +78,7 @@ import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Topic } from '../../generated/entity/data/topic';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
@@ -115,7 +120,11 @@ import {
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityFeedLink,
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
@@ -813,6 +822,35 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails, serviceCategory]
   );
 
+  const handleDataProductUpdate = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData = {
+        ...serviceDetails,
+        dataProducts: dataProducts.map((dataProduct) =>
+          getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+        ),
+      };
+
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
   const handleUpdateOwner = useCallback(
     async (owners: ServicesType['owners']) => {
       const updatedData = {
@@ -1294,6 +1332,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               serviceName={serviceCategory}
               servicePermission={servicePermission}
               showDeleted={showDeleted}
+              onDataProductUpdate={handleDataProductUpdate}
               onDescriptionUpdate={handleDescriptionUpdate}
               onShowDeletedChange={handleShowDeleted}
             />

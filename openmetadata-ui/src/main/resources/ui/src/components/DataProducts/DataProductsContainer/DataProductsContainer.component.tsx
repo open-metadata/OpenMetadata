@@ -12,16 +12,12 @@
  */
 import { Card, Col, Row, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -29,6 +25,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import DataProductsSelectForm from '../DataProductSelectForm/DataProductsSelectForm';
 
@@ -58,26 +55,16 @@ const DataProductsContainer = ({
   };
 
   const fetchAPI = useCallback(
-    (searchValue: string, page: number) => {
-      let searchText = searchValue;
-      const domainText = activeDomain
-        ? `(domain.fullyQualifiedName:"${activeDomain.name}")`
-        : '';
+    (searchValue: string) => {
+      const searchText = !isEmpty(searchValue) ? searchValue : '';
+      const domainFQN = activeDomain?.fullyQualifiedName ?? '';
 
-      if (!isEmpty(searchText)) {
-        searchText = `${searchText} ${
-          !isEmpty(domainText) ? `AND ${domainText}` : ''
-        } `;
-      } else {
-        searchText = domainText;
-      }
-
-      return fetchDataProductsElasticSearch(searchText, page);
+      return fetchDataProductsElasticSearch(searchText, domainFQN);
     },
     [activeDomain]
   );
 
-  const redirectLink = useCallback((fqn) => {
+  const redirectLink = useCallback((fqn: string) => {
     history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
   }, []);
 
@@ -105,13 +92,21 @@ const DataProductsContainer = ({
   }, [handleCancel, handleSave, dataProducts, fetchAPI]);
 
   const showAddTagButton = useMemo(
-    () => hasPermission && isEmpty(dataProducts),
-    [hasPermission, dataProducts]
+    () => hasPermission && !isUndefined(activeDomain) && isEmpty(dataProducts),
+    [hasPermission, dataProducts, activeDomain]
   );
 
   const renderDataProducts = useMemo(() => {
-    if (isEmpty(dataProducts)) {
+    if (isEmpty(dataProducts) && !hasPermission) {
       return NO_DATA_PLACEHOLDER;
+    }
+
+    if (hasPermission && isUndefined(activeDomain)) {
+      return (
+        <Typography.Text className="text-sm text-grey-muted">
+          {t('message.select-domain-to-add-data-product')}
+        </Typography.Text>
+      );
     }
 
     return dataProducts.map((product) => {
@@ -119,7 +114,7 @@ const DataProductsContainer = ({
         <Tag
           className="tag-chip tag-chip-content"
           key={`dp-tags-${product.fullyQualifiedName}`}
-          onClick={() => redirectLink(product.fullyQualifiedName)}>
+          onClick={() => redirectLink(product.fullyQualifiedName ?? '')}>
           <div className="d-flex w-full">
             <div className="d-flex items-center p-x-xs w-full gap-1">
               <DataProductIcon
@@ -128,7 +123,6 @@ const DataProductsContainer = ({
                 width={12}
               />
               <Typography.Paragraph
-                ellipsis
                 className="m-0 tags-label"
                 data-testid={`data-product-${product.fullyQualifiedName}`}>
                 {getEntityName(product)}
@@ -138,7 +132,7 @@ const DataProductsContainer = ({
         </Tag>
       );
     });
-  }, [dataProducts]);
+  }, [dataProducts, activeDomain]);
 
   const header = useMemo(() => {
     return (
@@ -156,15 +150,17 @@ const DataProductsContainer = ({
             })}>
             {t('label.data-product-plural')}
           </Typography.Text>
-          {hasPermission && (
+          {hasPermission && !isUndefined(activeDomain) && (
             <Row gutter={12}>
               {!isEmpty(dataProducts) && (
                 <Col>
-                  <EditIcon
-                    className="cursor-pointer"
-                    color={DE_ACTIVE_COLOR}
+                  <EditIconButton
                     data-testid="edit-button"
-                    width="14px"
+                    newLook={newLook}
+                    size="small"
+                    title={t('label.edit-entity', {
+                      entity: t('label.data-product-plural'),
+                    })}
                     onClick={handleAddClick}
                   />
                 </Col>
@@ -194,7 +190,7 @@ const DataProductsContainer = ({
         title={header}>
         {!isEditMode && (
           <Row data-testid="data-products-list">
-            <Col>
+            <Col className="flex flex-wrap gap-2">
               {addTagButton}
               {renderDataProducts}
             </Col>
@@ -210,7 +206,7 @@ const DataProductsContainer = ({
       {header}
       {!isEditMode && (
         <Row data-testid="data-products-list">
-          <Col>
+          <Col className="flex flex-wrap gap-2">
             {addTagButton}
             {renderDataProducts}
           </Col>

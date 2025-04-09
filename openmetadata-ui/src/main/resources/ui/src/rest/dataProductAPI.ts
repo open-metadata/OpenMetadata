@@ -85,7 +85,7 @@ export const getDataProductVersionData = async (
 
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
-  page: number
+  domainFQN: string
 ): Promise<{
   data: {
     label: string;
@@ -96,9 +96,21 @@ export const fetchDataProductsElasticSearch = async (
   const res = await searchQuery({
     query: searchText,
     filters: '',
-    pageNumber: page,
+    pageNumber: 1,
     pageSize: PAGE_SIZE,
-    queryFilter: {},
+    queryFilter: {
+      query: {
+        bool: {
+          should: [
+            {
+              term: {
+                'domain.fullyQualifiedName': domainFQN,
+              },
+            },
+          ],
+        },
+      },
+    },
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
 
