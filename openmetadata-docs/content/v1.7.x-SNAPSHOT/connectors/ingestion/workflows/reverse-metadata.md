@@ -8,58 +8,27 @@ slug: /connectors/ingestion/workflows/reverse-metadata
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-Reverse metadata ingestion is an advanced feature in OpenMetadata that facilitates bi-directional synchronization between OpenMetadata and the source database systems. While standard ingestion pulls metadata into OpenMetadata, reverse ingestion enables pushing metadata changes made within OpenMetadata back to the source systems. This ensures consistency and alignment across the entire data infrastructure.
+Reverse Metadata is an advanced feature in OpenMetadata that facilitates bi-directional synchronization between OpenMetadata and the source database systems. While standard ingestion pulls metadata into OpenMetadata, reverse ingestion enables pushing metadata changes made within OpenMetadata back to the source systems. This ensures consistency and alignment across the entire data infrastructure.
 
 {% note %}
-Reverse ingestion uses the existing service connection configuration provided during the initial metadata ingestion. You do not need to reconfigure the service connection.
+Reverse Metadata uses the existing service connection configuration provided during the initial metadata ingestion. You do not need to reconfigure the service connection. In order to use Reverse Metadata, this connections must use a role with write permissions.
 {% /note %}
 
 ## Supported Databases and Features
 
-### Athena
-- Table Description updates
-
-### BigQuery
-- Schema Description updates
-- Table Description updates
-- Schema and Table tag management
-
-### Clickhouse
-- Table Description updates
-- Column Description updates
-
-### Databricks
-- Full support for Description updates (Database, Schema, Table, Column)
-- Full support for Owner management (Database, Schema, Table)
-- Full support for Tag management (Database, Schema, Table, Column)
-
-### MSSQL
-- Description updates (Schema, Table, Column)
-- Owner management (Database, Schema)
-
-### MySQL
-- Table Description updates
-
-### Oracle
-- Table Description updates
-- Column Description updates
-
-### PostgreSQL
-- Full support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
-
-### Redshift
-- Full support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
-
-### Snowflake
-- Full support for Description updates (Database, Schema, Table, Column)
-- Tag management (Schema, Table, Column)
-
-### Unity Catalog
-- Full support for Description updates (Database, Schema, Table, Column)
-- Full support for Owner management (Database, Schema, Table)
-- Full support for Tag management (Database, Schema, Table, Column)
+| Database       | Update Description | Update Tags | Update Owners | Custom SQL Support | Documentation |
+|----------------|-------------------|-------------|---------------|-------------------|---------------|
+| Athena         | ✅ (Table)        | ❌          | ❌            | ✅                | [Link](/connectors/database/athena#reverse-metadata-ingestion) |
+| BigQuery       | ✅ (Schema, Table)| ✅ (Schema, Table) | ❌            | ✅                | [Link](/connectors/database/bigquery#reverse-metadata-ingestion) |
+| Clickhouse     | ✅ (Table, Column)| ❌          | ❌            | ✅                | [Link](/connectors/database/clickhouse#reverse-metadata-ingestion) |
+| Databricks     | ✅  | ✅  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/databricks#reverse-metadata-ingestion) |
+| MSSQL          | ✅ (Schema, Table, Column) | ❌          | ✅ (Database, Schema) | ✅                | [Link](/connectors/database/mssql#reverse-metadata-ingestion) |
+| MySQL          | ✅ (Table)        | ❌          | ❌            | ✅                | [Link](/connectors/database/mysql#reverse-metadata-ingestion) |
+| Oracle         | ✅ (Table, Column)| ❌          | ❌            | ✅                | [Link](/connectors/database/oracle#reverse-metadata-ingestion) |
+| PostgreSQL     | ✅  | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/postgres#reverse-metadata-ingestion) |
+| Redshift       | ✅  | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/redshift#reverse-metadata-ingestion) |
+| Snowflake      | ✅  | ✅ (Schema, Table, Column) | ❌            | ✅                | [Link](/connectors/database/snowflake#reverse-metadata-ingestion) |
+| Unity Catalog  | ✅  | ✅  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/unity-catalog#reverse-metadata-ingestion) |
 
 ## Key Features
 
@@ -98,12 +67,6 @@ You can see examples of custom SQL templates in the specific connector documenta
 {% note %}
 When updating tags during reverse ingestion, it is important to understand the difference in tag structures. Most databases support key-value pairs for tags, whereas OpenMetadata organizes tags using classifications and tag names. During reverse ingestion, OpenMetadata maps the classification name as the tag key and the tag name as the tag value. If a new tag from the same classification is applied to a data asset that already has a tag from that classification, the reverse ingestion process may raise an ambiguous tag error. This behavior is intended to prevent accidental overwriting of existing tags at the source system.
 {% /note %}
-
-## Maintenance
-
-- Regularly review sync status
-- Keep track of failed operations
-- Maintain proper documentation of custom implementations
 
 ## Getting Started
 
