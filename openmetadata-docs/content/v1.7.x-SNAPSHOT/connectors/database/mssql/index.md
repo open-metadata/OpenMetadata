@@ -23,7 +23,7 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/mssql/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
@@ -124,14 +124,60 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-MSSQL supports the following reverse metadata ingestion features:
-- Description updates (Schema, Table, Column)
-- Owner management (Database, Schema)
+### Description Management
+
+MSSQL supports description updates at the following levels:
+- Schema level
+- Table level
+- Column level
+
+### Owner Management
+
+MSSQL supports owner management at the following levels:
+- Database level
+- Schema level
+
+### Tag Management
+
+❌ Tag management is not supported for MSSQL.
+
+### Custom SQL Template
+
+MSSQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update schema description
+IF NOT EXISTS (SELECT 1 
+               FROM {database}.sys.extended_properties 
+               WHERE name = N'MS_Description' And
+               major_id = SCHEMA_ID('{schema}') AND 
+               minor_id = 0
+     		)
+BEGIN
+    EXEC {database}.{schema}.sp_addextendedproperty 
+     @name = N'MS_Description', 
+     @value = N{description}, 
+     @level0type = N'SCHEMA', 
+     @level0name = N'{schema}'
+END
+ELSE
+BEGIN
+    EXEC {database}.{schema}.sp_updateextendedproperty 
+     @name = N'MS_Description', 
+     @value = N{description}, 
+     @level0type = N'SCHEMA', 
+     @level0name = N'{schema}'
+END;
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

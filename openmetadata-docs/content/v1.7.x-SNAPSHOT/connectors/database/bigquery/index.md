@@ -26,6 +26,8 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
 - [Troubleshooting](/connectors/database/bigquery/troubleshooting)
+- [Reverse Metadata](#reverse-metadata)
+
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
 
@@ -164,15 +166,39 @@ We support cross-project lineage, but the data must be ingested within a single 
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-BigQuery supports the following reverse metadata ingestion features:
-- Support for Description updates (Schema, Table)
-- Tag management (Schema, Table)
+### Description Management
 
+BigQuery supports description updates at the following levels:
+- Schema level
+- Table level
+
+### Owner Management
+
+❌ Owner management is not supported for BigQuery.
+
+### Tag Management
+
+BigQuery supports tag management at the following levels:
+- Schema level
+- Table level
+
+### Custom SQL Template
+
+BigQuery supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update table labels
+ALTER TABLE `{database}.{schema}.{table}` SET OPTIONS (labels = {tags});
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

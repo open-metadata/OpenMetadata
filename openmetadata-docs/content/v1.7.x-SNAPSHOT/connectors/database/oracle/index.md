@@ -21,7 +21,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/oracle/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
@@ -134,14 +134,37 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-Oracle supports the following reverse metadata ingestion features:
-- Support for Description updates (Table, Column)
+### Description Management
 
+Oracle supports description updates at the following levels:
+- Table level
+- Column level
+
+### Owner Management
+
+❌ Owner management is not supported for Oracle.
+
+### Tag Management
+
+❌ Tag management is not supported for Oracle.
+
+### Custom SQL Template
+
+Oracle supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update column description
+COMMENT ON COLUMN {schema}.{table}.{column} IS {description}
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
