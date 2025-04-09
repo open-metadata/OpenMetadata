@@ -7,7 +7,7 @@ slug: /connectors/database/mysql
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata Ingestion (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -22,8 +22,8 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
 - [Troubleshooting](/connectors/database/mysql/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
 
@@ -245,25 +245,6 @@ To establish secure connections between OpenMetadata and MySQL, navigate to the 
   height="450px"
   caption="SSL Configuration" /%}
 
+{% partial file="/v1.7/connectors/database/mysql/reverse-metadata.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata Ingestion
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-MySQL supports the following reverse metadata ingestion features:
-- Support for table description updates
-
-### Requirements for Reverse Metadata
-
-In addition to the basic ingestion requirements, for reverse metadata ingestion the user needs:
-- `ALTER` privileges on tables to update descriptions
-
-```sql
--- Grant required privileges for reverse metadata
-GRANT ALTER ON DATABASE_NAME.TABLE_NAME TO 'USER_NAME'@'%';
-```
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
