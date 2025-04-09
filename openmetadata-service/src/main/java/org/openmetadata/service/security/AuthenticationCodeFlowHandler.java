@@ -765,36 +765,51 @@ public class AuthenticationCodeFlowHandler {
 
   private void refreshAccessTokenAzureAd2Token(
       AzureAd2OidcConfiguration azureConfig, OidcCredentials azureAdProfile) {
+
     HttpURLConnection connection = null;
     try {
+      RefreshToken refreshToken = azureAdProfile.getRefreshToken();
+      if (refreshToken == null || refreshToken.getValue() == null) {
+        throw new TechnicalException("No refresh token available to request new access token.");
+      }
+
       Map<String, String> headers = new HashMap<>();
       headers.put(
           HttpConstants.CONTENT_TYPE_HEADER, HttpConstants.APPLICATION_FORM_ENCODED_HEADER_VALUE);
       headers.put(HttpConstants.ACCEPT_HEADER, HttpConstants.APPLICATION_JSON);
-      // get the token endpoint from discovery URI
+
       URL tokenEndpointURL = azureConfig.findProviderMetadata().getTokenEndpointURI().toURL();
       connection = HttpUtils.openPostConnection(tokenEndpointURL, headers);
 
-      BufferedWriter out =
+      String requestBody = azureConfig.makeOauth2TokenRequest(refreshToken.getValue());
+      byte[] bodyBytes = requestBody.getBytes(StandardCharsets.UTF_8);
+      connection.setFixedLengthStreamingMode(bodyBytes.length);
+
+      try (BufferedWriter out =
           new BufferedWriter(
-              new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8));
-      out.write(azureConfig.makeOauth2TokenRequest(azureAdProfile.getRefreshToken().getValue()));
-      out.close();
+              new OutputStreamWriter(connection.getOutputStream(), StandardCharsets.UTF_8))) {
+        out.write(requestBody);
+      }
 
       int responseCode = connection.getResponseCode();
       if (responseCode != 200) {
-        throw new TechnicalException(
-            "request for access token failed: " + HttpUtils.buildHttpErrorMessage(connection));
+        String error = HttpUtils.buildHttpErrorMessage(connection);
+        LOG.warn("Token refresh failed ({}): {}", responseCode, error);
+        throw new TechnicalException("Token refresh failed with status: " + responseCode);
       }
-      var body = HttpUtils.readBody(connection);
+
+      String body = HttpUtils.readBody(connection);
       Map<String, Object> res = JsonUtils.readValue(body, new TypeReference<>() {});
 
-      // Populate Tokens
       azureAdProfile.setAccessToken(new BearerAccessToken((String) res.get("access_token")));
       azureAdProfile.setRefreshToken(new RefreshToken((String) res.get("refresh_token")));
-      azureAdProfile.setIdToken(SignedJWT.parse((String) res.get("id_token")));
-    } catch (final IOException | ParseException e) {
-      throw new TechnicalException(e);
+
+      if (res.containsKey("id_token")) {
+        azureAdProfile.setIdToken(SignedJWT.parse((String) res.get("id_token")));
+      }
+
+    } catch (IOException | ParseException e) {
+      throw new TechnicalException("Exception while refreshing Azure AD token", e);
     } finally {
       HttpUtils.closeConnection(connection);
     }
