@@ -252,11 +252,11 @@ Athena supports description updates at the following level:
 
 ### Owner Management
 
-Owner management is not supported for Athena.
+❌ Owner management is not supported for Athena.
 
 ### Tag Management
 
-Tag management is not supported for Athena.
+❌ Tag management is not supported for Athena.
 
 ### Custom SQL Template
 

@@ -148,11 +148,11 @@ Oracle supports description updates at the following levels:
 
 ### Owner Management
 
-Owner management is not supported for Oracle.
+❌ Owner management is not supported for Oracle.
 
 ### Tag Management
 
-Tag management is not supported for Oracle.
+❌ Tag management is not supported for Oracle.
 
 ### Custom SQL Template
 

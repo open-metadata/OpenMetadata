@@ -110,11 +110,11 @@ Clickhouse supports description updates at the following levels:
 
 ### Owner Management
 
-Owner management is not supported for Clickhouse.
+❌ Owner management is not supported for Clickhouse.
 
 ### Tag Management
 
-Tag management is not supported for Clickhouse.
+❌ Tag management is not supported for Clickhouse.
 
 ### Custom SQL Template
 
