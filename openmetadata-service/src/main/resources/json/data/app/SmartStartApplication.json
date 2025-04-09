@@ -1,9 +1,0 @@
-{
-  "name": "SmartStartApplication",
-  "displayName": "Smart Start",
-  "appConfiguration": {
-    "type": "SmartStartApplication",
-    "active": true,
-    "entityLink": null
-  }
-}

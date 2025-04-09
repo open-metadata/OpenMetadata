@@ -1,6 +1,6 @@
 {
-  "name": "SmartStartApplication",
-  "displayName": "Smart Start",
+  "name": "AutoPilotApplication",
+  "displayName": "Auto Pilot",
   "description": "Easily setup any new service that you need by only defining the connection.\n This workflow will take care of configuring and deploying any relevant pipelines to ingest the metadata with good default values.\n Afterwards you are able to edit any configuration as you see fit.",
   "features": "Easily Service Setup by automating the configuration, deployment and triggering the relevant pipelines to ingest your service metadata.",
   "appType": "internal",
@@ -12,9 +12,9 @@
   "supportEmail": "support@getcollate.io",
   "scheduleType": "NoSchedule",
   "permission": "All",
-  "className": "org.openmetadata.service.apps.bundles.smartStart.SmartStartApp",
+  "className": "org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp",
   "appConfiguration": {
-    "type": "SmartStartApplication",
+    "type": "AutoPilotApplication",
     "active": true,
     "entityLink": null
   }

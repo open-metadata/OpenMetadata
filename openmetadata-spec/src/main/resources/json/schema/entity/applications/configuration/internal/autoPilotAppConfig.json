@@ -1,28 +1,28 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/applications/configuration/internal/smartStartAppConfig.json",
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/internal/autoPilotAppConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SmartStartAppConfig",
-  "description": "Configuration for the Smart Start Application.",
+  "title": "AutoPilotAppConfig",
+  "description": "Configuration for the Auto Pilot Application.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.entity.app.internal.SmartStartAppConfig",
+  "javaType": "org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig",
   "definitions": {
-    "smartStartAppType": {
+    "autoPilotAppType": {
       "description": "Application type.",
       "type": "string",
-      "enum": ["SmartStartApplication"],
-      "default": "SmartStartApplication"
+      "enum": ["AutoPilotApplication"],
+      "default": "AutoPilotApplication"
     }
   },
   "properties": {
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/smartStartAppType",
-      "default": "SmartStartApplication"
+      "$ref": "#/definitions/autoPilotAppType",
+      "default": "AutoPilotApplication"
     },
     "active": {
       "title": "Active",
-      "description": "Whether the Smart Start Workflow should be active or not.",
+      "description": "Whether the Auto Pilot Workflow should be active or not.",
       "type": "boolean",
       "default": true
     },

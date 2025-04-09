@@ -31,7 +31,7 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { SMART_START_APP_NAME } from '../../../constants/Applications.constant';
+import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -200,7 +200,7 @@ export const DataAssetsHeader = ({
   isCustomizedView = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
-  isSmartStartWorkflowStatusLoading = false,
+  isAutoPilotWorkflowStatusLoading = false,
 }: DataAssetsHeaderProps) => {
   const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
@@ -213,7 +213,7 @@ export const DataAssetsHeader = ({
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
-  const [isSmartStartTriggering, setIsSmartStartTriggering] = useState(false);
+  const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
@@ -482,16 +482,16 @@ export const DataAssetsHeader = ({
     selectedUserSuggestions,
   ]);
 
-  const triggerTheSmartStartApplication = useCallback(async () => {
+  const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
-      setIsSmartStartTriggering(true);
+      setIsAutoPilotTriggering(true);
       const entityType = getEntityTypeFromServiceCategory(serviceCategory);
       const entityLink = getEntityFeedLink(
         entityType,
         dataAsset.fullyQualifiedName ?? ''
       );
 
-      await triggerOnDemandApp(SMART_START_APP_NAME, {
+      await triggerOnDemandApp(AUTO_PILOT_APP_NAME, {
         entityLink,
       });
 
@@ -499,39 +499,38 @@ export const DataAssetsHeader = ({
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
-      setIsSmartStartTriggering(false);
+      setIsAutoPilotTriggering(false);
     }
   }, [serviceCategory, afterTriggerAction]);
 
-  const triggerSmartStartApplicationButton = useMemo(() => {
+  const triggerAutoPilotApplicationButton = useMemo(() => {
     if (!SERVICE_TYPES.includes(entityType)) {
       return null;
     }
 
     const isDisabled =
-      isSmartStartWorkflowStatusLoading || disableRunAgentsButton;
-    const isLoading =
-      isSmartStartWorkflowStatusLoading || isSmartStartTriggering;
+      isAutoPilotWorkflowStatusLoading || disableRunAgentsButton;
+    const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
 
     return (
-      <Tooltip title={t('message.trigger-smart-start-application')}>
+      <Tooltip title={t('message.trigger-auto-pilot-application')}>
         <Button
           className="font-semibold"
-          data-testid="trigger-smart-start-application-button"
+          data-testid="trigger-auto-pilot-application-button"
           disabled={isDisabled}
           icon={<Icon className="flex-center" component={TriggerIcon} />}
           loading={isLoading}
           type="primary"
-          onClick={triggerTheSmartStartApplication}>
+          onClick={triggerTheAutoPilotApplication}>
           {t('label.run-agent-plural')}
         </Button>
       </Tooltip>
     );
   }, [
     disableRunAgentsButton,
-    isSmartStartWorkflowStatusLoading,
-    isSmartStartTriggering,
-    triggerTheSmartStartApplication,
+    isAutoPilotWorkflowStatusLoading,
+    isAutoPilotTriggering,
+    triggerTheAutoPilotApplication,
   ]);
 
   return (
@@ -575,7 +574,7 @@ export const DataAssetsHeader = ({
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
-                  {triggerSmartStartApplicationButton}
+                  {triggerAutoPilotApplicationButton}
                   {onUpdateVote && (
                     <Voting
                       disabled={deleted}

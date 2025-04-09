@@ -2119,7 +2119,7 @@
     "tour-step-search-for-matching-dataset": "برای جستجوی دارایی‌های داده مشابه بر اساس \"نام\"، \"توضیحات\"، \"نام ستون\" و غیره از جعبه جستجو <0>{{text}}</0> استفاده کنید.",
     "tour-step-trace-path-across-tables": "با <0>{{text}}</0>، مسیر داده را در سراسر جداول، خطوط لوله و داشبوردها دنبال کنید.",
     "tour-step-type-search-term": "در جعبه جستجو، <0>\"{{text}}\"</0> را تایپ کنید. سپس <0>{{enterText}}.</0> را فشار دهید.",
-    "trigger-smart-start-application": "تریگر یکی از اپلیکیشن‌های Smart Start",
+    "trigger-auto-pilot-application": "تریگر یکی از اپلیکیشن‌های Auto Pilot",
     "try-adjusting-filter": "سعی کنید جستجو یا فیلتر خود را تنظیم کنید تا آنچه را که به دنبال آن هستید پیدا کنید.",
     "try-different-time-period-filtering": "نتایج موجود نیست. سعی کنید با یک دوره زمانی متفاوت فیلتر کنید.",
     "try-extending-time-frame": "سعی کنید بازه زمانی را گسترش دهید تا نتایج را مشاهده کنید.",

@@ -1,6 +1,6 @@
-# SmartStartAppConfig
+# AutoPilotAppConfig
 
-Configuration for the Smart Start Application.
+Configuration for the Auto Pilot Application.
 
 $$section
 ### Application Type $(id="type")
@@ -12,7 +12,7 @@ $$
 $$section
 ### Active $(id="active")
 
-Whether the Smart Start Workflow should be active or not.
+Whether the Auto Pilot Workflow should be active or not.
 
 $$
 

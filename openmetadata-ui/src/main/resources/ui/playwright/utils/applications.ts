@@ -12,11 +12,11 @@
  */
 import { APIRequestContext } from '@playwright/test';
 
-export const enableDisableSmartStartApplication = async (
+export const enableDisableAutoPilotApplication = async (
   apiContext: APIRequestContext,
   enable = true
 ) => {
-  await apiContext.patch('/api/v1/apps/name/SmartStartApplication', {
+  await apiContext.patch('/api/v1/apps/name/AutoPilotApplication', {
     data: [{ op: 'replace', path: '/appConfiguration/active', value: enable }],
     headers: {
       'Content-Type': 'application/json-patch+json',

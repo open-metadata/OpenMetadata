@@ -2119,7 +2119,7 @@
     "tour-step-search-for-matching-dataset": "חפש נכסי נתונים תואמים לפי \"שם\", \"תיאור\", \"שם עמודה\" וכדומה מתוך <0>{{text}}</0>.",
     "tour-step-trace-path-across-tables": "עם <0>{{text}}</0>, תרסה את הנתיב של הנתונים בטבלאות, תהליכי טעינה ולוחות בקרה.",
     "tour-step-type-search-term": "בתיבת החיפוש, הקלד <0>\"{{text}}\"</0>. לחץ <0>{{enterText}}.</0>",
-    "trigger-smart-start-application": "הפעל את האפליקציה Smart Start",
+    "trigger-auto-pilot-application": "הפעל את האפליקציה Auto Pilot",
     "try-adjusting-filter": "נסה להתאים את החיפוש או הסינון שלך כדי למצוא את מה שאתה מחפש.",
     "try-different-time-period-filtering": "אין תוצאות זמינות. נסה לסנן לפי תקופת זמן שונה.",
     "try-extending-time-frame": "Try extending the time frame to view the results.",

@@ -24,7 +24,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
-import { SMART_START_APP_NAME } from '../../../constants/Applications.constant';
+import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
@@ -311,7 +311,7 @@ describe('DataAssetsHeader component', () => {
     expect(certificatComponent).toBeInTheDocument();
   });
 
-  it('should trigger the Smart Start application when the button is clicked', () => {
+  it('should trigger the Auto Pilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
         {...mockProps}
@@ -324,13 +324,13 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const button = screen.getByTestId('trigger-smart-start-application-button');
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
 
     expect(button).toBeInTheDocument();
 
     fireEvent.click(button);
 
-    expect(triggerOnDemandApp).toHaveBeenCalledWith(SMART_START_APP_NAME, {
+    expect(triggerOnDemandApp).toHaveBeenCalledWith(AUTO_PILOT_APP_NAME, {
       entityLink: 'entityFeedLink',
     });
   });

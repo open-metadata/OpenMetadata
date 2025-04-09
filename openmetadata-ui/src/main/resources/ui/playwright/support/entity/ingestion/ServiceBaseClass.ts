@@ -222,15 +222,15 @@ class ServiceBaseClass {
   async submitService(page: Page) {
     await page.getByTestId('submit-btn').getByText('Next').click();
 
-    const smartStartApplicationRequest = page.waitForRequest(
+    const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>
-        request.url().includes('/api/v1/apps/trigger/SmartStartApplication') &&
+        request.url().includes('/api/v1/apps/trigger/AutoPilotApplication') &&
         request.method() === 'POST'
     );
 
     await page.getByTestId('submit-btn').getByText('Save').click();
 
-    await smartStartApplicationRequest;
+    await autoPilotApplicationRequest;
   }
 
   async scheduleIngestion(page: Page) {

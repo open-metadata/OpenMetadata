@@ -1,4 +1,4 @@
-package org.openmetadata.service.apps.bundles.smartStart;
+package org.openmetadata.service.apps.bundles.autoPilot;
 
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.internal.SmartStartAppConfig;
+import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -27,11 +27,11 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class SmartStartApp extends AbstractNativeApplication {
-  private static final String WORKFLOW_NAME = "SmartStartWorkflow";
-  protected SmartStartAppConfig config;
+public class AutoPilotApp extends AbstractNativeApplication {
+  private static final String WORKFLOW_NAME = "AutoPilotWorkflow";
+  protected AutoPilotAppConfig config;
 
-  public SmartStartApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+  public AutoPilotApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
   }
 
@@ -50,7 +50,7 @@ public class SmartStartApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     this.config =
-        JsonUtils.convertValue(this.getApp().getAppConfiguration(), SmartStartAppConfig.class);
+        JsonUtils.convertValue(this.getApp().getAppConfiguration(), AutoPilotAppConfig.class);
   }
 
   @Override
@@ -71,8 +71,8 @@ public class SmartStartApp extends AbstractNativeApplication {
     }
     validateConfig(appConfig);
 
-    SmartStartAppConfig runtimeConfig =
-        JsonUtils.readOrConvertValue(appConfig, SmartStartAppConfig.class);
+    AutoPilotAppConfig runtimeConfig =
+        JsonUtils.readOrConvertValue(appConfig, AutoPilotAppConfig.class);
 
     if (runtimeConfig.getActive()) {
       Map<String, Object> variables = new HashMap<>();
@@ -113,7 +113,7 @@ public class SmartStartApp extends AbstractNativeApplication {
     EntityReference adminReference =
         userRepository.findByName(getAppBot(), Include.NON_DELETED).getEntityReference();
 
-    String resourceFile = "/applications/SmartStartApplication/collate/SmartStartWorkflow.json";
+    String resourceFile = "/applications/AutoPilotApplication/collate/AutoPilotWorkflow.json";
     resourceFile =
         resourceExists(resourceFile)
             ? resourceFile

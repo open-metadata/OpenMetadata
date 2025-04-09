@@ -22,4 +22,4 @@ export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   { name: t('label.schedule'), step: 3 },
 ];
 
-export const SMART_START_APP_NAME = 'SmartStartApplication';
+export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
