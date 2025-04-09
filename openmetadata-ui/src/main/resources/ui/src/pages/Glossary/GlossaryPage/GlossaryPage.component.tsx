@@ -341,7 +341,6 @@ const GlossaryPage = () => {
           prepareType: true,
           isRecursiveDelete: true,
         });
-        history.push(ROUTES.GLOSSARY);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
