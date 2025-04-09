@@ -6,7 +6,7 @@ collate: true
 
 # Hybrid Ingestion Runner
 
-The **Hybrid Ingestion Runner** is a component designed to enable Collate customers operating in hybrid environments to securely execute ingestion workflows within their own cloud infrastructure. In this setup, your SaaS instance is hosted on Collate’s cloud, while tools like Argo Workflows are deployed within your private cloud. The Hybrid Runner acts as a bridge between these two environments, allowing ingestion workflows to be triggered and managed remotely—without requiring the customer to share secrets or sensitive credentials with Collate. It securely receives workflow execution requests and orchestrates them locally, maintaining full control and data privacy within the customer’s environment.
+The **Hybrid Ingestion Runner** is a component designed to enable Collate customers operating in hybrid environments to securely execute ingestion workflows within their own cloud infrastructure. In this setup, your SaaS instance is hosted on Collate’s cloud, while the workflows are going to deployed and executed within your private cloud. The Hybrid Runner acts as a bridge between these two environments, allowing ingestion workflows to be triggered and managed remotely—without requiring the customer to share secrets or sensitive credentials with Collate. It securely receives workflow execution requests and orchestrates them locally, maintaining full control and data privacy within the customer’s environment.
 
 ## Prerequisites
 
@@ -46,11 +46,11 @@ src="/images/v1.7/getting-started/ingestion-runner-list.png"
 src="/images/v1.7/getting-started/ingestion-runner-service.png"
 /%}
 
-> Choose "Collate SaaS Runner" to run ingestion workflows within Collate’s SaaS environment, even if you're operating in hybrid mode.
+> Even if you're operating in hybrid mode, you can still choose "Collate SaaS Runner" to run the ingestion workflow within Collate's SaaS environment.
 
 ### 3. Manage Secrets Securely
 
-Use your existing cloud provider's Secrets Manager to store sensitive credentials (like usernames and passwords), and reference them securely in Collate via the Hybrid Runner.
+When executing workflows on your Hybrid environment, you have to use your existing cloud provider's Secrets Manager to store sensitive credentials (like usernames and passwords), and reference them securely in Collate via the Hybrid Runner.
 
 Collate never stores or accesses these secrets directly—only the Hybrid Runner retrieves them at runtime from your own infrastructure.
 
