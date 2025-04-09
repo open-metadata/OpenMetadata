@@ -255,6 +255,7 @@
     "conversation-plural": "Обсуждения",
     "copied": "Скопировано",
     "copy": "Скопировать",
+    "copy-item": "{{item}} копировать",
     "cost": "Стоимость",
     "cost-analysis": "Cost Analysis",
     "count": "Количество",

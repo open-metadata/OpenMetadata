@@ -255,6 +255,7 @@
     "conversation-plural": "Conversations",
     "copied": "Copié",
     "copy": "Copier",
+    "copy-item": "Copier {{item}}",
     "cost": "Coût",
     "cost-analysis": "Cost Analysis",
     "count": "Décompte",

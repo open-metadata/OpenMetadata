@@ -255,6 +255,7 @@
     "conversation-plural": "דיונים",
     "copied": "הועתק",
     "copy": "העתק",
+    "copy-item": "העתק {{item}}",
     "cost": "מחיר",
     "cost-analysis": "ניתוח עלויות",
     "count": "ספירה",
