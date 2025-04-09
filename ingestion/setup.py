@@ -121,7 +121,7 @@ DATA_DIFF = {
 }
 
 base_requirements = {
-    "antlr4-python3-runtime==4.9.2",
+    "antlr4-python3-runtime<=4.12",
     VERSIONS["azure-identity"],
     "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["boto3"],  # Required in base for the secrets manager
