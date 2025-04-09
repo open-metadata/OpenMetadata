@@ -96,7 +96,7 @@ public class AutoPilotApp extends AbstractNativeApplication {
       assert in != null;
       return new String(in.readAllBytes());
     } catch (Exception e) {
-      throw new UnhandledServerException("Failed to load Smart Start Workflow.");
+      throw new UnhandledServerException("Failed to load Auto Pilot Workflow.");
     }
   }
 
