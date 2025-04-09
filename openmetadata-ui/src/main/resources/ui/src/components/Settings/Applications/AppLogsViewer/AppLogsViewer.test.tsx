@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
+  ErrorSource,
   ScheduleTimeline,
   Status,
 } from '../../../../generated/entity/applications/appRunRecord';
@@ -157,10 +158,10 @@ const mockProps5 = {
   data: {
     ...mockProps1.data,
     successContext: {
-      stats: null,
+      stats: undefined,
     },
     failureContext: {
-      stats: null,
+      stats: undefined,
     },
   },
 };
@@ -174,7 +175,7 @@ const mockProps6 = {
     failureContext: {
       failure: {
         message: 'Reindexing Job Has Encountered an Exception.',
-        errorSource: 'Job',
+        errorSource: ErrorSource.Job,
         failedEntities: [],
       },
     },

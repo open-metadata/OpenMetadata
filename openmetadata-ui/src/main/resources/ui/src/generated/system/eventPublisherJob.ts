@@ -126,12 +126,20 @@ export enum SearchIndexMappingLanguage {
 }
 
 export interface Stats {
-    entityStats?: StepStats;
-    jobStats?:    StepStats;
+    /**
+     * Stats for different entities. Keys should match entity types
+     */
+    entityStats?: { [key: string]: StepStats };
+    /**
+     * Stats for the job
+     */
+    jobStats?: StepStats;
 }
 
 /**
  * Stats for Different Steps Reader, Processor, Writer.
+ *
+ * Stats for the job
  */
 export interface StepStats {
     /**
@@ -146,7 +154,6 @@ export interface StepStats {
      * Count of Total Failed Records
      */
     totalRecords?: number;
-    [property: string]: any;
 }
 
 /**
