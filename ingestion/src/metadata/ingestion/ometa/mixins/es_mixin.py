@@ -30,6 +30,7 @@ from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
 from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -388,6 +389,7 @@ class ESMixin(Generic[T]):
                     f"Error while getting {hit.source['fullyQualifiedName']} - {exc}"
                 )
 
+    @calculate_execution_time_generator(context="ES.FetchViewDefinition")
     def yield_es_view_def(
         self,
         service_name: str,

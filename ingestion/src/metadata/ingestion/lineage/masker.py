@@ -13,12 +13,14 @@ Query masking utilities
 """
 
 import traceback
+from typing import Optional
 
 from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
 from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
+from metadata.utils.execution_time_tracker import calculate_execution_time
 
 MASK_TOKEN = "?"
 
@@ -109,11 +111,17 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
     return query
 
 
+@calculate_execution_time(context="MaskQuery")
 def mask_query(
-    query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None
-) -> str:
+    query: str,
+    dialect: str = Dialect.ANSI.value,
+    parser: Optional[LineageRunner] = None,
+    parser_required: bool = False,
+) -> Optional[str]:
     logger = get_logger()
     try:
+        if parser_required and not parser:
+            return None
         if not parser:
             try:
                 parser = LineageRunner(query, dialect=dialect)
