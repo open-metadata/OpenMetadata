@@ -160,7 +160,10 @@ const EntityHeaderTitle = ({
 
           <Tooltip
             placement="topRight"
-            title={copyTooltip ?? t('message.copy-to-clipboard')}>
+            title={
+              copyTooltip ??
+              t('label.copy-item', { item: t('label.url-uppercase') })
+            }>
             <Button
               className="remove-button-default-styling copy-button flex-center p-xss "
               icon={<Icon component={ShareIcon} />}

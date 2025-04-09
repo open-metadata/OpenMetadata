@@ -26,7 +26,7 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 - [Troubleshooting](/connectors/database/clickhouse/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)
 
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
@@ -96,13 +96,37 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-Clickhouse supports the following reverse metadata ingestion features:
-- Support for Description updates (Table, Column)
+### Description Management
+
+Clickhouse supports description updates at the following levels:
+- Table level
+- Column level
+
+### Owner Management
+
+❌ Owner management is not supported for Clickhouse.
+
+### Tag Management
+
+❌ Tag management is not supported for Clickhouse.
+
+### Custom SQL Template
+
+Clickhouse supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update column description
+ALTER TABLE `{schema}`.{table} MODIFY COLUMN {column} COMMENT {description};
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
 For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

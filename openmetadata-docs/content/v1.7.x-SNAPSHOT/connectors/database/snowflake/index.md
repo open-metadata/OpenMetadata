@@ -24,7 +24,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/snowflake/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
@@ -152,19 +152,61 @@ Depending on your view ddl you can grant the relevant privileged as per above qu
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-Snowflake supports the following reverse metadata ingestion features:
-- Full support for Description updates (Database, Schema, Table, Column)
-- Tag management (Schema, Table, Column)
-- Automated masking policy application based on tags
-- Integration with auto-classification workflows
+### Description Management
 
-### Requirements for Reverse Metadata Ingestion
+Snowflake supports full description updates at all levels:
+- Database level
+- Schema level
+- Table level
+- Column level
+
+### Owner Management
+
+❌ Owner management is not supported for Snowflake.
+
+### Tag Management
+
+Snowflake supports tag management at the following levels:
+- Schema level
+- Table level
+- Column level
+
+Additionally, Snowflake supports automated masking policy application based on tags. For example, when you apply a `Sensitive` tag to a column in OpenMetadata, the corresponding masking policy will be automatically applied to that column in Snowflake.
+
+{% note %}
+While OpenMetadata differentiates between "classification" values and "tag" values, Snowflake's masking policies only support actions based on classification values (tag keys). Therefore, it is advised not to use PII.None along with tag masking policies.
+{% /note %}
+
+```sql
+-- Create masking policy
+CREATE MASKING POLICY SENSITIVE_DATA AS (VAL STRING) RETURNS STRING -> CASE WHEN VAL IS NOT NULL THEN '**********' ELSE NULL END;
+
+-- Apply masking policy to PII.Sensitive tag
+ALTER TAG PII SET MASKING POLICY SENSITIVE_DATA;
+```
+
+### Custom SQL Template
+
+Snowflake supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Set schema tag
+ALTER SCHEMA {database}.{schema} SET TAG {database}.{schema}.{tag_key} = '{tag_value}';
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
+
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
+
+### Requirements for Reverse Metadata
 
 In addition to the basic ingestion requirements, for reverse metadata ingestion the user needs:
 - `ACCOUNTADMIN` role or a role with similar privileges to modify descriptions and tags
@@ -184,25 +226,4 @@ GRANT OWNERSHIP ON TABLE DATABASE_NAME.SCHEMA_NAME.TABLE_NAME TO ROLE NEW_ROLE R
 GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
 
-### Automated Masking Policies with Tags
-
-You can configure masking policies in Snowflake to be automatically applied when specific tags are set through OpenMetadata. For example, when you apply a `Sensitive` tag to a column in OpenMetadata, the corresponding masking policy will be automatically applied to that column in Snowflake.
-
-```sql
--- Create masking policy
-CREATE MASKING POLICY SENSITIVE_DATA AS (VAL STRING) RETURNS STRING -> CASE WHEN VAL IS NOT NULL THEN '**********' ELSE NULL END;
-
--- Apply masking policy to PII.Sensitive tag
-ALTER TAG PII SET MASKING POLICY SENSITIVE_DATA;
-```
-
-### Auto-Classification Integration
-
-The reverse ingestion workflow can be combined with OpenMetadata's auto-classification feature. When you run the auto-classification workflow:
-1. Tags will be automatically identified and added in OpenMetadata
-2. These tags will then be synchronized back to Snowflake through the reverse ingestion process
-
-This creates a seamless workflow for identifying and protecting sensitive data across both platforms.
-
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Ingestion Documentation](/connectors/ingestion/workflows/reverse-metadata).
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

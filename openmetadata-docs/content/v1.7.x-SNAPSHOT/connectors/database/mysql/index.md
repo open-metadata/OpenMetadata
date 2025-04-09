@@ -22,7 +22,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/mysql/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
@@ -237,7 +237,7 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ## Securing MySQL Connection with SSL in OpenMetadata
 
-To establish secure connections between OpenMetadata and MySQL, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`.  Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
+To establish secure connections between OpenMetadata and MySQL, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`.  Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client's SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server's certificate.
 
 {% image
   src="/images/v1.7/connectors/ssl_connection.png"
@@ -247,23 +247,41 @@ To establish secure connections between OpenMetadata and MySQL, navigate to the 
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
-## Reverse Metadata Ingestion
+## Reverse Metadata
 
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
 
-MySQL supports the following reverse metadata ingestion features:
-- Support for table description updates
+### Description Management
+
+MySQL supports description updates at the following level:
+- Table level
+
+### Owner Management
+
+Owner management is not supported for MySQL.
+
+### Tag Management
+
+❌ Tag management is not supported for MySQL.
+
+### Custom SQL Template
+
+MySQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
+
+Here are examples of custom SQL queries for metadata changes:
+
+```sql
+-- Update table description
+ALTER TABLE {schema}.{table} COMMENT = {description};
+```
+
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
+
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
 
 ### Requirements for Reverse Metadata
 
 In addition to the basic ingestion requirements, for reverse metadata ingestion the user needs:
-- `ALTER` privileges on tables to update descriptions
-
-```sql
--- Grant required privileges for reverse metadata
-GRANT ALTER ON DATABASE_NAME.TABLE_NAME TO 'USER_NAME'@'%';
-```
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
+- `
