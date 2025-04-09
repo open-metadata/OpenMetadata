@@ -421,6 +421,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       table
           .withName(csvRecord.get(0))
+          .withFullyQualifiedName(tableFqn)
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))

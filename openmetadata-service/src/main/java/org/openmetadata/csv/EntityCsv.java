@@ -847,7 +847,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        repository.prepareInternal(entity, false);
+        // In case of updating entity , prepareInternal as update=True
+        repository.prepareInternal(
+            entity,
+            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
@@ -897,7 +900,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Response.Status responseStatus;
     if (Boolean.FALSE.equals(importResult.getDryRun())) {
       try {
-        repository.prepareInternal(entity, false);
+        // In case of updating entity , prepareInternal as update=True
+        repository.prepareInternal(
+            entity,
+            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
         PutResponse<EntityInterface> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
@@ -994,7 +1000,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        repository.prepareInternal(entity, false);
+        // In case of updating entity , prepareInternal as update=True
+        repository.prepareInternal(
+            entity,
+            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
         PutResponse<T> response = repository.createOrUpdate(null, entity);
         responseStatus = response.getStatus();
       } catch (Exception ex) {

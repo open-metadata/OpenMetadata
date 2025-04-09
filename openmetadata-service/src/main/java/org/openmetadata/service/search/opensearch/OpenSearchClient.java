@@ -478,15 +478,6 @@ public class OpenSearchClient implements SearchClient {
       searchSourceBuilder.sort(fieldSortBuilder);
     }
 
-    if (request
-        .getIndex()
-        .equalsIgnoreCase(
-            Entity.getSearchRepository()
-                .getIndexMapping(GLOSSARY_TERM)
-                .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    }
-
     buildHierarchyQuery(request, searchSourceBuilder, client);
 
     /* for performance reasons OpenSearch doesn't provide accurate hits

@@ -236,6 +236,7 @@ public class DatabaseServiceRepository
                   Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
       database
           .withName(csvRecord.get(0))
+          .withFullyQualifiedName(databaseFqn)
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))

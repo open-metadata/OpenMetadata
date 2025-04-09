@@ -102,7 +102,11 @@ export const fillTagDetails = async (page: Page, tag: string) => {
     .press('Enter', { delay: 100 });
 
   await page.click('[data-testid="tag-selector"]');
+  const waitForQueryResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+  );
   await page.locator('[data-testid="tag-selector"] input').fill(tag);
+  await waitForQueryResponse;
   await page.click(`[data-testid="tag-${tag}"]`);
   await page.click('[data-testid="inline-save-btn"]');
   await page.click('.InovuaReactDataGrid__cell--cell-active');
