@@ -14,6 +14,7 @@ Reverse Metadata is an advanced feature in OpenMetadata that facilitates bi-dire
 Reverse Metadata uses the existing service connection configuration provided during the initial metadata ingestion. You do not need to reconfigure the service connection. In order to use Reverse Metadata, this connections must use a role with write permissions.
 {% /note %}
 
+
 ## Supported Databases and Features
 
 | Database       | Update Description | Update Tags | Update Owners | Custom SQL Support | Documentation |
@@ -69,6 +70,13 @@ When updating tags during reverse ingestion, it is important to understand the d
 {% /note %}
 
 ## Getting Started
+
+### Channels
+
+Reverse Metadata is handled in "channels". Each channel can be customized to handle different types of metadata changes.
+Channels can have different filtering configurations depending on the source system and different operations to be performed.
+If a metadata update is processed by multiple channels, the metadata will be updated multiple times. This should not be an issue
+for trivial cases but can be an issue when the logic is different for each channel.
 
 ### Configuration Setup
 
