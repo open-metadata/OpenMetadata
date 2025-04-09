@@ -271,11 +271,11 @@ public class AuthenticationCodeFlowHandler {
         } else {
           params.put(OidcConfiguration.PROMPT, "login");
         }
-        
-        if(!nullOrEmpty(maxAge)){
+
+        if (!nullOrEmpty(maxAge)) {
           params.put(OidcConfiguration.MAX_AGE, maxAge);
         }
-        
+
         String location = buildLoginAuthenticationRequestUrl(params);
         LOG.debug("Authentication request url: {}", location);
 
