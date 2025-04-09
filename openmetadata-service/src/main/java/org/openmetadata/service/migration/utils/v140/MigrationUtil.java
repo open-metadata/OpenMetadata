@@ -57,15 +57,17 @@ public class MigrationUtil {
         JSONObject jsonObj = new JSONObject(eventSubscription);
         // Read array detination if exist and check subscription type if Generic then change to
         // Webhook
-        JSONArray destination = jsonObj.getJSONArray("destinations");
-        if (destination != null && !destination.isEmpty()) {
-          for (Object value : destination) {
-            JSONObject destinationObj = (JSONObject) value;
-            if (destinationObj.getString("type").equals("Generic")) {
-              destinationObj.put("type", "Webhook");
-              collectionDAO
-                  .eventSubscriptionDAO()
-                  .update(JsonUtils.readValue(jsonObj.toString(), EventSubscription.class));
+        if (jsonObj.keySet().contains("destinations")) {
+          JSONArray destination = jsonObj.getJSONArray("destinations");
+          if (destination != null && !destination.isEmpty()) {
+            for (Object value : destination) {
+              JSONObject destinationObj = (JSONObject) value;
+              if (destinationObj.getString("type").equals("Generic")) {
+                destinationObj.put("type", "Webhook");
+                collectionDAO
+                    .eventSubscriptionDAO()
+                    .update(JsonUtils.readValue(jsonObj.toString(), EventSubscription.class));
+              }
             }
           }
         }
