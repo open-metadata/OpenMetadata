@@ -121,7 +121,7 @@ DATA_DIFF = {
 }
 
 base_requirements = {
-    "antlr4-python3-runtime<=4.12",
+    "antlr4-python3-runtime==4.9.2",
     VERSIONS["azure-identity"],
     "azure-keyvault-secrets",  # Azure Key Vault SM
     VERSIONS["boto3"],  # Required in base for the secrets manager
@@ -160,6 +160,8 @@ plugins: Dict[str, Set[str]] = {
     "airflow": {
         "opentelemetry-exporter-otlp==1.27.0",
         "protobuf<5",
+        "apache-airflow-providers-cncf-kubernetes<=10.4.0",
+        "apache-airflow-providers-common-sql<=1.24.1",
         "attrs",
         VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
