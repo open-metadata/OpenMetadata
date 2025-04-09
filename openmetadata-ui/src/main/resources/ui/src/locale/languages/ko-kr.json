@@ -255,6 +255,7 @@
     "conversation-plural": "대화들",
     "copied": "복사됨",
     "copy": "복사",
+    "copy-item": "{{item}} 복사",
     "cost": "비용",
     "cost-analysis": "비용 분석",
     "count": "수",
