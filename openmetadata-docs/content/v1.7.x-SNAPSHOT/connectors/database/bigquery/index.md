@@ -165,4 +165,3 @@ We support cross-project lineage, but the data must be ingested within a single 
 {% partial file="/v1.7/connectors/database/bigquery/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
-

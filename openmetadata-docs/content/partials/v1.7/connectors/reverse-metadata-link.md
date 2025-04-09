@@ -1,1 +1,1 @@
-- [Reverse Metadata](#reverse-metadata-ingestion)
+- [Reverse Metadata](#reverse-metadata)

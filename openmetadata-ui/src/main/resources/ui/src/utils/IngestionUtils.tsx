@@ -313,7 +313,9 @@ export const getErrorPlaceHolder = (
 ) => {
   if (ingestionDataLength === 0) {
     return (
-      <ErrorPlaceHolder className="p-y-lg" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <ErrorPlaceHolder
+        className="p-y-lg border-none"
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         {getPipelineExtraInfo(isPlatFormDisabled, theme, pipelineType)}
       </ErrorPlaceHolder>
     );

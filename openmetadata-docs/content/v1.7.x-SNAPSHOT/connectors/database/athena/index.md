@@ -239,6 +239,6 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% /stepsContainer %}
 
 
-{% partial file="/v1.7/connectors/database/athena/reverse-metadata.md" collate: true /%}
+{% partial file="/v1.7/connectors/database/athena/reverse-metadata.md" collate: true  /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

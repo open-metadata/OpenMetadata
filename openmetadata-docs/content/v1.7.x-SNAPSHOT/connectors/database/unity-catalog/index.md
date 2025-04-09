@@ -17,7 +17,6 @@ In this section, we provide guides and references to use the Unity Catalog conne
 Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
