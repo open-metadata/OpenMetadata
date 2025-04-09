@@ -301,6 +301,8 @@ def auto_classification_workflow_config(ingestion_config, workflow_config):
     ingestion_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "AutoClassification",
+            "storeSampleData": True,
+            "enableAutoClassification": False,
         }
     )
     ingestion_config["processor"] = {

@@ -305,9 +305,9 @@ const SearchSettingsPage = () => {
   return (
     <PageLayoutV1
       className="search-settings"
-      mainContainerClassName="p-t-0 p-x-0"
+      mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
-      <Row className="p-md settings-row m-t-0" gutter={[0, 16]}>
+      <Row className="p-md settings-row m-0" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -315,7 +315,7 @@ const SearchSettingsPage = () => {
           <PageHeader data={PAGE_HEADERS.SEARCH_SETTINGS} />
         </Col>
       </Row>
-      <Row className="p-md settings-row" gutter={[0, 16]}>
+      <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title className="text-sm font-semibold" level={5}>
             {t('label.global-setting-plural')}
@@ -454,7 +454,7 @@ const SearchSettingsPage = () => {
         </Col>
       </Row>
 
-      <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
+      <Row className="p-b-md m-x-0" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
           <Col key={data.key} lg={8} md={12} sm={24}>
             <SettingItemCard data={data} onClick={handleViewDetailClick} />

@@ -51,7 +51,7 @@ export const OwnerLabel = ({
             {showLabel && (
               <Typography.Text
                 className={classNames(
-                  'no-owner font-medium text-sm',
+                  'no-owner-heading font-medium text-sm',
                   className
                 )}>
                 {placeHolder ?? t('label.owner-plural')}
@@ -144,7 +144,7 @@ export const OwnerLabel = ({
           {/* Show more button/dropdown */}
           {showMoreButton && (
             <OwnerReveal
-              avatarSize={avatarSize}
+              avatarSize={isCompactView ? 24 : avatarSize}
               isCompactView={isCompactView}
               isDropdownOpen={isDropdownOpen}
               owners={owners.slice(maxVisibleOwners)}
