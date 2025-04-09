@@ -123,86 +123,83 @@ test.describe('Explore Tree scenarios ', () => {
     );
   });
 
-  test.fixme(
-    'Verify Database and Database schema after rename',
-    async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const table = new TableClass();
-      await table.create(apiContext);
-      await table.visitEntityPage(page);
-      const schemaName = get(table.schemaResponseData, 'name', '');
-      const dbName = get(table.databaseResponseData, 'name', '');
-      const serviceName = get(table.serviceResponseData, 'name', '');
-      const updatedSchemaName = `Test ${schemaName} updated`;
-      const updatedDbName = `Test ${dbName} updated`;
+  test('Verify Database and Database schema after rename', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await table.visitEntityPage(page);
+    const schemaName = get(table.schemaResponseData, 'name', '');
+    const dbName = get(table.databaseResponseData, 'name', '');
+    const serviceName = get(table.serviceResponseData, 'name', '');
+    const updatedSchemaName = `Test ${schemaName} updated`;
+    const updatedDbName = `Test ${dbName} updated`;
 
-      const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
-      await page.getByRole('link', { name: schemaName }).click();
-      // Rename Schema Page
-      await schemaRes;
-      await updateDisplayNameForEntity(
-        page,
-        updatedSchemaName,
-        EntityTypeEndpoint.DatabaseSchema
-      );
+    const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
+    await page.getByRole('link', { name: schemaName }).click();
+    // Rename Schema Page
+    await schemaRes;
+    await updateDisplayNameForEntity(
+      page,
+      updatedSchemaName,
+      EntityTypeEndpoint.DatabaseSchema
+    );
 
-      const dbRes = page.waitForResponse('/api/v1/databases/name/*');
-      await page.getByRole('link', { name: dbName }).click();
-      // Rename Database Page
-      await dbRes;
-      await updateDisplayNameForEntity(
-        page,
-        updatedDbName,
-        EntityTypeEndpoint.Database
-      );
+    const dbRes = page.waitForResponse('/api/v1/databases/name/*');
+    await page.getByRole('link', { name: dbName }).click();
+    // Rename Database Page
+    await dbRes;
+    await updateDisplayNameForEntity(
+      page,
+      updatedDbName,
+      EntityTypeEndpoint.Database
+    );
 
-      await sidebarClick(page, SidebarItem.EXPLORE);
-      await page.waitForLoadState('networkidle');
-      const serviceNameRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
-      );
-      await page
-        .locator('div')
-        .filter({ hasText: /^mysql$/ })
-        .locator('svg')
-        .first()
-        .click();
-      await serviceNameRes;
+    await sidebarClick(page, SidebarItem.EXPLORE);
+    await page.waitForLoadState('networkidle');
+    const serviceNameRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=database_search_index&from=0&size=0*mysql*'
+    );
+    await page
+      .locator('div')
+      .filter({ hasText: /^mysql$/ })
+      .locator('svg')
+      .first()
+      .click();
+    await serviceNameRes;
 
-      const databaseRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=dataAsset*serviceType*'
-      );
+    const databaseRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=dataAsset*serviceType*'
+    );
 
-      await page
-        .locator('.ant-tree-treenode')
-        .filter({ hasText: serviceName })
-        .locator('.ant-tree-switcher svg')
-        .click();
-      await databaseRes;
+    await page
+      .locator('.ant-tree-treenode')
+      .filter({ hasText: serviceName })
+      .locator('.ant-tree-switcher svg')
+      .click();
+    await databaseRes;
 
-      await expect(
-        page.getByTestId(`explore-tree-title-${updatedDbName}`)
-      ).toBeVisible();
+    await expect(
+      page.getByTestId(`explore-tree-title-${updatedDbName}`)
+    ).toBeVisible();
 
-      const databaseSchemaRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
-      );
+    const databaseSchemaRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=dataAsset*database.displayName*'
+    );
 
-      await page
-        .locator('.ant-tree-treenode')
-        .filter({ hasText: updatedDbName })
-        .locator('.ant-tree-switcher svg')
-        .click();
-      await databaseSchemaRes;
+    await page
+      .locator('.ant-tree-treenode')
+      .filter({ hasText: updatedDbName })
+      .locator('.ant-tree-switcher svg')
+      .click();
+    await databaseSchemaRes;
 
-      await expect(
-        page.getByTestId(`explore-tree-title-${updatedSchemaName}`)
-      ).toBeVisible();
+    await expect(
+      page.getByTestId(`explore-tree-title-${updatedSchemaName}`)
+    ).toBeVisible();
 
-      await table.delete(apiContext);
-      await afterAction();
-    }
-  );
+    await table.delete(apiContext);
+    await afterAction();
+  });
 });
 
 test.describe('Explore page', () => {
