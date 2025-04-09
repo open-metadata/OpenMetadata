@@ -1,7 +1,7 @@
-# 1.6.7 Release 🎉
+# 1.6.8 Release 🎉
 
 {% note noteType="Tip" %}
-**Mar 28th, 2025**
+**Apr 8th, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,28 +10,24 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.7!
+Learn how to upgrade your OpenMetadata instance to 1.6.8!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.7-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.8-release).
 
-- Lineage Improvements - Added Tableau Custom SQL lineage support
-- Lineage Improvements - Added column count validation when creating table-type custom property
-- Lineage Improvements - Transformed Reserved keywords like quotes to OM compatible
-- Lineage Improvements - Added missing timestamp indexes for time series tables
-- Lineage Improvements - Enhancing FQN Handling: Support for Quoted Identifiers
-- Fixed potential Okta login issues by clearing state to avoid login errors
-- Fixed MariaDB profiling with Time datatype
-- Fixed handling of Sample Data with non-utf8 characters
-- Fixed test connection showing timeout after successful connection
-- Fixed DBT logs and improved error handling
-- Fixed Test Suite 'NoneType' object has no attribute 'id' handling
-- Fixed delete entity relation live indexing
-- Fixed Data Insights Data Stream deletion on OpenSearch
-- Fixed soft delete and restore functionality
-- Corrected childrenCount for Organizations in Teams
-- Fixed custom dashboard issue with term type of data
-- Lower training window for Collate Anomaly detection model (collate)
+- Added support for Wherescape connector.
+- PowerBI owners ingestion for assets, improved filter query performance.
+- REST connector enhancements.
+- Implement column validation in lineage patch api.
+- Fixed tableau ingestion for null upstream table queries.
+- Fixed public schema lieage for postgres.
+- Fixed PowerBI filter query.
+- Fixed IncidentManager date filtering and update table column title.
+- Fixed dbt cloud latest run execution.
+- Fixed Unpinned google-cloud-secret-manager version in ingestion dependencies.
+- Fixed update query to fix domain asset update.
+- Fixed DQ for local webserver.
+- Fixed placeholder issue for empty metrics.
 
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.6-release...1.6.7-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.7-release...1.6.8-release)
