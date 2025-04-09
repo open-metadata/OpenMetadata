@@ -12,7 +12,7 @@ The **Hybrid Ingestion Runner** is a component designed to enable Collate custom
 
 Before setting up the Hybrid Ingestion Runner, ensure the following:
 
-- Hybrid Runner has been setup
+- Hybrid Runner has been setup. Contact the Collate team for assistance with setting up the Hybrid Runner in your infrastructure.
 - Secrets manager configured on your cloud.
 
 ## Configuration Steps for Admins
