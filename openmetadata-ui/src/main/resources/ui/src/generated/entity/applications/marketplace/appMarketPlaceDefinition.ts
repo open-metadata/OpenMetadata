@@ -185,7 +185,7 @@ export enum AgentType {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Day One Experience Flow.
+ * Configuration for the Smart Start Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -282,7 +282,7 @@ export interface CollateAIAppConfig {
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
-     * Whether the Day One Experience flow should be active or not.
+     * Whether the Smart Start Workflow should be active or not.
      */
     active?: boolean;
     /**
@@ -854,8 +854,8 @@ export enum Type {
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    SmartStartApplication = "SmartStartApplication",
     SearchIndexing = "SearchIndexing",
+    SmartStartApplication = "SmartStartApplication",
 }
 
 /**

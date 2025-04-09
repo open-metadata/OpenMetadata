@@ -26,7 +26,7 @@ import SelectServiceType from '../../components/Settings/Services/AddService/Ste
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
-import { DAY_ONE_EXPERIENCE_APP_NAME } from '../../constants/Applications.constant';
+import { SMART_START_APP_NAME } from '../../constants/Applications.constant';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   SERVICE_DEFAULT_ERROR_MAP,
@@ -160,7 +160,7 @@ const AddServicePage = () => {
         serviceDetails.fullyQualifiedName
       );
 
-      await triggerOnDemandApp(DAY_ONE_EXPERIENCE_APP_NAME, {
+      await triggerOnDemandApp(SMART_START_APP_NAME, {
         entityLink,
       });
     } catch (err) {

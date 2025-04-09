@@ -760,7 +760,7 @@ export interface FilterPattern {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Day One Experience Flow.
+ * Configuration for the Smart Start Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -857,7 +857,7 @@ export interface CollateAIAppConfig {
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
-     * Whether the Day One Experience flow should be active or not.
+     * Whether the Smart Start Workflow should be active or not.
      */
     active?: boolean;
     /**
@@ -1368,8 +1368,8 @@ export enum CollateAIAppConfigType {
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    SmartStartApplication = "SmartStartApplication",
     SearchIndexing = "SearchIndexing",
+    SmartStartApplication = "SmartStartApplication",
 }
 
 /**
@@ -2087,6 +2087,10 @@ export interface ConfigClass {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
     /**
      * Open API Schema URL.
      */

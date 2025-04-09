@@ -2119,7 +2119,7 @@
     "tour-step-search-for-matching-dataset": "Pesquise ativos de dados correspondentes por \"nome\", \"descrição\", \"nome da coluna\", e assim por diante a partir da caixa de <0>{{text}}</0>.",
     "tour-step-trace-path-across-tables": "Com <0>{{text}}</0>, trace o caminho dos dados através de tabelas, pipelines e painéis.",
     "tour-step-type-search-term": "Na caixa de pesquisa, digite <0>\"{{text}}\"</0>. Pressione <0>{{enterText}}.</0>",
-    "trigger-day-one-application": "Ativar a aplicação Day One",
+    "trigger-smart-start-application": "Ativar a aplicação Smart Start",
     "try-adjusting-filter": "Tente ajustar sua pesquisa ou filtro para encontrar o que está procurando.",
     "try-different-time-period-filtering": "Nenhum resultado disponível. Tente filtrar por um período de tempo diferente.",
     "try-extending-time-frame": "Tente aumentar o período de tempo para visualizar os resultados.",

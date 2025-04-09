@@ -2119,7 +2119,7 @@
     "tour-step-search-for-matching-dataset": "ค้นหาสินทรัพย์ข้อมูลที่ตรงกันโดยใช้ \"ชื่อ\", \"คำอธิบาย\", \"ชื่อคอลัมน์\" และอื่น ๆ จากกล่อง <0>{{text}}</0>",
     "tour-step-trace-path-across-tables": "ด้วย <0>{{text}}</0>, ติดตามเส้นทางของข้อมูลข้ามตาราง, ท่อ, & แดชบอร์ด",
     "tour-step-type-search-term": "ในกล่องค้นหา, พิมพ์ <0>\"{{text}}\"</0>. กด <0>{{enterText}}</0>",
-    "trigger-day-one-application": "เปิดใช้งานแอพพลิเคชัน Day One",
+    "trigger-smart-start-application": "เปิดใช้งานแอพพลิเคชัน Smart Start",
     "try-adjusting-filter": "ลองปรับการค้นหาหรือกรองเพื่อหาสิ่งที่คุณกำลังมองหา",
     "try-different-time-period-filtering": "ไม่มีผลลัพธ์ที่สามารถใช้งานได้ ลองกรองด้วยช่วงเวลาที่แตกต่างกัน",
     "try-extending-time-frame": "ลองขยายกรอบเวลาเพื่อดูผลลัพธ์",

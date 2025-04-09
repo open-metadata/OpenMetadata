@@ -96,7 +96,7 @@ public class SmartStartApp extends AbstractNativeApplication {
       assert in != null;
       return new String(in.readAllBytes());
     } catch (Exception e) {
-      throw new UnhandledServerException("Failed to load Day One Experience Workflow.");
+      throw new UnhandledServerException("Failed to load Smart Start Workflow.");
     }
   }
 

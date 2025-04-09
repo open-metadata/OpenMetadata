@@ -2119,7 +2119,7 @@
     "tour-step-search-for-matching-dataset": "通过在<0>{{text}}</0>框中输入\"名称\"、\"描述\"、\"列名\"等关键字搜索匹配数据资产。",
     "tour-step-trace-path-across-tables": "使用<0>{{text}}</0>, 跟踪数据在表、工作流和仪表板之间的路径。",
     "tour-step-type-search-term": "在搜索框中输入<0>\"{{text}}\"</0>, 并在键盘上点击<0>{{enterText}}</0>回车键。",
-    "trigger-day-one-application": "触发 Day One 应用程序",
+    "trigger-smart-start-application": "触发 Smart Start 应用程序",
     "try-adjusting-filter": "没有找到相关的数据, 请修改搜索或过滤条件。",
     "try-different-time-period-filtering": "没有可用的结果, 请选择不同的时间段再次过滤",
     "try-extending-time-frame": "尝试延长时间框架以查看结果",

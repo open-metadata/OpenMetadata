@@ -31,7 +31,7 @@ import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
-import { DAY_ONE_EXPERIENCE_APP_NAME } from '../../../constants/Applications.constant';
+import { SMART_START_APP_NAME } from '../../../constants/Applications.constant';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -491,7 +491,7 @@ export const DataAssetsHeader = ({
         dataAsset.fullyQualifiedName ?? ''
       );
 
-      await triggerOnDemandApp(DAY_ONE_EXPERIENCE_APP_NAME, {
+      await triggerOnDemandApp(SMART_START_APP_NAME, {
         entityLink,
       });
 
@@ -514,10 +514,10 @@ export const DataAssetsHeader = ({
       isSmartStartWorkflowStatusLoading || isSmartStartTriggering;
 
     return (
-      <Tooltip title={t('message.trigger-day-one-application')}>
+      <Tooltip title={t('message.trigger-smart-start-application')}>
         <Button
           className="font-semibold"
-          data-testid="trigger-day-one-application-button"
+          data-testid="trigger-smart-start-application-button"
           disabled={isDisabled}
           icon={<Icon className="flex-center" component={TriggerIcon} />}
           loading={isLoading}

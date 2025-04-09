@@ -273,6 +273,10 @@ export interface ConfigClass {
      */
     apiCollectionFilterPattern?: FilterPattern;
     /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
+    /**
      * Open API Schema URL.
      */
     openAPISchemaURL?: string;
