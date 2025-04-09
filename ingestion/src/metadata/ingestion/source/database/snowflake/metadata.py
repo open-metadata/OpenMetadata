@@ -470,6 +470,7 @@ class SnowflakeSource(
                     classification_name=row[0],
                     tag_description="SNOWFLAKE TAG VALUE",
                     classification_description="SNOWFLAKE TAG NAME",
+                    metadata=self.metadata,
                     system_tags=True,
                 )
 
