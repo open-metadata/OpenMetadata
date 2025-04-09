@@ -16,10 +16,13 @@ import { lowerCase } from 'lodash';
 import React from 'react';
 import { LeftPanelCardProps } from './LeftPanelCard.interface';
 
+/**
+ * @deprecated This component is deprecated and will be removed in future releases.
+ */
 const LeftPanelCard = ({ children, id, className }: LeftPanelCardProps) => {
   return (
     <div
-      className={classNames(className, 'left-panel-card')}
+      className={classNames(className, 'h-full')}
       data-testid={`${lowerCase(id)}-left-panel`}>
       {children}
     </div>

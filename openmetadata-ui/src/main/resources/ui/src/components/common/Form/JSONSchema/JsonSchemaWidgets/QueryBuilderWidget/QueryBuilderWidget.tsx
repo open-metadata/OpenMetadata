@@ -97,8 +97,6 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           fetchSource: false,
         });
         setSearchResults(res.hits.total.value ?? 0);
-      } catch (_) {
-        // silent fail
       } finally {
         setIsCountLoading(false);
       }

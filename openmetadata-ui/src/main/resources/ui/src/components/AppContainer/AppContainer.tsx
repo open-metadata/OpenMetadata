@@ -60,7 +60,7 @@ const AppContainer = () => {
         ...appPreferences,
         lineageConfig: lineageConfig as LineageSettings,
       });
-    } catch (error) {
+    } catch {
       // silent fail
     }
   }, []);

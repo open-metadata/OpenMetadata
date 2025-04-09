@@ -28,7 +28,7 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
-import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 function ServiceVersionMainTabContent({
