@@ -216,8 +216,6 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
-
 {% partial file="/v1.7/connectors/database/related.md" /%}
 
 ## Reverse Metadata Ingestion

@@ -81,6 +81,7 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -542,7 +543,7 @@ const TableDetailsPageV1: React.FC = () => {
   ]);
 
   const isExpandViewSupported = useMemo(
-    () => tabs[0].key === EntityTabs.SCHEMA || activeTab === EntityTabs.SCHEMA,
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
     [tabs[0], activeTab]
   );
 
