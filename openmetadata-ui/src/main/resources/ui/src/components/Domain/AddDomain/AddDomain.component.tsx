@@ -44,6 +44,8 @@ const AddDomain = () => {
         fields: 'parent',
       });
       updateDomains(data);
+    } catch (error) {
+      // silent fail
     } finally {
       updateDomainLoading(false);
     }
