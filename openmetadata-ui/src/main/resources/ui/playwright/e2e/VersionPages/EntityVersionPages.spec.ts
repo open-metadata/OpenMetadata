@@ -257,7 +257,7 @@ test.describe('Entity Version pages', () => {
 
           await deleteResponse;
 
-          await toastNotification(page, /Delete operation initiated for/);
+          await toastNotification(page, /deleted successfully!/);
 
           await page.reload();
 
