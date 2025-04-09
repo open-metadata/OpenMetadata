@@ -3,7 +3,7 @@ title: Reverse Metadata Ingestion Collate | Feature & Configuration
 slug: /connectors/ingestion/workflows/reverse-metadata
 ---
 
-# Reverse Metadata Ingestion
+# Reverse Metadata
 {% note %}
 This feature is specific to Collate and requires the Collate Enterprise License.
 {% /note %}
