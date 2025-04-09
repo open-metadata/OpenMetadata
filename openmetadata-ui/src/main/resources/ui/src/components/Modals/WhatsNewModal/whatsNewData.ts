@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_6_7'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_6_8'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1712,6 +1712,29 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 -   Corrected childrenCount for Organizations in Teams
 -   Fixed custom dashboard issue with term type of data
 -   Lower training window for Collate Anomaly detection model ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 64,
+    version: 'v1.6.8',
+    description: 'Released on 8th April 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `-  Added support for Wherescape connector.${CollateIconWithLinkMD}
+      -  PowerBI owners ingestion for assets, improved filter query performance.
+      -  REST connector enhancements.
+      -  Implement column validation in lineage patch api.
+      `,
+      Fixes: `-  Fixed tableau ingestion for null upstream table queries.
+      -  Fixed public schema lieage for postgres.
+      -  Fixed PowerBI filter query.
+      -  Fixed IncidentManager date filtering and update table column title.
+      -  Fixed dbt cloud latest run execution.
+      -  Fixed Unpinned google-cloud-secret-manager version in ingestion dependencies.
+      -  Fixed update query to fix domain asset update.
+      -  Fixed DQ for local webserver.${CollateIconWithLinkMD}
+      -  Fixed placeholder issue for empty metrics.${CollateIconWithLinkMD}
+      `,
     },
   },
 ];
