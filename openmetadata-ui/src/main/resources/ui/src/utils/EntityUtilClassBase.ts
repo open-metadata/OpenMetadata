@@ -395,7 +395,8 @@ class EntityUtilClassBase {
     _entityType: EntityType,
     _fqn: string,
     _permission: OperationPermission,
-    _deleted: boolean
+    _deleted: boolean,
+    _entityName?: string
   ): ItemType[] {
     // We are encoding here since we are getting the decoded fqn from the OSS code
     const encodedFqn = getEncodedFqn(_fqn);
