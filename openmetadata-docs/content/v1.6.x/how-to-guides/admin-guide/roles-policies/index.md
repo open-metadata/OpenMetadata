@@ -37,6 +37,12 @@ This structured hierarchy enhances your control over team management and resourc
 
 ## Access Control Design: Roles and Policies
 
+{% image
+src="/images/v1.6/how-to-guides/roles-policies/evaluation.png"
+alt="Policy Evaluation"
+caption="Policy Evaluation"
+/%}
+
 OpenMetadata incorporates a robust Access Control framework that merges Role-Based Access Control (RBAC) with Attribute-Based Access Control (ABAC) in a powerful hybrid model. This security design is reinforced by
 
 **Authentication with SSO Integration:** OpenMetadata seamlessly integrates with various Single Sign-On (SSO) providers, including Azure AD, Google, Okta, Auth0, OneLogin, and more. This ensures a unified and secure authentication experience for users.
