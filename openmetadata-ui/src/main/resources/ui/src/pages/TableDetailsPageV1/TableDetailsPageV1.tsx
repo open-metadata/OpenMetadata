@@ -156,13 +156,15 @@ const TableDetailsPageV1: React.FC = () => {
 
   const extraDropdownContent = useMemo(
     () =>
-      entityUtilClassBase.getManageExtraOptions(
-        EntityType.TABLE,
-        tableFqn,
-        tablePermissions,
-        tableDetails?.deleted ?? false
-      ),
-    [tablePermissions, tableFqn, tableDetails?.deleted]
+      tableDetails
+        ? entityUtilClassBase.getManageExtraOptions(
+            EntityType.TABLE,
+            tableFqn,
+            tablePermissions,
+            tableDetails
+          )
+        : [],
+    [tablePermissions, tableFqn, tableDetails]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
