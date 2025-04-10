@@ -640,7 +640,7 @@ class OMetaTableTest(TestCase):
             with_description.columns[2].children[1].description.root,
             "I am so nested",
         )
-    
+
     def test_patch_when_inherited_owner(self):
         """PATCHing anything when owner is inherited, does not add the owner to the entity"""
 
