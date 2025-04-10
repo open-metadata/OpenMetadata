@@ -544,10 +544,7 @@ const StoredProcedurePage = () => {
         entity: t('label.stored-procedure'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col
-          className="entity-details-page-tabs"
-          data-testid="entity-page-header"
-          span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
@@ -574,7 +571,7 @@ const StoredProcedurePage = () => {
           type={EntityType.STORED_PROCEDURE}
           onUpdate={handleStoreProcedureUpdate}>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"
