@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Radio, RadioChangeEvent, Row, Tooltip, Typography } from 'antd';
+import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
+import { SegmentedValue } from 'antd/lib/segmented';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -182,8 +183,8 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
+  const handleViewChange = (value: SegmentedValue) => {
+    setViewType(value as SchemaViewType);
   };
 
   const handleExpandedRowsChange = (keys: readonly Key[]) => {
@@ -405,14 +406,22 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }}
           extraTableFilters={
             <div className="d-flex justify-between items-center w-full">
-              <Radio.Group value={viewType} onChange={handleViewChange}>
-                <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
-                  {t('label.request')}
-                </Radio.Button>
-                <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
-                  {t('label.response')}
-                </Radio.Button>
-              </Radio.Group>
+              <Segmented
+                className="segment-toggle"
+                options={[
+                  {
+                    label: t('label.request'),
+                    value: SchemaViewType.REQUEST_SCHEMA,
+                  },
+                  {
+                    label: t('label.response'),
+                    value: SchemaViewType.RESPONSE_SCHEMA,
+                  },
+                ]}
+                value={viewType}
+                onChange={handleViewChange}
+              />
+
               <ToggleExpandButton
                 allRowKeys={schemaAllRowKeys}
                 expandedRowKeys={expandedRowKeys}

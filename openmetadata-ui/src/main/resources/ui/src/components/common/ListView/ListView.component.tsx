@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Radio, Row, Space, Switch, Typography } from 'antd';
+import { Col, Row, Segmented, Space, Switch, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -82,16 +82,21 @@ export const ListView = <T extends object = any>({
             </span>
           )}
 
-          <Radio.Group
+          <Segmented
+            className="segment-toggle"
+            options={[
+              {
+                label: <Icon component={GridIcon} data-testid="grid" />,
+                value: ListViewOptions.CARD,
+              },
+              {
+                label: <Icon component={ListIcon} data-testid="list" />,
+                value: ListViewOptions.TABLE,
+              },
+            ]}
             value={currentView}
-            onChange={(e) => setCurrentView(e.target.value)}>
-            <Radio.Button value={ListViewOptions.CARD}>
-              <Icon component={GridIcon} data-testid="grid" />
-            </Radio.Button>
-            <Radio.Button value={ListViewOptions.TABLE}>
-              <Icon component={ListIcon} data-testid="list" />
-            </Radio.Button>
-          </Radio.Group>
+            onChange={(value) => setCurrentView(value as ListViewOptions)}
+          />
         </Space>
       </Col>
       <Col span={24}>

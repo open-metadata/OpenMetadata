@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Col,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { SegmentedValue } from 'antd/lib/segmented';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -312,8 +305,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
+  const handleViewChange = (value: SegmentedValue) => {
+    setViewType(value as SchemaViewType);
   };
 
   useEffect(() => {
@@ -337,18 +330,31 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ErrorPlaceHolder />
       ) : (
         <>
-          {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (
-            <Col span={24}>
-              <Radio.Group value={viewType} onChange={handleViewChange}>
-                <Radio.Button value={SchemaViewType.FIELDS}>
-                  {t('label.field-plural')}
-                </Radio.Button>
-                <Radio.Button value={SchemaViewType.TEXT}>
-                  {t('label.text')}
-                </Radio.Button>
-              </Radio.Group>
-            </Col>
-          )}
+          {/* {!isEmpty(messageSchema?.schemaFields) && !isVersionView && ( */}
+          <Col span={24}>
+            <Segmented
+              className="segment-toggle"
+              options={[
+                {
+                  label: t('label.field-plural'),
+                  value: SchemaViewType.FIELDS,
+                },
+                { label: t('label.text'), value: SchemaViewType.TEXT },
+              ]}
+              value={viewType}
+              onChange={handleViewChange}
+            />
+
+            {/* <Radio.Group value={viewType} onChange={handleViewChange}>
+              <Radio.Button value={SchemaViewType.FIELDS}>
+                {t('label.field-plural')}
+              </Radio.Button>
+              <Radio.Button value={SchemaViewType.TEXT}>
+                {t('label.text')}
+              </Radio.Button>
+            </Radio.Group> */}
+          </Col>
+          {/* )} */}
 
           <Col span={24}>
             {viewType === SchemaViewType.TEXT ||
