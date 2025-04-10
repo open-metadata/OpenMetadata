@@ -815,7 +815,7 @@ const TableDetailsPageV1: React.FC = () => {
             />
           </Col>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
               className="tabs-new"

@@ -20,5 +20,4 @@ export const PLATFORM_INSIGHTS_CHART: SystemChartType[] = [
   SystemChartType.OwnersCoverage,
 ];
 
-export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME =
-  'DayOneExperienceWorkflow';
+export const SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME = 'AutoPilotWorkflow';
