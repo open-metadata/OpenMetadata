@@ -252,7 +252,7 @@ class OMetaTableTest(TestCase):
         )
 
     def test_patch_table(self):
-        new_patched_table = self.patch_test_table.copy(deep=True)
+        new_patched_table = self.patch_test_table.model_copy(deep=True)
 
         # Test adding a new column to the table
         new_patched_table.columns.append(
@@ -640,3 +640,44 @@ class OMetaTableTest(TestCase):
             with_description.columns[2].children[1].description.root,
             "I am so nested",
         )
+    
+    def test_patch_when_inherited_owner(self):
+        """PATCHing anything when owner is inherited, does not add the owner to the entity"""
+
+        # Prepare a schema with owners
+        create_schema = get_create_entity(
+            entity=DatabaseSchema, reference=self.db_entity.fullyQualifiedName
+        )
+        create_schema.owners = self.owner_team_1
+        db_schema_entity = self.metadata.create_or_update(data=create_schema)
+
+        # Add a table and check it has inherited owners
+        create_table = get_create_entity(
+            entity=Table, reference=db_schema_entity.fullyQualifiedName
+        )
+        _table = self.metadata.create_or_update(data=create_table)
+
+        table: Table = self.metadata.get_by_name(
+            entity=Table, fqn=_table.fullyQualifiedName, fields=["owners"]
+        )
+        assert table.owners.root
+        assert table.owners.root[0].inherited
+
+        # Add a description to the table and PATCH it
+        dest = table.model_copy(deep=True)
+        dest.description = Markdown(root="potato")
+
+        self.metadata.patch(
+            entity=Table,
+            source=table,
+            destination=dest,
+        )
+
+        patched_table = self.metadata.get_by_name(
+            entity=Table, fqn=table.fullyQualifiedName, fields=["owners"]
+        )
+
+        # Check the table still has inherited owners
+        assert patched_table.description.root == "potato"
+        assert patched_table.owners.root
+        assert patched_table.owners.root[0].inherited

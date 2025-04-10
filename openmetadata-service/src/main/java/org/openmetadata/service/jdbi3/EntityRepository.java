@@ -2763,7 +2763,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 throw new IllegalArgumentException(
                     CatalogExceptionMessage.invalidOwnerType(owner.getType()));
               }
-              return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+              return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL)
+                  .withInherited(owner.getInherited());
             })
         .collect(Collectors.toList());
   }
