@@ -23,6 +23,10 @@ export interface TestServiceConnection {
      */
     connectionType?: string;
     /**
+     * Optional value of the ingestion runner name responsible for running the test
+     */
+    ingestionRunner?: string;
+    /**
      * Secrets Manager Provider to use for fetching secrets.
      */
     secretsManagerProvider?: SecretsManagerProvider;
