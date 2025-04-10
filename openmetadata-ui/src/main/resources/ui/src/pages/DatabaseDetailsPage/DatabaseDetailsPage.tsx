@@ -129,7 +129,7 @@ const DatabaseDetails: FunctionComponent = () => {
         databasePermission,
         database
       ),
-    [decodedDatabaseFQN, databasePermission, database?.deleted]
+    [decodedDatabaseFQN, databasePermission, database]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);

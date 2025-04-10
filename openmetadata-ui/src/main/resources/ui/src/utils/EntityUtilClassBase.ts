@@ -400,7 +400,7 @@ class EntityUtilClassBase {
     _entityType: EntityType,
     _fqn: string,
     _permission: OperationPermission,
-    _entityDetails?:
+    _entityDetails:
       | VersionData
       | ServicesType
       | Database

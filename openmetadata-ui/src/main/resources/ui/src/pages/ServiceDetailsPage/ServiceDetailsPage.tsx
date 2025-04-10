@@ -295,12 +295,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         servicePermission,
         serviceDetails
       ),
-    [
-      servicePermission,
-      decodedServiceFQN,
-      serviceCategory,
-      serviceDetails?.deleted,
-    ]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails]
   );
 
   const handleShowDeleted = useCallback(
