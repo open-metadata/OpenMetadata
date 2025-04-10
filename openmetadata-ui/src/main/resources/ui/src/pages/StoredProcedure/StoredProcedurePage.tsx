@@ -367,7 +367,7 @@ const StoredProcedurePage = () => {
     const updatedData = data as StoredProcedure;
 
     setStoredProcedure((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

@@ -377,7 +377,7 @@ const DatabaseDetails: FunctionComponent = () => {
     const updatedData = data as Database;
 
     setDatabase((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

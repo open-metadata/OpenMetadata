@@ -373,7 +373,7 @@ const ContainerPage = () => {
     const updatedData = data as Container;
 
     setContainerData((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

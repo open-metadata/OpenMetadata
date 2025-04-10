@@ -259,6 +259,18 @@ export const CommonWidgets = ({
     await handleTagsUpdate(updatedTags);
   };
 
+  const dataProductsWidget = useMemo(() => {
+    return (
+      <DataProductsContainer
+        newLook
+        activeDomain={domain as EntityReference}
+        dataProducts={dataProducts ?? []}
+        hasPermission={editDataProductPermission}
+        onSave={handleDataProductsSave}
+      />
+    );
+  }, [dataProducts, domain, editDataProductPermission]);
+
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
@@ -340,15 +352,7 @@ export const CommonWidgets = ({
     if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DESCRIPTION)) {
       return descriptionWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
-      return (
-        <DataProductsContainer
-          newLook
-          activeDomain={domain}
-          dataProducts={dataProducts ?? []}
-          hasPermission={editDataProductPermission}
-          onSave={handleDataProductsSave}
-        />
-      );
+      return dataProductsWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TAGS)) {
       return tagsWidget;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.GLOSSARY_TERMS)) {
@@ -390,7 +394,13 @@ export const CommonWidgets = ({
       commonWidgetClassBase.getCommonWidgetsFromConfig(widgetConfig);
 
     return Widget ? <Widget /> : null;
-  }, [widgetConfig, descriptionWidget, glossaryWidget, tagsWidget]);
+  }, [
+    widgetConfig,
+    descriptionWidget,
+    glossaryWidget,
+    tagsWidget,
+    dataProductsWidget,
+  ]);
 
   return (
     <>

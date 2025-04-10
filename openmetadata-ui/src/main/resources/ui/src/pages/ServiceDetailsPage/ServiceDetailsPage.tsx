@@ -917,7 +917,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     const updatedData = data as ServicesType;
 
     setServiceDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

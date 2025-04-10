@@ -240,7 +240,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     const updatedData = data as Topic;
 
     setTopicDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

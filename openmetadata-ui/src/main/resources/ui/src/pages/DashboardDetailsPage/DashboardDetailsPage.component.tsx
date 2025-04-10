@@ -243,7 +243,7 @@ const DashboardDetailsPage = () => {
     const updatedData = data as Dashboard;
 
     setDashboardDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

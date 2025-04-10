@@ -233,7 +233,7 @@ const MlModelPage = () => {
     const updatedData = data as Mlmodel;
 
     setMlModelDetail((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

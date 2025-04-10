@@ -38,6 +38,7 @@ import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryDataProducts from '../common/SummaryDataProducts/SummaryDataProducts';
 import SummaryTagsDescription from '../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import CommonEntitySummaryInfo from '../Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import TableSummary from '../Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
@@ -208,6 +209,8 @@ export const DataAssetSummaryPanel = ({
                 )
               }
             />
+
+            <SummaryDataProducts dataAsset={dataAsset} />
           </>
         );
       case EntityType.GLOSSARY_TERM:
