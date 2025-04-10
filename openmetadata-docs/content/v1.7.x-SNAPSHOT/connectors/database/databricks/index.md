@@ -7,7 +7,7 @@ slug: /connectors/database/databricks
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 
@@ -27,8 +27,8 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/databricks/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
@@ -74,48 +74,6 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 
 {% /stepsContainer %}
 
+{% partial file="/v1.7/connectors/database/databricks/reverse-metadata.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-### Description Management
-
-Databricks supports description updates at all levels:
-- Database level
-- Schema level
-- Table level
-- Column level
-
-### Owner Management
-
-Databricks supports owner management at the following levels:
-- Database level
-- Schema level
-- Table level
-
-### Tag Management
-
-Databricks supports tag management at all levels:
-- Database level
-- Schema level
-- Table level
-- Column level
-
-### Custom SQL Template
-
-Databricks supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
-
-Here are examples of custom SQL queries for metadata changes:
-
-```sql
--- Set table tags
-ALTER TABLE {database}.{schema}.{table} SET TAGS {tags};
-```
-
-The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
