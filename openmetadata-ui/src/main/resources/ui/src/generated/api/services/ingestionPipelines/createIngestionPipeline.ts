@@ -760,7 +760,7 @@ export interface FilterPattern {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Auto Pilot Application.
+ * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -857,7 +857,7 @@ export interface CollateAIAppConfig {
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
-     * Whether the Auto Pilot Workflow should be active or not.
+     * Whether the AutoPilot Workflow should be active or not.
      */
     active?: boolean;
     /**

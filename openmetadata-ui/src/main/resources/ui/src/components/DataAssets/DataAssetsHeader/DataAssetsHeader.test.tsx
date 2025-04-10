@@ -311,7 +311,7 @@ describe('DataAssetsHeader component', () => {
     expect(certificatComponent).toBeInTheDocument();
   });
 
-  it('should trigger the Auto Pilot application when the button is clicked', () => {
+  it('should trigger the AutoPilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
         {...mockProps}

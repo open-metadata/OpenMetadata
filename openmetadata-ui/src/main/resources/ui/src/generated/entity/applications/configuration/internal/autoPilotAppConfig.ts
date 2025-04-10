@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Configuration for the Auto Pilot Application.
+ * Configuration for the AutoPilot Application.
  */
 export interface AutoPilotAppConfig {
     /**
-     * Whether the Auto Pilot Workflow should be active or not.
+     * Whether the AutoPilot Workflow should be active or not.
      */
     active: boolean;
     /**

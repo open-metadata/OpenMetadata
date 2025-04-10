@@ -76,7 +76,7 @@ const restoreRolesAndPolicies = async (page: Page) => {
   await restoreOrganizationDefaultRole(apiContext);
   // update default Organization policy
   await updateDefaultOrganizationPolicy(apiContext);
-  // enable the Auto Pilot application
+  // enable the AutoPilot application
   await enableDisableAutoPilotApplication(apiContext);
 
   await afterAction();

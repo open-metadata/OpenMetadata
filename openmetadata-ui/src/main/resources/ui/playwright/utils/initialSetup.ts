@@ -32,7 +32,7 @@ const initialSetup = async (page: Page) => {
   await updateDefaultOrganizationPolicy(apiContext);
   // update default Data consumer policy
   await updateDefaultDataConsumerPolicy(apiContext);
-  // disable the Auto Pilot application
+  // disable the AutoPilot application
   await enableDisableAutoPilotApplication(apiContext, false);
 
   await afterAction();

@@ -1,6 +1,6 @@
 # AutoPilotAppConfig
 
-Configuration for the Auto Pilot Application.
+Configuration for the AutoPilot Application.
 
 $$section
 ### Application Type $(id="type")
@@ -12,7 +12,7 @@ $$
 $$section
 ### Active $(id="active")
 
-Whether the Auto Pilot Workflow should be active or not.
+Whether the AutoPilot Workflow should be active or not.
 
 $$
 

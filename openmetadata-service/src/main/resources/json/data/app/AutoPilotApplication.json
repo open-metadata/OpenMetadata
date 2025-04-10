@@ -1,6 +1,6 @@
 {
   "name": "AutoPilotApplication",
-  "displayName": "Auto Pilot",
+  "displayName": "AutoPilot",
   "appConfiguration": {
     "type": "AutoPilotApplication",
     "active": true,

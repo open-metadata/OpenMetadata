@@ -2,16 +2,14 @@
   "id": "281f3b16-ed2f-4302-b3e0-b333c3002a83",
   "name": "AutoPilotWorkflow",
   "fullyQualifiedName": "AutoPilotWorkflow",
-  "displayName": "Auto Pilot Workflow",
+  "displayName": "AutoPilot Workflow",
   "description": "Whenever a new Service is created, the relevant pipelines will automatically be created, deployed and run.",
   "config": {
     "storeStageStatus": true
   },
   "trigger": {
     "type": "noOp",
-    "output": [
-      "relatedEntity"
-    ]
+    "output": ["relatedEntity"]
   },
   "nodes": [
     {

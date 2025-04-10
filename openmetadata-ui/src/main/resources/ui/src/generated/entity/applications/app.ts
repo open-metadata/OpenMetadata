@@ -200,115 +200,115 @@ export enum AgentType {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Auto Pilot Application.
+ * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
-    /**
-     * Query filter to be passed to ES. E.g.,
-     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
-     * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
-     */
-    filter?: string;
-    /**
-     * Patch the description if it is empty, instead of raising a suggestion
-     */
-    patchIfEmpty?: boolean;
-    /**
-     * Application Type
-     */
-    type?: Type;
-    /**
-     * Action to take on those entities. E.g., propagate description through lineage, auto
-     * tagging, etc.
-     */
-    actions?: Action[];
-    /**
-     * Entities selected to run the automation.
-     */
-    resources?: Resource;
-    /**
-     * Bot Token
-     */
-    botToken?: string;
-    /**
-     * User Token
-     */
-    userToken?:             string;
-    backfillConfiguration?: BackfillConfiguration;
-    /**
-     * Maximum number of events processed at a time (Default 100).
-     *
-     * Maximum number of events sent in a batch (Default 100).
-     */
-    batchSize?:           number;
-    moduleConfiguration?: ModuleConfiguration;
-    /**
-     * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
-     * Type and are facing errors. Bear in mind that recreating the index will delete your
-     * DataAssets and a backfill will be needed.
-     */
-    recreateDataAssetsIndex?: boolean;
-    sendToAdmins?:            boolean;
-    sendToTeams?:             boolean;
-    /**
-     * Number of threads to use for reindexing
-     */
-    consumerThreads?: number;
-    /**
-     * List of Entities to Reindex
-     */
-    entities?: string[];
-    /**
-     * Initial backoff time in milliseconds
-     */
-    initialBackoff?: number;
-    /**
-     * Maximum backoff time in milliseconds
-     */
-    maxBackoff?: number;
-    /**
-     * Maximum number of concurrent requests to the search index
-     */
-    maxConcurrentRequests?: number;
-    /**
-     * Maximum number of retries for a failed request
-     */
-    maxRetries?: number;
-    /**
-     * Maximum number of events sent in a batch (Default 100).
-     */
-    payLoadSize?: number;
-    /**
-     * Number of threads to use for reindexing
-     */
-    producerThreads?: number;
-    /**
-     * Queue Size to user internally for reindexing.
-     */
-    queueSize?: number;
-    /**
-     * This schema publisher run modes.
-     */
-    recreateIndex?: boolean;
-    /**
-     * Recreate Indexes with updated Language
-     */
-    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-    /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the Auto Pilot Workflow should be active or not.
-     */
-    active?: boolean;
-    /**
-     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
-     * one month).
-     */
-    changeEventRetentionPeriod?: number;
-    /**
-     * Service Entity Link for which to trigger the application.
-     */
-    entityLink?: string;
+  /**
+   * Query filter to be passed to ES. E.g.,
+   * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+   * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
+   */
+  filter?: string;
+  /**
+   * Patch the description if it is empty, instead of raising a suggestion
+   */
+  patchIfEmpty?: boolean;
+  /**
+   * Application Type
+   */
+  type?: Type;
+  /**
+   * Action to take on those entities. E.g., propagate description through lineage, auto
+   * tagging, etc.
+   */
+  actions?: Action[];
+  /**
+   * Entities selected to run the automation.
+   */
+  resources?: Resource;
+  /**
+   * Bot Token
+   */
+  botToken?: string;
+  /**
+   * User Token
+   */
+  userToken?: string;
+  backfillConfiguration?: BackfillConfiguration;
+  /**
+   * Maximum number of events processed at a time (Default 100).
+   *
+   * Maximum number of events sent in a batch (Default 100).
+   */
+  batchSize?: number;
+  moduleConfiguration?: ModuleConfiguration;
+  /**
+   * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
+   * Type and are facing errors. Bear in mind that recreating the index will delete your
+   * DataAssets and a backfill will be needed.
+   */
+  recreateDataAssetsIndex?: boolean;
+  sendToAdmins?: boolean;
+  sendToTeams?: boolean;
+  /**
+   * Number of threads to use for reindexing
+   */
+  consumerThreads?: number;
+  /**
+   * List of Entities to Reindex
+   */
+  entities?: string[];
+  /**
+   * Initial backoff time in milliseconds
+   */
+  initialBackoff?: number;
+  /**
+   * Maximum backoff time in milliseconds
+   */
+  maxBackoff?: number;
+  /**
+   * Maximum number of concurrent requests to the search index
+   */
+  maxConcurrentRequests?: number;
+  /**
+   * Maximum number of retries for a failed request
+   */
+  maxRetries?: number;
+  /**
+   * Maximum number of events sent in a batch (Default 100).
+   */
+  payLoadSize?: number;
+  /**
+   * Number of threads to use for reindexing
+   */
+  producerThreads?: number;
+  /**
+   * Queue Size to user internally for reindexing.
+   */
+  queueSize?: number;
+  /**
+   * This schema publisher run modes.
+   */
+  recreateIndex?: boolean;
+  /**
+   * Recreate Indexes with updated Language
+   */
+  searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+  /**
+   * Whether the suggested tests should be active or not upon suggestion
+   *
+   * Whether the AutoPilot Workflow should be active or not.
+   */
+  active?: boolean;
+  /**
+   * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
+   * one month).
+   */
+  changeEventRetentionPeriod?: number;
+  /**
+   * Service Entity Link for which to trigger the application.
+   */
+  entityLink?: string;
 }
 
 /**
