@@ -1271,7 +1271,7 @@ export interface Pipeline {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Smart Start Application.
+ * Configuration for the Auto Pilot Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -1368,7 +1368,7 @@ export interface CollateAIAppConfig {
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
-     * Whether the Smart Start Workflow should be active or not.
+     * Whether the Auto Pilot Workflow should be active or not.
      */
     active?: boolean;
     /**
@@ -1874,13 +1874,13 @@ export enum SearchIndexMappingLanguage {
  * Application type.
  */
 export enum CollateAIAppConfigType {
+    AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
-    SmartStartApplication = "SmartStartApplication",
 }
 
 /**
