@@ -178,6 +178,8 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           // eslint-disable-next-line no-console
           console.log(e);
         }
+      } else {
+        onChange(''); // Set empty string if outputEs is null, this happens when removing all the filters
       }
     }
   };

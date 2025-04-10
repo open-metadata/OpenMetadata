@@ -52,7 +52,8 @@ import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ServicePageData } from './ServiceDetailsPage';
+import { ServicePageData } from './ServiceDetailsPage.interface';
+
 interface ServiceMainTabContentProps {
   serviceName: string;
   servicePermission: OperationPermission;

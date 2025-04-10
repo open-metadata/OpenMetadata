@@ -148,19 +148,8 @@ import {
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './service-details-page.less';
+import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
-
-export type ServicePageData =
-  | Database
-  | Topic
-  | Dashboard
-  | Mlmodel
-  | Pipeline
-  | Container
-  | DashboardDataModel
-  | SearchIndexEntity
-  | StoredProcedure
-  | APICollection;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -1443,7 +1432,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             />
           </Col>
 
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"
