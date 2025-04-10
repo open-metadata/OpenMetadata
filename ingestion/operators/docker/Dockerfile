@@ -81,7 +81,7 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 
-RUN pip install --upgrade pip
+RUN pip install --upgrade setuptools pip wheel
 
 ARG INGESTION_DEPENDENCY="all"
 ARG RI_VERSION="1.6.6.9"

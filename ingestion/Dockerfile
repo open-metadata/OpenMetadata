@@ -77,7 +77,7 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 ARG RI_VERSION="1.6.6.9"
-RUN pip install --upgrade pip
+RUN pip install --upgrade setuptools pip wheel
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.10.5/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
