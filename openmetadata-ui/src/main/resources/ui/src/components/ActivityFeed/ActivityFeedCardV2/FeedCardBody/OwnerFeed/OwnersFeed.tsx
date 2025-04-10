@@ -60,7 +60,7 @@ function OwnersFeed({
     [isForFeedTab]
   );
 
-  const renderOwnerItems = useCallback(
+  const getOwnerItems = useCallback(
     (ownerList: EntityReference[]) => {
       return ownerList.length <= maxVisibleOwners ? (
         <Row wrap align="middle">
@@ -112,6 +112,16 @@ function OwnersFeed({
     [maxVisibleOwners, showThread]
   );
 
+  const renderUpdatedOwner = useMemo(
+    () => getOwnerItems(updatedOwner),
+    [updatedOwner, getOwnerItems]
+  );
+
+  const renderPreviousOwner = useMemo(
+    () => getOwnerItems(previousOwner),
+    [previousOwner, getOwnerItems]
+  );
+
   return (
     <Row gutter={[8, 8]}>
       {!isEmpty(updatedOwner) && (
@@ -124,7 +134,7 @@ function OwnersFeed({
               </Typography.Text>
             </Row>
 
-            <Col>{renderOwnerItems(updatedOwner)}</Col>
+            <Col>{renderUpdatedOwner}</Col>
           </Row>
         </Col>
       )}
@@ -139,7 +149,7 @@ function OwnersFeed({
                 </Typography.Text>
               </Row>
             </Col>
-            <Col>{renderOwnerItems(previousOwner)}</Col>
+            <Col>{renderPreviousOwner}</Col>
           </Row>
         </Col>
       )}
