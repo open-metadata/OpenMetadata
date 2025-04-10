@@ -1409,6 +1409,10 @@ export interface OidcClientConfig {
      */
     id?: string;
     /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
+    /**
      * Max Clock Skew
      */
     maxClockSkew?: string;

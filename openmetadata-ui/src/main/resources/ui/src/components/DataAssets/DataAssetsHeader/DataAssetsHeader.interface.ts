@@ -138,7 +138,7 @@ export type DataAssetsHeaderProps = {
   isCustomizedView?: boolean;
   disableRunAgentsButton?: boolean;
   afterTriggerAction?: VoidFunction;
-  isDayOneWorkflowStatusLoading?: boolean;
+  isAutoPilotWorkflowStatusLoading?: boolean;
 } & (
   | DataAssetTable
   | DataAssetTopic

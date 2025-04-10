@@ -1,27 +1,27 @@
 {
-  "$id": "DayOneExperienceAppConfig.json",
+  "$id": "AutoPilotAppConfig.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DayOneExperienceAppConfig",
-  "description": "Configuration for the Day One Experience Flow.",
+  "title": "AutoPilotAppConfig",
+  "description": "Configuration for the AutoPilot Application.",
   "type": "object",
   "definitions": {
-    "dayOneExperienceAppType": {
+    "autoPilotAppType": {
       "description": "Application type.",
       "type": "string",
-      "enum": ["DayOneExperienceApplication"],
-      "default": "DayOneExperienceApplication"
+      "enum": ["AutoPilotApplication"],
+      "default": "AutoPilotApplication"
     }
   },
   "properties": {
     "type": {
       "title": "Application Type",
       "description": "Application Type",
-      "$ref": "#/definitions/dayOneExperienceAppType",
-      "default": "DayOneExperienceApplication"
+      "$ref": "#/definitions/autoPilotAppType",
+      "default": "AutoPilotApplication"
     },
     "active": {
       "title": "Active",
-      "description": "Whether the Day One Experience flow should be active or not.",
+      "description": "Whether the AutoPilot Workflow should be active or not.",
       "type": "boolean",
       "default": true
     },

@@ -760,7 +760,7 @@ export interface FilterPattern {
  *
  * Configuration for the Collate AI Quality Agent.
  *
- * Configuration for the Day One Experience Flow.
+ * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -857,7 +857,7 @@ export interface CollateAIAppConfig {
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
-     * Whether the Day One Experience flow should be active or not.
+     * Whether the AutoPilot Workflow should be active or not.
      */
     active?: boolean;
     /**
@@ -1363,12 +1363,12 @@ export enum SearchIndexMappingLanguage {
  * Application type.
  */
 export enum CollateAIAppConfigType {
+    AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
-    DayOneExperienceApplication = "DayOneExperienceApplication",
     SearchIndexing = "SearchIndexing",
 }
 
@@ -2087,6 +2087,10 @@ export interface ConfigClass {
      * Regex to only fetch api collections with names matching the pattern.
      */
     apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
     /**
      * Open API Schema URL.
      */

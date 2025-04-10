@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 /**
- * Configuration for the Day One Experience Flow.
+ * Configuration for the AutoPilot Application.
  */
-export interface DayOneExperienceAppConfig {
+export interface AutoPilotAppConfig {
     /**
-     * Whether the Day One Experience flow should be active or not.
+     * Whether the AutoPilot Workflow should be active or not.
      */
     active: boolean;
     /**
@@ -25,7 +25,7 @@ export interface DayOneExperienceAppConfig {
     /**
      * Application Type
      */
-    type?: DayOneExperienceAppType;
+    type?: AutoPilotAppType;
 }
 
 /**
@@ -33,6 +33,6 @@ export interface DayOneExperienceAppConfig {
  *
  * Application type.
  */
-export enum DayOneExperienceAppType {
-    DayOneExperienceApplication = "DayOneExperienceApplication",
+export enum AutoPilotAppType {
+    AutoPilotApplication = "AutoPilotApplication",
 }
