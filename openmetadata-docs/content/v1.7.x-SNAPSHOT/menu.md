@@ -1061,6 +1061,8 @@ site_menu:
     url: /how-to-guides/data-insights/email-report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
+  - category: How-to Guides / Data Insights / Service Insights
+    url: /how-to-guides/data-insights/service-insights
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance

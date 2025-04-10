@@ -1,5 +1,5 @@
 ---
-title: Service Insights
+title: Service Insights Overview
 slug: /how-to-guides/data-insights/service-insights
 ---
 
