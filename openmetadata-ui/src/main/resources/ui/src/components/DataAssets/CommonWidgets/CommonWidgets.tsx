@@ -12,7 +12,7 @@
  */
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -216,13 +216,17 @@ export const CommonWidgets = ({
     [permissions, deleted]
   );
 
-  const handleDataProductsSave = async (dataProducts: DataProduct[]) => {
-    const updatedDataProducts = dataProducts.map((dataProduct) =>
-      getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
-    );
+  const handleDataProductsSave = useCallback(
+    async (dataProducts: DataProduct[]) => {
+      // Create a clean updated list of entity references
+      const updatedDataProducts = dataProducts.map((dataProduct) =>
+        getEntityReferenceFromEntity(dataProduct, EntityType.DATA_PRODUCT)
+      );
 
-    await onUpdate({ ...data, dataProducts: updatedDataProducts });
-  };
+      await onUpdate({ ...data, dataProducts: updatedDataProducts });
+    },
+    [data, onUpdate]
+  );
 
   const handleTagUpdateForGlossaryTerm = async (updatedTags?: TagLabel[]) => {
     setTagsUpdating(updatedTags);

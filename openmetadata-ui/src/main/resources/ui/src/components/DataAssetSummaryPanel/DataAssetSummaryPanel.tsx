@@ -51,6 +51,7 @@ export const DataAssetSummaryPanel = ({
   tags,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
+  isDomainVisible,
 }: DataAssetSummaryPanelProps) => {
   const { getEntityPermission } = usePermissionProvider();
   const [additionalInfo, setAdditionalInfo] = useState<
@@ -191,6 +192,7 @@ export const DataAssetSummaryPanel = ({
                   <CommonEntitySummaryInfo
                     componentType={componentType}
                     entityInfo={entityInfo}
+                    isDomainVisible={isDomainVisible}
                   />
                 </Col>
               </Row>

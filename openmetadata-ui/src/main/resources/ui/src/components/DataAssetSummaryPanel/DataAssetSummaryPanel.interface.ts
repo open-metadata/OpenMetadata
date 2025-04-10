@@ -25,4 +25,5 @@ export type DataAssetSummaryPanelProps = {
     dataProducts: DataProduct[];
   };
   entityType: EntityType;
+  isDomainVisible?: boolean;
 };
