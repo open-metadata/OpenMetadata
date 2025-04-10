@@ -517,8 +517,7 @@ const AddCustomProperty = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className:
-          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
+        className: 'content-resizable-panel-container max-width-md m-x-auto',
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,

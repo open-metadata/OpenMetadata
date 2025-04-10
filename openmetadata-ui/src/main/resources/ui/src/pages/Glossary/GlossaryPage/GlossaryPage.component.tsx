@@ -521,6 +521,7 @@ const GlossaryPage = () => {
       hideSecondPanel={!previewAsset}
       pageTitle={t('label.glossary')}
       secondPanel={{
+        wrapInCard: false,
         children: previewAsset && (
           <EntitySummaryPanel
             entityDetails={previewAsset}

@@ -10,20 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('antd/dist/antd.variable.less');
+@import (reference) url('../../../styles/variables.less');
+@import (reference) url('../../../styles/components/card.less');
 
 .generic-widget-card {
   height: 100%;
 
   .ant-card-head {
-    background-color: #f5f5f5;
+    background-color: @grey-10;
     border: none;
-    border-radius: 12px;
+    border-radius: @border-radius-sm;
   }
 
   .ant-card-body {
-    // calculate body height
-    max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
-    overflow-y: auto;
+    .scrollable-card-body-sm();
   }
 }

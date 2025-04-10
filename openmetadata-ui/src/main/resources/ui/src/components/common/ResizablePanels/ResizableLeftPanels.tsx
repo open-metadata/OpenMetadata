@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
-import PanelContainer from './PanelContainer/PanelContainer';
 import './resizable-panels.less';
 import { ResizablePanelsLeftProps } from './ResizablePanels.interface';
 
@@ -54,19 +53,17 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
           {!hideFirstPanel && (
-            <PanelContainer overlay={firstPanel.overlay}>
-              <Card
-                className="reflex-card card-padding-0"
-                title={
-                  firstPanel.title && (
-                    <Typography.Text strong className="m-b-0 text-sm">
-                      {firstPanel.title}
-                    </Typography.Text>
-                  )
-                }>
-                {firstPanel.children}
-              </Card>
-            </PanelContainer>
+            <Card
+              className="reflex-card card-padding-0"
+              title={
+                firstPanel.title && (
+                  <Typography.Text strong className="m-b-0 text-sm">
+                    {firstPanel.title}
+                  </Typography.Text>
+                )
+              }>
+              {firstPanel.children}
+            </Card>
           )}
         </ReflexElement>
 
@@ -118,9 +115,7 @@ const ResizableLeftPanels: React.FC<ResizablePanelsLeftProps> = ({
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>
-          <PanelContainer overlay={secondPanel.overlay}>
-            {secondPanel.children}
-          </PanelContainer>
+          {secondPanel.children}
         </ReflexElement>
       </ReflexContainer>
     </>
