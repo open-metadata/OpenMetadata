@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.feeds;
 
+import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -7,6 +8,8 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.C2;
@@ -14,6 +17,8 @@ import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DAT
 import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.TIER1_TAG_LABEL;
 import static org.openmetadata.service.resources.EntityResourceTest.TIER2_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
+import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
@@ -67,6 +72,7 @@ import org.openmetadata.service.util.TestUtils;
 public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   public static Table TABLE;
   public static Table TABLE2;
+  public static Table TABLE_NESTED;
 
   public static Table TABLE_WITHOUT_OWNER;
   public static String TABLE_LINK;
@@ -74,6 +80,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   public static String TABLE_WITHOUT_OWNER_LINK;
   public static String TABLE_COLUMN1_LINK;
   public static String TABLE_COLUMN2_LINK;
+  public static String TABLE_NESTED_LINK;
   public static List<Column> COLUMNS;
   public static User USER;
   public static String USER_LINK;
@@ -118,6 +125,22 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     createTable3.withName("table_without_owner").withOwners(null);
     TABLE_WITHOUT_OWNER =
         TABLE_RESOURCE_TEST.createAndCheckEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
+    Column c2_c =
+        getColumn("c", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(c2_c_d)));
+
+    CreateTable createTableNested =
+        TABLE_RESOURCE_TEST
+            .createRequest(test)
+            .withColumns(new ArrayList<>(singletonList(c2_c)))
+            .withName("table_with_nested_suggestion")
+            .withTableConstraints(null);
+
+    TABLE_NESTED = TABLE_RESOURCE_TEST.createAndCheckEntity(createTableNested, ADMIN_AUTH_HEADERS);
+    TABLE_NESTED_LINK =
+        String.format("<#E::table::%s::columns::c.d>", TABLE_NESTED.getFullyQualifiedName());
 
     COLUMNS =
         Collections.singletonList(
@@ -559,6 +582,22 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     expectedTags = new ArrayList<>(table.getTags());
     expectedTags.addAll(suggestion.getTagLabels());
     validateAppliedTags(expectedTags, table.getTags());
+  }
+
+  @Test
+  @Order(7)
+  void put_acceptSuggestionNested_200(TestInfo test) throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_NESTED_LINK);
+    Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+
+    // When accepting the suggestion, the nested column column1.column2 should have the Updated
+    // Description
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table = tableResourceTest.getEntity(TABLE_NESTED.getId(), "columns", USER_AUTH_HEADERS);
+    Column nestedColumn = table.getColumns().get(0).getChildren().get(0);
+    assertEquals("Update description", nestedColumn.getDescription());
   }
 
   public Suggestion createSuggestion(CreateSuggestion create, Map<String, String> authHeaders)
