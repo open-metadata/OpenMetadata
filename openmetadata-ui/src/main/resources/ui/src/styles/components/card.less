@@ -12,6 +12,17 @@
  */
 
 @import (reference) url('../variables.less');
+@import (reference) url('antd/dist/antd.variable.less');
+
+.scrollable-card-body-sm() {
+  max-height: calc(100% - @card-head-height-sm - @card-padding-base-sm);
+  overflow-y: auto;
+}
+
+.scrollable-card-body() {
+  max-height: calc(100% - @card-head-height - @card-padding-base);
+  overflow-y: auto;
+}
 
 .ant-card {
   background: @background-color;
@@ -69,9 +80,17 @@
     border-radius: @border-radius-sm;
   }
 
-  height: calc(100% - 52px - 20px);
-  overflow-y: auto;
+  .ant-card-body {
+    .scrollable-card-body();
+  }
+
   border-radius: @border-radius-sm;
   border: 1px solid @blue-15;
   background: @white;
+}
+
+.ant-card.scrollable-body-card {
+  .ant-card-body {
+    .scrollable-card-body();
+  }
 }

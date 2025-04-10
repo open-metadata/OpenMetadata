@@ -164,7 +164,7 @@ const EditRulePage = () => {
   return (
     <PageLayoutV1
       pageTitle={t('label.edit-entity', { entity: t('label.rule') })}>
-      <Card className="service-form-container w-800">
+      <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
         <Typography.Paragraph
           className="text-base"

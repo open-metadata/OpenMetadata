@@ -133,7 +133,9 @@ const TestCaseIncidentTab = () => {
   };
 
   return (
-    <div className="incident-page-issue-tab" data-testid="issue-tab-container">
+    <div
+      className="h-full incident-page-issue-tab"
+      data-testid="issue-tab-container">
       <div
         className="left-container"
         data-testid="left-container"

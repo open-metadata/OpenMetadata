@@ -524,8 +524,8 @@ export const renderDataInsightLineChart = (
 };
 
 export const getQueryFilterForDataInsightChart = (
-  teamFilter?: string,
-  tierFilter?: string
+  teamFilter?: string[],
+  tierFilter?: string[]
 ) => {
   if (!tierFilter && !teamFilter) {
     return undefined;
@@ -535,18 +535,28 @@ export const getQueryFilterForDataInsightChart = (
     query: {
       bool: {
         must: [
-          {
-            bool: {
-              must: [
-                ...(tierFilter
-                  ? [{ term: { 'tier.keyword': tierFilter } }]
-                  : []),
-                ...(teamFilter
-                  ? [{ term: { 'owners.displayName.keyword': teamFilter } }]
-                  : []),
-              ],
-            },
-          },
+          ...(tierFilter
+            ? [
+                {
+                  bool: {
+                    should: tierFilter.map((tier) => ({
+                      term: { 'tier.keyword': tier },
+                    })),
+                  },
+                },
+              ]
+            : []),
+          ...(teamFilter
+            ? [
+                {
+                  bool: {
+                    should: teamFilter.map((team) => ({
+                      term: { 'owners.name.keyword': team },
+                    })),
+                  },
+                },
+              ]
+            : []),
         ],
       },
     },

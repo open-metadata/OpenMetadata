@@ -144,7 +144,7 @@ const AddRulePage = () => {
       pageTitle={t('label.add-new-entity', {
         entity: t('label.rule'),
       })}>
-      <Card className="service-form-container w-800">
+      <Card className="m-x-auto w-800">
         <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
 
         <Typography.Paragraph

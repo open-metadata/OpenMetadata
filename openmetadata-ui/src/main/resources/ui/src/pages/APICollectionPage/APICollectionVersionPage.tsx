@@ -280,7 +280,7 @@ const APICollectionVersionPage = () => {
         ),
         key: EntityTabs.API_ENDPOINT,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" span={24}>
               <DescriptionV1
                 description={description}
@@ -389,7 +389,7 @@ const APICollectionVersionPage = () => {
                 permissions={collectionPermissions}
                 type={EntityType.API_COLLECTION}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="p-x-lg" span={24}>
+                <Col className="entity-version-page-tabs" span={24}>
                   <Tabs
                     className="tabs-new"
                     data-testid="tabs"

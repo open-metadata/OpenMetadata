@@ -216,25 +216,55 @@
 @page-height: calc(100vh - @om-navbar-height - @padding-mlg);
 @left-side-panel-width: 230px;
 
-// 172px - navbar height
-@entity-details-tab-height: calc(100vh - 172px - @om-navbar-height);
+@data-asset-header-height: 0px; // Original height: 230px currently set to 0 to allow full scroll
+@data-asset-header-height-versions-page: 114px;
+@tab-height: 60px;
+
+@entity-details-tab-height: calc(
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-md
+);
+@entity-version-page-tabs-height: calc(
+  100vh - @data-asset-header-height-versions-page - @tab-height -
+    @om-navbar-height - @size-md
+);
+
+@app-details-page-tabs-height: calc(
+  100vh - 132px - @tab-height - @om-navbar-height - @size-md
+);
+@app-install-page-tabs-height: calc(
+  100vh - 70px - @om-navbar-height - @size-md
+);
+
 @users-page-tabs-height: calc(100vh - @om-navbar-height - 58px);
+
+@services-page-tabs-height: calc(
+  100vh - 36px - @tab-height - @om-navbar-height - @size-md
+);
 /* navbar+tab_height+padding = 64+46+12  */
 
-// 142px - navbar height
-@glossary-page-height: calc(100vh - 142px - @om-navbar-height);
+@glossary-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// 136px - navbar height
-@domain-page-height: calc(100vh - 136px - @om-navbar-height);
+@domain-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// 136px - navbar height
-@glossary-term-page-height: calc(100vh - 136px - @om-navbar-height);
+@incident-manager-page-height: calc(
+  100vh - 154px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// 136px - navbar height
-@tag-page-height: calc(100vh - 136px - @om-navbar-height);
+@glossary-term-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// Navbar height - 49px for filter bar on explore page
-@explore-page-height: calc(100vh - @om-navbar-height - 49px);
+@tag-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
+@metric-page-height: calc(
+  100vh - 188px - @tab-height - @om-navbar-height - @size-mlg
+);
+
 @welcome-page-height: calc(100vh - 112px);
 
 @profile-page-sidebar: calc(100vh - @om-navbar-height - 40px);
@@ -247,8 +277,6 @@
 // 152px - navbar height
 @glossary-page-tab-height: calc(100vh - 152px - @om-navbar-height);
 @lineage-sidebar-width: 110px;
-
-@explore-content-height-resizable-panel: calc(100vh - 144px);
 
 // Severity
 @severity-1: #9c0700;

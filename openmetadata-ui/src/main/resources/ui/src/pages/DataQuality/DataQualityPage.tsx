@@ -102,7 +102,7 @@ const DataQualityPage = () => {
         pageTitle={t('label.data-quality')}
         secondPanel={{
           children: (
-            <Card>
+            <Card className="h-full overflow-y-auto">
               <DataQualityProvider>
                 <Row data-testid="data-insight-container" gutter={[0, 16]}>
                   <Col span={isEmpty(extraDropdownContent) ? 24 : 23}>

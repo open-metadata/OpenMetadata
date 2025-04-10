@@ -186,11 +186,7 @@ const QueryPage = () => {
   }
 
   if (isUndefined(query)) {
-    return (
-      <div className="flex-center font-medium" data-testid="no-queries">
-        <ErrorPlaceHolder />
-      </div>
-    );
+    return <ErrorPlaceHolder />;
   }
 
   return (

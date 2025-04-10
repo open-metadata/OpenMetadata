@@ -257,8 +257,7 @@ function EditConnectionFormPage() {
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className:
-          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
+        className: 'content-resizable-panel-container max-width-md m-x-auto',
       }}
       hideSecondPanel={!serviceDetails?.serviceType}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}

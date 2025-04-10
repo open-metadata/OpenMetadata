@@ -22,9 +22,16 @@ import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
+interface OwnerLabelV2Props {
+  dataTestId?: string;
+}
+
 export const OwnerLabelV2 = <
   T extends { owners?: EntityReference[]; id: string }
->() => {
+>(
+  props: OwnerLabelV2Props
+) => {
+  const { dataTestId = 'glossary-right-panel-owner-link' } = props;
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
 
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
@@ -36,7 +43,7 @@ export const OwnerLabelV2 = <
   return (
     <Card
       className="new-header-border-card"
-      data-testid="glossary-right-panel-owner-link"
+      data-testid={dataTestId}
       title={
         <div className="d-flex items-center gap-2">
           <Typography.Text className="text-sm font-medium">

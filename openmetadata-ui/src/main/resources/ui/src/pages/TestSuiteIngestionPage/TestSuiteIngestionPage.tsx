@@ -127,7 +127,7 @@ const TestSuiteIngestionPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className:
-          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
+          'content-resizable-panel-container max-width-md w-9/10 m-x-auto',
         children: (
           <div>
             <TitleBreadcrumb titleLinks={slashedBreadCrumb} />

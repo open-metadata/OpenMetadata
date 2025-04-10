@@ -11,31 +11,26 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
-@summary-panel-offset: 176px;
+@import (reference) url('../../../styles/variables.less');
+@import (reference) url('../../../styles/components/card.less');
 
 .summary-panel-container {
   position: sticky;
-  height: calc(100vh - @summary-panel-offset);
-  z-index: 9;
   box-shadow: none;
   font-size: 14px;
-  overflow-y: scroll;
   overflow-x: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
+  height: 100%;
 
   .ant-card-head {
     border-bottom: none;
     padding-top: 0;
   }
 
-  .ant-drawer-content-wrapper {
-    box-shadow: none;
-  }
-
-  .ant-drawer-body {
-    padding: unset;
+  .ant-card-body {
+    padding-top: 0;
+    .scrollable-card-body();
   }
 
   .ant-divider {
@@ -101,10 +96,6 @@
     border-radius: @border-radius-base;
     height: 300px;
   }
-}
-
-.entity-icon {
-  margin-top: 2px;
 }
 
 .summary-panel-card {

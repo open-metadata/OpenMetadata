@@ -146,7 +146,7 @@ const ProfilerConfigurationPage = () => {
     <PageLayoutV1 pageTitle={t('label.profiler-configuration')}>
       <Row
         align="middle"
-        className="profiler-configuration-page-container service-form-container"
+        className="profiler-configuration-page-container"
         gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />

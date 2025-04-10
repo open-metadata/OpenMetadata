@@ -404,8 +404,14 @@ export const DataInsightChartCard = ({
   };
 
   useEffect(() => {
-    fetchData();
-  }, [chartFilter]);
+    !kpi.isLoading && fetchData();
+  }, [
+    chartFilter.startTs,
+    chartFilter.endTs,
+    chartFilter.team,
+    chartFilter.tier,
+    kpi.isLoading,
+  ]);
 
   const rightSidePanelLabel = useMemo(() => {
     switch (type) {
@@ -416,6 +422,7 @@ export const DataInsightChartCard = ({
           }) + (isPercentageGraph ? ' %' : '')
         );
 
+      case SystemChartType.PercentageOfServiceWithDescription:
       case SystemChartType.PercentageOfDataAssetWithDescription:
         return (
           t('label.completed-entity', {
@@ -424,19 +431,6 @@ export const DataInsightChartCard = ({
         );
 
       case SystemChartType.PercentageOfDataAssetWithOwner:
-        return (
-          t('label.assigned-entity', {
-            entity: t('label.owner'),
-          }) + (isPercentageGraph ? ' %' : '')
-        );
-
-      case SystemChartType.PercentageOfServiceWithDescription:
-        return (
-          t('label.completed-entity', {
-            entity: t('label.description'),
-          }) + (isPercentageGraph ? ' %' : '')
-        );
-
       case SystemChartType.PercentageOfServiceWithOwner:
         return (
           t('label.assigned-entity', {

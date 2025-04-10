@@ -364,7 +364,7 @@ const GlossaryTermsV1 = ({
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Row data-testid="glossary-term" gutter={[0, 8]}>
+      <Row data-testid="glossary-term" gutter={[0, 12]}>
         <Col span={24}>
           <GlossaryHeader
             updateVote={updateVote}
@@ -374,7 +374,7 @@ const GlossaryTermsV1 = ({
           />
         </Col>
 
-        <Col span={24}>
+        <Col className="glossary-term-page-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}

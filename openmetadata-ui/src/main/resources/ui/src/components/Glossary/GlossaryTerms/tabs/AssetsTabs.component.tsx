@@ -618,7 +618,7 @@ const AssetsTabs = forwardRef(
             )}
           </div>
         ) : (
-          assetErrorPlaceHolder
+          <div className="h-full">{assetErrorPlaceHolder}</div>
         ),
       [
         type,
@@ -813,7 +813,11 @@ const AssetsTabs = forwardRef(
           )}
           data-testid="table-container"
           id="asset-tab">
-          <Row className="filters-row gap-2 " gutter={[0, 20]}>
+          <Row
+            className={classNames('filters-row gap-2 p-md', {
+              'h-full': assetCount === 0,
+            })}
+            gutter={[0, 20]}>
             {assetCount > 0 && (
               <>
                 <Col className="d-flex items-center gap-3" span={24}>

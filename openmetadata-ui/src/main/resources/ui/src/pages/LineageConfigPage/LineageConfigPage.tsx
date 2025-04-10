@@ -126,8 +126,7 @@ const LineageConfigPage = () => {
       <ResizablePanels
         className="content-height-with-resizable-panel"
         firstPanel={{
-          className:
-            'content-resizable-panel-container max-width-md w-9/10 service-form-container ',
+          className: 'content-resizable-panel-container max-width-md m-x-auto',
           children: (
             <div data-testid="add-metric-container">
               <Row gutter={[16, 16]}>

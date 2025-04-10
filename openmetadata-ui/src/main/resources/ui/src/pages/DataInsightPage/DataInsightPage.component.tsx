@@ -141,7 +141,7 @@ const DataInsightPage = () => {
         secondPanel={{
           children: (
             <DataInsightProvider>
-              <Card>
+              <Card className="h-full overflow-y-auto">
                 <Row data-testid="data-insight-container" gutter={[16, 16]}>
                   {isHeaderVisible && (
                     <Col span={24}>

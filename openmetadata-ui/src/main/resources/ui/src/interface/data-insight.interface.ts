@@ -27,13 +27,13 @@ export interface ChartAggregateParam {
   from?: number;
   size?: number;
   queryFilter?: string;
-  tier?: string;
-  team?: string;
+  tier?: string[];
+  team?: string[];
 }
 
 export interface ChartFilter {
-  team?: string;
-  tier?: string;
+  team?: string[];
+  tier?: string[];
   startTs: number;
   endTs: number;
 }

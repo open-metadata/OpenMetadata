@@ -297,10 +297,7 @@ const AppearanceConfigSettingsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.theme')}>
-      <Row
-        align="middle"
-        className="page-container service-form-container"
-        gutter={[0, 16]}>
+      <Row align="middle" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

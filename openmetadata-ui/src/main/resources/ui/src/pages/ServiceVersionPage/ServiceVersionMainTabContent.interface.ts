@@ -16,7 +16,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/type';
 import { Paging } from '../../generated/type/paging';
 import { ServicesType } from '../../interface/service.interface';
-import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 
 export interface ServiceVersionMainTabContentProps {
   serviceName: string;

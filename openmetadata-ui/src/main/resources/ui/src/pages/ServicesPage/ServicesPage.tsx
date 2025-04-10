@@ -92,7 +92,7 @@ const ServicesPage = () => {
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
-        <Col span={24}>
+        <Col className="h-full" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={search as string}
