@@ -22,6 +22,7 @@ import {
 } from 'antd';
 import Input, { InputRef } from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
 import React, {
   ChangeEvent,
   useCallback,
@@ -77,21 +78,32 @@ const DeleteWidgetModal = ({
   );
   const [isLoading, setIsLoading] = useState(false);
   const deleteTextInputRef = useRef<InputRef>(null);
+  const entityTypeName = useMemo(() => {
+    return startCase(entityType);
+  }, [entityType]);
 
   const DELETE_OPTION = useMemo(
     () => [
       {
-        title: `${t('label.delete')} ${entityType} "${entityName}"`,
-        description: `${deleteWidgetClassBase.getDeleteMessage(
-          entityName,
-          entityType,
-          true
-        )} ${softDeleteMessagePostFix}`,
+        title: `${t('label.delete')} ${entityTypeName} "${entityName}"`,
+        description: (
+          <>
+            $
+            {deleteWidgetClassBase.getDeleteMessage(
+              entityName,
+              entityType,
+              true
+            )}
+            ${softDeleteMessagePostFix}
+          </>
+        ),
         type: DeleteType.SOFT_DELETE,
         isAllowed: allowSoftDelete,
       },
       {
-        title: `${t('label.permanently-delete')} ${entityType} "${entityName}"`,
+        title: `${t(
+          'label.permanently-delete'
+        )} ${entityTypeName} "${entityName}"`,
         description: (
           <>
             {deleteMessage ??
