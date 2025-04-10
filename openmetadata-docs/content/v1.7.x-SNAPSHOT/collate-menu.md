@@ -920,6 +920,8 @@ site_menu:
     url: /how-to-guides/data-insights/data-culture
   - category: How-to Guides / Data Insights / Custom Data Insight Dashboards
     url: /how-to-guides/data-insights/custom-dashboard
+  - category: How-to Guides / Data Insights / Service Insights
+    url: /how-to-guides/data-insights/service-insights
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
