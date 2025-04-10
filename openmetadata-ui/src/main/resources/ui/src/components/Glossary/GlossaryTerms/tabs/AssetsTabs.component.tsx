@@ -91,7 +91,6 @@ import {
 } from '../../../../utils/StringsUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -241,7 +240,7 @@ const AssetsTabs = forwardRef(
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
           hits[0] && setSelectedCard(hits[0]._source);
-        } catch (_) {
+        } catch {
           // Nothing here
         } finally {
           setIsLoading(false);
@@ -430,7 +429,7 @@ const AssetsTabs = forwardRef(
     const assetErrorPlaceHolder = useMemo(() => {
       if (!isEmpty(activeFilter)) {
         return (
-          <ErrorPlaceHolder
+          <ErrorPlaceHolderNew
             heading={t('label.asset')}
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
@@ -442,6 +441,7 @@ const AssetsTabs = forwardRef(
       ) {
         return (
           <ErrorPlaceHolderNew
+            className="p-lg "
             icon={
               <AddPlaceHolderIcon
                 className="text-grey-14"
@@ -461,6 +461,7 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolderNew
+            className="p-lg"
             icon={
               <AddPlaceHolderIcon
                 className="text-grey-14"
@@ -808,7 +809,7 @@ const AssetsTabs = forwardRef(
       <>
         <div
           className={classNames(
-            'assets-tab-container relative bg-white p-b-box border-radius-card h-full'
+            'assets-tab-container relative bg-white border-radius-card h-full'
           )}
           data-testid="table-container"
           id="asset-tab">
@@ -864,7 +865,7 @@ const AssetsTabs = forwardRef(
               </>
             )}
             {isLoading ? (
-              <Col span={24}>
+              <Col className="border-default border-radius-sm p-lg" span={24}>
                 <Space className="w-full" direction="vertical" size={16}>
                   <Skeleton />
                   <Skeleton />

@@ -150,7 +150,7 @@ const GlossaryTermsV1 = ({
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
+      } catch {
         setAssetCount(0);
       }
     }
@@ -222,7 +222,7 @@ const GlossaryTermsV1 = ({
               label: (
                 <div data-testid="assets">
                   {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
-                  <span className="p-l-xs ">
+                  <span className="p-l-xs">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>

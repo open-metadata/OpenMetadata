@@ -195,7 +195,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           showErrorToast(error as AxiosError);
         }
       }
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -211,7 +211,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Skeleton active />;
+    return (
+      <div className="p-lg border-default border-radius-sm">
+        <Skeleton active />
+      </div>
+    );
   }
 
   if (!hasPermission) {
@@ -231,7 +235,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return (
       <div className="h-full p-x-lg flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
-          className={className}
+          className={classNames(className, 'border-default border-radius-sm')}
           placeholderText={
             <Transi18next
               i18nKey="message.no-custom-properties-entity"

@@ -101,6 +101,7 @@ function TotalDataAssetsWidget({
         height: 140,
         width: 140,
         chartType: ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
+        placeholderClassName: 'border-none',
         theme,
       }),
     []
