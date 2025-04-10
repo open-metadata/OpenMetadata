@@ -311,8 +311,7 @@ const AddServicePage = () => {
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className:
-          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
+        className: 'content-resizable-panel-container max-width-md m-x-auto',
       }}
       hideSecondPanel={hideSecondPanel}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}

@@ -127,9 +127,9 @@ const DatabaseDetails: FunctionComponent = () => {
         EntityType.DATABASE,
         decodedDatabaseFQN,
         databasePermission,
-        database?.deleted ?? false
+        database
       ),
-    [decodedDatabaseFQN, databasePermission, database?.deleted]
+    [decodedDatabaseFQN, databasePermission, database]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
@@ -487,7 +487,7 @@ const DatabaseDetails: FunctionComponent = () => {
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
-            <Col span={24}>
+            <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"

@@ -117,7 +117,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         EntityType.DATABASE_SCHEMA,
         decodedDatabaseSchemaFQN,
         databaseSchemaPermission,
-        databaseSchema?.deleted ?? false
+        databaseSchema
       ),
     [
       databaseSchemaPermission,
@@ -559,7 +559,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}
             onUpdate={handleUpdateDatabaseSchema}>
-            <Col span={24}>
+            <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"

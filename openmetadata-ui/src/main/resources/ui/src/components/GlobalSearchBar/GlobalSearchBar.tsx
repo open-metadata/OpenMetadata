@@ -116,7 +116,7 @@ export const GlobalSearchBar = () => {
   ]);
 
   const searchHandler = (value: string) => {
-    if (!isTourOpen && value) {
+    if (!isTourOpen) {
       setIsSearchBoxOpen(false);
       addToRecentSearched(value);
 
@@ -138,7 +138,6 @@ export const GlobalSearchBar = () => {
 
   const handleClear = () => {
     setSearchValue('');
-    searchHandler('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

@@ -150,7 +150,7 @@ const GlossaryTermsV1 = ({
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
+      } catch {
         setAssetCount(0);
       }
     }
@@ -222,25 +222,23 @@ const GlossaryTermsV1 = ({
               label: (
                 <div data-testid="assets">
                   {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
-                  <span className="p-l-xs ">
+                  <span className="p-l-xs">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>
               ),
               key: EntityTabs.ASSETS,
               children: (
-                <div className="p-md">
-                  <AssetsTabs
-                    assetCount={assetCount}
-                    entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                    isSummaryPanelOpen={isSummaryPanelOpen}
-                    permissions={assetPermissions}
-                    ref={assetTabRef}
-                    onAddAsset={() => setAssetModalVisible(true)}
-                    onAssetClick={onAssetClick}
-                    onRemoveAsset={handleAssetSave}
-                  />
-                </div>
+                <AssetsTabs
+                  assetCount={assetCount}
+                  entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                  isSummaryPanelOpen={isSummaryPanelOpen}
+                  permissions={assetPermissions}
+                  ref={assetTabRef}
+                  onAddAsset={() => setAssetModalVisible(true)}
+                  onAssetClick={onAssetClick}
+                  onRemoveAsset={handleAssetSave}
+                />
               ),
             },
             {
@@ -366,7 +364,7 @@ const GlossaryTermsV1 = ({
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Row data-testid="glossary-term" gutter={[0, 8]}>
+      <Row data-testid="glossary-term" gutter={[0, 12]}>
         <Col span={24}>
           <GlossaryHeader
             updateVote={updateVote}
@@ -376,7 +374,7 @@ const GlossaryTermsV1 = ({
           />
         </Col>
 
-        <Col span={24}>
+        <Col className="glossary-term-page-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
