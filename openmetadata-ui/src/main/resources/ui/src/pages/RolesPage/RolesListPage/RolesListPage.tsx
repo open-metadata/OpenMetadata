@@ -133,7 +133,7 @@ const RolesListPage = () => {
           isEmpty(record?.description) ? (
             NO_DATA_PLACEHOLDER
           ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description || ''} />
+            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
           ),
       },
       {
@@ -312,6 +312,7 @@ const RolesListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.role')}
                   permission={addRolePermission}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

@@ -808,9 +808,6 @@ site_menu:
   - category: Connectors / Ingestion / Workflows/ Metadata / Multithreading
     url: /connectors/ingestion/workflows/metadata/multithreading
 
-  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
-    url: /connectors/ingestion/workflows/reverse-metadata
-
   - category: Connectors / Ingestion / Workflows / Usage
     url: /connectors/ingestion/workflows/usage
   - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
@@ -1124,6 +1121,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.7 Release
+    url: /releases/all-releases/#1.6.7-release
   - category: Releases / All Releases / 1.6.6 Release
     url: /releases/all-releases/#1.6.6-release
   - category: Releases / All Releases / 1.6.5 Release

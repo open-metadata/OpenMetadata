@@ -232,7 +232,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   );
 
   if (isEmpty(dataModel?.columns)) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 
   return (

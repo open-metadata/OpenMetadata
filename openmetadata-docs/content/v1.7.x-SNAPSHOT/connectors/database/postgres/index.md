@@ -7,7 +7,7 @@ slug: /connectors/database/postgres
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=[]
 / %}
 
@@ -23,8 +23,8 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
 - [Troubleshooting](/connectors/database/postgres/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
 
@@ -216,26 +216,6 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
   height="450px"
   caption="SSL Configuration" /%}
 
+{% partial file="/v1.7/connectors/database/postgres/reverse-metadata.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata Ingestion
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-PostgreSQL supports the following reverse metadata ingestion features:
-- Support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
-
-### Requirements for Reverse Metadata
-
-In addition to the basic ingestion requirements, for reverse metadata ingestion the user needs:
-- `SUPERUSER` privilege to the user
-
-```sql
--- Grant superuser privilege to the user
-ALTER ROLE USER_NAME SUPERUSER;
-```
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
