@@ -7,7 +7,7 @@ slug: /connectors/database/bigquery
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners"]
 / %}
 

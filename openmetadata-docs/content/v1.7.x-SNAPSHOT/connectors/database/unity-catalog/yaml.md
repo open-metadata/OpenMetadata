@@ -7,7 +7,7 @@ slug: /connectors/database/unity-catalog/yaml
 name="Unity Catalog"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata Ingestion (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 

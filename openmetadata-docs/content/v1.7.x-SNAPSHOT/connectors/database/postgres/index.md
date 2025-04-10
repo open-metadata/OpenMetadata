@@ -7,7 +7,7 @@ slug: /connectors/database/postgres
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage", "Reverse Metadata Ingestion (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=[]
 / %}
 

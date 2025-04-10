@@ -7,7 +7,7 @@ slug: /connectors/database/redshift/yaml
 name="Redshift"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion (Collate Only)"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
