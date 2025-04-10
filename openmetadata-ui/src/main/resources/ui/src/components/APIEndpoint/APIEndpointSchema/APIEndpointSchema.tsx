@@ -91,6 +91,16 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     onUpdate: onApiEndpointUpdate,
   } = useGenericContext<APIEndpoint>();
 
+  const viewTypeOptions = [
+    {
+      label: t('label.request'),
+      value: SchemaViewType.REQUEST_SCHEMA,
+    },
+    {
+      label: t('label.response'),
+      value: SchemaViewType.RESPONSE_SCHEMA,
+    },
+  ];
   const {
     requestSchemaAllRowKeys,
     responseSchemaAllRowKeys,
@@ -408,16 +418,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             <div className="d-flex justify-between items-center w-full">
               <Segmented
                 className="segment-toggle"
-                options={[
-                  {
-                    label: t('label.request'),
-                    value: SchemaViewType.REQUEST_SCHEMA,
-                  },
-                  {
-                    label: t('label.response'),
-                    value: SchemaViewType.RESPONSE_SCHEMA,
-                  },
-                ]}
+                options={viewTypeOptions}
                 value={viewType}
                 onChange={handleViewChange}
               />

@@ -75,6 +75,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
+  const viewTypeOptions = [
+    {
+      label: t('label.field-plural'),
+      value: SchemaViewType.FIELDS,
+    },
+    { label: t('label.text'), value: SchemaViewType.TEXT },
+  ];
+
   const { fqn: entityFqn } = useFqn();
   const {
     data: topicDetails,
@@ -330,31 +338,16 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <ErrorPlaceHolder />
       ) : (
         <>
-          {/* {!isEmpty(messageSchema?.schemaFields) && !isVersionView && ( */}
-          <Col span={24}>
-            <Segmented
-              className="segment-toggle"
-              options={[
-                {
-                  label: t('label.field-plural'),
-                  value: SchemaViewType.FIELDS,
-                },
-                { label: t('label.text'), value: SchemaViewType.TEXT },
-              ]}
-              value={viewType}
-              onChange={handleViewChange}
-            />
-
-            {/* <Radio.Group value={viewType} onChange={handleViewChange}>
-              <Radio.Button value={SchemaViewType.FIELDS}>
-                {t('label.field-plural')}
-              </Radio.Button>
-              <Radio.Button value={SchemaViewType.TEXT}>
-                {t('label.text')}
-              </Radio.Button>
-            </Radio.Group> */}
-          </Col>
-          {/* )} */}
+          {!isEmpty(messageSchema?.schemaFields) && !isVersionView && (
+            <Col span={24}>
+              <Segmented
+                className="segment-toggle"
+                options={viewTypeOptions}
+                value={viewType}
+                onChange={handleViewChange}
+              />
+            </Col>
+          )}
 
           <Col span={24}>
             {viewType === SchemaViewType.TEXT ||
