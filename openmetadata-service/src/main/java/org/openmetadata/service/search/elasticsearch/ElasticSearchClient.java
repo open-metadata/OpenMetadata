@@ -1348,18 +1348,12 @@ public class ElasticSearchClient implements SearchClient {
       request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
 
       List<String> topHitFields = request.getSourceFields();
-      String sortField = request.getTopHits().getSortField();
-      SortOrder sortOrder =
-          request.getTopHits().getSortOrder()
-                  == org.openmetadata.schema.search.TopHits.SortOrder.DESC
-              ? SortOrder.DESC
-              : SortOrder.ASC;
 
       TopHitsAggregationBuilder topHitsAgg =
           AggregationBuilders.topHits(topHitsAggName)
               .size(request.getTopHits().getSize())
               .fetchSource(topHitFields.toArray(new String[0]), null)
-              .sort(SortBuilders.fieldSort(sortField).order(sortOrder));
+              .trackScores(false);
 
       termsAgg.subAggregation(topHitsAgg);
     }
