@@ -536,7 +536,6 @@ public class OpenSearchClient implements SearchClient {
           SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
           searchSourceBuilder.from(request.getFrom());
           searchSourceBuilder.size(request.getSize());
-          searchSourceBuilder.trackTotalHits(request.getTrackTotalHits());
           OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
           sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
           os.org.opensearch.action.search.SearchRequest searchRequest =

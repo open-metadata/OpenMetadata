@@ -881,7 +881,6 @@ public class ElasticSearchClient implements SearchClient {
         SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
         searchSourceBuilder.from(request.getFrom());
         searchSourceBuilder.size(request.getSize());
-        searchSourceBuilder.trackTotalHits(request.getTrackTotalHits());
         ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
         sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
         LOG.debug("Transformed NLQ query: {}", transformedQuery);
