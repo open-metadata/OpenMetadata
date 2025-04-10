@@ -164,16 +164,6 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteGlossary = (id: string) => {
-  return APIClient.delete(`/glossaries/${id}?recursive=true&hardDelete=true`);
-};
-
-export const deleteGlossaryTerm = (id: string) => {
-  return APIClient.delete(
-    `/glossaryTerms/${id}?recursive=true&hardDelete=true`
-  );
-};
-
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
   const response = await APIClient.get<CSVExportResponse>(
     `/glossaries/name/${getEncodedFqn(glossaryName)}/exportAsync`
