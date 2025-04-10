@@ -160,7 +160,7 @@ const TableDetailsPageV1: React.FC = () => {
         EntityType.TABLE,
         tableFqn,
         tablePermissions,
-        tableDetails?.deleted ?? false
+        tableDetails
       ),
     [tablePermissions, tableFqn, tableDetails?.deleted]
   );

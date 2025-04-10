@@ -127,7 +127,7 @@ const DatabaseDetails: FunctionComponent = () => {
         EntityType.DATABASE,
         decodedDatabaseFQN,
         databasePermission,
-        database?.deleted ?? false
+        database
       ),
     [decodedDatabaseFQN, databasePermission, database?.deleted]
   );

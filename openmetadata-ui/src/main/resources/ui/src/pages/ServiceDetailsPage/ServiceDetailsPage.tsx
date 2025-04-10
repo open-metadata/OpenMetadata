@@ -293,8 +293,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
         servicePermission,
-        serviceDetails?.deleted ?? false,
-        getEntityName(serviceDetails)
+        serviceDetails
       ),
     [
       servicePermission,
