@@ -1,95 +1,81 @@
 ---
 title: Reverse Metadata Ingestion Collate | Feature & Configuration
 slug: /connectors/ingestion/workflows/reverse-metadata
+collate: true
 ---
 
-# Reverse Metadata Ingestion
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
+# Reverse Metadata
 
-Reverse metadata ingestion is an advanced feature in OpenMetadata that facilitates bi-directional synchronization between OpenMetadata and the source database systems. While standard ingestion pulls metadata into OpenMetadata, reverse ingestion enables pushing metadata changes made within OpenMetadata back to the source systems. This ensures consistency and alignment across the entire data infrastructure.
+
+Reverse Metadata is an advanced feature in OpenMetadata that facilitates bi-directional synchronization between OpenMetadata and the source database systems. While standard ingestion pulls metadata into OpenMetadata, reverse ingestion enables pushing metadata changes made within OpenMetadata back to the source systems. This ensures consistency and alignment across the entire data infrastructure.
 
 {% note %}
-Reverse ingestion uses the existing service connection configuration provided during the initial metadata ingestion. You do not need to reconfigure the service connection.
+Reverse Metadata uses the existing service connection configuration provided during the initial metadata ingestion. You do not need to reconfigure the service connection. In order to use Reverse Metadata, this connections must use a role with write permissions.
 {% /note %}
+
 
 ## Supported Databases and Features
 
-### Athena
-- Table Description updates
-
-### BigQuery
-- Schema Description updates
-- Table Description updates
-- Schema and Table tag management
-
-### Clickhouse
-- Table Description updates
-- Column Description updates
-
-### Databricks
-- Full support for Description updates (Database, Schema, Table, Column)
-- Full support for Owner management (Database, Schema, Table)
-- Full support for Tag management (Database, Schema, Table, Column)
-
-### MSSQL
-- Description updates (Schema, Table, Column)
-- Owner management (Database, Schema)
-
-### MySQL
-- Table Description updates
-
-### Oracle
-- Table Description updates
-- Column Description updates
-
-### PostgreSQL
-- Full support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
-
-### Redshift
-- Full support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
-
-### Snowflake
-- Full support for Description updates (Database, Schema, Table, Column)
-- Tag management (Schema, Table, Column)
-
-### Unity Catalog
-- Full support for Description updates (Database, Schema, Table, Column)
-- Full support for Owner management (Database, Schema, Table)
-- Full support for Tag management (Database, Schema, Table, Column)
+| Database       | Update Description | Update Tags | Update Owners | Custom SQL Support | Documentation |
+|----------------|-------------------|-------------|---------------|-------------------|---------------|
+| Athena         | ✅ (Table)        | ❌          | ❌            | ✅                | [Link](/connectors/database/athena#reverse-metadata) |
+| BigQuery       | ✅ (Schema, Table)| ✅ (Schema, Table) | ❌            | ✅                | [Link](/connectors/database/bigquery#reverse-metadata) |
+| Clickhouse     | ✅ (Table, Column)| ❌          | ❌            | ✅                | [Link](/connectors/database/clickhouse#reverse-metadata) |
+| Databricks     | ✅  | ✅  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/databricks#reverse-metadata) |
+| MSSQL          | ✅ (Schema, Table, Column) | ❌          | ✅ (Database, Schema) | ✅                | [Link](/connectors/database/mssql#reverse-metadata) |
+| MySQL          | ✅ (Table)        | ❌          | ❌            | ✅                | [Link](/connectors/database/mysql#reverse-metadata) |
+| Oracle         | ✅ (Table, Column)| ❌          | ❌            | ✅                | [Link](/connectors/database/oracle#reverse-metadata) |
+| PostgreSQL     | ✅  | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/postgres#reverse-metadata) |
+| Redshift       | ✅  | ❌          | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/redshift#reverse-metadata) |
+| Snowflake      | ✅  | ✅ (Schema, Table, Column) | ❌            | ✅                | [Link](/connectors/database/snowflake#reverse-metadata) |
+| Unity Catalog  | ✅  | ✅  | ✅ (Database, Schema, Table) | ✅                | [Link](/connectors/database/unity-catalog#reverse-metadata) |
 
 ## Key Features
 
 ### Description Management
 - **Multi-level Support**: Update descriptions at database, schema, table, and column levels.
 - **Consistency**: Maintain uniform documentation across all systems.
-- **Custom SQL Support**: Flexibility to provide custom SQL templates for updates.
 
 ### Ownership Management
 - **Owner Assignment**: Add new owners to data assets.
 - **Owner Removal**: Remove existing owners when needed.
-- **Custom SQL Support**: Flexibility to provide custom SQL templates for updates.
 
 ### Tag and Label Management
 - **Bidirectional Sync**: Synchronize tags between OpenMetadata and source systems.
 - **Tag Operations**: Add new tags or remove existing ones.
 - **Conflict Prevention**: Built-in protection against ambiguous tag situations.
-- **Custom SQL Support**: Flexibility to provide custom SQL templates for updates.
+
+### Custom SQL Template
+
+You can define a custom SQL template to handle the metadata changes. The template is interpreted using python f-strings.
+These are the available variables:
+
+| Variable | Description | Context | Type |
+|----------|-------------| --- | --- |
+| `database` | The identifier of the database or catalog | Always | String |
+| `schema` | The identifier of the schema | Always | String |
+| `table` | The identifier of the table | Always | String |
+| `column` | The identifier of the column | Always | String |
+| `description` | Refers to the description | Description update | String |
+| `owner` | The identifier of the owner being added or removed. This value can be a username or an email and depends on the source system. | Owner update | String |
+| `tag_key` | The key of the tag being added or removed (Classification) | Tag update | String |
+| `tag_value` | The value of the tag being added or removed | Tag update | String |
+| `tags` | Refers to a list of tags (e.g., BigQuery). Example: [('my_tag', 'value'), ('env', 'prod')] | Always | List[Tuple[String, String]] |
+
+You can see examples of custom SQL templates in the specific connector documentation.
 
 {% note %}
 When updating tags during reverse ingestion, it is important to understand the difference in tag structures. Most databases support key-value pairs for tags, whereas OpenMetadata organizes tags using classifications and tag names. During reverse ingestion, OpenMetadata maps the classification name as the tag key and the tag name as the tag value. If a new tag from the same classification is applied to a data asset that already has a tag from that classification, the reverse ingestion process may raise an ambiguous tag error. This behavior is intended to prevent accidental overwriting of existing tags at the source system.
 {% /note %}
 
-## Maintenance
-
-- Regularly review sync status
-- Keep track of failed operations
-- Maintain proper documentation of custom implementations
-
 ## Getting Started
+
+### Channels
+
+Reverse Metadata is handled in "channels". Each channel can be customized to handle different types of metadata changes.
+Channels can have different filtering configurations depending on the source system and different operations to be performed.
+If a metadata update is processed by multiple channels, the metadata will be updated multiple times. This should not be an issue
+for trivial cases but can be an issue when the logic is different for each channel.
 
 ### Configuration Setup
 

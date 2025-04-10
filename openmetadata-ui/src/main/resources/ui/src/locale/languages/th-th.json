@@ -255,6 +255,7 @@
     "conversation-plural": "การสนทนาหลายรายการ",
     "copied": "คัดลอกแล้ว",
     "copy": "คัดลอก",
+    "copy-item": "{{item}} คัดลอก",
     "cost": "ค่า",
     "cost-analysis": "การวิเคราะห์ต้นทุน",
     "count": "จำนวน",

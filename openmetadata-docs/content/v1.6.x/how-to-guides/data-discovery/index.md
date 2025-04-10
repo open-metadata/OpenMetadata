@@ -13,10 +13,6 @@ OpenMetadata provides a user-friendly interface for **data discovery**. OpenMeta
   src="/images/v1.6/features/data-discovery.gif"
 /%}
 
-Watch the video on how easy it is to discovery your data in OpenMetadata.
-
-{%  youtube videoId="3xaHf3A2PgU" start="0:00" end="3:17" width="800px" height="450px" /%}
-
 {%inlineCalloutContainer%}
  {%inlineCallout
   color="violet-70"

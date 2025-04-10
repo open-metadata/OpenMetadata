@@ -101,6 +101,7 @@ const DataAssetsWidget = ({
         <Col className="data-assets-explore-widget-body" span={24}>
           {isEmpty(services) ? (
             <ErrorPlaceHolder
+              className="border-none"
               icon={<DataAssetsIcon height={SIZE.SMALL} width={SIZE.SMALL} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <Typography.Paragraph

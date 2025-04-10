@@ -362,6 +362,7 @@ const UserListPageV1 = () => {
           </Col>
           <Col className="mt-24" span={24}>
             <ErrorPlaceHolder
+              className="border-none"
               heading={t('label.user')}
               permission={isAdminUser}
               type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -465,7 +466,6 @@ const UserListPageV1 = () => {
 
         <Col span={24}>
           <Table
-            bordered
             className="user-list-table"
             columns={columns}
             customPaginationProps={{

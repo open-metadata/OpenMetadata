@@ -5,7 +5,7 @@ collate: false
 ---
 
 # Aws resources on RDS IAM Auth
-https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+[AWS Reference Doc](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html)
 
 # Requirements
 
@@ -30,4 +30,4 @@ Either through helm (if deployed in kubernetes) or as env vars.
 
 The `DB_USER_PASSWORD` is still required and cannot be empty. Set it to a random/dummy string.
 
-{% /note %} 
+{% /note %}

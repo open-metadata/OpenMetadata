@@ -196,7 +196,7 @@ export const DataAssetsHeader = ({
   extraDropdownContent,
   onMetricUpdate,
   badge,
-  isDqAlertSupported,
+  isDqAlertSupported = false,
   isCustomizedView = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
@@ -272,7 +272,7 @@ export const DataAssetsHeader = ({
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchDQFailureCount = async () => {
-    if (!tableClassBase.getAlertEnableStatus() && !isDqAlertSupported) {
+    if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
       setDqFailureCount(0);
 
       return;
@@ -603,9 +603,9 @@ export const DataAssetsHeader = ({
                   </Tooltip>
 
                   {(dataAsset as Table).sourceUrl && (
-                    <Tooltip title={t('label.source-url')}>
+                    <Tooltip placement="bottom" title={t('label.source-url')}>
                       <Typography.Link
-                        className="cursor-pointer"
+                        className="cursor-pointer source-url-link"
                         href={(dataAsset as Table).sourceUrl}
                         target="_blank">
                         <Button
