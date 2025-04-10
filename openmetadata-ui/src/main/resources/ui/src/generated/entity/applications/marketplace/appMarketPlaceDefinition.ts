@@ -26,7 +26,7 @@ export interface AppMarketPlaceDefinition {
     /**
      * Application Configuration object.
      */
-    appConfiguration?: any[] | boolean | CollateAIAppConfig | number | null | string;
+    appConfiguration?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
      * Application Logo Url.
      */
@@ -44,7 +44,8 @@ export interface AppMarketPlaceDefinition {
      */
     changeDescription?: ChangeDescription;
     /**
-     * Full Qualified ClassName for the the application
+     * Full Qualified ClassName for the the application. Use can use
+     * 'org.openmetadata.service.apps.AbstractNativeApplication' if you don't have one yet.
      */
     className: string;
     /**
@@ -294,6 +295,7 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
+    [property: string]: any;
 }
 
 /**

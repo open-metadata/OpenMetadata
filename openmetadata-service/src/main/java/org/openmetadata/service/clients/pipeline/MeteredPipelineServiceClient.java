@@ -81,6 +81,15 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
   }
 
   @Override
+  public PipelineServiceClientResponse runPipeline(
+      IngestionPipeline ingestionPipeline,
+      ServiceEntityInterface service,
+      Map<String, Object> config) {
+    return this.respondWithMetering(
+        RUN, () -> this.decoratedClient.runPipeline(ingestionPipeline, service, config));
+  }
+
+  @Override
   public PipelineServiceClientResponse deletePipeline(IngestionPipeline ingestionPipeline) {
     return this.respondWithMetering(
         DELETE, () -> this.decoratedClient.deletePipeline(ingestionPipeline));
