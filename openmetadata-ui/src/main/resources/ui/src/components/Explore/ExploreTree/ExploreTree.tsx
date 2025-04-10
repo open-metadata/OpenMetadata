@@ -274,7 +274,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           (node) => node.totalCount !== undefined && node.totalCount > 0
         );
       });
-    } catch (error) {
+    } catch {
       // Do nothing
     } finally {
       setIsLoading(false);
@@ -299,7 +299,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   if (treeData.length === 0) {
     return (
       <ErrorPlaceHolder
-        className="h-min-80 d-flex flex-col justify-center"
+        className="h-min-80 d-flex flex-col justify-center border-none"
         size={SIZE.MEDIUM}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph

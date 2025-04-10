@@ -20,6 +20,7 @@ import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
 import { User } from '../../generated/entity/teams/user';
 import { isMaskedEmail } from '../../utils/Users.util';
 
+import Icon from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -294,7 +295,11 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <DeleteIcon className="m-r-xss font-medium text-xs" />
+          <Icon
+            className="m-r-xss font-medium text-md ant-icon"
+            component={DeleteIcon}
+          />
+
           {t('label.deleted')}
         </span>
       )}

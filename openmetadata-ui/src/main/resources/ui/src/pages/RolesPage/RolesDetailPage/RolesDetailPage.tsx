@@ -264,7 +264,7 @@ const RolesDetailPage = () => {
           (data) => data.id === id
         );
 
-        return existingData ? existingData : { id, type: addAttribute.type };
+        return existingData ?? { id, type: addAttribute.type };
       });
       const patch = compare(role, { ...role, policies: updatedPolicies });
       try {
@@ -367,7 +367,9 @@ const RolesDetailPage = () => {
         <TitleBreadcrumb titleLinks={breadcrumb} />
         <>
           {isEmpty(role) ? (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <ErrorPlaceHolder
+              className="border-none"
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
               <div className="text-center">
                 <p>
                   {t('message.no-entity-found-for-name', {

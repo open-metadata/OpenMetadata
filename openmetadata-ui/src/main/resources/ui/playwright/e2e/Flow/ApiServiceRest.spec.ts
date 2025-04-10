@@ -102,6 +102,6 @@ test.describe('API service', () => {
 
     await deleteResponse;
 
-    await toastNotification(page, /Delete operation initiated for/);
+    await toastNotification(page, /deleted successfully!/);
   });
 });
