@@ -202,7 +202,7 @@ const TeamsPage = () => {
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);
-      } catch (error) {
+      } catch {
         // Error
       }
     }
@@ -493,11 +493,21 @@ const TeamsPage = () => {
   }
 
   if (!hasViewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isEmpty(selectedTeam)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
   }
 
   return (

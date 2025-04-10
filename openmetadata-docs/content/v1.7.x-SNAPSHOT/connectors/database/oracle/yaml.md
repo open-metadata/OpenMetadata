@@ -7,7 +7,7 @@ slug: /connectors/database/oracle/yaml
 name="Oracle"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -21,7 +21,7 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Data Quality](#data-quality)
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
-- [Reverse Metadata Ingestion](/connectors/ingestion/workflows/reverse-metadata)
+{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements

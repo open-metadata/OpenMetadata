@@ -20,6 +20,8 @@ site_menu:
     url: /getting-started/day-1/hybrid-saas/github-actions
   - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
     url: /getting-started/day-1/hybrid-saas/credentials
+  - category: Getting Started / Day 1 / Hybrid SaaS / Hybrid Ingestion Runner
+    url: /getting-started/day-1/hybrid-saas/hybrid-ingestion-runner
 
   - category: Connectors
     url: /connectors
@@ -680,6 +682,8 @@ site_menu:
     url: /connectors/ingestion/workflows/dbt/setup-multiple-dbt-projects
   - category: Connectors / Ingestion / Workflows / dbt / dbt troubleshooting
     url: /connectors/ingestion/workflows/dbt/dbt-troubleshooting
+  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
+    url: /connectors/ingestion/workflows/reverse-metadata
   - category: Connectors / Ingestion / Lineage
     url: /connectors/ingestion/lineage
   - category: Connectors / Ingestion / Lineage / Edit Data Lineage Manually
@@ -916,6 +920,8 @@ site_menu:
     url: /how-to-guides/data-insights/data-culture
   - category: How-to Guides / Data Insights / Custom Data Insight Dashboards
     url: /how-to-guides/data-insights/custom-dashboard
+  - category: How-to Guides / Data Insights / Service Insights
+    url: /how-to-guides/data-insights/service-insights
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
@@ -1039,6 +1045,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.7 Release
+    url: /releases/all-releases/#1.6.7-release
   - category: Releases / All Releases / 1.6.6 Release
     url: /releases/all-releases/#1.6.6-release
   - category: Releases / All Releases / 1.6.5 Release

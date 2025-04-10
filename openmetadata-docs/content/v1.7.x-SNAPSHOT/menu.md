@@ -808,9 +808,6 @@ site_menu:
   - category: Connectors / Ingestion / Workflows/ Metadata / Multithreading
     url: /connectors/ingestion/workflows/metadata/multithreading
 
-  - category: Connectors / Ingestion / Workflows / Reverse Metadata Ingestion
-    url: /connectors/ingestion/workflows/reverse-metadata
-
   - category: Connectors / Ingestion / Workflows / Usage
     url: /connectors/ingestion/workflows/usage
   - category: Connectors / Ingestion / Workflows / Usage / Usage Workflow Through Query Logs
@@ -1064,6 +1061,8 @@ site_menu:
     url: /how-to-guides/data-insights/email-report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
+  - category: How-to Guides / Data Insights / Service Insights
+    url: /how-to-guides/data-insights/service-insights
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
@@ -1124,6 +1123,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.7 Release
+    url: /releases/all-releases/#1.6.7-release
   - category: Releases / All Releases / 1.6.6 Release
     url: /releases/all-releases/#1.6.6-release
   - category: Releases / All Releases / 1.6.5 Release
