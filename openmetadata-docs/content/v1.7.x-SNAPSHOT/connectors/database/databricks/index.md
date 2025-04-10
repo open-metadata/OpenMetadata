@@ -7,7 +7,7 @@ slug: /connectors/database/databricks
 name="Databricks"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 
@@ -27,6 +27,8 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/databricks/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
@@ -72,6 +74,6 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/database/databricks/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

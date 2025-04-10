@@ -206,7 +206,9 @@ const PopoverTitle = React.memo(
               e.stopPropagation();
               onTitleClickHandler(getUserPath(name));
             }}>
-            <span className="font-medium m-r-xs">{displayName}</span>
+            <span className="font-medium m-r-xs" data-testid="user-name">
+              {displayName}
+            </span>
           </Button>
           {displayName !== name ? (
             <span className="text-grey-muted">{name}</span>

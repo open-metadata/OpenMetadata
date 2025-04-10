@@ -7,7 +7,7 @@ slug: /connectors/database/snowflake
 name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -24,6 +24,8 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/snowflake/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
 
@@ -85,7 +87,6 @@ You can find more information about the `account_usage` schema [here](https://do
 
 - **Ingesting Stored Procedures**: Openmetadata fetches the information by querying `snowflake.account_usage.procedures` & `snowflake.account_usage.functions`.
 
-
 ## Metadata Ingestion
 
 {% partial 
@@ -133,8 +134,6 @@ When using this field make sure you have all these tables available within your 
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
-
 ### Incomplete Column Level for Views
 
 For views with a tag or policy, you may see incorrect lineage, this can be because user may not have enough access to fetch those policies or tags. You need to grant the following privileges in order to fix it.
@@ -149,5 +148,7 @@ GRANT APPLY TAG TO ROLE NEW_ROLE;
 ```
 
 Depending on your view ddl you can grant the relevant privileged as per above queries.
+
+{% partial file="/v1.7/connectors/database/snowflake/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

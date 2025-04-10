@@ -59,6 +59,8 @@ To execute metadata extraction and usage workflow successfully the user or the s
 | 11   | datacatalog.taxonomies.list   | Fetch Policy Tags       |
 | 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
 | 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| 14   | logging.operations.list       | Incremental Metadata Ingestion    |
+| 15   | logging.logEntries.list       | Incremental Metadata Ingestion    |
 
 {% /multiTablesWrapper %}
 

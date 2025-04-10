@@ -7,7 +7,7 @@ slug: /connectors/database/mysql/yaml
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -22,7 +22,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
-
+{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements

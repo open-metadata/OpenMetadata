@@ -380,7 +380,7 @@ export const QualityTab = () => {
         <SummaryPanel testSummary={testCaseSummary ?? INITIAL_TEST_SUMMARY} />
       </Col>
       <Col span={24}>
-        <Tabs items={tabs} onChange={handleTabChange} />
+        <Tabs className="tabs-new" items={tabs} onChange={handleTabChange} />
       </Col>
     </Row>
   );

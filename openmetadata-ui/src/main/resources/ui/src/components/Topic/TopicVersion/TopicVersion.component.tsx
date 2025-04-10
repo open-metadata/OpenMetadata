@@ -223,6 +223,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
+                  className="tabs-new"
                   defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}

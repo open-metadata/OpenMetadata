@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -69,6 +70,7 @@ import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { getTableList } from '../../rest/tableAPI';
 import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -99,6 +101,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage } = useCustomPages(PageType.DatabaseSchema);
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -489,6 +492,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     }
   };
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(tabs[0], activeTab, PageType.DatabaseSchema),
+    [tabs[0], activeTab]
+  );
   if (isPermissionsLoading) {
     return <Loader />;
   }
@@ -541,7 +553,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             )}
           </Col>
           <GenericProvider<DatabaseSchema>
+            customizedPage={customizedPage}
             data={databaseSchema}
+            isTabExpanded={isTabExpanded}
             permissions={databaseSchemaPermission}
             type={EntityType.DATABASE_SCHEMA}
             onUpdate={handleUpdateDatabaseSchema}>
@@ -551,6 +565,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
                 onChange={activeTabHandler}
               />
             </Col>

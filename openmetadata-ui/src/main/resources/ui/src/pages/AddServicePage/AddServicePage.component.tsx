@@ -268,6 +268,7 @@ const AddServicePage = () => {
             {activeServiceStep === 3 && (
               <ConnectionConfigForm
                 cancelText={t('label.back')}
+                data={serviceConfig as ServicesType}
                 okText={t('label.next')}
                 serviceCategory={serviceCategory}
                 serviceType={serviceConfig.serviceType}

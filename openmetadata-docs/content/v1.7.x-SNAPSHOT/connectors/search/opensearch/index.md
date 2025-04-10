@@ -18,6 +18,7 @@ Configure and schedule OpenSearch metadata workflow from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/search/opensearch/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/search/opensearch/yaml"} /%}
 
@@ -155,5 +156,3 @@ Possible values:
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

@@ -145,7 +145,7 @@ const ObservabilityAlertsPage = () => {
         setAlerts(alertsList);
         handlePagingChange(paging);
         fetchAllAlertsPermission(alertsList);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
@@ -296,7 +296,7 @@ const ObservabilityAlertsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
-      <Row className="p-x-lg p-t-md" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
@@ -331,7 +331,7 @@ const ObservabilityAlertsPage = () => {
               emptyText: (
                 <ErrorPlaceHolder
                   permission
-                  className="p-y-md"
+                  className="p-y-md border-none"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

@@ -56,7 +56,10 @@ import {
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { ROUTES } from '../../constants/constants';
-import { ExportTypes } from '../../constants/Export.constants';
+import {
+  ExportTypes,
+  LINEAGE_EXPORT_SELECTOR,
+} from '../../constants/Export.constants';
 import {
   ELEMENT_DELETE_STATE,
   ZOOM_VALUE,
@@ -460,8 +463,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               name: decodedFqn,
               exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
             }),
-        documentSelector: '.react-flow__viewport',
-        viewport: getViewportForLineageExport(nodes),
+        documentSelector: LINEAGE_EXPORT_SELECTOR,
+        viewport: getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR),
         onExport: exportLineageData,
       });
     }

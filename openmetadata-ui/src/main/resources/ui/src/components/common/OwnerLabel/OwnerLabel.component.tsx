@@ -37,6 +37,7 @@ export const OwnerLabel = ({
   },
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
+  avatarSize = 32,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -46,11 +47,11 @@ export const OwnerLabel = ({
     if (!isCompactView) {
       if (showLabel || onUpdate) {
         return (
-          <div className="d-flex items-center gap-2">
+          <div className="d-flex items-center gap-2 m-b-xs">
             {showLabel && (
               <Typography.Text
                 className={classNames(
-                  'no-owner font-medium text-sm',
+                  'no-owner-heading font-medium text-sm',
                   className
                 )}>
                 {placeHolder ?? t('label.owner-plural')}
@@ -112,38 +113,48 @@ export const OwnerLabel = ({
 
     return (
       <div
-        className={classNames('d-flex owner-label-heading gap-2 items-center', {
-          'owner-label-container': !isCompactView,
+        className={classNames({
+          'owner-label-container d-flex flex-col items-start flex-start':
+            !isCompactView,
+          'd-flex owner-label-heading gap-2 items-center': isCompactView,
         })}
         data-testid="owner-label">
-        <div
-          className={classNames(
-            `d-inline-flex ${!isCompactView ? 'flex-col' : 'flex-wrap'} gap-2`,
-            { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
-            className
-          )}>
-          {ownerElementsNonCompactView}
-
-          {/* Owner avatars list */}
+        {ownerElementsNonCompactView}
+        <div className="d-flex items-center flex-center">
           <div
             className={classNames(
-              'd-flex flex-wrap items-center',
-              isCompactView && 'gap-2'
+              'avatar-group w-full  d-flex relative items-center',
+              {
+                'gap-2 flex-wrap': isCompactView,
+                inherited: Boolean(owners.some((owner) => owner?.inherited)),
+              },
+              className
             )}>
             {visibleOwners.map((owner, index) => (
-              <OwnerItem
-                className={className}
-                index={index}
-                isCompactView={isCompactView}
+              <div
                 key={owner.id}
-                owner={owner}
-                ownerDisplayName={ownerDisplayName?.[index]}
-              />
+                style={
+                  !isCompactView
+                    ? {
+                        zIndex: visibleOwners.length - index,
+                        marginRight: '-4px',
+                        position: 'relative',
+                      }
+                    : {}
+                }>
+                <OwnerItem
+                  avatarSize={avatarSize}
+                  className={className}
+                  index={index}
+                  isCompactView={isCompactView}
+                  owner={owner}
+                  ownerDisplayName={ownerDisplayName?.[index]}
+                />
+              </div>
             ))}
-
-            {/* Show more button/dropdown */}
-            {showMoreButton && (
+            {showMoreButton && isCompactView && (
               <OwnerReveal
+                avatarSize={isCompactView ? 24 : avatarSize}
                 isCompactView={isCompactView}
                 isDropdownOpen={isDropdownOpen}
                 owners={owners.slice(maxVisibleOwners)}
@@ -154,8 +165,22 @@ export const OwnerLabel = ({
               />
             )}
           </div>
-        </div>
 
+          {showMoreButton && !isCompactView && (
+            <div className="m-l-sm">
+              <OwnerReveal
+                avatarSize={isCompactView ? 24 : avatarSize}
+                isCompactView={isCompactView}
+                isDropdownOpen={isDropdownOpen}
+                owners={owners.slice(maxVisibleOwners)}
+                remainingCount={remainingOwnersCount}
+                setIsDropdownOpen={setIsDropdownOpen}
+                setShowAllOwners={setShowAllOwners}
+                showAllOwners={showAllOwners}
+              />
+            </div>
+          )}
+        </div>
         {isCompactView && onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
@@ -182,6 +207,7 @@ export const OwnerLabel = ({
     tooltipText,
     multiple,
     ownerElementsNonCompactView,
+    avatarSize,
   ]);
 
   return ownerElements;

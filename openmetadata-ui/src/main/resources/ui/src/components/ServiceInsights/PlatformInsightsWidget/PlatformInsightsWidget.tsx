@@ -51,7 +51,8 @@ function PlatformInsightsWidget({
         {t('message.platform-insight-description')}
       </Typography.Text>
 
-      <Row className="m-t-lg" gutter={16}>
+      {/* Don't remove this class name, it is used for exporting the platform insights chart */}
+      <Row className="m-t-lg export-platform-insights-chart" gutter={16}>
         <Col span={12}>
           <TotalDataAssetsWidget
             serviceName={serviceName}
@@ -85,7 +86,7 @@ function PlatformInsightsWidget({
                   height: 30,
                   width: 30,
                   theme,
-                  placeholderClassName: 'm-t-lg',
+                  placeholderClassName: 'm-t-lg border-none',
                 });
 
                 return (

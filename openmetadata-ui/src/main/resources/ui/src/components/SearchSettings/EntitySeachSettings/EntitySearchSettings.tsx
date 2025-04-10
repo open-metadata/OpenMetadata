@@ -526,10 +526,10 @@ const EntitySearchSettings = () => {
   return (
     <PageLayoutV1
       className="entity-search-settings"
-      mainContainerClassName="p-t-0 p-x-0"
+      mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
       <Row
-        className="entity-search-settings-header bg-white m-b-lg p-box m-t-0"
+        className="entity-search-settings-header bg-white m-b-lg p-box m-0"
         data-testid="entity-search-settings-header"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -555,7 +555,7 @@ const EntitySearchSettings = () => {
         </Col>
       </Row>
       <Row
-        className="d-flex gap-5 items-start entity-search-settings-content"
+        className="d-flex gap-5 items-start entity-search-settings-content m-x-0"
         gutter={0}>
         <Col className="d-flex flex-column settings-left-panel" span={8}>
           <Collapse

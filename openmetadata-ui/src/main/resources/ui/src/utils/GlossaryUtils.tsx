@@ -134,10 +134,10 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
 
 export const StatusClass = {
   [Status.Approved]: StatusType.Success,
-  [Status.Draft]: StatusType.Warning,
+  [Status.Draft]: StatusType.Pending,
   [Status.Rejected]: StatusType.Failure,
-  [Status.Deprecated]: StatusType.Warning,
-  [Status.InReview]: StatusType.Running,
+  [Status.Deprecated]: StatusType.Deprecated,
+  [Status.InReview]: StatusType.InReview,
 };
 
 export const StatusFilters = Object.values(Status)

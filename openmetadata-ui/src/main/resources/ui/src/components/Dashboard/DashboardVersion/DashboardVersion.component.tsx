@@ -278,6 +278,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
               onUpdate={() => Promise.resolve()}>
               <Col span={24}>
                 <Tabs
+                  className="tabs-new"
                   data-testid="tabs"
                   defaultActiveKey={tab}
                   items={tabItems}

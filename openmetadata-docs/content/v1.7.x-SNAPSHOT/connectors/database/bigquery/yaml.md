@@ -7,7 +7,7 @@ slug: /connectors/database/bigquery/yaml
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -23,6 +23,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 

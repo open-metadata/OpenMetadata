@@ -36,6 +36,7 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import './service-page.less';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
@@ -95,6 +96,7 @@ const ServicesPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={search as string}
+            className="tabs-new services-tabs"
             items={[
               ...(serviceName === 'dataObservabilityServices'
                 ? []

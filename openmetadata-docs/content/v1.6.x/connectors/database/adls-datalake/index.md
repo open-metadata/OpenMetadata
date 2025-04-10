@@ -18,6 +18,7 @@ Configure and schedule Datalake metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
+- [Troubleshooting](/connectors/database/adls-datalake/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/adls-datalake/yaml"} /%}
 
@@ -77,7 +78,5 @@ The current approach for authentication is based on `app registration`, reach ou
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

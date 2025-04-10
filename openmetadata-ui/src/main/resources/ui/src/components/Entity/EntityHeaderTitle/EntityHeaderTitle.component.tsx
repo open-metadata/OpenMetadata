@@ -112,7 +112,7 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={classNames('d-flex flex-col gap-2', {
+        className={classNames('d-flex flex-col gap-1', {
           'w-max-full-140': deleted || badge,
         })}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
@@ -160,7 +160,10 @@ const EntityHeaderTitle = ({
 
           <Tooltip
             placement="topRight"
-            title={copyTooltip ?? t('message.copy-to-clipboard')}>
+            title={
+              copyTooltip ??
+              t('label.copy-item', { item: t('label.url-uppercase') })
+            }>
             <Button
               className="remove-button-default-styling copy-button flex-center p-xss "
               icon={<Icon component={ShareIcon} />}

@@ -102,7 +102,11 @@ const ChangeParentHierarchy = ({
             },
           ]}>
           <Select
+            showSearch
             data-testid="change-parent-select"
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
             loading={loadingState.isFetching}
             options={options}
             placeholder={t('label.select-field', {

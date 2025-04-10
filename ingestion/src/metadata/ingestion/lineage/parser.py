@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -447,8 +447,14 @@ class LineageParser:
         if lr_sqlfluff:
             return lr_sqlfluff
 
-        lr_sqlparser = LineageRunner(query)
+        @timeout(seconds=timeout_seconds)
+        def get_sqlparser_lineage_runner(qry: str) -> LineageRunner:
+            lr_sqlparser = LineageRunner(qry)
+            lr_sqlparser.get_column_lineage()
+            return lr_sqlparser
+
         try:
+            lr_sqlparser = get_sqlparser_lineage_runner(query)
             _ = len(lr_sqlparser.get_column_lineage()) + len(
                 set(lr_sqlparser.source_tables).union(
                     set(lr_sqlparser.target_tables).union(
@@ -456,6 +462,13 @@ class LineageParser:
                     )
                 )
             )
+        except TimeoutError:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlParser failed for the [{dialect.value}]. "
+                f"Parser has been running for more than {timeout_seconds} seconds."
+            )
+            return None
         except Exception:
             # if both runner have failed we return the usual one
             logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")

@@ -41,8 +41,8 @@ import React, {
   useState,
 } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
@@ -91,7 +91,6 @@ import {
 } from '../../../../utils/StringsUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -241,7 +240,7 @@ const AssetsTabs = forwardRef(
           setData(hits);
           setAggregations(getAggregations(res?.aggregations));
           hits[0] && setSelectedCard(hits[0]._source);
-        } catch (_) {
+        } catch {
           // Nothing here
         } finally {
           setIsLoading(false);
@@ -430,7 +429,7 @@ const AssetsTabs = forwardRef(
     const assetErrorPlaceHolder = useMemo(() => {
       if (!isEmpty(activeFilter)) {
         return (
-          <ErrorPlaceHolder
+          <ErrorPlaceHolderNew
             heading={t('label.asset')}
             type={ERROR_PLACEHOLDER_TYPE.FILTER}
           />
@@ -442,6 +441,7 @@ const AssetsTabs = forwardRef(
       ) {
         return (
           <ErrorPlaceHolderNew
+            className="p-lg "
             icon={
               <AddPlaceHolderIcon
                 className="text-grey-14"
@@ -461,6 +461,7 @@ const AssetsTabs = forwardRef(
       } else {
         return (
           <ErrorPlaceHolderNew
+            className="p-lg"
             icon={
               <AddPlaceHolderIcon
                 className="text-grey-14"
@@ -587,7 +588,7 @@ const AssetsTabs = forwardRef(
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
                 className={classNames(
-                  'm-b-sm cursor-pointer',
+                  'cursor-pointer',
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
@@ -617,7 +618,7 @@ const AssetsTabs = forwardRef(
             )}
           </div>
         ) : (
-          <div className="m-t-xlg">{assetErrorPlaceHolder}</div>
+          assetErrorPlaceHolder
         ),
       [
         type,
@@ -808,7 +809,7 @@ const AssetsTabs = forwardRef(
       <>
         <div
           className={classNames(
-            'assets-tab-container relative bg-white p-b-box border-radius-card h-full'
+            'assets-tab-container relative bg-white border-radius-card h-full'
           )}
           data-testid="table-container"
           id="asset-tab">
@@ -822,7 +823,10 @@ const AssetsTabs = forwardRef(
                       selectedKeys: selectedFilter,
                     }}
                     trigger={['click']}>
-                    <TaskFilterIcon className="cursor-pointer" />
+                    <Button
+                      className={classNames('feed-filter-icon')}
+                      icon={<FilterIcon height={16} />}
+                    />
                   </Dropdown>
                   <div className="flex-1">
                     <Searchbar
@@ -861,7 +865,7 @@ const AssetsTabs = forwardRef(
               </>
             )}
             {isLoading ? (
-              <Col span={24}>
+              <Col className="border-default border-radius-sm p-lg" span={24}>
                 <Space className="w-full" direction="vertical" size={16}>
                   <Skeleton />
                   <Skeleton />

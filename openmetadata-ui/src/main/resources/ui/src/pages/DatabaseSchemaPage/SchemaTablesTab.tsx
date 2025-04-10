@@ -30,6 +30,7 @@ import {
   INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
 } from '../../constants/constants';
+import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -51,10 +52,12 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
   isVersionView?: boolean;
+  isCustomizationPage?: boolean;
 }
 
 function SchemaTablesTab({
   isVersionView = false,
+  isCustomizationPage = false,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
   const history = useHistory();
@@ -103,7 +106,7 @@ function SchemaTablesTab({
         }
         const updatedData = {
           ...tableDetails,
-          displayName: data.displayName || undefined,
+          displayName: data.displayName,
         };
         const jsonPatch = compare(tableDetails, updatedData);
         const response = await patchTableDetails(tableDetails.id, jsonPatch);
@@ -213,6 +216,12 @@ function SchemaTablesTab({
   };
 
   useEffect(() => {
+    if (isCustomizationPage) {
+      setTableData(DUMMY_DATABASE_SCHEMA_TABLES_DETAILS);
+      setTableDataLoading(false);
+
+      return;
+    }
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
       if (pagingCursor?.cursorData?.cursorType) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
@@ -229,8 +238,8 @@ function SchemaTablesTab({
     tableFilters.showDeletedTables,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
-
     pageSize,
+    isCustomizationPage,
   ]);
 
   useEffect(() => {
@@ -276,7 +285,7 @@ function SchemaTablesTab({
       locale={{
         emptyText: (
           <ErrorPlaceHolder
-            className="mt-0-important"
+            className="mt-0-important border-none"
             type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
           />
         ),

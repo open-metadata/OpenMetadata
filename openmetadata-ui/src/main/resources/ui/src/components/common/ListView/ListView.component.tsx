@@ -21,6 +21,7 @@ import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_VISIBLE_COLUMNS,
 } from '../../../constants/TableKeys.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
 import Table from '../Table/Table';
@@ -98,6 +99,7 @@ export const ListView = <T extends object = any>({
           <Table
             customPaginationProps={customPaginationProps}
             defaultVisibleColumns={DEFAULT_SERVICE_VISIBLE_COLUMNS}
+            entityType={EntityType.SERVICE}
             staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
             {...tableProps}
           />

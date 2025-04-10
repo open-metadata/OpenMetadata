@@ -56,7 +56,6 @@ import {
   dragAndDropColumn,
   dragAndDropTerm,
   filterStatus,
-  getEscapedTermFqn,
   goToAssetsTab,
   openColumnDropdown,
   renameGlossaryTerm,
@@ -64,6 +63,7 @@ import {
   selectActiveGlossaryTerm,
   selectColumns,
   toggleBulkActionColumnsSelection,
+  updateGlossaryReviewer,
   updateGlossaryTermDataFromTree,
   updateGlossaryTermOwners,
   updateGlossaryTermReviewers,
@@ -357,18 +357,10 @@ test.describe('Glossary tests', () => {
       await selectColumns(page, checkboxLabels);
       await verifyColumnsVisibility(page, checkboxLabels, true);
 
-      const escapedFqn = getEscapedTermFqn(glossaryTerm1.data);
-      const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-
       // Verify the Reviewer
-      const reviewerSelector = `td:nth-child(3) a[data-testid="owner-link"]`;
-      const reviewerText = await termRow
-        .locator(reviewerSelector)
-        .textContent();
-
-      expect(reviewerText).toBe(
-        `${reviewer1.data.firstName}${reviewer1.data.lastName}`
-      );
+      expect(
+        page.getByTestId(reviewer1.responseData?.['displayName'])
+      ).toBeVisible();
 
       // Verify the Owner
       await expect(
@@ -851,6 +843,72 @@ test.describe('Glossary tests', () => {
     }
   });
 
+  test('Drag and Drop Glossary Term Approved Terms having reviewer', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    const user1 = new UserClass();
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+
+    try {
+      await user1.create(apiContext);
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await test.step('Update Glossary Term Reviewer', async () => {
+        await updateGlossaryReviewer(page, [
+          `${user1.data.firstName}${user1.data.lastName}`,
+        ]);
+      });
+
+      await test.step('Drag and Drop Glossary Term', async () => {
+        await dragAndDropTerm(
+          page,
+          glossaryTerm1.data.displayName,
+          glossaryTerm2.data.displayName
+        );
+
+        await confirmationDragAndDropGlossary(
+          page,
+          glossaryTerm1.data.name,
+          glossaryTerm2.data.name,
+          false,
+          true
+        );
+
+        await expect(
+          page.getByRole('cell', {
+            name: glossaryTerm1.responseData.displayName,
+          })
+        ).not.toBeVisible();
+
+        const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+
+        // verify the term is moved under the parent term
+        await page.getByTestId('expand-collapse-all-button').click();
+        await termRes;
+
+        await expect(
+          page.getByRole('cell', {
+            name: glossaryTerm1.responseData.displayName,
+          })
+        ).toBeVisible();
+      });
+    } finally {
+      await user1.delete(apiContext);
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('Change glossary term hierarchy using menu options', async ({
     browser,
   }) => {
@@ -1228,8 +1286,8 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
-      const dragColumn = 'Owners';
-      const dropColumn = 'Status';
+      const dragColumn = 'Status';
+      const dropColumn = 'Owners';
       await dragAndDropColumn(page, dragColumn, dropColumn);
       await page.waitForSelector('thead th', { state: 'visible' });
       const columnHeaders = page.locator('thead th');

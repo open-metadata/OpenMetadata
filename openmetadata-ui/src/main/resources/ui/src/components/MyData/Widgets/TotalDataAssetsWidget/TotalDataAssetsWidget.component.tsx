@@ -156,7 +156,7 @@ const TotalDataAssetsWidget = ({
 
   return (
     <Card
-      className="total-data-insight-card"
+      className="total-data-insight-card data-insight-card-chart"
       data-testid="total-assets-widget"
       id={SystemChartType.TotalDataAssets}
       loading={isLoading}>

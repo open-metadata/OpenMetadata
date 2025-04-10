@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Col, Row } from 'antd';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import gridBgImg from '../../assets/img/grid-bg-img.png';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
@@ -31,6 +31,7 @@ import { getEntityName } from '../../utils/EntityUtils';
 import Fqn from '../../utils/Fqn';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
+import '../CustomizeDetailsPage/customize-details-page.less';
 
 const CustomizableDomainPage = ({
   personaDetails,
@@ -79,36 +80,38 @@ const CustomizableDomainPage = ({
 
   return (
     <PageLayoutV1
-      mainContainerClassName="p-t-0"
-      pageContainerStyle={{
-        backgroundImage: `url(${gridBgImg})`,
-      }}
+      className="bg-grey"
       pageTitle={t('label.customize-entity', {
         entity: t('label.domain'),
       })}>
-      <CustomizablePageHeader
-        personaName={getEntityName(personaDetails)}
-        onReset={handleReset}
-        onSave={handleSave}
-      />
-      <div className="m-md">
-        <EntityHeader
-          breadcrumb={breadcrumbs}
-          entityData={entityDummyData}
-          entityType={EntityType.DOMAIN}
-          icon={
-            <DomainIcon
-              className="align-middle"
-              color={DE_ACTIVE_COLOR}
-              height={36}
-              name="folder"
-              width={32}
-            />
-          }
-          serviceName=""
-        />
-      </div>
-      <CustomizeTabWidget />
+      <Row className="customize-details-page" gutter={[0, 20]}>
+        <Col span={24}>
+          <CustomizablePageHeader
+            personaName={getEntityName(personaDetails)}
+            onReset={handleReset}
+            onSave={handleSave}
+          />
+        </Col>
+        <Col className="p-l-xs" span={24}>
+          <EntityHeader
+            breadcrumb={breadcrumbs}
+            entityData={entityDummyData}
+            entityType={EntityType.DOMAIN}
+            icon={
+              <DomainIcon
+                className="align-middle"
+                color={DE_ACTIVE_COLOR}
+                height={36}
+                name="folder"
+                width={32}
+              />
+            }
+            serviceName=""
+          />
+        </Col>
+        {/* It will render cols inside the row */}
+        <CustomizeTabWidget />
+      </Row>
     </PageLayoutV1>
   );
 };

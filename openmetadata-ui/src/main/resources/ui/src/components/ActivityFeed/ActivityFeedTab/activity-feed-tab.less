@@ -42,7 +42,7 @@
     flex-direction: column;
     border: 1px solid @grey-15;
 
-    .full-width {
+    &.full-width {
       flex: 10;
       margin-right: 0px;
     }
@@ -214,7 +214,6 @@
 
   .header-link {
     word-wrap: break-word;
-    white-space: normal;
     font-weight: 600;
 
     .ant-typography,
@@ -387,20 +386,20 @@
 }
 
 .task-toggle {
-  background: white;
-  border-radius: 8px;
+  background: @white;
+  border-radius: @size-sm;
   padding: 4px;
-  border: 1px solid #dce3ec;
+  border: 1px solid @grey-20;
 
   .ant-segmented-item {
     color: @text-color;
     transition: all 0.3s ease;
 
     &-selected {
-      background: #e6f1fe;
+      background: @blue-23;
       color: @blue-9;
       text-align: center;
-
+      border-radius: @size-xs;
       .ant-segmented-item-label {
         color: @blue-9;
       }
@@ -528,6 +527,7 @@
 
 .task-toggle.ant-segmented {
   background-color: @white;
+  border-radius: @size-sm;
 
   &:hover {
     .ant-segmented-item:not(.ant-segmented-item-selected) {
@@ -600,16 +600,40 @@
   margin-left: @margin-xss;
 }
 
-.task-filter-icon {
-  stroke: @grey-8;
+.feed-filter-icon {
   cursor: pointer;
-
-  &.disabled {
-    cursor: not-allowed;
-    stroke: @grey-300;
-
-    path {
+  &.ant-btn.ant-btn-default {
+    border: 1px solid @grey-15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &.disabled {
+      cursor: not-allowed;
       stroke: @grey-300;
+      border-radius: @size-xs;
+      border: 1px solid @grey-10;
+      background: @white;
+    }
+    &:not(.disabled):hover {
+      border: 1px solid @blue-12;
+
+      svg {
+        stroke: @blue-12;
+        stroke-width: 0.2px;
+      }
+    }
+    &.selected,
+    &.ant-dropdown-open,
+    &.ant-popover-open {
+      border: 1px solid @blue-12;
+      background: @blue-11;
+      svg {
+        stroke: @blue-12;
+        stroke-width: 0.2px;
+      }
     }
   }
+}
+.no-data-placeholder-container-right-panel {
+  margin-top: @size-xl;
 }

@@ -7,7 +7,7 @@ slug: /connectors/database/oracle
 name="Oracle"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -21,6 +21,8 @@ Configure and schedule Oracle metadata and profiler workflows from the OpenMetad
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/oracle/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/oracle/yaml"} /%}
 
@@ -130,6 +132,6 @@ there is no routine out of the box in Oracle to grant SELECT to a full schema.
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/database/oracle/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

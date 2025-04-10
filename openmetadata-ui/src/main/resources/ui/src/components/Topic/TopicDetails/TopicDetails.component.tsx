@@ -34,6 +34,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -51,6 +52,7 @@ import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/Activ
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -81,6 +83,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
   const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -365,6 +368,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewAllPermission,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Topic),
+    [tabs[0], activeTab]
+  );
   if (isLoading) {
     return <Loader />;
   }
@@ -395,7 +406,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Topic>
+          customizedPage={customizedPage}
           data={topicDetails}
+          isTabExpanded={isTabExpanded}
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
@@ -405,6 +418,17 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

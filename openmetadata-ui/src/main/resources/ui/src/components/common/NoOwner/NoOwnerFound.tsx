@@ -54,8 +54,9 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
           {showLabel && (
             <Typography.Text
               className={classNames(
-                'no-owner',
-                isCompactView ? 'text-xs' : 'font-medium text-sm',
+                isCompactView
+                  ? 'text-xs no-owner'
+                  : ' no-owner-heading font-medium text-sm',
                 className
               )}
               data-testid="owner-link">
@@ -85,7 +86,8 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
 
       {!isCompactView && (
         <div className="no-owner-text text-sm font-medium">
-          {t('label.no-entity', { entity: t('label.owner-plural') })}
+          {placeHolder ??
+            t('label.no-entity', { entity: t('label.owner-plural') })}
         </div>
       )}
     </div>

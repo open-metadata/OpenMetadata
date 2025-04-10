@@ -321,7 +321,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   }, []);
 
   return (
-    <Row className="mt-4" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       {messageSchema?.schemaType && (
         <Col>
           <Typography.Text type="secondary">

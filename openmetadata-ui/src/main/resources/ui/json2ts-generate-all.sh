@@ -71,7 +71,7 @@ generate_typescript() {
     local output_file="$2"
     
     echo "Generating ${output_file} from specification at ${input_schema}"
-    ./node_modules/.bin/quicktype -s schema "$input_schema" -o "$output_file" --just-types
+    ./node_modules/.bin/quicktype -s schema "$input_schema" -o "$output_file" --just-types > /dev/null 2>&1
 
     # Remove empty output files
     if [[ ! -s "$output_file" ]]; then

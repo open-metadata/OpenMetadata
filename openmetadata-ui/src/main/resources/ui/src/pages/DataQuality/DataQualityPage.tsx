@@ -12,6 +12,7 @@
  */
 
 import { Card, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,10 +22,12 @@ import {
   useHistory,
   useParams,
 } from 'react-router-dom';
+import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { ROUTES } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import i18n from '../../utils/i18next/LocalUtil';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
@@ -60,6 +63,11 @@ const DataQualityPage = () => {
   const tabDetailsComponent = useMemo(() => {
     return DataQualityClassBase.getDataQualityTab();
   }, []);
+
+  const extraDropdownContent = useMemo(
+    () => DataQualityClassBase.getManageExtraOptions(activeTab),
+    [activeTab]
+  );
 
   const handleTabChange: MenuProps['onClick'] = (event) => {
     const activeKey = event.key;
@@ -97,7 +105,7 @@ const DataQualityPage = () => {
             <Card>
               <DataQualityProvider>
                 <Row data-testid="data-insight-container" gutter={[0, 16]}>
-                  <Col span={24}>
+                  <Col span={isEmpty(extraDropdownContent) ? 24 : 23}>
                     <Typography.Title
                       className="m-b-md"
                       data-testid="page-title"
@@ -110,6 +118,15 @@ const DataQualityPage = () => {
                       {t('message.page-sub-header-for-data-quality')}
                     </Typography.Paragraph>
                   </Col>
+                  {isEmpty(extraDropdownContent) ? null : (
+                    <Col className="d-flex justify-end" span={1}>
+                      <ManageButton
+                        entityName={EntityType.TEST_CASE}
+                        entityType={EntityType.TEST_CASE}
+                        extraDropdownContent={extraDropdownContent}
+                      />
+                    </Col>
+                  )}
                   <Col span={24}>
                     <Switch>
                       {tabDetailsComponent.map((tab) => (

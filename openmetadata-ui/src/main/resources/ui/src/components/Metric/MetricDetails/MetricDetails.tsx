@@ -31,6 +31,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreMetric } from '../../../rest/metricsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -39,6 +40,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -67,13 +69,14 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
+  const { customizedPage, isLoading } = useCustomPages(PageType.Metric);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
     owners,
     deleted,
     followers = [],
   } = useMemo(() => metricDetails, [metricDetails]);
-  const { customizedPage, isLoading } = useCustomPages(PageType.Metric);
 
   const { isFollowing } = useMemo(
     () => ({
@@ -217,6 +220,15 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     viewAllPermission,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Metric),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -248,7 +260,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Metric>
+          customizedPage={customizedPage}
           data={metricDetails}
+          isTabExpanded={isTabExpanded}
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
@@ -258,6 +272,17 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

@@ -945,12 +945,12 @@ a[href].link-text-grey,
 .placeholder-title {
   color: @text-color;
   text-align: center;
-  font-size: 20px;
+  font-size: 18px;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
   letter-spacing: 0.25px;
-  margin-top: 16px;
+  margin-top: @size-md;
 }
 
 .no-data-placeholder-container {
@@ -960,7 +960,7 @@ a[href].link-text-grey,
 .placeholder-text {
   color: @text-color-tertiary;
   text-align: center;
-  font-size: 16px;
+  font-size: @font-size-base;
   font-style: normal;
   font-weight: 400;
   line-height: normal;
@@ -968,13 +968,14 @@ a[href].link-text-grey,
   width: 350px;
 }
 
-// Table icons
+// Pagination styles
 
-.filter-icon {
-  width: 16px;
-  height: 16px;
+.pagination-next-icon {
+  font-size: 12px;
 }
 
-.filter-icon-active {
-  fill: @primary-color;
+.pagination-prev-icon {
+  font-size: 12px;
+  margin-top: -3px;
+  transform: rotate(180deg);
 }

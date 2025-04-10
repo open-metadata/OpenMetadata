@@ -23,12 +23,14 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../Customization/GenericTab/GenericTab';
@@ -41,6 +43,8 @@ const GlossaryDetails = ({
   updateVote,
   handleGlossaryDelete,
   isVersionView,
+  toggleTabExpanded,
+  isTabExpanded,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -141,6 +145,11 @@ const GlossaryDetails = ({
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
 
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Glossary),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -163,6 +172,15 @@ const GlossaryDetails = ({
           className="tabs-new"
           data-testid="tabs"
           items={tabs}
+          tabBarExtraContent={
+            isExpandViewSupported && (
+              <AlignRightIconButton
+                className={isTabExpanded ? 'rotate-180' : ''}
+                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+                onClick={toggleTabExpanded}
+              />
+            )
+          }
           onChange={handleTabChange}
         />
       </Col>

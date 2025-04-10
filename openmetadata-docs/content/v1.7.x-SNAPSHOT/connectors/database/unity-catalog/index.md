@@ -7,7 +7,7 @@ slug: /connectors/database/unity-catalog
 name="Unity Catalog"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -17,10 +17,11 @@ In this section, we provide guides and references to use the Unity Catalog conne
 Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 - [Metadata Ingestion](#metadata-ingestion)
-- [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/unity-catalog/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/unity-catalog/yaml"} /%}
 
@@ -62,6 +63,6 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/database/unitycatalog/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

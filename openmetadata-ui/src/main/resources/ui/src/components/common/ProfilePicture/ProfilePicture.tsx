@@ -45,7 +45,7 @@ const ProfilePicture = ({
   height,
   isTeam = false,
   size,
-  avatarType = 'solid',
+  avatarType = 'outlined',
 }: Props) => {
   const { permissions } = usePermissionProvider();
   const { color, character, backgroundColor } = getRandomColor(

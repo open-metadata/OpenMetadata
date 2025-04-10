@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip, Typography } from 'antd';
+import { Button, Popover, Typography } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
@@ -122,24 +122,17 @@ const DomainSelectableList = ({
         onOpenChange={setPopupVisible}
         {...popoverProps}>
         {children ?? (
-          <Tooltip
-            placement="topRight"
-            title={
-              hasPermission
-                ? t('label.edit-entity', {
-                    entity: t('label.domain'),
-                  })
-                : NO_PERMISSION_FOR_ACTION
-            }>
-            <Button
-              className="flex-center"
-              data-testid="add-domain"
-              disabled={!hasPermission}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-            />
-          </Tooltip>
+          <EditIconButton
+            newLook
+            data-testid="add-domain"
+            disabled={!hasPermission}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
+            title={t('label.edit-entity', {
+              entity: t('label.domain'),
+            })}
+            onClick={(e) => e.stopPropagation()}
+          />
         )}
       </Popover>
     );
