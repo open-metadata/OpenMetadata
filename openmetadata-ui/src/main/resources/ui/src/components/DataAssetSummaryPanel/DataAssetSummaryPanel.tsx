@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -30,6 +30,7 @@ import {
   getEntityOverview,
 } from '../../utils/EntityUtils';
 
+import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
@@ -37,6 +38,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import CommonEntitySummaryInfo from '../Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
@@ -51,6 +53,7 @@ export const DataAssetSummaryPanel = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
 }: DataAssetSummaryPanelProps) => {
+  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const [additionalInfo, setAdditionalInfo] = useState<
     Record<string, number | string>
@@ -194,6 +197,28 @@ export const DataAssetSummaryPanel = ({
                 </Col>
               </Row>
             )}
+
+            <Row
+              className="p-md border-radius-card summary-panel-card"
+              gutter={[0, 8]}>
+              <Col span={24}>
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="tags-header">
+                  {t('label.domain')}
+                </Typography.Text>
+              </Col>
+              <Col className="d-flex flex-wrap gap-2" span={24}>
+                <DomainLabel
+                  domain={dataAsset.domain}
+                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
+                  entityId={dataAsset.id ?? ''}
+                  entityType={entityType}
+                  textClassName="render-domain-lebel-style"
+                />
+              </Col>
+            </Row>
+
             {entityType === EntityType.TABLE && (
               <TableSummary entityDetails={dataAsset as Table} />
             )}
