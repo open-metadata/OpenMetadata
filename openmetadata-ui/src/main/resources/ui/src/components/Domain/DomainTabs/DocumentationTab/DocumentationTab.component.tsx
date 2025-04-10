@@ -129,7 +129,7 @@ const DocumentationTab = ({
 
   return (
     <ResizablePanels
-      className="domain-height-with-resizable-panel"
+      className="h-full domain-height-with-resizable-panel"
       firstPanel={{
         className: 'domain-resizable-panel-container',
         children: (

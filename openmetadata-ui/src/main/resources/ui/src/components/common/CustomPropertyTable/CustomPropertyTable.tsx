@@ -235,7 +235,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     return (
       <div className="h-full p-x-lg flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
-          className={classNames(className, 'border-default border-radius-sm')}
+          className={classNames(className)}
           placeholderText={
             <Transi18next
               i18nKey="message.no-custom-properties-entity"

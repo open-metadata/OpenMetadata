@@ -443,7 +443,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.ASSETS,
             children: (
               <ResizablePanels
-                className="domain-height-with-resizable-panel"
+                className="h-full domain-height-with-resizable-panel"
                 firstPanel={{
                   wrapInCard: false,
                   className: 'domain-resizable-panel-container',

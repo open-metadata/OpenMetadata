@@ -814,7 +814,7 @@ const AssetsTabs = forwardRef(
           data-testid="table-container"
           id="asset-tab">
           <Row
-            className={classNames('filters-row gap-2 ', {
+            className={classNames('filters-row gap-2 p-md', {
               'h-full': assetCount === 0,
             })}
             gutter={[0, 20]}>
