@@ -1334,11 +1334,8 @@ public class ElasticSearchClient implements SearchClient {
     int bucketSize = request.getSize();
     String includeValue = request.getFieldValue().toLowerCase();
 
-    String termsAggName = "agg";
-    String topHitsAggName = "top";
-
     TermsAggregationBuilder termsAgg =
-        AggregationBuilders.terms(termsAggName)
+        AggregationBuilders.terms(aggregationField)
             .field(aggregationField)
             .size(bucketSize)
             .includeExclude(new IncludeExclude(includeValue, null))
@@ -1350,7 +1347,7 @@ public class ElasticSearchClient implements SearchClient {
       List<String> topHitFields = request.getSourceFields();
 
       TopHitsAggregationBuilder topHitsAgg =
-          AggregationBuilders.topHits(topHitsAggName)
+          AggregationBuilders.topHits("top")
               .size(request.getTopHits().getSize())
               .fetchSource(topHitFields.toArray(new String[0]), null)
               .trackScores(false);
