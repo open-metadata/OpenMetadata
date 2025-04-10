@@ -102,7 +102,7 @@ const DashboardDetails = ({
         dashboardDetails.id
       );
       setDashboardPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.dashboard'),

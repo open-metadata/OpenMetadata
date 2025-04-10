@@ -139,7 +139,7 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN
       );
       setDatabasePermission(response);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);

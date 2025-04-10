@@ -97,7 +97,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         mlModelDetail.id
       );
       setMlModelPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.ml-model'),

@@ -108,7 +108,7 @@ function SearchIndexDetailsPage() {
         timestamp: 0,
         id: details.id,
       });
-    } catch (error) {
+    } catch {
       // Error here
     } finally {
       setLoading(false);
