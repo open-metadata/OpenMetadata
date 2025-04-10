@@ -122,13 +122,13 @@ const EntityHeaderTitle = ({
               placement="bottom"
               title={stringToHTML(displayName ?? name)}>
               <Typography.Text
+                ellipsis
                 className={classNames(
                   'entity-header-name',
                   nameClassName,
                   'm-b-0 d-block display-xs font-semibold'
                 )}
-                data-testid="entity-header-display-name"
-                ellipsis={{ tooltip: true }}>
+                data-testid="entity-header-display-name">
                 {stringToHTML(displayName ?? name)}
               </Typography.Text>
             </Tooltip>
@@ -141,12 +141,12 @@ const EntityHeaderTitle = ({
           data-testid="entity-header-title">
           <Tooltip placement="bottom" title={entityName}>
             <Typography.Text
+              ellipsis
               className={classNames(displayNameClassName, 'm-b-0', {
                 'display-xs entity-header-name font-semibold': !displayName,
                 'text-md entity-header-display-name font-medium': displayName,
               })}
-              data-testid="entity-header-name"
-              ellipsis={{ tooltip: true }}>
+              data-testid="entity-header-name">
               {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink

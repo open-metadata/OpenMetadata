@@ -466,7 +466,6 @@ const UserListPageV1 = () => {
 
         <Col span={24}>
           <Table
-            bordered
             className="user-list-table"
             columns={columns}
             customPaginationProps={{
