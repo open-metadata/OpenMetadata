@@ -84,6 +84,7 @@ const FileAttachment = ({
         <Icon
           className="delete-icon"
           component={IconDelete}
+          data-testid="delete-icon"
           size={14}
           onClick={(e) => {
             e.preventDefault();

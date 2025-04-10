@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, FormProps, Input, Row } from 'antd';
+import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
@@ -67,26 +67,27 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
           </Form.Item>
         </Col>
         <Col className="om-image-node-embed-link-btn-col gap-3" span={24}>
-          <Button
-            danger
-            type="text"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              deleteNode();
-            }}>
-            {t('label.delete')}
-          </Button>
+          <Space className="om-image-node-action">
+            <Button
+              danger
+              type="text"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteNode();
+              }}>
+              {t('label.delete')}
+            </Button>
+          </Space>
 
+          <Button type="link" onClick={() => onPopupVisibleChange(false)}>
+            {t('label.close')}
+          </Button>
           {isAssetsUrl ? null : (
             <Button htmlType="submit" type="primary">
               {t('label.embed-file-type', { fileType })}
             </Button>
           )}
-
-          <Button onClick={() => onPopupVisibleChange(false)}>
-            {t('label.close')}
-          </Button>
         </Col>
       </Row>
     </Form>
