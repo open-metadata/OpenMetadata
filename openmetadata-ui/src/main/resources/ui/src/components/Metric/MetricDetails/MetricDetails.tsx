@@ -154,8 +154,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     getFeedCounts(EntityType.METRIC, decodedMetricFqn, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push(ROUTES.METRICS),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push(ROUTES.METRICS),
     []
   );
 
