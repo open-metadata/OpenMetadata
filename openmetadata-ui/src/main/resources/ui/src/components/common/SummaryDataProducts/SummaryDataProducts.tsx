@@ -39,52 +39,46 @@ const SummaryDataProducts = ({
   }, []);
 
   return (
-    <>
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
-          <Typography.Text
-            className="summary-panel-section-title"
-            data-testid="tags-header">
-            {t('label.data-product-plural')}
-          </Typography.Text>
-        </Col>
-        <Col className="d-flex flex-wrap gap-2" span={24}>
-          {dataProducts.length > 0 ? (
-            dataProducts.map((product) => {
-              return (
-                <Tag
-                  className="tag-chip tag-chip-content"
-                  key={`dp-tags-${product.fullyQualifiedName}`}
-                  onClick={() =>
-                    redirectLink(product.fullyQualifiedName ?? '')
-                  }>
-                  <div className="d-flex w-full">
-                    <div className="d-flex items-center p-x-xs w-full gap-1">
-                      <DataProductIcon
-                        className="align-middle"
-                        height={12}
-                        width={12}
-                      />
-                      <Typography.Paragraph
-                        className="m-0 tags-label"
-                        data-testid={`data-product-${product.fullyQualifiedName}`}>
-                        {getEntityName(product)}
-                      </Typography.Paragraph>
-                    </div>
+    <Row className="p-md border-radius-card summary-panel-card" gutter={[0, 8]}>
+      <Col span={24}>
+        <Typography.Text
+          className="summary-panel-section-title"
+          data-testid="data-products-header">
+          {t('label.data-product-plural')}
+        </Typography.Text>
+      </Col>
+      <Col className="d-flex flex-wrap gap-2" span={24}>
+        {dataProducts.length > 0 ? (
+          dataProducts.map((product) => {
+            return (
+              <Tag
+                className="tag-chip tag-chip-content"
+                key={`dp-tags-${product.fullyQualifiedName}`}
+                onClick={() => redirectLink(product.fullyQualifiedName ?? '')}>
+                <div className="d-flex w-full">
+                  <div className="d-flex items-center p-x-xs w-full gap-1">
+                    <DataProductIcon
+                      className="align-middle"
+                      height={12}
+                      width={12}
+                    />
+                    <Typography.Paragraph
+                      className="m-0 tags-label"
+                      data-testid={`data-product-${product.fullyQualifiedName}`}>
+                      {getEntityName(product)}
+                    </Typography.Paragraph>
                   </div>
-                </Tag>
-              );
-            })
-          ) : (
-            <Typography.Text className="text-sm no-data-chip-placeholder">
-              {t('label.no-data-found')}
-            </Typography.Text>
-          )}
-        </Col>
-      </Row>
-    </>
+                </div>
+              </Tag>
+            );
+          })
+        ) : (
+          <Typography.Text className="text-sm no-data-chip-placeholder">
+            {t('label.no-data-found')}
+          </Typography.Text>
+        )}
+      </Col>
+    </Row>
   );
 };
 
