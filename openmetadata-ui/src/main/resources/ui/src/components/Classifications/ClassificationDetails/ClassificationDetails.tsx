@@ -383,7 +383,7 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="p-t-sm" data-testid="tags-container">
+      <div className="h-full overflow-y-auto" data-testid="tags-container">
         {currentClassification && (
           <Row data-testid="header" wrap={false}>
             <Col flex="auto">

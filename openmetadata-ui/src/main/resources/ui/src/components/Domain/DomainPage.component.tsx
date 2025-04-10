@@ -217,25 +217,23 @@ const DomainPage = () => {
   }
 
   return (
-    <div>
-      <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          minWidth: 280,
-          flex: 0.13,
-          title: t('label.domain-plural'),
-          children: <DomainsLeftPanel domains={rootDomains} />,
-        }}
-        pageTitle={t('label.domain')}
-        secondPanel={{
-          children: domainPageRender,
-          className: 'content-resizable-panel-container p-t-sm',
-          minWidth: 800,
-          flex: 0.87,
-        }}
-      />
-    </div>
+    <ResizableLeftPanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        minWidth: 280,
+        flex: 0.13,
+        title: t('label.domain-plural'),
+        children: <DomainsLeftPanel domains={rootDomains} />,
+      }}
+      pageTitle={t('label.domain')}
+      secondPanel={{
+        children: domainPageRender,
+        className: 'content-resizable-panel-container',
+        minWidth: 800,
+        flex: 0.87,
+      }}
+    />
   );
 };
 

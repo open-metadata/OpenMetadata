@@ -361,7 +361,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.SCHEDULE,
               children: (
-                <div className="p-lg border-default border-radius-sm">
+                <div className="h-full bg-white p-lg border-default border-radius-sm">
                   {appData && (
                     <AppSchedule
                       appData={appData}
@@ -475,7 +475,7 @@ const AppDetails = () => {
       </Row>
       <Row>
         <Col span={24}>
-          <Space className="app-details-header w-full m-t-md" size={24}>
+          <Space className="app-details-header w-full" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -517,10 +517,10 @@ const AppDetails = () => {
             </div>
           </Space>
         </Col>
-        <Col span={24}>
+        <Col className="app-details-page-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
-            className="app-details-page-tabs entity-details-page-tabs tabs-new"
+            className="tabs-new"
             data-testid="tabs"
             items={tabs}
           />
