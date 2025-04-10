@@ -21,7 +21,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -185,7 +185,8 @@ const DomainPage = () => {
     return (
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
-          className="mt-0-important"
+          className="mt-0-important border-none"
+          size={SIZE.X_LARGE}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </div>
@@ -197,9 +198,10 @@ const DomainPage = () => {
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           buttonId="add-domain"
-          className="mt-0-important"
+          className="mt-0-important border-none"
           heading={t('label.domain')}
           permission={createDomainPermission}
+          size={SIZE.X_LARGE}
           type={
             createDomainPermission
               ? ERROR_PLACEHOLDER_TYPE.CREATE
