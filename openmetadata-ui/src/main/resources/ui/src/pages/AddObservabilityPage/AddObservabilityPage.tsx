@@ -311,7 +311,7 @@ function AddObservabilityPage() {
                     <Col flex="auto" />
                     <Col flex="300px" pull="right">
                       <Button
-                        className="m-l-sm float-right"
+                        className="m-l-sm float-right as"
                         data-testid="save-button"
                         htmlType="submit"
                         loading={saving}
