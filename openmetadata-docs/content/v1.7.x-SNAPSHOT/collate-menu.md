@@ -20,6 +20,8 @@ site_menu:
     url: /getting-started/day-1/hybrid-saas/github-actions
   - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
     url: /getting-started/day-1/hybrid-saas/credentials
+  - category: Getting Started / Day 1 / Hybrid SaaS / Hybrid Ingestion Runner
+    url: /getting-started/day-1/hybrid-saas/hybrid-ingestion-runner
 
   - category: Connectors
     url: /connectors
