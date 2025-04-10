@@ -107,9 +107,9 @@ const APICollectionPage: FunctionComponent = () => {
         EntityType.API_COLLECTION,
         decodedAPICollectionFQN,
         apiCollectionPermission,
-        apiCollection?.deleted ?? false
+        apiCollection
       ),
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection?.deleted]
+    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(

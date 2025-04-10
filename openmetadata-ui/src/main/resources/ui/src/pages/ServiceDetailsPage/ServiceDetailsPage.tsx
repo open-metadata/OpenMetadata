@@ -302,14 +302,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
         servicePermission,
-        serviceDetails?.deleted ?? false
+        serviceDetails
       ),
-    [
-      servicePermission,
-      decodedServiceFQN,
-      serviceCategory,
-      serviceDetails?.deleted,
-    ]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails]
   );
 
   const handleShowDeleted = useCallback(
