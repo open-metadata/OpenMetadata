@@ -1273,20 +1273,12 @@
           "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchical components."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with database."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with database."
         }
       ]
     },
@@ -1326,20 +1318,12 @@
           "description": "Search on individual parts of the fully qualified name for more flexible hierarchical matching."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with database schema."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with database schema."
         }
       ]
     },
@@ -1403,16 +1387,8 @@
           "description": "Search within parts of certification tag names. Useful for finding certified tables by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
           "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
         },
         {
           "name": "dataProducts.displayName.keyword",
@@ -1468,20 +1444,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified storedProcedures by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with stored procedure."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with stored procedure."
         }
       ]
     },
@@ -1529,20 +1497,12 @@
           "description": "Partial matching on query text to find queries containing specific SQL fragments."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with query."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with query."
         }
       ]
     },
@@ -1630,20 +1590,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified topics by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with topic."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with topic."
         }
       ]
     },
@@ -1723,20 +1675,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified dashboards by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with dashboard."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with dashboard."
         }
       ]
     },
@@ -1808,20 +1752,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified dashboard data models by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with dashboard data model."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with dashboard data model."
         }
       ]
     },
@@ -1881,20 +1817,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified pipelines by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with pipeline."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with pipeline."
         }
       ]
     },
@@ -1954,20 +1882,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified mlModels by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with mlmodel."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with mlmodel."
         }
       ]
     },
@@ -2007,11 +1927,11 @@
           "description": "Search on parts of the hierarchical name for flexible matching."
         },
         {
-          "name": "mlFeatures.name",
+          "name": "searchIndex.responseSchema.name",
           "description": "Search on the names of fields indexed in the search index."
         },
         {
-          "name": "mlFeatures.description",
+          "name": "searchIndex.responseSchema.description",
           "description": "Search on field descriptions to find search indexes with fields serving specific purposes."
         },
         {
@@ -2025,6 +1945,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified searchIndexes by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with search index."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with search index."
         }
       ]
     },
@@ -2096,20 +2024,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified containers by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with container."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with container."
         }
       ]
     },
@@ -2177,20 +2097,12 @@
           "description": "Search within parts of certification tag names. Useful for finding certified apiEndpoint by partial certification name."
         },
         {
-          "name": "domain.name.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
-        },
-        {
-          "name": "dataProducts.name.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on domain associated with apiEndpoint."
         },
         {
           "name": "dataProducts.displayName.keyword",
-          "description": "Exact match on dataProducts associated with table."
+          "description": "Exact match on dataProducts associated with apiEndpoint."
         }
       ]
     },
@@ -2374,7 +2286,7 @@
         },
         {
           "name": "domain.displayName.keyword",
-          "description": "Exact match on domain associated with table."
+          "description": "Exact match on domain associated with glossary term."
         }
       ]
     },
