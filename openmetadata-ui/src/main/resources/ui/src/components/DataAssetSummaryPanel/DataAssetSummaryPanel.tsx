@@ -204,7 +204,7 @@ export const DataAssetSummaryPanel = ({
               <Col span={24}>
                 <Typography.Text
                   className="summary-panel-section-title"
-                  data-testid="tags-header">
+                  data-testid="domain-header">
                   {t('label.domain')}
                 </Typography.Text>
               </Col>
