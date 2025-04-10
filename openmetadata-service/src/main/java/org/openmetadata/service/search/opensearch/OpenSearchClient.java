@@ -1441,17 +1441,6 @@ public class OpenSearchClient implements SearchClient {
     return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
   }
 
-  // retrieves nested value from hits_source
-  private Object getNestedField(Map<String, Object> map, String path) {
-    String[] parts = path.split("\\.");
-    Object current = map;
-    for (String part : parts) {
-      if (!(current instanceof Map)) return null;
-      current = ((Map<?, ?>) current).get(part);
-    }
-    return current;
-  }
-
   @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
