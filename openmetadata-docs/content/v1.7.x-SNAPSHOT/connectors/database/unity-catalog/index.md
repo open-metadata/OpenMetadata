@@ -7,7 +7,7 @@ slug: /connectors/database/unity-catalog
 name="Unity Catalog"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -20,8 +20,8 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/unity-catalog/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/unity-catalog/yaml"} /%}
 
@@ -63,41 +63,6 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 
 {% /stepsContainer %}
 
+{% partial file="/v1.7/connectors/database/unitycatalog/reverse-metadata.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-### Description Management
-
-Unity Catalog supports description updates at all levels:
-- Database level
-- Schema level
-- Table level
-- Column level
-
-### Owner Management
-
-Unity Catalog supports owner management at the following levels:
-- Database level
-- Schema level
-- Table level
-
-### Tag Management
-
-Unity Catalog supports tag management at all levels:
-- Database level
-- Schema level
-- Table level
-- Column level
-
-### Custom SQL Template
-
-Unity Catalog supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
-
-Examples will be provided in a future update.
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

@@ -7,7 +7,7 @@ slug: /connectors/database/postgres
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=[]
 / %}
 
@@ -23,8 +23,8 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
-- [Reverse Metadata](#reverse-metadata)
 - [Troubleshooting](/connectors/database/postgres/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
 
@@ -216,54 +216,6 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
   height="450px"
   caption="SSL Configuration" /%}
 
+{% partial file="/v1.7/connectors/database/postgres/reverse-metadata.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-### Description Management
-
-PostgreSQL supports description updates at all levels:
-- Database level
-- Schema level
-- Table level
-- Column level
-
-### Owner Management
-
-PostgreSQL supports owner management at the following levels:
-- Database level
-- Schema level
-- Table level
-
-### Tag Management
-
-❌ Tag management is not supported for PostgreSQL.
-
-### Custom SQL Template
-
-PostgreSQL supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
-
-Here are examples of custom SQL queries for metadata changes:
-
-```sql
--- Update database owner
-ALTER DATABASE {database} OWNER TO {owner};
-```
-
-The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
-
-### Requirements for Reverse Metadata
-
-In addition to the basic ingestion requirements, for reverse metadata ingestion the user needs:
-- `SUPERUSER` privilege to the user
-
-```sql
--- Grant superuser privilege to the user
-ALTER ROLE USER_NAME SUPERUSER;
-```

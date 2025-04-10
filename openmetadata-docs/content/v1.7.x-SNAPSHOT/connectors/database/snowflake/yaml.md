@@ -7,7 +7,7 @@ slug: /connectors/database/snowflake/yaml
 name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -23,7 +23,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
-- [Reverse Metadata Ingestion](/connectors/ingestion/workflows/reverse-metadata)
+{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
