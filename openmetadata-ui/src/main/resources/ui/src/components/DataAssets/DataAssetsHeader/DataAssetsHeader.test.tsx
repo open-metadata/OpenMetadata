@@ -232,6 +232,33 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByTestId('Tier')).toContainHTML('label.no-entity');
   });
 
+  it('should not call getDataQualityLineage, if isDqAlertSupported and alert supported is false', () => {
+    act(() => {
+      render(<DataAssetsHeader {...mockProps} />);
+    });
+
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+  });
+
+  it('should not call getDataQualityLineage, if isDqAlertSupported is false & alert supported is true', () => {
+    mockIsAlertSupported = true;
+    act(() => {
+      render(<DataAssetsHeader {...mockProps} />);
+    });
+
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+
+    mockIsAlertSupported = false;
+  });
+
+  it('should not call getDataQualityLineage, if isDqAlertSupported is true & alert supported is false', () => {
+    act(() => {
+      render(<DataAssetsHeader isDqAlertSupported {...mockProps} />);
+    });
+
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+  });
+
   it('should call getDataQualityLineage, if isDqAlertSupported and alert supported is true', () => {
     mockIsAlertSupported = true;
     act(() => {

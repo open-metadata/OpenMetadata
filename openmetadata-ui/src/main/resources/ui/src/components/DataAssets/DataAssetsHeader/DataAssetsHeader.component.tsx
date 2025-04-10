@@ -196,7 +196,7 @@ export const DataAssetsHeader = ({
   extraDropdownContent,
   onMetricUpdate,
   badge,
-  isDqAlertSupported,
+  isDqAlertSupported = false,
   isCustomizedView = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
@@ -272,7 +272,7 @@ export const DataAssetsHeader = ({
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchDQFailureCount = async () => {
-    if (!tableClassBase.getAlertEnableStatus() && !isDqAlertSupported) {
+    if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
       setDqFailureCount(0);
 
       return;
