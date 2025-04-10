@@ -118,7 +118,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
 export const toastNotification = async (
   page: Page,
   message: string | RegExp,
-  timeout: number
+  timeout?: number
 ) => {
   await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
