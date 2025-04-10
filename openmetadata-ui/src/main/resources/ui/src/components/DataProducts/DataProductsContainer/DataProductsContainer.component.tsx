@@ -101,7 +101,7 @@ const DataProductsContainer = ({
       return NO_DATA_PLACEHOLDER;
     }
 
-    if (hasPermission && isUndefined(activeDomain)) {
+    if (isEmpty(dataProducts) && hasPermission && isUndefined(activeDomain)) {
       return (
         <Typography.Text className="text-sm text-grey-muted">
           {t('message.select-domain-to-add-data-product')}
