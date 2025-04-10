@@ -76,7 +76,9 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -194,7 +196,7 @@ import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
-import os.org.opensearch.search.aggregations.metrics.TopHits;
+import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -1390,60 +1392,59 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public Response aggregate(String index, String fieldName, String value, String query)
-      throws IOException {
+  public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    buildSearchSourceFilter(query, searchSourceBuilder);
 
-    // aggregation on keyword field for exact case matching
-    String aggregationField = fieldName.endsWith(".keyword") ? fieldName : fieldName + ".keyword";
-    String sourceField = fieldName.replace(".keyword", "");
+    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+
+    String aggregationField = request.getFieldName();
+    if (aggregationField == null || aggregationField.isBlank()) {
+      throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
+    }
+
+    int bucketSize = request.getSize();
+    String includeValue = request.getFieldValue().toLowerCase();
+
     String termsAggName = "agg";
     String topHitsAggName = "top";
 
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(termsAggName)
-                .field(aggregationField)
-                .size(MAX_AGGREGATE_SIZE)
-                .includeExclude(new IncludeExclude(value.toLowerCase(), null))
-                .order(BucketOrder.key(true))
-                .subAggregation(
-                    AggregationBuilders.topHits(topHitsAggName)
-                        .size(1)
-                        .fetchSource(new String[] {sourceField}, null)
-                        .sort(SortBuilders.fieldSort("_doc"))))
-        .size(0)
-        .timeout(new TimeValue(30, TimeUnit.SECONDS));
+    TermsAggregationBuilder termsAgg =
+        AggregationBuilders.terms(termsAggName)
+            .field(aggregationField)
+            .size(bucketSize)
+            .includeExclude(new IncludeExclude(includeValue, null))
+            .order(BucketOrder.key(true));
+
+    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
+      request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
+
+      List<String> topHitFields = request.getSourceFields();
+      String sortField = request.getTopHits().getSortField();
+      SortOrder sortOrder =
+          request.getTopHits().getSortOrder()
+                  == org.openmetadata.schema.search.TopHits.SortOrder.DESC
+              ? SortOrder.DESC
+              : SortOrder.ASC;
+
+      TopHitsAggregationBuilder topHitsAgg =
+          AggregationBuilders.topHits(topHitsAggName)
+              .size(request.getTopHits().getSize())
+              .fetchSource(topHitFields.toArray(new String[0]), null)
+              .sort(SortBuilders.fieldSort(sortField).order(sortOrder));
+
+      termsAgg.subAggregation(topHitsAgg);
+    }
+
+    searchSourceBuilder.aggregation(termsAgg).size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
 
     SearchResponse searchResponse =
         client.search(
             new os.org.opensearch.action.search.SearchRequest(
-                    Entity.getSearchRepository().getIndexOrAliasName(index))
+                    Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
                 .source(searchSourceBuilder),
             RequestOptions.DEFAULT);
 
-    Terms termsAgg = searchResponse.getAggregations().get(termsAggName);
-    List<Map<String, Object>> buckets = new ArrayList<>();
-
-    for (Terms.Bucket bucket : termsAgg.getBuckets()) {
-      Map<String, Object> bucketData = new LinkedHashMap<>();
-      bucketData.put("key", bucket.getKeyAsString());
-      bucketData.put("doc_count", bucket.getDocCount());
-
-      TopHits topHits = bucket.getAggregations().get(topHitsAggName);
-      String fieldValue = "";
-      if (topHits != null && topHits.getHits().getHits().length > 0) {
-        Map<String, Object> source = topHits.getHits().getAt(0).getSourceAsMap();
-        Object valueInSource = getNestedField(source, sourceField);
-        fieldValue = valueInSource != null ? valueInSource.toString() : "";
-      }
-
-      bucketData.put("top_hits#" + fieldName, fieldValue);
-      buckets.add(bucketData);
-    }
-
-    return Response.status(Response.Status.OK).entity(JsonUtils.pojoToJson(buckets)).build();
+    return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
   }
 
   // retrieves nested value from hits_source
