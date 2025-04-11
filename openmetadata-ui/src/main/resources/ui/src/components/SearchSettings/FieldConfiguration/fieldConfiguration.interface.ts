@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Field,
+  AllowedFieldField,
   FieldValueBoost,
 } from '../../../generated/configuration/searchSettings';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
@@ -23,7 +23,7 @@ export interface FieldConfigurationProps {
   };
   searchSettings: EntitySearchSettingsState;
   index: number;
-  entityFields: Field[];
+  entityFields: AllowedFieldField[];
   initialOpen?: boolean;
   onHighlightFieldsChange: (fieldName: string) => void;
   onFieldWeightChange: (fieldName: string, value: number) => void;
