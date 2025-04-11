@@ -18,6 +18,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   getApiContext,
@@ -171,6 +172,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         await page.reload();
 
         await testCaseResponse;
+
+        await clickOutside(page);
 
         await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
         await page.waitForSelector('[data-testid="loader"]', {

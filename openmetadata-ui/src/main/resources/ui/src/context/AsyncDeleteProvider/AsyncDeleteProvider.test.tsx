@@ -30,6 +30,8 @@ jest.mock('../../rest/miscAPI', () => ({
   deleteAsyncEntity: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
+const mockAfterDeleteAction = jest.fn();
+
 describe('AsyncDeleteProvider', () => {
   const mockResponse = {
     entityName: 'DELETE',
@@ -95,6 +97,7 @@ describe('AsyncDeleteProvider', () => {
       mockError,
       'server.delete-entity-error'
     );
+    expect(mockAfterDeleteAction).not.toHaveBeenCalled();
   });
 
   it('should handle websocket response', async () => {
@@ -157,5 +160,19 @@ describe('AsyncDeleteProvider', () => {
       false,
       false
     );
+  });
+
+  it('should execute afterDeleteAction if present', async () => {
+    (deleteAsyncEntity as jest.Mock).mockResolvedValueOnce(mockResponse);
+    const { result } = renderHook(() => useAsyncDeleteProvider(), { wrapper });
+
+    await act(async () => {
+      await result.current.handleOnAsyncEntityDeleteConfirm({
+        ...mockDeleteParams,
+        afterDeleteAction: mockAfterDeleteAction,
+      });
+    });
+
+    expect(mockAfterDeleteAction).toHaveBeenCalledWith(true);
   });
 });

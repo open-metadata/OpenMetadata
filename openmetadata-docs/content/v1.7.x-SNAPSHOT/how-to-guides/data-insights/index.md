@@ -60,4 +60,11 @@ Watch a demo of Data Insights in OpenMetadata
   href="/how-to-guides/data-insights/data-culture"%}
   Improve your data culture for data-driven decision making.
  {%/inlineCallout%}
+  {%inlineCallout
+  color="violet-70"
+  bold="Service Insights and Monitoring in OpenMetadata"
+  icon="MdInsights"
+  href="/how-to-guides/data-insights/service-insights"%}
+  Monitor metadata quality and usage across individual services.
+ {%/inlineCallout%}
 {%/inlineCalloutContainer%}
