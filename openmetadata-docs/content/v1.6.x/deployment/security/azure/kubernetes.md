@@ -64,7 +64,7 @@ openmetadata:
       callbackUrl: "http://localhost:8585/callback"
       oidcConfiguration:
         oidcType: "azure"
-        oidcConfiguration.enabled:
+        oidcConfiguration.enabled: true
         clientId:
           secretRef: oidc-secrets
           secretKey: openmetadata-oidc-client-id  
@@ -73,7 +73,7 @@ openmetadata:
           secretKey: openmetadata-oidc-client-secret  
         discoveryUri: "https://login.microsoftonline.com/.well-known/openid-configuration"     
         callbackUrl: http://localhost:8585/callback  
-        serverUrl: http://localhost:8585  
+        serverUrl: http://localhost:8585
 ```
 
 {% /codeWithLanguageSelector %}
