@@ -7,8 +7,8 @@ slug: /connectors/pipeline/glue-pipeline
 name="Glue"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status"]
-unavailableFeatures=["Owners", "Tags", "Lineage"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+unavailableFeatures=["Owners", "Tags"]
 / %}
 
 In this section, we provide guides and references to use the Glue connector.
