@@ -4,6 +4,7 @@ import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 public interface ResourceContextInterface {
   enum Operation {
@@ -24,4 +25,7 @@ public interface ResourceContextInterface {
   EntityInterface getEntity();
 
   EntityReference getDomain();
+  
+  EntityReference getParent();
+
 }

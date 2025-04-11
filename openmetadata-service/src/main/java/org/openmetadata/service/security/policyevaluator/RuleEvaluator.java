@@ -10,8 +10,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.Function;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.schema.EntityInterface;
 
 /**
  * Note that the methods in the class become available for SpEL expressions for authoring expressions such as
@@ -59,7 +62,7 @@ public class RuleEvaluator {
   @Function(
       name = "isOwner",
       input = "none",
-      description = "Returns true if the logged in user is the owner of the entity being accessed",
+      description = "Returns true if the logged in user is the owner of the entity being accessed, or an owner of a parent entity (inherited ownership)",
       examples = {"isOwner()", "!isOwner", "noOwner() || isOwner()"})
   public boolean isOwner() {
     if (expressionValidation) {
@@ -68,7 +71,28 @@ public class RuleEvaluator {
     if (subjectContext == null || resourceContext == null) {
       return false;
     }
-    return subjectContext.isOwner(resourceContext.getOwners());
+    
+    // First, check direct ownership
+    List<EntityReference> directOwners = resourceContext.getOwners();
+    if (directOwners != null && !directOwners.isEmpty() && subjectContext.isOwner(directOwners)) {
+      return true;
+    }
+    
+    // If not a direct owner, check for inherited ownership from parent entities
+    EntityReference parentRef = resourceContext.getParent();
+    if (parentRef != null) {
+      try {
+        // Use the getOwners(EntityReference) method we just implemented
+        List<EntityReference> parentOwners = resourceContext.getOwners(parentRef);
+        if (parentOwners != null && !parentOwners.isEmpty()) {
+          return subjectContext.isOwner(parentOwners);
+        }
+      } catch (Exception e) {
+        LOG.debug("Error checking parent entity ownership: {}", e.getMessage());
+      }
+    }
+    
+    return false;
   }
 
   @Function(

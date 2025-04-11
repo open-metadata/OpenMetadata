@@ -115,6 +115,10 @@ export interface Table {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this table, database schema.
+     */
+    parent?: EntityReference;
+    /**
      * Processed lineage for the table
      */
     processedLineage?: boolean;
@@ -603,6 +607,8 @@ export interface CustomMetric {
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Reference to the Location that contains this table.
+ *
+ * Parent of this table, database schema.
  *
  * Link to Database service this table is hosted in.
  *

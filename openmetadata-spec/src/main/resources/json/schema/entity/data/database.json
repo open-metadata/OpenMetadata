@@ -42,6 +42,11 @@
       },
       "default": []
     },
+    "parent": {
+      "description": "Parent of this database.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
