@@ -559,6 +559,32 @@ test.describe('Domains', () => {
       await afterAction();
     }
   });
+
+  test('Verify clicking All Domains sets active domain to default value', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    try {
+      await domain.create(apiContext);
+      await page.reload();
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await page.reload();
+      await page.getByTestId('domain-dropdown').click();
+      await page.getByTestId('all-domains-selector').click();
+
+      await page.getByTestId('domain-dropdown').click();
+
+      await expect(page.getByTestId('all-domains-selector')).toHaveClass(
+        /selected-node/
+      );
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
 });
 
 test.describe('Domains Rbac', () => {

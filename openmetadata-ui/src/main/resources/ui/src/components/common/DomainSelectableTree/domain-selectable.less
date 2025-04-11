@@ -12,10 +12,11 @@
  */
 @import (reference) url('../../../styles/variables.less');
 
-.domain-selectable-tree {
+.ant-tree.domain-selectable-tree {
   overflow: auto;
   height: 270px;
 
+  padding-top: 4px;
   .ant-tree-treenode {
     .ant-tree-node-content-wrapper {
       &.ant-tree-node-selected {
@@ -35,4 +36,7 @@
       }
     }
   }
+}
+.all-domain-container.selected-node {
+  background-color: @primary-1;
 }

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Empty, Space, Tree } from 'antd';
+import { Button, Empty, Space, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -47,6 +47,10 @@ import {
   TreeListItem,
 } from './DomainSelectableTree.interface';
 
+import classNames from 'classnames';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   onSubmit,
   value,
@@ -62,7 +66,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const { activeDomain } = useDomainStore();
 
+  const handleMyDomainsClick = async () => {
+    await onSubmit([]);
+  };
   const handleMultiDomainSave = async () => {
     const selectedFqns = selectedDomains
       .map((domain) => domain.fullyQualifiedName)
@@ -238,6 +246,28 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         style={{ marginBottom: 8 }}
         onChange={(e) => onSearch(e.target.value)}
       />
+
+      <div
+        className={classNames(
+          'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer',
+          {
+            'selected-node':
+              activeDomain === DEFAULT_DOMAIN_VALUE &&
+              selectedDomains.length === 0,
+          }
+        )}
+        data-testid="all-domains-selector"
+        onClick={handleMyDomainsClick}>
+        <DomainIcon height={20} name="domain" width={20} />
+        <Typography.Text
+          className={classNames({
+            'font-semibold':
+              activeDomain === DEFAULT_DOMAIN_VALUE &&
+              selectedDomains.length === 0,
+          })}>
+          {t('label.all-domain-plural')}
+        </Typography.Text>
+      </div>
 
       {treeContent}
 
