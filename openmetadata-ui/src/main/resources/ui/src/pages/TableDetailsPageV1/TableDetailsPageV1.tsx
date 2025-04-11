@@ -156,13 +156,15 @@ const TableDetailsPageV1: React.FC = () => {
 
   const extraDropdownContent = useMemo(
     () =>
-      entityUtilClassBase.getManageExtraOptions(
-        EntityType.TABLE,
-        tableFqn,
-        tablePermissions,
-        tableDetails?.deleted ?? false
-      ),
-    [tablePermissions, tableFqn, tableDetails?.deleted]
+      tableDetails
+        ? entityUtilClassBase.getManageExtraOptions(
+            EntityType.TABLE,
+            tableFqn,
+            tablePermissions,
+            tableDetails
+          )
+        : [],
+    [tablePermissions, tableFqn, tableDetails]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
@@ -226,7 +228,7 @@ const TableDetailsPageV1: React.FC = () => {
         data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
         [];
       setDqFailureCount(updatedNodes.length);
-    } catch (error) {
+    } catch {
       setDqFailureCount(0);
     }
   };
@@ -257,7 +259,7 @@ const TableDetailsPageV1: React.FC = () => {
       } else {
         setDqFailureCount(failureCount);
       }
-    } catch (error) {
+    } catch {
       setTestCaseSummary(undefined);
     }
   };
@@ -272,7 +274,7 @@ const TableDetailsPageV1: React.FC = () => {
         entityId: tableDetails.id,
       });
       setQueryCount(response.paging.total);
-    } catch (error) {
+    } catch {
       setQueryCount(0);
     }
   };
@@ -322,7 +324,7 @@ const TableDetailsPageV1: React.FC = () => {
         );
 
         setTablePermissions(tablePermission);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.fetch-entity-permissions-error', {
             entity: t('label.resource-permission-lowercase'),
@@ -662,8 +664,7 @@ const TableDetailsPageV1: React.FC = () => {
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -813,7 +814,7 @@ const TableDetailsPageV1: React.FC = () => {
             />
           </Col>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
               className="tabs-new"

@@ -166,7 +166,7 @@ public class QueryRepository extends EntityRepository<Query> {
             oldQuery.getUsedBy(),
             query.getUsers(),
             withHref(uriInfo, query));
-    update(uriInfo, oldQuery, query);
+    update(uriInfo, oldQuery, query, updatedBy);
     return new RestUtil.PutResponse<>(Response.Status.CREATED, changeEvent, ENTITY_FIELDS_CHANGED);
   }
 

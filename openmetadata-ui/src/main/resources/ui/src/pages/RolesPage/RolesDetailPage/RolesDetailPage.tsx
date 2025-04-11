@@ -264,7 +264,7 @@ const RolesDetailPage = () => {
           (data) => data.id === id
         );
 
-        return existingData ? existingData : { id, type: addAttribute.type };
+        return existingData ?? { id, type: addAttribute.type };
       });
       const patch = compare(role, { ...role, policies: updatedPolicies });
       try {
@@ -365,81 +365,80 @@ const RolesDetailPage = () => {
       })}>
       <div data-testid="role-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
-        <>
-          {isEmpty(role) ? (
-            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <div className="text-center">
-                <p>
-                  {t('message.no-entity-found-for-name', {
-                    entity: t('label.role'),
-                    name: fqn,
-                  })}
-                </p>
-                <Button
-                  ghost
-                  className="m-t-sm"
-                  type="primary"
-                  onClick={() => history.push(rolesPath)}>
-                  {t('label.go-back')}
-                </Button>
-              </div>
-            </ErrorPlaceHolder>
-          ) : (
-            <>
-              <Row className="flex justify-between">
-                <Col span={23}>
-                  <EntityHeaderTitle
-                    className="w-max-full"
-                    displayName={role.displayName}
-                    icon={
-                      <Icon
-                        className="align-middle p-y-xss"
-                        component={RoleIcon}
-                        style={{
-                          fontSize: '50px',
-                        }}
-                      />
-                    }
-                    name={role?.name ?? ''}
-                    serviceName="role"
-                  />
-                </Col>
-                <Col span={1}>
-                  <ManageButton
-                    isRecursiveDelete
-                    afterDeleteAction={() => history.push(rolesPath)}
-                    allowSoftDelete={false}
-                    canDelete={hasDeletePermission}
-                    displayName={role?.displayName}
-                    editDisplayNamePermission={editDisplayNamePermission}
-                    entityFQN={role?.fullyQualifiedName}
-                    entityId={role?.id}
-                    entityName={role.name}
-                    entityType={EntityType.ROLE}
-                    onEditDisplayName={handleDisplayNameUpdate}
-                  />
-                </Col>
-              </Row>
 
-              <DescriptionV1
-                hasEditAccess
-                className="m-y-md"
-                description={role.description || ''}
-                entityName={roleName}
-                entityType={EntityType.ROLE}
-                showCommentsIcon={false}
-                onDescriptionUpdate={handleDescriptionUpdate}
-              />
+        {isEmpty(role) ? (
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <div className="text-center">
+              <p>
+                {t('message.no-entity-found-for-name', {
+                  entity: t('label.role'),
+                  name: fqn,
+                })}
+              </p>
+              <Button
+                ghost
+                className="m-t-sm"
+                type="primary"
+                onClick={() => history.push(rolesPath)}>
+                {t('label.go-back')}
+              </Button>
+            </div>
+          </ErrorPlaceHolder>
+        ) : (
+          <>
+            <Row className="flex justify-between">
+              <Col span={23}>
+                <EntityHeaderTitle
+                  className="w-max-full"
+                  displayName={role.displayName}
+                  icon={
+                    <Icon
+                      className="align-middle p-y-xss"
+                      component={RoleIcon}
+                      style={{
+                        fontSize: '50px',
+                      }}
+                    />
+                  }
+                  name={role?.name ?? ''}
+                  serviceName="role"
+                />
+              </Col>
+              <Col span={1}>
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={() => history.push(rolesPath)}
+                  allowSoftDelete={false}
+                  canDelete={hasDeletePermission}
+                  displayName={role?.displayName}
+                  editDisplayNamePermission={editDisplayNamePermission}
+                  entityFQN={role?.fullyQualifiedName}
+                  entityId={role?.id}
+                  entityName={role.name}
+                  entityType={EntityType.ROLE}
+                  onEditDisplayName={handleDisplayNameUpdate}
+                />
+              </Col>
+            </Row>
 
-              <Tabs
-                className="tabs-new"
-                data-testid="tabs"
-                defaultActiveKey="policies"
-                items={tabItems}
-              />
-            </>
-          )}
-        </>
+            <DescriptionV1
+              hasEditAccess
+              className="m-y-md"
+              description={role.description || ''}
+              entityName={roleName}
+              entityType={EntityType.ROLE}
+              showCommentsIcon={false}
+              onDescriptionUpdate={handleDescriptionUpdate}
+            />
+
+            <Tabs
+              className="tabs-new"
+              data-testid="tabs"
+              defaultActiveKey="policies"
+              items={tabItems}
+            />
+          </>
+        )}
 
         {selectedEntity && (
           <Modal

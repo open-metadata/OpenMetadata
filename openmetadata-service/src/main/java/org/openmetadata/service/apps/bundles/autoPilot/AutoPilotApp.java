@@ -1,4 +1,4 @@
-package org.openmetadata.service.apps.bundles.dayOneExperience;
+package org.openmetadata.service.apps.bundles.autoPilot;
 
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.internal.DayOneExperienceAppConfig;
+import org.openmetadata.schema.entity.app.internal.AutoPilotAppConfig;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -27,17 +27,17 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
-public class DayOneExperienceApp extends AbstractNativeApplication {
-  private static final String WORKFLOW_NAME = "DayOneExperienceWorkflow";
-  protected DayOneExperienceAppConfig config;
+public class AutoPilotApp extends AbstractNativeApplication {
+  private static final String WORKFLOW_NAME = "AutoPilotWorkflow";
+  protected AutoPilotAppConfig config;
 
-  public DayOneExperienceApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+  public AutoPilotApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
   }
 
   @Override
-  public void install() {
-    createWorkflow();
+  public void install(String installedBy) {
+    createWorkflow(installedBy);
     configure();
   }
 
@@ -50,8 +50,7 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
   public void init(App app) {
     super.init(app);
     this.config =
-        JsonUtils.convertValue(
-            this.getApp().getAppConfiguration(), DayOneExperienceAppConfig.class);
+        JsonUtils.convertValue(this.getApp().getAppConfiguration(), AutoPilotAppConfig.class);
   }
 
   @Override
@@ -72,8 +71,8 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
     }
     validateConfig(appConfig);
 
-    DayOneExperienceAppConfig runtimeConfig =
-        JsonUtils.readOrConvertValue(appConfig, DayOneExperienceAppConfig.class);
+    AutoPilotAppConfig runtimeConfig =
+        JsonUtils.readOrConvertValue(appConfig, AutoPilotAppConfig.class);
 
     if (runtimeConfig.getActive()) {
       Map<String, Object> variables = new HashMap<>();
@@ -97,7 +96,7 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
       assert in != null;
       return new String(in.readAllBytes());
     } catch (Exception e) {
-      throw new UnhandledServerException("Failed to load Day One Experience Workflow.");
+      throw new UnhandledServerException("Failed to load AutoPilot Workflow.");
     }
   }
 
@@ -114,8 +113,7 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
     EntityReference adminReference =
         userRepository.findByName(getAppBot(), Include.NON_DELETED).getEntityReference();
 
-    String resourceFile =
-        "/applications/DayOneExperienceApplication/collate/DayOneExperienceWorkflow.json";
+    String resourceFile = "/applications/AutoPilotApplication/collate/AutoPilotWorkflow.json";
     resourceFile =
         resourceExists(resourceFile)
             ? resourceFile
@@ -127,10 +125,10 @@ public class DayOneExperienceApp extends AbstractNativeApplication {
         .withUpdatedBy(getAppBot());
   }
 
-  private void createWorkflow() {
+  private void createWorkflow(String createdBy) {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    repository.createOrUpdate(null, loadWorkflow());
+    repository.createOrUpdate(null, loadWorkflow(), createdBy);
   }
 
   private void deleteWorkflow() {

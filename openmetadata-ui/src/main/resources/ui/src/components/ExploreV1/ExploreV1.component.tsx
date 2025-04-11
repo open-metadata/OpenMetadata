@@ -421,7 +421,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 gutter={[20, 0]}
                 wrap={false}>
                 <Col flex="auto">
-                  <Card>
+                  <Card className="h-full explore-main-card">
                     <div>
                       {!loading && !isElasticSearchIssue ? (
                         <SearchedData
