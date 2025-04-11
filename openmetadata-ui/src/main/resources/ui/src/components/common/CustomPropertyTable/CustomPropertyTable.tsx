@@ -59,8 +59,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   maxDataCap,
+  handleExtensionUpdate,
   isRenderedInRightPanel = false,
   newLook = false,
+  entityDetailsProps,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -70,21 +72,30 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     filterWidgets,
   } = useGenericContext<ExtentionEntities[T]>();
 
+  const [entityDetailsState, setEntityDetailsState] =
+    useState<ExtentionEntities[T]>();
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(true);
 
   const onExtensionUpdate = useCallback(
     async (updatedExtension: ExtentionEntities[T]) => {
-      if (!isUndefined(onUpdate) && entityDetails) {
+      if (
+        (!isUndefined(onUpdate) || !isUndefined(handleExtensionUpdate)) &&
+        entityDetailsState
+      ) {
         const updatedData = {
-          ...entityDetails,
+          ...entityDetailsState,
           extension: updatedExtension,
         };
-        await onUpdate(updatedData);
+        if (handleExtensionUpdate) {
+          await handleExtensionUpdate(updatedData);
+        } else {
+          onUpdate(updatedData);
+        }
       }
     },
-    [entityDetails, onUpdate]
+    [entityDetailsState, onUpdate, handleExtensionUpdate]
   );
 
   const extensionObject: {
@@ -92,7 +103,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     addedKeysList?: string[];
   } = useMemo(() => {
     if (isVersionView) {
-      const changeDescription = entityDetails?.changeDescription;
+      const changeDescription = entityDetailsState?.changeDescription;
       const extensionDiff = getDiffByFieldName(
         EntityField.EXTENSION,
         changeDescription as ChangeDescription
@@ -104,19 +115,19 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         const addedFields = JSON.parse(newValues ?? [])[0];
         if (addedFields) {
           return {
-            extensionObject: entityDetails?.extension,
+            extensionObject: entityDetailsState?.extension,
             addedKeysList: Object.keys(addedFields),
           };
         }
       }
 
-      if (entityDetails && extensionDiff.updated) {
-        return getUpdatedExtensionDiffFields(entityDetails, extensionDiff);
+      if (entityDetailsState && extensionDiff.updated) {
+        return getUpdatedExtensionDiffFields(entityDetailsState, extensionDiff);
       }
     }
 
-    return { extensionObject: entityDetails?.extension };
-  }, [isVersionView, entityDetails?.extension]);
+    return { extensionObject: entityDetailsState?.extension };
+  }, [isVersionView, entityDetailsState?.extension]);
 
   const viewAllBtn = useMemo(() => {
     const customProp = entityTypeDetail.customProperties ?? [];
@@ -124,14 +135,14 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     if (
       maxDataCap &&
       customProp.length >= maxDataCap &&
-      entityDetails?.fullyQualifiedName
+      entityDetailsState?.fullyQualifiedName
     ) {
       return (
         <Link
           className="text-sm"
           to={entityUtilClassBase.getEntityLink(
             entityType,
-            entityDetails.fullyQualifiedName,
+            entityDetailsState.fullyQualifiedName,
             EntityTabs.CUSTOM_PROPERTIES
           )}>
           {t('label.view-all')}
@@ -143,7 +154,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [
     entityTypeDetail.customProperties,
     entityType,
-    entityDetails,
+    entityDetailsState,
     maxDataCap,
   ]);
 
@@ -168,7 +179,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       isRenderedInRightPanel &&
       !entityTypeDetailLoading &&
       isEmpty(entityTypeDetail.customProperties) &&
-      isUndefined(entityDetails?.extension)
+      isUndefined(entityDetailsState?.extension)
     ) {
       filterWidgets?.([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
     }
@@ -210,6 +221,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     initCustomPropertyTable();
   }, [entityType]);
 
+  useEffect(() => {
+    setEntityDetailsState({ ...entityDetails, ...entityDetailsProps });
+  }, [entityDetails, entityDetailsProps]);
+
   if (entityTypeDetailLoading) {
     return (
       <div className="p-lg border-default border-radius-sm">
@@ -228,7 +243,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    isUndefined(entityDetails?.extension) &&
+    isUndefined(entityDetailsState?.extension) &&
     // in case of right panel, we don't want to show the placeholder
     !isRenderedInRightPanel
   ) {
@@ -260,9 +275,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(entityDetails?.extension)
+    !isUndefined(entityDetailsState?.extension)
   ) {
-    return <ExtensionTable extension={entityDetails?.extension} />;
+    return <ExtensionTable extension={entityDetailsState?.extension} />;
   }
 
   if (isRenderedInRightPanel || newLook) {

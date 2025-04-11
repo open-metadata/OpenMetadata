@@ -63,6 +63,10 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   maxDataCap?: number;
   isRenderedInRightPanel?: boolean;
   newLook?: boolean;
+  entityDetailsProps?: ExtentionEntities[T];
+  handleExtensionUpdate?: (
+    updatedExtension: Table['extension']
+  ) => Promise<void>;
 }
 
 export interface PropertyValueProps {
