@@ -101,7 +101,10 @@ import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import {
+  ServiceCategory,
+  ServiceNestedConnectionFields,
+} from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -313,13 +316,13 @@ export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
 
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
-  connection: {
+  [ServiceNestedConnectionFields.CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
-  metastoreConnection: {
+  [ServiceNestedConnectionFields.METASTORE_CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
-  databaseConnection: {
+  [ServiceNestedConnectionFields.DATABASE_CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
 };
