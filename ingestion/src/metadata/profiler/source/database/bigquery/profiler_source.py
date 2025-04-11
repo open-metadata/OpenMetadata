@@ -13,8 +13,6 @@
 Bigquery Profiler source
 """
 
-from copy import deepcopy
-
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -22,12 +20,8 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.security.credentials.gcpValues import (
-    GcpCredentialsValues,
-    MultipleProjectId,
-    SingleProjectId,
-)
 from metadata.profiler.source.database.base.profiler_source import ProfilerSource
+from metadata.utils.bigquery_utils import copy_service_config
 
 
 class BigQueryProfilerSource(ProfilerSource):
@@ -46,16 +40,4 @@ class BigQueryProfilerSource(ProfilerSource):
         Returns:
             DatabaseConnection
         """
-        config_copy: BigQueryConnection = deepcopy(
-            config.source.serviceConnection.root.config  # type: ignore
-        )
-
-        if isinstance(config_copy.credentials.gcpConfig, GcpCredentialsValues):
-            if isinstance(
-                config_copy.credentials.gcpConfig.projectId, MultipleProjectId
-            ):
-                config_copy.credentials.gcpConfig.projectId = SingleProjectId(
-                    database.name.root
-                )
-
-        return config_copy
+        return copy_service_config(config, database.name.root)
