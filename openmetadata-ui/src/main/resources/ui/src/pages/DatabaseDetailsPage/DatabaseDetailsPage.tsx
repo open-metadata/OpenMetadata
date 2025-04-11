@@ -372,29 +372,14 @@ const DatabaseDetails: FunctionComponent = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback(
-    async (data) => {
-      const updatedData = data as Database;
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as Database;
 
-      setDatabase((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (
-        updatedData?.domain?.id !== database?.domain?.id &&
-        database?.dataProducts?.length
-      ) {
-        const updatedDatabase = {
-          ...database,
-          dataProducts: [],
-        };
-
-        await settingsUpdateHandler(updatedDatabase as Database);
-      }
-    },
-    [database, settingsUpdateHandler]
-  );
+    setDatabase((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

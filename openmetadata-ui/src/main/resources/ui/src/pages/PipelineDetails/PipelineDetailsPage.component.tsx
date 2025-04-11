@@ -274,29 +274,14 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const updatePipelineDetailsState = useCallback(
-    async (data) => {
-      const updatedData = data as Pipeline;
+  const updatePipelineDetailsState = useCallback((data) => {
+    const updatedData = data as Pipeline;
 
-      setPipelineDetails((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (
-        updatedData?.domain?.id !== pipelineDetails?.domain?.id &&
-        pipelineDetails?.dataProducts?.length
-      ) {
-        const updatedPipeline = {
-          ...pipelineDetails,
-          dataProducts: [],
-        };
-
-        await settingsUpdateHandler(updatedPipeline);
-      }
-    },
-    [pipelineDetails, settingsUpdateHandler]
-  );
+    setPipelineDetails((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {

@@ -234,29 +234,14 @@ const MetricDetailsPage = () => {
     }
   };
 
-  const updateMetricDetails = useCallback(
-    async (data) => {
-      const updatedData = data as Metric;
+  const updateMetricDetails = useCallback((data) => {
+    const updatedData = data as Metric;
 
-      setMetricDetails((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (
-        updatedData?.domain?.id !== metricDetails?.domain?.id &&
-        metricDetails?.dataProducts?.length
-      ) {
-        const updatedMetric = {
-          ...metricDetails,
-          dataProducts: [],
-        };
-
-        await handleMetricUpdate(updatedMetric, 'dataProducts');
-      }
-    },
-    [metricDetails, handleMetricUpdate]
-  );
+    setMetricDetails((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     fetchResourcePermission(metricFqn);

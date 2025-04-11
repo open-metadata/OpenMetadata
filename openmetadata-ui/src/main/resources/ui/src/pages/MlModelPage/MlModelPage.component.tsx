@@ -174,7 +174,7 @@ const MlModelPage = () => {
     updatedMlModel: Mlmodel
   ): Promise<void> => {
     try {
-      const { displayName, owners, tags, version, dataProducts } =
+      const { displayName, owners, tags, version } =
         await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
@@ -182,7 +182,6 @@ const MlModelPage = () => {
         owners,
         tags,
         version,
-        dataProducts,
       }));
     } catch (error) {
       showErrorToast(
@@ -230,29 +229,14 @@ const MlModelPage = () => {
     }
   };
 
-  const updateMlModelDetailsState = useCallback(
-    async (data) => {
-      const updatedData = data as Mlmodel;
+  const updateMlModelDetailsState = useCallback((data) => {
+    const updatedData = data as Mlmodel;
 
-      setMlModelDetail((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (
-        updatedData?.domain?.id !== mlModelDetail?.domain?.id &&
-        mlModelDetail?.dataProducts?.length
-      ) {
-        const updatedMlModel = {
-          ...mlModelDetail,
-          dataProducts: [],
-        };
-
-        await settingsUpdateHandler(updatedMlModel as Mlmodel);
-      }
-    },
-    [mlModelDetail, settingsUpdateHandler]
-  );
+    setMlModelDetail((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   const handleMlModelUpdate = useCallback(
     async (data: Mlmodel) => {

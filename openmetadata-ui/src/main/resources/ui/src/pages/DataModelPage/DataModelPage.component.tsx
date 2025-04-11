@@ -265,29 +265,14 @@ const DataModelsPage = () => {
     }
   };
 
-  const updateDataModelDetailsState = useCallback(
-    async (data) => {
-      const updatedData = data as DashboardDataModel;
+  const updateDataModelDetailsState = useCallback((data) => {
+    const updatedData = data as DashboardDataModel;
 
-      setDataModelData((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (
-        updatedData?.domain?.id !== dataModelData?.domain?.id &&
-        dataModelData?.dataProducts?.length
-      ) {
-        const updatedDataModel = {
-          ...dataModelData,
-          dataProducts: [],
-        };
-
-        await handleUpdateDataModel(updatedDataModel, 'dataProducts');
-      }
-    },
-    [dataModelData, handleUpdateDataModel]
-  );
+    setDataModelData((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     if (hasViewPermission) {

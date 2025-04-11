@@ -243,26 +243,14 @@ const APIEndpointPage = () => {
     }
   };
 
-  const updateApiEndpointDetails = useCallback(
-    async (data) => {
-      const updatedData = data as APIEndpoint;
+  const updateApiEndpointDetails = useCallback((data) => {
+    const updatedData = data as APIEndpoint;
 
-      setApiEndpointDetails((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (updatedData?.domain?.id !== apiEndpointDetails?.domain?.id) {
-        const updatedApiEndpoint = {
-          ...apiEndpointDetails,
-          dataProducts: [],
-        };
-
-        await handleApiEndpointUpdate(updatedApiEndpoint, 'dataProducts');
-      }
-    },
-    [apiEndpointDetails, handleApiEndpointUpdate]
-  );
+    setApiEndpointDetails((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   useEffect(() => {
     fetchResourcePermission(apiEndpointFqn);

@@ -368,34 +368,14 @@ const ContainerPage = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback(
-    async (data) => {
-      const updatedData = data as Container;
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as Container;
 
-      setContainerData((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (
-        updatedData?.domain?.id !== containerData?.domain?.id &&
-        containerData?.dataProducts?.length
-      ) {
-        const updatedContainer = {
-          ...containerData,
-          dataProducts: [],
-        };
-
-        try {
-          const res = await handleUpdateContainerData(updatedContainer);
-          setContainerData(res);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }
-    },
-    [containerData, handleUpdateContainerData]
-  );
+    setContainerData((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   const handleRestoreContainer = async () => {
     try {

@@ -336,36 +336,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback(
-    async (data) => {
-      const updatedData = data as DatabaseSchema;
+  const afterDomainUpdateAction = useCallback((data) => {
+    const updatedData = data as DatabaseSchema;
 
-      setDatabaseSchema((data) => ({
-        ...(updatedData ?? data),
-        version: updatedData.version,
-      }));
-
-      if (
-        updatedData?.domain?.id !== databaseSchema?.domain?.id &&
-        databaseSchema?.dataProducts?.length
-      ) {
-        const updatedDatabaseSchema = {
-          ...databaseSchema,
-          dataProducts: [],
-        };
-
-        try {
-          const res = await saveUpdatedDatabaseSchemaData(
-            updatedDatabaseSchema
-          );
-          setDatabaseSchema(res);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }
-    },
-    [databaseSchema, saveUpdatedDatabaseSchemaData]
-  );
+    setDatabaseSchema((data) => ({
+      ...(updatedData ?? data),
+      version: updatedData.version,
+    }));
+  }, []);
 
   // Fetch stored procedure count to show it in Tab label
   const fetchStoreProcedureCount = useCallback(async () => {
