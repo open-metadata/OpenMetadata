@@ -312,14 +312,25 @@ export const filterDistributionChartItem = (item: {
   term: string;
   group: string;
 }) => {
-  if (Fqn.split(item.term).length !== 2) {
+  // Add input validation to prevent DOS vulnerabilities | typescript:S5852
+  if (
+    !item.term ||
+    !item.group ||
+    item.term.length > 1000 ||
+    item.group.length > 1000
+  ) {
+    return false;
+  }
+
+  // Split once and cache the result
+  const termParts = Fqn.split(item.term);
+  if (termParts.length !== 2) {
     // Invalid Tag FQN
     return false;
   }
 
   // clean start and end quotes
-  let tag_name = Fqn.split(item.term)[1];
-  tag_name = tag_name.replace(/(^["']+|["']+$)/g, '');
+  const tag_name = termParts[1].replace(/(^["']+|["']+$)/g, '');
 
   return toLower(tag_name) === toLower(item.group);
 };

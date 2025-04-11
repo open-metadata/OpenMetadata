@@ -139,7 +139,7 @@ export const PopoverContent = React.memo(
           id: userName,
           user,
         });
-      } catch (error) {
+      } catch {
         // Error
       } finally {
         setLoading(false);
