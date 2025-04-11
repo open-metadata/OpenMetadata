@@ -1380,7 +1380,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               disableRunAgentsButton={disableRunAgentsButton}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
-              isDayOneWorkflowStatusLoading={isWorkflowStatusLoading}
+              isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
