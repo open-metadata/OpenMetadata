@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
-import { SegmentedValue } from 'antd/lib/segmented';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -192,10 +191,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
-
-  const handleViewChange = (value: SegmentedValue) => {
-    setViewType(value as SchemaViewType);
-  };
 
   const handleExpandedRowsChange = (keys: readonly Key[]) => {
     setExpandedRowKeys(keys as string[]);
@@ -420,7 +415,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
                 className="segment-toggle"
                 options={viewTypeOptions}
                 value={viewType}
-                onChange={handleViewChange}
+                onChange={(value) => setViewType(value as SchemaViewType)}
               />
 
               <ToggleExpandButton

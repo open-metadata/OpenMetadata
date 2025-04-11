@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
-import { SegmentedValue } from 'antd/lib/segmented';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -313,10 +312,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
-  const handleViewChange = (value: SegmentedValue) => {
-    setViewType(value as SchemaViewType);
-  };
-
   useEffect(() => {
     setExpandedRowKeys(schemaAllRowKeys);
   }, []);
@@ -344,7 +339,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
                 className="segment-toggle"
                 options={viewTypeOptions}
                 value={viewType}
-                onChange={handleViewChange}
+                onChange={(value) => setViewType(value as SchemaViewType)}
               />
             </Col>
           )}
