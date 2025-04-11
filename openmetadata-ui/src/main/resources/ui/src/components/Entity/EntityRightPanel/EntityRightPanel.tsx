@@ -14,6 +14,7 @@ import { Space } from 'antd';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
@@ -28,7 +29,6 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
-
 interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   editTagPermission: boolean;
   editGlossaryTermsPermission: boolean;
@@ -42,6 +42,8 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
   editCustomAttributePermission?: boolean;
+  editDataProductPermission?: boolean;
+  onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
@@ -57,6 +59,8 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   viewAllPermission,
   customProperties,
   editCustomAttributePermission,
+  editDataProductPermission,
+  onDataProductUpdate,
 }: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
@@ -75,14 +79,17 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
       <Space className="w-full" direction="vertical" size="large">
         {showDataProductContainer && (
           <DataProductsContainer
+            newLook
             activeDomain={domain}
             dataProducts={dataProducts}
-            hasPermission={false}
+            hasPermission={editDataProductPermission ?? false}
+            onSave={onDataProductUpdate}
           />
         )}
 
         <div data-testid="KnowledgePanel.Tags">
           <TagsContainerV2
+            newLook
             displayType={DisplayType.READ_MORE}
             entityFqn={entityFQN}
             entityType={entityType}
@@ -96,6 +103,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
 
         <div data-testid="KnowledgePanel.GlossaryTerms">
           <TagsContainerV2
+            newLook
             displayType={DisplayType.READ_MORE}
             entityFqn={entityFQN}
             entityType={entityType}
@@ -112,13 +120,14 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {customProperties && (
           <CustomPropertyTable<T>
             isRenderedInRightPanel
+            newLook
             entityType={entityType as T}
             hasEditAccess={Boolean(editCustomAttributePermission)}
             hasPermission={Boolean(viewAllPermission)}
             maxDataCap={5}
           />
         )}
-        <PartitionedKeys />
+        <PartitionedKeys newLook />
       </Space>
       {afterSlot}
     </>

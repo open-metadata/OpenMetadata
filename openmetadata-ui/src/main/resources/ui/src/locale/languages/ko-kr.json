@@ -2051,6 +2051,7 @@
     "see-how-to-get-started": "시작하는 방법 알아보기",
     "select-alert-type": "경고 유형을 선택하세요.",
     "select-column-name": "열 이름을 선택하세요.",
+    "select-domain-to-add-data-product": "도메인을 선택하여 데이터 제품을 추가하세요.",
     "select-gcs-config-type": "GCS 구성 유형을 선택하세요.",
     "select-interval-type": "간격 유형을 선택하세요.",
     "select-interval-unit": "간격 단위를 선택하세요.",

@@ -2051,6 +2051,7 @@
     "see-how-to-get-started": "Узнайте, как начать",
     "select-alert-type": "Пожалуйста, выберите тип оповещения",
     "select-column-name": "Выберите имя столбца",
+    "select-domain-to-add-data-product": "Выберите домен для добавления продукта данных.",
     "select-gcs-config-type": "Выберите тип конфигурации GCS",
     "select-interval-type": "Выберите тип интервала",
     "select-interval-unit": "Выберите единицу интервала",

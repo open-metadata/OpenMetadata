@@ -2051,6 +2051,7 @@
     "see-how-to-get-started": "查看如何开始",
     "select-alert-type": "请选择一种提醒类型",
     "select-column-name": "选择列名",
+    "select-domain-to-add-data-product": "选择一个域以添加数据产品",
     "select-gcs-config-type": "选择 GCS 配置类型",
     "select-interval-type": "选择间隔类型",
     "select-interval-unit": "选择间隔单位",

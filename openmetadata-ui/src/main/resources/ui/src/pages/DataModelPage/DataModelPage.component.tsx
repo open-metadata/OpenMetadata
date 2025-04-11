@@ -269,7 +269,7 @@ const DataModelsPage = () => {
     const updatedData = data as DashboardDataModel;
 
     setDataModelData((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

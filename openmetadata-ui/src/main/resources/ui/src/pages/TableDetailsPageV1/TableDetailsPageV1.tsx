@@ -672,7 +672,7 @@ const TableDetailsPageV1: React.FC = () => {
     const updatedData = data as Table;
 
     setTableDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

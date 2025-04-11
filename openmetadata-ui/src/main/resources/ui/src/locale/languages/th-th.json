@@ -2051,6 +2051,7 @@
     "see-how-to-get-started": "ดูวิธีการเริ่มต้น",
     "select-alert-type": "โปรดเลือกประเภทการแจ้งเตือน",
     "select-column-name": "เลือกชื่อคอลัมน์",
+    "select-domain-to-add-data-product": "เลือกโดเมนเพื่อเพิ่มผลิตภัณฑ์ข้อมูล",
     "select-gcs-config-type": "เลือกประเภทการกำหนดค่า GCS",
     "select-interval-type": "เลือกประเภทช่วงเวลา",
     "select-interval-unit": "เลือกหน่วยช่วงเวลา",
