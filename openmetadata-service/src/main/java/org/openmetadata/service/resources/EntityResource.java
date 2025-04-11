@@ -337,7 +337,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
+    PutResponse<T> response =
+        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -362,7 +363,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
+    PutResponse<T> response =
+        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

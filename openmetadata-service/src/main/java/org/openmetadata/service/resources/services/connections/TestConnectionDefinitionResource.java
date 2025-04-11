@@ -68,7 +68,7 @@ public class TestConnectionDefinitionResource
       testConnectionDefinition.setId(UUID.randomUUID());
       testConnectionDefinition.setUpdatedBy(ADMIN_USER_NAME);
       testConnectionDefinition.setUpdatedAt(System.currentTimeMillis());
-      repository.createOrUpdate(null, testConnectionDefinition);
+      repository.createOrUpdate(null, testConnectionDefinition, ADMIN_USER_NAME);
     }
   }
 

@@ -249,7 +249,7 @@ public class MigrationUtil {
           }
         }
         workflowDefinition.withConfig(new WorkflowConfiguration());
-        repository.createOrUpdate(null, workflowDefinition);
+        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
       }
     } catch (Exception ex) {
       LOG.error("Error while updating workflow definitions", ex);
@@ -563,7 +563,7 @@ public class MigrationUtil {
           if (rule.getName().equals("LineageBotRule-Allow")
               && !rule.getOperations().contains(MetadataOperation.EDIT_ALL)) {
             rule.getOperations().add(MetadataOperation.EDIT_ALL);
-            policyRepository.createOrUpdate(null, policy);
+            policyRepository.createOrUpdate(null, policy, ADMIN_USER_NAME);
           }
         }
       }

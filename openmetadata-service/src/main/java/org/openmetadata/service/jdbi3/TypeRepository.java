@@ -159,7 +159,7 @@ public class TypeRepository extends EntityRepository<Type> {
     type.setCustomProperties(updatedProperties);
     type.setUpdatedBy(updatedBy);
     type.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, type);
+    return createOrUpdate(uriInfo, type, updatedBy);
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {

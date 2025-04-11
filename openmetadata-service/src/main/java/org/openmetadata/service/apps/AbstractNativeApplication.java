@@ -64,7 +64,7 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void install() {
+  public void install(String installedBy) {
     // If the app does not have any Schedule Return without scheduling
     if (Boolean.TRUE.equals(app.getDeleted()) || (app.getAppSchedule() == null)) {
       return;
@@ -84,7 +84,7 @@ public class AbstractNativeApplication implements NativeApplication {
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
         && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
-      scheduleExternal();
+      scheduleExternal(installedBy);
     }
   }
 
@@ -133,14 +133,16 @@ public class AbstractNativeApplication implements NativeApplication {
     AppScheduler.getInstance().scheduleApplication(app);
   }
 
-  public void scheduleExternal() {
+  public void scheduleExternal(String updatedBy) {
     IngestionPipelineRepository ingestionPipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
       updateAppConfig(
-          ingestionPipelineRepository, JsonUtils.getMap(this.getApp().getAppConfiguration()));
+          ingestionPipelineRepository,
+          JsonUtils.getMap(this.getApp().getAppConfiguration()),
+          updatedBy);
     } catch (EntityNotFoundException ex) {
       Map<String, Object> config = JsonUtils.getMap(this.getApp().getAppConfiguration());
       createAndBindIngestionPipeline(ingestionPipelineRepository, config);
@@ -178,7 +180,9 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   private void updateAppConfig(
-      IngestionPipelineRepository repository, Map<String, Object> appConfiguration) {
+      IngestionPipelineRepository repository,
+      Map<String, Object> appConfiguration,
+      String updatedBy) {
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
@@ -186,7 +190,7 @@ public class AbstractNativeApplication implements NativeApplication {
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
         updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
-    repository.update(null, original, updated);
+    repository.update(null, original, updated, updatedBy);
   }
 
   private void createAndBindIngestionPipeline(

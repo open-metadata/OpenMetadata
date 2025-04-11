@@ -851,7 +851,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(
             entity,
             repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
             .getExecutorService()
@@ -904,7 +904,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(
             entity,
             repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
-        PutResponse<EntityInterface> response = repository.createOrUpdate(null, entity);
+        PutResponse<EntityInterface> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
             .getExecutorService()
@@ -1004,7 +1004,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(
             entity,
             repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);

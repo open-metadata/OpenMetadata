@@ -169,7 +169,7 @@ public class CreateIngestionPipelineImpl {
         ingestionPipeline.setDeployed(true);
         IngestionPipelineRepository repository =
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-        repository.createOrUpdate(null, ingestionPipeline);
+        repository.createOrUpdate(null, ingestionPipeline, ingestionPipeline.getUpdatedBy());
       }
     }
 

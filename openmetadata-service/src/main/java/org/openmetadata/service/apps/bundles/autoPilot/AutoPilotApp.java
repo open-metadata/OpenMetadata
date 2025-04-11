@@ -36,8 +36,8 @@ public class AutoPilotApp extends AbstractNativeApplication {
   }
 
   @Override
-  public void install() {
-    createWorkflow();
+  public void install(String installedBy) {
+    createWorkflow(installedBy);
     configure();
   }
 
@@ -125,10 +125,10 @@ public class AutoPilotApp extends AbstractNativeApplication {
         .withUpdatedBy(getAppBot());
   }
 
-  private void createWorkflow() {
+  private void createWorkflow(String createdBy) {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    repository.createOrUpdate(null, loadWorkflow());
+    repository.createOrUpdate(null, loadWorkflow(), createdBy);
   }
 
   private void deleteWorkflow() {
