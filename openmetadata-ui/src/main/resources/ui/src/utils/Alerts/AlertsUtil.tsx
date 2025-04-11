@@ -111,6 +111,8 @@ import searchClassBase from '../SearchClassBase';
 import { showSuccessToast } from '../ToastUtils';
 import './alerts-util.less';
 
+export const DEFAULT_READ_TIMEOUT = 12;
+
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
     case SubscriptionType.Slack:
@@ -370,13 +372,12 @@ export const getConnectionTimeoutField = () => (
         </Form.Item>
       </Col>
     </Row>
-    <Divider className="p-x-xs" />
   </>
 );
 
 export const getReadTimeoutField = () => (
   <>
-    <Row align="middle">
+    <Row align="middle" className="mt-4">
       <Col span={7}>{`${t('label.read-type', {
         type: t('label.timeout'),
       })} (${t('label.second-plural')})`}</Col>
@@ -385,7 +386,7 @@ export const getReadTimeoutField = () => (
         <Form.Item name="readTimeout">
           <Input
             data-testid="read-timeout-input"
-            defaultValue={10}
+            defaultValue={DEFAULT_READ_TIMEOUT}
             placeholder={`${t('label.read-type', {
               type: t('label.timeout'),
             })} (${t('label.second-plural')})`}
@@ -1424,7 +1425,7 @@ export const getModifiedAlertDataForForm = (
   return {
     ...alertData,
     timeout: alertData.destinations[0].timeout ?? 10,
-    readTimeout: alertData.destinations[0].readTimeout ?? 10,
+    readTimeout: alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
     destinations: alertData.destinations.map((destination) => {
       const isExternalDestination =
         destination.category === SubscriptionCategory.External;
