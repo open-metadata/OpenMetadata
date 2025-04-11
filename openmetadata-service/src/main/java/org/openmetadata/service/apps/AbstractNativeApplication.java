@@ -7,7 +7,6 @@ import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPE
 
 import java.util.List;
 import java.util.Map;
-
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;

@@ -141,7 +141,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         // Schedule
         if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
           ApplicationHandler.getInstance()
-              .installApplication(app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
+              .installApplication(
+                  app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
         }
       } catch (Exception ex) {
         LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
@@ -630,7 +631,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
         new OperationContext(APPLICATION, MetadataOperation.CREATE));
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository, securityContext.getUserPrincipal().getName());
+          .installApplication(
+              app,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
       ApplicationHandler.getInstance()
           .configureApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
@@ -675,7 +680,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App updatedApp = (App) response.getEntity();
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository, securityContext.getUserPrincipal().getName());
+          .installApplication(
+              updatedApp,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
@@ -719,7 +728,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App updatedApp = (App) response.getEntity();
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository, securityContext.getUserPrincipal().getName());
+          .installApplication(
+              updatedApp,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
@@ -747,7 +760,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository, securityContext.getUserPrincipal().getName());
+          .installApplication(
+              app,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
     }
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
@@ -854,7 +871,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
       App app = (App) response.getEntity();
       if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
         ApplicationHandler.getInstance()
-            .installApplication(app, Entity.getCollectionDAO(), searchRepository, securityContext.getUserPrincipal().getName());
+            .installApplication(
+                app,
+                Entity.getCollectionDAO(),
+                searchRepository,
+                securityContext.getUserPrincipal().getName());
       }
       // We don't want to store this information
       unsetAppRuntimeProperties(app);
@@ -890,7 +911,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
-          .installApplication(app, repository.getDaoCollection(), searchRepository, securityContext.getUserPrincipal().getName());
+          .installApplication(
+              app,
+              repository.getDaoCollection(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
     }
     throw new IllegalArgumentException("App is not of schedule type Scheduled.");
@@ -1041,7 +1066,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
-          .installApplication(app, Entity.getCollectionDAO(), searchRepository, securityContext.getUserPrincipal().getName());
+          .installApplication(
+              app,
+              Entity.getCollectionDAO(),
+              searchRepository,
+              securityContext.getUserPrincipal().getName());
       return Response.status(Response.Status.OK).entity("Application Deployed").build();
     } else {
       if (!app.getPipelines().isEmpty()) {
