@@ -58,7 +58,9 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
     title={
       <Typography.Text className="text-white">
         {node.title}
-        {node.type && <span className="text-grey-400">({node.type})</span>}
+        {node.type && (
+          <span className="text-grey-400">{` (${node.type})`}</span>
+        )}
       </Typography.Text>
     }>
     <div className="d-flex justify-between">
