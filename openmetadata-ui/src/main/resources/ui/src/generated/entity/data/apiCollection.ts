@@ -84,6 +84,10 @@ export interface APICollection {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this apiCollection.
+     */
+    parent?: EntityReference;
+    /**
      * Link to service where this API Collection is hosted in.
      */
     service: EntityReference;
@@ -135,6 +139,8 @@ export interface APICollection {
  * domain from the API service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this apiCollection.
  *
  * Link to service where this API Collection is hosted in.
  */

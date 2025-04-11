@@ -15,6 +15,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Builds ResourceContext lazily. ResourceContext includes all the attributes of a resource a user is trying to access
@@ -23,6 +25,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
 public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
+  private static final Logger LOG = LoggerFactory.getLogger(ResourceContext.class);
+
   @NonNull @Getter private final String resource;
   private final EntityRepository<T> entityRepository;
   private final UUID id;
@@ -96,6 +100,15 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       return entity.getEntityReference(); // Domain for a domain is same as the domain
     }
     return entity.getDomain();
+  }
+
+  @Override
+  public EntityReference getParent() {
+    resolveEntity();
+    if (entity == null) {
+      return null;
+    }
+    return entity.getParent();
   }
 
   private EntityInterface resolveEntity() {

@@ -87,6 +87,10 @@ export interface SearchIndex {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this SearchIndex.
+     */
+    parent?: EntityReference;
+    /**
      * Sample data for a searchIndex.
      */
     sampleData?: SearchIndexSampleData;
@@ -313,6 +317,8 @@ export interface FieldChange {
  * the messaging service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this SearchIndex.
  *
  * Link to the search cluster/service where this SearchIndex is hosted in.
  */

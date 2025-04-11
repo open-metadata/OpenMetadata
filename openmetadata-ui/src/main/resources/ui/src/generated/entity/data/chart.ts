@@ -79,6 +79,10 @@ export interface Chart {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this chart, dashboard.
+     */
+    parent?: EntityReference;
+    /**
      * Link to service where this dashboard is hosted in.
      */
     service: EntityReference;
@@ -321,6 +325,8 @@ export enum ChartType {
  * belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this chart, dashboard.
  *
  * Link to service where this dashboard is hosted in.
  */

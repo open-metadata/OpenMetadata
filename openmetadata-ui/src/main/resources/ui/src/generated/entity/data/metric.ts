@@ -87,6 +87,10 @@ export interface Metric {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this metric.
+     */
+    parent?: EntityReference;
+    /**
      * Related Metrics.
      */
     relatedMetrics?: EntityReference[];
@@ -298,6 +302,8 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Glossary belongs to.
+ *
+ * Parent of this metric.
  */
 export interface EntityReference {
     /**

@@ -56,6 +56,11 @@
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
+    "parent": {
+      "description": "Parent of this Report.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

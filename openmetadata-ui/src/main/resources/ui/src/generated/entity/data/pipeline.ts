@@ -84,6 +84,10 @@ export interface Pipeline {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this Pipeline.
+     */
+    parent?: EntityReference;
+    /**
      * Pipeline Code Location.
      */
     pipelineLocation?: string;
@@ -334,6 +338,8 @@ export interface FieldChange {
  * Pipeline service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this Pipeline.
  *
  * Link to service where this pipeline is hosted in.
  */

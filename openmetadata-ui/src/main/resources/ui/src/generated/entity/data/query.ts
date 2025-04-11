@@ -72,6 +72,10 @@ export interface Query {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this query, table.
+     */
+    parent?: EntityReference;
+    /**
      * Flag if this query has already been successfully processed for lineage
      */
     processedLineage?: boolean;
@@ -210,6 +214,8 @@ export interface FieldChange {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Parent of this query, table.
  *
  * Link to the service this query belongs to.
  *

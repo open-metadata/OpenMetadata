@@ -122,6 +122,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default EntityReference getParent() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);

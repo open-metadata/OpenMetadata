@@ -110,6 +110,11 @@
       "description": "Reference to API Collection that contains this API Endpoint.",
       "$ref": "../../type/entityReference.json"
     },
+    "parent": {
+      "description": "Parent of this apiEndpoint,apiCollection.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"

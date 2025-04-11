@@ -36,6 +36,9 @@ import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.SimpleEvaluationContext;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 
 class RuleEvaluatorTest {
   private static final Table table = new Table().withName("table");
@@ -43,6 +46,13 @@ class RuleEvaluatorTest {
   private static EvaluationContext evaluationContext;
   private static SubjectContext subjectContext;
   private static ResourceContext<?> resourceContext;
+  private static ResourceContext<?> resourceContextSchema;
+
+  private static User dbOwnerUser;
+  private static User nonOwnerUser;
+  private static EntityReference dbOwnerRef;
+  private static EntityReference otherUserRef;
+  private static EntityReference databaseRef;
 
   @BeforeAll
   public static void setup() {
@@ -93,6 +103,21 @@ class RuleEvaluatorTest {
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
+
+    // Setup for isAncestorOwner tests
+    dbOwnerUser = new User().withId(UUID.randomUUID()).withName("dbOwner");
+    nonOwnerUser = new User().withId(UUID.randomUUID()).withName("nonOwner");
+    dbOwnerRef = dbOwnerUser.getEntityReference();
+    otherUserRef =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("otherUser");
+
+    Database database = new Database().withId(UUID.randomUUID()).withName("testDB");
+    databaseRef = database.getEntityReference();
+    DatabaseSchema schema = new DatabaseSchema().withId(UUID.randomUUID()).withName("testSchema");
+    schema.setDatabase(databaseRef);
+
+    resourceContextSchema =
+        Mockito.spy(new ResourceContext<>("databaseSchema", schema, null)); // Use spy
   }
 
   @Test
@@ -144,6 +169,35 @@ class RuleEvaluatorTest {
                 .withName(user.getName())));
     assertTrue(evaluateExpression("noOwner() || isOwner()"));
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
+    
+    // Test inherited ownership: Create a parent entity (e.g., database schema)
+    // and make the user an owner of that parent, but not the table itself
+    EntityReference schemaRef = 
+        new EntityReference().withId(UUID.randomUUID()).withType("databaseSchema").withName("testSchema");
+    table.setDatabaseSchema(schemaRef);
+    table.setOwners(
+        List.of(
+            new EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.USER)
+                .withName("otherUser")));
+    
+    // Mock the resourceContext methods
+    ResourceContext<?> mockedResourceContext = Mockito.spy(resourceContext);
+    Mockito.doReturn(schemaRef).when(mockedResourceContext).getParent();
+    
+    List<EntityReference> schemaOwners = List.of(
+        new EntityReference()
+            .withId(user.getId())
+            .withType(Entity.USER)
+            .withName(user.getName()));
+    Mockito.doReturn(schemaOwners).when(mockedResourceContext).getOwners(schemaRef);
+    
+    // Update evaluation context with the mocked resource context
+    updateEvaluationContext(null, subjectContext, mockedResourceContext);
+    
+    // User is not a direct owner but is owner of the parent schema
+    assertTrue(evaluateExpression("isOwner()"));
   }
 
   @Test
@@ -360,10 +414,19 @@ class RuleEvaluatorTest {
     return role;
   }
 
-  private void updatePolicyContext(String team) {
-    PolicyContext policyContext = new PolicyContext(Entity.TEAM, team, null, null, null);
-    RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
+  private void updateEvaluationContext(
+      PolicyContext policyContext, SubjectContext subject, ResourceContext<?> resource) {
+    // Use provided contexts, falling back to defaults if null
+    PolicyContext pContext = (policyContext != null) ? policyContext : null;
+    SubjectContext sContext = (subject != null) ? subject : RuleEvaluatorTest.subjectContext;
+    ResourceContext<?> rContext = (resource != null) ? resource : RuleEvaluatorTest.resourceContext;
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(pContext, sContext, rContext);
     evaluationContext =
         SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
+  }
+
+  private void updatePolicyContext(String team) {
+    PolicyContext policyContext = new PolicyContext(Entity.TEAM, team, null, null, null);
+    updateEvaluationContext(policyContext, null, null); // Use the new helper
   }
 }

@@ -38,8 +38,7 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   private final EntityLink entityLink;
   private final UUID id;
   private final String name;
-  private EntityInterface
-      entity; // Will be lazily initialized to the entity that has this test case
+  private EntityInterface entity; // Will be lazily initialized to the entity that has this test case
 
   @Override
   public String getResource() {
@@ -67,6 +66,12 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   public EntityReference getDomain() {
     resolveEntity();
     return entity == null ? null : entity.getDomain();
+  }
+
+  @Override
+  public EntityReference getParent() {
+    resolveEntity();
+    return entity == null ? null : entity.getParent();
   }
 
   private EntityInterface resolveEntity() {
@@ -107,5 +112,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     TestCaseRepository dao = (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCase = dao.getByName(null, fqn, dao.getFields("entityLink"), Include.ALL, true);
     return resolveEntityByEntityLink(EntityLink.parse(testCase.getEntityLink()));
+  }
+
+  private static EntityInterface resolveParentEntityById(UUID id) {
+
   }
 }

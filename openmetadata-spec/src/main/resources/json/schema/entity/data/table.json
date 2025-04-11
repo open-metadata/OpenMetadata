@@ -1104,6 +1104,11 @@
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
       "$ref": "#/definitions/dataModel"
     },
+    "parent": {
+      "description": "Parent of this table, database schema.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

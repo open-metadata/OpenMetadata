@@ -92,6 +92,10 @@ export interface Database {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this database.
+     */
+    parent?: EntityReference;
+    /**
      * Retention period of the data in the database. Period is expressed as duration in ISO 8601
      * format in UTC. Example - `P23DT23H`.
      */
@@ -325,6 +329,8 @@ export interface FieldChange {
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Reference to the Location that contains this database.
+ *
+ * Parent of this database.
  *
  * Link to the database cluster/service where this database is hosted in.
  */

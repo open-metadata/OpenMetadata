@@ -76,7 +76,11 @@ export interface Glossary {
     /**
      * Owners of this glossary.
      */
-    owners?:   EntityReference[];
+    owners?: EntityReference[];
+    /**
+     * Parent of this Glossary.
+     */
+    parent?:   EntityReference;
     provider?: ProviderType;
     /**
      * User references of the reviewers for this glossary.
@@ -192,6 +196,8 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Domain the Glossary belongs to.
+ *
+ * Parent of this Glossary.
  */
 export interface EntityReference {
     /**

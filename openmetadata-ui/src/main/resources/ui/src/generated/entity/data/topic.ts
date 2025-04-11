@@ -93,6 +93,10 @@ export interface Topic {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this topic.
+     */
+    parent?: EntityReference;
+    /**
      * Number of partitions into which the topic is divided.
      */
     partitions: number;
@@ -348,6 +352,8 @@ export enum CleanupPolicy {
  * messaging service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this topic.
  *
  * Link to the messaging cluster/service where this topic is hosted in.
  */

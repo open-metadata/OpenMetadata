@@ -87,6 +87,10 @@ export interface APIEndpoint {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this apiEndpoint,apiCollection.
+     */
+    parent?: EntityReference;
+    /**
      * Request Method for the API Endpoint.
      */
     requestMethod?: APIRequestMethod;
@@ -152,6 +156,8 @@ export interface APIEndpoint {
  * domain from the API service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this apiEndpoint,apiCollection.
  *
  * Link to service where this API Collection is hosted in.
  */

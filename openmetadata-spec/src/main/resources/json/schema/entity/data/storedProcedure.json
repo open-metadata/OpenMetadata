@@ -187,6 +187,11 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
+    "parent": {
+      "description": "Parent of this Stored Procedure, database schema.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "domain": {
       "description": "Domain the Stored Procedure belongs to. When not set, the Stored Procedure inherits the domain from the database schemna it belongs to.",
       "$ref": "../../type/entityReference.json"

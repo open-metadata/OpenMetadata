@@ -97,6 +97,11 @@
       "description": "Chart URL suffix from its service.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
+    "parent": {
+      "description": "Parent of this chart, dashboard.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"

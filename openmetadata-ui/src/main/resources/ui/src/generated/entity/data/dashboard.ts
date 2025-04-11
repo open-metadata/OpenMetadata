@@ -89,6 +89,10 @@ export interface Dashboard {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this dashboard.
+     */
+    parent?: EntityReference;
+    /**
      * Name of the project / workspace / collection in which the dashboard is contained
      */
     project?: string;
@@ -319,6 +323,8 @@ export interface FieldChange {
  * dashboard service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this dashboard.
  *
  * Link to service where this dashboard is hosted in.
  */
