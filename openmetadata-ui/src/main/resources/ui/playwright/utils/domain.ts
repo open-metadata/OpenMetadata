@@ -637,3 +637,12 @@ export const addTagsAndGlossaryToDomain = async (
   // Add glossary term
   await addTagOrTerm('glossary', glossaryTermFqn);
 };
+
+/**
+ * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
+ */
+export const verifyActiveDomainIsDefault = async (page: Page) => {
+  await expect(page.getByTestId('domain-dropdown')).toContainText(
+    'All Domains'
+  );
+};
