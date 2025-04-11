@@ -13,6 +13,7 @@
 Python Dependencies
 """
 
+import sys
 from typing import Dict, List, Set
 
 from setuptools import setup
@@ -25,9 +26,9 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
-    "google-cloud-storage": "google-cloud-storage>=1.43.0",
-    "gcsfs": "gcsfs>=2023.1.0",
-    "great-expectations": "great-expectations>=0.18.0,<0.18.14",
+    "google-cloud-storage": "google-cloud-storage==1.43.0",
+    "gcsfs": "gcsfs>=2023.10.0",
+    "great-expectations": "great-expectations==0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
@@ -187,7 +188,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "clickhouse": {
         "clickhouse-driver~=0.2",
-        "clickhouse-sqlalchemy~=0.2",
+        "clickhouse-sqlalchemy~=0.2.0",
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
@@ -195,7 +196,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
-        "dagster_graphql~=1.1",
+        "dagster_graphql>=1.8.0",
     },
     "dbt": {
         "google-cloud",
@@ -430,6 +431,9 @@ test = {
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
 }
+
+if sys.version_info >= (3, 9):
+    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
