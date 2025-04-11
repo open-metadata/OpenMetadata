@@ -75,7 +75,7 @@ describe('FileAttachment', () => {
   it('handles delete button click correctly', () => {
     render(<FileAttachment {...mockProps} />);
 
-    const deleteButton = screen.getByLabelText('delete');
+    const deleteButton = screen.getByTestId('delete-icon');
     fireEvent.click(deleteButton);
 
     expect(mockProps.deleteNode).toHaveBeenCalled();

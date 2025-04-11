@@ -22,10 +22,13 @@ import NumberedListImage from '../../../../assets/img/ic-slash-numbered-list.png
 import QuoteImage from '../../../../assets/img/ic-slash-quote.png';
 import TextImage from '../../../../assets/img/ic-slash-text.png';
 import TaskListIcon from '../../../../assets/img/ic-task-list.png';
+import IconFormatAttachment from '../../../../assets/svg/ic-format-attachment.svg';
+import IconFormatAudio from '../../../../assets/svg/ic-format-audio.svg';
 import IconFormatCallout from '../../../../assets/svg/ic-format-callout.svg';
 import CodeBlockImage from '../../../../assets/svg/ic-format-code-block.svg';
 import IconFormatImage from '../../../../assets/svg/ic-format-image.svg';
 import IconTable from '../../../../assets/svg/ic-format-table.svg';
+import IconFormatVideo from '../../../../assets/svg/ic-format-video.svg';
 import MentionImage from '../../../../assets/svg/ic-mentions.svg';
 import { FileType } from '../../BlockEditor.interface';
 
@@ -47,6 +50,7 @@ export interface SuggestionItem {
   searchTerms: string[];
   command: (props: CommandProps) => void;
   isFileCommand?: boolean;
+  isSvg?: boolean;
 }
 
 export const getSuggestionItems = (props: {
@@ -153,6 +157,7 @@ export const getSuggestionItems = (props: {
         editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
       imgSrc: CodeBlockImage,
       searchTerms: ['codeblock'],
+      isSvg: true,
     },
 
     {
@@ -179,6 +184,7 @@ export const getSuggestionItems = (props: {
       },
       imgSrc: MentionImage,
       searchTerms: ['user', 'mention'],
+      isSvg: true,
     },
     {
       title: 'Link data asset',
@@ -230,9 +236,10 @@ export const getSuggestionItems = (props: {
           })
           .run();
       },
-      imgSrc: IconFormatImage,
+      imgSrc: IconFormatVideo,
       searchTerms: ['video', 'media', 'player'],
       isFileCommand: true,
+      isSvg: true,
     },
     {
       title: 'Audio',
@@ -252,9 +259,10 @@ export const getSuggestionItems = (props: {
           })
           .run();
       },
-      imgSrc: IconFormatImage,
+      imgSrc: IconFormatAudio,
       searchTerms: ['audio', 'sound', 'music'],
       isFileCommand: true,
+      isSvg: true,
     },
     {
       title: 'File',
@@ -274,9 +282,10 @@ export const getSuggestionItems = (props: {
           })
           .run();
       },
-      imgSrc: IconFormatImage,
+      imgSrc: IconFormatAttachment,
       searchTerms: ['file', 'attachment', 'document'],
       isFileCommand: true,
+      isSvg: true,
     },
     {
       title: 'Task List',
@@ -297,6 +306,7 @@ export const getSuggestionItems = (props: {
       },
       type: SuggestionItemType.ADVANCED_BLOCKS,
       imgSrc: IconFormatCallout,
+      isSvg: true,
     },
     {
       title: 'Table',
@@ -312,6 +322,7 @@ export const getSuggestionItems = (props: {
       },
       type: SuggestionItemType.ADVANCED_BLOCKS,
       imgSrc: IconTable,
+      isSvg: true,
     },
     {
       title: 'Math Equation',
@@ -333,6 +344,7 @@ export const getSuggestionItems = (props: {
       },
       type: SuggestionItemType.ADVANCED_BLOCKS,
       imgSrc: MathEquationImage,
+      isSvg: true,
     },
   ];
 
