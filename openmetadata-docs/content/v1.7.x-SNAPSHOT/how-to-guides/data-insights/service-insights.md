@@ -47,6 +47,24 @@ If the chart shows no data, verify that the Auto Tiering pipeline (Collate only)
 
 {% /note %}
 
+## Ownership coverage
+
+This chart shows the percentage of data assets that have a populated owner field.
+
+{% note %}
+
+If no data is displayed, verify that both the metadata ingestion pipeline and the data insights pipeline have been executed successfully.
+
+{% /note %}
+
+{% image
+src="/images/v1.7/how-to-guides/insights/service-insights1.png"
+alt="Platform Insights"
+caption="Platform Insights"
+/%}
+
+{% collateContent %}
+
 # Generated Data with Collate AI (Collate Only)
 
 This table displays a breakdown of metadata populated by the Collate AI agent versus metadata populated manually.
@@ -57,7 +75,13 @@ If the table shows no data, ensure that the Auto Classification pipeline, Auto D
 
 {% /note %}
 
-# PII Distribution
+{% image
+src="/images/v1.7/how-to-guides/insights/service-insights2.png"
+alt="Generated Data with Collate AI"
+caption="Generated Data with Collate AI"
+/%}
+
+## PII Distribution
 
 This table displays a breakdown of data assets categorized by their associated PII (Personally Identifiable Information) tags.
 
@@ -67,7 +91,7 @@ If the table shows no data, verify that both the Auto Classification pipeline an
 
 {% /note %}
 
-# Tier Distribution
+## Tier Distribution
 
 This table provides a breakdown of data assets based on their assigned Tier classification.
 
@@ -77,7 +101,13 @@ If the table displays no data, ensure that the Auto Tiering pipeline (Collate on
 
 {% /note %}
 
-# Most Used Data Assets
+{% image
+src="/images/v1.7/how-to-guides/insights/service-insights3.png"
+alt="PII & Tier Distribution"
+caption="PII & Tier Distribution"
+/%}
+
+## Most Used Data Assets
 
 This table displays the top five most frequently accessed data assets, determined by their usage percentile.
 
@@ -87,7 +117,13 @@ If the table shows no data, verify that the usage pipeline has been executed suc
 
 {% /note %}
 
-# Most Expensive Queries
+{% image
+src="/images/v1.7/how-to-guides/insights/service-insights4.png"
+alt="Most Used Data Assets"
+caption="Most Used Data Assets"
+/%}
+
+## Most Expensive Queries
 
 This table displays the top queries based on the cost of query execution.
 
@@ -96,3 +132,27 @@ This table displays the top queries based on the cost of query execution.
 If the table shows no data, verify that the usage pipeline has been executed successfully. Additionally, not all connectors support extracting query cost—ensure that your connector supports this feature.
 
 {% /note %}
+
+{% image
+src="/images/v1.7/how-to-guides/insights/service-insights5.png"
+alt="Most Expensive Queries"
+caption="Most Expensive Queries"
+/%}
+
+## Data Quality
+
+This chart shows the percentage of data assets that have one or more data quality tests configured.
+
+{% note %}
+
+If no data is displayed, verify that the data quality pipeline and the data insights pipeline have been executed successfully.
+
+{% /note %}
+
+{% image
+src="/images/v1.7/how-to-guides/insights/service-insights6.png"
+alt="Data Quality"
+caption="Data Quality"
+/%}
+
+{% /collateContent %}

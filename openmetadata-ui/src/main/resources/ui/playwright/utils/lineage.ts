@@ -660,7 +660,7 @@ export const verifyExportLineagePNG = async (
   }
 
   await expect(
-    page.getByTestId('export-type-select').getByTitle('PNG')
+    page.getByTestId('export-type-select').getByText('PNGBeta')
   ).toBeVisible();
 
   const [download] = await Promise.all([
