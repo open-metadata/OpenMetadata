@@ -108,7 +108,7 @@ function SearchIndexDetailsPage() {
         timestamp: 0,
         id: details.id,
       });
-    } catch (error) {
+    } catch {
       // Error here
     } finally {
       setLoading(false);
@@ -482,8 +482,7 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 

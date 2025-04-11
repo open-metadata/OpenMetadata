@@ -1,6 +1,6 @@
-# DayOneExperienceAppConfig
+# AutoPilotAppConfig
 
-Configuration for the Day One Experience Flow.
+Configuration for the AutoPilot Application.
 
 $$section
 ### Application Type $(id="type")
@@ -12,7 +12,7 @@ $$
 $$section
 ### Active $(id="active")
 
-Whether the Day One Experience flow should be active or not.
+Whether the AutoPilot Workflow should be active or not.
 
 $$
 

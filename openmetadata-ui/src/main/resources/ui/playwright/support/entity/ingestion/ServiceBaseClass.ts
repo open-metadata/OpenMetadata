@@ -222,17 +222,15 @@ class ServiceBaseClass {
   async submitService(page: Page) {
     await page.getByTestId('submit-btn').getByText('Next').click();
 
-    const dayOneExperienceApplicationRequest = page.waitForRequest(
+    const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>
-        request
-          .url()
-          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.url().includes('/api/v1/apps/trigger/AutoPilotApplication') &&
         request.method() === 'POST'
     );
 
     await page.getByTestId('submit-btn').getByText('Save').click();
 
-    await dayOneExperienceApplicationRequest;
+    await autoPilotApplicationRequest;
   }
 
   async scheduleIngestion(page: Page) {

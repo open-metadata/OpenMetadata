@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  AudioOutlined,
-  FileOutlined,
-  PictureOutlined,
-  PlayCircleOutlined,
-} from '@ant-design/icons';
+
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
 import { isEmpty } from 'lodash';
 import Showdown from 'showdown';
+import { ReactComponent as IconFormatAttachment } from '../assets/svg/ic-format-attachment.svg';
+import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio.svg';
+import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
+import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
@@ -273,12 +272,12 @@ export const getFileTypeFromMimeType = (mimeType: string) => {
 export const getFileIcon = (fileType: FileType) => {
   switch (fileType) {
     case FileType.IMAGE:
-      return PictureOutlined;
+      return IconFormatImage;
     case FileType.VIDEO:
-      return PlayCircleOutlined;
+      return IconFormatVideo;
     case FileType.AUDIO:
-      return AudioOutlined;
+      return IconFormatAudio;
     default:
-      return FileOutlined;
+      return IconFormatAttachment;
   }
 };

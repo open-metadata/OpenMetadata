@@ -105,7 +105,7 @@ public class MetadataServiceResource
         LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
       repository.setFullyQualifiedName(openMetadataService);
-      repository.createOrUpdate(null, openMetadataService);
+      repository.createOrUpdate(null, openMetadataService, ADMIN_USER_NAME);
     } else {
       throw new IOException("Failed to initialize OpenMetadata Service.");
     }
