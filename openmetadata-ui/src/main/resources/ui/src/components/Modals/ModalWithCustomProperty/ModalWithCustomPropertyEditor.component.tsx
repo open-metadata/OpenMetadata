@@ -15,16 +15,20 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AxiosError } from 'axios';
+import { EntityType } from '../../../enums/entity.enum';
+import { Table } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import {
   convertCustomPropertyStringToEntityExtension,
   convertEntityExtensionToCustomPropertyString,
 } from '../../../utils/CSV/CSV.utils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntities } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../../common/Loader/Loader';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import {
   ExtensionDataProps,
   ModalWithCustomPropertyEditorProps,
@@ -117,18 +121,24 @@ export const ModalWithCustomPropertyEditor = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <CustomPropertyTable
-          hasEditAccess
-          hasPermission
-          isRenderedInRightPanel
-          entityDetailsProps={
+        <GenericProvider<Table>
+          customizedPage={null}
+          data={
             {
               extension: extensionObject,
-            } as ExtentionEntities[keyof ExtentionEntities]
+            } as Table
           }
-          entityType={entityType as keyof ExtentionEntities}
-          handleExtensionUpdate={onExtensionUpdate}
-        />
+          isVersionView={false}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+          type={EntityType.TABLE}
+          onUpdate={onExtensionUpdate}>
+          <CustomPropertyTable
+            hasEditAccess
+            hasPermission
+            isRenderedInRightPanel
+            entityType={entityType as keyof ExtentionEntities}
+          />
+        </GenericProvider>
       )}
     </Modal>
   );
