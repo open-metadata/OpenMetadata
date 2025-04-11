@@ -47,8 +47,10 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import javax.json.JsonPatch;
@@ -58,6 +60,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
@@ -81,6 +84,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
@@ -451,12 +455,22 @@ public class LineageRepository {
       return null;
     }
     List<ColumnLineage> columnsLineage = details.getColumnsLineage();
+    Set<String> fromColumns = getChildrenNames(from);
+    Set<String> toColumns = getChildrenNames(to);
+
     if (columnsLineage != null && !columnsLineage.isEmpty()) {
       for (ColumnLineage columnLineage : columnsLineage) {
         for (String fromColumn : columnLineage.getFromColumns()) {
-          validateChildren(fromColumn, from);
+          if (!fromColumns.contains(fromColumn.replace(from.getFullyQualifiedName() + ".", ""))) {
+            throw new IllegalArgumentException(
+                CatalogExceptionMessage.invalidFieldName("column", fromColumn));
+          }
         }
-        validateChildren(columnLineage.getToColumn(), to);
+        if (!toColumns.contains(
+            columnLineage.getToColumn().replace(to.getFullyQualifiedName() + ".", ""))) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidFieldName("column", columnLineage.getToColumn()));
+        }
       }
     }
     return JsonUtils.pojoToJson(details);
@@ -791,55 +805,64 @@ public class LineageRepository {
     csvFile.withRecords(finalRecordList);
   }
 
-  private void validateChildren(String columnFQN, EntityReference entityReference) {
+  private Set<String> getChildrenNames(EntityReference entityReference) {
     switch (entityReference.getType()) {
       case TABLE -> {
         Table table =
             Entity.getEntity(TABLE, entityReference.getId(), "columns", Include.NON_DELETED);
-        ColumnUtil.validateColumnFQN(table.getColumns(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            table.getColumns(), "getChildren", table.getFullyQualifiedName());
       }
       case SEARCH_INDEX -> {
         SearchIndex searchIndex =
             Entity.getEntity(SEARCH_INDEX, entityReference.getId(), "fields", Include.NON_DELETED);
-        ColumnUtil.validateSearchIndexFieldFQN(searchIndex.getFields(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            searchIndex.getFields(), "getChildren", searchIndex.getFullyQualifiedName());
       }
       case TOPIC -> {
         Topic topic =
             Entity.getEntity(TOPIC, entityReference.getId(), "messageSchema", Include.NON_DELETED);
-        ColumnUtil.validateFieldFQN(topic.getMessageSchema().getSchemaFields(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            topic.getMessageSchema().getSchemaFields(),
+            "getChildren",
+            topic.getFullyQualifiedName());
       }
       case CONTAINER -> {
         Container container =
             Entity.getEntity(CONTAINER, entityReference.getId(), "dataModel", Include.NON_DELETED);
-        ColumnUtil.validateColumnFQN(container.getDataModel().getColumns(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            container.getDataModel().getColumns(),
+            "getChildren",
+            container.getFullyQualifiedName());
       }
       case DASHBOARD_DATA_MODEL -> {
         DashboardDataModel dashboardDataModel =
             Entity.getEntity(
                 DASHBOARD_DATA_MODEL, entityReference.getId(), "columns", Include.NON_DELETED);
-        ColumnUtil.validateColumnFQN(dashboardDataModel.getColumns(), columnFQN);
+        return CommonUtil.getChildrenNames(
+            dashboardDataModel.getColumns(),
+            "getChildren",
+            dashboardDataModel.getFullyQualifiedName());
       }
       case DASHBOARD -> {
         Dashboard dashboard =
             Entity.getEntity(DASHBOARD, entityReference.getId(), "charts", Include.NON_DELETED);
-        dashboard.getCharts().stream()
-            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
-            .findAny()
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        CatalogExceptionMessage.invalidFieldName("chart", columnFQN)));
+        Set<String> result = new HashSet<>();
+        for (EntityReference chart : dashboard.getCharts()) {
+          result.add(
+              chart.getFullyQualifiedName().replace(dashboard.getFullyQualifiedName() + ".", ""));
+        }
+        return result;
       }
       case MLMODEL -> {
         MlModel mlModel =
             Entity.getEntity(MLMODEL, entityReference.getId(), "", Include.NON_DELETED);
-        mlModel.getMlFeatures().stream()
-            .filter(f -> f.getFullyQualifiedName().equals(columnFQN))
-            .findAny()
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        CatalogExceptionMessage.invalidFieldName("feature", columnFQN)));
+        Set<String> result = new HashSet<>();
+        for (MlFeature feature : mlModel.getMlFeatures()) {
+          result.add(
+              feature.getFullyQualifiedName().replace(mlModel.getFullyQualifiedName() + ".", ""));
+        }
+        return result;
       }
       case API_ENDPOINT -> {
         APIEndpoint apiEndpoint =
@@ -849,13 +872,19 @@ public class LineageRepository {
                 "responseSchema,requestSchema",
                 Include.NON_DELETED);
         if (apiEndpoint.getResponseSchema() != null) {
-          ColumnUtil.validateFieldFQN(apiEndpoint.getResponseSchema().getSchemaFields(), columnFQN);
-        } else {
-          ColumnUtil.validateFieldFQN(apiEndpoint.getRequestSchema().getSchemaFields(), columnFQN);
+          return CommonUtil.getChildrenNames(
+              apiEndpoint.getResponseSchema().getSchemaFields(),
+              "getChildren",
+              apiEndpoint.getFullyQualifiedName());
         }
+        return CommonUtil.getChildrenNames(
+            apiEndpoint.getRequestSchema().getSchemaFields(),
+            "getChildren",
+            apiEndpoint.getFullyQualifiedName());
       }
       case METRIC -> {
         LOG.info("Metric column level lineage is not supported");
+        return new HashSet<>();
       }
       default -> throw new IllegalArgumentException(
           String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));
