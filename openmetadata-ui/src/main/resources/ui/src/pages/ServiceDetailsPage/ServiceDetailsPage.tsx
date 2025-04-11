@@ -888,14 +888,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
-    const updatedData = data as ServicesType;
+  const afterDomainUpdateAction = useCallback(
+    async (data) => {
+      const updatedData = data as ServicesType;
 
-    setServiceDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setServiceDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+
+      if (updatedData?.domain?.id !== serviceDetails?.domain?.id) {
+        await handleDataProductUpdate([]);
+      }
+    },
+    [serviceDetails, handleDataProductUpdate]
+  );
 
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {

@@ -333,14 +333,34 @@ const APICollectionPage: FunctionComponent = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
-    const updatedData = data as APICollection;
+  const afterDomainUpdateAction = useCallback(
+    async (data) => {
+      const updatedData = data as APICollection;
 
-    setAPICollection((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setAPICollection((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+
+      if (
+        updatedData?.domain?.id !== apiCollection?.domain?.id &&
+        apiCollection?.dataProducts?.length
+      ) {
+        const updatedAPICollection = {
+          ...apiCollection,
+          dataProducts: [],
+        };
+
+        try {
+          const res = await saveUpdatedAPICollectionData(updatedAPICollection);
+          setAPICollection(res);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
+      }
+    },
+    [apiCollection, saveUpdatedAPICollectionData]
+  );
 
   useEffect(() => {
     fetchAPICollectionPermission();

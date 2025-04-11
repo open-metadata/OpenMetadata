@@ -668,14 +668,29 @@ const TableDetailsPageV1: React.FC = () => {
     []
   );
 
-  const updateTableDetailsState = useCallback((data) => {
-    const updatedData = data as Table;
+  const updateTableDetailsState = useCallback(
+    async (data) => {
+      const updatedData = data as Table;
 
-    setTableDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setTableDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+
+      if (
+        updatedData?.domain?.id !== tableDetails?.domain?.id &&
+        tableDetails?.dataProducts?.length
+      ) {
+        const updatdeTableDetails = {
+          ...tableDetails,
+          dataProducts: [],
+        };
+
+        await onTableUpdate(updatdeTableDetails, 'dataProducts');
+      }
+    },
+    [tableDetails, onTableUpdate]
+  );
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {

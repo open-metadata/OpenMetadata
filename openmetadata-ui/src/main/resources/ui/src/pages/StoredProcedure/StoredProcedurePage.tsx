@@ -362,14 +362,32 @@ const StoredProcedurePage = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
-    const updatedData = data as StoredProcedure;
+  const afterDomainUpdateAction = useCallback(
+    async (data) => {
+      const updatedData = data as StoredProcedure;
 
-    setStoredProcedure((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setStoredProcedure((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+
+      if (
+        updatedData?.domain?.id !== storedProcedure?.domain?.id &&
+        storedProcedure?.dataProducts?.length
+      ) {
+        const updatedStoredProcedure = {
+          ...storedProcedure,
+          dataProducts: [],
+        };
+
+        await handleStoreProcedureUpdate(
+          updatedStoredProcedure,
+          'dataProducts'
+        );
+      }
+    },
+    [storedProcedure, handleStoreProcedureUpdate]
+  );
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {

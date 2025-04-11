@@ -13,7 +13,7 @@
 import { Card, Col, Row, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
@@ -49,20 +49,17 @@ const DataProductsContainer = ({
   const { t } = useTranslation();
   const history = useHistory();
   const [isEditMode, setIsEditMode] = useState(false);
-  const [previousDomainId, setPreviousDomainId] = useState<string | undefined>(
-    activeDomain?.id
-  );
 
   const handleAddClick = () => {
     setIsEditMode(true);
   };
 
   const fetchAPI = useCallback(
-    (searchValue: string) => {
+    (searchValue: string, page = 1) => {
       const searchText = !isEmpty(searchValue) ? searchValue : '';
       const domainFQN = activeDomain?.fullyQualifiedName ?? '';
 
-      return fetchDataProductsElasticSearch(searchText, domainFQN);
+      return fetchDataProductsElasticSearch(searchText, domainFQN, page);
     },
     [activeDomain]
   );
@@ -79,21 +76,6 @@ const DataProductsContainer = ({
   const handleCancel = () => {
     setIsEditMode(false);
   };
-
-  // Check for domain changes and clear data products if needed
-  useEffect(() => {
-    const currentDomainId = activeDomain?.id;
-
-    if (
-      previousDomainId !== currentDomainId &&
-      dataProducts.length > 0 &&
-      onSave
-    ) {
-      onSave([]);
-    }
-
-    setPreviousDomainId(currentDomainId);
-  }, [activeDomain?.id, previousDomainId, dataProducts, onSave]);
 
   const autoCompleteFormSelectContainer = useMemo(() => {
     return (

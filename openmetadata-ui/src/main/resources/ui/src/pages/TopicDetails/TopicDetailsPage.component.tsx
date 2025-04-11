@@ -236,14 +236,29 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const updateTopicDetailsState = useCallback((data) => {
-    const updatedData = data as Topic;
+  const updateTopicDetailsState = useCallback(
+    async (data) => {
+      const updatedData = data as Topic;
 
-    setTopicDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setTopicDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+
+      if (
+        updatedData?.domain?.id !== topicDetails?.domain?.id &&
+        topicDetails?.dataProducts?.length
+      ) {
+        const updatedTopic = {
+          ...topicDetails,
+          dataProducts: [],
+        };
+
+        await onTopicUpdate(updatedTopic, 'dataProducts');
+      }
+    },
+    [topicDetails, onTopicUpdate]
+  );
 
   useEffect(() => {
     fetchResourcePermission(topicFQN);

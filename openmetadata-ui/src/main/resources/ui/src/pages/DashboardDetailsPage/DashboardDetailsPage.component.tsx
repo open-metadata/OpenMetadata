@@ -239,14 +239,29 @@ const DashboardDetailsPage = () => {
     }
   };
 
-  const updateDashboardDetailsState = useCallback((data) => {
-    const updatedData = data as Dashboard;
+  const updateDashboardDetailsState = useCallback(
+    async (data) => {
+      const updatedData = data as Dashboard;
 
-    setDashboardDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setDashboardDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+
+      if (
+        updatedData?.domain?.id !== dashboardDetails?.domain?.id &&
+        dashboardDetails?.dataProducts?.length
+      ) {
+        const updatedDashboard = {
+          ...dashboardDetails,
+          dataProducts: [],
+        };
+
+        await onDashboardUpdate(updatedDashboard, 'dataProducts');
+      }
+    },
+    [dashboardDetails, onDashboardUpdate]
+  );
 
   useEffect(() => {
     if (dashboardPermissions.ViewAll || dashboardPermissions.ViewBasic) {

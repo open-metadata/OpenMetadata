@@ -273,7 +273,7 @@ export const CommonWidgets = ({
         onSave={handleDataProductsSave}
       />
     );
-  }, [dataProducts, domain, editDataProductPermission]);
+  }, [dataProducts, domain, editDataProductPermission, handleDataProductsSave]);
 
   const tagsWidget = useMemo(() => {
     return (

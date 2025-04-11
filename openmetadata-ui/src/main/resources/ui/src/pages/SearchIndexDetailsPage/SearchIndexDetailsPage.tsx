@@ -486,14 +486,29 @@ function SearchIndexDetailsPage() {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
-    const updatedData = data as SearchIndex;
+  const afterDomainUpdateAction = useCallback(
+    async (data) => {
+      const updatedData = data as SearchIndex;
 
-    setSearchIndexDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setSearchIndexDetails((data) => ({
+        ...(updatedData ?? data),
+        version: updatedData.version,
+      }));
+
+      if (
+        updatedData?.domain?.id !== searchIndexDetails?.domain?.id &&
+        searchIndexDetails?.dataProducts?.length
+      ) {
+        const updatedSearchIndex = {
+          ...searchIndexDetails,
+          dataProducts: [],
+        };
+
+        await onSearchIndexUpdate(updatedSearchIndex, 'dataProducts');
+      }
+    },
+    [searchIndexDetails, onSearchIndexUpdate]
+  );
 
   useEffect(() => {
     if (decodedSearchIndexFQN) {
