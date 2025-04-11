@@ -41,6 +41,17 @@ export const ListView = <T extends object = any>({
   );
   const { t } = useTranslation();
 
+  const listViewOptions = [
+    {
+      label: <Icon component={GridIcon} data-testid="grid" />,
+      value: ListViewOptions.CARD,
+    },
+    {
+      label: <Icon component={ListIcon} data-testid="list" />,
+      value: ListViewOptions.TABLE,
+    },
+  ];
+
   const cardRender = useMemo(() => {
     if (isEmpty(tableProps.dataSource)) {
       return tableProps.locale?.emptyText;
@@ -84,16 +95,7 @@ export const ListView = <T extends object = any>({
 
           <Segmented
             className="segment-toggle"
-            options={[
-              {
-                label: <Icon component={GridIcon} data-testid="grid" />,
-                value: ListViewOptions.CARD,
-              },
-              {
-                label: <Icon component={ListIcon} data-testid="list" />,
-                value: ListViewOptions.TABLE,
-              },
-            ]}
+            options={listViewOptions}
             value={currentView}
             onChange={(value) => setCurrentView(value as ListViewOptions)}
           />
