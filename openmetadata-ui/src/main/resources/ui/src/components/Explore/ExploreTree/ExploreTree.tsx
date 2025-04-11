@@ -54,8 +54,11 @@ import {
 
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
   <Tooltip
-    overlayInnerStyle={{ backgroundColor: 'white', color: 'black' }} // Custom styles
-    title={node.tooltipTitle}>
+    title={
+      <Typography.Text className="text-white">
+        {node.tooltipTitle ?? node.title}
+      </Typography.Text>
+    }>
     <div className="d-flex justify-between">
       <Typography.Text
         className={classNames({
@@ -74,11 +77,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { t } = useTranslation();
   const { tab } = useParams<UrlParams>();
-  const initTreeData = searchClassBase.getExploreTree().map((item) => ({
-    ...item,
-    title: <Typography.Text>{item.title}</Typography.Text>,
-    tooltipTitle: <Typography.Text>{item.title ?? ' '}</Typography.Text>,
-  }));
+  const initTreeData = searchClassBase.getExploreTree();
 
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
@@ -212,11 +211,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             ),
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
-            tooltipTitle: (
-              <Typography.Text>
-                {bucket.key} {type && `(${type})`}
-              </Typography.Text>
-            ),
+            tooltipTitle: `${bucket.key} ${type ? `(${type})` : ''}`,
             icon: logo,
             isLeaf: bucketToFind === EntityFields.ENTITY_TYPE,
             data: {
@@ -234,10 +229,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           };
         });
 
-        setTreeData(
-          (origin) =>
-            updateTreeData(origin, treeNode.key, children) as typeof origin
-        );
+        setTreeData((origin) => updateTreeData(origin, treeNode.key, children));
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -293,7 +285,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
         return updatedData.filter(
           (node) => node.totalCount !== undefined && node.totalCount > 0
-        ) as typeof origin;
+        );
       });
     } catch (error) {
       // Do nothing
