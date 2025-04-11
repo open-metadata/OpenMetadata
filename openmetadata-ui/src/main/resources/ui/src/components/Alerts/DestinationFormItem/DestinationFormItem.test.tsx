@@ -28,6 +28,9 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getConnectionTimeoutField: jest
     .fn()
     .mockReturnValue(<div data-testid="connection-timeout" />),
+  getReadTimeoutField: jest
+    .fn()
+    .mockReturnValue(<div data-testid="read-timeout" />),
 }));
 
 jest.mock('../../../utils/ObservabilityUtils', () => ({

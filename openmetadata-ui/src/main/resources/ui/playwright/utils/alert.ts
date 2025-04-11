@@ -530,6 +530,11 @@ export const verifyAlertDetails = async ({
       destinations[0].timeout.toString()
     );
 
+    // Check read timeout details
+    await expect(page.getByTestId('read-timeout-input')).toHaveValue(
+      destinations[0].readTimeout.toString()
+    );
+
     for (const destinationNumber in destinations) {
       await expect(
         page.getByTestId(`destination-${destinationNumber}`)
@@ -782,7 +787,9 @@ export const createAlert = async ({
     });
 
     await page.getByTestId('connection-timeout-input').clear();
+    await page.getByTestId('read-timeout-input').clear();
     await page.fill('[data-testid="connection-timeout-input"]', '26');
+    await page.fill('[data-testid="read-timeout-input"]', '26');
   }
 
   // Select Destination

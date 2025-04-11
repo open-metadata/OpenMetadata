@@ -34,6 +34,7 @@ export interface AlertDetails {
     category: string;
     type: string;
     timeout: string;
+    readTimeout: string;
     config: {
       secretKey: string;
       receivers: Array<string>;
