@@ -178,8 +178,16 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
               description = "Returns list of types after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
-    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("category", categoryParam);
+          String after,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter =
+        new ListFilter(Include.ALL)
+            .addQueryParam("category", categoryParam)
+            .addQueryParam("domain", domain);
     return super.listInternal(uriInfo, securityContext, "", filter, limitParam, before, after);
   }
 

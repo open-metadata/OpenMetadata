@@ -170,6 +170,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("after")
           String after,
       @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
               description = "Return list of tests by entity link",
               schema =
                   @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
@@ -224,7 +229,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             .addQueryParam("includeAllTests", includeAllTests.toString())
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type)
-            .addQueryParam("entityFQN", entityFQN);
+            .addQueryParam("entityFQN", entityFQN)
+            .addQueryParam("domain", domain);
     ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
 
     // Override OperationContext to change the entity to table and operation from VIEW_ALL to
