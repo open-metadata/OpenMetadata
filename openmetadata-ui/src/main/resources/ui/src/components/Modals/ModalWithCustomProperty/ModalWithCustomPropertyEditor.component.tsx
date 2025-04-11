@@ -15,7 +15,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AxiosError } from 'axios';
-import { EntityType } from '../../../enums/entity.enum';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { Table } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -130,7 +130,7 @@ export const ModalWithCustomPropertyEditor = ({
           }
           isVersionView={false}
           permissions={DEFAULT_ENTITY_PERMISSION}
-          type={EntityType.TABLE}
+          type={entityType as CustomizeEntityType}
           onUpdate={onExtensionUpdate}>
           <CustomPropertyTable
             hasEditAccess
