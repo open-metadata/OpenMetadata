@@ -279,7 +279,10 @@ export const EntityExportModalProvider = ({
                   data-testid="export-type-select"
                   disabled={exportData.exportTypes.length === 1}>
                   {exportTypesOptions.map((type) => (
-                    <Select.Option key={type.value} value={type.value}>
+                    <Select.Option
+                      key={type.value}
+                      title={type.value}
+                      value={type.value}>
                       <div className="d-flex items-center">
                         {type.label}
                         {BETA_EXPORT_TYPES.includes(type.value) && (
