@@ -115,6 +115,7 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../utils/EntityUtils';
+import { removeAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
@@ -999,16 +1000,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete
-        ? handleToggleDelete(version)
-        : history.push(
-            getSettingPath(
-              GlobalSettingsMenuCategory.SERVICES,
-              getServiceRouteFromServiceType(serviceCategory)
-            )
-          ),
-    [handleToggleDelete, serviceCategory]
+    (isSoftDelete?: boolean) => {
+      if (!isSoftDelete) {
+        removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
+        history.push(
+          getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory)
+          )
+        );
+      }
+    },
+    [serviceCategory, serviceDetails.fullyQualifiedName]
   );
 
   const handleRestoreService = useCallback(async () => {
@@ -1381,6 +1384,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     isWorkflowStatusLoading,
   ]);
 
+  const afterAutoPilotAppTrigger = useCallback(() => {
+    removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
+    fetchWorkflowInstanceStates();
+  }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1406,12 +1414,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={afterDomainUpdateAction}
-              afterTriggerAction={fetchWorkflowInstanceStates}
+              afterTriggerAction={afterAutoPilotAppTrigger}
               dataAsset={serviceDetails}
               disableRunAgentsButton={disableRunAgentsButton}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
-              isDayOneWorkflowStatusLoading={isWorkflowStatusLoading}
+              isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}

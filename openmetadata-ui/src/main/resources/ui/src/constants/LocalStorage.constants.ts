@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,5 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
-import { StepperStepType } from 'Models';
-
-export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
-  {
-    name: t('label.detail-plural'),
-    step: 1,
-  },
-  { name: t('label.configure'), step: 2 },
-  { name: t('label.schedule'), step: 3 },
-];
-
-export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
+export const LOCAL_STORAGE_AUTO_PILOT_STATUS =
+  'serviceAutoPilotDismissedStatuses';

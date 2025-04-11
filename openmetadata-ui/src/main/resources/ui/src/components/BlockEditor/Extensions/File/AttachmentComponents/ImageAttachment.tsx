@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconFormatImage } from '../../../../../assets/svg/ic-format-image.svg';
+import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import Loader from '../../../../common/Loader/Loader';
 
 const ImageAttachment = ({
@@ -30,7 +31,7 @@ const ImageAttachment = ({
   const { url, alt, isUploading } = node.attrs;
   const [imageError, setImageError] = useState<boolean>(false);
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
-  const needsAuthentication = url?.includes('/api/v1/attachments/');
+  const needsAuthentication = url?.includes(UPLOADED_ASSETS_URL);
   const { t } = useTranslation();
 
   // Reset states when url changes

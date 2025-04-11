@@ -1136,7 +1136,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
         if (status.getCode() == 200) {
           IngestionPipelineRepository ingestionPipelineRepository =
               (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-          ingestionPipelineRepository.createOrUpdate(uriInfo, ingestionPipeline);
+          ingestionPipelineRepository.createOrUpdate(
+              uriInfo, ingestionPipeline, securityContext.getUserPrincipal().getName());
         } else {
           ingestionPipeline.setDeployed(false);
         }

@@ -130,7 +130,7 @@ const StoredProcedurePage = () => {
       );
 
       setStoredProcedurePermissions(permission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -358,8 +358,7 @@ const StoredProcedurePage = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -445,7 +444,7 @@ const StoredProcedurePage = () => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = getStoredProcedureDetailsPageTabs({
-      activeTab: activeTab as EntityTabs,
+      activeTab,
       feedCount,
       decodedStoredProcedureFQN,
       entityName,
