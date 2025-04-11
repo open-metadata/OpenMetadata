@@ -182,8 +182,8 @@ public class TeamRepository extends EntityRepository<Team> {
     validatePolicies(team.getPolicies());
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
-    Team team = getByName(null, domainName, getFields("id"));
+  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request) {
+    Team team = getByName(null, teamName, getFields("id"));
 
     // Validate all to be users
     validateAllRefUsers(request.getAssets());
