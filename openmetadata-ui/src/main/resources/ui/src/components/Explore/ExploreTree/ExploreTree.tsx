@@ -56,7 +56,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
   <Tooltip
     title={
       <Typography.Text className="text-white">
-        {node.title}{' '}
+        {node.title}
         {node.type && <span className="text-grey-400">({node.type})</span>}
       </Typography.Text>
     }>
@@ -166,7 +166,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
-          let type = undefined;
+          let type = null;
           let logo = undefined;
           if (isEntityType) {
             logo = searchClassBase.getEntityIcon(
