@@ -225,7 +225,7 @@ const AddNotificationPage = () => {
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-containere',
+        className: 'content-resizable-panel-container',
         children: (
           <Card className="steps-form-container">
             <Row gutter={[16, 16]}>
@@ -349,6 +349,7 @@ const AddNotificationPage = () => {
         ),
         minWidth: 700,
         flex: 0.7,
+
         wrapInCard: false,
       }}
       pageTitle={t('label.add-entity', {
