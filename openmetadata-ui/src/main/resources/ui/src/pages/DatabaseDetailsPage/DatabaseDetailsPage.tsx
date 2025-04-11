@@ -139,7 +139,7 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN
       );
       setDatabasePermission(response);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);
@@ -368,8 +368,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 

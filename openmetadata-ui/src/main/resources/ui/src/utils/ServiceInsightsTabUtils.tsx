@@ -36,6 +36,7 @@ import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
 import Fqn from './Fqn';
+import { getAutoPilotStatuses } from './LocalStorageUtils';
 
 const { t } = i18n;
 
@@ -295,4 +296,20 @@ export const filterDistributionChartItem = (item: {
   tag_name = tag_name.replace(/(^["']+|["']+$)/g, '');
 
   return toLower(tag_name) === toLower(item.group);
+};
+
+export const checkIfAutoPilotStatusIsDismissed = (
+  serviceFQN?: string,
+  workflowStatus?: WorkflowStatus
+) => {
+  if (!serviceFQN || !workflowStatus) {
+    return false;
+  }
+
+  const autoPilotStatuses = getAutoPilotStatuses();
+
+  return autoPilotStatuses.some(
+    (status) =>
+      status.serviceFQN === serviceFQN && status.status === workflowStatus
+  );
 };

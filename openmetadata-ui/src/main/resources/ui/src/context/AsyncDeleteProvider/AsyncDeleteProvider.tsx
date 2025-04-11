@@ -46,6 +46,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     deleteType,
     prepareType,
     isRecursiveDelete,
+    afterDeleteAction,
   }: DeleteWidgetAsyncFormFields) => {
     try {
       const response = await deleteAsyncEntity(
@@ -73,6 +74,9 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
       setAsyncDeleteJob(response);
       asyncDeleteJobRef.current = response;
       showSuccessToast(response.message);
+      if (afterDeleteAction) {
+        afterDeleteAction(deleteType === DeleteType.SOFT_DELETE);
+      }
     } catch (error) {
       showErrorToast(
         error as AxiosError,

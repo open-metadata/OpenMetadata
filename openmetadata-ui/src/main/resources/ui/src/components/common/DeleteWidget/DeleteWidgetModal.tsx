@@ -218,6 +218,7 @@ const DeleteWidgetModal = ({
           deleteType: values.deleteType,
           prepareType,
           isRecursiveDelete: isRecursiveDelete ?? false,
+          afterDeleteAction,
         });
         setIsLoading(false);
         handleOnEntityDeleteCancel();
@@ -234,6 +235,7 @@ const DeleteWidgetModal = ({
       isRecursiveDelete,
       handleOnEntityDeleteConfirm,
       handleOnEntityDeleteCancel,
+      afterDeleteAction,
     ]
   );
 
