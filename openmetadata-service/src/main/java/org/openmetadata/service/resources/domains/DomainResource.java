@@ -49,6 +49,7 @@ import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
@@ -58,6 +59,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.ResultList;
 
@@ -313,6 +315,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
@@ -339,6 +344,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
