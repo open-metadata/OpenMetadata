@@ -319,6 +319,9 @@ export const COMMON_UI_SCHEMA = {
   metastoreConnection: {
     ...DEF_UI_SCHEMA,
   },
+  databaseConnection: {
+    ...DEF_UI_SCHEMA,
+  },
 };
 
 export const OPEN_METADATA = 'OpenMetadata';
@@ -416,6 +419,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
   PipelineServiceType.Flink,
+  PipelineServiceType.Wherescape,
   DatabaseServiceType.Teradata,
   StorageServiceType.Gcs,
   DatabaseServiceType.SapERP,

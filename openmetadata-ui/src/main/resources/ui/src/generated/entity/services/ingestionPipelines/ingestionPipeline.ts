@@ -1274,112 +1274,112 @@ export interface Pipeline {
  * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
-  /**
-   * Query filter to be passed to ES. E.g.,
-   * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
-   * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
-   */
-  filter?: string;
-  /**
-   * Patch the description if it is empty, instead of raising a suggestion
-   */
-  patchIfEmpty?: boolean;
-  /**
-   * Application Type
-   */
-  type?: CollateAIAppConfigType;
-  /**
-   * Action to take on those entities. E.g., propagate description through lineage, auto
-   * tagging, etc.
-   */
-  actions?: Action[];
-  /**
-   * Entities selected to run the automation.
-   */
-  resources?: Resource;
-  /**
-   * Bot Token
-   */
-  botToken?: string;
-  /**
-   * User Token
-   */
-  userToken?: string;
-  backfillConfiguration?: BackfillConfiguration;
-  /**
-   * Maximum number of events processed at a time (Default 100).
-   *
-   * Maximum number of events sent in a batch (Default 100).
-   */
-  batchSize?: number;
-  moduleConfiguration?: ModuleConfiguration;
-  /**
-   * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
-   * Type and are facing errors. Bear in mind that recreating the index will delete your
-   * DataAssets and a backfill will be needed.
-   */
-  recreateDataAssetsIndex?: boolean;
-  sendToAdmins?: boolean;
-  sendToTeams?: boolean;
-  /**
-   * Number of threads to use for reindexing
-   */
-  consumerThreads?: number;
-  /**
-   * List of Entities to Reindex
-   */
-  entities?: string[];
-  /**
-   * Initial backoff time in milliseconds
-   */
-  initialBackoff?: number;
-  /**
-   * Maximum backoff time in milliseconds
-   */
-  maxBackoff?: number;
-  /**
-   * Maximum number of concurrent requests to the search index
-   */
-  maxConcurrentRequests?: number;
-  /**
-   * Maximum number of retries for a failed request
-   */
-  maxRetries?: number;
-  /**
-   * Maximum number of events sent in a batch (Default 100).
-   */
-  payLoadSize?: number;
-  /**
-   * Number of threads to use for reindexing
-   */
-  producerThreads?: number;
-  /**
-   * Queue Size to user internally for reindexing.
-   */
-  queueSize?: number;
-  /**
-   * This schema publisher run modes.
-   */
-  recreateIndex?: boolean;
-  /**
-   * Recreate Indexes with updated Language
-   */
-  searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-  /**
-   * Whether the suggested tests should be active or not upon suggestion
-   *
-   * Whether the AutoPilot Workflow should be active or not.
-   */
-  active?: boolean;
-  /**
-   * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
-   * one month).
-   */
-  changeEventRetentionPeriod?: number;
-  /**
-   * Service Entity Link for which to trigger the application.
-   */
-  entityLink?: string;
+    /**
+     * Query filter to be passed to ES. E.g.,
+     * `{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"domain.displayName.keyword":"DG
+     * Anim"}}]}}]}}}`. This is the same payload as in the Explore page.
+     */
+    filter?: string;
+    /**
+     * Patch the description if it is empty, instead of raising a suggestion
+     */
+    patchIfEmpty?: boolean;
+    /**
+     * Application Type
+     */
+    type?: CollateAIAppConfigType;
+    /**
+     * Action to take on those entities. E.g., propagate description through lineage, auto
+     * tagging, etc.
+     */
+    actions?: Action[];
+    /**
+     * Entities selected to run the automation.
+     */
+    resources?: Resource;
+    /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
+     * User Token
+     */
+    userToken?:             string;
+    backfillConfiguration?: BackfillConfiguration;
+    /**
+     * Maximum number of events processed at a time (Default 100).
+     *
+     * Maximum number of events sent in a batch (Default 100).
+     */
+    batchSize?:           number;
+    moduleConfiguration?: ModuleConfiguration;
+    /**
+     * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
+     * Type and are facing errors. Bear in mind that recreating the index will delete your
+     * DataAssets and a backfill will be needed.
+     */
+    recreateDataAssetsIndex?: boolean;
+    sendToAdmins?:            boolean;
+    sendToTeams?:             boolean;
+    /**
+     * Number of threads to use for reindexing
+     */
+    consumerThreads?: number;
+    /**
+     * List of Entities to Reindex
+     */
+    entities?: string[];
+    /**
+     * Initial backoff time in milliseconds
+     */
+    initialBackoff?: number;
+    /**
+     * Maximum backoff time in milliseconds
+     */
+    maxBackoff?: number;
+    /**
+     * Maximum number of concurrent requests to the search index
+     */
+    maxConcurrentRequests?: number;
+    /**
+     * Maximum number of retries for a failed request
+     */
+    maxRetries?: number;
+    /**
+     * Maximum number of events sent in a batch (Default 100).
+     */
+    payLoadSize?: number;
+    /**
+     * Number of threads to use for reindexing
+     */
+    producerThreads?: number;
+    /**
+     * Queue Size to user internally for reindexing.
+     */
+    queueSize?: number;
+    /**
+     * This schema publisher run modes.
+     */
+    recreateIndex?: boolean;
+    /**
+     * Recreate Indexes with updated Language
+     */
+    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?: boolean;
+    /**
+     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
+     * one month).
+     */
+    changeEventRetentionPeriod?: number;
+    /**
+     * Service Entity Link for which to trigger the application.
+     */
+    entityLink?: string;
 }
 
 /**
@@ -2532,6 +2532,8 @@ export interface ServiceConnection {
  * Alation Sink Connection Config
  *
  * Airflow Metadata Database Connection Config
+ *
+ * Wherescape Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -3823,6 +3825,10 @@ export interface ConfigClass {
      */
     pipelineFilterPattern?: FilterPattern;
     /**
+     * Underlying database connection
+     */
+    databaseConnection?: DatabaseConnectionClass;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -4982,6 +4988,90 @@ export interface GCPCredentials {
 }
 
 /**
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ */
+export interface DatabaseConnectionClass {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Database of the data source. This is optional parameter, if you would like to restrict
+     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the databases.
+     */
+    database: string;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Host and port of the MSSQL service.
+     */
+    hostPort?: string;
+    /**
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     */
+    password?:                string;
+    sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     MssqlScheme;
+    supportsDatabase?:           boolean;
+    supportsDataDiff?:           boolean;
+    supportsDBTExtraction?:      boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: MssqlType;
+    /**
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     */
+    username?: string;
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum MssqlType {
+    Mssql = "Mssql",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ConfigElasticsSearch {
@@ -5657,6 +5747,7 @@ export enum RESTType {
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
     Vertica = "Vertica",
+    Wherescape = "Wherescape",
 }
 
 /**
