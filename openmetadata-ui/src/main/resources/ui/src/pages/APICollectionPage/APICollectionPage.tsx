@@ -107,9 +107,9 @@ const APICollectionPage: FunctionComponent = () => {
         EntityType.API_COLLECTION,
         decodedAPICollectionFQN,
         apiCollectionPermission,
-        apiCollection?.deleted ?? false
+        apiCollection
       ),
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection?.deleted]
+    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
@@ -329,8 +329,7 @@ const APICollectionPage: FunctionComponent = () => {
   }, [currentVersion, decodedAPICollectionFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 

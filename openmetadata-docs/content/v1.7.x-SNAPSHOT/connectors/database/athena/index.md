@@ -7,7 +7,7 @@ slug: /connectors/database/athena
 name="Athena"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 
@@ -24,7 +24,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 - [Troubleshooting](/connectors/database/athena/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
@@ -238,15 +238,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /stepsContainer %}
 
+
+{% partial file="/v1.7/connectors/database/athena/reverse-metadata.md" collate: true  /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata Ingestion
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-Athena supports the following reverse metadata ingestion features:
-- Table Description updates
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

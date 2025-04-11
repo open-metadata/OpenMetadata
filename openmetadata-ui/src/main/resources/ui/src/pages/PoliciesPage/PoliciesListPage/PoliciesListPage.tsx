@@ -136,7 +136,7 @@ const PoliciesListPage = () => {
           isEmpty(record?.description) ? (
             NO_DATA_PLACEHOLDER
           ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description || ''} />
+            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
           ),
       },
       {
@@ -314,6 +314,7 @@ const PoliciesListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.policy')}
                   permission={addPolicyPermission}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

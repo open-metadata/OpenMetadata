@@ -443,8 +443,9 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.ASSETS,
             children: (
               <ResizablePanels
-                className="domain-height-with-resizable-panel"
+                className="h-full domain-height-with-resizable-panel"
                 firstPanel={{
+                  wrapInCard: false,
                   className: 'domain-resizable-panel-container',
                   children: (
                     <AssetsTabs
@@ -466,6 +467,7 @@ export const getDomainDetailTabs = ({
                 hideSecondPanel={!previewAsset}
                 pageTitle={i18n.t('label.domain')}
                 secondPanel={{
+                  wrapInCard: false,
                   children: previewAsset && (
                     <EntitySummaryPanel
                       entityDetails={previewAsset}

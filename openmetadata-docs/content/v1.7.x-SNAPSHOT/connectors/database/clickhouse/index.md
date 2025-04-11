@@ -7,7 +7,7 @@ slug: /connectors/database/clickhouse
 name="Clickhouse"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -26,7 +26,7 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 - [Troubleshooting](/connectors/database/clickhouse/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
@@ -94,15 +94,6 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 
 {% /stepsContainer %}
 
+{% partial file="/v1.7/connectors/database/clickhouse/reverse-metadata.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata Ingestion
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-Clickhouse supports the following reverse metadata ingestion features:
-- Support for Description updates (Table, Column)
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
