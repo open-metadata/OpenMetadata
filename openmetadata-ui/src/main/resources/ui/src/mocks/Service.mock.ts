@@ -39,9 +39,9 @@ import {
   MlModelServiceType,
 } from '../generated/entity/services/mlmodelService';
 import {
-  MssqlType,
   PipelineService,
   PipelineServiceType,
+  Type,
 } from '../generated/entity/services/pipelineService';
 import {
   SearchService,
@@ -241,7 +241,7 @@ export const MOCK_PIPLELINE_SERVICE: PipelineService = {
       hostPort: 'http://localhost:8080',
       numberOfStatus: 10,
       connection: {
-        type: MssqlType.Backend,
+        type: Type.Backend,
       },
       supportsMetadataExtraction: true,
     },
