@@ -44,7 +44,7 @@ import { getUserWithImage } from '../../../utils/UserDataUtils';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
-const UserTeams = React.memo(({ userName }: { userName: string }) => {
+export const UserTeams = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const teams = getNonDeletedTeams(userData?.teams ?? []);
@@ -71,7 +71,7 @@ const UserTeams = React.memo(({ userName }: { userName: string }) => {
   ) : null;
 });
 
-const UserRoles = React.memo(({ userName }: { userName: string }) => {
+export const UserRoles = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const roles = userData?.roles;
@@ -104,7 +104,7 @@ const UserRoles = React.memo(({ userName }: { userName: string }) => {
   ) : null;
 });
 
-const PopoverContent = React.memo(
+export const PopoverContent = React.memo(
   ({
     userName,
     type = OwnerType.USER,
@@ -127,7 +127,11 @@ const PopoverContent = React.memo(
       try {
         setLoading(true);
         let user = await getUserByName(userName, {
-          fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
+          fields: [
+            TabSpecificField.TEAMS,
+            TabSpecificField.ROLES,
+            TabSpecificField.PROFILE,
+          ],
         });
         user = getUserWithImage(user);
 
@@ -135,7 +139,7 @@ const PopoverContent = React.memo(
           id: userName,
           user,
         });
-      } catch (error) {
+      } catch {
         // Error
       } finally {
         setLoading(false);
@@ -171,7 +175,7 @@ const PopoverContent = React.memo(
   }
 );
 
-const PopoverTitle = React.memo(
+export const PopoverTitle = React.memo(
   ({
     userName,
     profilePicture,
@@ -220,7 +224,7 @@ const PopoverTitle = React.memo(
   }
 );
 
-interface Props extends HTMLAttributes<HTMLDivElement> {
+export interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
   displayName?: ReactNode;
   type?: OwnerType;
