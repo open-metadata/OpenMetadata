@@ -14,21 +14,32 @@ from typing import List, Optional, Set
 from urllib.parse import urlparse
 
 from metadata.data_quality.validations import utils
-from metadata.data_quality.validations.models import (
-    Column,
-    TableDiffRuntimeParameters,
-    TableParameter,
-)
+from metadata.data_quality.validations.models import Column, TableDiffRuntimeParameters
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveList
+from metadata.utils.importer import get_module_dir, import_from_module
+
+
+def get_for_source(
+    service_type: ServiceType, source_type: str, from_: str = "ingestion"
+):
+    return import_from_module(
+        "metadata.{}.source.{}.{}.{}.ServiceSpec".format(  # pylint: disable=C0209
+            from_,
+            service_type.name.lower(),
+            get_module_dir(source_type),
+            "service_spec",
+        )
+    )
 
 
 class TableDiffParamsSetter(RuntimeParameterSetter):
@@ -51,67 +62,70 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         }
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
+        # Using the specs class method causes circular import as TestSuiteInterface
+        # imports RuntimeParameterSetter
+        cls_path = get_for_source(
+            ServiceType.Database,
+            source_type=self.service_connection_config.type.value.lower(),
+        ).data_diff
+        cls = import_from_module(cls_path)()
+
+        service1: DatabaseService = self.ometa_client.get_by_id(
+            DatabaseService, self.table_entity.service.id, nullable=False
+        )
+
         service1_url = (
             str(get_connection(self.service_connection_config).url)
             if self.service_connection_config
             else None
         )
-        service1: DatabaseService = self.ometa_client.get_by_id(
-            DatabaseService, self.table_entity.service.id, nullable=False
-        )
+
         table2_fqn = self.get_parameter(test_case, "table2")
-        case_sensitive_columns: bool = utils.get_bool_test_case_param(
-            test_case.parameterValues, "caseSensitiveColumns"
-        )
         if table2_fqn is None:
             raise ValueError("table2 not set")
         table2: Table = self.ometa_client.get_by_name(
             Table, fqn=table2_fqn, nullable=False
         )
-        service2_url = (
-            service1_url if table2.service == self.table_entity.service else None
-        )
         service2: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, table2.service.id, nullable=False
         )
-        key_columns = self.get_key_columns(test_case)
-        extra_columns = self.get_extra_columns(
-            key_columns, test_case, self.table_entity.columns, table2.columns
+        service2_url = (
+            self.get_parameter(test_case, "service2Url") or service1_url
+            if table2.service == self.table_entity.service
+            else None
         )
+
+        key_columns = self.get_key_columns(test_case)
+        extra_columns = (
+            self.get_extra_columns(
+                key_columns, test_case, self.table_entity.columns, table2.columns
+            )
+            or set()
+        )
+        case_sensitive_columns: bool = (
+            utils.get_bool_test_case_param(
+                test_case.parameterValues, "caseSensitiveColumns"
+            )
+            or False
+        )
+
         return TableDiffRuntimeParameters(
             table_profile_config=self.table_entity.tableProfilerConfig,
-            table1=TableParameter(
-                database_service_type=service1.serviceType,
-                path=self.get_data_diff_table_path(
-                    self.table_entity.fullyQualifiedName.root
-                ),
-                serviceUrl=self.get_data_diff_url(
-                    service1,
-                    self.table_entity.fullyQualifiedName.root,
-                    override_url=service1_url,
-                ),
-                columns=self.filter_relevant_columns(
-                    self.table_entity.columns,
-                    key_columns,
-                    extra_columns,
-                    case_sensitive=case_sensitive_columns,
-                ),
+            table1=cls.get(
+                service1,
+                self.table_entity,
+                key_columns,
+                extra_columns,
+                case_sensitive_columns,
+                service1_url,
             ),
-            table2=TableParameter(
-                database_service_type=service2.serviceType,
-                path=self.get_data_diff_table_path(table2_fqn),
-                serviceUrl=self.get_data_diff_url(
-                    service2,
-                    table2_fqn,
-                    override_url=self.get_parameter(test_case, "service2Url")
-                    or service2_url,
-                ),
-                columns=self.filter_relevant_columns(
-                    table2.columns,
-                    key_columns,
-                    extra_columns,
-                    case_sensitive=case_sensitive_columns,
-                ),
+            table2=cls.get(
+                service2,
+                table2,
+                key_columns,
+                extra_columns,
+                case_sensitive_columns,
+                service2_url,
             ),
             keyColumns=list(key_columns),
             extraColumns=list(extra_columns),

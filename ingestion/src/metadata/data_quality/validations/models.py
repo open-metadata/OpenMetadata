@@ -8,6 +8,7 @@ from metadata.generated.schema.entity.data.table import Column, TableProfilerCon
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
 class TableParameter(BaseModel):
@@ -15,6 +16,8 @@ class TableParameter(BaseModel):
     path: str
     columns: List[Column]
     database_service_type: DatabaseServiceType
+    privateKey: Optional[CustomSecretStr]
+    passPhrase: Optional[CustomSecretStr]
 
 
 class TableDiffRuntimeParameters(BaseModel):
