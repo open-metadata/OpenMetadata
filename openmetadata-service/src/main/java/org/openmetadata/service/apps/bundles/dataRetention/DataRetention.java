@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
+import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.apps.AbstractNativeApplication;
@@ -84,11 +85,10 @@ public class DataRetention extends AbstractNativeApplication {
         new StepStats().withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
     retentionStats.setJobStats(jobStats);
 
-    StepStats entityStats = new StepStats();
-
-    entityStats.getAdditionalProperties().put("successful_sent_change_events", new StepStats());
-    entityStats.getAdditionalProperties().put("change_events", new StepStats());
-    entityStats.getAdditionalProperties().put("consumers_dlq", new StepStats());
+    EntityStats entityStats = new EntityStats();
+    entityStats.withAdditionalProperty("successful_sent_change_events", new StepStats());
+    entityStats.withAdditionalProperty("change_events", new StepStats());
+    entityStats.withAdditionalProperty("consumers_dlq", new StepStats());
     retentionStats.setEntityStats(entityStats);
   }
 
@@ -157,16 +157,17 @@ public class DataRetention extends AbstractNativeApplication {
   }
 
   private synchronized void updateStats(String entity, int successCount, int failureCount) {
-    StepStats entityStats =
-        (StepStats) retentionStats.getEntityStats().getAdditionalProperties().get(entity);
-    if (entityStats == null) {
-      entityStats = new StepStats().withTotalRecords(0).withSuccessRecords(0).withFailedRecords(0);
-    }
+    StepStats entityStat =
+        retentionStats
+            .getEntityStats()
+            .getAdditionalProperties()
+            .getOrDefault(entity, new StepStats());
 
-    entityStats.setTotalRecords(entityStats.getTotalRecords() + successCount + failureCount);
-    entityStats.setSuccessRecords(entityStats.getSuccessRecords() + successCount);
-    entityStats.setFailedRecords(entityStats.getFailedRecords() + failureCount);
-    retentionStats.getEntityStats().getAdditionalProperties().put(entity, entityStats);
+    entityStat.setTotalRecords(entityStat.getTotalRecords() + successCount + failureCount);
+    entityStat.setSuccessRecords(entityStat.getSuccessRecords() + successCount);
+    entityStat.setFailedRecords(entityStat.getFailedRecords() + failureCount);
+
+    retentionStats.getEntityStats().withAdditionalProperty(entity, entityStat);
 
     StepStats jobStats = retentionStats.getJobStats();
     jobStats.setTotalRecords(jobStats.getTotalRecords() + successCount + failureCount);
