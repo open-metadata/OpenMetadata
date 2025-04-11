@@ -206,56 +206,82 @@ export const getServiceInsightsWidgetPlaceholder = ({
 }) => {
   let Icon = NoDataPlaceholderIcon;
   let localizationKey = `server.no-records-found`;
+  let docsLink = documentationLinksClassBase.getDocsBaseURL();
 
   switch (chartType) {
     case ServiceInsightsWidgetType.TOTAL_DATA_ASSETS:
       Icon = NoDataPlaceholderIcon;
       localizationKey = 'message.total-data-assets-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().TOTAL_DATA_ASSETS_WIDGET_DOCS;
 
       break;
     case SystemChartType.DescriptionCoverage:
       Icon = DescriptionPlaceholderIcon;
       localizationKey = 'message.description-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS()
+          .DESCRIPTION_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.OwnersCoverage:
       Icon = OwnersPlaceholderIcon;
       localizationKey = 'message.owners-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS()
+          .OWNERSHIP_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.PIICoverage:
       Icon = PiiPlaceholderIcon;
       localizationKey = 'message.pii-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().PII_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.PIIDistribution:
       Icon = PiiPlaceholderIcon;
       localizationKey = 'message.pii-distribution-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().PII_DISTRIBUTION_WIDGET_DOCS;
 
       break;
     case SystemChartType.TierCoverage:
       Icon = TierPlaceholderIcon;
       localizationKey = 'message.tier-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().TIER_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.TierDistribution:
       Icon = TierPlaceholderIcon;
       localizationKey = 'message.tier-distribution-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().TIER_DISTRIBUTION_WIDGET_DOCS;
 
       break;
     case ServiceInsightsWidgetType.COLLATE_AI:
       Icon = TablePlaceholderIcon;
       localizationKey = 'message.collate-ai-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().COLLATE_AI_WIDGET_DOCS;
 
       break;
     case ServiceInsightsWidgetType.MOST_USED_ASSETS:
       Icon = TablePlaceholderIcon;
       localizationKey = 'message.most-used-assets-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().MOST_USED_ASSETS_WIDGET_DOCS;
 
       break;
     case ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES:
       Icon = TablePlaceholderIcon;
       localizationKey = 'message.most-expensive-queries-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS()
+          .MOST_EXPENSIVE_QUERIES_WIDGET_DOCS;
+
+      break;
   }
 
   return (
@@ -269,7 +295,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
           i18nKey={localizationKey}
           renderElement={
             <a
-              href={documentationLinksClassBase.getDocsBaseURL()}
+              href={docsLink}
               rel="noreferrer"
               style={{ color: theme.primaryColor }}
               target="_blank"
