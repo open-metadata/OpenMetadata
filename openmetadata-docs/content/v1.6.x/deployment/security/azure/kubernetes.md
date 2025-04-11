@@ -63,7 +63,8 @@ openmetadata:
       clientId: "{Client ID}"                                       # Update your Client ID
       callbackUrl: "http://localhost:8585/callback"
       oidcConfiguration:
-        oidcType: "azure"  
+        oidcType: "azure"
+        oidcConfiguration.enabled:
         clientId:
           secretRef: oidc-secrets
           secretKey: openmetadata-oidc-client-id  
