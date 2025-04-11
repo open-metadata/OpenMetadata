@@ -53,6 +53,16 @@ class DocumentationLinksClassBase {
       OMD_SLACK_LINK:
         'https://join.slack.com/t/openmetadata/shared_invite/zt-1r1kv175f-9qM5eTB39MF6U2DBhZhWow',
       OMD_REPOSITORY_LINK: 'https://star-us.open-metadata.org/',
+      TOTAL_DATA_ASSETS_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#total-data-assets`,
+      DESCRIPTION_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#description-coverage`,
+      OWNERSHIP_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#ownership-coverage`,
+      PII_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#pii-coverage`,
+      PII_DISTRIBUTION_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#pii-distribution`,
+      TIER_COVERAGE_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#tier-coverage`,
+      TIER_DISTRIBUTION_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#tier-distribution`,
+      COLLATE_AI_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#generated-data-with-collate-ai-collate-only`,
+      MOST_USED_ASSETS_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-used-assets`,
+      MOST_EXPENSIVE_QUERIES_WIDGET_DOCS: `${this.docsBaseURL}how-to-guides/data-insights/service-insights#most-expensive-queries`,
     };
   }
 }
