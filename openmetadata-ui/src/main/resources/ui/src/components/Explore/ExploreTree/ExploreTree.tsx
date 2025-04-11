@@ -24,7 +24,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge } from '../../../utils/CommonUtils';
+import { getCountBadge, Transi18next } from '../../../utils/CommonUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
@@ -36,9 +36,13 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
+import { useTranslation } from 'react-i18next';
+import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import './explore-tree.less';
@@ -64,6 +68,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
+  const { t } = useTranslation();
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
@@ -269,7 +274,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           (node) => node.totalCount !== undefined && node.totalCount > 0
         );
       });
-    } catch (error) {
+    } catch {
       // Do nothing
     } finally {
       setIsLoading(false);
@@ -289,6 +294,35 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  if (treeData.length === 0) {
+    return (
+      <ErrorPlaceHolder
+        className="h-min-80 d-flex flex-col justify-center border-none"
+        size={SIZE.MEDIUM}
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph
+          className="font-medium"
+          style={{ marginBottom: '0' }}>
+          {t('message.no-data-yet')}
+        </Typography.Paragraph>
+        <Typography.Paragraph style={{ marginBottom: '0' }}>
+          {t('message.add-service-and-data-assets')}
+        </Typography.Paragraph>
+        <Typography.Paragraph>
+          <Transi18next
+            i18nKey="message.need-help-message"
+            renderElement={
+              <a href={DATA_DISCOVERY_DOCS} rel="noreferrer" target="_blank" />
+            }
+            values={{
+              doc: t('message.see-how-to-get-started'),
+            }}
+          />
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
   }
 
   return (

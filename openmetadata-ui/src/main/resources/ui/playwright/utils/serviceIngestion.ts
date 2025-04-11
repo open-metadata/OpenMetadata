@@ -120,13 +120,24 @@ export const deleteService = async (
   await deleteResponse;
 
   // Closing the toast notification
-  await toastNotification(
-    page,
-    `Delete operation initiated for ${serviceName}`
+  await toastNotification(page, /deleted successfully!/, 5 * 60 * 1000); // Wait for up to 5 minutes for the toast notification to appear
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const serviceSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(serviceName)
+    )}*`
   );
 
+  await page.fill('[data-testid="searchbar"]', serviceName);
+
+  await serviceSearchResponse;
+
   await page.waitForSelector(`[data-testid="service-name-${serviceName}"]`, {
-    state: 'hidden',
+    state: 'detached',
   });
 };
 

@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
-import PanelContainer from './PanelContainer/PanelContainer';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
 
@@ -59,13 +58,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           onStopResize={(args) => {
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
-          <PanelContainer overlay={firstPanel.overlay}>
-            {isFirstPanelWrapInCard ? (
-              <Card>{firstPanel.children}</Card>
-            ) : (
-              firstPanel.children
-            )}
-          </PanelContainer>
+          {isFirstPanelWrapInCard ? (
+            <Card className="h-full overflow-y-auto">
+              {firstPanel.children}
+            </Card>
+          ) : (
+            firstPanel.children
+          )}
         </ReflexElement>
 
         <ReflexSplitter
@@ -119,15 +118,12 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>
-          {!hideSecondPanel && (
-            <PanelContainer overlay={secondPanel.overlay}>
-              {isSecondPanelWrapInCard ? (
-                <Card className="reflex-card">{secondPanel.children}</Card>
-              ) : (
-                secondPanel.children
-              )}
-            </PanelContainer>
-          )}
+          {!hideSecondPanel &&
+            (isSecondPanelWrapInCard ? (
+              <Card className="reflex-card">{secondPanel.children}</Card>
+            ) : (
+              secondPanel.children
+            ))}
         </ReflexElement>
       </ReflexContainer>
     </>
