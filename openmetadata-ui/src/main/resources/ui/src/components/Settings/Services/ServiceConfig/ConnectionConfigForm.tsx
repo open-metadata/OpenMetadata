@@ -64,7 +64,7 @@ const ConnectionConfigForm = ({
       } else {
         setHostIp(undefined);
       }
-    } catch (error) {
+    } catch {
       setHostIp('[error - unknown]');
     }
   };
