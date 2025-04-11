@@ -80,7 +80,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           ...entityDetails,
           extension: updatedExtension,
         };
-        onUpdate(updatedData);
+        await onUpdate(updatedData);
       }
     },
     [entityDetails, onUpdate]
