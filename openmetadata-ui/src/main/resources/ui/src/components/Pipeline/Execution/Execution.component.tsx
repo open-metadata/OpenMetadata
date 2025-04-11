@@ -18,8 +18,8 @@ import {
   DatePicker,
   Dropdown,
   MenuProps,
-  Radio,
   Row,
+  Segmented,
   Space,
 } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
@@ -144,15 +144,14 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
       <Row gutter={[16, 16]}>
         <Col span={24}>
           <Space className="justify-between w-full">
-            <Radio.Group
-              buttonStyle="solid"
-              className="radio-switch"
+            <Segmented
+              className="segment-toggle"
               data-testid="radio-switch"
-              optionType="button"
               options={Object.values(PIPELINE_EXECUTION_TABS)}
               value={view}
-              onChange={(e) => setView(e.target.value)}
+              onChange={(value) => setView(value as PIPELINE_EXECUTION_TABS)}
             />
+
             <Space>
               <Dropdown menu={statusMenuItems} placement="bottom">
                 <Button

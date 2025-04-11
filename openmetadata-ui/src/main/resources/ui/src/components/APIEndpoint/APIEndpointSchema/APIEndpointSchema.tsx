@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Radio, RadioChangeEvent, Row, Tooltip, Typography } from 'antd';
+import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -90,6 +90,16 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     onUpdate: onApiEndpointUpdate,
   } = useGenericContext<APIEndpoint>();
 
+  const viewTypeOptions = [
+    {
+      label: t('label.request'),
+      value: SchemaViewType.REQUEST_SCHEMA,
+    },
+    {
+      label: t('label.response'),
+      value: SchemaViewType.RESPONSE_SCHEMA,
+    },
+  ];
   const {
     requestSchemaAllRowKeys,
     responseSchemaAllRowKeys,
@@ -181,10 +191,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
     return activeSchemaDiff?.schemaFields ?? [];
   }, [activeSchema, apiEndpointDetails]);
-
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
 
   const handleExpandedRowsChange = (keys: readonly Key[]) => {
     setExpandedRowKeys(keys as string[]);
@@ -405,14 +411,13 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }}
           extraTableFilters={
             <div className="d-flex justify-between items-center w-full">
-              <Radio.Group value={viewType} onChange={handleViewChange}>
-                <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
-                  {t('label.request')}
-                </Radio.Button>
-                <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
-                  {t('label.response')}
-                </Radio.Button>
-              </Radio.Group>
+              <Segmented
+                className="segment-toggle"
+                options={viewTypeOptions}
+                value={viewType}
+                onChange={(value) => setViewType(value as SchemaViewType)}
+              />
+
               <ToggleExpandButton
                 allRowKeys={schemaAllRowKeys}
                 expandedRowKeys={expandedRowKeys}

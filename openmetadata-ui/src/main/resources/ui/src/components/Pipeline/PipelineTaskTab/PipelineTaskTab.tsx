@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Card, Radio, Typography } from 'antd';
+import { Card, Segmented, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -294,14 +294,12 @@ export const PipelineTaskTab = () => {
 
   return (
     <div>
-      <Radio.Group
-        buttonStyle="solid"
-        className="radio-switch m-b-md"
+      <Segmented
+        className="segment-toggle m-b-md"
         data-testid="pipeline-task-switch"
-        optionType="button"
         options={Object.values(PIPELINE_TASK_TABS)}
         value={activeTab}
-        onChange={(e) => setActiveTab(e.target.value)}
+        onChange={(value) => setActiveTab(value as PIPELINE_TASK_TABS)}
       />
 
       {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
