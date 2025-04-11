@@ -54,6 +54,7 @@ import {
 
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
   <Tooltip
+    overlayInnerStyle={{ backgroundColor: '#000', opacity: 1 }}
     title={
       <Typography.Text className="text-white">
         {node.title}
