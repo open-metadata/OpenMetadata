@@ -429,9 +429,10 @@ const DataProductsDetailsPage = ({
               key: DataProductTabs.ASSETS,
               children: (
                 <ResizablePanels
-                  className="domain-height-with-resizable-panel"
+                  className="h-full domain-height-with-resizable-panel"
                   firstPanel={{
                     className: 'domain-resizable-panel-container',
+                    wrapInCard: false,
                     children: (
                       <AssetsTabs
                         assetCount={assetCount}
@@ -451,6 +452,7 @@ const DataProductsDetailsPage = ({
                   hideSecondPanel={!previewAsset}
                   pageTitle={t('label.domain')}
                   secondPanel={{
+                    wrapInCard: false,
                     children: previewAsset && (
                       <EntitySummaryPanel
                         entityDetails={previewAsset}

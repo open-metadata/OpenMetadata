@@ -479,7 +479,7 @@ export const TestCases = () => {
   }
 
   return (
-    <Row className="p-x-md" data-testid="test-case-container" gutter={[16, 16]}>
+    <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}

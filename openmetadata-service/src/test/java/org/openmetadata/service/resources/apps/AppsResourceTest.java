@@ -6,6 +6,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEventually;
@@ -220,7 +221,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
                         new AccessDetails()
                             .withTimestamp(tableAccessedAt)
                             .withAccessedBy(user.getEntityReference())));
-    tableRepository.createOrUpdate(null, table);
+    tableRepository.createOrUpdate(null, table, ADMIN_USER_NAME);
 
     // Adding the ProfileData for the CostAnalysis Workflow to use it
     tableResourceTest.putTableProfileData(
