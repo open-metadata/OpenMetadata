@@ -292,7 +292,7 @@ public class MigrationUtil {
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
             .withxAxisField("columns.tags.tagFQN")
-            .withIncludeXAxisFiled("pii.*")
+            .withIncludeXAxisFiled("PII.*")
             .withGroupBy("columns.tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
