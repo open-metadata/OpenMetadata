@@ -717,7 +717,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @PathParam("teamId") UUID teamId,
       List<EntityReference> users) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
@@ -750,7 +750,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("userId")
           String userId) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .deleteTeamUser(
