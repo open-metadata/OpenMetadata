@@ -70,7 +70,10 @@ import {
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
-import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import {
+  DEFAULT_READ_TIMEOUT,
+  PAGE_SIZE_LARGE,
+} from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -110,8 +113,6 @@ import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
 import { showSuccessToast } from '../ToastUtils';
 import './alerts-util.less';
-
-export const DEFAULT_READ_TIMEOUT = 12;
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
