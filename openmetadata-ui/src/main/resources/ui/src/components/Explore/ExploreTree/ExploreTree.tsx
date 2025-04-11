@@ -56,7 +56,8 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
   <Tooltip
     title={
       <Typography.Text className="text-white">
-        {node.tooltipTitle ?? node.title}
+        {node.title}{' '}
+        {node.type && <span className="text-grey-400">({node.type})</span>}
       </Typography.Text>
     }>
     <div className="d-flex justify-between">
@@ -211,7 +212,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             ),
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
-            tooltipTitle: `${bucket.key} ${type ? `(${type})` : ''}`,
+            type,
             icon: logo,
             isLeaf: bucketToFind === EntityFields.ENTITY_TYPE,
             data: {
