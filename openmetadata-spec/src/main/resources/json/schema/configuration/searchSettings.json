@@ -74,6 +74,13 @@
         "$ref": "#/definitions/allowedSearchFields"
       }
     },
+    "allowedFieldValueBoosts": {
+      "type": "array",
+      "description": "Configurations of allowed field value boost fields for each entity type",
+      "items": {
+        "$ref": "#/definitions/allowedFieldValueBoostFields"
+      }
+    },
     "nlqConfiguration": {
       "description": "Configuration for Natural Language Query capabilities",
       "javaType": "org.openmetadata.schema.api.search.NLQConfiguration",
@@ -369,6 +376,35 @@
               "description": {
                 "type": "string", 
                 "description": "Detailed explanation of what this field represents and how it affects search behavior"
+              }
+            },
+            "required": ["name", "description"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["entityType", "fields"],
+      "additionalProperties": false
+    },
+    "allowedFieldValueBoostFields": {
+      "type": "object",
+      "properties": {
+        "entityType": {
+          "type": "string",
+          "description": "Entity type this field value boost configuration applies to"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Field name that can be used in fieldValueBoosts"
+              },
+              "description": {
+                "type": "string", 
+                "description": "Detailed explanation of what this numeric field represents and how it can be used for boosting relevance"
               }
             },
             "required": ["name", "description"],

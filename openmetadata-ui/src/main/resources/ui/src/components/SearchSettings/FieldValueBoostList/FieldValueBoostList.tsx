@@ -122,6 +122,7 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
       }))}
       loading={isLoading}
       pagination={false}
+      rowClassName={() => 'field-value-row'}
       scroll={{ x: 'max-content' }}
       size="small"
     />

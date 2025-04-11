@@ -24,9 +24,9 @@ import {
 } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
+  AllowedFieldField,
   AllowedSearchFields,
   BoostMode,
-  Field,
   FieldValueBoost,
   ScoreMode,
   SearchSettings,
@@ -134,7 +134,7 @@ const EntitySearchSettings = () => {
     []
   );
 
-  const entityFields: Field[] = useMemo(() => {
+  const entityFields: AllowedFieldField[] = useMemo(() => {
     const currentEntityFields =
       allowedFields.find((field) => field.entityType === entityType)?.fields ??
       [];
@@ -144,6 +144,12 @@ const EntitySearchSettings = () => {
       description: field.description,
     }));
   }, [allowedFields, entityType]);
+
+  const fieldValueBoostOptions = useMemo(() => {
+    return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+      (field) => field.name
+    );
+  }, [searchConfig]);
 
   const menuItems = useMemo(() => {
     return entityFields
@@ -682,7 +688,7 @@ const EntitySearchSettings = () => {
       </Row>
 
       <FieldValueBoostModal
-        entityOptions={entityFields.map((field) => field.name)}
+        entityOptions={fieldValueBoostOptions ?? []}
         open={showNewFieldValueBoost}
         selectedBoost={selectedFieldValueBoost}
         onCancel={() => {
