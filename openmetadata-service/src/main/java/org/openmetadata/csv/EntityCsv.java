@@ -738,8 +738,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        repository.prepareInternal(entity, false);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        // In case of updating entity , prepareInternal as update=True
+        repository.prepareInternal(
+            entity,
+            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
             .getExecutorService()
@@ -819,8 +822,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
       try {
-        repository.prepareInternal(entity, false);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        // In case of updating entity , prepareInternal as update=True
+        repository.prepareInternal(
+            entity,
+            repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);

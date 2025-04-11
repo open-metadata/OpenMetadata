@@ -762,7 +762,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
     repository.isTestSuiteBasic(create.getTestSuite());
     repository.prepareInternal(test, true);
-    PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
+    PutResponse<TestCase> response =
+        repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }

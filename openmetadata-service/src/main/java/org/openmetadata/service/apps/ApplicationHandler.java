@@ -84,8 +84,23 @@ public class ApplicationHandler {
   }
 
   public void installApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
-    runMethodFromApplication(app, daoCollection, searchRepository, "install");
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository, String installedBy) {
+    // Native Application
+    setAppRuntimeProperties(app);
+    try {
+      Object resource = runAppInit(app, daoCollection, searchRepository);
+      // Call method on demand
+      Method scheduleMethod = resource.getClass().getMethod("install", String.class);
+      scheduleMethod.invoke(resource, installedBy);
+
+    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException e) {
+      LOG.error("Exception encountered", e);
+      throw new UnhandledServerException(e.getMessage());
+    } catch (ClassNotFoundException e) {
+      throw new UnhandledServerException(e.getMessage());
+    } catch (InvocationTargetException e) {
+      throw AppException.byMessage(app.getName(), "install", e.getTargetException().getMessage());
+    }
   }
 
   public void configureApplication(

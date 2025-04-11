@@ -122,7 +122,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                   "Type '{}' not found. Proceeding to add new type entity in database.",
                   type.getName());
             }
-            this.repository.createOrUpdate(null, type);
+            this.repository.createOrUpdate(null, type, ADMIN_USER_NAME);
             this.repository.addToRegistry(type);
           } catch (Exception e) {
             LOG.error("Error loading type {}", type.getName(), e);
