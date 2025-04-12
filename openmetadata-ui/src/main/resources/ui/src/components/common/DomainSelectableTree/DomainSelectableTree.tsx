@@ -58,6 +58,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   onCancel,
   isMultiple = false,
   initialDomains,
+  showAllDomains = false,
 }) => {
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
@@ -247,27 +248,29 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         onChange={(e) => onSearch(e.target.value)}
       />
 
-      <div
-        className={classNames(
-          'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer',
-          {
-            'selected-node':
-              activeDomain === DEFAULT_DOMAIN_VALUE &&
-              selectedDomains.length === 0,
-          }
-        )}
-        data-testid="all-domains-selector"
-        onClick={handleMyDomainsClick}>
-        <DomainIcon height={20} name="domain" width={20} />
-        <Typography.Text
-          className={classNames({
-            'font-semibold':
-              activeDomain === DEFAULT_DOMAIN_VALUE &&
-              selectedDomains.length === 0,
-          })}>
-          {t('label.all-domain-plural')}
-        </Typography.Text>
-      </div>
+      {showAllDomains && (
+        <div
+          className={classNames(
+            'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer',
+            {
+              'selected-node':
+                activeDomain === DEFAULT_DOMAIN_VALUE &&
+                selectedDomains.length === 0,
+            }
+          )}
+          data-testid="all-domains-selector"
+          onClick={handleMyDomainsClick}>
+          <DomainIcon height={20} name="domain" width={20} />
+          <Typography.Text
+            className={classNames({
+              'font-semibold':
+                activeDomain === DEFAULT_DOMAIN_VALUE &&
+                selectedDomains.length === 0,
+            })}>
+            {t('label.all-domain-plural')}
+          </Typography.Text>
+        </div>
+      )}
 
       {treeContent}
 

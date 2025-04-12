@@ -605,6 +605,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
             entityField: EntityFields.NAME_KEYWORD,
+            isCaseInsensitive: true,
           }),
           useAsyncSearch: true,
         },
@@ -744,6 +745,7 @@ class AdvancedSearchClassBase {
               asyncFetch: this.autocomplete({
                 searchIndex: entitySearchIndex,
                 entityField: EntityFields.COLUMN,
+                isCaseInsensitive: true,
               }),
               useAsyncSearch: true,
             },

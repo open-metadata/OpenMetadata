@@ -322,7 +322,7 @@ export const parseBucketsData = (
             (obj, key) =>
               obj && obj[key] !== undefined ? obj[key] : undefined,
             bucket['top_hits#top']?.hits?.hits?.[0]?._source
-          ) || bucket.key
+          ) ?? bucket.key
       : bucket.key;
 
     return {
