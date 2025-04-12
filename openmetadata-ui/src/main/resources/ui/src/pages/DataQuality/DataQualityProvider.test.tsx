@@ -101,7 +101,7 @@ const MockComponent = () => {
   );
 };
 
-describe.skip('DataQualityProvider', () => {
+describe('DataQualityProvider', () => {
   beforeEach(() => {
     render(
       <DataQualityProvider>

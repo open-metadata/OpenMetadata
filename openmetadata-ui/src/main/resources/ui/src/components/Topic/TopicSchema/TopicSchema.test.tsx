@@ -162,12 +162,12 @@ describe('Topic Schema', () => {
     const schemaFields = await screen.findByTestId('topic-schema-fields-table');
     const rows = await screen.findAllByRole('row');
 
-    const row1 = rows[0];
+    const row1 = rows[1];
 
     expect(schemaFields).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(19);
+    expect(rows).toHaveLength(20);
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
@@ -185,7 +185,7 @@ describe('Topic Schema', () => {
 
     const rows = await screen.findAllByRole('row');
 
-    const nestedRow = rows[0];
+    const nestedRow = rows[1];
     const singleRow = rows[2];
 
     const expandIcon = await findByTestId(nestedRow, 'expand-icon');

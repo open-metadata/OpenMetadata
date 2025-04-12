@@ -78,7 +78,7 @@ describe('EditTestCaseModal Component', () => {
     expect(await screen.findByText('label.submit')).toBeInTheDocument();
   });
 
-  it.skip('table, name, test definition, should be disabled', async () => {
+  it('table, name, test definition, should be disabled', async () => {
     render(<EditTestCaseModal {...mockProps} />);
 
     expect(await screen.findByLabelText('label.name')).toBeDisabled();

@@ -118,7 +118,7 @@ describe('Team Hierarchy page', () => {
     expect(assetCountColumn).toBeInTheDocument();
     expect(descriptionColumn).toBeInTheDocument();
 
-    expect(rows).toHaveLength(MOCK_TABLE_DATA.length);
+    expect(rows).toHaveLength(MOCK_TABLE_DATA.length + 1);
   });
 
   it('Should render child row in table', async () => {

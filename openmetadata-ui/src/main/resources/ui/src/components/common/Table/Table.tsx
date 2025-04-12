@@ -311,11 +311,6 @@ const Table = <T extends Record<string, unknown>>(
           ref={ref}
           tableLayout="fixed"
           {...resizingTableProps}
-          scroll={{
-            y: 740,
-            x: resizingTableProps.scroll?.x ?? rest.scroll?.x,
-            ...rest.scroll,
-          }}
         />
       </Col>
       {customPaginationProps && customPaginationProps.showPagination ? (
