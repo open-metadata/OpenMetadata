@@ -50,7 +50,20 @@ export const mockEntitySearchConfig = {
     },
   ],
   termBoosts: [],
-  fieldValueBoosts: [],
+  fieldValueBoosts: [
+    {
+      field: 'usageSummary.monthlyStats.count',
+      factor: 3.0,
+      modifier: 'log1p',
+      missing: 0.0,
+    },
+    {
+      field: 'usageSummary.monthlyStats.percentileRank',
+      factor: 0.1,
+      modifier: 'none',
+      missing: 0.0,
+    },
+  ],
   scoreMode: 'sum',
   boostMode: 'multiply',
 };

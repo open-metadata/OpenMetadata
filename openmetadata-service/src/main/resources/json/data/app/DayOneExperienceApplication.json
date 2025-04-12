@@ -1,9 +1,0 @@
-{
-  "name": "DayOneExperienceApplication",
-  "displayName": "Day One Experience",
-  "appConfiguration": {
-    "type": "DayOneExperienceApplication",
-    "active": true,
-    "entityLink": null
-  }
-}

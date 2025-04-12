@@ -36,6 +36,7 @@ import i18n from '../utils/i18next/LocalUtil';
 import { Transi18next } from './CommonUtils';
 import documentationLinksClassBase from './DocumentationLinksClassBase';
 import Fqn from './Fqn';
+import { getAutoPilotStatuses } from './LocalStorageUtils';
 
 const { t } = i18n;
 
@@ -205,56 +206,82 @@ export const getServiceInsightsWidgetPlaceholder = ({
 }) => {
   let Icon = NoDataPlaceholderIcon;
   let localizationKey = `server.no-records-found`;
+  let docsLink = documentationLinksClassBase.getDocsBaseURL();
 
   switch (chartType) {
     case ServiceInsightsWidgetType.TOTAL_DATA_ASSETS:
       Icon = NoDataPlaceholderIcon;
       localizationKey = 'message.total-data-assets-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().TOTAL_DATA_ASSETS_WIDGET_DOCS;
 
       break;
     case SystemChartType.DescriptionCoverage:
       Icon = DescriptionPlaceholderIcon;
       localizationKey = 'message.description-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS()
+          .DESCRIPTION_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.OwnersCoverage:
       Icon = OwnersPlaceholderIcon;
       localizationKey = 'message.owners-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS()
+          .OWNERSHIP_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.PIICoverage:
       Icon = PiiPlaceholderIcon;
       localizationKey = 'message.pii-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().PII_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.PIIDistribution:
       Icon = PiiPlaceholderIcon;
       localizationKey = 'message.pii-distribution-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().PII_DISTRIBUTION_WIDGET_DOCS;
 
       break;
     case SystemChartType.TierCoverage:
       Icon = TierPlaceholderIcon;
       localizationKey = 'message.tier-coverage-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().TIER_COVERAGE_WIDGET_DOCS;
 
       break;
     case SystemChartType.TierDistribution:
       Icon = TierPlaceholderIcon;
       localizationKey = 'message.tier-distribution-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().TIER_DISTRIBUTION_WIDGET_DOCS;
 
       break;
     case ServiceInsightsWidgetType.COLLATE_AI:
       Icon = TablePlaceholderIcon;
       localizationKey = 'message.collate-ai-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().COLLATE_AI_WIDGET_DOCS;
 
       break;
     case ServiceInsightsWidgetType.MOST_USED_ASSETS:
       Icon = TablePlaceholderIcon;
       localizationKey = 'message.most-used-assets-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS().MOST_USED_ASSETS_WIDGET_DOCS;
 
       break;
     case ServiceInsightsWidgetType.MOST_EXPENSIVE_QUERIES:
       Icon = TablePlaceholderIcon;
       localizationKey = 'message.most-expensive-queries-widget-description';
+      docsLink =
+        documentationLinksClassBase.getDocsURLS()
+          .MOST_EXPENSIVE_QUERIES_WIDGET_DOCS;
+
+      break;
   }
 
   return (
@@ -268,7 +295,7 @@ export const getServiceInsightsWidgetPlaceholder = ({
           i18nKey={localizationKey}
           renderElement={
             <a
-              href={documentationLinksClassBase.getDocsBaseURL()}
+              href={docsLink}
               rel="noreferrer"
               style={{ color: theme.primaryColor }}
               target="_blank"
@@ -285,14 +312,41 @@ export const filterDistributionChartItem = (item: {
   term: string;
   group: string;
 }) => {
-  if (Fqn.split(item.term).length !== 2) {
+  // Add input validation to prevent DOS vulnerabilities | typescript:S5852
+  if (
+    !item.term ||
+    !item.group ||
+    item.term.length > 1000 ||
+    item.group.length > 1000
+  ) {
+    return false;
+  }
+
+  // Split once and cache the result
+  const termParts = Fqn.split(item.term);
+  if (termParts.length !== 2) {
     // Invalid Tag FQN
     return false;
   }
 
   // clean start and end quotes
-  let tag_name = Fqn.split(item.term)[1];
-  tag_name = tag_name.replace(/(^["']+|["']+$)/g, '');
+  const tag_name = termParts[1].replace(/(^["']+|["']+$)/g, '');
 
   return toLower(tag_name) === toLower(item.group);
+};
+
+export const checkIfAutoPilotStatusIsDismissed = (
+  serviceFQN?: string,
+  workflowStatus?: WorkflowStatus
+) => {
+  if (!serviceFQN || !workflowStatus) {
+    return false;
+  }
+
+  const autoPilotStatuses = getAutoPilotStatuses();
+
+  return autoPilotStatuses.some(
+    (status) =>
+      status.serviceFQN === serviceFQN && status.status === workflowStatus
+  );
 };

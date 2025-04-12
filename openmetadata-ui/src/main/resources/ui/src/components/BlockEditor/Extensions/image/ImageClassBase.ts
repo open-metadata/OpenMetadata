@@ -28,7 +28,7 @@ class ImageClassBase {
   public getImageComponentPopoverTab() {
     return [
       {
-        label: i18n.t('label.embed-link'),
+        label: i18n.t('label.link'),
         key: 'embed',
         children: EmbedLinkElement,
       },

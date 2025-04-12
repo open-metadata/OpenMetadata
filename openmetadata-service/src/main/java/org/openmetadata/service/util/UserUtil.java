@@ -160,7 +160,7 @@ public final class UserUtil {
   public static User addOrUpdateUser(User user) {
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
-      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user, ADMIN_USER_NAME);
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
       return addedUser.getEntity();

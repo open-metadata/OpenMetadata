@@ -69,7 +69,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onUpdate,
     filterWidgets,
   } = useGenericContext<ExtentionEntities[T]>();
-
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(true);
