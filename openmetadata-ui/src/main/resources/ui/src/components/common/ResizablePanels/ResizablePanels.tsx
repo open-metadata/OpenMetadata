@@ -51,6 +51,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
             'full-width': hideSecondPanel || isRightPanelCollapsed,
+            'h-full overflow-y-auto': firstPanel.allowScroll,
           })}
           data-testid={firstPanel.className}
           flex={firstPanel.flex}
@@ -59,7 +60,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
           {isFirstPanelWrapInCard ? (
-            <Card className="h-full overflow-y-auto">
+            <Card
+              className={classNames(firstPanel.cardClassName, {
+                // If allowScroll is true, the card will not have a scrollbar
+                'h-full overflow-y-auto': !firstPanel.allowScroll,
+              })}>
               {firstPanel.children}
             </Card>
           ) : (

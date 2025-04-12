@@ -29,6 +29,7 @@ const AddSubDomainModal = ({
 
   return (
     <Modal
+      centered
       cancelText={t('label.cancel')}
       className="add-subdomain-modal"
       closable={false}

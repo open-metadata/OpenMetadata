@@ -41,7 +41,6 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const pageContainerStyles: CSSProperties = {
-  padding: 0,
   marginTop: 0,
   marginBottom: 0,
   marginLeft: 0,
@@ -95,7 +94,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={className}
+        className={classNames('p-x-box', className)}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}
         wrap={false}>
@@ -109,7 +108,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll p-x-box`,
+            `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
             },

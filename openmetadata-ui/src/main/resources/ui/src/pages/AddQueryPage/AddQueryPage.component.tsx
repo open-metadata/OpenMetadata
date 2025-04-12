@@ -226,7 +226,9 @@ const AddQueryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container max-width-md m-x-auto',
+        allowScroll: true,
+        className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
         children: (
           <div>
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />

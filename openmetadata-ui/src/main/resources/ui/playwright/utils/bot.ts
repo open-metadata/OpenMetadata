@@ -127,8 +127,8 @@ export const updateBotDetails = async (page: Page) => {
 
   // Verify the display name is updated on bot details page
   await expect(
-    page.locator('[data-testid="left-panel"] .display-name')
-  ).toContainText(BOT_DETAILS.updatedBotName);
+    page.getByTestId('left-panel').getByText(BOT_DETAILS.updatedBotName)
+  ).toBeVisible();
 
   // Click on edit description button
   await page.getByTestId('edit-description').click();

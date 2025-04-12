@@ -12,27 +12,13 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Input,
-  Row,
-  Space,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_LARGE,
-  TERM_ADMIN,
-} from '../../../../constants/constants';
+import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -42,12 +28,12 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
-import './bot-details.less';
 import { BotsDetailProps } from './BotDetails.interfaces';
 
 const BotDetails: FC<BotsDetailProps> = ({
@@ -110,7 +96,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const handleDisplayNameChange = () => {
     if (displayName !== botData.displayName) {
-      updateBotsDetails({ displayName: displayName || '' });
+      updateBotsDetails({ displayName: displayName ?? '' });
     }
     setIsDisplayNameEdit(false);
   };
@@ -129,87 +115,82 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   const fetchLeftPanel = () => {
     return (
-      <Row className="p-xs" gutter={[16, 16]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <Card className="page-layout-v1-left-panel mt-2">
             <div data-testid="left-panel">
-              <div className="d-flex flex-col">
+              <div className="d-flex flex-col gap-5">
                 <IconBotProfile widths="280px" />
 
-                <Space className="p-b-md" direction="vertical" size={8}>
-                  <div className="mt-4 w-full d-flex">
-                    {isDisplayNameEdit ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          className="w-full"
-                          data-testid="displayName"
-                          id="displayName"
-                          name="displayName"
-                          placeholder={t('label.display-name')}
-                          value={displayName}
-                          onChange={onDisplayNameChange}
+                <div className="d-flex gap-2 items-center">
+                  {isDisplayNameEdit ? (
+                    <>
+                      <Input
+                        data-testid="displayName"
+                        id="displayName"
+                        name="displayName"
+                        placeholder={t('label.display-name')}
+                        value={displayName}
+                        onChange={onDisplayNameChange}
+                      />
+                      <div className="flex justify-end" data-testid="buttons">
+                        <Button
+                          className="text-sm mr-1"
+                          data-testid="cancel-displayName"
+                          icon={<CloseOutlined />}
+                          size="small"
+                          type="primary"
+                          onMouseDown={() => setIsDisplayNameEdit(false)}
                         />
-                        <div className="flex justify-end" data-testid="buttons">
-                          <Button
-                            className="text-sm mr-1"
-                            data-testid="cancel-displayName"
-                            icon={<CloseOutlined />}
-                            size="small"
-                            type="primary"
-                            onMouseDown={() => setIsDisplayNameEdit(false)}
-                          />
 
-                          <Button
-                            className="text-sm mr-1"
-                            data-testid="save-displayName"
-                            icon={<CheckOutlined />}
-                            size="small"
-                            type="primary"
-                            onClick={handleDisplayNameChange}
-                          />
-                        </div>
+                        <Button
+                          className="text-sm mr-1"
+                          data-testid="save-displayName"
+                          icon={<CheckOutlined />}
+                          size="small"
+                          type="primary"
+                          onClick={handleDisplayNameChange}
+                        />
                       </div>
-                    ) : (
-                      <Space>
-                        {displayName ? (
-                          <Typography.Title className="display-name" level={5}>
-                            {displayName}
-                          </Typography.Title>
-                        ) : (
-                          <Typography.Text className="text-grey-muted">
-                            {t('label.add-entity', {
-                              entity: t('label.display-name'),
-                            })}
-                          </Typography.Text>
-                        )}
-                        {(displayNamePermission || editAllPermission) && (
-                          <Tooltip
+                    </>
+                  ) : (
+                    <>
+                      {displayName ? (
+                        <Typography.Title ellipsis className="m-0" level={5}>
+                          {displayName}
+                        </Typography.Title>
+                      ) : (
+                        <Typography.Text className="text-grey-muted">
+                          {t('label.add-entity', {
+                            entity: t('label.display-name'),
+                          })}
+                        </Typography.Text>
+                      )}
+                      {(displayNamePermission || editAllPermission) && (
+                        <div>
+                          <EditIconButton
+                            newLook
+                            data-testid="edit-displayName"
+                            size="small"
                             title={t('label.edit-entity', {
                               entity: t('label.display-name'),
-                            })}>
-                            <Button
-                              className="p-0"
-                              data-testid="edit-displayName"
-                              icon={
-                                <EditIcon color={DE_ACTIVE_COLOR} width={16} />
-                              }
-                              type="text"
-                              onClick={() => setIsDisplayNameEdit(true)}
-                            />
-                          </Tooltip>
-                        )}
-                      </Space>
-                    )}
-                  </div>
-                  <DescriptionV1
-                    description={botData.description || ''}
-                    entityName={getEntityName(botData)}
-                    entityType={EntityType.BOT}
-                    hasEditAccess={descriptionPermission || editAllPermission}
-                    showCommentsIcon={false}
-                    onDescriptionUpdate={handleDescriptionChange}
-                  />
-                </Space>
+                            })}
+                            onClick={() => setIsDisplayNameEdit(true)}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                <DescriptionV1
+                  newLook
+                  description={botData.description}
+                  entityName={getEntityName(botData)}
+                  entityType={EntityType.BOT}
+                  hasEditAccess={descriptionPermission || editAllPermission}
+                  showCommentsIcon={false}
+                  onDescriptionUpdate={handleDescriptionChange}
+                />
               </div>
             </div>
           </Card>
@@ -246,9 +227,7 @@ const BotDetails: FC<BotsDetailProps> = ({
       leftPanel={fetchLeftPanel()}
       pageTitle={t('label.bot-detail')}
       rightPanel={
-        <div
-          className="p-md bg-white w-full h-full mt-2 border-left"
-          data-testid="right-panel">
+        <Card className="h-full m-b-box" data-testid="right-panel">
           <div className="d-flex flex-col">
             <Typography.Text className="mb-2 text-lg">
               {t('label.token-security')}
@@ -257,11 +236,12 @@ const BotDetails: FC<BotsDetailProps> = ({
               {t('message.token-security-description')}
             </Typography.Text>
           </div>
-        </div>
+        </Card>
       }
       rightPanelWidth={300}>
-      <div className="p-sm p-x-md">
+      <div className="m-x-box">
         <TitleBreadcrumb
+          className="m-y-mlg"
           titleLinks={[
             {
               name: 'Bots',
