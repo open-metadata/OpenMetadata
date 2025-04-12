@@ -32,6 +32,7 @@ import {
 import {
   EntityFields,
   EntityReferenceFields,
+  EntitySourceFields,
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -43,6 +44,7 @@ import {
 } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
+import { parseBucketsData } from './SearchUtils';
 
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig as BasicConfig;
@@ -129,23 +131,32 @@ class AdvancedSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
-  }) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
+    isCaseInsensitive?: boolean;
+  }) => SelectFieldSettings['asyncFetch'] = ({
+    searchIndex,
+    entityField,
+    isCaseInsensitive = false,
+  }) => {
     // Wrapping the fetch function in a debounce of 300 ms
     const debouncedFetch = debounce((search, callback) => {
+      const sourceFields = isCaseInsensitive
+        ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
+        : undefined;
+
       getAggregateFieldOptions(
         searchIndex,
         entityField,
         search ?? '',
-        JSON.stringify(getCombinedQueryFilterObject())
+        JSON.stringify(getCombinedQueryFilterObject()),
+        sourceFields
       ).then((response) => {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;
 
+        const bucketsData = parseBucketsData(buckets, sourceFields);
+
         callback({
-          values: buckets.map((bucket) => ({
-            value: bucket.key,
-            title: bucket.label ?? bucket.key,
-          })),
+          values: bucketsData,
           hasMore: false,
         });
       });
