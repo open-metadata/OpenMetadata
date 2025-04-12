@@ -34,6 +34,7 @@ const LineageSearchSelect = () => {
     isEditMode,
     onNodeClick,
     onColumnClick,
+    isPlatformLineage,
   } = useLineageProvider();
 
   const nodeOptions = useMemo(() => {
@@ -120,6 +121,10 @@ const LineageSearchSelect = () => {
     },
     [onNodeClick, reactFlowInstance, onColumnClick]
   );
+
+  if (isPlatformLineage) {
+    return null;
+  }
 
   return (
     <Select

@@ -260,7 +260,16 @@ export const fillRule = async (
       await dropdownInput.fill(searchData);
 
       if (aggregateRes) {
-        await aggregateRes;
+        const res = await aggregateRes;
+        if (field.id === 'Column') {
+          // check if aggregateRes has queryParam called 'sourceField'
+          const urlParams = new URLSearchParams(res.request().url());
+          const sourceField = urlParams.get('sourceFields');
+          if (sourceField) {
+            // check value of sourceField
+            expect(sourceField).toBe('columns.name');
+          }
+        }
       }
 
       await page
