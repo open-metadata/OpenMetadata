@@ -513,12 +513,13 @@ export const AssetSelectionModal = ({
     }
 
     return () => {
-      socket && socket.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
+      socket?.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
     };
   }, [socket]);
 
   return (
     <Modal
+      centered
       destroyOnClose
       className="asset-selection-modal"
       closable={false}
@@ -561,7 +562,6 @@ export const AssetSelectionModal = ({
         </div>
       }
       open={open}
-      style={{ top: 40 }}
       title={t('label.add-entity', { entity: t('label.asset-plural') })}
       width={675}
       onCancel={onCancel}>

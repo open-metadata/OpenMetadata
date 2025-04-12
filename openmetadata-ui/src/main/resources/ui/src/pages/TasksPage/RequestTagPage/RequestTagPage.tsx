@@ -177,8 +177,10 @@ const RequestTag = () => {
         className: 'content-resizable-panel-container bg-white',
         minWidth: 700,
         flex: 0.6,
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 m-x-auto m-y-md d-grid gap-4">
+          <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
                 ...getBreadCrumbList(entityData, entityType),
