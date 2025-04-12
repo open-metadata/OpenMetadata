@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { ZOOM_TRANSITION_DURATION } from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { Column } from '../../../../generated/entity/data/table';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -35,6 +36,7 @@ const LineageSearchSelect = () => {
     onNodeClick,
     onColumnClick,
     isPlatformLineage,
+    platformView,
   } = useLineageProvider();
 
   const nodeOptions = useMemo(() => {
@@ -122,7 +124,7 @@ const LineageSearchSelect = () => {
     [onNodeClick, reactFlowInstance, onColumnClick]
   );
 
-  if (isPlatformLineage) {
+  if (isPlatformLineage || platformView !== LineagePlatformView.None) {
     return null;
   }
 
