@@ -458,13 +458,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           ? {
               name: `${t('label.lineage')}_${getCurrentISODate()}`,
               exportTypes: [ExportTypes.PNG],
-              title: t('label.lineage'),
             }
           : {
               name: decodedFqn,
               exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
-              title: t('label.lineage'),
             }),
+        title: t('label.lineage'),
         documentSelector: LINEAGE_EXPORT_SELECTOR,
         viewport: getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR),
         onExport: exportLineageData,
