@@ -1350,6 +1350,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     fetchWorkflowInstanceStates();
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
+  useEffect(() => {
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
+
   if (isLoading) {
     return <Loader />;
   }
