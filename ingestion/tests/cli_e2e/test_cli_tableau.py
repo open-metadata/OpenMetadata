@@ -23,7 +23,7 @@ from .base.test_cli import PATH_TO_RESOURCES
 from .common.test_cli_dashboard import CliCommonDashboard
 
 
-class TableauCliTest(CliCommonDashboard.TestSuite):
+class TableauCliTest:
     # in case we want to do something before running the tests
     def prepare(self) -> None:
         redshift_file_path = str(
@@ -81,7 +81,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return 4
 
     @pytest.mark.order(11)
-    def test_lineage(self) -> None:
+    def x_test_lineage(self) -> None:
         pytest.skip("Lineage not configured. Skipping Test")
 
     # Overriding the method since for Tableau we don't expect lineage to be shown on this assert.

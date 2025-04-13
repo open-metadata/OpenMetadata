@@ -222,7 +222,7 @@ class CliDBBase(TestCase):
             self.run_command()
             self.build_config_file(
                 E2EType.LINEAGE,
-                {"source": f"{self.get_connector_name()}-lineage"},
+                {"source": self.get_connector_name_lineage()},
             )
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
@@ -327,6 +327,10 @@ class CliDBBase(TestCase):
         @abstractmethod
         def get_connector_name() -> str:
             raise NotImplementedError()
+        
+        def get_connector_name_lineage(self) -> str:
+            return self.get_connector_name() + "-lineage"
+
 
         @abstractmethod
         def create_table_and_view(self) -> None:
