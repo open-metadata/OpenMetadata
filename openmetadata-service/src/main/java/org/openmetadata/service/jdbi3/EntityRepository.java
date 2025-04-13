@@ -2491,6 +2491,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return owners;
     }
+    // Check if owners are inherited. If so, ignore the validation
+    if (owners.stream().allMatch(owner -> owner.getInherited() != null && owner.getInherited())) {
+      return owners;
+    }
+
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
     if (nullOrEmpty(refs)) {
