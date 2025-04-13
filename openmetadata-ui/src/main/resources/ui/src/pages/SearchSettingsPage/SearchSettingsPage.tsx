@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Collapse, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -83,9 +84,13 @@ const SearchSettingsPage = () => {
   );
 
   const fieldValueBoostOptions = useMemo(() => {
-    return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
-      (field) => field.name
-    );
+    if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
+      return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+        (field) => field.name
+      );
+    }
+
+    return [];
   }, [searchConfig]);
 
   const fetchSearchConfig = async () => {
