@@ -86,16 +86,17 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
+  findColumnByEntityLink,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
+  updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -684,14 +685,11 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const activeCol = prev?.columns.find((column) => {
-          return (
-            EntityLink.getTableEntityLink(
-              prev.fullyQualifiedName ?? '',
-              column.name ?? ''
-            ) === suggestion.entityLink
-          );
-        });
+        const activeCol = findColumnByEntityLink(
+          prev.fullyQualifiedName ?? '',
+          prev.columns,
+          suggestion.entityLink
+        );
 
         if (!activeCol) {
           return {
@@ -701,18 +699,17 @@ const TableDetailsPageV1: React.FC = () => {
               : { tags: suggestion.tagLabels }),
           };
         } else {
-          const updatedColumns = prev.columns.map((column) => {
-            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
-              return {
-                ...column,
-                ...(suggestion.type === SuggestionType.SuggestDescription
-                  ? { description: suggestion.description }
-                  : { tags: suggestion.tagLabels }),
-              };
-            } else {
-              return column;
-            }
-          });
+          const update =
+            suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels };
+
+          // Update the column in the nested structure
+          const updatedColumns = updateColumnInNestedStructure(
+            prev.columns,
+            activeCol.fullyQualifiedName ?? '',
+            update
+          );
 
           return {
             ...prev,
