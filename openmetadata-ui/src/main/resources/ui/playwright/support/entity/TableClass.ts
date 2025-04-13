@@ -66,8 +66,8 @@ export class TableClass extends EntityClass {
     this.columnsName[0],
     this.columnsName[1],
     this.columnsName[2],
-    `"${this.columnsName[2]}.${this.columnsName[3]}"`,
-    `"${this.columnsName[2]}.${this.columnsName[4]}"`,
+    `${this.columnsName[2]}.${this.columnsName[3]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}`,
     this.columnsName[5],
   ];
 
