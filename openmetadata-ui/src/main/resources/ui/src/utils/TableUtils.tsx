@@ -1214,3 +1214,85 @@ export const getTableWidgetFromKey = (
     );
   }
 };
+
+/**
+ * Helper function to find a column by entity link in a nested structure
+ * Recursively searches through the column hierarchy to find a matching column
+ *
+ * @param tableFqn - The fully qualified name of the table
+ * @param columns - Array of columns to search through
+ * @param entityLink - The entity link to match against
+ * @returns The matching column or null if not found
+ */
+export const findColumnByEntityLink = (
+  tableFqn: string,
+  columns: Column[],
+  entityLink: string
+): Column | null => {
+  for (const column of columns) {
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      column.fullyQualifiedName ?? '',
+      false
+    );
+
+    // Generate the entity link for this column and compare with the target entity link
+    const columnEntityLink = EntityLink.getTableEntityLink(
+      tableFqn,
+      columnName
+    );
+    if (columnEntityLink === entityLink) {
+      return column;
+    }
+
+    // If this column has children, recursively search them
+    if (column.children && column.children.length > 0) {
+      const found = findColumnByEntityLink(
+        tableFqn,
+        column.children,
+        entityLink
+      );
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Helper function to update a column in a nested structure
+ * Recursively traverses the column hierarchy to find and update the target column
+ *
+ * @param columns - Array of columns to search through
+ * @param targetFqn - The fully qualified name of the column to update
+ * @param update - The properties to update on the matching column
+ * @returns Updated array of columns with the target column modified
+ */
+export const updateColumnInNestedStructure = (
+  columns: Column[],
+  targetFqn: string,
+  update: Partial<Column>
+): Column[] => {
+  return columns.map((column: Column) => {
+    if (column.fullyQualifiedName === targetFqn) {
+      return {
+        ...column,
+        ...update,
+      };
+    }
+    // If this column has children, recursively search them
+    else if (column.children && column.children.length > 0) {
+      return {
+        ...column,
+        children: updateColumnInNestedStructure(
+          column.children,
+          targetFqn,
+          update
+        ),
+      };
+    } else {
+      return column;
+    }
+  });
+};
