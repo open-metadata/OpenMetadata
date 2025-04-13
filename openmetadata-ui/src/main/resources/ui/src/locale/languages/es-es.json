@@ -1798,6 +1798,7 @@
     "integration-description": "Configure aplicaciones y bots para amplificar la productividad.",
     "invalid-object-key": "Clave de objeto no válida. Debe comenzar con una letra, un guion bajo o un signo de dólar, seguido de letras, guiones bajos, signos de dólar o dígitos.",
     "invalid-property-name": "Nombre de propiedad no válido",
+    "invalid-string-length-error": "No se pudo generar la imagen {{exportType}} debido a un {{entity}} excesivamente grande.",
     "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "Token que ha generado que se puede utilizar para acceder a la API de OpenMetadata.",
     "jwt-token-expiry-time-message": "JWT token expiry timer in seconds.",

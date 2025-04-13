@@ -1798,6 +1798,7 @@
     "integration-description": "생산성을 향상시키기 위해 애플리케이션 및 봇을 구성하세요.",
     "invalid-object-key": "유효하지 않은 객체 키입니다. 문자, 밑줄 또는 달러 기호로 시작한 후 문자, 밑줄, 달러 기호 또는 숫자가 올 수 있습니다.",
     "invalid-property-name": "유효하지 않은 속성 이름입니다.",
+    "invalid-string-length-error": "{{exportType}} 이미지는 {{entity}} 가 너무 커서 생성할 수 없습니다.",
     "invalid-unix-epoch-time-milliseconds": "유효하지 않은 Unix 시간(밀리초)",
     "jwt-token": "생성된 토큰을 사용하여 OpenMetadata API에 접근할 수 있습니다.",
     "jwt-token-expiry-time-message": "JWT 토큰 만료 시간이 초 단위로 설정되어 있습니다.",

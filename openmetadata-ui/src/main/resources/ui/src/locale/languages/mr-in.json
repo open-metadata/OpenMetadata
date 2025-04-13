@@ -1798,6 +1798,7 @@
     "integration-description": "उत्पादकता वाढवण्यासाठी अनुप्रयोग आणि बॉट्स कॉन्फिगर करा.",
     "invalid-object-key": "अवैध ऑब्जेक्ट की. अक्षर, अंडरस्कोर किंवा डॉलर चिन्हाने सुरू होणे आवश्यक आहे, त्यानंतर अक्षरे, अंडरस्कोर्स, डॉलर चिन्हे किंवा अंक.",
     "invalid-property-name": "अवैध गुणधर्म नाव",
+    "invalid-string-length-error": "{{exportType}} प्रतिमा अत्यंत मोठ्या {{entity}} मुळे तयार केली जाऊ शकली नाही.",
     "invalid-unix-epoch-time-milliseconds": "अवैध युनिक्स युग वेळ मिलीसेकंदात",
     "jwt-token": "तुम्ही व्युत्पन्न केलेले टोकन जे OpenMetadata API वर प्रवेश करण्यासाठी वापरले जाऊ शकते.",
     "jwt-token-expiry-time-message": "JWT टोकन समाप्ती वेळ सेकंदात.",

@@ -71,11 +71,26 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       downloadImageFromBase64(base64Image, name, ExportTypes.PNG);
     })
     .catch((error) => {
-      showErrorToast(
-        error as AxiosError,
-        i18n.t('message.error-generating-export-type', {
-          exportType: ExportTypes.PNG,
-        })
+      const errorMessage = (error as Error).message || '';
+      const isInvalidStringLength = errorMessage.includes(
+        'Invalid string length'
       );
+
+      if (isInvalidStringLength) {
+        showErrorToast(
+          error as AxiosError,
+          i18n.t('message.invalid-string-length-error', {
+            exportType: ExportTypes.PNG,
+            entity: exportData.title,
+          })
+        );
+      } else {
+        showErrorToast(
+          error as AxiosError,
+          i18n.t('message.error-generating-export-type', {
+            exportType: ExportTypes.PNG,
+          })
+        );
+      }
     });
 };
