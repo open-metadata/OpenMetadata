@@ -32,7 +32,7 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SourceUrl,
 )
-from metadata.generated.schema.type.schema import Topic
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
