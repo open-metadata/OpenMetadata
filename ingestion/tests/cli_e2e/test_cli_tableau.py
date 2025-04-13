@@ -83,6 +83,9 @@ class TableauCliTest:
     @pytest.mark.order(11)
     def x_test_lineage(self) -> None:
         pytest.skip("Lineage not configured. Skipping Test")
+    
+    def test_random(self) -> None:
+        assert 1 == 1
 
     # Overriding the method since for Tableau we don't expect lineage to be shown on this assert.
     # This differs from the base case
