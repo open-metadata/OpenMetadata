@@ -1966,7 +1966,7 @@
     "page-sub-header-for-om-health-configuration": "بررسی دسترسی به پایگاه داده، سلامت Elasticsearch، سرویس کلاینت Pipeline، پیکربندی jwks و مهاجرت‌ها.",
     "page-sub-header-for-persona": "تجربه کاربر را با شخصیت‌های مختلف بهبود بخشید و سفارشی‌سازی کنید.",
     "page-sub-header-for-pipelines": "ورود متادیتا از پرکاربردترین سرویس‌های خطوط لوله.",
-    "page-sub-header-for-platform-lineage": "Visualiza a linhagem da plataforma para entender dependências e relacionamentos na sua plataforma.",
+    "page-sub-header-for-platform-lineage": "Visualiza a linhagem para entender as dependências e os relacionamentos nos seus dados",
     "page-sub-header-for-policies": "تعریف سیاست‌ها با مجموعه‌ای از قوانین برای کنترل دقیق دسترسی.",
     "page-sub-header-for-profiler-configuration": "تنظیم رفتار پروفایلر در سطح جهانی با تعیین معیارها بر اساس نوع داده‌های ستون‌ها.",
     "page-sub-header-for-roles": "تخصیص دسترسی جامع مبتنی بر نقش به کاربران یا تیم‌ها.",

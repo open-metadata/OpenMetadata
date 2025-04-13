@@ -1966,7 +1966,7 @@
     "page-sub-header-for-om-health-configuration": "Check database access, ES health, Pipeline Service Client, jwks configuration and migrations",
     "page-sub-header-for-persona": "Represent different persona that a user may have withing OpenMetadata.",
     "page-sub-header-for-pipelines": "Принимать метаданные из наиболее часто используемых конвейерных служб.",
-    "page-sub-header-for-platform-lineage": "Визуализируйте родословную платформы, чтобы понять зависимости и взаимосвязи в вашей платформе.",
+    "page-sub-header-for-platform-lineage": "Визуализируйте родословную, чтобы понять зависимости и взаимосвязи в ваших данных",
     "page-sub-header-for-policies": "Определите политики с набором правил для точного контроля доступа.",
     "page-sub-header-for-profiler-configuration": "Customize globally the behavior of the profiler by setting the metrics to compute based on columns data types",
     "page-sub-header-for-roles": "Назначьте полный доступ на основе ролей пользователям или командам.",

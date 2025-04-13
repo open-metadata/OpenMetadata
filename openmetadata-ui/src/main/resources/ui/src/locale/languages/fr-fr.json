@@ -1966,7 +1966,7 @@
     "page-sub-header-for-om-health-configuration": "Vérifiez l'accès aux bases de données, la santé d'ES, le service de Pipeline Service, la configuration jwks et les migrations",
     "page-sub-header-for-persona": "Représentez différents personas qu'un utilisateur peut avoir dans OpenMetadata.",
     "page-sub-header-for-pipelines": "Ingestion de métadonnées à partir des services de pipeline les plus utilisés.",
-    "page-sub-header-for-platform-lineage": "Visualisez l'ascendance de la plateforme pour comprendre les dépendances et les relations au sein de votre plateforme.",
+    "page-sub-header-for-platform-lineage": "Visualisez la lignée pour comprendre les dépendances et les relations dans vos données",
     "page-sub-header-for-policies": "Définissez des politiques avec un ensemble de règles pour un contrôle d'accès précis.",
     "page-sub-header-for-profiler-configuration": "Personnalisez le comportement global du profiler en établissant les métriques à calculer à partir des types de données des colonnes",
     "page-sub-header-for-roles": "Attribuez des autorisations basées sur les rôles aux utilisateurs ou aux équipes.",
