@@ -71,7 +71,7 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       downloadImageFromBase64(base64Image, name, ExportTypes.PNG);
     })
     .catch((error) => {
-      const errorMessage = (error as Error).message || '';
+      const errorMessage = (error as Error).message ?? '';
       const isInvalidStringLength = errorMessage.includes(
         'Invalid string length'
       );
