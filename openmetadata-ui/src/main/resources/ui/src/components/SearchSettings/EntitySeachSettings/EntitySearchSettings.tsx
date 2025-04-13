@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Collapse, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -146,9 +146,13 @@ const EntitySearchSettings = () => {
   }, [allowedFields, entityType]);
 
   const fieldValueBoostOptions = useMemo(() => {
-    return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
-      (field) => field.name
-    );
+    if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
+      return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+        (field) => field.name
+      );
+    }
+
+    return [];
   }, [searchConfig]);
 
   const menuItems = useMemo(() => {
