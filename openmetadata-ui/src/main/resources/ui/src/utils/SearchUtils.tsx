@@ -303,3 +303,31 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
 
   return commonAssets[searchIndex] || null; // Return null if not found
 };
+
+/**
+ * Parse bucket data from aggregation responses into a format suitable for select fields
+ * @param buckets - The bucket data from aggregation response
+ * @param sourceFields - Optional string representing dot-notation path to extract values
+ * @returns An array of objects with value and title properties
+ */
+export const parseBucketsData = (
+  buckets: Array<any>,
+  sourceFields?: string
+) => {
+  return buckets.map((bucket) => {
+    const actualValue = sourceFields
+      ? sourceFields
+          .split('.')
+          .reduce(
+            (obj, key) =>
+              obj && obj[key] !== undefined ? obj[key] : undefined,
+            bucket['top_hits#top']?.hits?.hits?.[0]?._source
+          ) ?? bucket.key
+      : bucket.key;
+
+    return {
+      value: actualValue,
+      title: bucket.label ?? actualValue,
+    };
+  });
+};

@@ -22,6 +22,7 @@ export interface DomainSelectableTreeProps {
   initialDomains?: EntityReference[];
   dropdownRef?: React.RefObject<HTMLDivElement>;
   handleDropdownChange?: (open: boolean) => void;
+  showAllDomains?: boolean;
 }
 
 export type TreeListItem = Omit<DefaultOptionType, 'label'>;

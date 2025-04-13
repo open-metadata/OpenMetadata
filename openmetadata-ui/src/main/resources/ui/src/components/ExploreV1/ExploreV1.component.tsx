@@ -17,17 +17,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Menu,
-  Row,
-  Space,
-  Switch,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -44,7 +34,7 @@ import {
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -55,7 +45,6 @@ import {
 } from '../../utils/ExploreUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
@@ -422,7 +411,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 wrap={false}>
                 <Col flex="auto">
                   <Card className="h-full explore-main-card">
-                    <div>
+                    <div className="h-full">
                       {!loading && !isElasticSearchIssue ? (
                         <SearchedData
                           isFilterSelected
@@ -467,19 +456,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
         }}
       />
 
-      {searchQueryParam && tabItems.length === 0 && !loading && (
-        <Space
-          align="center"
-          className="w-full flex-center full-height"
-          data-testid="no-search-results"
-          direction="vertical"
-          size={48}>
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        </Space>
-      )}
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
     </div>
   );

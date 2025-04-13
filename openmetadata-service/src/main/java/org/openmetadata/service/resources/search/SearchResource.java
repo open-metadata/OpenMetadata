@@ -45,6 +45,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
@@ -529,6 +530,9 @@ public class SearchResource {
           @DefaultValue("")
           @QueryParam("value")
           String value,
+      @Parameter(description = "List of fields to fetch from _source per bucket.")
+          @QueryParam("sourceFields")
+          String sourceFieldsParam,
       @Parameter(
               description =
                   "Search Query Text, Pass *text* for substring match; "
@@ -550,10 +554,20 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @DefaultValue("false") @QueryParam("deleted") String deleted)
+      @DefaultValue("false") @QueryParam("deleted") boolean deleted)
       throws IOException {
 
-    return searchRepository.aggregate(index, fieldName, value, query);
+    AggregationRequest aggregationRequest =
+        new AggregationRequest()
+            .withQuery(query)
+            .withSize(size)
+            .withIndex(index)
+            .withFieldName(fieldName)
+            .withFieldValue(value)
+            .withSourceFields(SearchUtils.sourceFields(sourceFieldsParam))
+            .withDeleted(deleted);
+
+    return searchRepository.aggregate(aggregationRequest);
   }
 
   @POST
@@ -574,12 +588,8 @@ public class SearchResource {
   public Response aggregateSearchRequest(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid SearchRequest searchRequest)
+      @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    return searchRepository.aggregate(
-        searchRequest.getIndex(),
-        searchRequest.getFieldName(),
-        searchRequest.getFieldValue(),
-        searchRequest.getQuery());
+    return searchRepository.aggregate(aggregationRequest);
   }
 }

@@ -85,6 +85,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
@@ -1156,9 +1157,8 @@ public class SearchRepository {
     return searchClient.searchByField(fieldName, fieldValue, index);
   }
 
-  public Response aggregate(String index, String fieldName, String value, String query)
-      throws IOException {
-    return searchClient.aggregate(index, fieldName, value, query);
+  public Response aggregate(AggregationRequest request) throws IOException {
+    return searchClient.aggregate(request);
   }
 
   public JsonObject aggregate(

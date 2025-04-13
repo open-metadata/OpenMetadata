@@ -1966,7 +1966,7 @@
     "page-sub-header-for-om-health-configuration": "Verifica o acceso á base de datos, a saúde de Elasticsearch, o Cliente de Servizo Pipeline, a configuración de jwks e as migracións",
     "page-sub-header-for-persona": "Mellora e personaliza a experiencia de usuario con Persoas.",
     "page-sub-header-for-pipelines": "Inxesta metadatos dos servizos de pipelines máis usados.",
-    "page-sub-header-for-platform-lineage": "Visualiza a liñaxe da plataforma para comprender as dependencias e relacións na túa plataforma.",
+    "page-sub-header-for-platform-lineage": "Visualiza a liñaxe para entender as dependencias e as relacións nos teus datos",
     "page-sub-header-for-policies": "Define políticas cun conxunto de regras para un control de acceso detallado.",
     "page-sub-header-for-profiler-configuration": "Personaliza globalmente o comportamento do perfilador definindo as métricas a calcular baseadas nos tipos de datos das columnas",
     "page-sub-header-for-roles": "Asigna un acceso baseado en roles detallados a Usuarios ou Equipos.",

@@ -108,7 +108,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <div data-testid="search-container">
+        <div className="h-full" data-testid="search-container">
           {totalValue > 0 ? (
             <>
               {children}
@@ -127,13 +127,13 @@ const SearchedData: React.FC<SearchedDataProps> = ({
               </div>
             </>
           ) : (
-            <>
+            <div className="flex-center h-full">
               {children}
               <ErrorPlaceHolderES
                 query={filter}
                 type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />
-            </>
+            </div>
           )}
         </div>
       )}

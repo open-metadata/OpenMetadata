@@ -12,7 +12,11 @@
  */
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { getEntityTypeFromSearchIndex, getGroupLabel } from './SearchUtils';
+import {
+  getEntityTypeFromSearchIndex,
+  getGroupLabel,
+  parseBucketsData,
+} from './SearchUtils';
 
 describe('getEntityTypeFromSearchIndex', () => {
   it.each([
@@ -120,5 +124,134 @@ describe('getGroupLabel', () => {
     const result = JSON.stringify(getGroupLabel(SearchIndex.DATA_PRODUCT));
 
     expect(result).toContain('label.data-product-plural');
+  });
+});
+
+describe('parseBucketsData', () => {
+  it('should parse buckets with only key property', () => {
+    const buckets = [{ key: 'value1' }, { key: 'value2' }];
+
+    const result = parseBucketsData(buckets);
+
+    expect(result).toEqual([
+      { value: 'value1', title: 'value1' },
+      { value: 'value2', title: 'value2' },
+    ]);
+  });
+
+  it('should use label property for title when available', () => {
+    const buckets = [
+      { key: 'value1', label: 'Label 1' },
+      { key: 'value2', label: 'Label 2' },
+    ];
+
+    const result = parseBucketsData(buckets);
+
+    expect(result).toEqual([
+      { value: 'value1', title: 'Label 1' },
+      { value: 'value2', title: 'Label 2' },
+    ]);
+  });
+
+  it('should extract value from source using sourceFields path', () => {
+    const buckets = [
+      {
+        key: 'fallback1',
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  display: {
+                    name: 'extracted1',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+      {
+        key: 'fallback2',
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  display: {
+                    name: 'extracted2',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = parseBucketsData(buckets, 'display.name');
+
+    expect(result).toEqual([
+      { value: 'extracted1', title: 'extracted1' },
+      { value: 'extracted2', title: 'extracted2' },
+    ]);
+  });
+
+  it('should fallback to key when sourceFields path does not exist', () => {
+    const buckets = [
+      {
+        key: 'fallback1',
+        'top_hits#top': {
+          hits: {
+            hits: [
+              {
+                _source: {
+                  other: {
+                    property: 'not-used',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = parseBucketsData(buckets, 'display.name');
+
+    expect(result).toEqual([{ value: 'fallback1', title: 'fallback1' }]);
+  });
+
+  it('should handle incomplete or malformed bucket data gracefully', () => {
+    const buckets = [
+      { key: 'key1' },
+      {
+        key: 'key2',
+        'top_hits#top': {}, // Missing hits property
+      },
+      {
+        key: 'key3',
+        'top_hits#top': {
+          hits: {}, // Missing hits array
+        },
+      },
+      {
+        key: 'key4',
+        'top_hits#top': {
+          hits: {
+            hits: [], // Empty hits array
+          },
+        },
+      },
+    ];
+
+    const result = parseBucketsData(buckets, 'some.path');
+
+    expect(result).toEqual([
+      { value: 'key1', title: 'key1' },
+      { value: 'key2', title: 'key2' },
+      { value: 'key3', title: 'key3' },
+      { value: 'key4', title: 'key4' },
+    ]);
   });
 });
