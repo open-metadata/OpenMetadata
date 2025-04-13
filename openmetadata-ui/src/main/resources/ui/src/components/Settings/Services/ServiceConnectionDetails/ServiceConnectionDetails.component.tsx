@@ -176,7 +176,7 @@ const ServiceConnectionDetails = ({
                     className="w-full border-none"
                     data-testid="input-field"
                     type="text"
-                    value={extraInfo.name}
+                    value={extraInfo.displayName ?? extraInfo.name}
                   />
                 </Col>
               </Row>
