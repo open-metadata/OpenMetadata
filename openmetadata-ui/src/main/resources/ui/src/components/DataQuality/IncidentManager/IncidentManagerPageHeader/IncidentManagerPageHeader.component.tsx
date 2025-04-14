@@ -53,8 +53,9 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
+import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
-import './incedent-manager.less';
+import './incident-manager.less';
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   fetchTaskCount,
@@ -303,7 +304,7 @@ const IncidentManagerPageHeader = ({
   }, [testCaseStatusData, isLoading, activeTask, hasEditStatusPermission]);
 
   return (
-    <Space wrap align="center" className="incedent-manager-header w-full ">
+    <Space wrap align="center" className="incident-manager-header w-full ">
       <OwnerLabel
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
@@ -320,7 +321,7 @@ const IncidentManagerPageHeader = ({
             )}`}</span>
 
             <Link
-              className="font-medium"
+              className="font-medium flex-center gap-2"
               data-testid="table-name"
               to={{
                 pathname: getEntityDetailsPath(
@@ -333,6 +334,7 @@ const IncidentManagerPageHeader = ({
                 }),
               }}>
               {getNameFromFQN(tableFqn)}
+              <ExternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
           </Typography.Text>
         </>
@@ -343,7 +345,7 @@ const IncidentManagerPageHeader = ({
           <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
             <span className="text-blue text-sm font-medium">{`${t(
               'label.column'
-            )}: `}</span>
+            )}`}</span>
             <span className="font-medium" data-testid="test-column-name">
               {columnName}
             </span>
@@ -354,7 +356,7 @@ const IncidentManagerPageHeader = ({
       <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
         <span className="text-blue text-sm font-medium">{`${t(
           'label.test-type'
-        )}: `}</span>
+        )}`}</span>
         <Tooltip
           placement="bottom"
           title={testCaseData?.testDefinition.description}>
