@@ -745,7 +745,6 @@ class AdvancedSearchClassBase {
               asyncFetch: this.autocomplete({
                 searchIndex: entitySearchIndex,
                 entityField: EntityFields.COLUMN,
-                isCaseInsensitive: true,
               }),
               useAsyncSearch: true,
             },
