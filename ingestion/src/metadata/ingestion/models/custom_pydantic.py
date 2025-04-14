@@ -46,12 +46,13 @@ class BaseModel(PydanticBaseModel):
     Specified as `--base-class BASE_CLASS` in the generator.
     """
 
-    def model_post_init(self, __context):
+    def model_post_init(self, context: Any, /):
         """
         This function is used to parse the FilterPattern fields for the Connection classes.
         This is needed because dict is defined in the JSON schema for the FilterPattern field,
         but a FilterPattern object is required in the generated code.
         """
+        # pylint: disable=import-outside-toplevel
         try:
             if not self.__class__.__name__.endswith("Connection"):
                 # Only parse FilterPattern for Connection classes
@@ -92,7 +93,7 @@ class BaseModel(PydanticBaseModel):
             raise exc
         return values
 
-    def model_dump_json(  # pylint: disable=too-many-arguments,unused-argument
+    def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
         mask_secrets: Optional[bool] = None,
