@@ -69,6 +69,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.StoredProcedureCode;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
@@ -80,6 +81,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -1234,12 +1236,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 Pair.of(5, TagLabel.TagSource.GLOSSARY),
                 Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
 
+    String languageStr = csvRecord.get(18);
+    StoredProcedureLanguage language = null;
+
+    if (languageStr != null && !languageStr.isEmpty()) {
+      try {
+        language = StoredProcedureLanguage.fromValue(languageStr);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid storedProcedure.language: " + languageStr);
+      }
+    }
+
+    StoredProcedureCode storedProcedureCode =
+        new StoredProcedureCode().withCode(csvRecord.get(17)).withLanguage(language);
+
     sp.withDisplayName(csvRecord.get(1))
         .withDescription(csvRecord.get(2))
         .withOwners(getOwners(printer, csvRecord, 3))
         .withTags(tagLabels)
         .withSourceUrl(csvRecord.get(8))
         .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+        .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 10));
 
     if (processRecord) {
