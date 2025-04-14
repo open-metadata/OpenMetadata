@@ -304,8 +304,9 @@ public class DatabaseServiceRepository
           .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
-          .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN))
-          .withExtension(getExtension(printer, csvRecord, 8));
+          .withSourceUrl(csvRecord.get(8))
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10));
 
       if (processRecord) {
         createEntity(printer, csvRecord, database);
