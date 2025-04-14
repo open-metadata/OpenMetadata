@@ -1798,6 +1798,7 @@
     "integration-description": "Configureez les applications et bots pour augmenter votre productivité.",
     "invalid-object-key": "Clé d'objet non valide. Doit commencer par une lettre, un underscore ou signe dollar, suivi de lettres, underscores, signes dollars, ou chiffres.",
     "invalid-property-name": "Nom de propriété non valide",
+    "invalid-string-length-error": "L'image {{exportType}} n'a pas pu être générée en raison d'une taille excessive de {{entity}}.",
     "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "Le Jeton que vous avez généré peut être utilisé pour accéder à l'API OpenMetadata.",
     "jwt-token-expiry-time-message": "Délai d'expiration du jeton JWT en secondes.",

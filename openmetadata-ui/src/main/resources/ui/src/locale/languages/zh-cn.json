@@ -1798,6 +1798,7 @@
     "integration-description": "配置应用和机器人以提高生产力",
     "invalid-object-key": "无效的对象键名, 命名首字母必须由字母、下划线、美元符号开始, 再跟随字母、下划线、美元符号或数字",
     "invalid-property-name": "无效属性名称",
+    "invalid-string-length-error": "由于 {{entity}} 过大，无法生成 {{exportType}} 图像。",
     "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "您生成的, 用于访问 OpenMetadata API 的令牌",
     "jwt-token-expiry-time-message": "JWT 令牌到期计时器(秒)",

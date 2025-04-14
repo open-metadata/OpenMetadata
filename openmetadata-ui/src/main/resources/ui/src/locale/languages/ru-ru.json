@@ -1798,6 +1798,7 @@
     "integration-description": "Configure applications and bots to amplify productivity.",
     "invalid-object-key": "Неверный ключ объекта. Должен начинаться с буквы, знака подчеркивания или знака доллара, за которыми следуют буквы, знаки подчеркивания, знаки доллара или цифры.",
     "invalid-property-name": "Недопустимое имя свойства",
+    "invalid-string-length-error": "Не удалось сгенерировать изображение {{exportType}} из-за слишком большого {{entity}}.",
     "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "Сгенерированный вами токен, который можно использовать для доступа к API OpenMetadata.",
     "jwt-token-expiry-time-message": "JWT token expiry timer in seconds.",

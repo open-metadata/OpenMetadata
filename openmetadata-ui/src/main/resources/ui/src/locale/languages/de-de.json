@@ -1798,6 +1798,7 @@
     "integration-description": "Konfigurieren Sie Anwendungen und Bots, um die Produktivität zu steigern.",
     "invalid-object-key": "Ungültiger Objektschlüssel. Muss mit einem Buchstaben, einem Unterstrich oder einem Dollarzeichen beginnen, gefolgt von Buchstaben, Unterstrichen, Dollarzeichen oder Ziffern.",
     "invalid-property-name": "Ungültiger Eigenschaftsname.",
+    "invalid-string-length-error": "Das {{exportType}}-Bild konnte aufgrund einer zu großen {{entity}} nicht generiert werden.",
     "invalid-unix-epoch-time-milliseconds": "Ungültige Unix-Epochenzeit in Millisekunden",
     "jwt-token": "Das von Ihnen generierte Token, das zum Zugriff auf die OpenMetadata-API verwendet werden kann.",
     "jwt-token-expiry-time-message": "JWT-Token-Ablaufzeit in Sekunden.",
