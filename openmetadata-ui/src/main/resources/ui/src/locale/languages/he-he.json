@@ -1798,6 +1798,7 @@
     "integration-description": "Configure applications and bots to amplify productivity.",
     "invalid-object-key": "מפתח אובייקט לא חוקי. חייב להתחיל עם אות, קו תחתון או סימן דולר, ולפניו אות, קו תחתון או סימן דולר או ספרות.",
     "invalid-property-name": "שם מאפיין לא חוקי",
+    "invalid-string-length-error": "לא ניתן היה לייצר את התמונה {{exportType}} עקב {{entity}} גדול מדי.",
     "invalid-unix-epoch-time-milliseconds": "Invalid Unix epoch time in milliseconds",
     "jwt-token": "אסימון שיצרת שימוש בו כדי לגשת ל-OpenMetadata API.",
     "jwt-token-expiry-time-message": "JWT token expiry timer in seconds.",

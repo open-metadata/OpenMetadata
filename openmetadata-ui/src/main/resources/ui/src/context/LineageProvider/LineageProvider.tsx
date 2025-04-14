@@ -463,6 +463,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               name: decodedFqn,
               exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
             }),
+        title: t('label.lineage'),
         documentSelector: LINEAGE_EXPORT_SELECTOR,
         viewport: getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR),
         onExport: exportLineageData,

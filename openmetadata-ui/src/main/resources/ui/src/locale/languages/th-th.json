@@ -1798,6 +1798,7 @@
     "integration-description": "กำหนดค่าแอปพลิเคชันและบอทเพื่อเพิ่มผลผลิต",
     "invalid-object-key": "คีย์วัตถุไม่ถูกต้อง ต้องเริ่มต้นด้วยตัวอักษร, ขีดล่าง, หรือเครื่องหมายดอลลาร์ ตามด้วยตัวอักษร, ขีดล่าง, เครื่องหมายดอลลาร์, หรือหลักฐาน",
     "invalid-property-name": "ชื่อคุณสมบัติไม่ถูกต้อง",
+    "invalid-string-length-error": "ไม่สามารถสร้างภาพ {{exportType}} ได้เนื่องจาก {{entity}} ใหญ่เกินไป",
     "invalid-unix-epoch-time-milliseconds": "เวลายุค Unix ที่ไม่ถูกต้องในมิลลิวินาที",
     "jwt-token": "โทเค็นที่คุณสร้างขึ้นซึ่งสามารถใช้ในการเข้าถึง OpenMetadata API",
     "jwt-token-expiry-time-message": "เวลาหมดอายุโทเค็น JWT วัดเป็นวินาที",
