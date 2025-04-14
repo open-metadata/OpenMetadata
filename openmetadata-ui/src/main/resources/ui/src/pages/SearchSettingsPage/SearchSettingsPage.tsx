@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Collapse, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -82,23 +83,15 @@ const SearchSettingsPage = () => {
     []
   );
 
-  const entityFields = useMemo(() => {
-    if (!searchConfig?.allowedFields) {
-      return [];
+  const fieldValueBoostOptions = useMemo(() => {
+    if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
+      return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+        (field) => field.name
+      );
     }
 
-    return searchConfig.allowedFields.map((entityField) => ({
-      entityType: entityField.entityType,
-      fields: entityField.fields.map((field) => field.name),
-    }));
+    return [];
   }, [searchConfig]);
-
-  const entityOptions = useMemo(() => {
-    const allFields = entityFields.flatMap((entity) => entity.fields);
-    const uniqueFields = [...new Set(allFields)];
-
-    return uniqueFields;
-  }, [entityFields]);
 
   const fetchSearchConfig = async () => {
     try {
@@ -461,9 +454,8 @@ const SearchSettingsPage = () => {
           </Col>
         ))}
       </Row>
-
       <FieldValueBoostModal
-        entityOptions={entityOptions}
+        entityOptions={fieldValueBoostOptions ?? []}
         open={showFieldValueBoostModal}
         selectedBoost={selectedFieldValueBoost}
         onCancel={() => {

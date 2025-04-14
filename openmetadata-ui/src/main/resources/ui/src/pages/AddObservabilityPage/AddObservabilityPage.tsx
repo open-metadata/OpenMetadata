@@ -202,6 +202,7 @@ function AddObservabilityPage() {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container ',
+        allowScroll: true,
         children: (
           <Card className="steps-form-container">
             <Row gutter={[16, 16]}>

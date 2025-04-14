@@ -23,4 +23,5 @@ export interface DomainSelectableListProps {
   multiple?: boolean;
   onCancel?: () => void;
   wrapInButton?: boolean;
+  showAllDomains?: boolean;
 }

@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { get, isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isNil, isString, isUndefined, lowerCase } from 'lodash';
+import Qs from 'qs';
+import React from 'react';
 import {
   ExploreQuickFilterField,
   ExploreSearchIndex,
@@ -24,10 +28,21 @@ import {
 } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
+import { PAGE_SIZE } from '../constants/constants';
+import {
+  ES_EXCEPTION_SHARDS_FAILED,
+  FAILED_TO_FIND_INDEX_ERROR,
+  INITIAL_SORT_FIELD,
+} from '../constants/explore.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Aggregations, Bucket } from '../interface/search.interface';
+import {
+  Aggregations,
+  Bucket,
+  SearchResponse,
+} from '../interface/search.interface';
 import {
   EsBoolQuery,
   QueryFieldInterface,
@@ -38,6 +53,11 @@ import {
   getAggregateFieldOptions,
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
+import { nlqSearch, searchQuery } from '../rest/searchAPI';
+import { getCountBadge } from './CommonUtils';
+import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { escapeESReservedCharacters } from './StringsUtils';
+import { showErrorToast } from './ToastUtils';
 
 /**
  * It takes an array of filters and a data lookup and returns a new object with the filters grouped by
@@ -365,4 +385,276 @@ export const updateTreeDataWithCounts = (
 
     return node;
   });
+};
+
+/**
+ * Checks if an error is an Elasticsearch error
+ */
+export const isElasticsearchError = (error: unknown): boolean => {
+  if (!error) {
+    return false;
+  }
+
+  const axiosError = error as AxiosError;
+  if (!axiosError.response?.data) {
+    return false;
+  }
+
+  const data = axiosError.response.data as Record<string, any>;
+  const message = data.message as string;
+
+  return (
+    !!message &&
+    (message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
+      message.includes(ES_EXCEPTION_SHARDS_FAILED))
+  );
+};
+
+/**
+ * Parse search parameters from URL query
+ */
+export const parseSearchParams = (search: string) => {
+  const parsedSearch = Qs.parse(
+    search.startsWith('?') ? search.substring(1) : search
+  );
+
+  const searchQueryParam = isString(parsedSearch.search)
+    ? parsedSearch.search
+    : '';
+
+  const sortValue = isString(parsedSearch.sort)
+    ? parsedSearch.sort
+    : INITIAL_SORT_FIELD;
+
+  const sortOrder = isString(parsedSearch.sortOrder)
+    ? parsedSearch.sortOrder
+    : SORT_ORDER.DESC;
+
+  const page =
+    isString(parsedSearch.page) && !isNaN(Number.parseInt(parsedSearch.page))
+      ? Number.parseInt(parsedSearch.page)
+      : 1;
+
+  const size =
+    isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
+      ? Number.parseInt(parsedSearch.size)
+      : PAGE_SIZE;
+
+  const showDeleted = parsedSearch.showDeleted === 'true';
+
+  return {
+    parsedSearch,
+    searchQueryParam,
+    sortValue,
+    sortOrder,
+    page,
+    size,
+    showDeleted,
+  };
+};
+
+/**
+ * Generate tab items for explore page
+ */
+export const generateTabItems = (
+  tabsInfo: Record<string, TabsInfoData>,
+  searchHitCounts: SearchHitCounts | undefined,
+  searchIndex: ExploreSearchIndex
+) => {
+  return Object.entries(tabsInfo).map(([tabSearchIndex, tabDetail]) => {
+    const Icon = tabDetail.icon as React.FC;
+
+    return {
+      key: tabSearchIndex,
+      label: (
+        <div
+          className="d-flex items-center justify-between"
+          data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+          <div className="d-flex items-center">
+            <span className="explore-icon d-flex m-r-xs">
+              <Icon />
+            </span>
+            <Typography.Text
+              className={tabSearchIndex === searchIndex ? 'text-primary' : ''}>
+              {tabDetail.label}
+            </Typography.Text>
+          </div>
+          <span>
+            {!isNil(searchHitCounts)
+              ? getCountBadge(
+                  searchHitCounts[tabSearchIndex as ExploreSearchIndex],
+                  '',
+                  tabSearchIndex === searchIndex
+                )
+              : getCountBadge()}
+          </span>
+        </div>
+      ),
+      count: searchHitCounts
+        ? searchHitCounts[tabSearchIndex as ExploreSearchIndex]
+        : 0,
+    };
+  });
+};
+
+/**
+ * Common function to fetch entity count and search results
+ */
+export const fetchEntityData = async ({
+  searchQueryParam,
+  tabsInfo,
+  updatedQuickFilters,
+  queryFilter,
+  searchIndex,
+  showDeleted,
+  sortValue,
+  sortOrder,
+  page,
+  size,
+  isNLPRequestEnabled,
+  tab,
+  TABS_SEARCH_INDEXES,
+  EntityTypeSearchIndexMapping,
+  setSearchHitCounts,
+  setSearchResults,
+  setUpdatedAggregations,
+  setShowIndexNotFoundAlert,
+}: {
+  searchQueryParam: string;
+  tabsInfo: Record<ExploreSearchIndex, TabsInfoData>;
+  updatedQuickFilters: QueryFilterInterface | undefined;
+  queryFilter: unknown;
+  searchIndex: ExploreSearchIndex;
+  showDeleted: boolean;
+  sortValue: string;
+  sortOrder: string;
+  page: number;
+  size: number;
+  isNLPRequestEnabled: boolean;
+  tab: string;
+  TABS_SEARCH_INDEXES: ExploreSearchIndex[];
+  EntityTypeSearchIndexMapping: Record<EntityType, ExploreSearchIndex>;
+  setSearchHitCounts: (counts: SearchHitCounts) => void;
+  setSearchResults: (results: SearchResponse<ExploreSearchIndex>) => void;
+  setUpdatedAggregations: (aggs: Aggregations) => void;
+  setShowIndexNotFoundAlert: (show: boolean) => void;
+}) => {
+  const combinedQueryFilter = getCombinedQueryFilterObject(
+    updatedQuickFilters,
+    queryFilter as QueryFilterInterface
+  );
+
+  const searchRequest =
+    isNLPRequestEnabled && !isEmpty(searchQueryParam) ? nlqSearch : searchQuery;
+
+  try {
+    if (searchQueryParam) {
+      const countPayload = {
+        query: escapeESReservedCharacters(searchQueryParam),
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: combinedQueryFilter,
+        searchIndex: SearchIndex.DATA_ASSET,
+        includeDeleted: showDeleted,
+        trackTotalHits: true,
+        fetchSource: false,
+        filters: '',
+      };
+
+      // First make countAPICall
+      try {
+        const res = await searchRequest(countPayload);
+        const buckets = res.aggregations['entityType'].buckets;
+        const counts: Record<string, number> = {};
+
+        buckets.forEach((item) => {
+          const searchIndexKey =
+            item && EntityTypeSearchIndexMapping[item.key as EntityType];
+
+          if (TABS_SEARCH_INDEXES.includes(searchIndexKey)) {
+            counts[searchIndexKey ?? ''] = item.doc_count;
+          }
+        });
+
+        // Update searchHitCounts
+        setSearchHitCounts(counts as SearchHitCounts);
+
+        // Determine which searchIndex to use
+        let effectiveSearchIndex = searchIndex;
+
+        // If tab is not specified, determine it from searchHitCounts
+        if (!tab || tab.trim() === '') {
+          const determinedSearchIndex = findActiveSearchIndex(
+            counts as SearchHitCounts,
+            tabsInfo
+          );
+          if (determinedSearchIndex) {
+            effectiveSearchIndex = determinedSearchIndex;
+          }
+        }
+
+        // Now make searchAPICall with the effective searchIndex
+        const updatedSearchPayload = {
+          query: !isEmpty(searchQueryParam)
+            ? escapeESReservedCharacters(searchQueryParam)
+            : '',
+          searchIndex: effectiveSearchIndex,
+          queryFilter: combinedQueryFilter,
+          sortField: sortValue,
+          sortOrder: sortOrder,
+          pageNumber: page,
+          pageSize: size,
+          includeDeleted: showDeleted,
+        };
+
+        try {
+          const searchRes = await searchRequest(updatedSearchPayload);
+          setSearchResults(searchRes as SearchResponse<ExploreSearchIndex>);
+          setUpdatedAggregations(searchRes.aggregations);
+        } catch (error) {
+          if (isElasticsearchError(error)) {
+            setShowIndexNotFoundAlert(true);
+          } else {
+            showErrorToast(error as AxiosError);
+          }
+        }
+      } catch (error) {
+        if (isElasticsearchError(error)) {
+          setShowIndexNotFoundAlert(true);
+        } else {
+          showErrorToast(error as AxiosError);
+        }
+      }
+    } else {
+      // If no searchQueryParam, make searchAPICall with current searchIndex
+      const searchPayload = {
+        query: '',
+        searchIndex,
+        queryFilter: combinedQueryFilter,
+        sortField: sortValue,
+        sortOrder: sortOrder,
+        pageNumber: page,
+        pageSize: size,
+        includeDeleted: showDeleted,
+      };
+
+      try {
+        const res = await searchRequest(searchPayload);
+        setSearchResults(res as SearchResponse<ExploreSearchIndex>);
+        setUpdatedAggregations(res.aggregations);
+      } catch (error) {
+        if (isElasticsearchError(error)) {
+          setShowIndexNotFoundAlert(true);
+        } else {
+          showErrorToast(error as AxiosError);
+        }
+      }
+    }
+
+    return true;
+  } catch (error) {
+    showErrorToast(error as AxiosError);
+
+    return false;
+  }
 };
