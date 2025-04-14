@@ -3525,11 +3525,11 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
+    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash ORDER BY tagFQN")
     void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
     @SqlUpdate(
-        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash")
+        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash ORDER BY tagFQN")
     void deleteTagLabelsByTargetPrefix(
         @BindConcat(
                 value = "concatTargetFQNHash",
