@@ -512,6 +512,7 @@ export enum PipelineServiceType {
     Spark = "Spark",
     Spline = "Spline",
     Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**

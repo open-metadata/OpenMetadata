@@ -871,8 +871,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               loading={isTableLoading || termsLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
-              // Had to pass y: 'auto' to override default styling from Table component
-              scroll={{ y: 'auto' }}
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               onHeaderRow={onTableHeader}
