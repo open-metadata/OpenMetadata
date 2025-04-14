@@ -96,6 +96,17 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page.click('.InovuaReactDataGrid__cell--cell-active');
 };
 
+export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('Enter', { delay: 100 });
+
+  await page.getByTestId('entity-type-select').click();
+  await page.getByTitle(entityType).click();
+  await page.getByTestId('inline-save-btn').click();
+  await page.click('.InovuaReactDataGrid__cell--cell-active');
+};
+
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
@@ -403,6 +414,7 @@ export const createTableRowDetails = () => {
     tier: 'Tier1',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
+    entityType: 'Table',
   };
 };
 
@@ -418,6 +430,7 @@ export const createColumnRowDetails = () => {
     tag: 'PII.Sensitive',
     arrayDataType: 'INT',
     dataLength: '10',
+    entityType: 'Column',
   };
 };
 
@@ -706,4 +719,110 @@ export const createCustomPropertiesForEntity = async (
   }
 
   return propertyListName;
+};
+
+export const fillRecursiveEntityTypeFQNDetails = async (
+  fullyQualifiedName: string,
+  entityType: string,
+  page: Page
+) => {
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillEntityTypeDetails(page, entityType);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, fullyQualifiedName);
+};
+
+export const fillRecursiveColumnDetails = async (
+  row: {
+    name: string;
+    displayName: string;
+    description: string;
+    tag: string;
+    glossary: {
+      name: string;
+      parent: string;
+    };
+    fullyQualifiedName: string;
+    entityType: string;
+    dataTypeDisplay: string;
+    dataType: string;
+    arrayDataType: string;
+    dataLength: string;
+  },
+  page: Page
+) => {
+  await page.locator('[data-props-id="name*"]').last().click();
+
+  const activeCell = page.locator('.InovuaReactDataGrid__cell--cell-active');
+  const isActive = await activeCell.isVisible();
+
+  if (isActive) {
+    await fillTextInputDetails(page, row.name);
+  } else {
+    // Click the name cell again
+    await page.locator('[data-props-id="name*"]').last().click();
+    await fillTextInputDetails(page, row.name);
+  }
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight');
+
+  await fillTextInputDetails(page, row.displayName);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillDescriptionDetails(page, row.description);
+
+  await pressKeyXTimes(page, 2, 'ArrowRight');
+
+  await fillTagDetails(page, row.tag);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+  await fillGlossaryTermDetails(page, row.glossary);
+
+  await pressKeyXTimes(page, 6, 'ArrowRight');
+
+  await fillEntityTypeDetails(page, row.entityType);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.fullyQualifiedName);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.dataTypeDisplay);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.dataType);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.arrayDataType);
+
+  await page
+    .locator('.InovuaReactDataGrid__cell--cell-active')
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, row.dataLength);
 };

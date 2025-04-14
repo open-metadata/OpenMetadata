@@ -319,6 +319,7 @@ class CSVUtilsClassBase {
           return (
             <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
               <Select
+                data-testid="entity-type-select"
                 options={ENTITY_TYPE_OPTIONS}
                 size="small"
                 style={{ width: '155px' }}

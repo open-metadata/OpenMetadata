@@ -31,6 +31,8 @@ import {
   createDatabaseSchemaRowDetails,
   createTableRowDetails,
   fillColumnDetails,
+  fillRecursiveColumnDetails,
+  fillRecursiveEntityTypeFQNDetails,
   fillRowDetails,
   pressKeyXTimes,
   validateImportStatus,
@@ -379,7 +381,7 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  test.skip('Database Schema', async ({ page }) => {
+  test('Database Schema', async ({ page }) => {
     test.slow(true);
 
     let customPropertyRecord: Record<string, string> = {};
@@ -443,7 +445,7 @@ test.describe('Bulk Import Export', () => {
           '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
         );
 
-        // Click on first cell and edit
+        // First Table Details with one Column
         await fillRowDetails(
           {
             ...tableDetails1,
@@ -457,12 +459,42 @@ test.describe('Bulk Import Export', () => {
           customPropertyRecord
         );
 
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}`,
+          tableDetails1.entityType,
+          page
+        );
+
+        // Add new row for columns details
         await page.click('[data-testid="add-row-btn"]');
 
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        // Fill table columns details
+        await fillRecursiveColumnDetails(
+          {
+            ...columnDetails1,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails1.name}.${columnDetails1.name}`,
+          },
+          page
         );
+
+        // Add new row for table details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 16, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -477,15 +509,46 @@ test.describe('Bulk Import Export', () => {
           customPropertyRecord
         );
 
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}`,
+          tableDetails2.entityType,
+          page
+        );
+
+        // Add new row for columns details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        // fill second table columns details
+        await fillRecursiveColumnDetails(
+          {
+            ...columnDetails2,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
+          },
+          page
+        );
+
         await page.getByRole('button', { name: 'Next' }).click();
 
         await validateImportStatus(page, {
-          passed: '3',
-          processed: '3',
+          passed: '5',
+          processed: '5',
           failed: '0',
         });
 
-        const rowStatus = ['Entity created', 'Entity created'];
+        const rowStatus = [
+          'Entity created',
+          'Entity updated',
+          'Entity created',
+          'Entity updated',
+        ];
 
         await expect(page.locator('[data-props-id="details"]')).toHaveText(
           rowStatus
