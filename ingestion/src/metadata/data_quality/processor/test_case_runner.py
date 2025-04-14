@@ -95,8 +95,7 @@ class TestCaseRunner(Processor):
             record.table, openmetadata_test_cases
         )
 
-        if not self.config.source.serviceConnection:
-            self.config.source.serviceConnection = RootModel(record.service_connection)
+        self.config.source.serviceConnection = RootModel(record.service_connection)
         test_suite_runner = self.get_test_suite_runner(record.table)
 
         logger.debug(
