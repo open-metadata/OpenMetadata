@@ -110,7 +110,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
@@ -250,6 +254,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
+  private static final ExecutorService DELETE_EXECUTOR =
+      new ThreadPoolExecutor(
+          2,
+          10,
+          60L,
+          TimeUnit.SECONDS,
+          new LinkedBlockingQueue<>(100),
+          new ThreadPoolExecutor.CallerRunsPolicy());
+
   private final String collectionPath;
   private final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -1305,6 +1319,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
+  @Transaction
+  public final DeleteResponse<T> deleteAsync(
+      String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
+    DeleteResponse<T> response = deleteInternalAsync(updatedBy, id, recursive, hardDelete);
+    postDelete(response.entity());
+    deleteFromSearch(response.entity(), hardDelete);
+    return response;
+  }
+
   @SuppressWarnings("unused")
   @Transaction
   public final DeleteResponse<T> deleteByNameIfExists(
@@ -1425,6 +1448,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
+  private DeleteResponse<T> deleteAsync(
+      String deletedBy, T original, boolean recursive, boolean hardDelete) {
+    checkSystemEntityDeletion(original);
+    preDelete(original, deletedBy);
+    setFieldsInternal(original, putFields);
+    List<CompletableFuture<Void>> childrenFutures =
+        deleteChildrenAsync(original.getId(), recursive, hardDelete, deletedBy);
+    CompletableFuture.allOf(childrenFutures.toArray(new CompletableFuture[0])).join();
+
+    EventType changeType;
+    T updated = get(null, original.getId(), putFields, ALL, false);
+    if (supportsSoftDelete && !hardDelete) {
+      updated.setUpdatedBy(deletedBy);
+      updated.setUpdatedAt(System.currentTimeMillis());
+      updated.setDeleted(true);
+      EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
+      updater.update();
+      changeType = ENTITY_SOFT_DELETED;
+    } else {
+      cleanup(updated);
+      changeType = ENTITY_DELETED;
+    }
+    LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
+    return new DeleteResponse<>(updated, changeType);
+  }
+
+  @Transaction
   public final DeleteResponse<T> deleteInternalByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
     // Validate entity
@@ -1438,6 +1488,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Validate entity
     T entity = find(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
+  }
+
+  @Transaction
+  public final DeleteResponse<T> deleteInternalAsync(
+      String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
+    // Validate entity
+    T entity = find(id, ALL);
+    return deleteAsync(updatedBy, entity, recursive, hardDelete);
   }
 
   @Transaction
@@ -1462,6 +1520,65 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // Delete all the contained entities
     deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Transaction
+  private List<CompletableFuture<Void>> deleteChildrenAsync(
+      UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    // If an entity being deleted contains other **non-deleted** children entities, it can't be
+    // deleted
+    List<EntityRelationshipRecord> childrenRecords =
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                id,
+                entityType,
+                List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
+
+    if (childrenRecords.isEmpty()) {
+      LOG.debug("No children to delete");
+      return Collections.emptyList();
+    }
+    // Entity being deleted contains children entities
+    if (!recursive) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
+    }
+    // Delete all the contained entities
+    return deleteChildrenAsync(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Transaction
+  protected List<CompletableFuture<Void>> deleteChildrenAsync(
+      List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+    for (EntityRelationshipRecord rec : children) {
+      CompletableFuture<Void> future =
+          CompletableFuture.runAsync(
+              () -> {
+                try {
+                  LOG.info(
+                      "Recursively {} deleting {} {}",
+                      hardDelete ? "hard" : "soft",
+                      rec.getType(),
+                      rec.getId());
+
+                  Entity.deleteEntity(updatedBy, rec.getType(), rec.getId(), true, hardDelete);
+                } catch (Exception e) {
+                  LOG.warn(
+                      "Failed to delete child entity {} {}: {}",
+                      rec.getType(),
+                      rec.getId(),
+                      e.getMessage(),
+                      e);
+                }
+              },
+              DELETE_EXECUTOR);
+
+      futures.add(future);
+    }
+
+    return futures;
   }
 
   @Transaction
