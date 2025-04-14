@@ -65,6 +65,10 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         return "bigquery_multiple_project"
 
     @staticmethod
+    def get_service_type() -> str:
+        return "bigquery"
+
+    @staticmethod
     def expected_tables() -> int:
         return 2
 
@@ -107,15 +111,15 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 15
+        return 19
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 16
+        return 18
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 15
+        return 19
 
     @staticmethod
     def delete_queries() -> List[str]:
