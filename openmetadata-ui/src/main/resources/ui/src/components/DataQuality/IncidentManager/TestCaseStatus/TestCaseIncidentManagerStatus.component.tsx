@@ -32,7 +32,6 @@ const TestCaseIncidentManagerStatus = ({
   onSubmit,
   hasPermission,
   newLook = false,
-  showEditIcon = true,
   headerName,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
@@ -93,7 +92,7 @@ const TestCaseIncidentManagerStatus = ({
           </Space>
         </Tooltip>
 
-        {isEditStatus && showEditIcon && (
+        {isEditStatus && (
           <TestCaseStatusModal
             data={data}
             open={isEditStatus}
