@@ -18,7 +18,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -196,40 +195,21 @@ const GlossaryV1 = ({
     currentData: GlossaryTerm,
     updatedData: GlossaryTerm
   ) => {
-    try {
-      const jsonPatch = compare(currentData, updatedData);
-      const response = await patchGlossaryTerm(currentData?.id, jsonPatch);
-      if (!response) {
-        throw t('server.entity-updating-error', {
+    const jsonPatch = compare(currentData, updatedData);
+    const response = await patchGlossaryTerm(currentData?.id, jsonPatch);
+    if (!response) {
+      throw new Error(
+        t('server.entity-updating-error', {
           entity: t('label.glossary-term'),
-        });
-      } else {
-        updateGlossaryTermInStore({
-          ...response,
-          // Since patch didn't respond with childrenCount preserve it from currentData
-          childrenCount: currentData.childrenCount,
-        });
-        setIsEditModalOpen(false);
-      }
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.glossary-term'),
-            entityPlural: t('label.glossary-term-lowercase-plural'),
-            name: updatedData.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: t('label.glossary-term-lowercase'),
-          })
-        );
-      }
+        })
+      );
+    } else {
+      updateGlossaryTermInStore({
+        ...response,
+        // Since patch didn't respond with childrenCount preserve it from currentData
+        childrenCount: currentData.childrenCount,
+      });
+      setIsEditModalOpen(false);
     }
   };
 
@@ -255,36 +235,15 @@ const GlossaryV1 = ({
   );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
-    try {
-      const term = await addGlossaryTerm({
-        ...formData,
-        glossary:
-          activeGlossaryTerm?.glossary?.name ||
-          (selectedData.fullyQualifiedName ?? ''),
-        parent: activeGlossaryTerm?.fullyQualifiedName,
-      });
+    const term = await addGlossaryTerm({
+      ...formData,
+      glossary:
+        activeGlossaryTerm?.glossary?.name ||
+        (selectedData.fullyQualifiedName ?? ''),
+      parent: activeGlossaryTerm?.fullyQualifiedName,
+    });
 
-      onTermModalSuccess(term);
-    } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.glossary-term'),
-            entityPlural: t('label.glossary-term-lowercase-plural'),
-            name: formData.name,
-          })
-        );
-      } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.create-entity-error', {
-            entity: t('label.glossary-term-lowercase'),
-          })
-        );
-      }
-    }
+    onTermModalSuccess(term);
   };
 
   const handleGlossaryTermSave = async (formData: GlossaryTermForm) => {
