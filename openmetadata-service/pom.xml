@@ -15,15 +15,15 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.20.3</org.testcontainers.version>
+    <org.testcontainers.version>1.20.4</org.testcontainers.version>
     <awssdk.version>2.30.19</awssdk.version>
-    <azure-identity.version>1.14.0</azure-identity.version>
-    <azure-kv.version>4.9.0</azure-kv.version>
-    <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
+    <azure-identity.version>1.15.0</azure-identity.version>
+    <azure-kv.version>4.9.1</azure-kv.version>
+    <azure-identity-extensions.version>1.2.0</azure-identity-extensions.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
-    <quartz.version>2.5.0-rc2</quartz.version>
+    <quartz.version>2.5.0</quartz.version>
     <pac4j.version>5.7.0</pac4j.version>
     <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
     <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
@@ -49,7 +49,7 @@
       <dependency>
         <groupId>com.google.cloud</groupId>
         <artifactId>libraries-bom</artifactId>
-        <version>26.49.0</version>
+        <version>26.53.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -79,11 +79,10 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
     <dependency>
       <groupId>com.nimbusds</groupId>
       <artifactId>nimbus-jose-jwt</artifactId>
-      <version>9.42</version>
+      <version>9.47</version>
     </dependency>
     <dependency>
       <groupId>org.pac4j</groupId>
@@ -421,10 +420,6 @@
       <artifactId>lombok</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-    </dependency>
-    <dependency>
       <groupId>com.github.java-json-tools</groupId>
       <artifactId>json-patch</artifactId>
     </dependency>
@@ -518,13 +513,6 @@
     <dependency>
       <groupId>org.apache.johnzon</groupId>
       <artifactId>johnzon-core</artifactId>
-    </dependency>
-    <!-- Json-Patch since Johnzon JSONPatch.createDiff doesn't work as expected -->
-    <dependency>
-      <groupId>com.github.java-json-tools</groupId>
-      <artifactId>json-patch</artifactId>
-      <version>1.13</version>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
@@ -655,12 +643,12 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>com.opencsv</groupId>
       <artifactId>opencsv</artifactId>
-      <version>5.9</version>
+      <version>5.10</version>
     </dependency>
     <dependency>
       <groupId>com.onelogin</groupId>
@@ -706,7 +694,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.3.1-jre</version>
+      <version>33.4.0-jre</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -726,7 +714,7 @@
     <dependency>
       <groupId>com.slack.api</groupId>
       <artifactId>bolt-servlet</artifactId>
-      <version>1.44.1</version>
+      <version>1.45.1</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
