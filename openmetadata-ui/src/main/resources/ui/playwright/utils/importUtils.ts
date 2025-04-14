@@ -102,7 +102,7 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
     .press('Enter', { delay: 100 });
 
   await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType).click();
+  await page.getByTitle(entityType, { exact: true }).click();
   await page.getByTestId('inline-save-btn').click();
   await page.click('.InovuaReactDataGrid__cell--cell-active');
 };
@@ -386,6 +386,9 @@ export const createDatabaseRowDetails = () => {
     There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain..`,
     tag: 'PII.Sensitive',
     tier: 'Tier1',
+    entityType: 'Database',
+    retentionPeriod: '1 year',
+    sourceUrl: 'www.xyz.com',
   };
 };
 
