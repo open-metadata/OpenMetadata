@@ -29,11 +29,13 @@ import {
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
+  createStoredProcedureRowDetails,
   createTableRowDetails,
   fillColumnDetails,
   fillRecursiveColumnDetails,
   fillRecursiveEntityTypeFQNDetails,
   fillRowDetails,
+  fillStoredProcedureCode,
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
@@ -85,6 +87,11 @@ const columnDetails1 = {
 
 const columnDetails2 = {
   ...createColumnRowDetails(),
+  glossary: glossaryDetails,
+};
+
+const storedProcedureDetails = {
+  ...createStoredProcedureRowDetails(),
   glossary: glossaryDetails,
 };
 
@@ -270,7 +277,7 @@ test.describe('Bulk Import Export', () => {
           page
         );
 
-        // Add 2nd Database Details
+        // Add New StoredProcedure Details
         await page.click('[data-testid="add-row-btn"]');
 
         // Reverse traves to first cell to fill the details
@@ -280,6 +287,39 @@ test.describe('Bulk Import Export', () => {
           .press('ArrowDown', { delay: 100 });
 
         await pressKeyXTimes(page, 16, 'ArrowLeft');
+
+        await fillRowDetails(
+          {
+            ...storedProcedureDetails,
+            owners: [
+              EntityDataClass.user1.responseData?.['displayName'],
+              EntityDataClass.user2.responseData?.['displayName'],
+            ],
+            domains: EntityDataClass.domain2.responseData,
+          },
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbService.entityResponseData.fullyQualifiedName}.${databaseDetails1.name}.${databaseSchemaDetails1.name}.${storedProcedureDetails.name}`,
+          storedProcedureDetails.entityType,
+          page
+        );
+
+        await pressKeyXTimes(page, 5, 'ArrowRight');
+
+        await fillStoredProcedureCode(page);
+
+        // Add 2nd Database Details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 18, 'ArrowLeft');
 
         await fillRowDetails(
           {
@@ -309,14 +349,15 @@ test.describe('Bulk Import Export', () => {
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '6',
-          processed: '6',
+          passed: '7',
+          processed: '7',
           failed: '0',
         });
         const rowStatus = [
           'Entity created',
           'Entity created',
           'Entity created',
+          'Entity updated',
           'Entity updated',
           'Entity created',
         ];
