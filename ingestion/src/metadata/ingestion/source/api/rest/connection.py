@@ -69,7 +69,8 @@ def test_connection(
         if client.status_code == 200:
             return []
         raise SchemaURLError(
-            "Failed to connect to the JSON schema url. Please check the url and credentials. Status Code was: " + str(client.status_code)
+            "Failed to connect to the JSON schema url. Please check the url and credentials. Status Code was: "
+            + str(client.status_code)
         )
 
     def custom_schema_exec():
