@@ -13,12 +13,16 @@
 import React from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { TagLabel } from '../generated/entity/data/container';
+import { Column } from '../generated/entity/data/table';
 import {
   ExtraTableDropdownOptions,
+  findColumnByEntityLink,
   getEntityIcon,
   getTagsWithoutTier,
   getTierTags,
+  updateColumnInNestedStructure,
 } from '../utils/TableUtils';
+import EntityLink from './EntityLink';
 
 jest.mock(
   '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -38,6 +42,12 @@ jest.mock(
 );
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
+}));
+
+// Mock EntityLink methods
+jest.mock('./EntityLink', () => ({
+  getTableColumnNameFromColumnFqn: jest.fn(),
+  getTableEntityLink: jest.fn(),
 }));
 
 describe('TableUtils', () => {
@@ -70,6 +80,162 @@ describe('TableUtils', () => {
     const result = getEntityIcon('entity');
 
     expect(result).toBeNull();
+  });
+
+  describe('findColumnByEntityLink', () => {
+    const mockTableFqn = 'sample_data.ecommerce_db.shopify.dim_location';
+    const mockEntityLink =
+      '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::column1>';
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (
+        EntityLink.getTableColumnNameFromColumnFqn as jest.Mock
+      ).mockImplementation((fqn) => fqn.split('.').pop() || '');
+      (EntityLink.getTableEntityLink as jest.Mock).mockImplementation(
+        (tableFqn, columnName) =>
+          `<#E::table::${tableFqn}::columns::${columnName}>`
+      );
+    });
+
+    it('should find a column by entity link in a flat structure', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.column1',
+        } as Column,
+        {
+          name: 'column2',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.column2',
+        } as Column,
+      ];
+
+      const result = findColumnByEntityLink(
+        mockTableFqn,
+        columns,
+        mockEntityLink
+      );
+
+      expect(result).toEqual(columns[0]);
+      expect(EntityLink.getTableColumnNameFromColumnFqn).toHaveBeenCalledWith(
+        'sample_data.ecommerce_db.shopify.dim_location.column1',
+        false
+      );
+      expect(EntityLink.getTableEntityLink).toHaveBeenCalledWith(
+        mockTableFqn,
+        'column1'
+      );
+    });
+
+    it('should return null if no matching column is found', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.column1',
+        } as Column,
+      ];
+
+      const nonExistentEntityLink =
+        '<#E::table::sample_data.ecommerce_db.shopify.dim_location::columns::nonExistentColumn>';
+
+      const result = findColumnByEntityLink(
+        mockTableFqn,
+        columns,
+        nonExistentEntityLink
+      );
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('updateColumnInNestedStructure', () => {
+    it('should update a column in a flat structure', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.column1',
+          description: 'old description',
+        } as Column,
+        {
+          name: 'column2',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.column2',
+          description: 'description 2',
+        } as Column,
+      ];
+
+      const targetFqn = 'sample_data.ecommerce_db.shopify.dim_location.column1';
+      const update = { description: 'new description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].description).toBe('new description');
+      expect(result[1].description).toBe('description 2');
+    });
+
+    it('should update a column in a nested structure', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.column1',
+          description: 'description 1',
+        } as Column,
+        {
+          name: 'parentColumn',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.parentColumn',
+          description: 'parent description',
+          children: [
+            {
+              name: 'nestedColumn',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.dim_location.parentColumn.nestedColumn',
+              description: 'nested description',
+            } as Column,
+          ],
+        } as Column,
+      ];
+
+      const targetFqn =
+        'sample_data.ecommerce_db.shopify.dim_location.parentColumn.nestedColumn';
+      const update = { description: 'updated nested description' };
+
+      const result = updateColumnInNestedStructure(columns, targetFqn, update);
+
+      expect(result[0].description).toBe('description 1');
+      expect(result[1].description).toBe('parent description');
+      expect(result[1].children?.[0].description).toBe(
+        'updated nested description'
+      );
+    });
+
+    it('should return the original columns if no matching column is found', () => {
+      const columns: Column[] = [
+        {
+          name: 'column1',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.dim_location.column1',
+          description: 'description 1',
+        } as Column,
+      ];
+
+      const nonExistentFqn =
+        'sample_data.ecommerce_db.shopify.dim_location.nonExistentColumn';
+      const update = { description: 'new description' };
+
+      const result = updateColumnInNestedStructure(
+        columns,
+        nonExistentFqn,
+        update
+      );
+
+      expect(result).toEqual(columns);
+    });
   });
 
   describe('ExtraTableDropdownOptions', () => {

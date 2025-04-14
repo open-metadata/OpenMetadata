@@ -362,7 +362,6 @@ const TaskFeedCard = ({
                   <AssigneesIcon height={20} width={20} />
                   <OwnerLabel
                     avatarSize={24}
-                    className="p-t-05"
                     isCompactView={false}
                     owners={feed?.task?.assignees}
                     showLabel={false}

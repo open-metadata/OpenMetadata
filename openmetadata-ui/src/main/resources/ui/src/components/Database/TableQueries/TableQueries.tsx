@@ -545,6 +545,8 @@ const TableQueries: FC<TableQueriesProp> = ({
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
+            allowScroll: true,
+            cardClassName: 'm-x-auto',
             children: (
               <Row data-testid="queries-container" gutter={[8, 16]}>
                 <Col span={24}>

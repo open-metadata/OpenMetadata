@@ -393,7 +393,7 @@ const TagsContainerV2 = ({
     if (!isGlossaryType && entityType === EntityType.TABLE) {
       const entityLink = EntityLink.getTableEntityLink(
         entityFqn ?? '',
-        EntityLink.getTableColumnNameFromColumnFqn(columnData?.fqn ?? '')
+        EntityLink.getTableColumnNameFromColumnFqn(columnData?.fqn ?? '', false)
       );
 
       const activeSuggestion = selectedUserSuggestions?.tags.find(
