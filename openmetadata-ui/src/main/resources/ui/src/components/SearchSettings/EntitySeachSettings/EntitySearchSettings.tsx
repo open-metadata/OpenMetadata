@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Collapse, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
@@ -24,9 +24,9 @@ import {
 } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
+  AllowedFieldField,
   AllowedSearchFields,
   BoostMode,
-  Field,
   FieldValueBoost,
   ScoreMode,
   SearchSettings,
@@ -134,7 +134,7 @@ const EntitySearchSettings = () => {
     []
   );
 
-  const entityFields: Field[] = useMemo(() => {
+  const entityFields: AllowedFieldField[] = useMemo(() => {
     const currentEntityFields =
       allowedFields.find((field) => field.entityType === entityType)?.fields ??
       [];
@@ -144,6 +144,16 @@ const EntitySearchSettings = () => {
       description: field.description,
     }));
   }, [allowedFields, entityType]);
+
+  const fieldValueBoostOptions = useMemo(() => {
+    if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
+      return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+        (field) => field.name
+      );
+    }
+
+    return [];
+  }, [searchConfig]);
 
   const menuItems = useMemo(() => {
     return entityFields
@@ -682,7 +692,7 @@ const EntitySearchSettings = () => {
       </Row>
 
       <FieldValueBoostModal
-        entityOptions={entityFields.map((field) => field.name)}
+        entityOptions={fieldValueBoostOptions ?? []}
         open={showNewFieldValueBoost}
         selectedBoost={selectedFieldValueBoost}
         onCancel={() => {
