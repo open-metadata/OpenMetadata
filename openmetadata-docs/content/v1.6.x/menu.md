@@ -425,16 +425,18 @@ site_menu:
     url: /connectors/database/redshift/yaml
   - category: Connectors / Database / Redshift / Troubleshooting
     url: /connectors/database/redshift/troubleshooting
+  - category: Connectors / Database / S3 Datalake
+    url: /connectors/database/s3-datalake
+  - category: Connectors / Database / S3 Datalake / Run Externally
+    url: /connectors/database/s3-datalake/yaml
+  - category: Connectors / Database / S3 Datalake / Troubleshooting
+    url: /connectors/database/s3-datalake/troubleshooting
   - category: Connectors / Database / Salesforce
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
   - category: Connectors / Database / Salesforce / Troubleshooting
     url: /connectors/database/salesforce/troubleshooting
-  - category: Connectors / Database / SAP HANA
-    url: /connectors/database/sap-hana
-  - category: Connectors / Database / SAP HANA / Run Externally
-    url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAP ERP
     url: /connectors/database/sap-erp
   - category: Connectors / Database / SAP ERP / Run Externally
@@ -443,6 +445,10 @@ site_menu:
     url: /connectors/database/sap-erp/troubleshooting
   - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
     url: /connectors/database/sap-erp/setup-sap-apis
+  - category: Connectors / Database / SAP HANA
+    url: /connectors/database/sap-hana
+  - category: Connectors / Database / SAP HANA / Run Externally
+    url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -467,12 +473,6 @@ site_menu:
     url: /connectors/database/sqlite/yaml
   - category: Connectors / Database / SQLite / Troubleshooting
     url: /connectors/database/sqlite/troubleshooting
-  - category: Connectors / Database / S3 Datalake
-    url: /connectors/database/s3-datalake
-  - category: Connectors / Database / S3 Datalake / Run Externally
-    url: /connectors/database/s3-datalake/yaml
-  - category: Connectors / Database / S3 Datalake / Troubleshooting
-    url: /connectors/database/s3-datalake/troubleshooting
   - category: Connectors / Database / Teradata
     url: /connectors/database/teradata
   - category: Connectors / Database / Teradata / Run Externally
