@@ -1045,7 +1045,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
       if (importResult.getDryRun()) {
         // Dry run mode: Simulate a schema for validation without persisting it
-        database = new Database().withName(dbFQN).withService(null);
+        database = new Database().withName(dbFQN).withService(null).withId(UUID.randomUUID());
       } else {
         throw new IllegalArgumentException("Database not found: " + dbFQN);
       }
@@ -1112,7 +1112,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
       if (importResult.getDryRun()) {
         // Dry run mode: Simulate a schema for validation without persisting it
-        schema = new DatabaseSchema().withName(schemaFQN).withDatabase(null).withService(null);
+        schema =
+            new DatabaseSchema()
+                .withName(schemaFQN)
+                .withDatabase(null)
+                .withService(null)
+                .withId(UUID.randomUUID());
       } else {
         throw new IllegalArgumentException("Schema not found: " + schemaFQN);
       }
@@ -1193,7 +1198,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (importResult.getDryRun()) {
         // Simulate a schema for dry run
         schemaExists = false;
-        schema = new DatabaseSchema().withName(schemaFQN).withDatabase(null).withService(null);
+        schema =
+            new DatabaseSchema()
+                .withName(schemaFQN)
+                .withDatabase(null)
+                .withService(null)
+                .withId(UUID.randomUUID());
       } else {
         throw new IllegalArgumentException("Schema not found: " + schemaFQN);
       }
@@ -1246,18 +1256,38 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     String tableFQN = FullyQualifiedName.getTableFQN(entityFQN);
+    String schemaFQN = FullyQualifiedName.getParentFQN(tableFQN);
 
     Table table;
+    DatabaseSchema schema;
     try {
       table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      } catch (EntityNotFoundException exception) {
+        LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+
+        if (importResult.getDryRun()) {
+          // Simulate a schema for dry run
+          schema =
+              new DatabaseSchema()
+                  .withName(schemaFQN)
+                  .withDatabase(null)
+                  .withService(null)
+                  .withId(UUID.randomUUID());
+        } else {
+          throw new IllegalArgumentException("Schema not found for the column table: " + schemaFQN);
+        }
+      }
       if (importResult.getDryRun()) {
         // Dry run mode: Simulate a schema for validation without persisting it
         table =
             new Table()
                 .withId(UUID.randomUUID())
-                .withName(csvRecord.get(0))
+                .withName(tableFQN)
                 .withFullyQualifiedName(tableFQN)
+                .withDatabaseSchema(schema.getEntityReference())
                 .withColumns(new ArrayList<>());
       } else {
         throw new IllegalArgumentException("Table not found: " + entityFQN);

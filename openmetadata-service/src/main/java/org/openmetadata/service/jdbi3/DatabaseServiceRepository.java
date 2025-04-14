@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -40,6 +41,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.Include;
@@ -307,6 +309,76 @@ public class DatabaseServiceRepository
 
       if (processRecord) {
         createEntity(printer, csvRecord, database);
+      }
+    }
+
+    @Override
+    protected void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
+        throws IOException {
+      // If FQN is not provided, construct it from database FQN and schema name
+      if (entityFQN == null) {
+        throw new IllegalArgumentException(
+            "Schema import requires fullyQualifiedName to determine the schema it belongs to");
+      }
+      String dbFQN = FullyQualifiedName.getParentFQN(entityFQN);
+
+      Database database;
+      try {
+        database = Entity.getEntityByName(DATABASE, dbFQN, "*", Include.NON_DELETED);
+      } catch (EntityNotFoundException ex) {
+        LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
+        if (importResult.getDryRun()) {
+          // Dry run mode: Simulate a schema for validation without persisting it
+          database =
+              new Database()
+                  .withName(dbFQN)
+                  .withService(service.getEntityReference())
+                  .withId(UUID.randomUUID());
+        } else {
+          throw new IllegalArgumentException("Database not found: " + dbFQN);
+        }
+      }
+
+      DatabaseSchema schema;
+      DatabaseSchemaRepository databaseSchemaRepository =
+          (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
+      String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFqn, "*", Include.NON_DELETED);
+      } catch (Exception ex) {
+        LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
+        schema =
+            new DatabaseSchema()
+                .withDatabase(database.getEntityReference())
+                .withService(database.getService());
+      }
+
+      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // sourceUrl, domain
+      List<TagLabel> tagLabels =
+          getTagLabels(
+              printer,
+              csvRecord,
+              List.of(
+                  Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                  Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                  Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+      schema
+          .withId(UUID.randomUUID())
+          .withName(csvRecord.get(0))
+          .withDisplayName(csvRecord.get(1))
+          .withFullyQualifiedName(schemaFqn)
+          .withDescription(csvRecord.get(2))
+          .withOwners(getOwners(printer, csvRecord, 3))
+          .withTags(tagLabels)
+          .withRetentionPeriod(csvRecord.get(7))
+          .withSourceUrl(csvRecord.get(8))
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10))
+          .withUpdatedAt(System.currentTimeMillis())
+          .withUpdatedBy(importedBy);
+      if (processRecord) {
+        createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
     }
 
