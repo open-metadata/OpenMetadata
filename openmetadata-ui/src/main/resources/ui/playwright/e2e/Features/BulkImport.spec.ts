@@ -243,7 +243,7 @@ test.describe('Bulk Import Export', () => {
     await afterAction();
   });
 
-  test.skip('Database', async ({ page }) => {
+  test('Database', async ({ page }) => {
     test.slow(true);
 
     let customPropertyRecord: Record<string, string> = {};
@@ -319,11 +319,73 @@ test.describe('Bulk Import Export', () => {
           page,
           customPropertyRecord
         );
-        await page.click('[data-testid="add-row-btn"]');
-        // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}`,
+          databaseSchemaDetails1.entityType,
+          page
         );
+
+        // Add new row for columns details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        // Fill table and columns details
+        await fillRowDetails(
+          {
+            ...tableDetails1,
+            owners: [
+              EntityDataClass.user1.responseData?.['displayName'],
+              EntityDataClass.user2.responseData?.['displayName'],
+            ],
+            domains: EntityDataClass.domain1.responseData,
+          },
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}`,
+          tableDetails1.entityType,
+          page
+        );
+
+        // Add new row for columns details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 12, 'ArrowLeft');
+
+        await fillRecursiveColumnDetails(
+          {
+            ...columnDetails1,
+            fullyQualifiedName: `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails1.name}.${tableDetails1.name}.${columnDetails1.name}`,
+          },
+          page
+        );
+
+        // Add 2nd Schema Details
+        await page.click('[data-testid="add-row-btn"]');
+
+        // Reverse traves to first cell to fill the details
+        await page.click('.InovuaReactDataGrid__cell--cell-active');
+        await page
+          .locator('.InovuaReactDataGrid__cell--cell-active')
+          .press('ArrowDown', { delay: 100 });
+
+        await pressKeyXTimes(page, 16, 'ArrowLeft');
+
         await fillRowDetails(
           {
             ...databaseSchemaDetails2,
@@ -333,8 +395,13 @@ test.describe('Bulk Import Export', () => {
             ],
             domains: EntityDataClass.domain1.responseData,
           },
-          page,
-          customPropertyRecord
+          page
+        );
+
+        await fillRecursiveEntityTypeFQNDetails(
+          `${dbEntity.entityResponseData.fullyQualifiedName}.${databaseSchemaDetails2.name}`,
+          databaseSchemaDetails2.entityType,
+          page
         );
 
         await page.getByRole('button', { name: 'Next' }).click();
@@ -345,8 +412,8 @@ test.describe('Bulk Import Export', () => {
         await loader.waitFor({ state: 'hidden' });
 
         await validateImportStatus(page, {
-          passed: '4',
-          processed: '4',
+          passed: '13',
+          processed: '13',
           failed: '0',
         });
 
@@ -356,8 +423,16 @@ test.describe('Bulk Import Export', () => {
 
         const rowStatus = [
           'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
+          'Entity updated',
           'Entity created',
           'Entity created',
+          'Entity updated',
         ];
 
         await expect(page.locator('[data-props-id="details"]')).toHaveText(

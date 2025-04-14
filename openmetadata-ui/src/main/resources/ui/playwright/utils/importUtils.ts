@@ -400,6 +400,7 @@ export const createDatabaseSchemaRowDetails = () => {
     tier: 'Tier1',
     retentionPeriod: '1 year',
     sourceUrl: 'www.xy,z.com',
+    entityType: 'Database Schema',
   };
 };
 
@@ -510,7 +511,7 @@ export const fillRowDetails = async (
     };
   },
   page: Page,
-  customPropertyRecord: Record<string, string>
+  customPropertyRecord?: Record<string, string>
 ) => {
   await page.locator('[data-props-id="name*"]').last().click();
 
@@ -589,7 +590,9 @@ export const fillRowDetails = async (
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('ArrowRight', { delay: 100 });
 
-  await fillCustomPropertyDetails(page, customPropertyRecord);
+  if (customPropertyRecord) {
+    await fillCustomPropertyDetails(page, customPropertyRecord);
+  }
 };
 
 export const fillColumnDetails = async (
