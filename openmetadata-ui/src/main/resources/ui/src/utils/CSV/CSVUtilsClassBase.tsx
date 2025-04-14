@@ -51,6 +51,7 @@ class CSVUtilsClassBase {
       'column.description',
       'column.tags',
       'column.glossaryTerms',
+      'storedProcedure.code',
     ];
   }
 
