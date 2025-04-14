@@ -46,6 +46,28 @@ class BaseModel(PydanticBaseModel):
     Specified as `--base-class BASE_CLASS` in the generator.
     """
 
+    def model_post_init(self, __context):
+        """
+        This function is used to parse the FilterPattern fields for the Connection classes.
+        This is needed because dict is defined in the JSON schema for the FilterPattern field,
+        but a FilterPattern object is required in the generated code.
+        """
+        try:
+            if not self.__class__.__name__.endswith("Connection"):
+                # Only parse FilterPattern for Connection classes
+                return
+            for field in self.__pydantic_fields__:
+                if field.endswith("FilterPattern"):
+                    from metadata.generated.schema.type.filterPattern import (
+                        FilterPattern,
+                    )
+
+                    value = getattr(self, field)
+                    if isinstance(value, dict):
+                        setattr(self, field, FilterPattern(**value))
+        except Exception as exc:
+            logger.warning(f"Exception while parsing FilterPattern: {exc}")
+
     @model_validator(mode="after")
     @classmethod
     def parse_name(cls, values):  # pylint: disable=inconsistent-return-statements
