@@ -76,6 +76,8 @@ link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 
+{% partial file="/v1.7/connectors/database/partitioned-tables.md" /%}
+
 ## Metadata Ingestion
 
 ### 1. Define the YAML Config

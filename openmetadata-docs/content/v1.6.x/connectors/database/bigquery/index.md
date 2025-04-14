@@ -43,6 +43,8 @@ link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 
+{% partial file="/v1.6/connectors/database/partitioned-tables.md" /%}
+
 ### Data Catalog API Permissions 
 
 - Go to [https://console.cloud.google.com/apis/library/datacatalog.googleapis.com](https://console.cloud.google.com/apis/library/datacatalog.googleapis.com)
