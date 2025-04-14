@@ -32,6 +32,8 @@ const TestCaseIncidentManagerStatus = ({
   onSubmit,
   hasPermission,
   newLook = false,
+  showEditIcon = true,
+  headerName,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
 
@@ -53,6 +55,55 @@ const TestCaseIncidentManagerStatus = ({
 
   if (!statusType) {
     return <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>;
+  }
+
+  if (headerName) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-2">
+          <span className="font-medium text-blue text-sm">{headerName}</span>
+
+          {hasEditPermission && (
+            <EditIconButton
+              data-testid="edit-resolution-icon"
+              icon={<EditIcon width="14px" />}
+              newLook={newLook}
+              size="small"
+              onClick={onEditStatus}
+            />
+          )}
+        </div>
+        <Tooltip
+          placement="bottom"
+          title={
+            data?.updatedAt &&
+            `${formatDate(data.updatedAt)}
+                ${data.updatedBy ? 'by ' + getEntityName(data.updatedBy) : ''}`
+          }>
+          <Space
+            align="center"
+            data-testid={`${data.testCaseReference?.name}-status`}>
+            <AppBadge
+              className={classNames(
+                'resolution',
+                statusType.toLocaleLowerCase()
+              )}
+              label={statusType}
+            />
+          </Space>
+        </Tooltip>
+
+        {isEditStatus && showEditIcon && (
+          <TestCaseStatusModal
+            data={data}
+            open={isEditStatus}
+            testCaseFqn={data.testCaseReference?.fullyQualifiedName ?? ''}
+            onCancel={onCancel}
+            onSubmit={onSubmit}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
