@@ -822,6 +822,10 @@ public class LineageRepository {
       case TOPIC -> {
         Topic topic =
             Entity.getEntity(TOPIC, entityReference.getId(), "messageSchema", Include.NON_DELETED);
+        if (topic.getMessageSchema() == null
+            || topic.getMessageSchema().getSchemaFields() == null) {
+          return new HashSet<>();
+        }
         return CommonUtil.getChildrenNames(
             topic.getMessageSchema().getSchemaFields(),
             "getChildren",
