@@ -23,12 +23,14 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.DefaultOperationalConfigProvider;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
@@ -68,6 +70,11 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("pipelineServiceClientConfiguration")
   private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
 
+  @JsonProperty("operationalConfig")
+  private OpsConfig opsConfig;
+
+  private DefaultOperationalConfigProvider operationalApplicationConfigProvider;
+
   private static final String CERTIFICATE_PATH = "certificatePath";
 
   public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
@@ -82,6 +89,20 @@ public class OpenMetadataApplicationConfig extends Configuration {
       pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
     }
     return pipelineServiceClientConfiguration;
+  }
+
+  public DefaultOperationalConfigProvider getOperationalApplicationConfigProvider() {
+    if (operationalApplicationConfigProvider == null) {
+      operationalApplicationConfigProvider = new DefaultOperationalConfigProvider(getOpsConfig());
+    }
+    return operationalApplicationConfigProvider;
+  }
+
+  public OpsConfig getOpsConfig() {
+    if (opsConfig == null) {
+      opsConfig = new OpsConfig().withEnable(false);
+    }
+    return opsConfig;
   }
 
   @JsonProperty("migrationConfiguration")
