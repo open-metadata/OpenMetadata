@@ -22,11 +22,21 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
-class RestUtilTest {
+class RestUtilTest extends OpenMetadataApplicationTest {
   @Test
   void hrefTests() throws URISyntaxException {
+    SmtpSettings smtpSettings =
+        SettingsCache.getSettingOrDefault(
+            SettingsType.EMAIL_CONFIGURATION,
+            new SmtpSettings().withOpenMetadataUrl("http://localhost:8585"),
+            SmtpSettings.class);
+
     URI baseUri = URI.create("http://base");
     assertEquals(URI.create("http://base/path"), RestUtil.getHref(baseUri, "path"));
     assertEquals(
@@ -37,45 +47,66 @@ class RestUtilTest {
     assertEquals(
         URI.create("http://base/path"), RestUtil.getHref(baseUri, "/path/")); // Remove both slashes
 
-    UriInfo uriInfo = mockUriInfo("http://base/");
-    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection"));
-    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection"));
-    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "collection/"));
-    assertEquals(URI.create("http://base/collection"), RestUtil.getHref(uriInfo, "/collection/"));
+    UriInfo uriInfo = mockUriInfo(smtpSettings.getOpenMetadataUrl());
+    assertEquals(
+        URI.create(String.format("%s/%s", smtpSettings.getOpenMetadataUrl(), "collection")),
+        RestUtil.getHref(uriInfo, "collection"));
+    assertEquals(
+        URI.create(String.format("%s/%s", smtpSettings.getOpenMetadataUrl(), "collection")),
+        RestUtil.getHref(uriInfo, "/collection"));
+    assertEquals(
+        URI.create(String.format("%s/%s", smtpSettings.getOpenMetadataUrl(), "collection")),
+        RestUtil.getHref(uriInfo, "collection/"));
+    assertEquals(
+        URI.create(String.format("%s/%s", smtpSettings.getOpenMetadataUrl(), "collection")),
+        RestUtil.getHref(uriInfo, "/collection/"));
 
     UUID id = UUID.randomUUID();
     assertEquals(
-        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection", id));
+        URI.create(String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", id)),
+        RestUtil.getHref(uriInfo, "collection", id));
     assertEquals(
-        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection", id));
+        URI.create(String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", id)),
+        RestUtil.getHref(uriInfo, "/collection", id));
     assertEquals(
-        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "collection/", id));
+        URI.create(String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", id)),
+        RestUtil.getHref(uriInfo, "collection/", id));
     assertEquals(
-        URI.create("http://base/collection/" + id), RestUtil.getHref(uriInfo, "/collection/", id));
+        URI.create(String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", id)),
+        RestUtil.getHref(uriInfo, "/collection/", id));
 
     assertEquals(
-        URI.create("http://base/collection/path"), RestUtil.getHref(uriInfo, "collection", "path"));
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path")),
+        RestUtil.getHref(uriInfo, "collection", "path"));
     assertEquals(
-        URI.create("http://base/collection/path"),
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path")),
         RestUtil.getHref(uriInfo, "/collection", "/path"));
     assertEquals(
-        URI.create("http://base/collection/path"),
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path")),
         RestUtil.getHref(uriInfo, "collection/", "path/"));
     assertEquals(
-        URI.create("http://base/collection/path"),
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path")),
         RestUtil.getHref(uriInfo, "/collection/", "/path/"));
 
     assertEquals(
-        URI.create("http://base/collection/path%201"),
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path%201")),
         RestUtil.getHref(uriInfo, "collection", "path 1"));
     assertEquals(
-        URI.create("http://base/collection/path%201"),
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path%201")),
         RestUtil.getHref(uriInfo, "/collection", "/path 1"));
     assertEquals(
-        URI.create("http://base/collection/path%201"),
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path%201")),
         RestUtil.getHref(uriInfo, "collection/", "path 1/"));
     assertEquals(
-        URI.create("http://base/collection/path%201"),
+        URI.create(
+            String.format("%s/%s/%s", smtpSettings.getOpenMetadataUrl(), "collection", "path%201")),
         RestUtil.getHref(uriInfo, "/collection/", "/path 1/"));
   }
 
