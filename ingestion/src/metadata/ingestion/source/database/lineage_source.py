@@ -13,14 +13,12 @@ Lineage Source Module
 """
 import csv
 import multiprocessing
-from multiprocessing import Process, Queue
 import os
 import time
 import traceback
 from abc import ABC
-from concurrent.futures import ProcessPoolExecutor, as_completed
 from functools import partial
-from multiprocessing import Manager
+from multiprocessing import Process, Queue
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
 import networkx as nx
@@ -49,13 +47,14 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
 )
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+
 # from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.db_utils import get_view_lineage
-from metadata.utils.logger import ingestion_logger, utils_logger
+from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
@@ -68,7 +67,7 @@ PROCESS_TIMEOUT = 10 * 60
 MAX_PROCESSES = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs
 
 # Function that will run in separate processes - defined at module level for pickling
-def _process_chunk_in_subprocess(processor_fn, chunk, queue, *args):
+def _process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
     """
     Process a chunk of data in a subprocess.
 
@@ -79,9 +78,7 @@ def _process_chunk_in_subprocess(processor_fn, chunk, queue, *args):
         True if processing succeeded, False otherwise
     """
     try:
-        logger = utils_logger()
         # Process each item in the chunk
-        logger.debug(f" *** Processing chunk in subprocess *** ")
         processor_fn(chunk, queue, *args)
         time.sleep(0.1)
         return True
@@ -250,8 +247,8 @@ class LineageSource(QueryParserSource, ABC):
             )
             yield from self.yield_table_query()
 
+    @staticmethod
     def generate_lineage_with_processes(
-        self,
         producer_fn: Callable[[], Iterable[Any]],
         processor_fn: Callable[[Any, Queue], None],
         args: Tuple[Any, ...],
@@ -260,58 +257,91 @@ class LineageSource(QueryParserSource, ABC):
     ):
         """
         Process data in separate processes with timeout control.
-        
+
         Args:
             producer_fn: Function that yields data chunks
             processor_fn: Function that processes data and adds results to the queue
             chunk_size: Size of chunks to process
             processor_timeout: Maximum time in seconds to wait for a processor process
         """
+
         def chunk_generator():
+            """Group items from producer into chunks of specified size."""
             temp_chunk = []
-            for chunk in producer_fn():
-                temp_chunk.append(chunk)
+            for item in producer_fn():
+                temp_chunk.append(item)
                 if len(temp_chunk) >= chunk_size:
                     yield temp_chunk
                     temp_chunk = []
-
             if temp_chunk:
                 yield temp_chunk
 
-        thread_pool = ProcessPoolExecutor(max_workers=self.source_config.threads)
-        manager = Manager()
-        queue = manager.Queue()
+        # Use multiprocessing Queue instead of threading Queue
+        queue = Queue()
+        active_processes = []
 
-        futures = [
-            thread_pool.submit(
-                _process_chunk_in_subprocess,
-                processor_fn,
-                chunk,
-                queue,
-                *args
+        # Dictionary to track process start times
+        process_start_times = {}
+
+        # Start processing each chunk in a separate process
+        for i, chunk in enumerate(chunk_generator()):
+            # Start a process for processing
+            process = Process(
+                target=_process_chunk_in_subprocess,
+                args=(chunk, processor_fn, queue, *args),
             )
-            for chunk in chunk_generator()
-        ]
-        while True:
+            process.daemon = True
+            process_start_times[
+                process.name
+            ] = time.time()  # Track when the process started
+            print("--------------------------------")
+            print(
+                f"Process {process.name} started at {process_start_times[process.name]}"
+            )
+            print("--------------------------------")
+            active_processes.append(process)
+            process.start()
+
+        # Process results from the queue and check for timed-out processes
+        while active_processes or not queue.empty():
+            # Process any available results
             try:
                 while not queue.empty():
                     yield queue.get_nowait()
-            except Exception as e:
-                logger.debug(f"Error getting from queue: {e}")
+            except queue.Empty:
+                pass
 
-            if not futures:
-                break
+            # Check for completed or timed-out processes
+            still_active = []
+            for process in active_processes:
+                if process.is_alive():
+                    # Check if the process has timed out
+                    if (
+                        time.time() - process_start_times[process.name]
+                        > processor_timeout
+                    ):
+                        logger.warning(
+                            f"Process {process.name} timed out after {processor_timeout}s"
+                        )
+                        process.terminate()  # Force terminate the timed out process
+                    else:
+                        still_active.append(process)
+                else:
+                    # Clean up completed process
+                    process.join()
 
-            for i, future in enumerate(futures):
-                if future.done():
-                    try:
-                        future.result(timeout=0)
-                    except Exception as e:
-                        logger.error(f"Error in future: {e}")
-                    futures.pop(i)
+            active_processes = still_active
 
-            time.sleep(0.01)
+            # Small pause to prevent CPU spinning
+            if active_processes:
+                time.sleep(0.1)
 
+        # Final check for any remaining results
+        try:
+            while not queue.empty():
+                yield queue.get_nowait()
+        except queue.Empty:
+            pass
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
@@ -355,9 +385,17 @@ class LineageSource(QueryParserSource, ABC):
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         producer_fn = self.get_table_query
         processor_fn = query_lineage_generator
-        args = (self.metadata, self.dialect, self.graph, self.source_config.parsingTimeoutLimit, self.config.serviceName)
+        args = (
+            self.metadata,
+            self.dialect,
+            self.graph,
+            self.source_config.parsingTimeoutLimit,
+            self.config.serviceName,
+        )
         yield from self.generate_lineage_with_processes(
-            producer_fn, processor_fn, args,
+            producer_fn,
+            processor_fn,
+            args,
         )
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
@@ -368,7 +406,13 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.incrementalLineageProcessing,
         )
         processor_fn = view_lineage_generator
-        args = (self.metadata, self.config.serviceName, self.service_connection.type.value, self.source_config.parsingTimeoutLimit, self.source_config.overrideViewLineage)
+        args = (
+            self.metadata,
+            self.config.serviceName,
+            self.service_connection.type.value,
+            self.source_config.parsingTimeoutLimit,
+            self.source_config.overrideViewLineage,
+        )
         yield from self.generate_lineage_with_processes(producer_fn, processor_fn, args)
 
     def yield_procedure_lineage(
