@@ -20,14 +20,20 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MlFlowIngestionClass extends ServiceBaseClass {
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+  }) {
+    const { shouldTestConnection = false, shouldAddIngestion = false } =
+      extraParams ?? {};
+
     super(
       Services.MLModels,
       `pw-Ml-Model-with-%-${uuid()}`,
       'Mlflow',
       'ElasticnetWineModel',
-      false,
-      false
+      shouldTestConnection,
+      shouldAddIngestion
     );
   }
 

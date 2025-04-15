@@ -38,15 +38,28 @@ class MysqlIngestionClass extends ServiceBaseClass {
   defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
   profilerTable = 'alert_entity';
-  constructor(tableFilter?: string[]) {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    tableFilter?: string[];
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
+    } = extraParams ?? {};
+
     const serviceName = `pw-mysql-with-%-${uuid()}`;
-    super(Services.Database, serviceName, 'Mysql', 'bot_entity');
-    this.name = serviceName;
-    this.tableFilter = tableFilter ?? [
+    super(
+      Services.Database,
+      serviceName,
+      'Mysql',
       'bot_entity',
-      'alert_entity',
-      'chart_entity',
-    ];
+      shouldTestConnection,
+      shouldAddIngestion
+    );
+    this.name = serviceName;
+    this.tableFilter = tableFilter;
   }
 
   async createService(page: Page) {

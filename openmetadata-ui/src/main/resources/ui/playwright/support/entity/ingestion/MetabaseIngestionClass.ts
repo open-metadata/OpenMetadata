@@ -23,12 +23,20 @@ import ServiceBaseClass from './ServiceBaseClass';
 class MetabaseIngestionClass extends ServiceBaseClass {
   name = '';
   tableName = 'jaffle_shop dashboard';
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+  }) {
+    const { shouldTestConnection = true, shouldAddIngestion = true } =
+      extraParams ?? {};
+
     super(
       Services.Dashboard,
       `pw-Metabase-with-%-${uuid()}`,
       'Metabase',
-      'jaffle_shop dashboard'
+      'jaffle_shop dashboard',
+      shouldTestConnection,
+      shouldAddIngestion
     );
     this.tableName = 'jaffle_shop dashboard';
   }

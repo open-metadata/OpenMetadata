@@ -40,12 +40,20 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   dbtEntityFqn: string;
   schemaFilterPattern = 'dbt_automate_upgrade_tests';
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+  }) {
+    const { shouldTestConnection = true, shouldAddIngestion = true } =
+      extraParams ?? {};
+
     super(
       Services.Database,
       REDSHIFT.serviceName,
       REDSHIFT.serviceType,
-      REDSHIFT.tableName
+      REDSHIFT.tableName,
+      shouldTestConnection,
+      shouldAddIngestion
     );
 
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';

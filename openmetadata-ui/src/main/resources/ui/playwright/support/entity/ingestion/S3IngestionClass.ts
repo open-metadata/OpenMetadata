@@ -21,12 +21,20 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class S3IngestionClass extends ServiceBaseClass {
   name = '';
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+  }) {
+    const { shouldTestConnection = true, shouldAddIngestion = true } =
+      extraParams ?? {};
+
     super(
       Services.Storage,
       `pw-s3-storage-with-%-${uuid()}`,
       'S3',
-      'awsathena-database'
+      'awsathena-database',
+      shouldTestConnection,
+      shouldAddIngestion
     );
   }
 

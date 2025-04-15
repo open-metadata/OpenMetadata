@@ -62,6 +62,10 @@ class ServiceBaseClass {
     this.entityFQN = null;
   }
 
+  getServiceName() {
+    return this.serviceName;
+  }
+
   visitService() {
     // Handle visit service here
   }
