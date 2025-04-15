@@ -18,7 +18,9 @@ import { addAndTriggerAutoClassificationPipeline } from '../../utils/autoClassif
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
-const mysqlService = new MysqlIngestionClass(['sensitive_customers']);
+const mysqlService = new MysqlIngestionClass({
+  tableFilter: ['sensitive_customers'],
+});
 
 // use the admin user to login
 test.use({
