@@ -675,7 +675,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await commentWithCloseTask;
 
       await toastNotification(page1, 'Task closed successfully.');
-      await page2.waitForLoadState('networkidle');
+      await page1.waitForLoadState('networkidle');
       await checkTaskCountInActivityFeed(page1, 1, 1);
 
       await afterActionUser1();
