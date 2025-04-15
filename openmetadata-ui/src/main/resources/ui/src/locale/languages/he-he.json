@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "אנו לא יכולים ל{{error}} לאלסטיקסרץ' שלך עבור אינדקסים של ישויות.",
     "uninstall-app": "הסרת התקנת {{app}} תסיר אותו מ-OpenMetadata",
     "unix-epoch-time-in-ms": "{{prefix}} Unix epoch time in milliseconds",
+    "unsaved-changes-warning": "ייתכן שיש לך שינויים שלא נשמרו שיימחקו בעת הסגירה.",
     "update-description-message": "Request to update description for",
     "update-displayName-entity": "עדכן את השם המוצג עבור {{entity}}.",
     "update-profiler-settings": "עדכן הגדרות הפרופיילר.",

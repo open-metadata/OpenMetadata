@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "आम्ही घटक अनुक्रमणिकांसाठी Elasticsearch {{error}} करण्यात अक्षम आहोत.",
     "uninstall-app": "हा {{app}} अनुप्रयोग अनइंस्टॉल केल्याने तो OpenMetaData मधून काढला जाईल",
     "unix-epoch-time-in-ms": "{{prefix}} मिलीसेकंदात युनिक्स युग वेळ",
+    "unsaved-changes-warning": "तुमच्याकडे जतन न केलेले बदल असू शकतात जे बंद केल्यावर रद्द केले जातील.",
     "update-description-message": "साठी वर्णन अद्यतनित करण्याची विनंती",
     "update-displayName-entity": "{{entity}} साठी प्रदर्शन नाव अद्यतनित करा.",
     "update-profiler-settings": "प्रोफाइलर सेटिंग अद्यतनित करा.",

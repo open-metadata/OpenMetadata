@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "เราไม่สามารถ {{error}} Elasticsearch สำหรับดัชนีเอนทิตีได้",
     "uninstall-app": "การถอนการติดตั้งแอปพลิเคชัน {{app}} นี้จะลบออกจาก OpenMetaData",
     "unix-epoch-time-in-ms": "{{prefix}} เวลายุค Unix ในมิลลิวินาที",
+    "unsaved-changes-warning": "คุณอาจมีการเปลี่ยนแปลงที่ยังไม่ได้บันทึกซึ่งจะถูกยกเลิกเมื่อปิด",
     "update-description-message": "คำขอเพื่ออัปเดตคำอธิบายสำหรับ",
     "update-displayName-entity": "อัปเดตชื่อแสดงสำหรับ {{entity}}",
     "update-profiler-settings": "อัปเดตการตั้งค่าโปรไฟล์เลอร์",

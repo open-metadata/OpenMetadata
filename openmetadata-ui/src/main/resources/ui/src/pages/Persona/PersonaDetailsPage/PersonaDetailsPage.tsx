@@ -54,10 +54,16 @@ export const PersonaDetailsPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const location = useCustomLocation();
-  const activeKey = useMemo(
-    () => (location.hash?.replace('#', '') || 'users').split('.')[0],
-    [location]
-  );
+  const { activeKey, fullHash } = useMemo(() => {
+    const activeKey = (location.hash?.replace('#', '') || 'users').split(
+      '.'
+    )[0];
+
+    return {
+      activeKey,
+      fullHash: location.hash?.replace('#', ''),
+    };
+  }, [location]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -161,11 +167,18 @@ export const PersonaDetailsPage = () => {
     history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 
-  const handleTabChange = (activeKey: string) => {
-    history.push({
-      hash: activeKey,
-    });
-  };
+  const handleTabClick = useCallback(
+    (key: string) => {
+      if (fullHash === key) {
+        return;
+      }
+
+      history.push({
+        hash: key,
+      });
+    },
+    [history, fullHash]
+  );
 
   const tabItems = useMemo(() => {
     return [
@@ -264,7 +277,7 @@ export const PersonaDetailsPage = () => {
                 </UserSelectableList>
               )
             }
-            onChange={handleTabChange}
+            onTabClick={handleTabClick}
           />
         </Col>
       </Row>

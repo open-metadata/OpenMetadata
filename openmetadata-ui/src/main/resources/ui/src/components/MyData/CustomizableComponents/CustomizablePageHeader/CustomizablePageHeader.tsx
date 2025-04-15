@@ -35,20 +35,42 @@ export const CustomizablePageHeader = ({
   const { fqn: personaFqn } = useFqn();
   const { currentPageType } = useCustomizeStore();
   const history = useHistory();
-  const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [confirmationModalOpen, setConfirmationModalOpen] =
+    React.useState(false);
+
+  const [confirmationModalType, setConfirmationModalType] = React.useState<
+    'reset' | 'close'
+  >('close');
 
   const handleCancel = () => {
     // Go back in history
     history.goBack();
   };
 
+  const { modalTitle, modalDescription } = useMemo(() => {
+    if (confirmationModalType === 'reset') {
+      return {
+        modalTitle: t('label.reset-default-layout'),
+        modalDescription: t('message.reset-layout-confirmation'),
+      };
+    }
+
+    return {
+      modalTitle: t('message.are-you-sure-want-to-text', {
+        text: t('label.close'),
+      }),
+      modalDescription: t('message.unsaved-changes-warning'),
+    };
+  }, [confirmationModalType]);
+
   const handleOpenResetModal = useCallback(() => {
-    setIsResetModalOpen(true);
+    setConfirmationModalType('reset');
+    setConfirmationModalOpen(true);
   }, []);
 
   const handleCloseResetModal = useCallback(() => {
-    setIsResetModalOpen(false);
+    setConfirmationModalOpen(false);
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -58,9 +80,10 @@ export const CustomizablePageHeader = ({
   }, [onSave]);
 
   const handleReset = useCallback(async () => {
-    onReset();
-    setIsResetModalOpen(false);
-  }, [onReset]);
+    confirmationModalType === 'reset' ? onReset() : handleCancel();
+    setConfirmationModalOpen(false);
+  }, [onReset, confirmationModalType, handleCancel]);
+
   const i18Values = useMemo(
     () => ({
       persona: personaName,
@@ -71,6 +94,11 @@ export const CustomizablePageHeader = ({
     }),
     [personaName]
   );
+
+  const handleClose = useCallback(() => {
+    setConfirmationModalType('close');
+    setConfirmationModalOpen(true);
+  }, []);
 
   return (
     <Card
@@ -99,8 +127,8 @@ export const CustomizablePageHeader = ({
             data-testid="cancel-button"
             disabled={saving}
             icon={<CloseOutlined />}
-            onClick={handleCancel}>
-            {t('label.cancel')}
+            onClick={handleClose}>
+            {t('label.close')}
           </Button>
           <Button
             data-testid="reset-button"
@@ -119,19 +147,18 @@ export const CustomizablePageHeader = ({
           </Button>
         </Space>
       </div>
-      {isResetModalOpen && (
-        <Modal
-          centered
-          cancelText={t('label.no')}
-          data-testid="reset-layout-modal"
-          okText={t('label.yes')}
-          open={isResetModalOpen}
-          title={t('label.reset-default-layout')}
-          onCancel={handleCloseResetModal}
-          onOk={handleReset}>
-          {t('message.reset-layout-confirmation')}
-        </Modal>
-      )}
+
+      <Modal
+        centered
+        cancelText={t('label.no')}
+        data-testid="reset-layout-modal"
+        okText={t('label.yes')}
+        open={confirmationModalOpen}
+        title={modalTitle}
+        onCancel={handleCloseResetModal}
+        onOk={handleReset}>
+        {modalDescription}
+      </Modal>
     </Card>
   );
 };
