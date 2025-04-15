@@ -86,10 +86,6 @@ const test = base.extend<{
   },
 });
 
-test.describe.configure({
-  mode: 'serial',
-});
-
 const data = {
   alertDetails: {
     id: '',
