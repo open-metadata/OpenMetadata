@@ -697,15 +697,16 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
                 return view_definition
 
-            schema_definition = inspector.get_table_ddl(
-                self.connection, table_name, schema_name
-            )
-            schema_definition = (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
-            return schema_definition
+            if self.source_config.includeDDL:
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
+                )
+                schema_definition = (
+                    str(schema_definition).strip()
+                    if schema_definition is not None
+                    else None
+                )
+                return schema_definition
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
         return None

@@ -116,7 +116,11 @@ from metadata.ingestion.source.database.snowflake.utils import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_table_ddls,
+    get_all_view_definitions,
+)
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 ischema_names["VARIANT"] = VARIANT
@@ -134,6 +138,7 @@ SnowflakeDialect.get_stream_names = get_stream_names
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
+SnowflakeDialect.get_all_view_definitions = get_all_view_definitions
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
 SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
@@ -835,6 +840,21 @@ class SnowflakeSource(
     ) -> Optional[str]:
         """
         Get the DDL statement, View Definition or Stream Definition for a table
+
+        To fetch the view definition, we have followed an optimised approach
+        i.e. fetching view definition of all the views in schema storing it
+        in cache and using the same cache to fetch the view definition.
+
+        To fetch defintion for other types of tables, we have used the
+        get_ddl method, since this method only accepts string literal as arguments
+        it is not possible to do something like this:
+
+        select table_name, schema, get_ddl('table', table_name) from information_schema.tables
+        so we have to fetch the ddl for each table individually.
+
+        Alternavies are executing an stroed procedure to automate this but
+        it requires additional permissions like execute which users may not be comfortable doing.
+        Or reconstruct the ddl from column types, which we can explore in the future.
         """
         try:
             schema_definition = None
@@ -846,7 +866,7 @@ class SnowflakeSource(
                 schema_definition = inspector.get_stream_definition(
                     self.connection, table_name, schema_name
                 )
-            elif hasattr(inspector, "get_table_ddl") and self.source_config.includeDDL:
+            elif self.source_config.includeDDL or table_type == TableType.Dynamic:
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name
                 )

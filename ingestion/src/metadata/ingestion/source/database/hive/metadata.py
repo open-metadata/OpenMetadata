@@ -18,6 +18,7 @@ from typing import Optional, Tuple
 from pyhive.sqlalchemy_hive import HiveDialect
 from sqlalchemy.engine.reflection import Inspector
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
 )
@@ -106,7 +107,13 @@ class HiveSource(CommonDbSourceService):
         Get the DDL statement or View Definition for a table
         """
         try:
-            schema_definition = inspector.get_view_definition(table_name, schema_name)
+            if self.source_config.includeDDL or table_type in (
+                TableType.View,
+                TableType.MaterializedView,
+            ):
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name
+                )
             schema_definition = (
                 str(schema_definition).strip()
                 if schema_definition is not None

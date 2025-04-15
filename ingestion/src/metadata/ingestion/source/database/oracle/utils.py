@@ -264,20 +264,6 @@ def get_mview_names_dialect(self, connection, schema=None, **kw):
     return [self.normalize_name(row[0]) for row in cursor]
 
 
-def get_mview_definition(self, mview_name, schema=None):
-    """Return definition for `mview_name`.
-
-    :param schema: Optional, retrieve names from a non-default schema.
-        For special quoting, use :class:`.quoted_name`.
-
-    """
-
-    with self._operation_context() as conn:
-        return self.dialect.get_view_definition(
-            conn, mview_name, schema, info_cache=self.info_cache
-        )
-
-
 @reflection.cache
 def _get_constraint_data(self, connection, table_name, schema=None, dblink="", **kw):
 

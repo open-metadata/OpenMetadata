@@ -57,7 +57,6 @@ from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
     _get_constraint_data,
     get_columns,
-    get_mview_definition,
     get_mview_names,
     get_mview_names_dialect,
     get_table_comment,
@@ -94,7 +93,6 @@ OracleDialect.get_all_view_definitions = get_all_view_definitions
 OracleDialect.get_all_table_comments = get_all_table_comments
 OracleDialect.get_table_names = get_table_names
 Inspector.get_mview_names = get_mview_names
-Inspector.get_mview_definition = get_mview_definition
 OracleDialect.get_mview_names = get_mview_names_dialect
 Inspector.get_view_names = get_view_names
 OracleDialect.get_view_names = get_view_names_dialect
@@ -145,43 +143,6 @@ class OracleSource(CommonDbSourceService):
         ]
 
         return regular_tables + material_tables
-
-    def get_schema_definition(
-        self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Optional[str]:
-        """
-        Get the DDL statement or View Definition for a table
-        """
-        try:
-            if table_type not in {TableType.View, TableType.MaterializedView}:
-                schema_definition = inspector.get_table_ddl(
-                    self.connection, table_name, schema_name
-                )
-                return (
-                    str(schema_definition).strip()
-                    if schema_definition is not None
-                    else None
-                )
-
-            definition_fn = inspector.get_view_definition
-            if table_type == TableType.MaterializedView:
-                definition_fn = inspector.get_mview_definition
-
-            schema_definition = definition_fn(table_name, schema_name)
-
-            return (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
-
-        except NotImplementedError:
-            logger.warning("Schema definition not implemented")
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch Schema definition for {table_name}: {exc}")
-        return None
 
     def process_result(self, data: FetchObjectList):
         """Process data as per our stored procedure format"""
