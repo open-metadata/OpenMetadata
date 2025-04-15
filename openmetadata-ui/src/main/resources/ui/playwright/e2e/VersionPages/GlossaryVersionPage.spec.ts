@@ -174,7 +174,7 @@ test('GlossaryTerm', async ({ page }) => {
   await test.step('Should display the owner & reviewer changes', async () => {
     await term2.visitPage(page);
 
-    await page.getByRole('dialog').getByRole('img').click();
+    await expect(page.getByTestId('version-button')).toHaveText(/0.2/);
 
     await addMultiOwner({
       page,
@@ -204,7 +204,7 @@ test('GlossaryTerm', async ({ page }) => {
     const glossaryTermsRes = page.waitForResponse(
       '/api/v1/glossaryTerms/name/**'
     );
-    await page.click('[data-testid="version-button"]');
+    await page.getByRole('dialog').getByRole('img').click();
 
     await page.waitForLoadState('networkidle');
     await glossaryTermsRes;

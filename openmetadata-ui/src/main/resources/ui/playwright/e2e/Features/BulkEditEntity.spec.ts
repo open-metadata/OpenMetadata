@@ -577,10 +577,6 @@ test.describe('Bulk Edit Entity', () => {
         `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=false*`
       );
       await page.click('[type="button"] >> text="Update"', { force: true });
-      await page
-        .locator('.inovua-react-toolkit-load-mask__background-layer')
-        .waitFor({ state: 'detached' });
-
       await page.waitForSelector('.message-banner-wrapper', {
         state: 'detached',
       });
