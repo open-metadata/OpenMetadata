@@ -138,7 +138,6 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
@@ -4141,15 +4140,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tags =
         daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs);
 
-    List<String> tagFQNs =
-        tags.stream()
-            .distinct()
-            .map(CollectionDAO.TagUsageDAO.TagLabelWithFQNHash::getTagFQN)
-            .toList();
-    Map<String, TagLabel> tagFQNLabelMap =
-        EntityUtil.toTagLabels(TagLabelUtil.getTags(tagFQNs).toArray(new Tag[0])).stream()
-            .collect(Collectors.toMap(TagLabel::getTagFQN, Function.identity()));
-
     // Map from targetFQNHash to targetFQN
     Map<String, String> fqnHashToFqnMap =
         entityFQNs.stream().collect(Collectors.toMap(FullyQualifiedName::buildHash, fqn -> fqn));
@@ -4161,12 +4151,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String targetFQN = fqnHashToFqnMap.get(targetFQNHash);
 
       if (targetFQN != null) {
-        TagLabel tagLabel = tagFQNLabelMap.get(tagWithHash.getTagFQN());
-        if (tagLabel != null) {
-          tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagLabel);
-        } else {
-          LOG.warn("Missing TagLabel for TagFQN in batch Fetch Tags: {}", tagWithHash.getTagFQN());
-        }
+        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagWithHash.toTagLabel());
       }
     }
 
