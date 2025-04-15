@@ -33,6 +33,7 @@ const Severity = ({
   onSubmit,
   hasPermission,
   newLook = false,
+  headerName,
 }: SeverityProps) => {
   const { t } = useTranslation();
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
@@ -54,6 +55,47 @@ const Severity = ({
     },
     [onSubmit]
   );
+  if (headerName) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-2">
+          <span className="font-medium text-blue text-sm">{headerName}</span>
+          {onSubmit && hasEditPermission && (
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.severity'),
+              })}>
+              <EditIconButton
+                data-testid="edit-severity-icon"
+                icon={<EditIcon width="14px" />}
+                newLook={newLook}
+                size="small"
+                onClick={onEditSeverity}
+              />
+            </Tooltip>
+          )}
+        </div>
+        <Space align="center">
+          {severity ? (
+            <AppBadge
+              className={classNames('severity', toLower(severity))}
+              label={startCase(severity)}
+            />
+          ) : (
+            NO_DATA_PLACEHOLDER
+          )}
+        </Space>
+
+        {isEditSeverity && (
+          <SeverityModal
+            initialSeverity={severity}
+            onCancel={onCancel}
+            onSubmit={handleSubmit}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <>

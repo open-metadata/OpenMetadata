@@ -88,13 +88,12 @@ const DeleteWidgetModal = ({
         title: `${t('label.delete')} ${entityTypeName} "${entityName}"`,
         description: (
           <>
-            $
             {deleteWidgetClassBase.getDeleteMessage(
               entityName,
               entityType,
               true
             )}
-            ${softDeleteMessagePostFix}
+            {softDeleteMessagePostFix}
           </>
         ),
         type: DeleteType.SOFT_DELETE,
