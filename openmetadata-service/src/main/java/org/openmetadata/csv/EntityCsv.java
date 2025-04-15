@@ -96,7 +96,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.StoredProcedureRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
@@ -1190,16 +1189,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     DatabaseSchema schema;
-    boolean schemaExists = true;
 
     try {
       schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
-
       if (importResult.getDryRun()) {
-        // Simulate a schema for dry run
-        schemaExists = false;
         schema =
             new DatabaseSchema()
                 .withName(schemaFQN)
@@ -1211,10 +1206,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       }
     }
 
-    StoredProcedureRepository spRepository =
-        (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
     StoredProcedure sp;
-
     try {
       sp = Entity.getEntityByName(STORED_PROCEDURE, entityFQN, "*", Include.NON_DELETED);
     } catch (Exception ex) {
@@ -1224,7 +1216,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
               .withName(spName)
               .withService(schema.getService())
               .withDatabase(schema.getDatabase())
-              .withDatabaseSchema(schemaExists ? schema.getEntityReference() : null);
+              .withDatabaseSchema(schema.getEntityReference());
     }
 
     List<TagLabel> tagLabels =
