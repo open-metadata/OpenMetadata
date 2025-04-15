@@ -247,7 +247,7 @@ const APIEndpointPage = () => {
     const updatedData = data as APIEndpoint;
 
     setApiEndpointDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

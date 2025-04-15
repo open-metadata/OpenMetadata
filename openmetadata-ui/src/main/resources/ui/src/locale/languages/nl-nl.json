@@ -2052,6 +2052,7 @@
     "see-how-to-get-started": "Zie hoe je kunt beginnen",
     "select-alert-type": "Selecteer een alerttype",
     "select-column-name": "Selecteer kolomnaam",
+    "select-domain-to-add-data-product": "Selecteer een domein om een data-product toe te voegen.",
     "select-gcs-config-type": "Selecteer GCS Config Type",
     "select-interval-type": "Selecteer intervaltype",
     "select-interval-unit": "Selecteer interval eenheid",

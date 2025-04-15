@@ -337,7 +337,7 @@ const APICollectionPage: FunctionComponent = () => {
     const updatedData = data as APICollection;
 
     setAPICollection((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

@@ -238,7 +238,7 @@ const MetricDetailsPage = () => {
     const updatedData = data as Metric;
 
     setMetricDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

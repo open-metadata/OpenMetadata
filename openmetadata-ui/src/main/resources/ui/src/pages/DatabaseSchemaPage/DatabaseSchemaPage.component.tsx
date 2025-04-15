@@ -340,7 +340,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     const updatedData = data as DatabaseSchema;
 
     setDatabaseSchema((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

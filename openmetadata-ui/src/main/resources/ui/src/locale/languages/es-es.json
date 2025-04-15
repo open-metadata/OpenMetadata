@@ -2052,6 +2052,7 @@
     "see-how-to-get-started": "Mira cómo empezar",
     "select-alert-type": "Por favor selecciona un tipo de alerta",
     "select-column-name": "Selecciona el nombre de la columna",
+    "select-domain-to-add-data-product": "Selecciona un dominio para añadir un producto de datos",
     "select-gcs-config-type": "Selecciona el tipo de configuración de GCS",
     "select-interval-type": "Selecciona el tipo de intervalo",
     "select-interval-unit": "Selecciona la unidad de intervalo",

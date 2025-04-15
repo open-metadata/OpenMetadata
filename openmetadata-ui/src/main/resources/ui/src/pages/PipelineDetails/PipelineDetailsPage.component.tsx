@@ -278,7 +278,7 @@ const PipelineDetailsPage = () => {
     const updatedData = data as Pipeline;
 
     setPipelineDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

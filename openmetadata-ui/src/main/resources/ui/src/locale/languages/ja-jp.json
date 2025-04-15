@@ -2052,6 +2052,7 @@
     "see-how-to-get-started": "始め方を見る",
     "select-alert-type": "Please select a alert type",
     "select-column-name": "カラム名を選択",
+    "select-domain-to-add-data-product": "ドメインを選択してデータプロダクトを追加してください。",
     "select-gcs-config-type": "Select GCS Config Type",
     "select-interval-type": "Select interval type",
     "select-interval-unit": "Select interval unit",
