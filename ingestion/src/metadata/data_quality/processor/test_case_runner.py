@@ -16,6 +16,8 @@ import traceback
 from copy import deepcopy
 from typing import List, Optional
 
+from pydantic import RootModel
+
 from metadata.data_quality.api.models import (
     TableAndTests,
     TestCaseDefinition,
@@ -27,7 +29,6 @@ from metadata.data_quality.runner.base_test_suite_source import BaseTestSuiteRun
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -94,9 +95,8 @@ class TestCaseRunner(Processor):
             record.table, openmetadata_test_cases
         )
 
-        test_suite_runner = self.get_test_suite_runner(
-            record.table, record.service_connection
-        )
+        self.config.source.serviceConnection = RootModel(record.service_connection)
+        test_suite_runner = self.get_test_suite_runner(record.table)
 
         logger.debug(
             f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"
@@ -354,9 +354,7 @@ class TestCaseRunner(Processor):
                 result.append(tc)
         return result
 
-    def get_test_suite_runner(
-        self, table: Table, service_connection: DatabaseConnection
-    ):
+    def get_test_suite_runner(self, table: Table):
         return BaseTestSuiteRunner(
-            self.config, self.metadata, table, service_connection
+            self.config, self.metadata, table
         ).get_data_quality_runner()

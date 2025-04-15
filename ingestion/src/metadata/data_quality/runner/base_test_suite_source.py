@@ -19,6 +19,9 @@ from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
@@ -31,6 +34,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
     import_sampler_class,
@@ -46,12 +50,11 @@ class BaseTestSuiteRunner:
         config: OpenMetadataWorkflowConfig,
         ometa_client: OpenMetadata,
         entity: Table,
-        service_connection: DatabaseConnection,
     ):
         self.validator_builder_class = ValidatorBuilder
         self._interface = None
         self.entity = entity
-        self.service_conn_config = self._copy_service_config(service_connection, self.entity.database)  # type: ignore
+        self.service_conn_config = self._copy_service_config(config, self.entity.database)  # type: ignore
         self._interface_type: str = self.service_conn_config.type.value.lower()
 
         self.source_config = TestSuitePipeline.model_validate(
@@ -68,7 +71,7 @@ class BaseTestSuiteRunner:
         self._interface = interface
 
     def _copy_service_config(
-        self, service_connection: DatabaseConnection, database: EntityReference
+        self, config: OpenMetadataWorkflowConfig, database: EntityReference
     ) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
@@ -78,7 +81,10 @@ class BaseTestSuiteRunner:
         Returns:
             DatabaseService.__config__
         """
-        config_copy = deepcopy(service_connection.config)  # type: ignore
+        if isinstance(config.source.serviceConnection.root.config, BigQueryConnection):
+            return copy_service_config(config, database.name)
+
+        config_copy = deepcopy(config.source.serviceConnection.root.config)  # type: ignore
         if hasattr(
             config_copy,  # type: ignore
             "supportsDatabase",

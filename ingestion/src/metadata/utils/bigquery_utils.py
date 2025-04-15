@@ -13,10 +13,22 @@
 Utils module of BigQuery
 """
 
+from copy import deepcopy
 from typing import List, Optional
 
 from google.cloud import bigquery
 
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+    MultipleProjectId,
+    SingleProjectId,
+)
 from metadata.utils.credentials import (
     get_gcp_default_credentials,
     get_gcp_impersonate_credentials,
@@ -56,3 +68,26 @@ def get_bigquery_client(
     return bigquery.Client(
         credentials=credentials, project=project_id, location=location
     )
+
+
+def copy_service_config(
+    config: OpenMetadataWorkflowConfig, database_name: str
+) -> BigQueryConnection:
+    """Handles multiple project id in the service config and replace it with the database name
+
+    Args:
+        config (OpenMetadataWorkflowConfig): openmetadata workflow config
+        database_name (str): database name
+
+    Returns:
+        BigQueryConnection: bigquery connection
+    """
+    config_copy: BigQueryConnection = deepcopy(
+        config.source.serviceConnection.root.config  # type: ignore
+    )
+
+    if isinstance(config_copy.credentials.gcpConfig, GcpCredentialsValues):
+        if isinstance(config_copy.credentials.gcpConfig.projectId, MultipleProjectId):
+            config_copy.credentials.gcpConfig.projectId = SingleProjectId(database_name)
+
+    return config_copy
