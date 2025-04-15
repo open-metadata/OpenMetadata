@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { isEmpty, lowerCase } from 'lodash';
 import {
+  BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
@@ -1248,7 +1249,11 @@ export const softDeleteEntity = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(
+    page,
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
+  );
 
   await page.reload();
 
@@ -1313,7 +1318,11 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await toastNotification(
+    page,
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
+  );
 };
 
 export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
