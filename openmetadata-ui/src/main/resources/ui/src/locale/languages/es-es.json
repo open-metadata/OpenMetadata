@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "No podemos {{error}} Elasticsearch para los índices de entidades.",
     "uninstall-app": "Desinstalar esta aplicación {{app}} la eliminará de OpenMetaData",
     "unix-epoch-time-in-ms": "{{prefix}} Unix epoch time in milliseconds",
+    "unsaved-changes-warning": "Puede que tengas cambios no guardados que se descartarán al cerrar.",
     "update-description-message": "Solicitud para actualizar la descripción de",
     "update-displayName-entity": "Actualizar el nombre visualizado para el {{entity}}.",
     "update-profiler-settings": "Actualizar la configuración del perfilador.",

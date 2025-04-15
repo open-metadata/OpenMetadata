@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "We kunnen geen connectie maken met Elasticsearch voor entiteitsindexen.",
     "uninstall-app": "Het verwijderen van deze {{app}}-toepassing verwijdert deze uit OpenMetaData",
     "unix-epoch-time-in-ms": "{{prefix}} Unix epoch time in milliseconds",
+    "unsaved-changes-warning": "Je hebt mogelijk niet-opgeslagen wijzigingen die worden verwijderd bij het sluiten.",
     "update-description-message": "Verzoek om de beschrijving aan te passen voor",
     "update-displayName-entity": "Update de weergavenaam voor de {{entity}}.",
     "update-profiler-settings": "Profielinstellingen updaten.",

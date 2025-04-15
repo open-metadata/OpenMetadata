@@ -30,7 +30,10 @@ const SettingItemCard = ({
   className,
 }: SettingMenuItemProps) => {
   const { t } = useTranslation();
-  const handleOnClick = useCallback(() => onClick(data.key), []);
+  const handleOnClick = useCallback(
+    () => onClick(data.key),
+    [onClick, data.key]
+  );
 
   return (
     <Card
