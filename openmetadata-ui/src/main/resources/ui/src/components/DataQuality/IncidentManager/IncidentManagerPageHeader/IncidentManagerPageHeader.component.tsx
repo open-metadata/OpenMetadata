@@ -228,10 +228,10 @@ const IncidentManagerPageHeader = ({
       return (
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography.Text className="d-flex items-center gap-2 text-xs whitespace-nowrap">
-            <span className="text-grey-muted">{`${t(
-              'label.incident-status'
-            )}: `}</span>
+          <Typography.Text className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
+            <span className="text-blue font-medium text-sm">
+              {t('label.incident-status')}
+            </span>
 
             <span>{t('label.no-entity', { entity: t('label.incident') })}</span>
           </Typography.Text>
@@ -247,9 +247,9 @@ const IncidentManagerPageHeader = ({
           <>
             <Divider className="self-center m-x-sm" type="vertical" />
             <Typography.Text className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
-              <span className="text-blue text-sm font-medium">{`${t(
-                'label.incident'
-              )}: `}</span>
+              <span className="text-blue text-sm font-medium">
+                {t('label.incident')}
+              </span>
 
               <Link
                 className="font-medium"
@@ -266,7 +266,7 @@ const IncidentManagerPageHeader = ({
             newLook
             data={testCaseStatusData}
             hasPermission={hasEditStatusPermission}
-            headerName={`${t('label.incident-status')}`}
+            headerName={t('label.incident-status')}
             onSubmit={onIncidentStatusUpdate}
           />
         </Typography.Text>
@@ -294,7 +294,7 @@ const IncidentManagerPageHeader = ({
           <Severity
             newLook
             hasPermission={hasEditStatusPermission}
-            headerName={`${t('label.severity')}`}
+            headerName={t('label.severity')}
             severity={testCaseStatusData.severity}
             onSubmit={handleSeverityUpdate}
           />
@@ -316,9 +316,9 @@ const IncidentManagerPageHeader = ({
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
           <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <span className="text-blue text-sm font-medium">{`${t(
-              'label.table'
-            )}`}</span>
+            <span className="text-blue text-sm font-medium">
+              {t('label.table')}
+            </span>
 
             <Link
               className="font-medium flex-center gap-2"
@@ -343,9 +343,9 @@ const IncidentManagerPageHeader = ({
         <>
           <Divider className="self-center m-x-sm" type="vertical" />
           <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <span className="text-blue text-sm font-medium">{`${t(
-              'label.column'
-            )}`}</span>
+            <span className="text-blue text-sm font-medium">
+              {t('label.column')}
+            </span>
             <span className="font-medium" data-testid="test-column-name">
               {columnName}
             </span>
@@ -354,9 +354,9 @@ const IncidentManagerPageHeader = ({
       )}
       <Divider className="self-center m-x-sm" type="vertical" />
       <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
-        <span className="text-blue text-sm font-medium">{`${t(
-          'label.test-type'
-        )}`}</span>
+        <span className="text-blue text-sm font-medium">
+          {t('label.test-type')}
+        </span>
         <Tooltip
           placement="bottom"
           title={testCaseData?.testDefinition.description}>
