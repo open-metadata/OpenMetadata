@@ -239,7 +239,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> owners = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
     List<EntityReference> refs = new ArrayList<>();
     for (String owner : owners) {
-      List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToEntities(owner));
+      List<String> ownerTypes = listOrEmpty(fieldToEntities(owner));
       if (ownerTypes.size() != 2) {
         importFailure(printer, invalidMessageCreator.apply(fieldNumber), csvRecord);
         return Collections.emptyList();
@@ -1073,9 +1073,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             printer,
             csvRecord,
             List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
     schema
         .withId(UUID.randomUUID())
         .withName(csvRecord.get(0))
@@ -1151,9 +1151,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             printer,
             csvRecord,
             List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
 
     // Populate table attributes
     table
@@ -1224,9 +1224,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             printer,
             csvRecord,
             List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
 
     String languageStr = csvRecord.get(18);
     StoredProcedureLanguage language = null;
@@ -1370,9 +1370,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         getTagLabels(
             printer,
             csvRecord,
-            List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY)));
+            List.of(Pair.of(4, TagSource.CLASSIFICATION), Pair.of(5, TagSource.GLOSSARY)));
     column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
     column.withOrdinalPosition((int) csvRecord.getRecordNumber() - 1);
 
@@ -1382,12 +1380,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
         table.getColumns().add(column);
       } else {
         String parentFqn = String.join(Entity.SEPARATOR, Arrays.copyOf(parts, parts.length - 1));
-        Column parent =
-            findColumnWithChildren(
-                table.getColumns(), FullyQualifiedName.getParentFQN(columnFullyQualifiedName));
+        Column parent = null;
+        try {
+          parent =
+              findColumnWithChildren(
+                  table.getColumns(), FullyQualifiedName.getParentFQN(columnFullyQualifiedName));
+        } catch (Exception ex) {
+          LOG.warn("parent column not found, will be created");
+        }
         if (parent == null) {
-          importFailure(printer, "Parent column not found: " + parentFqn, csvRecord);
-          return;
+          if (Boolean.TRUE.equals(importResult.getDryRun())) {
+            parent =
+                new Column()
+                    .withName(getLocalColumnName(table.getFullyQualifiedName(), parentFqn))
+                    .withFullyQualifiedName(
+                        table.getFullyQualifiedName() + Entity.SEPARATOR + parentFqn);
+          } else {
+            importFailure(printer, "Parent column not found: " + parentFqn, csvRecord);
+            return;
+          }
         }
         column.withName(parts[parts.length - 1]);
         if (parent.getChildren() == null) parent.setChildren(new ArrayList<>());
