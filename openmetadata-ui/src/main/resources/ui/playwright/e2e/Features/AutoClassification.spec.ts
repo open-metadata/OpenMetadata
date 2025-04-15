@@ -107,7 +107,7 @@ test.describe.skip(
       await test
         .expect(
           page.locator(
-            `[data-row-key*="address"] [data-testid="tag-PII.NonSensitive"] `
+            `[data-row-key*="address"] [data-testid="tag-PII.Sensitive"] `
           )
         )
         .toBeAttached();

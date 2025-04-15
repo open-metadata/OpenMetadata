@@ -22,7 +22,11 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(testSuite.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testSuite.getName()).weight(10).build());
-    doc.put("fqnParts", getFQNParts(testSuite.getFullyQualifiedName()));
+    doc.put(
+        "fqnParts",
+        getFQNParts(
+            testSuite.getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_SUITE);
     doc.put("owners", getEntitiesWithDisplayName(testSuite.getOwners()));

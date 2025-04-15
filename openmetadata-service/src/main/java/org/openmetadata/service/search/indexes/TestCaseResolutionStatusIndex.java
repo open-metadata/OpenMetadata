@@ -29,7 +29,9 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             .build());
     doc.put(
         "fqnParts",
-        getFQNParts(testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName()));
+        getFQNParts(
+            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+            suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("@timestamp", testCaseResolutionStatus.getTimestamp());
     setParentRelationships(doc);
