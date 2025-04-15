@@ -440,7 +440,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
           .withExtension(getExtension(printer, csvRecord, 10));
       if (processRecord) {
-        createEntity(printer, csvRecord, schema);
+        createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
     }
 

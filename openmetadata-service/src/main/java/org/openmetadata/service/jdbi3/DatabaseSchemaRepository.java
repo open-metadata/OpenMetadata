@@ -433,7 +433,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withExtension(getExtension(printer, csvRecord, 10));
 
       if (processRecord) {
-        createEntity(printer, csvRecord, table);
+        createEntity(printer, csvRecord, table, TABLE);
       }
     }
 
