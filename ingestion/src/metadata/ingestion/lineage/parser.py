@@ -453,6 +453,7 @@ class LineageParser:
             lr_sqlparser.get_column_lineage()
             return lr_sqlparser
 
+        lr_sqlparser = None
         try:
             lr_sqlparser = get_sqlparser_lineage_runner(query)
             _ = len(lr_sqlparser.get_column_lineage()) + len(
@@ -472,7 +473,7 @@ class LineageParser:
         except Exception:
             # if both runner have failed we return the usual one
             logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")
-            return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
+            return lr_sqlfluff if lr_sqlfluff else None
 
         self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
         logger.debug(
