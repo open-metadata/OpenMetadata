@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "ما نمی‌توانیم به Elasticsearch برای ایندکس‌های موجودیت {{error}} دسترسی پیدا کنیم.",
     "uninstall-app": "حذف این برنامه {{app}} آن را از OpenMetaData حذف خواهد کرد.",
     "unix-epoch-time-in-ms": "{{prefix}} زمان Unix epoch به میلی‌ثانیه",
+    "unsaved-changes-warning": "ممکن است تغییرات ذخیره نشده‌ای داشته باشید که با بستن از بین خواهند رفت.",
     "update-description-message": "درخواست برای به‌روزرسانی توضیحات برای",
     "update-displayName-entity": "به‌روزرسانی نام نمایشی برای {{entity}}.",
     "update-profiler-settings": "به‌روزرسانی تنظیمات پروفایلر.",

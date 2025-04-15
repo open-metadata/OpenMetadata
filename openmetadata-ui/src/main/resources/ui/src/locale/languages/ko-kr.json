@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "엔터티 인덱스를 위해 Elasticsearch에서 {{error}}할 수 없습니다.",
     "uninstall-app": "이 {{app}} 애플리케이션을 제거하면 OpenMetadata에서 삭제됩니다.",
     "unix-epoch-time-in-ms": "{{prefix}} 밀리초 단위의 Unix 에포크 시간",
+    "unsaved-changes-warning": "저장되지 않은 변경 사항이 있을 수 있으며, ��으면 폐기됩니다.",
     "update-description-message": "설명을 업데이트하라는 요청:",
     "update-displayName-entity": "{{entity}}의 표시 이름을 업데이트하세요.",
     "update-profiler-settings": "프로파일러 설정을 업데이트하세요.",
