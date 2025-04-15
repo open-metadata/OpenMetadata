@@ -13,7 +13,7 @@
 
 import { CSMode } from '../../../enums/codemirror.enum';
 
-type Mode = {
+export type Mode = {
   name: CSMode;
   json?: boolean;
 };

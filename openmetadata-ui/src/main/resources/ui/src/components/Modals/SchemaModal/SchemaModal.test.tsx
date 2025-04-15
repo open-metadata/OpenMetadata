@@ -18,8 +18,10 @@ import { MemoryRouter } from 'react-router-dom';
 import SchemaModal from './SchemaModal';
 
 const onClose = jest.fn();
+const onSave = jest.fn();
 
 const mockProp = {
+  onSave,
   onClose,
   data: {},
 };

@@ -152,6 +152,23 @@
       "examples": [
         "36"
       ]
+    },
+    {
+      "name": "storedProcedure.code",
+      "required": false,
+      "description": "The code definition of the stored procedure. Typically SQL, Python, etc.",
+      "examples": [
+        "CREATE PROCEDURE my_proc() BEGIN SELECT * FROM users; END;"
+      ]
+    },
+    {
+      "name": "storedProcedure.language",
+      "required": false,
+      "description": "The language in which the stored procedure is written. Supported values: SQL, Java, JavaScript, Python, External.",
+      "examples": [
+        "SQL",
+        "Python"
+      ]
     }
   ]
 }
