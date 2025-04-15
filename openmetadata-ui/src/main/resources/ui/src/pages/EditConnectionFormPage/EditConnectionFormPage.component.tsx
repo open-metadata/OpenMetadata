@@ -188,6 +188,10 @@ function EditConnectionFormPage() {
     fetchServiceDetail();
   }, [serviceFQN, serviceCategory]);
 
+  useEffect(() => {
+    serviceUtilClassBase.setEditServiceDetails(serviceDetails);
+  }, [serviceDetails, serviceCategory]);
+
   if (isLoading) {
     return <Loader />;
   }
