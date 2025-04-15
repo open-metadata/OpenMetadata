@@ -148,17 +148,19 @@ export const CustomizablePageHeader = ({
         </Space>
       </div>
 
-      <Modal
-        centered
-        cancelText={t('label.no')}
-        data-testid="reset-layout-modal"
-        okText={t('label.yes')}
-        open={confirmationModalOpen}
-        title={modalTitle}
-        onCancel={handleCloseResetModal}
-        onOk={handleReset}>
-        {modalDescription}
-      </Modal>
+      {confirmationModalOpen && (
+        <Modal
+          centered
+          cancelText={t('label.no')}
+          data-testid="reset-layout-modal"
+          okText={t('label.yes')}
+          open={confirmationModalOpen}
+          title={modalTitle}
+          onCancel={handleCloseResetModal}
+          onOk={handleReset}>
+          {modalDescription}
+        </Modal>
+      )}
     </Card>
   );
 };

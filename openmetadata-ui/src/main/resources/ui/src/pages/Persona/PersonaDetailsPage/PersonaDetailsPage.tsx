@@ -63,7 +63,7 @@ export const PersonaDetailsPage = () => {
       activeKey,
       fullHash: location.hash?.replace('#', ''),
     };
-  }, [location]);
+  }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
