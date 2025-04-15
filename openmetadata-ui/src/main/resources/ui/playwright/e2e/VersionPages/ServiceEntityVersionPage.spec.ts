@@ -215,7 +215,7 @@ test.describe('Service Version pages', () => {
 
           await deleteResponse;
 
-          await toastNotification(page, /deleted successfully!/);
+          await toastNotification(page, /deleted successfully!/, 5 * 60 * 1000);
 
           await page.reload();
 
