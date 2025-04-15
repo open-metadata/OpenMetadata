@@ -19,6 +19,12 @@ Note that if a column is already tagged as `PII`, we will ignore its execution.
 
 ## Troubleshooting
 
+{% note %}
+
+In OpenMetadata, the auto-classification feature primarily applies the PII classification, tagging data as either Sensitive or Non-Sensitive. The General classification, which includes tags like Address, Name, etc., is not available in the OpenMetadata. This functionality is present in the Collate and is expected to be included in the open-source release starting from version 1.7.1.
+
+{% /note %}
+
 ### SSL: CERTIFICATE_VERIFY_FAILED
 
 If you see an error similar to:
