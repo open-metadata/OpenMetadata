@@ -94,7 +94,14 @@ export const getSelectEqualsNotEqualsProperties = (
     },
   };
 };
-
+export const READONLY_SETTINGS = {
+  immutableGroupsMode: true,
+  immutableFieldsMode: true,
+  immutableOpsMode: true,
+  immutableValuesMode: true,
+  canRegroup: false,
+  canRemove: false,
+};
 export const getSelectAnyInProperties = (
   parentPath: Array<string>,
   termObjects: Array<EsTerm>
