@@ -19,13 +19,7 @@ Note that if a column is already tagged as `PII`, we will ignore its execution.
 
 {% note %}
 
-In OpenMetadata, the auto-classification feature primarily applies the PII classification, tagging data as either Sensitive or Non-Sensitive. The General classification, which includes tags like Address, Name, etc., is not available in the open-source version. This functionality is present in the Collate version.
-
-For more information on classifications and tags, refer to the [Classification Overview](/how-to-guides/data-governance/classification/overview).
-
-To stay updated on upcoming releases and features, visit the [OpenMetadata Roadmap](/roadmap).​
-
-If you have further questions or need assistance, feel free to reach out to the [OpenMetadata Slack Community](https://slack.open-metadata.org/).
+In OpenMetadata, the auto-classification feature primarily applies the PII classification, tagging data as either Sensitive or Non-Sensitive. The General classification, which includes tags like Address, Name, etc., is not available in the OpenMetadata. This functionality is present in the Collate version.
 
 {% /note %}
 
