@@ -56,6 +56,7 @@ from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
+    get_view_definition_wrapper,
 )
 
 dialect = SnowflakeDialect()
@@ -271,25 +272,16 @@ def get_stream_names(self, connection, schema, **kw):
 
 
 @reflection.cache
-def get_view_definition(  # pylint: disable=unused-argument
-    self, connection, view_name, schema=None, **kw
-):
-    """
-    Gets the view definition
-    """
-    schema = schema or self.default_schema_name
-    view_name = f"{schema}.{view_name}" if schema else view_name
-    cursor = connection.execute(
-        SNOWFLAKE_GET_VIEW_DEFINITION.format(view_name=view_name)
+def get_view_definition(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=SNOWFLAKE_GET_VIEW_DEFINITION,
     )
-    n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
-    try:
-        ret = cursor.fetchone()
-        if ret:
-            return ret[n2i["text"]]
-    except Exception:
-        pass
-    return None
 
 
 @reflection.cache

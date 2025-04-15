@@ -12,6 +12,7 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { getApiContext, toastNotification } from './common';
@@ -120,7 +121,11 @@ export const deleteService = async (
   await deleteResponse;
 
   // Closing the toast notification
-  await toastNotification(page, /deleted successfully!/, 5 * 60 * 1000); // Wait for up to 5 minutes for the toast notification to appear
+  await toastNotification(
+    page,
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
+  ); // Wait for up to 5 minutes for the toast notification to appear
 
   await page.reload();
   await page.waitForLoadState('networkidle');

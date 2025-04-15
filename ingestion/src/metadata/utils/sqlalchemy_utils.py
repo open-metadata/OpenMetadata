@@ -71,10 +71,13 @@ def get_all_view_definitions(self, connection, query):
     Method to fetch view definition of all available views
     """
     self.all_view_definitions: Dict[Tuple[str, str], str] = {}
-    self.current_db: str = connection.engine.url.database
+    self.current_db: str = connection.engine.url.database  # type: ignore
     result = connection.execute(query)
     for view in result:
-        self.all_view_definitions[(view.view_name, view.schema)] = view.view_def
+        if hasattr(view, "view_def") and hasattr(view, "schema"):
+            self.all_view_definitions[(view.view_name, view.schema)] = view.view_def
+        elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
+            self.all_view_definitions[(view.VIEW_NAME, view.SCHEMA)] = view.VIEW_DEF
 
 
 def get_view_definition_wrapper(self, connection, query, table_name, schema=None):
