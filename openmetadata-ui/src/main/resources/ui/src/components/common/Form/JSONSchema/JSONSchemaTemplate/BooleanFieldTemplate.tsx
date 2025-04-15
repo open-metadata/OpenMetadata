@@ -22,7 +22,7 @@ const BooleanFieldTemplate = (props: FieldProps) => {
       colon={false}
       label={startCase(props.name)}
       labelAlign="left"
-      labelCol={{ span: 8 }}>
+      labelCol={{ span: 10 }}>
       <Switch
         checked={props.formData}
         id={props.idSchema.$id}
