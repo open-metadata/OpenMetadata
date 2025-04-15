@@ -215,6 +215,16 @@ class ServiceUtilClassBase {
     return types.filter((type) => !this.unSupportedServices.includes(type));
   }
 
+  private serviceDetails?: ServicesType;
+
+  public setEditServiceDetails(serviceDetails?: ServicesType) {
+    this.serviceDetails = serviceDetails;
+  }
+
+  public getEditServiceDetails() {
+    return this.serviceDetails;
+  }
+
   public getAddWorkflowData(
     connectionType: string,
     serviceType: ServiceType,
