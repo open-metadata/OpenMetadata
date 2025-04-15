@@ -140,7 +140,7 @@ import {
   getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { bytesToSize, stringToHTML } from './StringsUtils';
+import { bytesToSize, getEncodedFqn, stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -2511,7 +2511,7 @@ export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
   return ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace(
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 };
 
 /**
