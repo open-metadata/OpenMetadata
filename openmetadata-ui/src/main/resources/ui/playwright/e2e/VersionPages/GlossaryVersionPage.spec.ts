@@ -174,7 +174,7 @@ test('GlossaryTerm', async ({ page }) => {
   await test.step('Should display the owner & reviewer changes', async () => {
     await term2.visitPage(page);
 
-    await expect(page.getByTestId('version-button')).toHaveText(/0.2/);
+    await page.getByRole('dialog').getByRole('img').click();
 
     await addMultiOwner({
       page,

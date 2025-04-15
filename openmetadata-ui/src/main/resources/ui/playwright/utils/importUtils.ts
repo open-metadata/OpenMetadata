@@ -38,7 +38,7 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  await page.locator('.InovuaReactDataGrid__cell--cell-active').press('Enter');
+  await page.keyboard.press('Enter');
 
   await page.locator('.ant-layout-content').getByRole('textbox').fill(text);
   await page
@@ -67,6 +67,8 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('Enter', { delay: 100 });
+
+  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
 
   await page.waitForLoadState('networkidle');
 
