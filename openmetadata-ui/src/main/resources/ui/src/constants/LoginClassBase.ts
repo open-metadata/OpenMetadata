@@ -18,7 +18,7 @@ import insightImg from '../assets/img/login-screen/data-insights.png';
 import dataQualityImg from '../assets/img/login-screen/data-quality.png';
 
 class LoginClassBase {
-  public carouselImages() {
+  public carouselImages(): Record<string, string> {
     return {
       dataDiscovery: discoveryImg,
       dataQuality: dataQualityImg,
