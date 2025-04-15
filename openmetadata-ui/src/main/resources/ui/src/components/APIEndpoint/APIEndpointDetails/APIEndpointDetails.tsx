@@ -172,8 +172,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -288,7 +287,9 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                 isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
-                    size="small"
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     onClick={toggleTabExpanded}
                   />
                 )

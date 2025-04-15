@@ -20,6 +20,7 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Lineage](/how-to-guides/data-lineage/workflow)
+- [Troubleshooting](/connectors/database/pinotdb/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/pinotdb/yaml"} /%}
 
@@ -60,7 +61,5 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

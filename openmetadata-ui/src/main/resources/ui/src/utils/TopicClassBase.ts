@@ -61,7 +61,7 @@ class TopicClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.TOPIC_SCHEMA]: 8.5,
+      [DetailPageWidgetKeys.TOPIC_SCHEMA]: 8,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -102,7 +102,7 @@ class TopicClassBase {
         h:
           this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
           this.defaultWidgetHeight[DetailPageWidgetKeys.TOPIC_SCHEMA] +
-          0.3,
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

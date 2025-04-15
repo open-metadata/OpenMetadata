@@ -167,9 +167,9 @@ export const getTagsTableColumn = ({
                 icon={
                   <EditIcon
                     data-testid="editTagDescription"
-                    height={16}
+                    height={14}
                     name="edit"
-                    width={16}
+                    width={14}
                   />
                 }
                 size="small"

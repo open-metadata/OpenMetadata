@@ -17,7 +17,7 @@ from base64 import b64decode
 from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.entity.data.topic import TopicSampleData
+from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.services.connections.messaging.kinesisConnection import (
     KinesisConnection,
 )
@@ -32,7 +32,6 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SourceUrl,
 )
-from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData

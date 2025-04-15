@@ -510,7 +510,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     AppMapper appMapper = new AppMapper();
     App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
     appRepository.prepareInternal(entity, true);
-    appRepository.createOrUpdate(null, entity);
+    appRepository.createOrUpdate(null, entity, ADMIN_USER_NAME);
   }
 
   @Command(

@@ -384,7 +384,8 @@ export const getFormattedEntityData = (
 export const getEntityChildDetails = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
-  highlights?: SearchedDataProps['data'][number]['highlight']
+  highlights?: SearchedDataProps['data'][number]['highlight'],
+  loading?: boolean
 ) => {
   let childComponent;
   let heading;
@@ -456,7 +457,9 @@ export const getEntityChildDetails = (
 
       return (
         <>
-          <Row className="p-md border-radius-card" gutter={[0, 8]}>
+          <Row
+            className="p-md border-radius-card summary-panel-card"
+            gutter={[0, 8]}>
             <Col span={24}>
               <Typography.Text
                 className="summary-panel-section-title"
@@ -465,11 +468,16 @@ export const getEntityChildDetails = (
               </Typography.Text>
             </Col>
             <Col span={24}>
-              <SummaryList formattedEntityData={formattedChartsData} />
+              <SummaryList
+                formattedEntityData={formattedChartsData}
+                loading={loading}
+              />
             </Col>
           </Row>
 
-          <Row className="p-md border-radius-card" gutter={[0, 8]}>
+          <Row
+            className="p-md border-radius-card summary-panel-card"
+            gutter={[0, 8]}>
             <Col span={24}>
               <Typography.Text
                 className="summary-panel-section-title"

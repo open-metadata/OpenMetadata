@@ -249,7 +249,7 @@ public class MigrationUtil {
           }
         }
         workflowDefinition.withConfig(new WorkflowConfiguration());
-        repository.createOrUpdate(null, workflowDefinition);
+        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
       }
     } catch (Exception ex) {
       LOG.error("Error while updating workflow definitions", ex);
@@ -291,9 +291,9 @@ public class MigrationUtil {
         "assets_with_pii_bar",
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
-            .withxAxisField("tags.tagFQN")
-            .withIncludeXAxisFiled("pii.*")
-            .withGroupBy("tags.name.keyword"),
+            .withxAxisField("columns.tags.tagFQN")
+            .withIncludeXAxisFiled("PII.*")
+            .withGroupBy("columns.tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
     createChart(
@@ -330,8 +330,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
-                                + " pii.nonsensitive OR tags.tagFQN: pii.none')/count(k='id.keyword'))*100"))));
+                            "(count(q='columns.tags.tagFQN: pii.*')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_tier",
@@ -564,7 +563,7 @@ public class MigrationUtil {
           if (rule.getName().equals("LineageBotRule-Allow")
               && !rule.getOperations().contains(MetadataOperation.EDIT_ALL)) {
             rule.getOperations().add(MetadataOperation.EDIT_ALL);
-            policyRepository.createOrUpdate(null, policy);
+            policyRepository.createOrUpdate(null, policy, ADMIN_USER_NAME);
           }
         }
       }

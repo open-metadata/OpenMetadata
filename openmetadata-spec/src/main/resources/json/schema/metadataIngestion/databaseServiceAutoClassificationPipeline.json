@@ -53,13 +53,13 @@
     "storeSampleData": {
       "description": "Option to turn on/off storing sample data. If enabled, we will ingest sample data for each table.",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "title": "Store Sample Data"
     },
     "enableAutoClassification": {
       "description": "Optional configuration to automatically tag columns that might contain sensitive information",
       "type": "boolean",
-      "default": false,
+      "default": true,
       "title": "Enable Auto Classification"
     },
     "confidence": {

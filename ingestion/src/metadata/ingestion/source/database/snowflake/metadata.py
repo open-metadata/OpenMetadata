@@ -470,6 +470,8 @@ class SnowflakeSource(
                     classification_name=row[0],
                     tag_description="SNOWFLAKE TAG VALUE",
                     classification_description="SNOWFLAKE TAG NAME",
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
     def _get_table_names_and_types(

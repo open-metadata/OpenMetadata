@@ -7,7 +7,7 @@ slug: /connectors/database/bigquery/yaml
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -23,7 +23,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
-- [Reverse Metadata Ingestion](/connectors/ingestion/workflows/reverse-metadata)
+{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
@@ -75,6 +75,8 @@ description="Checkout this documentation on how to create a custom role and assi
 link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
+
+{% partial file="/v1.7/connectors/database/partitioned-tables.md" /%}
 
 ## Metadata Ingestion
 

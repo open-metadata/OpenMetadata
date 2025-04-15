@@ -10,32 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import Icon from '@ant-design/icons';
 import classNames from 'classnames';
 import React from 'react';
-import { ReactComponent as DeprecatedIcon } from '../../../assets/svg/arrow-down-colored.svg';
-import { ReactComponent as ApprovedIcon } from '../../../assets/svg/check-colored.svg';
-import { ReactComponent as DraftIcon } from '../../../assets/svg/clipboard-colored.svg';
-import { ReactComponent as InReviewIcon } from '../../../assets/svg/eye-colored.svg';
-import { ReactComponent as RejectedIcon } from '../../../assets/svg/x-colored.svg';
-import { Status } from '../../../generated/entity/data/glossaryTerm';
+import { AllStatusTypes, icons } from '../../../constants/StatusBadge.constant';
 import './status-badge.less';
 import { StatusBadgeProps } from './StatusBadge.interface';
 
-const icons = {
-  [Status.Approved]: ApprovedIcon,
-  [Status.Rejected]: RejectedIcon,
-  [Status.InReview]: InReviewIcon,
-  [Status.Draft]: DraftIcon,
-  [Status.Deprecated]: DeprecatedIcon,
-} as const;
-
-const StatusBadge = ({ label, status, dataTestId }: StatusBadgeProps) => {
-  const StatusIcon = icons[label as Status];
+const StatusBadge = ({
+  label,
+  status,
+  dataTestId,
+  className,
+}: StatusBadgeProps) => {
+  const StatusIcon = label
+    ? icons[label as AllStatusTypes] ||
+      icons[label.toLowerCase() as AllStatusTypes]
+    : undefined;
 
   return (
     <div
-      className={classNames('status-badge', status)}
+      className={classNames('status-badge', status, className)}
       data-testid={dataTestId}>
       {StatusIcon && <Icon component={StatusIcon} />}
       <span className={`status-badge-label ${status}`}>{label}</span>

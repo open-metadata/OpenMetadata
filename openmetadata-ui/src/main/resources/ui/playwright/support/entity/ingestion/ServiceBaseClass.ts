@@ -18,6 +18,7 @@ import {
   PlaywrightWorkerArgs,
   TestType,
 } from '@playwright/test';
+import { MAX_CONSECUTIVE_ERRORS } from '../../../constant/service';
 import {
   descriptionBox,
   getApiContext,
@@ -30,6 +31,7 @@ import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   deleteService,
   getServiceCategoryFromService,
+  makeRetryRequest,
   Services,
   testConnection,
 } from '../../../utils/serviceIngestion';
@@ -220,17 +222,15 @@ class ServiceBaseClass {
   async submitService(page: Page) {
     await page.getByTestId('submit-btn').getByText('Next').click();
 
-    const dayOneExperienceApplicationRequest = page.waitForRequest(
+    const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>
-        request
-          .url()
-          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.url().includes('/api/v1/apps/trigger/AutoPilotApplication') &&
         request.method() === 'POST'
     );
 
     await page.getByTestId('submit-btn').getByText('Save').click();
 
-    await dayOneExperienceApplicationRequest;
+    await autoPilotApplicationRequest;
   }
 
   async scheduleIngestion(page: Page) {
@@ -303,19 +303,31 @@ class ServiceBaseClass {
     )[0];
 
     const oneHourBefore = Date.now() - 86400000;
+    let consecutiveErrors = 0;
 
     await expect
       .poll(
         async () => {
-          const response = await apiContext
-            .get(
-              `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+          try {
+            const response = await makeRetryRequest({
+              url: `/api/v1/services/ingestionPipelines/${encodeURIComponent(
                 workflowData.fullyQualifiedName
-              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
-            )
-            .then((res) => res.json());
+              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`,
+              page,
+            });
+            consecutiveErrors = 0; // Reset error counter on success
 
-          return response.data[0]?.pipelineState;
+            return response.data[0]?.pipelineState;
+          } catch (error) {
+            consecutiveErrors++;
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+              throw new Error(
+                `Failed to get pipeline status after ${MAX_CONSECUTIVE_ERRORS} consecutive attempts`
+              );
+            }
+
+            return 'running';
+          }
         },
         {
           // Custom expect message for reporting, optional.
@@ -339,7 +351,6 @@ class ServiceBaseClass {
     await page.waitForSelector('[data-testid="data-assets-header"]');
 
     await pipelinePromise;
-
     await statusPromise;
 
     await page.waitForSelector('[data-testid="agents"]');
@@ -350,6 +361,21 @@ class ServiceBaseClass {
     }
     await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
+
+    const pipelineStatus = await page
+      .locator(`[data-row-key*="${workflowData.name}"]`)
+      .getByTestId('pipeline-status')
+      .last()
+      .textContent();
+    // add logs to console for failed pipelines
+    if (pipelineStatus?.toLowerCase() === 'failed') {
+      const logsResponse = await apiContext
+        .get(`/api/v1/services/ingestionPipelines/logs/${workflowData.id}/last`)
+        .then((res) => res.json());
+
+      // eslint-disable-next-line no-console
+      console.log(logsResponse);
+    }
 
     await expect(
       page

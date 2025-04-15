@@ -34,16 +34,13 @@
 }
 
 .ant-btn.more-owners-button {
-  background-color: @background-tertiary;
-  height: 32px;
-  width: 32px;
+  background-color: @blue-11 !important;
   border-radius: 200px;
   text-align: center;
   text-decoration: none;
   margin-left: -4px;
-  &:hover {
-    background-color: @background-quaternary;
-  }
+  border: 1px solid @blue-24 !important;
+  color: @blue-24;
 }
 .extra-avatar {
   background-color: #f9f5ff;
@@ -52,10 +49,6 @@
   font-style: normal;
   font-weight: 500;
   line-height: 18px;
-}
-.no-owner.ant-typography,
-.more-owners-button.ant-typography {
-  color: @primary-heading-color;
 }
 
 .owner-avatar-container {
@@ -68,6 +61,17 @@
       z-index: 1;
     }
   }
+
+  &.stacked-view {
+    position: relative;
+  }
+
+  &.is-compact-view {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
 }
 
 .owner-dropdown-container {
@@ -79,8 +83,9 @@
   max-height: 250px;
   overflow-y: auto;
 }
-.no-owner-text {
-  color: @grey-700;
+
+.ant-typography.no-owner-heading {
+  color: @blue-9;
 }
 
 .owner-count-avatar {

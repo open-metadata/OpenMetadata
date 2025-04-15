@@ -60,6 +60,7 @@ const DomainSelectableList = ({
   multiple = false,
   onCancel,
   wrapInButton = true,
+  showAllDomains = false,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -108,6 +109,7 @@ const DomainSelectableList = ({
           <DomainSelectablTree
             initialDomains={initialDomains}
             isMultiple={multiple}
+            showAllDomains={showAllDomains}
             value={selectedDomainsList as string[]}
             visible={popupVisible || Boolean(popoverProps?.open)}
             onCancel={handleCancel}
@@ -131,6 +133,7 @@ const DomainSelectableList = ({
             title={t('label.edit-entity', {
               entity: t('label.domain'),
             })}
+            onClick={(e) => e.stopPropagation()}
           />
         )}
       </Popover>

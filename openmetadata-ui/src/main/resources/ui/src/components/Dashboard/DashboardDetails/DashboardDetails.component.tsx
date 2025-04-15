@@ -102,7 +102,7 @@ const DashboardDetails = ({
         dashboardDetails.id
       );
       setDashboardPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.dashboard'),
@@ -203,8 +203,7 @@ const DashboardDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -319,7 +318,9 @@ const DashboardDetails = ({
                 isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
-                    size="small"
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     onClick={toggleTabExpanded}
                   />
                 )

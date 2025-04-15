@@ -32,13 +32,11 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.HttpUrl;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -83,7 +81,8 @@ public class SettingsCache {
         Entity.getSystemRepository().getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = getDefaultSmtpSettings();
+      SmtpSettings emailConfig =
+          applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings();
 
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
@@ -95,14 +94,11 @@ public class SettingsCache {
         Entity.getSystemRepository()
             .getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
     if (storedOpenMetadataBaseUrlConfiguration == null) {
-      String url =
-          new HttpUrl.Builder().scheme("http").host("localhost").port(8585).build().toString();
-      String baseUrl = url.substring(0, url.length() - 1);
-
       Settings setting =
           new Settings()
               .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(baseUrl));
+              .withConfigValue(
+                  applicationConfig.getOperationalApplicationConfigProvider().getServerUrl());
       Entity.getSystemRepository().createNewSetting(setting);
     }
 

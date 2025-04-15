@@ -7,7 +7,7 @@ slug: /connectors/database/redshift
 name="Redshift"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -24,7 +24,9 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-redshift-connection-with-ssl-in-openmetadata)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/redshift/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
 
 ## Requirements
@@ -127,18 +129,6 @@ Under `Advanced Config`, specify the SSL mode appropriate for your connection, s
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/database/redshift/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata Ingestion
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-Redshift supports the following reverse metadata ingestion features:
-- Full support for Description updates (Database, Schema, Table, Column)
-- Owner management (Database, Schema, Table)
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

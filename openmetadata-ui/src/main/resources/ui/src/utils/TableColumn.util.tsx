@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import React from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import { ICON_DIMENSION } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { EntityReference } from '../generated/type/entityReference';
 import i18n from './i18next/LocalUtil';
@@ -28,7 +27,6 @@ export const columnFilterIcon = (filtered: boolean) => (
     })}
     component={FilterIcon}
     data-testid="filter-icon"
-    style={ICON_DIMENSION}
   />
 );
 

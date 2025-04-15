@@ -35,7 +35,7 @@ describe('UserImportResult component', () => {
     expect(
       await screen.findByTestId('import-result-table')
     ).toBeInTheDocument();
-    expect(row).toHaveLength(3);
+    expect(row).toHaveLength(4);
   });
 
   it('Component should render id no data provided', async () => {

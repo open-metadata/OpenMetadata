@@ -66,21 +66,25 @@ def test_connection(
     """
 
     def custom_url_exec():
-        if (
-            "application/json" in client.headers.get("content-type")
-            and client.status_code == 200
-        ):
+        if client.status_code == 200:
             return []
         raise SchemaURLError(
-            "Failed to parse JSON schema url. Please check if provided url is valid JSON schema."
+            "Failed to connect to the JSON schema url. Please check the url and credentials. Status Code was: "
+            + str(client.status_code)
         )
 
     def custom_schema_exec():
-        if client.json().get("openapi") is not None:
-            return []
-        raise InvalidOpenAPISchemaError(
-            "Provided schema is not valid OpenAPI JSON schema"
-        )
+        try:
+            if client.json() is not None and client.json().get("openapi") is not None:
+                return []
+
+            raise InvalidOpenAPISchemaError(
+                "Provided schema is not valid OpenAPI JSON schema"
+            )
+        except:
+            raise InvalidOpenAPISchemaError(
+                "Provided schema is not valid OpenAPI JSON schema"
+            )
 
     test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 

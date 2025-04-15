@@ -58,12 +58,12 @@
       {
         "name": "database.displayName",
         "type": "terms",
-        "field": "database.displayName.keyword"
+        "field": "database.displayName"
       },
       {
         "name": "databaseSchema.displayName",
         "type": "terms",
-        "field": "databaseSchema.displayName.keyword"
+        "field": "databaseSchema.displayName"
       }
     ],
     "highlightFields": [
@@ -94,6 +94,18 @@
         "factor": 4.0,
         "modifier": "sqrt",
         "missing": 1
+      },
+      {
+        "field": "totalVotes",
+        "factor": 2.0,
+        "modifier": "sqrt",
+        "missing": 0
+      },
+      {
+        "field": "usageSummary.weeklyStats.percentileRank",
+        "factor": 0.05,
+        "modifier": "none",
+        "missing": 0
       }
     ]
   },
@@ -260,6 +272,20 @@
         "name",
         "description",
         "displayName"
+      ],
+      "fieldValueBoosts": [
+        {
+          "field": "usageSummary.monthlyStats.count", 
+          "factor": 3.0,
+          "modifier": "log1p",
+          "missing": 0
+        },
+        {
+          "field": "usageSummary.monthlyStats.percentileRank",
+          "factor": 0.1,
+          "modifier": "none",
+          "missing": 0
+        }
       ]
     },
     {
@@ -2212,6 +2238,33 @@
         {
           "name": "fqnParts",
           "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchy components."
+        }
+      ]
+    }
+  ],
+  "allowedFieldValueBoosts": [
+    {
+      "entityType": "default",
+      "fields": [
+        {
+          "name": "totalVotes",
+          "description": "Total number of votes (upvotes minus downvotes) received by the entity. Universal metric for boosting community-endorsed entities."
+        },
+        {
+          "name": "upVotes",
+          "description": "Number of upvotes received by the entity. Universal metric for boosting positively rated entities."
+        },
+        {
+          "name": "usageSummary.weeklyStats.count",
+          "description": "Weekly usage count of an entity. Generic usage statistic that applies to various entity types."
+        },
+        {
+          "name": "usageSummary.dailyStats.count",
+          "description": "Daily usage count of an entity. Generic recent usage statistic."
+        },
+        {
+          "name": "usageSummary.monthlyStats.count",
+          "description": "Monthly usage count of an entity. Generic long-term usage statistic."
         }
       ]
     }

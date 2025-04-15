@@ -47,7 +47,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
@@ -55,10 +55,7 @@ import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-t
 import { ReactComponent as UserIcon } from '../../../../assets/svg/ic-user-profile.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import {
-  DE_ACTIVE_COLOR,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -124,7 +121,8 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../../utils/EntityUtils';
-import { UserAvatarGroup } from '../../../common/OwnerLabel/UserAvatarGroup.component';
+import { getUserPath } from '../../../../utils/RouterUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -326,12 +324,12 @@ export const TaskTabNew = ({
             {taskColumnName}
 
             <Typography.Text
-              className="break-all text-sm entity-link header-link"
+              className="break-all text-sm entity-link header-link whitespace-normal"
               data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
             </Typography.Text>
 
-            <Typography.Text className="p-l-xss entity-type header-link">{`(${entityType})`}</Typography.Text>
+            <Typography.Text className="p-l-xss entity-type header-link whitespace-normal">{`(${entityType})`}</Typography.Text>
           </Button>
         </EntityPopOverCard>
       ) : null,
@@ -875,13 +873,21 @@ export const TaskTabNew = ({
               {t('label.created-by')}
             </Typography.Text>
           </Col>
-          <Col className="flex items-center gap-2" span={16}>
-            <UserPopOverCard userName={taskThread.createdBy ?? ''}>
-              <div className="d-flex items-center">
-                <ProfilePicture name={taskThread.createdBy ?? ''} width="24" />
-              </div>
-            </UserPopOverCard>
-            <Typography.Text>{taskThread.createdBy}</Typography.Text>
+          <Col span={16}>
+            <Link
+              className="no-underline flex items-center gap-2"
+              to={getUserPath(taskThread.createdBy ?? '')}>
+              <UserPopOverCard userName={taskThread.createdBy ?? ''}>
+                <div className="d-flex items-center">
+                  <ProfilePicture
+                    name={taskThread.createdBy ?? ''}
+                    width="24"
+                  />
+                </div>
+              </UserPopOverCard>
+
+              <Typography.Text>{taskThread.createdBy}</Typography.Text>
+            </Link>
           </Col>
 
           {isEditAssignee ? (
@@ -958,9 +964,11 @@ export const TaskTabNew = ({
                     </Typography.Text>
                   </div>
                 ) : (
-                  <UserAvatarGroup
-                    className="p-t-05"
+                  <OwnerLabel
+                    avatarSize={24}
+                    isCompactView={false}
                     owners={taskThread?.task?.assignees}
+                    showLabel={false}
                   />
                 )}
                 {(isCreator || hasEditAccess) &&
@@ -969,7 +977,7 @@ export const TaskTabNew = ({
                   <Button
                     className="flex-center p-0 h-auto"
                     data-testid="edit-assignees"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                    icon={<EditIcon width="14px" />}
                     size="small"
                     type="text"
                     onClick={() => setIsEditAssignee(true)}

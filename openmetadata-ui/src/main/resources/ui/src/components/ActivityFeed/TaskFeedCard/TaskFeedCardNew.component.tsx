@@ -57,7 +57,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { UserAvatarGroup } from '../../common/OwnerLabel/UserAvatarGroup.component';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './task-feed-card.less';
 
@@ -360,10 +360,11 @@ const TaskFeedCard = ({
                       : ''
                   }`}>
                   <AssigneesIcon height={20} width={20} />
-                  <UserAvatarGroup
-                    avatarSize="24"
-                    className="p-t-05"
+                  <OwnerLabel
+                    avatarSize={24}
+                    isCompactView={false}
                     owners={feed?.task?.assignees}
+                    showLabel={false}
                   />
                 </Col>
               </Col>

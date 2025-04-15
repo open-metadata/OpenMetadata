@@ -96,6 +96,26 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    type: 'container',
+  }),
+}));
+
+jest.mock('../../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn(),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue([
+      'name',
+      'description',
+      'dataTypeDisplay',
+      'tags',
+      'glossary',
+    ]),
+  handleUpdateTableColumnSelections: jest.fn(),
+}));
+
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   ...jest.requireActual('../../../utils/TableTags/TableTags.utils'),
   getFilterTags: jest.fn().mockReturnValue({
@@ -153,12 +173,12 @@ describe('ContainerDataModel', () => {
     );
     const rows = await screen.findAllByRole('row');
 
-    const row1 = rows[0];
+    const row1 = rows[1];
 
     expect(containerDataModel).toBeInTheDocument();
 
     // should render header row and content row
-    expect(rows).toHaveLength(4);
+    expect(rows).toHaveLength(5);
 
     const name = await findByText(row1, 'department_id');
     const dataType = await findByText(row1, 'numeric');

@@ -17,7 +17,7 @@ import {
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
-import { descriptionBox, uuid } from './common';
+import { descriptionBox, descriptionBoxReadOnly, uuid } from './common';
 import {
   addCustomPropertiesForEntity,
   fillTableColumnInputDetails,
@@ -102,7 +102,11 @@ export const fillTagDetails = async (page: Page, tag: string) => {
     .press('Enter', { delay: 100 });
 
   await page.click('[data-testid="tag-selector"]');
+  const waitForQueryResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+  );
   await page.locator('[data-testid="tag-selector"] input').fill(tag);
+  await waitForQueryResponse;
   await page.click(`[data-testid="tag-${tag}"]`);
   await page.click('[data-testid="inline-save-btn"]');
   await page.click('.InovuaReactDataGrid__cell--cell-active');
@@ -166,6 +170,10 @@ const editGlossaryCustomProperty = async (
       .getByTestId('value-input')
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
     await page.getByTestId('inline-save-btn').click();
+
+    await expect(
+      page.getByTestId(propertyName).getByTestId('value')
+    ).toHaveText(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
@@ -180,6 +188,10 @@ const editGlossaryCustomProperty = async (
     await page.waitForSelector(descriptionBox, {
       state: 'detached',
     });
+
+    await expect(
+      page.getByTestId(propertyName).locator(descriptionBoxReadOnly)
+    ).toContainText('### Overview');
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
@@ -189,6 +201,10 @@ const editGlossaryCustomProperty = async (
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
 
     await page.getByTestId('inline-save-btn').click();
+
+    await expect(
+      page.getByTestId(propertyName).locator('.CodeMirror-lines')
+    ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
   }
 
   if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
@@ -202,6 +218,14 @@ const editGlossaryCustomProperty = async (
     await fillTableColumnInputDetails(page, values[1], columns[1]);
 
     await page.locator('[data-testid="update-table-type-property"]').click();
+
+    await expect(
+      page.getByTestId(propertyName).getByRole('cell', { name: columns[0] })
+    ).toBeVisible();
+
+    await expect(
+      page.getByTestId(propertyName).getByRole('cell', { name: values[0] })
+    ).toBeVisible();
   }
 };
 

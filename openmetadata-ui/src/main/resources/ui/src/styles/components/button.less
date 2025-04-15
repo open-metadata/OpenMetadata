@@ -25,7 +25,7 @@ button {
   }
 }
 
-.ant-btn.ant-btn-default {
+.ant-btn.ant-btn-default:not(:hover) {
   border-color: @blue-15;
 }
 
@@ -117,9 +117,24 @@ button {
     height: 40px;
     min-width: 50px;
     padding: 10px 16px;
-    background-color: @background-color;
     border-radius: 8px;
     box-shadow: 0px 1px 2px 0px #0a0d120f, 0px 1px 3px 0px #0a0d121a;
+  }
+
+  .ant-btn-primary:first-child:not(:last-child) {
+    border-right-color: transparent;
+  }
+
+  .ant-btn-default:not(.ant-btn-primary):not([disabled]) {
+    border-left-color: @blue-15;
+
+    &:hover {
+      border-left-color: @primary-color;
+    }
+  }
+
+  .ant-btn-default {
+    background-color: @background-color;
 
     &:hover {
       background-color: @blue-11;

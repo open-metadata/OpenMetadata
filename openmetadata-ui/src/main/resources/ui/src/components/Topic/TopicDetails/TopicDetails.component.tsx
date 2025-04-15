@@ -241,8 +241,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -422,7 +421,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                 isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
-                    size="small"
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     onClick={toggleTabExpanded}
                   />
                 )

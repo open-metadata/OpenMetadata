@@ -46,6 +46,7 @@ import { GenericProvider } from '../../Customization/GenericProvider/GenericProv
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
+import './metric.less';
 import { MetricDetailsProps } from './MetricDetails.interface';
 
 const MetricDetails: React.FC<MetricDetailsProps> = ({
@@ -154,8 +155,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     getFeedCounts(EntityType.METRIC, decodedMetricFqn, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push(ROUTES.METRICS),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push(ROUTES.METRICS),
     []
   );
 
@@ -266,7 +266,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
           permissions={metricPermissions}
           type={EntityType.METRIC as CustomizeEntityType}
           onUpdate={onMetricUpdate}>
-          <Col span={24}>
+          <Col className="metric-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"
@@ -276,7 +276,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                 isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
-                    size="small"
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     onClick={toggleTabExpanded}
                   />
                 )

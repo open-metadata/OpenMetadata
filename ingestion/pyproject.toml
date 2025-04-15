@@ -13,7 +13,7 @@ authors = [
 ]
 license = { file = "LICENSE" }
 description = "Ingestion Framework for OpenMetadata"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://open-metadata.org/"

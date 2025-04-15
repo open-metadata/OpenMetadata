@@ -167,7 +167,8 @@ export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
   field: string,
   value: string,
-  q: string
+  q: string,
+  sourceFields?: string
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -177,6 +178,7 @@ export const getAggregateFieldOptions = (
     field,
     value: withWildCardValue,
     q,
+    sourceFields,
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(

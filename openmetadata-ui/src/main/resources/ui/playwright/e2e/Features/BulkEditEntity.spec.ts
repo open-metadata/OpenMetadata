@@ -221,7 +221,7 @@ test.describe('Bulk Edit Entity', () => {
     await afterAction();
   });
 
-  test.skip('Database', async ({ page }) => {
+  test('Database', async ({ page }) => {
     test.slow(true);
 
     let customPropertyRecord: Record<string, string> = {};

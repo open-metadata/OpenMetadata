@@ -412,7 +412,7 @@ const NavBar = ({
                 isSidebarCollapsed ? t('label.expand') : t('label.collapse')
               }>
               <Button
-                className="mr-2"
+                className="mr-2 w-6 h-6 p-0 flex-center"
                 data-testid="sidebar-toggle"
                 icon={
                   isSidebarCollapsed ? (
@@ -429,6 +429,7 @@ const NavBar = ({
             <GlobalSearchBar />
             <DomainSelectableList
               hasPermission
+              showAllDomains
               popoverProps={{
                 open: isDomainDropdownOpen,
                 onOpenChange: (open) => {
@@ -504,7 +505,7 @@ const NavBar = ({
               trigger={['click']}
               onOpenChange={handleBellClick}>
               <Button
-                className="flex-center p-sm"
+                className="flex-center"
                 icon={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
@@ -512,7 +513,6 @@ const NavBar = ({
                     <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
-                size="large"
                 title={t('label.notification-plural')}
                 type="text"
               />
@@ -526,10 +526,9 @@ const NavBar = ({
               placement="bottomRight"
               trigger={['click']}>
               <Button
-                className="flex-center p-sm"
+                className="flex-center"
                 data-testid="help-icon"
                 icon={<Help width={20} />}
-                size="large"
                 title={t('label.need-help')}
                 type="text"
               />

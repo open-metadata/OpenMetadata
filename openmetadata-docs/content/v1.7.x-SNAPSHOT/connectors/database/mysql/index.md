@@ -7,7 +7,7 @@ slug: /connectors/database/mysql
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -22,7 +22,9 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
+- [Troubleshooting](/connectors/database/mysql/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
 
 ## Requirements
@@ -235,7 +237,7 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ## Securing MySQL Connection with SSL in OpenMetadata
 
-To establish secure connections between OpenMetadata and MySQL, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`.  Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
+To establish secure connections between OpenMetadata and MySQL, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`.  Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client's SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server's certificate.
 
 {% image
   src="/images/v1.7/connectors/ssl_connection.png"
@@ -243,27 +245,6 @@ To establish secure connections between OpenMetadata and MySQL, navigate to the 
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/database/mysql/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata Ingestion
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-MySQL supports the following reverse metadata ingestion features:
-- Support for table description updates
-
-### Requirements for Reverse Metadata
-
-In addition to the basic ingestion requirements, for reverse metadata ingestion the user needs:
-- `ALTER` privileges on tables to update descriptions
-
-```sql
--- Grant required privileges for reverse metadata
-GRANT ALTER ON DATABASE_NAME.TABLE_NAME TO 'USER_NAME'@'%';
-```
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

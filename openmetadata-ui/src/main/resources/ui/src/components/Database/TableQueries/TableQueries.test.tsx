@@ -124,7 +124,9 @@ describe('Test TableQueries Component', () => {
       wrapper: MemoryRouter,
     });
     const queryCards = screen.queryAllByText('QueryCard');
-    const noDataPlaceholder = await screen.findByTestId('no-queries');
+    const noDataPlaceholder = await screen.findByTestId(
+      'create-error-placeholder-label.query-lowercase-plural'
+    );
 
     expect(queryCards).toHaveLength(0);
     expect(noDataPlaceholder).toBeInTheDocument();

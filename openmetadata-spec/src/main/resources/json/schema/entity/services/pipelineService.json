@@ -34,7 +34,8 @@
         "DBTCloud",
         "Matillion",
         "Stitch",
-        "DataFactory"
+        "DataFactory",
+        "Wherescape"
       ],
       "javaEnums": [
         {
@@ -90,6 +91,9 @@
         },
         {
           "name": "Stitch"
+        },
+        {
+          "name": "Wherescape"
         }
       ]
     },
@@ -106,6 +110,9 @@
           "oneOf": [
             {
               "$ref": "./connections/pipeline/airflowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/wherescapeConnection.json"
             },
             {
               "$ref": "./connections/pipeline/gluePipelineConnection.json"
@@ -249,7 +256,7 @@
       "description": "Domain the Pipeline service belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "ingestionAgent" : {
+    "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }

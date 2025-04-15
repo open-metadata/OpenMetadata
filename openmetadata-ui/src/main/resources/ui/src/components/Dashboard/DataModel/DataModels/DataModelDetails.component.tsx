@@ -151,8 +151,7 @@ const DataModelDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -256,7 +255,9 @@ const DataModelDetails = ({
                 isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
-                    size="small"
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     onClick={toggleTabExpanded}
                   />
                 )

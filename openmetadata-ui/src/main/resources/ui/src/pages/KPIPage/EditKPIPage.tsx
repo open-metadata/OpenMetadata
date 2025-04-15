@@ -226,8 +226,9 @@ const EditKPIPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className:
-          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
+        className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
           <div data-testid="edit-kpi-container">
             <TitleBreadcrumb className="m-t-0 my-4" titleLinks={breadcrumb} />

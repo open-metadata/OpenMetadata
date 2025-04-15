@@ -43,9 +43,11 @@ class CSVUtilsClassBase {
       'extension',
       'synonyms',
       'description',
+      'tags',
       'glossaryTerms',
       'relatedTerms',
       'column.description',
+      'column.tags',
       'column.glossaryTerms',
     ];
   }
@@ -136,9 +138,7 @@ class CSVUtilsClassBase {
             : undefined;
 
           const handleChange = (tags: TagLabel[]) => {
-            props.onChange(
-              tags.map((tag) => tag.tagFQN.replaceAll('"', '""')).join(';')
-            );
+            props.onChange(tags.map((tag) => tag.tagFQN).join(';'));
           };
 
           return (
@@ -317,10 +317,7 @@ class CSVUtilsClassBase {
           };
 
           return (
-            <InlineEdit
-              className="w-full"
-              onCancel={props.onCancel}
-              onSave={props.onComplete}>
+            <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
               <Select
                 options={ENTITY_TYPE_OPTIONS}
                 size="small"

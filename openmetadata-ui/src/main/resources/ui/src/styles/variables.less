@@ -36,6 +36,8 @@
 @green-11: #3f9593;
 @green-12: #d1fadf;
 @green-13: #039855;
+@green-14: #507a02;
+@green-15: #f7ffe7;
 
 @yellow-1: #fbf2db;
 @yellow-2: #ffbe0e;
@@ -66,6 +68,8 @@
 @red-14: #d92d20;
 @red-15: #e52315;
 @red-16: #7e2410;
+@red-17: #c01048;
+@red-18: #fff1f3;
 @orange-1: #fff6ed;
 @orange-2: #c4320a;
 
@@ -95,6 +99,7 @@
 @blue-21: #026aa2;
 @blue-22: #f0f9ff;
 @blue-23: #e6f1fe;
+@blue-24: #2e90fa;
 
 @partial-success-1: #06a4a4;
 @partial-success-2: #bdeeee;
@@ -123,6 +128,7 @@
 @grey-18: #afb5d9;
 @grey-19: #363f72;
 @grey-20: #dce3ec;
+@grey-21: #ababab;
 
 @text-grey-muted: @grey-4;
 @de-active-color: #6b7280;
@@ -210,25 +216,55 @@
 @page-height: calc(100vh - @om-navbar-height - @padding-mlg);
 @left-side-panel-width: 230px;
 
-// 172px - navbar height
-@entity-details-tab-height: calc(100vh - 172px - @om-navbar-height);
+@data-asset-header-height: 0px; // Original height: 230px currently set to 0 to allow full scroll
+@data-asset-header-height-versions-page: 114px;
+@tab-height: 60px;
+
+@entity-details-tab-height: calc(
+  100vh - @data-asset-header-height - @tab-height - @om-navbar-height - @size-md
+);
+@entity-version-page-tabs-height: calc(
+  100vh - @data-asset-header-height-versions-page - @tab-height -
+    @om-navbar-height - @size-md
+);
+
+@app-details-page-tabs-height: calc(
+  100vh - 132px - @tab-height - @om-navbar-height - @size-md
+);
+@app-install-page-tabs-height: calc(
+  100vh - 70px - @om-navbar-height - @size-md
+);
+
 @users-page-tabs-height: calc(100vh - @om-navbar-height - 58px);
+
+@services-page-tabs-height: calc(
+  100vh - 36px - @tab-height - @om-navbar-height - @size-md
+);
 /* navbar+tab_height+padding = 64+46+12  */
 
-// 142px - navbar height
-@glossary-page-height: calc(100vh - 142px - @om-navbar-height);
+@glossary-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// 136px - navbar height
-@domain-page-height: calc(100vh - 136px - @om-navbar-height);
+@domain-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// 136px - navbar height
-@glossary-term-page-height: calc(100vh - 136px - @om-navbar-height);
+@incident-manager-page-height: calc(
+  100vh - 154px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// 136px - navbar height
-@tag-page-height: calc(100vh - 136px - @om-navbar-height);
+@glossary-term-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
 
-// Navbar height - 49px for filter bar on explore page
-@explore-page-height: calc(100vh - @om-navbar-height - 49px);
+@tag-page-height: calc(
+  100vh - 96px - @tab-height - @om-navbar-height - @size-mlg
+);
+@metric-page-height: calc(
+  100vh - 188px - @tab-height - @om-navbar-height - @size-mlg
+);
+
 @welcome-page-height: calc(100vh - 112px);
 
 @profile-page-sidebar: calc(100vh - @om-navbar-height - 40px);
@@ -241,8 +277,6 @@
 // 152px - navbar height
 @glossary-page-tab-height: calc(100vh - 152px - @om-navbar-height);
 @lineage-sidebar-width: 110px;
-
-@explore-content-height-resizable-panel: calc(100vh - 144px);
 
 // Severity
 @severity-1: #9c0700;

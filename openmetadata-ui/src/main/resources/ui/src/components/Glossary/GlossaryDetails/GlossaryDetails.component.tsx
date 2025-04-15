@@ -156,9 +156,9 @@ const GlossaryDetails = ({
 
   return (
     <Row
-      className="glossary-details p-t-sm"
+      className="glossary-details"
       data-testid="glossary-details"
-      gutter={[0, 16]}>
+      gutter={[0, 12]}>
       <Col span={24}>
         <GlossaryHeader
           updateVote={updateVote}
@@ -166,7 +166,7 @@ const GlossaryDetails = ({
           onDelete={handleGlossaryDelete}
         />
       </Col>
-      <Col span={24}>
+      <Col className="glossary-page-tabs" span={24}>
         <Tabs
           activeKey={activeTab}
           className="tabs-new"
@@ -176,7 +176,7 @@ const GlossaryDetails = ({
             isExpandViewSupported && (
               <AlignRightIconButton
                 className={isTabExpanded ? 'rotate-180' : ''}
-                size="small"
+                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
                 onClick={toggleTabExpanded}
               />
             )

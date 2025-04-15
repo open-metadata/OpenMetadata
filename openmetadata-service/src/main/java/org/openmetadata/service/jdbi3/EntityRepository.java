@@ -1089,13 +1089,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) {
+  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, String updatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
-    return update(uriInfo, original, updated);
+    return update(uriInfo, original, updated, updatedBy);
   }
 
   @SuppressWarnings("unused")
@@ -1126,10 +1126,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  public final PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
+  public final PutResponse<T> update(UriInfo uriInfo, T original, T updated, String updatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
-
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), entityType, original.getId());
@@ -2490,6 +2491,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return owners;
     }
+    // Check if owners are inherited. If so, ignore the validation
+    if (owners.stream().allMatch(owner -> owner.getInherited() != null && owner.getInherited())) {
+      return owners;
+    }
+
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
     if (nullOrEmpty(refs)) {
@@ -4156,7 +4162,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       if (targetFQN != null) {
         TagLabel tagLabel = tagFQNLabelMap.get(tagWithHash.getTagFQN());
-        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagLabel);
+        if (tagLabel != null) {
+          tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagLabel);
+        } else {
+          LOG.warn("Missing TagLabel for TagFQN in batch Fetch Tags: {}", tagWithHash.getTagFQN());
+        }
       }
     }
 

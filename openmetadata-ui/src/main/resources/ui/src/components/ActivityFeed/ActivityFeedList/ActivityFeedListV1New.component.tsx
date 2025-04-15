@@ -112,7 +112,7 @@ const ActivityFeedListV1New = ({
       isFullWidth,
     ]
   );
-  if (isLoading && isForFeedTab) {
+  if (isLoading) {
     return <Loader />;
   }
 

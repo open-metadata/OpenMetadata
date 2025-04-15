@@ -8,33 +8,45 @@
   "definitions": {
     "stepStats": {
       "description": "Stats for Different Steps Reader, Processor, Writer.",
+      "javaType": "org.openmetadata.schema.system.StepStats",
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "totalRecords": {
           "description": "Count of Total Failed Records",
           "type": "integer",
-          "default": 0
+          "default": 0,
+          "minimum": 0
         },
         "successRecords": {
           "description": "Count of Total Successfully Records",
           "type": "integer",
-          "default": 0
+          "default": 0,
+          "minimum": 0
         },
         "failedRecords": {
           "description": "Count of Total Failed Records",
           "type": "integer",
-          "default": 0
+          "default": 0,
+          "minimum": 0
         }
       }
     },
     "stats": {
       "type": "object",
+      "javaType": "org.openmetadata.schema.system.Stats",
       "properties": {
         "jobStats": {
+          "description": "Stats for the job",
           "$ref": "#/definitions/stepStats"
         },
         "entityStats": {
-          "$ref": "#/definitions/stepStats"
+          "javaType": "org.openmetadata.schema.system.EntityStats",
+          "description": "Stats for different entities. Keys should match entity types",
+          "type": "object",
+          "additionalProperties": {
+              "$ref": "#/definitions/stepStats"
+          }
         }
       },
       "additionalProperties": false

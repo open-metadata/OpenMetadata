@@ -36,11 +36,17 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import {
+  getTableColumnConfigSelections,
+  getTableExpandableConfig,
+  handleUpdateTableColumnSelections,
+} from '../../../utils/TableUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
@@ -54,10 +60,19 @@ import './table.less';
 type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
 
 const Table = <T extends Record<string, unknown>>(
-  { loading, searchProps, customPaginationProps, ...rest }: TableProps<T>,
+  {
+    loading,
+    searchProps,
+    customPaginationProps,
+    entityType,
+    defaultVisibleColumns,
+    ...rest
+  }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
+  const { type } = useGenericContext();
+  const { currentUser } = useApplicationStore();
   const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [dropdownColumnList, setDropdownColumnList] = useState<
@@ -65,7 +80,7 @@ const Table = <T extends Record<string, unknown>>(
   >([]);
   const [columnDropdownSelections, setColumnDropdownSelections] = useState<
     string[]
-  >(rest.defaultVisibleColumns ?? []);
+  >([]);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
     () => ({ columns: propsColumns, minWidth: 80 }),
     [propsColumns]
@@ -76,11 +91,12 @@ const Table = <T extends Record<string, unknown>>(
     [loading]
   );
 
+  const entityKey = useMemo(() => type ?? entityType, [type, entityType]);
+
   // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
   const isFullViewTable = useMemo(
-    () =>
-      isEmpty(rest.staticVisibleColumns) && isEmpty(rest.defaultVisibleColumns),
-    [rest.staticVisibleColumns, rest.defaultVisibleColumns]
+    () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
+    [rest.staticVisibleColumns, defaultVisibleColumns]
   );
 
   const handleMoveItem = useCallback(
@@ -93,11 +109,17 @@ const Table = <T extends Record<string, unknown>>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      setColumnDropdownSelections((prev: string[]) => {
-        return selected ? [...prev, key] : prev.filter((item) => item !== key);
-      });
+      const updatedSelections = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        currentUser?.fullyQualifiedName ?? '',
+        entityKey
+      );
+
+      setColumnDropdownSelections(updatedSelections);
     },
-    [setColumnDropdownSelections]
+    [columnDropdownSelections, entityKey]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -206,11 +228,22 @@ const Table = <T extends Record<string, unknown>>(
     rest.staticVisibleColumns,
   ]);
 
+  useEffect(() => {
+    const selections = getTableColumnConfigSelections(
+      currentUser?.fullyQualifiedName ?? '',
+      entityKey,
+      isFullViewTable,
+      defaultVisibleColumns
+    );
+
+    setColumnDropdownSelections(selections);
+  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
+
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
       <Col
         className={classNames({
-          'p-y-md': searchProps || rest.extraTableFilters || !isFullViewTable,
+          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
         })}
         span={24}>
         <Row className="p-x-md">
@@ -278,11 +311,6 @@ const Table = <T extends Record<string, unknown>>(
           ref={ref}
           tableLayout="fixed"
           {...resizingTableProps}
-          scroll={{
-            y: 740,
-            x: resizingTableProps.scroll?.x ?? rest.scroll?.x,
-            ...rest.scroll,
-          }}
         />
       </Col>
       {customPaginationProps && customPaginationProps.showPagination ? (

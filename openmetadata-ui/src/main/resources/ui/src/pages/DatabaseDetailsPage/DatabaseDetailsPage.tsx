@@ -127,9 +127,9 @@ const DatabaseDetails: FunctionComponent = () => {
         EntityType.DATABASE,
         decodedDatabaseFQN,
         databasePermission,
-        database?.deleted ?? false
+        database
       ),
-    [decodedDatabaseFQN, databasePermission, database?.deleted]
+    [decodedDatabaseFQN, databasePermission, database]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
@@ -139,7 +139,7 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN
       );
       setDatabasePermission(response);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);
@@ -368,8 +368,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -487,7 +486,7 @@ const DatabaseDetails: FunctionComponent = () => {
             permissions={databasePermission}
             type={EntityType.DATABASE}
             onUpdate={settingsUpdateHandler}>
-            <Col span={24}>
+            <Col className="entity-details-page-tabs" span={24}>
               <Tabs
                 activeKey={activeTab}
                 className="tabs-new"
@@ -497,7 +496,9 @@ const DatabaseDetails: FunctionComponent = () => {
                   isExpandViewSupported && (
                     <AlignRightIconButton
                       className={isTabExpanded ? 'rotate-180' : ''}
-                      size="small"
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
                       onClick={toggleTabExpanded}
                     />
                   )

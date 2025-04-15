@@ -46,6 +46,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     deleteType,
     prepareType,
     isRecursiveDelete,
+    afterDeleteAction,
   }: DeleteWidgetAsyncFormFields) => {
     try {
       const response = await deleteAsyncEntity(
@@ -57,8 +58,8 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
         deleteType === DeleteType.HARD_DELETE
       );
 
-      // In case of recursive delete if false and entity has data.
-      // sometime socket throw the error before the response
+      // In case of recursive delete if false and the deleting entity has data.
+      // sometime socket throw the error before the API response
       if (asyncDeleteJobRef.current?.status === 'FAILED') {
         showErrorToast(
           asyncDeleteJobRef.current.error ??
@@ -73,6 +74,9 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
       setAsyncDeleteJob(response);
       asyncDeleteJobRef.current = response;
       showSuccessToast(response.message);
+      if (afterDeleteAction) {
+        afterDeleteAction(deleteType === DeleteType.SOFT_DELETE);
+      }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -92,6 +96,23 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     };
     setAsyncDeleteJob(updatedAsyncDeleteJob);
     asyncDeleteJobRef.current = updatedAsyncDeleteJob;
+
+    if (response.status === 'FAILED') {
+      showErrorToast(
+        response.error ??
+          t('server.delete-entity-error', {
+            entity: response.entityName,
+          })
+      );
+    }
+
+    if (response.status === 'COMPLETED') {
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: response.entityName,
+        })
+      );
+    }
   };
 
   const activityFeedContextValues = useMemo(() => {

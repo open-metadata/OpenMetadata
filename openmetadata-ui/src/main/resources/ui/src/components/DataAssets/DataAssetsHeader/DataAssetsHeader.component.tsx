@@ -19,17 +19,19 @@ import { get, isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as LinkIcon } from '../../../assets/svg/link-icon-with-bg.svg';
+import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -39,12 +41,14 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { SearchSourceAlias } from '../../../interface/search.interface';
+import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
@@ -62,6 +66,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -90,13 +95,11 @@ export const ExtraInfoLabel = ({
   label,
   value,
   dataTestId,
-  showAsATag = false,
   inlineLayout = false,
 }: {
   label: string;
   value: string | number | React.ReactNode;
   dataTestId?: string;
-  showAsATag?: boolean;
   inlineLayout?: boolean;
 }) => {
   if (inlineLayout) {
@@ -123,10 +126,7 @@ export const ExtraInfoLabel = ({
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <div
-          className={classNames('font-medium extra-info-value', {
-            showAsATag: showAsATag,
-          })}>
+        <div className={classNames('font-medium extra-info-value')}>
           {value}
         </div>
       </Typography.Text>
@@ -196,9 +196,13 @@ export const DataAssetsHeader = ({
   extraDropdownContent,
   onMetricUpdate,
   badge,
-  isDqAlertSupported,
+  isDqAlertSupported = false,
   isCustomizedView = false,
+  disableRunAgentsButton = true,
+  afterTriggerAction,
+  isAutoPilotWorkflowStatusLoading = false,
 }: DataAssetsHeaderProps) => {
+  const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';
@@ -209,6 +213,7 @@ export const DataAssetsHeader = ({
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
+  const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
@@ -267,7 +272,7 @@ export const DataAssetsHeader = ({
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchDQFailureCount = async () => {
-    if (!tableClassBase.getAlertEnableStatus() && !isDqAlertSupported) {
+    if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
       setDqFailureCount(0);
 
       return;
@@ -287,7 +292,7 @@ export const DataAssetsHeader = ({
           (node) => node?.fullyQualifiedName !== dataAsset?.fullyQualifiedName
         ) ?? [];
       setDqFailureCount(updatedNodes.length);
-    } catch (error) {
+    } catch {
       setDqFailureCount(0);
     }
   };
@@ -477,13 +482,68 @@ export const DataAssetsHeader = ({
     selectedUserSuggestions,
   ]);
 
+  const triggerTheAutoPilotApplication = useCallback(async () => {
+    try {
+      setIsAutoPilotTriggering(true);
+      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
+      const entityLink = getEntityFeedLink(
+        entityType,
+        dataAsset.fullyQualifiedName ?? ''
+      );
+
+      await triggerOnDemandApp(AUTO_PILOT_APP_NAME, {
+        entityLink,
+      });
+
+      afterTriggerAction?.();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsAutoPilotTriggering(false);
+    }
+  }, [serviceCategory, afterTriggerAction]);
+
+  const triggerAutoPilotApplicationButton = useMemo(() => {
+    if (!SERVICE_TYPES.includes(entityType)) {
+      return null;
+    }
+
+    const isDisabled =
+      isAutoPilotWorkflowStatusLoading || disableRunAgentsButton;
+    const isLoading = isAutoPilotWorkflowStatusLoading || isAutoPilotTriggering;
+
+    return (
+      <Tooltip title={t('message.trigger-auto-pilot-application')}>
+        <Button
+          className="font-semibold"
+          data-testid="trigger-auto-pilot-application-button"
+          disabled={isDisabled}
+          icon={<Icon className="flex-center" component={TriggerIcon} />}
+          loading={isLoading}
+          type="primary"
+          onClick={triggerTheAutoPilotApplication}>
+          {t('label.run-agent-plural')}
+        </Button>
+      </Tooltip>
+    );
+  }, [
+    disableRunAgentsButton,
+    isAutoPilotWorkflowStatusLoading,
+    isAutoPilotTriggering,
+    triggerTheAutoPilotApplication,
+  ]);
+
   return (
     <>
       <Row
         className="data-assets-header-container"
         data-testid="data-assets-header"
         gutter={[0, 20]}>
-        <Col className="d-flex flex-col gap-3" span={24}>
+        <Col
+          className={classNames('d-flex flex-col gap-3 ', {
+            'p-l-xs': isCustomizedView,
+          })}
+          span={24}>
           <TitleBreadcrumb
             loading={isBreadcrumbLoading}
             titleLinks={breadcrumbs.map((link) =>
@@ -514,6 +574,7 @@ export const DataAssetsHeader = ({
                   className="data-asset-button-group spaced"
                   data-testid="asset-header-btn-group"
                   size="small">
+                  {triggerAutoPilotApplicationButton}
                   {onUpdateVote && (
                     <Voting
                       disabled={deleted}
@@ -543,21 +604,25 @@ export const DataAssetsHeader = ({
                   </Tooltip>
 
                   {(dataAsset as Table).sourceUrl && (
-                    <Tooltip title={t('label.source-url')}>
-                      <Button
-                        className="source-url-button font-semibold"
-                        data-testid="source-url-button"
-                        icon={
-                          <Icon className="flex-center" component={LinkIcon} />
-                        }>
-                        <Typography.Link
-                          href={(dataAsset as Table).sourceUrl}
-                          target="_blank">
+                    <Tooltip placement="bottom" title={t('label.source-url')}>
+                      <Typography.Link
+                        className="cursor-pointer source-url-link"
+                        href={(dataAsset as Table).sourceUrl}
+                        target="_blank">
+                        <Button
+                          className="source-url-button cursor-pointer font-semibold"
+                          data-testid="source-url-button"
+                          icon={
+                            <Icon
+                              className="flex-center"
+                              component={LinkIcon}
+                            />
+                          }>
                           {t('label.view-in-service-type', {
                             serviceType: (dataAsset as Table).serviceType,
                           })}
-                        </Typography.Link>
-                      </Button>
+                        </Button>
+                      </Typography.Link>
                     </Tooltip>
                   )}
                   <ManageButton

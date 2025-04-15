@@ -49,6 +49,7 @@ public interface SearchIndex {
           "changeDescription",
           "incrementalChangeDescription",
           "upstreamLineage.pipeline.changeDescription",
+          "upstreamLineage.pipeline.incrementalChangeDescription",
           "connection");
 
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();

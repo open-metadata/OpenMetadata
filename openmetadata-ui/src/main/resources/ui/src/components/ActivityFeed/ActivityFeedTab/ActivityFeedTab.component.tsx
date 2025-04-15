@@ -13,6 +13,7 @@
 import { Button, Dropdown, Menu, Segmented, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { isEmpty } from 'lodash';
 import {
   default as React,
   RefObject,
@@ -115,6 +116,7 @@ export const ActivityFeedTab = ({
     loading: false,
     data: FEED_COUNT_INITIAL_DATA,
   });
+  const [isFirstLoad, setIsFirstLoad] = useState<boolean>(true);
 
   const {
     selectedThread,
@@ -150,8 +152,12 @@ export const ActivityFeedTab = ({
     () => activeTab === ActivityFeedTabs.MENTIONS,
     [activeTab]
   );
+  useEffect(() => {
+    setIsFirstLoad(true);
+  }, [subTab]);
 
   const handleTabChange = (subTab: string) => {
+    setIsFirstLoad(true);
     history.push(
       entityUtilClassBase.getEntityLink(
         entityType,
@@ -256,6 +262,7 @@ export const ActivityFeedTab = ({
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
+      setIsFirstLoad(false);
       getFeedData(feedFilter, after, threadType, entityType, fqn, taskFilter);
     },
     [threadType, feedFilter, entityType, fqn, taskFilter, getFeedData]
@@ -501,7 +508,7 @@ export const ActivityFeedTab = ({
 
     return (
       <div className="d-flex flex-col gap-4">
-        <Typography.Text className="placeholder-title m-t-0">
+        <Typography.Text className="placeholder-title m-t-md">
           {t('message.no-conversations')}
         </Typography.Text>
         <Typography.Text className="placeholder-text">
@@ -611,14 +618,14 @@ export const ActivityFeedTab = ({
           handlePanelResize={handlePanelResize}
           isForFeedTab={false}
           isFullWidth={isFullWidth}
-          isLoading={loading}
+          isLoading={isFirstLoad && loading}
           selectedThread={selectedThread}
           showThread={false}
           onAfterClose={handleAfterTaskClose}
           onFeedClick={handleFeedClick}
         />
-        {loader}
-        {entityThread.length > 0 && (
+        {!isFirstLoad && loader}
+        {!isEmpty(entityThread) && !loading && (
           <div
             className="w-full"
             data-testid="observer-element"
@@ -639,7 +646,7 @@ export const ActivityFeedTab = ({
         {selectedThread && !loading
           ? getRightPanelContent(selectedThread)
           : !loading && (
-              <div className="p-x-md no-data-placeholder-container d-flex justify-center items-center h-full">
+              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
                 <ErrorPlaceHolderNew
                   icon={<NoConversationsIcon />}
                   type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>

@@ -691,6 +691,8 @@ def test_profiler_workflow_with_custom_profiler_config(ingest, metadata, service
     workflow_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "AutoClassification",
+            "storeSampleData": True,
+            "enableAutoClassification": False,
         }
     )
 
@@ -710,6 +712,8 @@ def test_sample_data_ingestion(ingest, metadata, service_name):
     workflow_config["source"]["sourceConfig"]["config"].update(
         {
             "type": "AutoClassification",
+            "storeSampleData": True,
+            "enableAutoClassification": False,
             "tableFilterPattern": {"includes": ["users"]},
         }
     )

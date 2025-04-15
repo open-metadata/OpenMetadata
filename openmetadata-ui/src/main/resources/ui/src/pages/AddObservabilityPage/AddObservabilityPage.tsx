@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -202,9 +202,10 @@ function AddObservabilityPage() {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container ',
+        allowScroll: true,
         children: (
-          <div className="steps-form-container service-form-container">
-            <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
+          <Card className="steps-form-container">
+            <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Col>
@@ -329,10 +330,11 @@ function AddObservabilityPage() {
                 </Form>
               </Col>
             </Row>
-          </div>
+          </Card>
         ),
         minWidth: 700,
         flex: 0.7,
+        wrapInCard: false,
       }}
       pageTitle={t('label.add-entity', {
         entity: t('label.observability'),

@@ -271,7 +271,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
-          className="p-lg"
+          className="p-lg border-none"
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
@@ -283,7 +283,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
     return (
       <ErrorPlaceHolder
-        className="mt-24"
+        className="mt-24 border-none"
         type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
     );
@@ -470,7 +470,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   return (
     <Row
-      className="justify-center m-b-md"
+      className="justify-center"
       data-testid="services-container"
       gutter={[16, 16]}>
       <Col span={24}>

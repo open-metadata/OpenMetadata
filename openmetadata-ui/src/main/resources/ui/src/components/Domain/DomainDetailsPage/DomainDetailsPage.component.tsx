@@ -719,7 +719,7 @@ const DomainDetailsPage = ({
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
-          <Col span={24}>
+          <Col className="domain-details-page-tabs" span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}
@@ -730,7 +730,9 @@ const DomainDetailsPage = ({
                 isExpandViewSupported && (
                   <AlignRightIconButton
                     className={isTabExpanded ? 'rotate-180' : ''}
-                    size="small"
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     onClick={toggleTabExpanded}
                   />
                 )
