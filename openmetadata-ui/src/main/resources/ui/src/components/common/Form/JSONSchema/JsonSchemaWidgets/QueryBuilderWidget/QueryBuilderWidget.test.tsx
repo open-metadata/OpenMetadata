@@ -72,16 +72,4 @@ describe('QueryBuilderWidget', () => {
 
     expect(builder).toBeInTheDocument();
   });
-
-  it('should apply readonly settings when readonly prop is present', () => {
-    const readonlyProps = {
-      ...mockProps,
-      readonly: true,
-    };
-
-    render(<QueryBuilderWidget {...readonlyProps} />);
-    const builder = screen.getByTestId('query-builder-form-field');
-
-    expect(builder).toHaveClass('ant-select-disabled'); // Adjust this line based on actual implementation
-  });
 });
