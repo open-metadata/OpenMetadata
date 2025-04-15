@@ -407,7 +407,11 @@ SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
 """
 
 SNOWFLAKE_GET_VIEW_DEFINITION = """
-SELECT GET_DDL('VIEW','{view_name}') AS \"text\"
+SELECT table_name "view_name",
+    table_schema "schema",
+    view_definition "view_def"
+FROM information_schema.views
+WHERE view_definition is not null
 """
 
 SNOWFLAKE_GET_STREAM_DEFINITION = """
