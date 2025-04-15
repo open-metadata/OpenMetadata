@@ -75,7 +75,8 @@ $$
 $$section
 ### Project ID $(id="projectId")
 
-A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file.
+A project ID is a unique string used to differentiate your project from all others in Google Cloud. To fetch this key, look for the value associated with the `project_id` key in the service account key file. 
+You can select a single project ID or multiple project IDs from the dropdown menu to specify which projects you want to connect to.
 $$
 
 $$section
