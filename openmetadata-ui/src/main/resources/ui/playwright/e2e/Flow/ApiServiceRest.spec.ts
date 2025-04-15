@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   descriptionBox,
@@ -102,6 +103,10 @@ test.describe('API service', () => {
 
     await deleteResponse;
 
-    await toastNotification(page, /deleted successfully!/, 5 * 60 * 1000);
+    await toastNotification(
+      page,
+      /deleted successfully!/,
+      BIG_ENTITY_DELETE_TIMEOUT
+    );
   });
 });
