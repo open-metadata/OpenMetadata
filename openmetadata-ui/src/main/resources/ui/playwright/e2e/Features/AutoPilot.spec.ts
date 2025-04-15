@@ -156,6 +156,8 @@ services.forEach((ServiceClass) => {
             state: 'hidden',
           }
         );
+
+        await service.deleteService(page);
       });
     }
   );
