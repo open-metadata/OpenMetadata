@@ -53,7 +53,8 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
 
-import { ReactComponent as ExternalLinkIcon } from '../../../../assets/svg/external-links.svg';
+import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
+
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import './incident-manager.less';
 const IncidentManagerPageHeader = ({
@@ -252,10 +253,11 @@ const IncidentManagerPageHeader = ({
               </span>
 
               <Link
-                className="font-medium"
+                className="font-medium flex items-center gap-2"
                 data-testid="table-name"
                 to={getTaskDetailPath(activeTask)}>
                 {`#${activeTask?.task?.id}`}
+                <InternalLinkIcon className="text-grey-muted" width="14px" />
               </Link>
             </Typography.Text>
           </>
@@ -334,7 +336,7 @@ const IncidentManagerPageHeader = ({
                 }),
               }}>
               {getNameFromFQN(tableFqn)}
-              <ExternalLinkIcon className="text-grey-muted" width="14px" />
+              <InternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
           </Typography.Text>
         </>
