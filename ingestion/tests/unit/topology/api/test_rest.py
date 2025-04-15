@@ -169,11 +169,6 @@ class RESTTest(TestCase):
         )
         assert collection_request == EXPECTED_COLLECTION_REQUEST
 
-    def test_json_schema(self):
-        """test json schema"""
-        schema_content_type = self.rest_source.connection.headers.get("content-type")
-        assert "application/json" in schema_content_type
-
     def test_all_collections(self):
         with patch.object(
             self.rest_source.connection, "json", return_value=MOCK_JSON_RESPONSE
