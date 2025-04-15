@@ -904,7 +904,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(
             entity,
             repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
-        PutResponse<EntityInterface> response = repository.createOrUpdate(null, entity, importedBy);
+        PutResponse<EntityInterface> response =
+            repository.createOrUpdateForImport(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
             .getExecutorService()

@@ -245,7 +245,7 @@ public class DatabaseServiceRepository
           .withExtension(getExtension(printer, csvRecord, 8));
 
       if (processRecord) {
-        createEntity(printer, csvRecord, database);
+        createEntity(printer, csvRecord, database, DATABASE);
       }
     }
 
@@ -306,7 +306,7 @@ public class DatabaseServiceRepository
           .withExtension(getExtension(printer, csvRecord, 8));
 
       if (processRecord) {
-        createEntity(printer, csvRecord, database);
+        createEntity(printer, csvRecord, database, DATABASE);
       }
     }
 
