@@ -358,7 +358,7 @@ test.describe('Bulk Import Export', () => {
           'Entity created',
           'Entity created',
           'Entity updated',
-          'Entity updated',
+          'Entity created',
           'Entity created',
         ];
 
