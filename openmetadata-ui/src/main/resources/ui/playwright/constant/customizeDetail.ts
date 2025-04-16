@@ -38,8 +38,8 @@ export const TABLE_DEFAULT_TABS = [
   'Sample Data',
   'Queries',
   'Data Observability',
-  'Incidents',
   'Lineage',
+  'dbt',
   'View Definition',
   'Custom Properties',
 ];
