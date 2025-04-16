@@ -170,6 +170,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
     private void updateProcessedLineage(StoredProcedure origSP, StoredProcedure updatedSP) {
       // if schema definition changes make processed lineage false
       if (origSP.getProcessedLineage().booleanValue()
+          && origSP.getCode() != null
           && !origSP.getCode().equals(updatedSP.getCode())) {
         updatedSP.setProcessedLineage(false);
       }
