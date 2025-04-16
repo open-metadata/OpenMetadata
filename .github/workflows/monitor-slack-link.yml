@@ -54,24 +54,11 @@ jobs:
       continue-on-error: true # Allow subsequent steps (notification) even if this fails
       env:
         PYTHONUNBUFFERED: "1" # Recommended for immediate log output
-      run: |
-        source env/bin/activate
-        python scripts/slack-link-monitor.py ${{ matrix.deployment }}
-
-    # Step 5: Send notification ONLY if monitor step failed
-    - name: Send Slack Notification on Failure
-      if: steps.monitor.outcome == 'failure' # More explicit than != 'success'
-      uses: slackapi/slack-github-action@v1.23.0 # Using specific stable version
-      with:
-        payload: |
-          {
-            "text": "🔥 Slack invitation link for ${{ matrix.deployment }} has expired or failed check! 🔥 \n Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }
-      env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_MONITOR_SLACK_WEBHOOK }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-    # Step 6: Explicitly fail the job if monitor step failed
-    - name: Report Failure Status
-      if: steps.monitor.outcome == 'failure'
-      run: exit 1 # Ensures the overall job status reflects the failure
+        GITHUB_SERVER_URL: ${{ github.server_url }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+      run: |
+        source env/bin/activate
+        python scripts/slack-link-monitor.py
