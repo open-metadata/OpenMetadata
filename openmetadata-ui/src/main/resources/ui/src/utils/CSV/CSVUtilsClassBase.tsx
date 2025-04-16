@@ -101,6 +101,7 @@ class CSVUtilsClassBase {
               popoverProps={{
                 open: true,
               }}
+              onClose={props.onCancel}
               onUpdate={handleChange}>
               {' '}
             </UserTeamSelectableList>
@@ -235,7 +236,12 @@ class CSVUtilsClassBase {
               popoverProps={{ open: true }}
               selectedDomain={
                 value
-                  ? { type: EntityType.DOMAIN, name: value, id: '' }
+                  ? {
+                      type: EntityType.DOMAIN,
+                      name: value,
+                      id: '',
+                      fullyQualifiedName: value,
+                    }
                   : undefined
               }
               onUpdate={(domain) => handleChange(domain as EntityReference)}>

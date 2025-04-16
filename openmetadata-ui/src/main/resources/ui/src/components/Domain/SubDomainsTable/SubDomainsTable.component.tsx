@@ -95,7 +95,7 @@ const SubDomainsTable = ({
   return (
     <Table
       columns={columns}
-      containerClassName="m-t-md"
+      containerClassName="m-md"
       dataSource={subDomains}
       pagination={false}
       rowKey="fullyQualifiedName"
