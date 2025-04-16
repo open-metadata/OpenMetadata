@@ -185,6 +185,9 @@ class KinesisSource(MessagingServiceSource):
         try:
             while has_more_partitions:
                 partitions = self.kinesis.list_shards(**args.dict())
+                # Handle the case when NextToken is not present
+                if "NextToken" not in partitions:
+                    partitions["NextToken"] = None
                 kinesis_partitions_model = KinesisPartitions(**partitions)
                 all_partitions.extend(
                     [
