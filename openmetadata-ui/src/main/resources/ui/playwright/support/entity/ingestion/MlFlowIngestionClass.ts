@@ -23,9 +23,13 @@ class MlFlowIngestionClass extends ServiceBaseClass {
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
   }) {
-    const { shouldTestConnection = false, shouldAddIngestion = false } =
-      extraParams ?? {};
+    const {
+      shouldTestConnection = false,
+      shouldAddIngestion = false,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
 
     super(
       Services.MLModels,
@@ -33,7 +37,8 @@ class MlFlowIngestionClass extends ServiceBaseClass {
       'Mlflow',
       'ElasticnetWineModel',
       shouldTestConnection,
-      shouldAddIngestion
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 

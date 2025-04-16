@@ -26,9 +26,13 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
   }) {
-    const { shouldTestConnection = true, shouldAddIngestion = true } =
-      extraParams ?? {};
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
 
     super(
       Services.Dashboard,
@@ -36,7 +40,8 @@ class MetabaseIngestionClass extends ServiceBaseClass {
       'Metabase',
       'jaffle_shop dashboard',
       shouldTestConnection,
-      shouldAddIngestion
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
     this.tableName = 'jaffle_shop dashboard';
   }

@@ -42,11 +42,13 @@ class MysqlIngestionClass extends ServiceBaseClass {
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
     tableFilter?: string[];
   }) {
     const {
       shouldTestConnection = true,
       shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
       tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'],
     } = extraParams ?? {};
 
@@ -57,7 +59,8 @@ class MysqlIngestionClass extends ServiceBaseClass {
       'Mysql',
       'bot_entity',
       shouldTestConnection,
-      shouldAddIngestion
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
     this.name = serviceName;
     this.tableFilter = tableFilter;

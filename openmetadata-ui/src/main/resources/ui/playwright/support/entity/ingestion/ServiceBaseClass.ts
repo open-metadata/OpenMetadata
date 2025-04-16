@@ -45,6 +45,7 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
+  protected shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
@@ -54,7 +55,8 @@ class ServiceBaseClass {
     serviceType: string,
     entity: string,
     shouldTestConnection = true,
-    shouldAddIngestion = true
+    shouldAddIngestion = true,
+    shouldAddDefaultFilters = false
   ) {
     this.category = category;
     this.serviceName = name;
@@ -62,6 +64,7 @@ class ServiceBaseClass {
     this.entityName = entity;
     this.shouldTestConnection = shouldTestConnection;
     this.shouldAddIngestion = shouldAddIngestion;
+    this.shouldAddDefaultFilters = shouldAddDefaultFilters;
     this.entityFQN = null;
   }
 
@@ -228,6 +231,10 @@ class ServiceBaseClass {
 
   async submitService(page: Page) {
     await page.getByTestId('submit-btn').getByText('Next').click();
+
+    if (this.shouldAddDefaultFilters) {
+      await this.fillIngestionDetails(page);
+    }
 
     const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>

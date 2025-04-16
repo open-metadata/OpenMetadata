@@ -21,9 +21,13 @@ class SupersetIngestionClass extends ServiceBaseClass {
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
   }) {
-    const { shouldTestConnection = true, shouldAddIngestion = true } =
-      extraParams ?? {};
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
 
     super(
       Services.Dashboard,
@@ -31,7 +35,8 @@ class SupersetIngestionClass extends ServiceBaseClass {
       'Superset',
       "World Bank's Data",
       shouldTestConnection,
-      shouldAddIngestion
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 

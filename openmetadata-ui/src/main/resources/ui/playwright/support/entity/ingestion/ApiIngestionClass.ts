@@ -23,9 +23,13 @@ class ApiIngestionClass extends ServiceBaseClass {
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
   }) {
-    const { shouldTestConnection = true, shouldAddIngestion = true } =
-      extraParams ?? {};
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
 
     super(
       Services.API,
@@ -33,7 +37,8 @@ class ApiIngestionClass extends ServiceBaseClass {
       'Rest',
       'store',
       shouldTestConnection,
-      shouldAddIngestion
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 

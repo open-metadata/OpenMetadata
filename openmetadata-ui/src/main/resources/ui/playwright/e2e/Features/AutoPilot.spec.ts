@@ -47,13 +47,13 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  // trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
-  // video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
 test.describe.configure({
-  // 13 minutes max for AutoPilot tests.
-  timeout: 13 * 60 * 1000,
+  // 6 minutes max for AutoPilot tests.
+  timeout: 6 * 60 * 1000,
 });
 
 test.beforeAll(async ({ browser }) => {
@@ -76,6 +76,7 @@ test.afterAll(async ({ browser }) => {
 services.forEach((ServiceClass) => {
   const service = new ServiceClass({
     shouldAddIngestion: false,
+    shouldAddDefaultFilters: true,
   });
 
   test.describe.serial(

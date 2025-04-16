@@ -24,9 +24,13 @@ class S3IngestionClass extends ServiceBaseClass {
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
   }) {
-    const { shouldTestConnection = true, shouldAddIngestion = true } =
-      extraParams ?? {};
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
 
     super(
       Services.Storage,
@@ -34,7 +38,8 @@ class S3IngestionClass extends ServiceBaseClass {
       'S3',
       'awsathena-database',
       shouldTestConnection,
-      shouldAddIngestion
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 

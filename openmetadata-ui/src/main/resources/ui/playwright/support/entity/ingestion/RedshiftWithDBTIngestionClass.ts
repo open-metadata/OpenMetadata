@@ -43,9 +43,13 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   constructor(extraParams?: {
     shouldTestConnection?: boolean;
     shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
   }) {
-    const { shouldTestConnection = true, shouldAddIngestion = true } =
-      extraParams ?? {};
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
 
     super(
       Services.Database,
@@ -53,7 +57,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       REDSHIFT.serviceType,
       REDSHIFT.tableName,
       shouldTestConnection,
-      shouldAddIngestion
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';
