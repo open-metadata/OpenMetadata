@@ -26,6 +26,7 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import java.io.File;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -200,12 +201,13 @@ public class OpenMetadataOperations implements Callable<Integer> {
               required = true)
           String openMetadataUrl) {
     try {
+      URI uri = URI.create(openMetadataUrl);
       parseConfig();
       Settings updatedSettings =
           new Settings()
               .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
               .withConfigValue(
-                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(openMetadataUrl));
+                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(uri.toString()));
 
       Entity.getSystemRepository().createOrUpdate(updatedSettings);
       LOG.info("Updated OpenMetadata URL to: {}", openMetadataUrl);

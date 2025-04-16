@@ -219,10 +219,14 @@ class CliDBBase(TestCase):
                 E2EType.INGEST_DB_FILTER_SCHEMA,
                 {"includes": self.get_includes_schemas()},
             )
+            service_type = self.get_connector_name()
+            if hasattr(self, "get_service_type"):
+                service_type = self.get_service_type()
+
             self.run_command()
             self.build_config_file(
                 E2EType.LINEAGE,
-                {"source": f"{self.get_connector_name()}-lineage"},
+                {"source": f"{service_type}-lineage"},
             )
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { kebabCase, map } from 'lodash';
 import loginClassBase from './LoginClassBase';
 
 const {
@@ -19,6 +20,7 @@ const {
   governance,
   dataInsightPlural,
   dataCollaboration,
+  ...rest
 } = loginClassBase.carouselImages();
 
 export const LOGIN_SLIDE = [
@@ -37,11 +39,19 @@ export const LOGIN_SLIDE = [
     image: governance,
     descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
   },
-  {
-    title: 'data-insight-plural',
-    image: dataInsightPlural,
-    descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
-  },
+  ...(dataInsightPlural
+    ? [
+        {
+          title: 'data-insight-plural',
+          image: dataInsightPlural,
+          descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
+        },
+      ]
+    : map(rest, (item, key) => ({
+        title: kebabCase(key),
+        image: item,
+        descriptionKey: kebabCase(key) + '-description',
+      }))),
   {
     title: 'data-collaboration',
     image: dataCollaboration,

@@ -23,7 +23,9 @@ import TierCard from '../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ModalWithCustomPropertyEditor } from '../../components/Modals/ModalWithCustomProperty/ModalWithCustomPropertyEditor.component';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
+import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
@@ -49,6 +51,7 @@ class CSVUtilsClassBase {
       'column.description',
       'column.tags',
       'column.glossaryTerms',
+      'storedProcedure.code',
     ];
   }
 
@@ -98,6 +101,7 @@ class CSVUtilsClassBase {
               popoverProps={{
                 open: true,
               }}
+              onClose={props.onCancel}
               onUpdate={handleChange}>
               {' '}
             </UserTeamSelectableList>
@@ -232,7 +236,12 @@ class CSVUtilsClassBase {
               popoverProps={{ open: true }}
               selectedDomain={
                 value
-                  ? { type: EntityType.DOMAIN, name: value, id: '' }
+                  ? {
+                      type: EntityType.DOMAIN,
+                      name: value,
+                      id: '',
+                      fullyQualifiedName: value,
+                    }
                   : undefined
               }
               onUpdate={(domain) => handleChange(domain as EntityReference)}>
@@ -319,6 +328,7 @@ class CSVUtilsClassBase {
           return (
             <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
               <Select
+                data-testid="entity-type-select"
                 options={ENTITY_TYPE_OPTIONS}
                 size="small"
                 style={{ width: '155px' }}
@@ -326,6 +336,26 @@ class CSVUtilsClassBase {
                 onChange={handleChange}
               />
             </InlineEdit>
+          );
+        };
+
+      case 'code':
+        return ({ value, ...props }) => {
+          const handleChange = (value: string) => {
+            props.onChange(value);
+          };
+
+          return (
+            <SchemaModal
+              isFooterVisible
+              visible
+              data={value}
+              editorClass="custom-code-mirror-theme full-screen-editor-height"
+              mode={{ name: CSMode.SQL }}
+              onChange={handleChange}
+              onClose={props.onCancel}
+              onSave={props.onComplete}
+            />
           );
         };
       default:

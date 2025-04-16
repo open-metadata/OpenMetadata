@@ -2129,6 +2129,7 @@
     "unable-to-error-elasticsearch": "无法为 Elasticsearch 进行实体索引{{error}}",
     "uninstall-app": "卸载此 {{app}} 应用会将其从 OpenMetaData 中移除",
     "unix-epoch-time-in-ms": "{{prefix}} Unix epoch time in milliseconds",
+    "unsaved-changes-warning": "您可能有未保存的更改，关闭时将被��弃。",
     "update-description-message": "Request to update description for",
     "update-displayName-entity": "更改{{entity}}的显示名",
     "update-profiler-settings": "更新分析器设置",

@@ -150,7 +150,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
       } catch (Exception ex) {
         LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
-        repository.deleteByName("admin", createApp.getName(), false, true);
       }
     }
   }

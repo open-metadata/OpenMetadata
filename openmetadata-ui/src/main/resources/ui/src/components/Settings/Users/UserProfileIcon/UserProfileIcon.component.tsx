@@ -152,7 +152,7 @@ export const UserProfileIcon = () => {
       inheritedRoles: currentUser?.inheritedRoles,
       personas: currentUser?.personas,
     };
-  }, [currentUser]);
+  }, [currentUser, currentUser?.personas]);
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (

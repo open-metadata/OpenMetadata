@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.6.0-SNAPSHOT</version>
+  <version>1.7.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -107,7 +107,7 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.34</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.23</elasticsearch.version>
+    <elasticsearch.version>7.17.24</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>

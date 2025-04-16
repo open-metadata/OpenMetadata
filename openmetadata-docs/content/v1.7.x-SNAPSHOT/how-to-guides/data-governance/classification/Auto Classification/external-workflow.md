@@ -1,6 +1,6 @@
 ---
 title: External Auto Classification Workflow
-slug: /how-to-guides/data-governance/classification/auto/external-workflow
+slug: /how-to-guides/data-governance/classification/auto-classification/external-workflow
 ---
 
 # Auto Classification Workflow Configuration
@@ -147,4 +147,3 @@ This approach ensures that the Auto Classification Workflow is executed correctl
 
 - **Sample Data Integration:**  
   Store sample data to provide better insights during profiling and testing workflows.
-
