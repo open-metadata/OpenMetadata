@@ -537,6 +537,8 @@ public class OpenSearchClient implements SearchClient {
           LOG.debug("Transformed NLQ query: {}", transformedQuery);
           XContentParser parser = createXContentParser(transformedQuery);
           SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+          searchSourceBuilder.from(request.getFrom());
+          searchSourceBuilder.size(request.getSize());
           OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
           sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
           os.org.opensearch.action.search.SearchRequest searchRequest =
@@ -544,15 +546,15 @@ public class OpenSearchClient implements SearchClient {
           searchRequest.source(searchSourceBuilder);
           os.org.opensearch.action.search.SearchResponse response =
               client.search(searchRequest, os.org.opensearch.client.RequestOptions.DEFAULT);
-          if (response.getHits().getTotalHits().value > 0) {
+          if (response.getHits() != null
+              && response.getHits().getTotalHits() != null
+              && response.getHits().getTotalHits().value > 0) {
             nlqService.cacheQuery(request.getQuery(), transformedQuery);
           }
           return Response.status(Response.Status.OK).entity(response.toString()).build();
         }
       } catch (Exception e) {
         LOG.error("Error transforming or executing NLQ query: {}", e.getMessage(), e);
-
-        // Try using the built-in OpenSearch NLQ feature as a first fallback
         return fallbackToBasicSearch(request, subjectContext);
       }
     } else {

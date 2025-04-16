@@ -881,9 +881,10 @@ public class ElasticSearchClient implements SearchClient {
         String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
         XContentParser parser = createXContentParser(transformedQuery);
         SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+        searchSourceBuilder.from(request.getFrom());
+        searchSourceBuilder.size(request.getSize());
         ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
         sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
-
         LOG.debug("Transformed NLQ query: {}", transformedQuery);
         es.org.elasticsearch.action.search.SearchRequest searchRequest =
             new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());

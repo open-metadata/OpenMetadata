@@ -309,6 +309,7 @@ elasticsearch:
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
+      useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
 
 
 eventMonitoringConfiguration:

@@ -119,6 +119,10 @@ export interface Bedrock {
      * AWS secret key for Bedrock service authentication
      */
     secretKey?: string;
+    /**
+     * Set to true to use IAM role based authentication instead of access/secret keys.
+     */
+    useIamRole?: boolean;
 }
 
 /**

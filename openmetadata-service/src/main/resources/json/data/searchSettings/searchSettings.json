@@ -1297,6 +1297,14 @@
         {
           "name": "fqnParts",
           "description": "Search on individual parts of the fully qualified name, allowing more flexible matching on hierarchical components."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with database."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with database."
         }
       ]
     },
@@ -1334,6 +1342,14 @@
         {
           "name": "fqnParts",
           "description": "Search on individual parts of the fully qualified name for more flexible hierarchical matching."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with database schema."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with database schema."
         }
       ]
     },
@@ -1395,6 +1411,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified tables by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with table."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with table."
         }
       ]
     },
@@ -1444,6 +1468,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified storedProcedures by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with stored procedure."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with stored procedure."
         }
       ]
     },
@@ -1489,6 +1521,14 @@
         {
           "name": "queryText.ngram",
           "description": "Partial matching on query text to find queries containing specific SQL fragments."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with query."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with query."
         }
       ]
     },
@@ -1574,6 +1614,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified topics by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with topic."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with topic."
         }
       ]
     },
@@ -1651,6 +1699,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified dashboards by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with dashboard."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with dashboard."
         }
       ]
     },
@@ -1720,6 +1776,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified dashboard data models by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with dashboard data model."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with dashboard data model."
         }
       ]
     },
@@ -1777,6 +1841,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified pipelines by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with pipeline."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with pipeline."
         }
       ]
     },
@@ -1834,6 +1906,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified mlModels by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with mlmodel."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with mlmodel."
         }
       ]
     },
@@ -1873,11 +1953,11 @@
           "description": "Search on parts of the hierarchical name for flexible matching."
         },
         {
-          "name": "mlFeatures.name",
+          "name": "searchIndex.responseSchema.name",
           "description": "Search on the names of fields indexed in the search index."
         },
         {
-          "name": "mlFeatures.description",
+          "name": "searchIndex.responseSchema.description",
           "description": "Search on field descriptions to find search indexes with fields serving specific purposes."
         },
         {
@@ -1891,6 +1971,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified searchIndexes by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with search index."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with search index."
         }
       ]
     },
@@ -1960,6 +2048,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified containers by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with container."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with container."
         }
       ]
     },
@@ -2025,6 +2121,14 @@
         {
           "name": "certification.tagLabel.tagFQN.text",
           "description": "Search within parts of certification tag names. Useful for finding certified apiEndpoint by partial certification name."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with apiEndpoint."
+        },
+        {
+          "name": "dataProducts.displayName.keyword",
+          "description": "Exact match on dataProducts associated with apiEndpoint."
         }
       ]
     },
@@ -2201,6 +2305,14 @@
         {
           "name": "glossary.displayName",
           "description": "Search on the display name of the parent glossary."
+        },
+        {
+          "name": "domain.name.keyword",
+          "description": "Exact match on domain associated with table."
+        },
+        {
+          "name": "domain.displayName.keyword",
+          "description": "Exact match on domain associated with glossary term."
         }
       ]
     },
@@ -2270,29 +2382,42 @@
     }
   ],
   "nlqConfiguration": {
-    "promptTemplate": "You are an assistant that translates natural language queries into OpenSearch queries.\n\n{{INSTRUCTIONS}}\n\nUSER QUERY: {{QUERY}}\n\nGenerate a valid OpenSearch JSON query object. Return ONLY the JSON query with no explanations.",
-
+    "promptTemplate": "You are an expert OpenSearch query generator specializing in the OpenMetadata schema. Your primary task is to translate natural language queries into precise OpenSearch JSON queries based *strictly* on the provided FIELD SUMMARY and INTERPRETATION GUIDELINES. Pay close attention to field descriptions to select the correct fields and query types.\n\n{{INSTRUCTIONS}}\n\nUSER QUERY: {{QUERY}}\n\nGenerate a valid OpenSearch JSON query object. Return ONLY the JSON query with no explanations.",
     "globalInstructions": [
+      {
+        "section": "QUERY GENERATION PROCESS",
+        "content": "1. Analyze the USER QUERY to identify key entities, concepts (like domain, owner, tags, data product), and filter values.\n2. Consult the provided FIELD SUMMARY for the detected entity type.\n3. Select the MOST APPROPRIATE field(s) from the summary based on their descriptions.\n4. Determine the correct query type (`match` for flexible/text search, `term` for exact/keyword search) based on the field description and the guidelines below.\n5. Construct the OpenSearch query JSON using ONLY the selected fields and types.",
+        "order": 1
+      },
       {
         "section": "COMMON MISTAKES TO AVOID",
         "content": "1. Missing entityType filter when type is mentioned\n2. Using nested queries for non-nested fields\n3. Incorrect field names\n\nThe following examples show INCORRECT patterns followed by the CORRECT version:",
         "order": 5
       },
-
       {
         "section": "INCORRECT VS CORRECT PATTERNS",
         "content": "❌ INCORRECT: Tables query missing entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n✅ CORRECT: Tables query with entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n❌ INCORRECT: Using nested query for columns\n{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"SKU\"}}}}]}}\n\n✅ CORRECT: Direct match query for columns\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}\n\n❌ INCORRECT: Using owner.name (singular)\n{\"term\": {\"owner.name\": \"marketing\"}}\n\n✅ CORRECT: Using owners.name (plural)\n{\"term\": {\"owners.name\": \"marketing\"}}\n\n❌ INCORRECT: Using tags for tier\n{\"term\": {\"tags.tagFQN\": \"Tier1\"}}\n\n✅ CORRECT: Using tier.tagFQN with proper format\n{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}",
         "order": 6
       },
       {
+        "section": "QUERY TYPE SELECTION (CRITICAL: Filtering vs. Searching)",
+        "content": "- **FOR FILTERING by specific values** (e.g., domain name, owner name, tag FQN, tier, specific ID): ALWAYS prefer a `term` query on the corresponding `.keyword` field (e.g., `domain.displayName.keyword`, `owners.displayName.keyword`, `tags.tagFQN`, `tier.tagFQN`). Check the FIELD SUMMARY for available `.keyword` variants.\n- **FOR SEARCHING within text** (e.g., descriptions, general names where partial matches are okay): Use a `match` query on the base text field (e.g., `description`, `name`).\n- Assume `.keyword` fields with normalizers handle case-insensitivity for `term` queries.",
+        "order": 10
+      },
+      {
         "section": "CRITICAL FIELD CORRECTIONS",
         "content": "1. Use 'owners.name' (plural) NOT 'owner.name' (singular)\n2. Use 'tags.tagFQN' NOT just 'tags' for regular tags\n3. Use 'tier.tagFQN' NOT 'tags.tagFQN' for tier-related queries\n4. Top-level fields like 'owners', 'tags', 'tier' do NOT need nested queries\n5. Only use nested queries for 'columns', 'charts', 'tasks', etc.",
-        "order": 10
+        "order": 11
+      },
+      {
+        "section": "AMBIGUITY RESOLUTION",
+        "content": "- If the user query mentions 'domain', verify if the FIELD SUMMARY lists a specific 'domain' field (like `domain.displayName.keyword`). If yes, use it. If not, or if context suggests otherwise, reconsider. DO NOT default to `service.name` for business domains.\n- If the user query mentions 'data product', verify if the FIELD SUMMARY lists a specific 'data product' field (like `dataProducts.displayName`). If yes, use it.\n- For general terms, use the field description in the FIELD SUMMARY to determine the best fit (e.g., prefer `displayName` for user-friendly name searches over raw `name`).",
+        "order": 14
       },
       {
         "section": "ENTITY TYPE FILTERING",
         "content": "When a user specifies a particular entity type (e.g., 'tables', 'dashboards', 'pipelines'):\n1. ALWAYS add a term filter for 'entityType' with the SINGULAR form\n2. For example: If query mentions 'tables', add {\"term\": {\"entityType\": \"table\"}} (not 'tables')\n3. For example: If query mentions 'dashboards', add {\"term\": {\"entityType\": \"dashboard\"}} (not 'dashboards')\n4. This MUST be combined with any other filters (like tags, owners, etc.) using a 'must' clause",
-        "order": 12
+        "order": 14
       },
       {
         "section": "TIER TAG FORMATTING",
