@@ -65,6 +65,7 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
 }
 
 COMMONS = {
@@ -330,7 +331,11 @@ plugins: Dict[str, Set[str]] = {
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
-    "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
+    "sample-data": {
+        VERSIONS["avro"],
+        VERSIONS["grpc-tools"],
+        VERSIONS["sqlalchemy-bigquery"],
+    },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
     "singlestore": {VERSIONS["pymysql"]},
