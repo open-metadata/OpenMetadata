@@ -11,12 +11,15 @@
 """
 Helper functions to handle SQL lineage operations
 """
+import functools
 import itertools
 import traceback
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Iterable, List, Optional, Tuple, Union
 
 import networkx as nx
+from collate_sqllineage.core.holders import SQLLineageHolder
 from collate_sqllineage.core.models import Column, DataFunction
 from collate_sqllineage.core.models import Table as LineageTable
 from networkx import DiGraph
@@ -48,6 +51,10 @@ from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineagePa
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.execution_time_tracker import (
+    calculate_execution_time,
+    calculate_execution_time_generator,
+)
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
@@ -56,7 +63,7 @@ logger = utils_logger()
 DEFAULT_SCHEMA_NAME = "<default>"
 CUTOFF_NODES = 20
 
-
+# pylint: disable=too-many-function-args,protected-access
 def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     """
     Get fqn of column if exist in table entity
@@ -73,6 +80,7 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
 search_cache = LRUCache(LRU_CACHE_SIZE)
 
 
+@calculate_execution_time(context="SearchTableEntities")
 def search_table_entities(
     metadata: OpenMetadata,
     service_name: str,
@@ -236,6 +244,58 @@ def handle_udf_column_lineage(
         logger.error(f"Error handling UDF column lineage: {exc}")
 
 
+@functools.lru_cache(maxsize=1000)
+def _get_udf_parser(
+    code: str, dialect: Dialect, timeout_seconds: int
+) -> Optional[LineageParser]:
+    if code:
+        return LineageParser(
+            f"create table dummy_table_name as {code}",
+            dialect=dialect,
+            timeout_seconds=timeout_seconds,
+        )
+    return None
+
+
+def _replace_target_table(
+    parser: LineageParser, expected_table_name: str
+) -> LineageParser:
+    try:
+        # Create a new target table instead of modifying the existing one
+        new_table = Table(expected_table_name.replace(DEFAULT_SCHEMA_NAME, ""))
+
+        # Create a new statement holder with the updated target table
+        stmt_holder = parser.parser._stmt_holders[0]
+        old_write = list(stmt_holder.write)[0]  # Get the original target table
+
+        # Remove old target table and add new one
+        stmt_holder.graph.remove_node(old_write)
+        stmt_holder.add_write(new_table)
+
+        # Rebuild column lineage
+        for col_lineage in parser.parser.get_column_lineage():
+            if col_lineage[-1].parent == old_write:
+                # Create new column with same name but parent is new table
+                tgt_col = col_lineage[-1]
+                new_tgt_col = Column(tgt_col.raw_name)
+                new_tgt_col.parent = new_table
+
+                # Add the column lineage from source to new target
+                stmt_holder.add_column_lineage(col_lineage[-2], new_tgt_col)
+                try:
+                    # remove the old edge
+                    stmt_holder.graph.remove_edge(col_lineage[-2], tgt_col)
+                except Exception as _:
+                    # if the edge is not present, pass
+                    pass
+
+        # Rebuild the SQL holder
+        parser.parser._sql_holder = SQLLineageHolder.of(*parser.parser._stmt_holders)
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.debug(f"Error replacing target table: {exc}")
+
+
 # pylint: disable=too-many-arguments
 def __process_udf_es_results(
     metadata: OpenMetadata,
@@ -255,27 +315,32 @@ def __process_udf_es_results(
             and entity.storedProcedureCode
             and entity.storedProcedureCode.language == Language.SQL
         ):
-            expected_table_name = str(source_table).replace(
-                f"{DEFAULT_SCHEMA_NAME}.", ""
+
+            lineage_parser = _get_udf_parser(
+                entity.storedProcedureCode.code, dialect, timeout_seconds
             )
-            lineage_parser = LineageParser(
-                f"create table {str(expected_table_name)} as {entity.storedProcedureCode.code}",
-                dialect=dialect,
-                timeout_seconds=timeout_seconds,
-            )
-            handle_udf_column_lineage(column_lineage, lineage_parser.column_lineage)
-            for source in lineage_parser.source_tables or []:
-                yield from get_source_table_names(
-                    metadata,
-                    dialect,
-                    source,
-                    database_name,
-                    schema_name,
-                    service_name,
-                    timeout_seconds,
-                    column_lineage,
-                    procedure or entity,
+            if lineage_parser and lineage_parser.parser:
+                expected_table_name = str(source_table).replace(
+                    f"{DEFAULT_SCHEMA_NAME}.", ""
                 )
+                lineage_parser_copy = deepcopy(lineage_parser)
+                _replace_target_table(lineage_parser_copy, expected_table_name)
+
+                handle_udf_column_lineage(
+                    column_lineage, lineage_parser_copy.column_lineage
+                )
+                for source in lineage_parser_copy.source_tables or []:
+                    yield from get_source_table_names(
+                        metadata,
+                        dialect,
+                        source,
+                        database_name,
+                        schema_name,
+                        service_name,
+                        timeout_seconds,
+                        column_lineage,
+                        procedure or entity,
+                    )
 
 
 def __process_udf_table_names(
@@ -317,6 +382,7 @@ def __process_udf_table_names(
         )
 
 
+@calculate_execution_time_generator(context="GetSourceTableNames")
 def get_source_table_names(
     metadata: OpenMetadata,
     dialect: Dialect,
@@ -623,6 +689,7 @@ def populate_column_lineage_map(raw_column_lineage):
 
 
 # pylint: disable=too-many-locals
+@calculate_execution_time_generator(context="GetLineageByQuery")
 def get_lineage_by_query(
     metadata: OpenMetadata,
     service_name: str,
@@ -633,6 +700,7 @@ def get_lineage_by_query(
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     graph: DiGraph = None,
+    lineage_parser: Optional[LineageParser] = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -642,7 +710,10 @@ def get_lineage_by_query(
     query_parsing_failures = QueryParsingFailures()
 
     try:
-        lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
+        if not lineage_parser:
+            lineage_parser = LineageParser(
+                query, dialect, timeout_seconds=timeout_seconds
+            )
         masked_query = lineage_parser.masked_query
         logger.debug(f"Running lineage with query: {masked_query or query}")
 
@@ -729,6 +800,7 @@ def get_lineage_by_query(
         )
 
 
+@calculate_execution_time_generator(context="GetLineageViaTableEntity")
 def get_lineage_via_table_entity(
     metadata: OpenMetadata,
     table_entity: Table,
@@ -740,13 +812,17 @@ def get_lineage_via_table_entity(
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     lineage_source: LineageSource = LineageSource.QueryLineage,
     graph: DiGraph = None,
+    lineage_parser: Optional[LineageParser] = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
 
     try:
-        lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
+        if not lineage_parser:
+            lineage_parser = LineageParser(
+                query, dialect, timeout_seconds=timeout_seconds
+            )
         masked_query = lineage_parser.masked_query
         logger.debug(
             f"Getting lineage via table entity using query: {masked_query or query}"
