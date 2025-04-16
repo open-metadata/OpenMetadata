@@ -52,8 +52,8 @@ test.use({
 });
 
 test.describe.configure({
-  // 11 minutes max for ingestion tests
-  timeout: 11 * 60 * 1000,
+  // 13 minutes max for AutoPilot tests.
+  timeout: 13 * 60 * 1000,
 });
 
 test.beforeAll(async ({ browser }) => {
