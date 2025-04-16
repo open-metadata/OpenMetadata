@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Operation } from 'fast-json-patch';
-import { t } from 'i18next';
+
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';

@@ -12,7 +12,7 @@
  */
 
 import { Rule } from 'antd/lib/form';
-import { t } from 'i18next';
+
 import { ENTITY_NAME_REGEX } from './regex.constants';
 
 export const NAME_FIELD_RULES: Rule[] = [

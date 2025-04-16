@@ -14,8 +14,8 @@
 import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
-import { t } from 'i18next';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+
+import { FunctionComponent, useEffect, useState } from 'react';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getReleaseVersionExpiry } from '../../../utils/WhatsNewModal.util';

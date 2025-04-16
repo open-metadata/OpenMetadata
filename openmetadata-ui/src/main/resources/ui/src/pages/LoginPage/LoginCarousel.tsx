@@ -12,9 +12,8 @@
  */
 
 import { Carousel, Typography } from 'antd';
-import { t } from 'i18next';
+
 import { uniqueId } from 'lodash';
-import React from 'react';
 import { LOGIN_SLIDE } from '../../constants/Login.constants';
 
 const LoginCarousel = () => {

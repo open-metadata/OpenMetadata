@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Divider, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ItemType } from 'antd/es/menu/interface';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
@@ -50,7 +50,7 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
-import i18n from './i18next/LocalUtil';
+import i18n, { t } from './i18next/LocalUtil';
 import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
@@ -195,7 +195,7 @@ export const domainTypeTooltipDataRender = () => (
 export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
   const domainOptions: ItemType[] = [
     {
-      label: i18n.t('label.all-domain-plural'),
+      label: t('label.all-domain-plural'),
       key: DEFAULT_DOMAIN_VALUE,
     },
   ];

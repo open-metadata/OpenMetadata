@@ -13,7 +13,6 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { BasicEntityInfo } from '../../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { ICON_DIMENSION } from '../../constants/constants';

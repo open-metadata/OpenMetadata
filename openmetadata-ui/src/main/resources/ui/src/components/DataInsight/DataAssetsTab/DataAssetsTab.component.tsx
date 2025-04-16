@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';

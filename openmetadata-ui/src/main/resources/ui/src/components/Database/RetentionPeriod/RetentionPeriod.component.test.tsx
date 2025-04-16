@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import RetentionPeriod from './RetentionPeriod.component';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';

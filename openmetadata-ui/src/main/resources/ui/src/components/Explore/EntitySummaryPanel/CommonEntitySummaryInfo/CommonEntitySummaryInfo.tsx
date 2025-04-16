@@ -14,7 +14,6 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';

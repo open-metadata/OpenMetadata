@@ -12,9 +12,9 @@
  */
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { default as React, useMemo } from 'react';
+import { useMemo } from 'react';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';

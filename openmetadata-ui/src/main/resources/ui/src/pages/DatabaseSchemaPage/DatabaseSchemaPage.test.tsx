@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';

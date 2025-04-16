@@ -14,7 +14,7 @@
 import { Button, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { debounce, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Edge } from 'reactflow';

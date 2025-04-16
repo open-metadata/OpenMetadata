@@ -13,9 +13,9 @@
 
 import { Alert, Card, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';

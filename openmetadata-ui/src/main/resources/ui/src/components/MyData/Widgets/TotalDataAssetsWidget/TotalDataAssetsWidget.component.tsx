@@ -23,7 +23,7 @@ import {
   reduce,
   sortBy,
 } from 'lodash';
-import { default as React, useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,

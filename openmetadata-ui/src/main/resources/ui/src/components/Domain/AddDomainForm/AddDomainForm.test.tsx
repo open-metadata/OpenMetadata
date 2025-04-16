@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { DomainFormType } from '../DomainPage.interface';
 import AddDomainForm from './AddDomainForm.component';
 

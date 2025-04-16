@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../../../Explore/Explore.mock';

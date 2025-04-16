@@ -18,7 +18,6 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';

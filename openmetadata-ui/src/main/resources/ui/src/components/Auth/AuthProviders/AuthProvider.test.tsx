@@ -17,7 +17,6 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AuthProvider from './AuthProvider';

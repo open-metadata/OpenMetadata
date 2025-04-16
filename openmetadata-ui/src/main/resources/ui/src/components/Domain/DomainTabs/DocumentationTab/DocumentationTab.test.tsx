@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_DOMAIN } from '../../../../mocks/Domains.mock';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';

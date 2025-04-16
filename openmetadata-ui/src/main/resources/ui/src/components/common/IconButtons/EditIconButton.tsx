@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons';
 import { Button, ButtonProps, Tooltip } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';

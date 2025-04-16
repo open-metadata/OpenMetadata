@@ -13,9 +13,9 @@
 
 import { Card, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isArray, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';

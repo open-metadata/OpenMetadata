@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';

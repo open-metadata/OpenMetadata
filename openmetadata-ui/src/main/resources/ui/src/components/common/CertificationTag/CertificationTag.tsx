@@ -12,7 +12,6 @@
  */
 import { Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';

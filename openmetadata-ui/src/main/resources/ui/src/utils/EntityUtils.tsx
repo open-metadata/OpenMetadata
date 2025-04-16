@@ -23,7 +23,7 @@ import {
 } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import QueryString from 'qs';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Node } from 'reactflow';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';

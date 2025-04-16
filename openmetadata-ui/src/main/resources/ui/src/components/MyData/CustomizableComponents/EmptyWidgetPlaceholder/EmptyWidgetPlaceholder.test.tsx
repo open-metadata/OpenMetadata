@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { SIZE } from '../../../../enums/common.enum';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import EmptyWidgetPlaceholder from './EmptyWidgetPlaceholder';

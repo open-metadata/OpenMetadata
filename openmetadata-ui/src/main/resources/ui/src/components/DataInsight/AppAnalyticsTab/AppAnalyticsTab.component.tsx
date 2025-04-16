@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React from 'react';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import DailyActiveUsersChart from '../DailyActiveUsersChart';
 import PageViewsByEntitiesChart from '../PageViewsByEntitiesChart';

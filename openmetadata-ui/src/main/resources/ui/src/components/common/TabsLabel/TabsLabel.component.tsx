@@ -12,7 +12,6 @@
  */
 import { Badge } from 'antd';
 import { isNil } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './tabs-label.less';

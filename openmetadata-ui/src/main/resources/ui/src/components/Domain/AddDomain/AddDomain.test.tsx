@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { addDomains } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';

@@ -180,7 +180,7 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return <CheckOutlined data-testid="check-outline" />;
+      return <CheckOutlined />;
     }
 
     return <Loader size="small" type="default" />;

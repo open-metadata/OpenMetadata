@@ -20,7 +20,6 @@ import {
   waitForElement,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
 import ChangeParent from './ChangeParentHierarchy.component';
 

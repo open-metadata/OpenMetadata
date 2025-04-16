@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { noop } from 'lodash';
-import React from 'react';
 import { useHistory } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';

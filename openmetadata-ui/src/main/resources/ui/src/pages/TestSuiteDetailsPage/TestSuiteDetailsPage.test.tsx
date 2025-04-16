@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';

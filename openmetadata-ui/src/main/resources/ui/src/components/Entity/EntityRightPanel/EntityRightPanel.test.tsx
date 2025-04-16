@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { EntityTags } from 'Models';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';

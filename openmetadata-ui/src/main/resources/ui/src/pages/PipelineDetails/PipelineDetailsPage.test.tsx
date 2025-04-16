@@ -12,7 +12,6 @@
  */
 
 import { act, findByText, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PipelineDetailsPage from './PipelineDetailsPage.component';
 

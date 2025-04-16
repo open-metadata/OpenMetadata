@@ -13,9 +13,9 @@
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as HeadingIcon } from '../../assets/svg/marketplace-heading.svg';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -49,7 +49,7 @@ const MarketPlacePage = () => {
     handlePageSizeChange,
     showPagination,
   } = usePaging();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] =
     useState<AppMarketPlaceDefinition[]>();
@@ -88,7 +88,7 @@ const MarketPlacePage = () => {
   };
 
   const viewAppDetails = (item: AppMarketPlaceDefinition) => {
-    history.push(getMarketPlaceAppDetailsPath(item.fullyQualifiedName ?? ''));
+    navigate(getMarketPlaceAppDetailsPath(item.fullyQualifiedName ?? ''));
   };
 
   useEffect(() => {

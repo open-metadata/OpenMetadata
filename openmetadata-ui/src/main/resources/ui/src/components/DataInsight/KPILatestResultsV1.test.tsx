@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { findByTestId, render, screen } from '@testing-library/react';
-import React from 'react';
 import { UIKpiResult } from '../../interface/data-insight.interface';
 import KPILatestResultsV1 from './KPILatestResultsV1';
 

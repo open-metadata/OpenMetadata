@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { TagLabel } from '../generated/entity/data/container';
 import { Column } from '../generated/entity/data/table';

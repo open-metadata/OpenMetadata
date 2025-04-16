@@ -13,7 +13,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NodeViewProps } from '@tiptap/core';
-import React from 'react';
 import CalloutComponent from './CalloutComponent';
 
 const mockNode = {

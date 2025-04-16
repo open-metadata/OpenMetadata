@@ -12,9 +12,7 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { ReactionType } from '../../../generated/type/reaction';
-import Reaction from './Reaction';
 
 const onReactionSelect = jest.fn();
 const onHide = jest.fn();

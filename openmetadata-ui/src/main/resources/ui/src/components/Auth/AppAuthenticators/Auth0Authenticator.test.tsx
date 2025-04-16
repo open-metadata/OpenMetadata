@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Auth0Authenticator from './Auth0Authenticator';
 

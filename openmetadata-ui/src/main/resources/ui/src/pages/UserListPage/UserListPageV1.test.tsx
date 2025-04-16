@@ -12,7 +12,6 @@
  */
 
 import { render } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';

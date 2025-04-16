@@ -16,7 +16,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { PersonaDetailsPage } from './PersonaDetailsPage';

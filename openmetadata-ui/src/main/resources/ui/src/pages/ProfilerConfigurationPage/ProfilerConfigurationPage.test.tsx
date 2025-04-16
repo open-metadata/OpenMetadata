@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { SettingType } from '../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import ProfilerConfigurationPage from './ProfilerConfigurationPage';

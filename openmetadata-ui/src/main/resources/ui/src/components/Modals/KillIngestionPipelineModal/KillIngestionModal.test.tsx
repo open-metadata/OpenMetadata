@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
 import { KillIngestionModalProps } from './KillIngestionPipelineModal.interface';

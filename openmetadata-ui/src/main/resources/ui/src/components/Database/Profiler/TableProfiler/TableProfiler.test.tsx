@@ -13,7 +13,6 @@
 
 // Library imports
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 // internal imports
 import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';

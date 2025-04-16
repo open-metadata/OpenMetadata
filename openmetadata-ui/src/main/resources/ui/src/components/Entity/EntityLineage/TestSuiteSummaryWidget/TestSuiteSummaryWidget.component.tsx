@@ -12,7 +12,6 @@
  */
 import { Skeleton } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
 import { TestSummary } from '../../../../generated/tests/testCase';
 
 const TestSuiteSummaryWidget = ({

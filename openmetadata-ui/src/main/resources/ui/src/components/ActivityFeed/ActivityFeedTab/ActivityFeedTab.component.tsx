@@ -14,14 +14,7 @@ import { Button, Dropdown, Menu, Segmented, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import {
-  default as React,
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';

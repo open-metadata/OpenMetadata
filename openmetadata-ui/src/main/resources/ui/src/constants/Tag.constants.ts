@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
 export const TAG_CONSTANT = {

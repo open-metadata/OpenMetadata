@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { TWO_MINUTE_IN_MILLISECOND } from '../../../constants/constants';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import GithubStarCard from './GithubStarCard.component';

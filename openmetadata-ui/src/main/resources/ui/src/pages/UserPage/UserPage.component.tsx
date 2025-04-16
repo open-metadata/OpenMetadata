@@ -16,13 +16,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy } from 'lodash';
 import Qs from 'qs';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';

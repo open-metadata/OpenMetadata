@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Space, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 interface ImportStatusProps {

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, waitFor } from '@testing-library/react';
-import React from 'react';
 import ExploreTree from './ExploreTree';
 
 jest.mock('react-router-dom', () => ({

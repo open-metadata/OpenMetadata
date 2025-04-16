@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { ROLES_LIST_WITH_PAGING } from '../Roles.mock';
 import RolesListPage from './RolesListPage';

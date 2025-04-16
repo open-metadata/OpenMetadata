@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Form } from 'antd';
-import React from 'react';
 import { AddTestSuitePipelineProps } from '../AddDataQualityTest.interface';
 import AddTestSuitePipeline from './AddTestSuitePipeline';
 const mockUseHistory = {

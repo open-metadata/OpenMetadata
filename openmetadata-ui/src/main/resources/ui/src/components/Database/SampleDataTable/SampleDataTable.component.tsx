@@ -15,9 +15,9 @@ import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { isEmpty, lowerCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';

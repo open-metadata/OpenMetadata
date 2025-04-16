@@ -20,7 +20,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Pipeline } from '../../../generated/entity/data/pipeline';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,

@@ -26,7 +26,7 @@ import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { compact, startCase, toString } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
@@ -57,7 +57,7 @@ import {
 import TagSuggestion, {
   TagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
-import i18n from './i18next/LocalUtil';
+import i18n, { t } from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
 export const getField = (field: FieldProp) => {

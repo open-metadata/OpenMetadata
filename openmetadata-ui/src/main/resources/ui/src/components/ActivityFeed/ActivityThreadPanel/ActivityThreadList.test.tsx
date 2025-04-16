@@ -17,7 +17,6 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockThreadData } from './ActivityThread.mock';
 import ActivityThreadList from './ActivityThreadList';

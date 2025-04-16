@@ -12,14 +12,8 @@
  */
 
 import { Button, Input, InputRef, Modal, Typography } from 'antd';
-import { t } from 'i18next';
-import React, {
-  ChangeEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Trans } from 'react-i18next';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';

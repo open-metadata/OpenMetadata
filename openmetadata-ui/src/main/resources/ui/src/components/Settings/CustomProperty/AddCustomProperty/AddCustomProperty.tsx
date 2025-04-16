@@ -13,15 +13,9 @@
 
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
   CUSTOM_PROPERTIES_ICON_MAP,

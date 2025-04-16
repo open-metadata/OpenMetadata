@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import GlossaryLeftPanel from './GlossaryLeftPanel.component';
 

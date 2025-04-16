@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../Explore/Explore.mock';
 import Lineage from './Lineage.component';

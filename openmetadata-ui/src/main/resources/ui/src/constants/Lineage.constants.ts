@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { ElementLoadingState } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';

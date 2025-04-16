@@ -12,7 +12,6 @@
  */
 
 import { Badge, Typography } from 'antd';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import './page-header.less';
 import { HeaderProps } from './PageHeader.interface';

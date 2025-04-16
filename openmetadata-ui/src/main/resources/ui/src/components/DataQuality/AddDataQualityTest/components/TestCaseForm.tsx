@@ -23,7 +23,7 @@ import {
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
+
 import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { debounce, isEmpty, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
@@ -43,6 +42,7 @@ import {
   renderAdvanceSearchButtons,
 } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
 

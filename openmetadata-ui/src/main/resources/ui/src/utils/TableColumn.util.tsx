@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import React from 'react';
 import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -34,7 +33,7 @@ export const ownerTableObject = <
   T extends { owners?: EntityReference[] }
 >(): ColumnsType<T> => [
   {
-    title: i18n.t('label.owner-plural'),
+    title: i18n.t('label.owner-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
     width: 180,

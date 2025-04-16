@@ -13,17 +13,11 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+import React from 'react';
+
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
-import {
-  default as React,
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import {

@@ -13,9 +13,9 @@
 import { Card, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import Table from '../../../components/common/Table/Table';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';

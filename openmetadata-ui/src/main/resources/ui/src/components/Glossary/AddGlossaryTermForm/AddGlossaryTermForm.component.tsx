@@ -13,9 +13,9 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isEmpty, isString } from 'lodash';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityReference } from '../../../generated/entity/type';

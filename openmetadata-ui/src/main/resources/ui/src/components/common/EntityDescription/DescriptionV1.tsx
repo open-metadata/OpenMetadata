@@ -13,8 +13,8 @@
 
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { useCallback, useMemo, useState } from 'react';
+
+import { useCallback, useMemo, useState } from 'react';
 import { useHistory } from 'react-router';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { useFqn } from '../../../hooks/useFqn';

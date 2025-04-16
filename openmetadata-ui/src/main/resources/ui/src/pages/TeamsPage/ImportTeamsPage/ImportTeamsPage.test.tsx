@@ -17,7 +17,6 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   MOCK_CURRENT_TEAM,

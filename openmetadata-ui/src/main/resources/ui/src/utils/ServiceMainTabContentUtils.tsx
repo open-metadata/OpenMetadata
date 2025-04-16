@@ -13,10 +13,9 @@
 
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
+
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
 import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -35,6 +34,7 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
+import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
 import { ownerTableObject } from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
@@ -109,7 +109,7 @@ export const getServiceMainTabColumns = (
   ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {
-          title: t('label.usage'),
+          title: t('label.usage').toString(),
           dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           width: 200,

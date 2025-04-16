@@ -13,7 +13,6 @@
 
 import { Col, Row, Typography } from 'antd';
 import { isNil, round } from 'lodash';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface CustomStatisticProps {

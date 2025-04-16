@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { tableSortingFields } from '../../constants/explore.constants';
 import SortingDropDown from './SortingDropDown';
 

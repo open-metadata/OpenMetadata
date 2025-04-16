@@ -14,8 +14,8 @@
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';

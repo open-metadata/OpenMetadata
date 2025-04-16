@@ -12,7 +12,6 @@
  */
 import { render } from '@testing-library/react';
 import { startCase } from 'lodash';
-import React from 'react';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';

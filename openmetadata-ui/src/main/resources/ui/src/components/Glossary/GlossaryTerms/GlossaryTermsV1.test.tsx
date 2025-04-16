@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   mockedGlossaryTerms,

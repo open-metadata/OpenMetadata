@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, queryByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import FeedPanelHeader from './FeedPanelHeader';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 
 //  using fragment to eliminate title attribute from the progress element
 export const progressBarFormatter = (percent?: number): ReactNode => (

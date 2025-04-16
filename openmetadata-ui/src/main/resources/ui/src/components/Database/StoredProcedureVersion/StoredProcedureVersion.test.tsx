@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { storedProcedureVersionMockProps } from '../../../mocks/StoredProcedureVersion.mock';
 import StoredProcedureVersion from './StoredProcedureVersion.component';
 

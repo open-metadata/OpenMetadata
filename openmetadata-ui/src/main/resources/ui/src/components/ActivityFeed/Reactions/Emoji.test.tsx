@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { User } from '../../../generated/entity/teams/user';
 import { ReactionType } from '../../../generated/type/reaction';
 import Emoji from './Emoji';

@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ROUTES } from '../../../constants/constants';
 import DataInsightHeader from './DataInsightHeader.component';
 

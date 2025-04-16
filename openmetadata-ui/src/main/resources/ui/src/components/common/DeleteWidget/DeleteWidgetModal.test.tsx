@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';

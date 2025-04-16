@@ -18,7 +18,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EXECUTION_RUNS, FAILURE } from '../../../../../mocks/Ingestion.mock';
 import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';

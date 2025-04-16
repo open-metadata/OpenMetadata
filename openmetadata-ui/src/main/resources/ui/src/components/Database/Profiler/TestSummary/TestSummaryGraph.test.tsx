@@ -18,7 +18,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { Payload } from 'recharts/types/component/DefaultLegendContent';
 import TestSummaryGraph from './TestSummaryGraph';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';

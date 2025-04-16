@@ -14,9 +14,9 @@
 import { Alert, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, { forwardRef, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { TeamHierarchy } from '../../../../generated/entity/teams/teamHierarchy';
 import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';

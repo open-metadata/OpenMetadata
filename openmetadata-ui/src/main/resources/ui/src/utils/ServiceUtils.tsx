@@ -13,7 +13,6 @@
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { t } from 'i18next';
 import { startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
@@ -50,6 +49,7 @@ import {
 } from '../generated/entity/services/pipelineService';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityCount } from '../rest/miscAPI';
+import { t } from '../utils/i18next/LocalUtil';
 import {
   getEntityDeleteMessage,
   pluralize,

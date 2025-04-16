@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import DatabaseSchemaVersionPage from './DatabaseSchemaVersionPage';
 import {
   CUSTOM_PROPERTY_TABLE,

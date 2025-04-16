@@ -17,7 +17,6 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { WorkflowStatus } from '../../../generated/entity/automations/workflow';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';

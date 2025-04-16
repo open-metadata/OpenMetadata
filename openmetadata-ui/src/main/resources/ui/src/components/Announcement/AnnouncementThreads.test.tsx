@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockThreadData } from '../ActivityFeed/ActivityThreadPanel/ActivityThread.mock';
 import AnnouncementThreads from './AnnouncementThreads';

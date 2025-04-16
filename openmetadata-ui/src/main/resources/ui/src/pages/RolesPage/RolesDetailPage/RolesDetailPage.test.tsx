@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { getRoleByName } from '../../../rest/rolesAPIV1';
 import { ROLE_DATA } from '../Roles.mock';

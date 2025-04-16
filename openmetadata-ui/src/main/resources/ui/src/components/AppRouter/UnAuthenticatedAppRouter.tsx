@@ -12,7 +12,7 @@
  */
 import { LoginCallback } from '@okta/okta-react';
 import React, { useMemo } from 'react';
-import { Redirect, Route, Switch } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -65,42 +65,37 @@ export const UnAuthenticatedAppRouter = () => {
   }, [authConfig?.provider]);
 
   if (isProtectedRoute(location.pathname)) {
-    return <Redirect to={ROUTES.SIGNIN} />;
+    return <Navigate replace to={ROUTES.SIGNIN} />;
   }
 
   return (
-    <Switch>
-      <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+    <Routes>
+      <Route element={<SigninPage />} path={ROUTES.SIGNIN} />
 
       {callbackComponent && (
-        <Route component={callbackComponent} path={ROUTES.CALLBACK} />
+        <Route element={<callbackComponent />} path={ROUTES.CALLBACK} />
       )}
 
       {!isSigningUp && (
-        <Route exact path={ROUTES.HOME}>
-          <Redirect to={ROUTES.SIGNIN} />
-        </Route>
+        <Route
+          element={<Navigate replace to={ROUTES.SIGNIN} />}
+          path={ROUTES.HOME}
+        />
       )}
 
-      {/* keep this route before any conditional JSX.Element rendering */}
-      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      <Route element={<PageNotFound />} path={ROUTES.NOT_FOUND} />
 
       {isBasicAuthProvider && (
         <>
-          <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
+          <Route element={<BasicSignupPage />} path={ROUTES.REGISTER} />
+          <Route element={<ForgotPassword />} path={ROUTES.FORGOT_PASSWORD} />
+          <Route element={<ResetPassword />} path={ROUTES.RESET_PASSWORD} />
           <Route
-            exact
-            component={ForgotPassword}
-            path={ROUTES.FORGOT_PASSWORD}
-          />
-          <Route exact component={ResetPassword} path={ROUTES.RESET_PASSWORD} />
-          <Route
-            exact
-            component={AccountActivationConfirmation}
+            element={<AccountActivationConfirmation />}
             path={ROUTES.ACCOUNT_ACTIVATION}
           />
         </>
       )}
-    </Switch>
+    </Routes>
   );
 };

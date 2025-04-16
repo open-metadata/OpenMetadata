@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';

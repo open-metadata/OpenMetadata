@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { MOCK_TAG_DATA, MOCK_TAG_ENCODED_FQN } from '../../../mocks/Tags.mock';

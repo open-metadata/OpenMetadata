@@ -12,8 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import React from 'react';
+
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';

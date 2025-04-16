@@ -12,7 +12,7 @@
  */
 
 import { Button, Result } from 'antd';
-import { t } from 'i18next';
+
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
 import { useHistory } from 'react-router-dom';

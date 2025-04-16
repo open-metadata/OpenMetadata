@@ -19,7 +19,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import React from 'react';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { getTableProfilerConfig } from '../../../../../rest/tableAPI';

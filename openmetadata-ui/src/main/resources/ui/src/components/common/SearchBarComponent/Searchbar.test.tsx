@@ -18,7 +18,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import Searchbar from './SearchBar.component';
 
 const mockOnUserSearch = jest.fn();

@@ -12,7 +12,6 @@
  */
 import '@testing-library/jest-dom/extend-expect';
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
 import TestCaseStatusPieChartWidget from './TestCaseStatusPieChartWidget.component';
 

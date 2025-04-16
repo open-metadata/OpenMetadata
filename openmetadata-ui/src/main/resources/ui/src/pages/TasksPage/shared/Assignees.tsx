@@ -13,9 +13,9 @@
 
 import { Select, SelectProps, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { ReactComponent as TeamIcon } from '../../../assets/svg/teams-grey.svg';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';

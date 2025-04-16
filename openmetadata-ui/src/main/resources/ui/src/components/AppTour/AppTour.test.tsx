@@ -13,7 +13,6 @@
 import { TourSteps } from '@deuex-solutions/react-tour';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import Tour from './Tour';
 

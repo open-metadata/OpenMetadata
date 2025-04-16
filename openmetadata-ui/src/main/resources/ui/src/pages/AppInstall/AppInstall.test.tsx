@@ -12,7 +12,6 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ScheduleType } from '../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import AppInstall from './AppInstall.component';

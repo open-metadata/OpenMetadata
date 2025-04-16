@@ -12,7 +12,6 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE } from '../../../constants/constants';
 import NextPrevious from './NextPrevious';

@@ -13,9 +13,9 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -64,7 +64,7 @@ const AddIngestionPage = () => {
   }>();
   const { fqn: serviceFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [serviceData, setServiceData] = useState<DataObj>();
   const [activeIngestionStep, setActiveIngestionStep] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -201,11 +201,11 @@ const AddIngestionPage = () => {
   };
 
   const goToSettingsPage = () => {
-    history.push(getSettingsPathFromPipelineType(ingestionType));
+    navigate(getSettingsPathFromPipelineType(ingestionType));
   };
 
   const goToService = () => {
-    history.push(
+    navigate(
       getServiceDetailsPath(
         serviceFQN,
         serviceCategory,

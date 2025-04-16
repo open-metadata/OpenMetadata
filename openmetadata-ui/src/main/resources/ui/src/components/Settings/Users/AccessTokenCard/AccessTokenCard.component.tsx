@@ -14,9 +14,9 @@
 import { Card, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { noop } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {

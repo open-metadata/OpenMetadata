@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';

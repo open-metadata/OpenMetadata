@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import React from 'react';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManager from './IncidentManager.component';

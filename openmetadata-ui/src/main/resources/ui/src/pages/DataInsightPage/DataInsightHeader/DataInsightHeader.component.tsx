@@ -12,7 +12,7 @@
  */
 import { Button, Col, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';

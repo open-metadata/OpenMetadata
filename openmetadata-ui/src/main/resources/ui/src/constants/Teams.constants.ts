@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import DraggableBodyRow from '../components/common/Draggable/DraggableBodyRow';
 
 export const DRAGGABLE_BODY_ROW = 'DraggableBodyRow';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { MOCK_KPI_LIST_RESPONSE } from '../../../../pages/KPIPage/KPIMock.mock';

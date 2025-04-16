@@ -12,8 +12,7 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';

@@ -13,7 +13,7 @@
 
 import { Button, Popover, Space } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { get, isEmpty } from 'lodash';
 import React, {
   FC,

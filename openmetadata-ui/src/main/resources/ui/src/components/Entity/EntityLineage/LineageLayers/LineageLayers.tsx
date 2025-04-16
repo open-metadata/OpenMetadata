@@ -13,7 +13,7 @@
 import { Button, Popover, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import React from 'react';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';

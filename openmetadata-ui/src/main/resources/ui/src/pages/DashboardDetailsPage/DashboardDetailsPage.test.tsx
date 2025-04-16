@@ -12,7 +12,6 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDashboardByFqn } from '../../rest/dashboardAPI';
 import DashboardDetailsPage from './DashboardDetailsPage.component';

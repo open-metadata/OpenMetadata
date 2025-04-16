@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetAsyncSelectList from './DataAssetAsyncSelectList';

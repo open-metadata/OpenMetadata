@@ -12,7 +12,6 @@
  */
 import '@testing-library/jest-dom/extend-expect';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataStatisticWidgetProps } from '../../DataQuality.interface';
 import DataStatisticWidget from './DataStatisticWidget.component';

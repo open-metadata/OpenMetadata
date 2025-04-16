@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { Team } from '../../../../generated/entity/teams/team';
 import { TeamsPageTab } from './team.interface';
 

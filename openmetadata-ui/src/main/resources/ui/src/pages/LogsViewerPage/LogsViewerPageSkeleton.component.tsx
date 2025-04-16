@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Skeleton } from 'antd';
-import React from 'react';
 
 const LogViewerPageSkeleton = () => {
   return (

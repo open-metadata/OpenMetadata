@@ -26,7 +26,7 @@ import { ReactComponent as PlatformLineageIcon } from '../assets/svg/ic-platform
 import { ReactComponent as SettingsIcon } from '../assets/svg/ic-settings-v1.svg';
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric-colored-new.svg';
 
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';

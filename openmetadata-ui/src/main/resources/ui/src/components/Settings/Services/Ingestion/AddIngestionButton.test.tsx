@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockIngestionWorkFlow } from '../../../../mocks/Ingestion.mock';
 import { mockAddIngestionButtonProps } from '../../../../mocks/IngestionListTable.mock';

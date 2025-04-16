@@ -19,7 +19,7 @@ import {
   diffWords,
   diffWordsWithSpace,
 } from 'diff';
-import { t } from 'i18next';
+
 import {
   cloneDeep,
   get,
@@ -31,7 +31,7 @@ import {
   uniqBy,
   uniqueId,
 } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import {
   ExtentionEntities,
@@ -65,6 +65,7 @@ import {
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
+import { t } from './i18next/LocalUtil';
 import { getJSONFromString, isValidJSONString } from './StringsUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
 

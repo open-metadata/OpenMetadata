@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { createUser } from '../../rest/userAPI';
 import { getImages } from '../../utils/CommonUtils';
 import { mockChangedFormData, mockCreateUser } from './mocks/SignupData.mock';

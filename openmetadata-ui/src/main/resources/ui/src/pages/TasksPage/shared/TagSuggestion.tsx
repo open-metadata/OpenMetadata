@@ -12,7 +12,7 @@
  */
 
 import { DefaultOptionType, SelectProps } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useMemo } from 'react';

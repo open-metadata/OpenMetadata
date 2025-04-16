@@ -12,7 +12,6 @@
  */
 
 import { findByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { FilterPatternEnum } from '../../../enums/filterPattern.enum';
 import FilterPattern from './FilterPattern';
 import { FilterPatternProps } from './filterPattern.interface';

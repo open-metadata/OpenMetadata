@@ -12,7 +12,6 @@
  */
 
 import { act, findByText, fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { createUser } from '../../rest/userAPI';
 import AddUserPageComponent from './CreateUserPage.component';

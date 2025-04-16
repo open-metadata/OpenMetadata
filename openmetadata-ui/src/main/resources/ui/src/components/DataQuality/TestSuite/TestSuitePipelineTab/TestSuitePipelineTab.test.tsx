@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { act } from 'react-test-renderer';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { Table } from '../../../../generated/entity/data/table';

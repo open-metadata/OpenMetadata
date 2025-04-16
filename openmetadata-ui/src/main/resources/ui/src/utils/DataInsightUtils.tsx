@@ -13,7 +13,7 @@
 
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
-import { t } from 'i18next';
+
 import {
   first,
   get,
@@ -30,7 +30,6 @@ import {
   uniqBy,
 } from 'lodash';
 import moment from 'moment';
-import React from 'react';
 import {
   CartesianGrid,
   LegendProps,
@@ -70,6 +69,7 @@ import { entityChartColor } from '../utils/CommonUtils';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
+import { t } from './i18next/LocalUtil';
 
 export const renderLegend = (
   legendData: LegendProps,

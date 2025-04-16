@@ -12,9 +12,9 @@
  */
 import { Card, Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { cloneDeep } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import FormItemLabel from '../../common/Form/FormItemLabel';

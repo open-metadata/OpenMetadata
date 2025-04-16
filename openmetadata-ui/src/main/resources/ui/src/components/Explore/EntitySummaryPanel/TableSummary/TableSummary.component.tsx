@@ -14,13 +14,7 @@
 import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import QueryString from 'qs';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';

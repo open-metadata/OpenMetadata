@@ -12,9 +12,8 @@
  */
 
 import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
-import { t } from 'i18next';
+
 import { capitalize } from 'lodash';
-import React from 'react';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({

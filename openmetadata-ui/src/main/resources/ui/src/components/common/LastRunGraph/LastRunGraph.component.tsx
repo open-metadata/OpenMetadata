@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import React from 'react';
 import './last-run-graph.style.less';
 
 export const StatusBox = ({ status }: { status?: string }) => {

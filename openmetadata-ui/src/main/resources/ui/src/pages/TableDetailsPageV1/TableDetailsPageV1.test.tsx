@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';

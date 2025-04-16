@@ -15,9 +15,9 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Alert } from 'antd';
-import { t } from 'i18next';
+
 import { isEmpty, isUndefined } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';

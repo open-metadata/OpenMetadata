@@ -12,8 +12,6 @@
  */
 
 import { act, findAllByText, render, screen } from '@testing-library/react';
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { MemoryRouter } from 'react-router-dom';
 import ActivityThreadPanel from './ActivityThreadPanel';
 

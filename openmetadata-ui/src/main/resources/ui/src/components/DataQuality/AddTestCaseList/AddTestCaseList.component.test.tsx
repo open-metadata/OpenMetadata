@@ -18,7 +18,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import React from 'react';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { AddTestCaseList } from './AddTestCaseList.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';

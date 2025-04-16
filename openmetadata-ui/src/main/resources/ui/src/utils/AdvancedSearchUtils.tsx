@@ -13,7 +13,6 @@
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
-import i18next from 'i18next';
 import { isArray, isEmpty, toLower } from 'lodash';
 import React from 'react';
 import {
@@ -50,6 +49,7 @@ import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getEntityName } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
@@ -99,7 +99,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
-        {i18next.t('label.add')}
+        {t('label.add')}
       </Button>
     );
   } else if (type === 'addGroup') {
@@ -110,14 +110,14 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
-        {i18next.t('label.add')}
+        {t('label.add')}
       </Button>
     );
   } else if (type === 'delGroup') {
     return (
       <Icon
-        alt={i18next.t('label.delete-entity', {
-          entity: i18next.t('label.group'),
+        alt={t('label.delete-entity', {
+          entity: t('label.group'),
         })}
         className="action action--DELETE cursor-pointer align-middle"
         component={IconDeleteColored}

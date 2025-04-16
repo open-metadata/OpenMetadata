@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';

@@ -23,9 +23,9 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
+
 import { isEmpty, isEqual, values } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';

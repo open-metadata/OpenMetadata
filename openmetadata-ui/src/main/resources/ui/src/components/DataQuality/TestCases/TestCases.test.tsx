@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCases } from './TestCases.component';

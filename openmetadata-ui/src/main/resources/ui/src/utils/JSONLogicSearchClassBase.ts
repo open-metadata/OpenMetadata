@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
+
 import { get, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
@@ -29,6 +29,7 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
+import { t } from './i18next/LocalUtil';
 import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {

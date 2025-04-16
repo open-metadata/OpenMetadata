@@ -13,9 +13,8 @@
 
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
-import { t } from 'i18next';
+
 import { isArray, isObject, startCase } from 'lodash';
-import React from 'react';
 
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   const isFilterPatternField = (id: string) => {

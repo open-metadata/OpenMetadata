@@ -12,7 +12,6 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';

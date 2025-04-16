@@ -14,10 +14,10 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,

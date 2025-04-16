@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MOCK_QUERIES } from '../../mocks/Queries.mock';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import QueryPage from './QueryPage.component';

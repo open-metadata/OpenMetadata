@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { SelectOption } from './AsyncSelectList.interface';
 import TreeAsyncSelectList from './TreeAsyncSelectList';

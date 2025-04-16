@@ -12,7 +12,6 @@
  */
 
 import classNames from 'classnames';
-import React from 'react';
 import { NoDataPlaceholderProps } from './placeholder.interface';
 
 import { ReactComponent as NoDataFoundPlaceHolderIcon } from '../../../assets/svg/edit-colored.svg';

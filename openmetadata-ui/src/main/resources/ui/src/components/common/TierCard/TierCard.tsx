@@ -22,8 +22,8 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';

@@ -13,8 +13,7 @@
 
 import { Badge, Button, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { t } from 'i18next';
-import React from 'react';
+
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';

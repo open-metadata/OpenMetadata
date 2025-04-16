@@ -21,7 +21,6 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';

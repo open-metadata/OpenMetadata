@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { TeamType } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';

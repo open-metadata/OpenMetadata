@@ -13,7 +13,6 @@
 
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
-import React from 'react';
 import { LeftPanelCardProps } from './LeftPanelCard.interface';
 
 /**

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import i18n from 'i18next';
+import i18n, { t as i18nextT } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 import { getInitOptions } from './i18nextUtil';
@@ -21,5 +21,11 @@ i18n
   .use(LanguageDetector) // Detects system language
   .use(initReactI18next)
   .init(getInitOptions());
+
+export const t = (key: string, options?: Record<string, unknown>): string => {
+  const translation = i18nextT(key, options);
+
+  return String(translation);
+};
 
 export default i18n;

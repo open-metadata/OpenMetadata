@@ -20,7 +20,6 @@ import {
   waitForElement,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';
 import AsyncSelectList from './AsyncSelectList';
 

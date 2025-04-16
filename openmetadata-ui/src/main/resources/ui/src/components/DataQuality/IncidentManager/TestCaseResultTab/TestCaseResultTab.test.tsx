@@ -17,7 +17,6 @@ import {
   render,
   screen,
 } from '@testing-library/react';
-import React from 'react';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { Query } from '../../../../generated/entity/data/query';
 import { User } from '../../../../generated/entity/teams/user';
 import { MOCK_QUERIES } from '../../../../mocks/Queries.mock';

@@ -12,7 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import { Form, FormInstance } from 'antd';
-import React from 'react';
 import { EventFilterRule } from '../../../generated/events/eventSubscription';
 import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem';

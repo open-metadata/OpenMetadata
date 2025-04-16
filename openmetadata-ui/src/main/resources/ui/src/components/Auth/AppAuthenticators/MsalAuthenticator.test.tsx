@@ -13,7 +13,6 @@
 import { InteractionStatus } from '@azure/msal-browser';
 import { useMsal } from '@azure/msal-react';
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 import MsalAuthenticator from './MsalAuthenticator';
