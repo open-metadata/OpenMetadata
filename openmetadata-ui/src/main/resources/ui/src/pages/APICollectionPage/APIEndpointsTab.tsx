@@ -167,8 +167,8 @@ function APIEndpointsTab({
   );
 
   useEffect(() => {
-    getAPICollectionEndpoints();
-  }, [apiCollection]);
+    getAPICollectionEndpoints({ paging: { limit: pageSize } });
+  }, [apiCollection, pageSize]);
 
   return (
     <TableAntd
