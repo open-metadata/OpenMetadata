@@ -149,6 +149,7 @@ const StoredProcedureTab = () => {
   return (
     <Table
       columns={tableColumn}
+      containerClassName="m-md"
       customPaginationProps={paginationProps}
       data-testid="stored-procedure-table"
       dataSource={storedProcedure}
