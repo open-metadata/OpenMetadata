@@ -30,6 +30,7 @@ import {
   CommonWidgetType,
   TAB_GRID_MAX_COLUMNS,
 } from '../../../constants/CustomizeWidgets.constants';
+import { LandingPageWidgetKeys } from '../../../enums/CustomizablePage.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, Tab } from '../../../generated/system/ui/page';
@@ -41,9 +42,7 @@ import {
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
 import {
-  getLayoutUpdateHandler,
   getLayoutWithEmptyWidgetPlaceholder,
-  getRemoveWidgetHandler,
   getUniqueFilteredLayout,
 } from '../../../utils/CustomizableLandingPageUtils';
 import {
@@ -82,46 +81,31 @@ export const CustomizeTabWidget = () => {
   const [activeKey, setActiveKey] = useState<string | null>(
     items.find((i) => i.editable)?.id ?? null
   );
-
   const [editableItem, setEditableItem] = useState<Tab | null>(null);
-  const [tabLayouts, setTabLayouts] = useState<WidgetConfig[]>(
-    getLayoutWithEmptyWidgetPlaceholder(
+
+  const tabLayouts = useMemo(() => {
+    const layout =
       (items.find((item) => item.id === activeKey)?.layout as WidgetConfig[]) ??
-        getDefaultWidgetForTab(
-          currentPageType as PageType,
-          (activeKey as EntityTabs) ?? EntityTabs.OVERVIEW
-        ),
-      2,
-      3
-    )
-  );
-  const [leftSideLayout, setLeftSideLayout] = useState<WidgetConfig[]>([]);
+      getDefaultWidgetForTab(
+        currentPageType as PageType,
+        (activeKey as EntityTabs) ?? EntityTabs.OVERVIEW
+      );
+
+    const hasEmptyWidgetPlaceholder = layout.some(
+      (widget) => widget.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+    );
+
+    return hasEmptyWidgetPlaceholder
+      ? layout
+      : getLayoutWithEmptyWidgetPlaceholder(layout, 2, 3);
+  }, [items, activeKey]);
+
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [placeholderWidgetKey, setPlaceholderWidgetKey] = useState<string>('');
 
-  const onChange = (tabKey: string, updatePage = true) => {
+  const onChange = (tabKey: string) => {
     const key = tabKey as EntityTabs;
     setActiveKey(key);
-    const newTab = currentPage?.tabs?.find((item) => item.id === key);
-
-    // Save current tab layout before changing
-    if (updatePage) {
-      updateCurrentPage({
-        ...currentPage,
-        tabs: items,
-      } as Page);
-    }
-
-    // Update tabLayout with new tab selection
-    setTabLayouts(
-      getLayoutWithEmptyWidgetPlaceholder(
-        isEmpty(newTab?.layout)
-          ? getDefaultWidgetForTab(currentPageType as PageType, key)
-          : (newTab?.layout as WidgetConfig[]),
-        2,
-        3
-      )
-    );
   };
 
   const add = (item?: Tab) => {
@@ -140,7 +124,7 @@ export const CustomizeTabWidget = () => {
       tabs: [...items, newTab],
     } as Page);
 
-    onChange(newActiveKey, false);
+    onChange(newActiveKey);
     setShowAddTabModal(false);
   };
 
@@ -166,8 +150,7 @@ export const CustomizeTabWidget = () => {
       tabs: newPanes,
     } as Page);
 
-    newActiveKey !== activeKey &&
-      onChange(newActiveKey ?? EntityTabs.OVERVIEW, false);
+    newActiveKey && newActiveKey !== activeKey && onChange(newActiveKey);
   };
 
   const handleTabEditClick = (key: string) => {
@@ -204,34 +187,46 @@ export const CustomizeTabWidget = () => {
   };
 
   const handleRemoveWidget = (widgetKey: string) => {
-    setTabLayouts(getRemoveWidgetHandler(widgetKey, 3, 3.5));
+    updateCurrentPage({
+      ...currentPage,
+      tabs: items.map((item) =>
+        item.id === activeKey
+          ? {
+              ...item,
+              layout: tabLayouts.filter((widget) => widget.i !== widgetKey),
+            }
+          : item
+      ),
+    } as Page);
   };
 
-  const handleRightSideLayoutUpdate = useCallback((updatedLayout: Layout[]) => {
-    if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
-      setLeftSideLayout(updatedLayout);
-      setTabLayouts((prev) => {
-        const newLayout = cloneDeep(prev);
-        const rightSidePanelLayout = newLayout.find((layout) =>
+  const handleSideLayoutUpdate = useCallback(
+    (updatedLayout: Layout[]) => {
+      if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
+        const newLayout = cloneDeep(tabLayouts);
+        const sidePanelLayout = newLayout.find((layout) =>
           layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
         );
-        if (rightSidePanelLayout) {
-          rightSidePanelLayout.children = updatedLayout;
+        if (sidePanelLayout) {
+          sidePanelLayout.children = updatedLayout;
         }
 
         updateCurrentPage({
           ...currentPage,
           tabs: items.map((item) =>
-            item.id === activeKey
-              ? { ...item, layout: getUniqueFilteredLayout(newLayout) }
-              : item
+            item.id === activeKey ? { ...item, layout: newLayout } : item
           ),
         } as Page);
+      }
+    },
+    [tabLayouts]
+  );
 
-        return newLayout;
-      });
-    }
-  }, []);
+  const leftPanelWidget = useMemo(() => {
+    return tabLayouts.find((layout) =>
+      layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [tabLayouts]);
 
   const getWidgetFromLayout = (layout: WidgetConfig[]) => {
     return layout.map((widget) => {
@@ -257,9 +252,9 @@ export const CustomizeTabWidget = () => {
           <LeftPanelContainer
             isEditView
             key={widget.i}
-            layout={widget.children ?? []}
+            layout={leftPanelWidget?.children ?? ([] as WidgetConfig[])}
             type={currentPageType as PageType}
-            onUpdate={handleRightSideLayoutUpdate}
+            onUpdate={handleSideLayoutUpdate}
           />
         );
       } else {
@@ -281,12 +276,6 @@ export const CustomizeTabWidget = () => {
     });
   };
 
-  const leftPanelWidget = useMemo(() => {
-    return tabLayouts.find((layout) =>
-      layout.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-    );
-  }, [tabLayouts]);
-
   const widgets = useMemo(
     // Re-render upon leftPanelWidget change
     () => getWidgetFromLayout(tabLayouts),
@@ -296,27 +285,28 @@ export const CustomizeTabWidget = () => {
   const handleLayoutUpdate = useCallback(
     (updatedLayout: Layout[]) => {
       if (!isEmpty(tabLayouts) && !isEmpty(updatedLayout)) {
-        setTabLayouts(getLayoutUpdateHandler(updatedLayout));
         updateCurrentPage({
           ...currentPage,
           tabs: items.map((item) =>
             item.id === activeKey
               ? {
                   ...item,
-                  layout:
-                    item.id === DetailPageWidgetKeys.LEFT_PANEL
-                      ? {
-                          ...getUniqueFilteredLayout(updatedLayout),
-                          children: leftSideLayout,
-                        }
-                      : getUniqueFilteredLayout(updatedLayout),
+                  layout: getUniqueFilteredLayout(updatedLayout).map(
+                    (widget) => ({
+                      ...widget,
+                      ...(widget.i === DetailPageWidgetKeys.LEFT_PANEL
+                        ? // left panel widget will be updated separately
+                          { children: leftPanelWidget?.children }
+                        : {}),
+                    })
+                  ),
                 }
               : item
           ),
         } as Page);
       }
     },
-    [tabLayouts, leftSideLayout]
+    [tabLayouts, leftPanelWidget]
   );
 
   const handleMainPanelAddWidget = useCallback(
@@ -325,17 +315,23 @@ export const CustomizeTabWidget = () => {
       placeholderWidgetKey: string,
       widgetSize: number
     ) => {
-      setTabLayouts(
-        getAddWidgetHandler(
-          newWidgetData,
-          placeholderWidgetKey,
-          widgetSize,
-          currentPageType as PageType
-        )
-      );
+      const newLayout = getAddWidgetHandler(
+        newWidgetData,
+        placeholderWidgetKey,
+        widgetSize,
+        currentPageType as PageType
+      )(tabLayouts);
+
+      updateCurrentPage({
+        ...currentPage,
+        tabs: items.map((item) =>
+          item.id === activeKey ? { ...item, layout: newLayout } : item
+        ),
+      } as Page);
+
       setIsWidgetModalOpen(false);
     },
-    []
+    [tabLayouts]
   );
 
   // call the hook to set the direction of the grid layout
