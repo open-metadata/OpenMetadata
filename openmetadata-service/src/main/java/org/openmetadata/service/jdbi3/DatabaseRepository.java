@@ -325,7 +325,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
             (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
         List<StoredProcedure> storedProcedures =
             spRepository.listAllForCSV(
-                spRepository.getFields("owners,tags,domain,extension"),
+                spRepository.getFields("owners,tags,domain,extension,storedProcedureCode"),
                 schema.getFullyQualifiedName());
 
         // Add stored procedures
@@ -364,7 +364,32 @@ public class DatabaseRepository extends EntityRepository<Database> {
       if (recursive) {
         addField(recordList, entityType);
         addField(recordList, entity.getFullyQualifiedName());
+
+        addField(recordList, ""); // column specific fields, empty for entity
+        addField(recordList, ""); // column specific fields, empty for entity
+        addField(recordList, ""); // column specific fields, empty for entity
+        addField(recordList, ""); // column specific fields, empty for entity
+
+        if (STORED_PROCEDURE.equals(entityType)) {
+          StoredProcedure sp = (StoredProcedure) entity;
+
+          String code =
+              sp.getStoredProcedureCode() != null ? sp.getStoredProcedureCode().getCode() : "";
+          String language =
+              sp.getStoredProcedureCode() != null
+                      && sp.getStoredProcedureCode().getLanguage() != null
+                  ? sp.getStoredProcedureCode().getLanguage().toString()
+                  : "";
+
+          addField(recordList, code);
+          addField(recordList, language);
+        } else {
+          // If not stored procedure, add empty placeholders to maintain column alignment
+          addField(recordList, "");
+          addField(recordList, "");
+        }
       }
+
       addRecord(csvFile, recordList);
     }
 
@@ -440,7 +465,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
           .withExtension(getExtension(printer, csvRecord, 10));
       if (processRecord) {
-        createEntity(printer, csvRecord, schema);
+        createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);
       }
     }
 

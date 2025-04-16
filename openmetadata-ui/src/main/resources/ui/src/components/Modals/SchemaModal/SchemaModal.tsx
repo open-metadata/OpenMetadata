@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Modal, Typography } from 'antd';
+import { Button, Modal, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { clone } from 'lodash';
@@ -24,8 +24,13 @@ import { SchemaModalProp } from './SchemaModal.interface';
 const SchemaModal: FC<SchemaModalProp> = ({
   className,
   onClose,
+  onChange,
+  editorClass,
   data,
+  mode,
   visible,
+  onSave,
+  isFooterVisible = false,
 }) => {
   const [schemaText, setSchemaText] = useState(data);
 
@@ -45,7 +50,26 @@ const SchemaModal: FC<SchemaModalProp> = ({
         />
       }
       data-testid="schema-modal"
-      footer={null}
+      footer={
+        isFooterVisible
+          ? [
+              <Button
+                data-testid="cancel"
+                key="cancelButton"
+                type="link"
+                onClick={onClose}>
+                {t('label.cancel')}
+              </Button>,
+              <Button
+                data-testid="save"
+                key="saveButton"
+                type="primary"
+                onClick={onSave}>
+                {t('label.save')}
+              </Button>,
+            ]
+          : null
+      }
       maskClosable={false}
       open={visible}
       title={
@@ -58,8 +82,10 @@ const SchemaModal: FC<SchemaModalProp> = ({
       <div data-testid="schema-modal-body">
         <SchemaEditor
           className="schema-editor"
-          editorClass="custom-entity-schema"
+          editorClass={classNames('custom-entity-schema', editorClass)}
+          mode={mode}
           value={schemaText as string}
+          onChange={onChange}
         />
       </div>
     </Modal>

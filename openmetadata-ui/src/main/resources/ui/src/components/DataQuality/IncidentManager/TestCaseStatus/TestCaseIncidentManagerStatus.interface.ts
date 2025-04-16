@@ -18,4 +18,5 @@ export interface TestCaseStatusIncidentManagerProps {
   onSubmit: (data: TestCaseResolutionStatus) => void;
   hasPermission?: boolean;
   newLook?: boolean;
+  headerName?: string;
 }

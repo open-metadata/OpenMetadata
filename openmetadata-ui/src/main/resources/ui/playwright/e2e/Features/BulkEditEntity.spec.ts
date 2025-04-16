@@ -146,6 +146,8 @@ test.describe('Bulk Edit Entity', () => {
             EntityDataClass.user1.responseData?.['displayName'],
             EntityDataClass.user2.responseData?.['displayName'],
           ],
+          retentionPeriod: undefined,
+          sourceUrl: undefined,
         },
         page,
         customPropertyRecord

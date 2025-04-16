@@ -125,6 +125,21 @@ public interface SearchIndex {
     return fqnParts;
   }
 
+  // Add suggest inputs to fqnParts to support partial/wildcard search on names.
+  // In some case of basic Test suite name is not part of the fullyQualifiedName, so it must be
+  // added separately.
+  default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
+    Set<String> fqnParts = new HashSet<>();
+    fqnParts.add(fqn);
+    String parent = FullyQualifiedName.getParentFQN(fqn);
+    while (parent != null) {
+      fqnParts.add(parent);
+      parent = FullyQualifiedName.getParentFQN(parent);
+    }
+    fqnParts.addAll(fqnSplits);
+    return fqnParts;
+  }
+
   default List<EntityReference> getEntitiesWithDisplayName(List<EntityReference> entities) {
     if (nullOrEmpty(entities)) {
       return Collections.emptyList();

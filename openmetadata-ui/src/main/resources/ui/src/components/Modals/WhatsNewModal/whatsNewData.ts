@@ -1558,6 +1558,7 @@ With OpenMetadata AutoPilot, you can get all of your metadata with just one clic
       },
       {
         title: `Accelerating Onboarding New Services with AI Agents`,
+        isCollate: true,
         description: `At Collate, we're taking the AutoPilot experience one step further by adding AI Agents to the mix. Based on the information extracted from the Metadata Agents, Collate AI Agents will automatically generate tiers, descriptions, and Data Quality tests:
 
 1.  The Tier Agent analyzes your table usage and lineage to determine the **business criticality** of each asset in your organization.
@@ -1635,6 +1636,7 @@ Combined with the improvements around Search Relevancy, Customizable UI for Pers
       },
       {
         title: 'Activating your Metadata in Collate with Reverse Metadata',
+        isCollate: true,
         description: `Thanks to Collate's collaboration and automation features, it's simple to add tags, descriptions, and owners to all your assets. But how can we ensure this metadata is seen and used by the source systems as well?
 
 Reverse Metadata is a new application that will allow you to send descriptions, tags, and owners collected in Collate back into the source! You can configure which assets you want to listen for changes, and updates will be **propagated in real time!**
@@ -1656,12 +1658,11 @@ We were already shipping our Docker images with Python 3.10, so this change shou
       ['Expanded Connector Ecosystem and Diversity']: `OpenMetadata's ingestion framework contains 90+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
 
 We bring new connectors in each release, continuously expanding our coverage. This time, Release 1.7 comes with four new connectors:
+1.  **Opensearch**: Bringing your index metadata into OpenMetadata.
+2.  **Cassandra**: Ingesting from the NoSQL Distributed Database.
+3.  **Cockroach DB**: The cloud native distributed SQL Database.
 
-1.  Opensearch: Bringing your index metadata into OpenMetadata.
-2.  Cassandra: Ingesting from the NoSQL Distributed Database.
-3.  Cockroach DB: The cloud native distributed SQL Database.
-
-And in Collate, we are bringing a new Pipeline connector: Wherescape.`,
+And in Collate, we are bringing a new Pipeline connector: **Wherescape**.`,
     },
   },
 ];

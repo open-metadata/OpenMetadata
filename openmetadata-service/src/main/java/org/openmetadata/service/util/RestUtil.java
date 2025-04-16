@@ -38,8 +38,11 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
@@ -66,8 +69,13 @@ public final class RestUtil {
 
   public static URI getHref(UriInfo uriInfo, String collectionPath) {
     collectionPath = removeSlashes(collectionPath);
-    String uriPath = uriInfo.getBaseUri() + collectionPath;
-    return URI.create(uriPath);
+    OpenMetadataBaseUrlConfiguration urlConfiguration =
+        SettingsCache.getSettingOrDefault(
+            SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION,
+            new OpenMetadataBaseUrlConfiguration()
+                .withOpenMetadataUrl(uriInfo.getBaseUri().toString()),
+            OpenMetadataBaseUrlConfiguration.class);
+    return URI.create(urlConfiguration.getOpenMetadataUrl() + "/" + collectionPath);
   }
 
   public static URI getHref(URI parent, String child) {
