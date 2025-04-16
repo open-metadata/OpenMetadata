@@ -101,6 +101,7 @@ class CSVUtilsClassBase {
               popoverProps={{
                 open: true,
               }}
+              onClose={props.onCancel}
               onUpdate={handleChange}>
               {' '}
             </UserTeamSelectableList>
