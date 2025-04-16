@@ -1,6 +1,6 @@
 ---
 title: External Auto Classification Workflow
-slug: /how-to-guides/data-governance/classification/auto/external-workflow
+slug: /how-to-guides/data-governance/classification/auto-classification/external-workflow
 ---
 
 # Auto Classification Workflow Configuration
