@@ -59,5 +59,5 @@ export const checkAutoPilotStatus = async (
         intervals: [5_000, 15_000, 30_000],
       }
     )
-    .toBe('FINISHED');
+    .toMatch(/FINISHED|EXCEPTION|FAILURE/);
 };

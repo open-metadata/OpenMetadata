@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 import {
+  APIRequestContext,
   expect,
   Page,
   PlaywrightTestArgs,
@@ -35,6 +36,7 @@ import {
   Services,
   testConnection,
 } from '../../../utils/serviceIngestion';
+import { ResponseDataType } from '../Entity.interface';
 
 class ServiceBaseClass {
   public category: Services;
@@ -44,6 +46,7 @@ class ServiceBaseClass {
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
   protected entityFQN: string | null;
+  public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(
     category: Services,
@@ -104,7 +107,7 @@ class ServiceBaseClass {
       await testConnection(page);
     }
 
-    await this.submitService(page);
+    this.serviceResponseData = await this.submitService(page);
 
     if (this.shouldAddIngestion) {
       await this.addIngestionPipeline(page);
@@ -232,9 +235,21 @@ class ServiceBaseClass {
         request.method() === 'POST'
     );
 
+    const saveServiceResponse = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/services/') &&
+        request.method() === 'POST'
+    );
+
     await page.getByTestId('submit-btn').getByText('Save').click();
 
+    const savedService = (await saveServiceResponse).response();
+
+    const serviceDetails = await (await savedService)?.json();
+
     await autoPilotApplicationRequest;
+
+    return serviceDetails;
   }
 
   async scheduleIngestion(page: Page) {
@@ -608,6 +623,16 @@ class ServiceBaseClass {
 
   async deleteService(page: Page) {
     await deleteService(this.category, this.serviceName, page);
+  }
+
+  async deleteServiceByAPI(apiContext: APIRequestContext) {
+    if (this.serviceResponseData.fullyQualifiedName) {
+      await apiContext.delete(
+        `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          this.serviceResponseData.fullyQualifiedName
+        )}?recursive=true&hardDelete=true`
+      );
+    }
   }
 }
 

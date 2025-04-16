@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
@@ -47,8 +47,8 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
-  video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
+  // trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  // video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
 test.describe.configure({
@@ -84,6 +84,14 @@ services.forEach((ServiceClass) => {
     () => {
       test.beforeEach('Visit entity details page', async ({ page }) => {
         await redirectToHomePage(page);
+      });
+
+      test.afterAll('Delete service by API', async ({ browser }) => {
+        const { afterAction, apiContext } = await createNewPage(browser);
+
+        await service.deleteServiceByAPI(apiContext);
+
+        await afterAction();
       });
 
       test('Create Service and check the AutoPilot status', async ({
@@ -122,12 +130,11 @@ services.forEach((ServiceClass) => {
         await reloadAndWaitForNetworkIdle(page);
 
         // Check if the auto pilot status banner is hidden
-        await page.waitForSelector(
-          '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-RUNNING"] ',
-          {
-            state: 'hidden',
-          }
-        );
+        await expect(
+          page
+            .getByTestId('auto-pilot-status-banner')
+            .getByTestId('status-banner-icon-RUNNING')
+        ).toBeHidden();
 
         // Check the auto pilot status
         await checkAutoPilotStatus(page, service);
@@ -136,12 +143,11 @@ services.forEach((ServiceClass) => {
         await reloadAndWaitForNetworkIdle(page);
 
         // Wait for the auto pilot status banner to be visible
-        await page.waitForSelector(
-          '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-FINISHED"] ',
-          {
-            state: 'visible',
-          }
-        );
+        await expect(
+          page
+            .getByTestId('auto-pilot-status-banner')
+            .getByTestId('status-banner-icon-FINISHED')
+        ).toBeVisible();
 
         // Click the close icon to hide the banner
         await page.click('[data-testid="status-banner-close-icon"]');
@@ -150,14 +156,11 @@ services.forEach((ServiceClass) => {
         await reloadAndWaitForNetworkIdle(page);
 
         // Check if the auto pilot status banner is hidden
-        await page.waitForSelector(
-          '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-FINISHED"] ',
-          {
-            state: 'hidden',
-          }
-        );
-
-        await service.deleteService(page);
+        await expect(
+          page
+            .getByTestId('auto-pilot-status-banner')
+            .getByTestId('status-banner-icon-FINISHED')
+        ).toBeHidden();
       });
     }
   );
