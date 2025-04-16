@@ -1,6 +1,6 @@
 ---
 title: Adding Auto Classification Workflow through UI
-slug: /how-to-guides/data-governance/classification/auto/workflow
+slug: /how-to-guides/data-governance/classification/auto-classification/workflow
 ---
 
 # Adding Auto Classification Ingestion through the UI

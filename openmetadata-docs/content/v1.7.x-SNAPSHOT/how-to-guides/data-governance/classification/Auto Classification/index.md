@@ -1,11 +1,11 @@
 ---
 title: Auto-Classification in OpenMetadata
-slug: /how-to-guides/data-governance/classification/auto
+slug: /how-to-guides/data-governance/classification/auto-classification
 ---
 
-# Auto-Classification in OpenMetadata
+# Auto-Classification Workflow
 
-OpenMetadata identifies PII data and auto tags or suggests the tags. The data profiler automatically tags the PII-Sensitive data. The addition of tags about PII data helps consumers and governance teams identify data that needs to be treated carefully.
+OpenMetadata identifies PII data and auto tags or suggests the tags. It automatically detects sensitive data and assigns relevant tags such as 'PII Sensitive'. The addition of tags about PII data helps consumers and governance teams identify data that needs to be treated carefully.
 
 In the example below, the columns ‘last_name’ and ‘social security number’ are auto-tagged as PII-sensitive. This works using NLP as part of the profiler during ingestion.
 

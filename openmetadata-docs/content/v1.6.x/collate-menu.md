@@ -940,14 +940,14 @@ site_menu:
     url: /how-to-guides/data-governance/classification/assets
   - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
-    url: /how-to-guides/data-governance/classification/auto
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Workflow
-    url: /how-to-guides/data-governance/classification/auto/workflow
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / External Workflow
-    url: /how-to-guides/data-governance/classification/auto/external-workflow
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Auto PII Tagging
-    url: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow
+    url: /how-to-guides/data-governance/classification/auto-classification
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Workflow
+    url: /how-to-guides/data-governance/classification/auto-classification/workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / External Workflow
+    url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
+    url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
