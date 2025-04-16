@@ -158,10 +158,6 @@
       <artifactId>swagger-annotations</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.eclipse.jetty</groupId>
-      <artifactId>jetty-server</artifactId>
-    </dependency>
-    <dependency>
       <groupId>ru.vyarus.guicey</groupId>
       <artifactId>guicey-jdbi3</artifactId>
       <version>5.9.2</version>

@@ -154,7 +154,6 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
-    <jetty-server.version>9.4.57.v20241219</jetty-server.version>
   </properties>
 
   <dependencyManagement>
@@ -208,16 +207,7 @@
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
           </exclusion>
-          <exclusion>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-server</artifactId>
-          </exclusion>
         </exclusions>
-      </dependency>
-      <dependency>
-        <groupId>org.eclipse.jetty</groupId>
-        <artifactId>jetty-server</artifactId>
-        <version>${jetty-server.version}</version>
       </dependency>
       <dependency>
         <groupId>io.dropwizard</groupId>
@@ -231,10 +221,6 @@
           <exclusion>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-          </exclusion>
-          <exclusion>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-server</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -583,7 +569,7 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
         <!-- 9.x required for Dropwizard 2.1.x -->
-        <version>${jetty-server.version}</version>
+        <version>9.4.56.v20240826</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
