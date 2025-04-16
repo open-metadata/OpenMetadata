@@ -1106,11 +1106,10 @@ export const approveTagsTask = async (
   await selectActiveGlossary(page, entity.data.displayName);
   await page.waitForLoadState('networkidle');
 
-  const tagVisibility = await page.isVisible(
-    `[data-testid="tag-${value.tag}"]`
-  );
+  const tagVisibility = page.locator(`[data-testid="tag-${value.tag}"]`);
+  await tagVisibility.scrollIntoViewIfNeeded();
 
-  expect(tagVisibility).toBe(true);
+  await expect(tagVisibility).toBeVisible();
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
