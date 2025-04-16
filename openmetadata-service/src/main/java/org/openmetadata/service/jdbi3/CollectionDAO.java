@@ -5314,6 +5314,9 @@ public interface CollectionDAO {
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
+
+    @SqlUpdate("DELETE FROM query_cost_time_series WHERE entityFQNHash = :entityFQNHash ")
+    void deleteWithEntityFqnHash(@BindFQN("entityFQNHash") String entityFQNHash);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
