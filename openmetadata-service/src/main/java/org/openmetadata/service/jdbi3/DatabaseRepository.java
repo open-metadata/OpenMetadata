@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -315,7 +316,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         for (Table table : tables) {
           // Add the table entity
           addEntityToCSV(csvFile, table, TABLE);
-
+          tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags")));
           // Add all columns as separate rows
           tableRepository.exportColumnsRecursively(table, csvFile);
         }
