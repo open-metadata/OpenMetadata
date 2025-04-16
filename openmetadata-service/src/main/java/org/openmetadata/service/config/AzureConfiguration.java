@@ -39,8 +39,8 @@ public class AzureConfiguration {
   @JsonProperty("cdnKey")
   private String cdnKey;
 
-  @JsonProperty("customerName")
-  private String customerName;
+  @JsonProperty("prefixPath")
+  private String prefixPath;
 
   @JsonProperty("blobEndpoint")
   private String blobEndpoint;
