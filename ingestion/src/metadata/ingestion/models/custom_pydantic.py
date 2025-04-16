@@ -106,7 +106,7 @@ class BaseModel(PydanticBaseModel):
         exclude_defaults: bool = False,
         exclude_none: bool = True,
         round_trip: bool = False,
-        warnings: Union[bool, Literal["none", "warn", "error"]] = True,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",
         fallback: Optional[Callable[[Any], Any]] = None,
         serialize_as_any: bool = False,
     ) -> str:
@@ -150,12 +150,17 @@ class BaseModel(PydanticBaseModel):
         self,
         *,
         mask_secrets: bool = False,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = "none",
         **kwargs,
     ) -> Dict[str, Any]:
         if mask_secrets:
             context = kwargs.pop("context", None) or {}
             context["mask_secrets"] = True
             kwargs["context"] = context
+
+        if "warnings" not in kwargs:
+            kwargs["warnings"] = warnings
+
         return super().model_dump(**kwargs)
 
 
