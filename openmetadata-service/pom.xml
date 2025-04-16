@@ -234,6 +234,16 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>io.github.maksymdolgykh.dropwizard</groupId>
       <artifactId>dropwizard-micrometer-jdbi</artifactId>
       <exclusions>
