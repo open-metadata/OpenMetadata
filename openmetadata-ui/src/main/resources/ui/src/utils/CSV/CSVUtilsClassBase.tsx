@@ -235,7 +235,12 @@ class CSVUtilsClassBase {
               popoverProps={{ open: true }}
               selectedDomain={
                 value
-                  ? { type: EntityType.DOMAIN, name: value, id: '' }
+                  ? {
+                      type: EntityType.DOMAIN,
+                      name: value,
+                      id: '',
+                      fullyQualifiedName: value,
+                    }
                   : undefined
               }
               onUpdate={(domain) => handleChange(domain as EntityReference)}>
