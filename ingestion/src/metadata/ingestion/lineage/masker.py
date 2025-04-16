@@ -20,6 +20,7 @@ from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
 from metadata.ingestion.lineage.models import Dialect
+from metadata.utils.execution_time_tracker import calculate_execution_time
 
 MASK_TOKEN = "?"
 
@@ -112,8 +113,12 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
     return query
 
 
+@calculate_execution_time(context="MaskQuery")
 def mask_query(
-    query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None
+    query: str,
+    dialect: str = Dialect.ANSI.value,
+    parser: LineageRunner = None,
+    parser_required: bool = False,
 ) -> str:
     """
     Mask a query using sqlparse or sqlfluff.
@@ -122,6 +127,8 @@ def mask_query(
     try:
         if masked_query_cache.get((query, dialect)):
             return masked_query_cache.get((query, dialect))
+        if parser_required and not parser:
+            return None
         if not parser:
             try:
                 parser = LineageRunner(query, dialect=dialect)

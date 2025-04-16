@@ -28,6 +28,7 @@ from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -77,7 +78,10 @@ class LineageParser:
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
         )
         if self.masked_query is None:
-            self.masked_query = mask_query(self._clean_query, parser=self.parser)
+            self.masked_query = (
+                mask_query(self._clean_query, parser=self.parser, parser_required=True)
+                or self._clean_query
+            )
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -409,6 +413,7 @@ class LineageParser:
 
         return clean_query.strip()
 
+    @calculate_execution_time(context="EvaluateBestParser")
     def _evaluate_best_parser(
         self, query: str, dialect: Dialect, timeout_seconds: int
     ) -> Optional[LineageRunner]:
@@ -475,7 +480,6 @@ class LineageParser:
             logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")
             return lr_sqlfluff if lr_sqlfluff else None
 
-        self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
         logger.debug(
             f"Using sqlparse for lineage parsing for query: {self.masked_query or self.query}"
         )
