@@ -172,7 +172,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   }, [isTabExpanded, leftPanelWidget]);
 
   const filteredLayout = useMemo(() => {
-    return layout.filter((widget) => !filteredKeys.includes(widget.i));
+    return layout?.filter((widget) => !filteredKeys.includes(widget.i));
   }, [layout, filteredKeys]);
 
   useEffect(() => {

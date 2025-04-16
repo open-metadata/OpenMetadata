@@ -43,13 +43,14 @@ export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
   setDocument: (document: Document) => {
     const { updateCurrentPage, currentPageType } = get();
 
-    const newPage = document?.data?.pages?.find(
-      (p: Page) => p.pageType === currentPageType
-    );
+    // Remove undefined or null pages
+    const pages = document?.data?.pages.filter(Boolean);
 
-    updateCurrentPage(newPage);
+    const newPage = pages?.find((p: Page) => p?.pageType === currentPageType);
 
-    set({ document });
+    updateCurrentPage(newPage ?? { pageType: currentPageType });
+
+    set({ document: { ...document, data: { ...document?.data, pages } } });
   },
 
   setPage: (page: Page) => {
@@ -85,8 +86,10 @@ export const useCustomizeStore = create<CustomizePageStore>()((set, get) => ({
   setCurrentPageType: (pageType: PageType) => {
     const { getPage } = get();
 
+    const currentPage = getPage(pageType);
+
     set({
-      currentPage: getPage(pageType) ?? { pageType },
+      currentPage: currentPage ?? { pageType },
       currentPageType: pageType,
     });
   },

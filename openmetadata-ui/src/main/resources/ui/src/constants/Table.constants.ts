@@ -17,6 +17,7 @@ import {
   ConstraintType,
   DatabaseServiceType,
   DataType,
+  PartitionIntervalTypes,
   RelationshipType,
   Table,
   TableType,
@@ -315,6 +316,25 @@ export const TABLE_DUMMY_DATA: Table = {
       relationshipType: RelationshipType.ManyToOne,
     },
   ],
+  tablePartition: {
+    columns: [
+      {
+        columnName: 'column1',
+        interval: 'hourly',
+        intervalType: PartitionIntervalTypes.ColumnValue,
+      },
+      {
+        columnName: 'column2',
+        interval: 'daily',
+        intervalType: PartitionIntervalTypes.ColumnValue,
+      },
+      {
+        columnName: 'column3',
+        interval: 'monthly',
+        intervalType: PartitionIntervalTypes.ColumnValue,
+      },
+    ],
+  },
   serviceType: DatabaseServiceType.BigQuery,
   tags: [],
   followers: [],

@@ -22,10 +22,7 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
-import {
-  getNewWidgetPlacement,
-  moveEmptyWidgetToTheEnd,
-} from '../CustomizableLandingPageUtils';
+import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -467,14 +464,21 @@ export const getAddWidgetHandler =
     if (
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     ) {
+      const newPlacement = getNewWidgetPlacement(currentLayout, widgetWidth);
+
       return [
-        ...moveEmptyWidgetToTheEnd(currentLayout),
+        ...currentLayout.map((widget) =>
+          widget.i === placeholderWidgetKey
+            ? // Push down emptyWidget to 1 row
+              { ...widget, y: newPlacement.y + 1 }
+            : widget
+        ),
         {
-          w: widgetWidth,
-          h: widgetHeight,
           i: widgetFQN,
+          h: widgetHeight,
+          w: widgetWidth,
           static: false,
-          ...getNewWidgetPlacement(currentLayout, widgetWidth),
+          ...newPlacement,
         },
       ];
     } else {
