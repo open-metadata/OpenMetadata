@@ -22,10 +22,6 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
-import {
-  getNewWidgetPlacement,
-  moveEmptyWidgetToTheEnd,
-} from '../CustomizableLandingPageUtils';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -467,16 +463,11 @@ export const getAddWidgetHandler =
     if (
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     ) {
-      return [
-        ...moveEmptyWidgetToTheEnd(currentLayout),
-        {
-          w: widgetWidth,
-          h: widgetHeight,
-          i: widgetFQN,
-          static: false,
-          ...getNewWidgetPlacement(currentLayout, widgetWidth),
-        },
-      ];
+      return currentLayout.map((widget) =>
+        widget.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+          ? { ...widget, i: widgetFQN, h: widgetHeight, w: widgetWidth }
+          : widget
+      );
     } else {
       // To handle case of adding widget from top button instead of empty widget placeholder
       const { x: widgetX, y: widgetY } = calculateNewPosition(
