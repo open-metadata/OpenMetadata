@@ -13,6 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { NodeViewProps } from '@tiptap/react';
 import React from 'react';
+import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import ImageAttachment from './ImageAttachment';
 
 describe('ImageAttachment', () => {
@@ -28,24 +29,7 @@ describe('ImageAttachment', () => {
     jest.clearAllMocks();
   });
 
-  it('should render loading state when isMediaLoading is true and needs authentication', () => {
-    const authenticatedNode = {
-      ...mockNode,
-      attrs: {
-        ...mockNode.attrs,
-        url: '/api/v1/attachments/123',
-      },
-    } as unknown as NodeViewProps['node'];
-
-    render(
-      <ImageAttachment isMediaLoading mediaSrc="" node={authenticatedNode} />
-    );
-
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
-    expect(screen.getByText('label.loading')).toBeInTheDocument();
-  });
-
-  it('should render uploading state when isUploading is true', () => {
+  it('should render loading state when isUploading is true', () => {
     const uploadingNode = {
       ...mockNode,
       attrs: {
@@ -62,8 +46,29 @@ describe('ImageAttachment', () => {
       />
     );
 
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
-    expect(screen.getByText('label.uploading')).toBeInTheDocument();
+    const imageContainer = screen.getByTestId('image-container');
+
+    expect(imageContainer).toHaveClass('loading-state');
+    expect(screen.queryByTestId('uploaded-image-node')).not.toBeInTheDocument();
+  });
+
+  it('should render loading state when media is loading and needs authentication', () => {
+    const authenticatedNode = {
+      ...mockNode,
+      attrs: {
+        ...mockNode.attrs,
+        url: `${UPLOADED_ASSETS_URL}/123`,
+      },
+    } as unknown as NodeViewProps['node'];
+
+    render(
+      <ImageAttachment isMediaLoading mediaSrc="" node={authenticatedNode} />
+    );
+
+    const imageContainer = screen.getByTestId('image-container');
+
+    expect(imageContainer).toHaveClass('loading-state');
+    expect(screen.queryByTestId('uploaded-image-node')).not.toBeInTheDocument();
   });
 
   it('should render image when mediaSrc is provided', async () => {
@@ -85,20 +90,13 @@ describe('ImageAttachment', () => {
 
   it('should show error state when image fails to load', async () => {
     render(
-      <ImageAttachment
-        isMediaLoading={false}
-        mediaSrc="invalid-url"
-        node={mockNode}
-      />
+      <ImageAttachment isMediaLoading={false} mediaSrc="" node={mockNode} />
     );
 
-    const image = screen.getByTestId('uploaded-image-node');
-    fireEvent.error(image);
-
     await waitFor(() => {
-      expect(screen.getByTestId('uploaded-image-node')).toHaveStyle({
-        visibility: 'hidden',
-      });
+      expect(
+        screen.queryByTestId('uploaded-image-node')
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -107,23 +105,82 @@ describe('ImageAttachment', () => {
       ...mockNode,
       attrs: {
         ...mockNode.attrs,
-        url: '/api/v1/attachments/123',
+        url: `${UPLOADED_ASSETS_URL}/123`,
       },
     } as unknown as NodeViewProps['node'];
 
     render(
+      <ImageAttachment isMediaLoading mediaSrc="" node={authenticatedNode} />
+    );
+
+    const imageContainer = screen.getByTestId('image-container');
+
+    expect(imageContainer).toHaveClass('loading-state');
+    expect(screen.queryByTestId('uploaded-image-node')).not.toBeInTheDocument();
+  });
+
+  it('should display authenticated image when mediaSrc is provided', async () => {
+    const authenticatedNode = {
+      ...mockNode,
+      attrs: {
+        ...mockNode.attrs,
+        url: `${UPLOADED_ASSETS_URL}/123`,
+      },
+    } as unknown as NodeViewProps['node'];
+
+    const mediaSrc = 'https://example.com/authenticated-image.jpg';
+    render(
       <ImageAttachment
         isMediaLoading={false}
-        mediaSrc=""
+        mediaSrc={mediaSrc}
         node={authenticatedNode}
       />
     );
 
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
-    expect(screen.getByText('label.loading')).toBeInTheDocument();
+    const image = screen.getByTestId('uploaded-image-node');
+
+    expect(image).toBeInTheDocument();
+    expect(image).toHaveAttribute('src', mediaSrc);
   });
 
-  it('should reset states when url or mediaSrc changes', async () => {
+  it('should reset states when url changes', async () => {
+    const { rerender } = render(
+      <ImageAttachment
+        isMediaLoading={false}
+        mediaSrc="https://example.com/image1.jpg"
+        node={mockNode}
+      />
+    );
+
+    // Simulate image load
+    const image = screen.getByTestId('uploaded-image-node');
+    fireEvent.load(image);
+
+    // Rerender with new url
+    const newNode = {
+      ...mockNode,
+      attrs: {
+        ...mockNode.attrs,
+        url: 'https://example.com/new-image.jpg',
+      },
+    } as unknown as NodeViewProps['node'];
+
+    rerender(
+      <ImageAttachment
+        isMediaLoading={false}
+        mediaSrc="https://example.com/image1.jpg"
+        node={newNode}
+      />
+    );
+
+    // Image should be hidden again until it loads
+    expect(screen.getByTestId('uploaded-image-node')).toHaveAttribute(
+      'src',
+      'https://example.com/image1.jpg'
+    );
+  });
+
+  it('should reset states when mediaSrc changes', async () => {
     const { rerender } = render(
       <ImageAttachment
         isMediaLoading={false}
@@ -146,6 +203,31 @@ describe('ImageAttachment', () => {
     );
 
     // Image should be hidden again until it loads
-    expect(image).toHaveStyle({ visibility: 'hidden' });
+    expect(screen.getByTestId('uploaded-image-node')).toHaveAttribute(
+      'src',
+      'https://example.com/image2.jpg'
+    );
+  });
+
+  it('should handle empty alt text', () => {
+    const nodeWithEmptyAlt = {
+      ...mockNode,
+      attrs: {
+        ...mockNode.attrs,
+        alt: '',
+      },
+    } as unknown as NodeViewProps['node'];
+
+    render(
+      <ImageAttachment
+        isMediaLoading={false}
+        mediaSrc="https://example.com/image.jpg"
+        node={nodeWithEmptyAlt}
+      />
+    );
+
+    const image = screen.getByTestId('uploaded-image-node');
+
+    expect(image).toHaveAttribute('alt', '');
   });
 });

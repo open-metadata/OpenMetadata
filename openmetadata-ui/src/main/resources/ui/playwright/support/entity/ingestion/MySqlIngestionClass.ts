@@ -37,6 +37,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
   name = '';
   defaultFilters = ['^information_schema$', '^performance_schema$'];
   tableFilter: string[];
+  excludeSchemas: string[];
   profilerTable = 'alert_entity';
   constructor(tableFilter?: string[]) {
     const serviceName = `pw-mysql-with-%-${uuid()}`;
@@ -47,6 +48,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
       'alert_entity',
       'chart_entity',
     ];
+    this.excludeSchemas = ['openmetadata'];
   }
 
   async createService(page: Page) {
@@ -75,6 +77,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await page.fill('#root\\/tableFilterPattern\\/includes', filter);
       await page
         .locator('#root\\/tableFilterPattern\\/includes')
+        .press('Enter');
+    }
+    for (const schema of this.excludeSchemas) {
+      await page.fill('#root\\/schemaFilterPattern\\/excludes', schema);
+      await page
+        .locator('#root\\/schemaFilterPattern\\/excludes')
         .press('Enter');
     }
   }
@@ -187,7 +195,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     await page.waitForSelector('.ant-select-selection-item-content');
 
     await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
-      this.defaultFilters.concat(this.tableFilter)
+      this.defaultFilters.concat([...this.excludeSchemas, ...this.tableFilter])
     );
   }
 }
