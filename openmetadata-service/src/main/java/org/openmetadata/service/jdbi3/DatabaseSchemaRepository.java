@@ -209,7 +209,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
     List<Table> tables =
         tableRepository.listAllForCSV(
-            tableRepository.getFields("owners,tags,domain,extension,columns"),
+            tableRepository.getFields("owners,tags,domain,extension"),
             schema.getFullyQualifiedName());
     tables.forEach(
         table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
