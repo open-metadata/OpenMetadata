@@ -48,7 +48,6 @@ from metadata.ingestion.lineage.sql_lineage import (
 )
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 
-# from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
@@ -66,6 +65,7 @@ PROCESS_TIMEOUT = 10 * 60
 # Maximum number of processes to use for parallel processing
 MAX_PROCESSES = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs
 
+# pylint: disable=invalid-name
 # Function that will run in separate processes - defined at module level for pickling
 def _process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
     """
@@ -108,7 +108,9 @@ def query_lineage_generator(
     parsingTimeoutLimit: int,
     serviceName: str,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-
+    """
+    Generate lineage for a list of table queries
+    """
     for table_query in table_queries or []:
         if not _query_already_processed(metadata, table_query):
             lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
@@ -151,6 +153,9 @@ def view_lineage_generator(
     parsingTimeoutLimit: int,
     overrideViewLineage: bool,
 ) -> Iterable[Either[AddLineageRequest]]:
+    """
+    Generate lineage for a list of views
+    """
     try:
         for view in views:
             for lineage in get_view_lineage(
@@ -284,7 +289,7 @@ class LineageSource(QueryParserSource, ABC):
         process_start_times = {}
 
         # Start processing each chunk in a separate process
-        for i, chunk in enumerate(chunk_generator()):
+        for _, chunk in enumerate(chunk_generator()):
             # Start a process for processing
             process = Process(
                 target=_process_chunk_in_subprocess,
@@ -294,11 +299,9 @@ class LineageSource(QueryParserSource, ABC):
             process_start_times[
                 process.name
             ] = time.time()  # Track when the process started
-            print("--------------------------------")
-            print(
+            logger.info(
                 f"Process {process.name} started at {process_start_times[process.name]}"
             )
-            print("--------------------------------")
             active_processes.append(process)
             process.start()
 
@@ -308,8 +311,9 @@ class LineageSource(QueryParserSource, ABC):
             try:
                 while not queue.empty():
                     yield queue.get_nowait()
-            except queue.Empty:
-                pass
+            except Exception as exc:
+                logger.warning(f"Error processing queue: {exc}")
+                logger.debug(traceback.format_exc())
 
             # Check for completed or timed-out processes
             still_active = []
@@ -340,8 +344,9 @@ class LineageSource(QueryParserSource, ABC):
         try:
             while not queue.empty():
                 yield queue.get_nowait()
-        except queue.Empty:
-            pass
+        except Exception as exc:
+            logger.warning(f"Error processing queue: {exc}")
+            logger.debug(traceback.format_exc())
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
@@ -419,7 +424,7 @@ class LineageSource(QueryParserSource, ABC):
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """
-        By default stored procedure lineage is not supported.
+        By default stored   procedure lineage is not supported.
         """
         logger.info(
             f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
@@ -446,6 +451,7 @@ class LineageSource(QueryParserSource, ABC):
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
+        return []
 
     def get_add_cross_database_lineage_request(
         self,
@@ -453,6 +459,9 @@ class LineageSource(QueryParserSource, ABC):
         to_entity: Table,
         column_lineage: List[ColumnLineage] = None,
     ) -> Optional[Either[AddLineageRequest]]:
+        """
+        Get the add cross database lineage request
+        """
         if from_entity and to_entity:
             return Either(
                 right=AddLineageRequest(

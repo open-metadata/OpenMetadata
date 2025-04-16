@@ -63,7 +63,7 @@ logger = utils_logger()
 DEFAULT_SCHEMA_NAME = "<default>"
 CUTOFF_NODES = 20
 
-
+# pylint: disable=too-many-function-args,protected-access
 def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     """
     Get fqn of column if exist in table entity
@@ -285,7 +285,7 @@ def _replace_target_table(
                 try:
                     # remove the old edge
                     stmt_holder.graph.remove_edge(col_lineage[-2], tgt_col)
-                except:
+                except Exception as _:
                     # if the edge is not present, pass
                     pass
 

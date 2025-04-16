@@ -13,7 +13,6 @@ Query masking utilities
 """
 
 import traceback
-from typing import Optional
 
 from cachetools import LRUCache
 from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
@@ -116,7 +115,10 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
 
 @calculate_execution_time(context="MaskQuery")
 def mask_query(
-    query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None, parser_required: bool = False
+    query: str,
+    dialect: str = Dialect.ANSI.value,
+    parser: LineageRunner = None,
+    parser_required: bool = False,
 ) -> str:
     """
     Mask a query using sqlparse or sqlfluff.

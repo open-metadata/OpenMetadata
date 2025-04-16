@@ -92,9 +92,11 @@ def get_view_lineage(
         if table_entity.serviceType == DatabaseServiceType.Postgres:
             # For Postgres, if schema is not defined, we need to use the public schema
             schema_name = PUBLIC_SCHEMA
-        
+
         end_time = time.time()
-        logger.debug(f"Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds")
+        logger.debug(
+            f"Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
+        )
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from get_lineage_by_query(
                 metadata,
