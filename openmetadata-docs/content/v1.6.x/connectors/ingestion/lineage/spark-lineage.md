@@ -36,7 +36,7 @@ Once you have downloaded the jar from [here](https://github.com/open-metadata/op
 
 {% codeInfo srNumber=2 %}
 
-`openmetadata-spark-agent.jar` comes with a custom spark listener i.e. `org.openmetadata.spark.agent.OpenMetadataSparkListener` you will need to add this as `extraListeners` spark configuration.
+`openmetadata-spark-agent.jar` comes with a custom spark listener i.e. `io.openlineage.spark.agent.OpenLineageSparkListener` you will need to add this as `extraListeners` spark configuration.
 
 {% /codeInfo %}
 
@@ -130,7 +130,7 @@ spark = (
 ```py {% srNumber=2 %}
     .config(
         "spark.extraListeners",
-        "org.openmetadata.spark.agent.OpenMetadataSparkListener",
+        "io.openlineage.spark.agent.OpenLineageSparkListener",
     )
 ```
 ```py {% srNumber=3 %}
@@ -282,7 +282,7 @@ echo "END: Upload Spark Listener JARs"
 echo "BEGIN: Modify Spark config settings"
 cat << 'EOF' > /databricks/driver/conf/openlineage-spark-driver-defaults.conf
 [driver] {
-  "spark.extraListeners" = "org.openmetadata.spark.agent.OpenMetadataSparkListener"
+  "spark.extraListeners" = "io.openlineage.spark.agent.OpenLineageSparkListener"
 }
 EOF
 echo "END: Modify Spark config settings"
@@ -330,7 +330,7 @@ After configuring the init script, you will need to update the spark config as w
 these are the possible configurations that you can do, please refer the `Configuration` section above to get the detailed information about the same. 
 
 ```
-spark.extraListeners org.openmetadata.spark.agent.OpenMetadataSparkListener
+spark.extraListeners io.openlineage.spark.agent.OpenLineageSparkListener
 spark.openmetadata.transport.type openmetadata
 spark.openmetadata transport.pipelineSourceUrl http://<your-pipeline-host-port> 
 spark.openmetadata transport.pipelineDescription "your pipeline description" 
@@ -369,7 +369,7 @@ In the same Job details tab, add a new property under Job parameters:
 1. Add the `--conf` property with following value, make sure to customize this configuration as described in the above documentation.
 
 ```
-spark.extraListeners=org.openmetadata.spark.agent.OpenMetadataSparkListener --conf spark.openmetadata.transport.hostPort=https://your-org.host:port  --conf spark.openmetadata.transport.type=openmetadata --conf spark.openmetadata.transport.jwtToken=<jwt-token> --conf spark.openmetadata.transport.pipelineServiceName=glue_spark_pipeline_service --conf spark.openmetadata.transport.pipelineName=glue_pipeline_name --conf spark.openmetadata.transport.timeout=30
+spark.extraListeners=io.openlineage.spark.agent.OpenLineageSparkListener --conf spark.openmetadata.transport.hostPort=https://your-org.host:port  --conf spark.openmetadata.transport.type=openmetadata --conf spark.openmetadata.transport.jwtToken=<jwt-token> --conf spark.openmetadata.transport.pipelineServiceName=glue_spark_pipeline_service --conf spark.openmetadata.transport.pipelineName=glue_pipeline_name --conf spark.openmetadata.transport.timeout=30
 ```
 
 2. Add the `--user-jars-first` parameter and set its value to `true`
