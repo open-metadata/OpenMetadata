@@ -12,6 +12,9 @@ def get_python_version(version: str) -> str:
     if "-rc" in version:
         version_parts = version.split("-")
         return f"{version_parts[0]}.0{version_parts[1]}"
+    if "-SNAPSHOT" in version:
+        version_parts = version.split("-")
+        return f"{version_parts[0]}.0.dev0"
     return f"{version}.0"
 
 
