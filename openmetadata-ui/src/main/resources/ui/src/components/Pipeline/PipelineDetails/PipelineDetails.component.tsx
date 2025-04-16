@@ -115,7 +115,7 @@ const PipelineDetails = ({
         pipelineDetails.id
       );
       setPipelinePermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.asset-lowercase'),
@@ -254,8 +254,7 @@ const PipelineDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 

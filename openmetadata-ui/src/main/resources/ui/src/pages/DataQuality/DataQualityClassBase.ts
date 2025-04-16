@@ -39,10 +39,8 @@ class DataQualityClassBase {
           entity: i18n.t('label.table-plural'),
         }),
         icon: TableIcon,
-        description: i18n.t('label.review-data-entity', {
-          entity: i18n.t('label.by-entity', {
-            entity: i18n.t('label.table-plural'),
-          }),
+        description: i18n.t('label.data-health-by-entity', {
+          entity: i18n.t('label.table-plural'),
         }),
         iconProps: {
           className: 'side-panel-icons',
@@ -54,10 +52,8 @@ class DataQualityClassBase {
           entity: i18n.t('label.test-case-plural'),
         }),
         id: 'by-test-cases',
-        description: i18n.t('label.review-data-entity', {
-          entity: i18n.t('label.by-entity', {
-            entity: i18n.t('label.test-case-plural'),
-          }),
+        description: i18n.t('label.data-health-by-entity', {
+          entity: i18n.t('label.test-case-plural'),
         }),
         icon: TestCaseIcon,
         iconProps: {
@@ -69,10 +65,8 @@ class DataQualityClassBase {
         label: i18n.t('label.by-entity', {
           entity: i18n.t('label.test-suite-plural'),
         }),
-        description: i18n.t('label.review-data-entity', {
-          entity: i18n.t('label.by-entity', {
-            entity: i18n.t('label.test-suite-plural'),
-          }),
+        description: i18n.t('label.data-health-by-entity', {
+          entity: i18n.t('label.test-suite-plural'),
         }),
         id: 'by-test-suites',
         icon: TestSuiteIcon,

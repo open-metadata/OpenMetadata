@@ -429,6 +429,7 @@ const NavBar = ({
             <GlobalSearchBar />
             <DomainSelectableList
               hasPermission
+              showAllDomains
               popoverProps={{
                 open: isDomainDropdownOpen,
                 onOpenChange: (open) => {

@@ -17,7 +17,6 @@ import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
-import PanelContainer from './PanelContainer/PanelContainer';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
 
@@ -52,6 +51,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
             'full-width': hideSecondPanel || isRightPanelCollapsed,
+            'h-full overflow-y-auto': firstPanel.allowScroll,
           })}
           data-testid={firstPanel.className}
           flex={firstPanel.flex}
@@ -59,13 +59,17 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           onStopResize={(args) => {
             firstPanel.onStopResize?.(args.component.props.flex);
           }}>
-          <PanelContainer overlay={firstPanel.overlay}>
-            {isFirstPanelWrapInCard ? (
-              <Card>{firstPanel.children}</Card>
-            ) : (
-              firstPanel.children
-            )}
-          </PanelContainer>
+          {isFirstPanelWrapInCard ? (
+            <Card
+              className={classNames(firstPanel.cardClassName, {
+                // If allowScroll is true, the card will not have a scrollbar
+                'h-full overflow-y-auto': !firstPanel.allowScroll,
+              })}>
+              {firstPanel.children}
+            </Card>
+          ) : (
+            firstPanel.children
+          )}
         </ReflexElement>
 
         <ReflexSplitter
@@ -119,15 +123,12 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>
-          {!hideSecondPanel && (
-            <PanelContainer overlay={secondPanel.overlay}>
-              {isSecondPanelWrapInCard ? (
-                <Card className="reflex-card">{secondPanel.children}</Card>
-              ) : (
-                secondPanel.children
-              )}
-            </PanelContainer>
-          )}
+          {!hideSecondPanel &&
+            (isSecondPanelWrapInCard ? (
+              <Card className="reflex-card">{secondPanel.children}</Card>
+            ) : (
+              secondPanel.children
+            ))}
         </ReflexElement>
       </ReflexContainer>
     </>

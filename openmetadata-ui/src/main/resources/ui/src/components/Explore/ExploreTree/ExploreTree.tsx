@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tree, Typography } from 'antd';
+import { Tooltip, Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
@@ -53,24 +53,36 @@ import {
 } from './ExploreTree.interface';
 
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <div className="d-flex justify-between">
-    <Typography.Text
-      className={classNames({
-        'm-l-xss': node.data?.isRoot,
-      })}
-      data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
-      {node.title}
-    </Typography.Text>
-    {!isUndefined(node.count) && (
-      <span className="explore-node-count">{getCountBadge(node.count)}</span>
-    )}
-  </div>
+  <Tooltip
+    overlayInnerStyle={{ backgroundColor: '#000', opacity: 1 }}
+    title={
+      <Typography.Text className="text-white">
+        {node.title}
+        {node.type && (
+          <span className="text-grey-400">{` (${node.type})`}</span>
+        )}
+      </Typography.Text>
+    }>
+    <div className="d-flex justify-between">
+      <Typography.Text
+        className={classNames({
+          'm-l-xss': node.data?.isRoot,
+        })}
+        data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+        {node.title}
+      </Typography.Text>
+      {!isUndefined(node.count) && (
+        <span className="explore-node-count">{getCountBadge(node.count)}</span>
+      )}
+    </div>
+  </Tooltip>
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { t } = useTranslation();
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
+
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -157,7 +169,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
         const children = sortedBuckets.map((bucket) => {
           const id = generateUUID();
-
+          let type = null;
           let logo = undefined;
           if (isEntityType) {
             logo = searchClassBase.getEntityIcon(
@@ -174,6 +186,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               />
             );
           } else if (bucketToFind === EntityFields.DATABASE_DISPLAY_NAME) {
+            type = 'Database';
             logo = searchClassBase.getEntityIcon(
               'database',
               'service-icon w-4 h-4'
@@ -181,6 +194,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
           ) {
+            type = 'Database Schema';
             logo = searchClassBase.getEntityIcon(
               'databaseSchema',
               'service-icon w-4 h-4'
@@ -194,11 +208,14 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           }
 
           return {
-            title: isEntityType
-              ? getPluralizeEntityName(bucket.key)
-              : bucket.key,
+            title: isEntityType ? (
+              <>{getPluralizeEntityName(bucket.key)}</>
+            ) : (
+              <>{bucket.key}</>
+            ),
             count: isEntityType ? bucket.doc_count : undefined,
             key: id,
+            type,
             icon: logo,
             isLeaf: bucketToFind === EntityFields.ENTITY_TYPE,
             data: {

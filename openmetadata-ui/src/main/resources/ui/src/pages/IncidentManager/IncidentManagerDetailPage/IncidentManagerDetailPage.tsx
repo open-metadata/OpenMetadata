@@ -43,6 +43,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
+import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
 
@@ -281,14 +282,14 @@ const IncidentManagerDetailPage = () => {
             </Col>
           </Row>
         </Col>
-        <Col>
+        <Col className="w-full">
           <IncidentManagerPageHeader
             fetchTaskCount={getEntityFeedCount}
             testCaseData={testCase}
             onOwnerUpdate={handleOwnerChange}
           />
         </Col>
-        <Col span={24}>
+        <Col className="incident-manager-details-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}

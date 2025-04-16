@@ -7,7 +7,7 @@ slug: /connectors/database/bigquery
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -24,10 +24,8 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
-- [Reverse Metadata Ingestion](#reverse-metadata-ingestion)
 - [Troubleshooting](/connectors/database/bigquery/troubleshooting)
-- [Reverse Metadata](#reverse-metadata)
-
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
 
@@ -45,6 +43,8 @@ description="Check out this documentation on how to create a custom role and ass
 link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
+
+{% partial file="/v1.7/connectors/database/partitioned-tables.md" /%}
 
 ### Data Catalog API Permissions 
 
@@ -164,41 +164,6 @@ the GCP credentials empty. This is why they are not marked as required.
 
 We support cross-project lineage, but the data must be ingested within a single service. This means you need to perform lineage ingestion for just one service while including multiple projects.
 
+{% partial file="/v1.7/connectors/database/bigquery/reverse-metadata.md" collate: true /%}
+
 {% partial file="/v1.7/connectors/database/related.md" /%}
-
-## Reverse Metadata
-
-{% note %}
-This feature is specific to Collate and requires the Collate Enterprise License.
-{% /note %}
-
-### Description Management
-
-BigQuery supports description updates at the following levels:
-- Schema level
-- Table level
-
-### Owner Management
-
-❌ Owner management is not supported for BigQuery.
-
-### Tag Management
-
-BigQuery supports tag management at the following levels:
-- Schema level
-- Table level
-
-### Custom SQL Template
-
-BigQuery supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
-
-Here are examples of custom SQL queries for metadata changes:
-
-```sql
--- Update table labels
-ALTER TABLE `{database}.{schema}.{table}` SET OPTIONS (labels = {tags});
-```
-
-The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
-
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).

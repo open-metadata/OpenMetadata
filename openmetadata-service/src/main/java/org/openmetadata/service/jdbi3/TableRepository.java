@@ -782,18 +782,29 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = (Table) entity;
     for (Column col : table.getColumns()) {
       if (col.getFullyQualifiedName().equals(columnFQN)) {
-        if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
-          List<TagLabel> tags = new ArrayList<>(col.getTags());
-          tags.addAll(suggestion.getTagLabels());
-          col.setTags(tags);
-        } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
-          col.setDescription(suggestion.getDescription());
-        } else {
-          throw new SuggestionException("Invalid suggestion Type");
+        applySuggestionToColumn(col, suggestion);
+      }
+      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
+        for (Column child : col.getChildren()) {
+          if (child.getFullyQualifiedName().equals(columnFQN)) {
+            applySuggestionToColumn(child, suggestion);
+          }
         }
       }
     }
     return table;
+  }
+
+  public void applySuggestionToColumn(Column column, Suggestion suggestion) {
+    if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
+      List<TagLabel> tags = new ArrayList<>(column.getTags());
+      tags.addAll(suggestion.getTagLabels());
+      column.setTags(tags);
+    } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
+      column.setDescription(suggestion.getDescription());
+    } else {
+      throw new SuggestionException("Invalid suggestion Type");
+    }
   }
 
   @Override
@@ -1263,6 +1274,7 @@ public class TableRepository extends EntityRepository<Table> {
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
       // if schema definition changes make processed lineage false
       if (origTable.getProcessedLineage().booleanValue()
+          && origTable.getSchemaDefinition() != null
           && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
         updatedTable.setProcessedLineage(false);
       }

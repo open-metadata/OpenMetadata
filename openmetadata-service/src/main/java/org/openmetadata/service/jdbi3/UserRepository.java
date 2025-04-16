@@ -411,28 +411,27 @@ public class UserRepository extends EntityRepository<User> {
       boolean existByEmail = checkEmailAlreadyExists(email);
       if (existByName && !existByEmail) {
         User userByName = getByName(uriInfo, username, Fields.EMPTY_FIELDS);
-        throw BadRequestException.of(
-            String.format(
-                "User with given name exists but is not associated with the provided email. "
-                    + "Matching User Found By Name [username:email] : [%s:%s], Provided User: [%s:%s]",
-                userByName.getName().toLowerCase(),
-                userByName.getEmail().toLowerCase(),
-                username,
-                email));
+        LOG.error(
+            "User with given name exists but is not associated with the provided email. "
+                + "Matching User Found By Name [username:email] : [{}:{}], Provided User: [{}:{}]",
+            userByName.getName().toLowerCase(),
+            userByName.getEmail().toLowerCase(),
+            username,
+            email);
+        throw BadRequestException.of("Account already exists. Please contact administrator.");
       } else if (!existByName && existByEmail) {
         User userByEmail = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
-        throw BadRequestException.of(
-            String.format(
-                "User with given email exists but is not associated with provider username. "
-                    + "Matching User Found By Email [username:email] : [%s:%s], Provided User: [%s:%s]",
-                userByEmail.getName().toLowerCase(),
-                userByEmail.getEmail().toLowerCase(),
-                username,
-                email));
+        LOG.error(
+            "User with given email exists but is not associated with provider username. "
+                + "Matching User Found By Email [username:email] : [{}:{}], Provided User: [{}:{}]",
+            userByEmail.getName().toLowerCase(),
+            userByEmail.getEmail().toLowerCase(),
+            username,
+            email);
+        throw BadRequestException.of("Account already exists. Please contact administrator.");
       } else {
-        throw EntityNotFoundException.byMessage(
-            String.format(
-                "User with provider name : %s and email : %s not found", username, email));
+        LOG.error("User with provider name : {} and email : {} not found", username, email);
+        throw EntityNotFoundException.byMessage("Cannot find user with provided name and email");
       }
     }
   }

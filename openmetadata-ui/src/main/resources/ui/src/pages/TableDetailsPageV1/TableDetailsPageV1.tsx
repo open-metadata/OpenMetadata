@@ -86,16 +86,17 @@ import {
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
+  findColumnByEntityLink,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
+  updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -156,13 +157,15 @@ const TableDetailsPageV1: React.FC = () => {
 
   const extraDropdownContent = useMemo(
     () =>
-      entityUtilClassBase.getManageExtraOptions(
-        EntityType.TABLE,
-        tableFqn,
-        tablePermissions,
-        tableDetails?.deleted ?? false
-      ),
-    [tablePermissions, tableFqn, tableDetails?.deleted]
+      tableDetails
+        ? entityUtilClassBase.getManageExtraOptions(
+            EntityType.TABLE,
+            tableFqn,
+            tablePermissions,
+            tableDetails
+          )
+        : [],
+    [tablePermissions, tableFqn, tableDetails]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
@@ -226,7 +229,7 @@ const TableDetailsPageV1: React.FC = () => {
         data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
         [];
       setDqFailureCount(updatedNodes.length);
-    } catch (error) {
+    } catch {
       setDqFailureCount(0);
     }
   };
@@ -257,7 +260,7 @@ const TableDetailsPageV1: React.FC = () => {
       } else {
         setDqFailureCount(failureCount);
       }
-    } catch (error) {
+    } catch {
       setTestCaseSummary(undefined);
     }
   };
@@ -272,7 +275,7 @@ const TableDetailsPageV1: React.FC = () => {
         entityId: tableDetails.id,
       });
       setQueryCount(response.paging.total);
-    } catch (error) {
+    } catch {
       setQueryCount(0);
     }
   };
@@ -322,7 +325,7 @@ const TableDetailsPageV1: React.FC = () => {
         );
 
         setTablePermissions(tablePermission);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.fetch-entity-permissions-error', {
             entity: t('label.resource-permission-lowercase'),
@@ -662,8 +665,7 @@ const TableDetailsPageV1: React.FC = () => {
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -683,14 +685,11 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const activeCol = prev?.columns.find((column) => {
-          return (
-            EntityLink.getTableEntityLink(
-              prev.fullyQualifiedName ?? '',
-              column.name ?? ''
-            ) === suggestion.entityLink
-          );
-        });
+        const activeCol = findColumnByEntityLink(
+          prev.fullyQualifiedName ?? '',
+          prev.columns,
+          suggestion.entityLink
+        );
 
         if (!activeCol) {
           return {
@@ -700,18 +699,17 @@ const TableDetailsPageV1: React.FC = () => {
               : { tags: suggestion.tagLabels }),
           };
         } else {
-          const updatedColumns = prev.columns.map((column) => {
-            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
-              return {
-                ...column,
-                ...(suggestion.type === SuggestionType.SuggestDescription
-                  ? { description: suggestion.description }
-                  : { tags: suggestion.tagLabels }),
-              };
-            } else {
-              return column;
-            }
-          });
+          const update =
+            suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels };
+
+          // Update the column in the nested structure
+          const updatedColumns = updateColumnInNestedStructure(
+            prev.columns,
+            activeCol.fullyQualifiedName ?? '',
+            update
+          );
 
           return {
             ...prev,
@@ -813,7 +811,7 @@ const TableDetailsPageV1: React.FC = () => {
             />
           </Col>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
               className="tabs-new"

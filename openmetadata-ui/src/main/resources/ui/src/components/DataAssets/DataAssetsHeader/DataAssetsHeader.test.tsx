@@ -24,7 +24,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
-import { DAY_ONE_EXPERIENCE_APP_NAME } from '../../../constants/Applications.constant';
+import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
@@ -232,6 +232,33 @@ describe('DataAssetsHeader component', () => {
     expect(screen.getByTestId('Tier')).toContainHTML('label.no-entity');
   });
 
+  it('should not call getDataQualityLineage, if isDqAlertSupported and alert supported is false', () => {
+    act(() => {
+      render(<DataAssetsHeader {...mockProps} />);
+    });
+
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+  });
+
+  it('should not call getDataQualityLineage, if isDqAlertSupported is false & alert supported is true', () => {
+    mockIsAlertSupported = true;
+    act(() => {
+      render(<DataAssetsHeader {...mockProps} />);
+    });
+
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+
+    mockIsAlertSupported = false;
+  });
+
+  it('should not call getDataQualityLineage, if isDqAlertSupported is true & alert supported is false', () => {
+    act(() => {
+      render(<DataAssetsHeader isDqAlertSupported {...mockProps} />);
+    });
+
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+  });
+
   it('should call getDataQualityLineage, if isDqAlertSupported and alert supported is true', () => {
     mockIsAlertSupported = true;
     act(() => {
@@ -311,7 +338,7 @@ describe('DataAssetsHeader component', () => {
     expect(certificatComponent).toBeInTheDocument();
   });
 
-  it('should trigger the Day One application when the button is clicked', () => {
+  it('should trigger the AutoPilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
         {...mockProps}
@@ -324,17 +351,14 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    const button = screen.getByTestId('trigger-day-one-application-button');
+    const button = screen.getByTestId('trigger-auto-pilot-application-button');
 
     expect(button).toBeInTheDocument();
 
     fireEvent.click(button);
 
-    expect(triggerOnDemandApp).toHaveBeenCalledWith(
-      DAY_ONE_EXPERIENCE_APP_NAME,
-      {
-        entityLink: 'entityFeedLink',
-      }
-    );
+    expect(triggerOnDemandApp).toHaveBeenCalledWith(AUTO_PILOT_APP_NAME, {
+      entityLink: 'entityFeedLink',
+    });
   });
 });

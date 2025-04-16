@@ -29,9 +29,7 @@ body {
 
 ol,
 ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  padding-inline-start: 20px;
 }
 
 p {
@@ -64,10 +62,6 @@ p {
 
 .shadow-none {
   box-shadow: none;
-}
-
-.overflow-y-auto {
-  overflow-y: auto;
 }
 
 .overflow-hidden {
@@ -624,19 +618,35 @@ a[href].link-text-grey,
 
 // Entity Details Page css
 .entity-details-page-tabs {
-  .ant-tabs-nav {
-    margin: 0 !important;
-    padding: 0 20px;
+  .ant-tabs-tabpane {
+    height: @entity-details-tab-height;
+    overflow-y: auto;
 
-    .ant-tabs-nav-wrap {
-      overflow: initial;
+    .activity-feed-tab {
+      height: 100%;
+
+      .right-container,
+      .center-container {
+        height: 100%;
+      }
     }
+  }
+
+  /* Lineage tab panel styling */
+  [id*='rc-tabs-'][id*='-panel-lineage'],
+  [id*='rc-tabs-'][id*='-panel-erDiagram'] {
+    background-color: @grey-9;
+  }
+}
+
+.entity-version-page-tabs {
+  .ant-tabs-tabpane {
+    height: @entity-version-page-tabs-height;
+    overflow-y: auto;
   }
 }
 
 .entity-tag-right-panel-container {
-  height: @entity-details-tab-height;
-  overflow-y: auto;
   border-left: @global-border;
   padding: 12px 8px 0 8px;
 }
@@ -647,11 +657,6 @@ a[href].link-text-grey,
 
 .full-height {
   height: calc(100vh - @om-navbar-height); // removing only navbar height
-}
-
-.tab-content-height {
-  height: @entity-details-tab-height;
-  overflow-y: scroll;
 }
 
 /* Diff style */

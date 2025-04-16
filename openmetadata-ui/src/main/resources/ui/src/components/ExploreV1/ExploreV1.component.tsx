@@ -17,17 +17,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import {
-  Alert,
-  Button,
-  Card,
-  Col,
-  Menu,
-  Row,
-  Space,
-  Switch,
-  Typography,
-} from 'antd';
+import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -44,7 +34,7 @@ import {
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
+import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
@@ -55,7 +45,7 @@ import {
 } from '../../utils/ExploreUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
@@ -67,6 +57,7 @@ import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
+
 const IndexNotFoundBanner = () => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
@@ -217,6 +208,38 @@ const ExploreV1: React.FC<ExploreProps> = ({
     });
   };
 
+  const exploreLeftPanel = useMemo(() => {
+    if (tabItems.length === 0) {
+      return (
+        <FilterErrorPlaceHolder
+          className="h-min-80 d-flex flex-col justify-center border-none"
+          size={SIZE.MEDIUM}
+        />
+      );
+    }
+
+    if (searchQueryParam) {
+      return (
+        <Menu
+          className="custom-menu"
+          data-testid="explore-left-panel"
+          items={tabItems}
+          mode="inline"
+          rootClassName="left-container"
+          selectedKeys={[activeTabKey]}
+          onClick={(info) => {
+            if (info && info.key !== activeTabKey) {
+              onChangeSearchIndex(info.key as ExploreSearchIndex);
+              setShowSummaryPanel(false);
+            }
+          }}
+        />
+      );
+    }
+
+    return <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />;
+  }, [searchQueryParam, tabItems]);
+
   useEffect(() => {
     const escapeKeyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -276,28 +299,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           flex: 0.13,
           minWidth: 280,
           title: t('label.data-asset-plural'),
-          children: (
-            <div className="p-x-sm">
-              {searchQueryParam ? (
-                <Menu
-                  className="custom-menu"
-                  data-testid="explore-left-panel"
-                  items={tabItems}
-                  mode="inline"
-                  rootClassName="left-container"
-                  selectedKeys={[activeTabKey]}
-                  onClick={(info) => {
-                    if (info && info.key !== activeTabKey) {
-                      onChangeSearchIndex(info.key as ExploreSearchIndex);
-                      setShowSummaryPanel(false);
-                    }
-                  }}
-                />
-              ) : (
-                <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />
-              )}
-            </div>
-          ),
+          children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{
           className: 'content-height-with-resizable-panel',
@@ -421,8 +423,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 gutter={[20, 0]}
                 wrap={false}>
                 <Col flex="auto">
-                  <Card>
-                    <div>
+                  <Card className="h-full explore-main-card">
+                    <div className="h-full">
                       {!loading && !isElasticSearchIssue ? (
                         <SearchedData
                           isFilterSelected
@@ -467,19 +469,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
         }}
       />
 
-      {searchQueryParam && tabItems.length === 0 && !loading && (
-        <Space
-          align="center"
-          className="w-full flex-center full-height"
-          data-testid="no-search-results"
-          direction="vertical"
-          size={48}>
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        </Space>
-      )}
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
     </div>
   );

@@ -7,7 +7,7 @@ slug: /connectors/database/athena/yaml
 name="Athena"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata Ingestion"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 
@@ -22,7 +22,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
-- [Reverse Metadata Ingestion](/connectors/ingestion/workflows/reverse-metadata)
+{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 

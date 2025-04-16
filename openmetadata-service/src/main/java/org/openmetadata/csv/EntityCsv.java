@@ -69,6 +69,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.StoredProcedureCode;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
@@ -80,6 +81,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -94,7 +96,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.StoredProcedureRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
@@ -238,7 +239,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> owners = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
     List<EntityReference> refs = new ArrayList<>();
     for (String owner : owners) {
-      List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToEntities(owner));
+      List<String> ownerTypes = listOrEmpty(fieldToEntities(owner));
       if (ownerTypes.size() != 2) {
         importFailure(printer, invalidMessageCreator.apply(fieldNumber), csvRecord);
         return Collections.emptyList();
@@ -851,7 +852,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(
             entity,
             repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
             .getExecutorService()
@@ -904,7 +905,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(
             entity,
             repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
-        PutResponse<EntityInterface> response = repository.createOrUpdate(null, entity);
+        PutResponse<EntityInterface> response =
+            repository.createOrUpdateForImport(null, entity, importedBy);
         responseStatus = response.getStatus();
         AsyncService.getInstance()
             .getExecutorService()
@@ -1004,7 +1006,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         repository.prepareInternal(
             entity,
             repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null);
-        PutResponse<T> response = repository.createOrUpdate(null, entity);
+        PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
         responseStatus = response.getStatus();
       } catch (Exception ex) {
         importFailure(resultsPrinter, ex.getMessage(), csvRecord);
@@ -1045,7 +1047,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
       if (importResult.getDryRun()) {
         // Dry run mode: Simulate a schema for validation without persisting it
-        database = new Database().withName(dbFQN).withService(null);
+        database = new Database().withName(dbFQN).withService(null).withId(UUID.randomUUID());
       } else {
         throw new IllegalArgumentException("Database not found: " + dbFQN);
       }
@@ -1072,9 +1074,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             printer,
             csvRecord,
             List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
     schema
         .withId(UUID.randomUUID())
         .withName(csvRecord.get(0))
@@ -1112,7 +1114,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
       if (importResult.getDryRun()) {
         // Dry run mode: Simulate a schema for validation without persisting it
-        schema = new DatabaseSchema().withName(schemaFQN).withDatabase(null).withService(null);
+        schema =
+            new DatabaseSchema()
+                .withName(schemaFQN)
+                .withDatabase(null)
+                .withService(null)
+                .withId(UUID.randomUUID());
       } else {
         throw new IllegalArgumentException("Schema not found: " + schemaFQN);
       }
@@ -1145,9 +1152,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
             printer,
             csvRecord,
             List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
 
     // Populate table attributes
     table
@@ -1183,26 +1190,24 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     DatabaseSchema schema;
-    boolean schemaExists = true;
 
     try {
       schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
-
       if (importResult.getDryRun()) {
-        // Simulate a schema for dry run
-        schemaExists = false;
-        schema = new DatabaseSchema().withName(schemaFQN).withDatabase(null).withService(null);
+        schema =
+            new DatabaseSchema()
+                .withName(schemaFQN)
+                .withDatabase(null)
+                .withService(null)
+                .withId(UUID.randomUUID());
       } else {
         throw new IllegalArgumentException("Schema not found: " + schemaFQN);
       }
     }
 
-    StoredProcedureRepository spRepository =
-        (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
     StoredProcedure sp;
-
     try {
       sp = Entity.getEntityByName(STORED_PROCEDURE, entityFQN, "*", Include.NON_DELETED);
     } catch (Exception ex) {
@@ -1212,7 +1217,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
               .withName(spName)
               .withService(schema.getService())
               .withDatabase(schema.getDatabase())
-              .withDatabaseSchema(schemaExists ? schema.getEntityReference() : null);
+              .withDatabaseSchema(schema.getEntityReference());
     }
 
     List<TagLabel> tagLabels =
@@ -1220,9 +1225,23 @@ public abstract class EntityCsv<T extends EntityInterface> {
             printer,
             csvRecord,
             List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+                Pair.of(4, TagSource.CLASSIFICATION),
+                Pair.of(5, TagSource.GLOSSARY),
+                Pair.of(6, TagSource.CLASSIFICATION)));
+
+    String languageStr = csvRecord.get(18);
+    StoredProcedureLanguage language = null;
+
+    if (languageStr != null && !languageStr.isEmpty()) {
+      try {
+        language = StoredProcedureLanguage.fromValue(languageStr);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Invalid storedProcedure.language: " + languageStr);
+      }
+    }
+
+    StoredProcedureCode storedProcedureCode =
+        new StoredProcedureCode().withCode(csvRecord.get(17)).withLanguage(language);
 
     sp.withDisplayName(csvRecord.get(1))
         .withDescription(csvRecord.get(2))
@@ -1230,6 +1249,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withSourceUrl(csvRecord.get(8))
         .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+        .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 10));
 
     if (processRecord) {
@@ -1246,18 +1266,38 @@ public abstract class EntityCsv<T extends EntityInterface> {
     }
 
     String tableFQN = FullyQualifiedName.getTableFQN(entityFQN);
+    String schemaFQN = FullyQualifiedName.getParentFQN(tableFQN);
 
     Table table;
+    DatabaseSchema schema;
     try {
       table = Entity.getEntityByName(TABLE, tableFQN, "*", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
+      try {
+        schema = Entity.getEntityByName(DATABASE_SCHEMA, schemaFQN, "*", Include.NON_DELETED);
+      } catch (EntityNotFoundException exception) {
+        LOG.warn("Schema not found: {}. Handling based on dryRun mode.", schemaFQN);
+
+        if (importResult.getDryRun()) {
+          // Simulate a schema for dry run
+          schema =
+              new DatabaseSchema()
+                  .withName(schemaFQN)
+                  .withDatabase(null)
+                  .withService(null)
+                  .withId(UUID.randomUUID());
+        } else {
+          throw new IllegalArgumentException("Schema not found for the column table: " + schemaFQN);
+        }
+      }
       if (importResult.getDryRun()) {
         // Dry run mode: Simulate a schema for validation without persisting it
         table =
             new Table()
                 .withId(UUID.randomUUID())
-                .withName(csvRecord.get(0))
+                .withName(tableFQN)
                 .withFullyQualifiedName(tableFQN)
+                .withDatabaseSchema(schema.getEntityReference())
                 .withColumns(new ArrayList<>());
       } else {
         throw new IllegalArgumentException("Table not found: " + entityFQN);
@@ -1331,9 +1371,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         getTagLabels(
             printer,
             csvRecord,
-            List.of(
-                Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                Pair.of(5, TagLabel.TagSource.GLOSSARY)));
+            List.of(Pair.of(4, TagSource.CLASSIFICATION), Pair.of(5, TagSource.GLOSSARY)));
     column.withTags(nullOrEmpty(tagLabels) ? null : tagLabels);
     column.withOrdinalPosition((int) csvRecord.getRecordNumber() - 1);
 
@@ -1343,12 +1381,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
         table.getColumns().add(column);
       } else {
         String parentFqn = String.join(Entity.SEPARATOR, Arrays.copyOf(parts, parts.length - 1));
-        Column parent =
-            findColumnWithChildren(
-                table.getColumns(), FullyQualifiedName.getParentFQN(columnFullyQualifiedName));
+        Column parent = null;
+        try {
+          parent =
+              findColumnWithChildren(
+                  table.getColumns(), FullyQualifiedName.getParentFQN(columnFullyQualifiedName));
+        } catch (Exception ex) {
+          LOG.warn("parent column not found, will be created");
+        }
         if (parent == null) {
-          importFailure(printer, "Parent column not found: " + parentFqn, csvRecord);
-          return;
+          if (Boolean.TRUE.equals(importResult.getDryRun())) {
+            parent =
+                new Column()
+                    .withName(getLocalColumnName(table.getFullyQualifiedName(), parentFqn))
+                    .withFullyQualifiedName(
+                        table.getFullyQualifiedName() + Entity.SEPARATOR + parentFqn);
+          } else {
+            importFailure(printer, "Parent column not found: " + parentFqn, csvRecord);
+            return;
+          }
         }
         column.withName(parts[parts.length - 1]);
         if (parent.getChildren() == null) parent.setChildren(new ArrayList<>());

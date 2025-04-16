@@ -126,7 +126,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
             key={item.title}
             onClick={() => selectItem(index)}>
             <Image
-              className="slash-command-image"
+              className={classNames('slash-command-image', {
+                'svg-image': item.isSvg,
+              })}
               preview={false}
               src={item.imgSrc}
             />

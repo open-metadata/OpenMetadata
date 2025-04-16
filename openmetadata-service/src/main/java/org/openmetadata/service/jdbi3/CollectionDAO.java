@@ -3525,11 +3525,22 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash")
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash ORDER BY tagFQN",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash",
+        connectionType = POSTGRES)
     void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
-    @SqlUpdate(
-        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash")
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash ORDER BY tagFQN",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash",
+        connectionType = POSTGRES)
     void deleteTagLabelsByTargetPrefix(
         @BindConcat(
                 value = "concatTargetFQNHash",
@@ -5303,6 +5314,9 @@ public interface CollectionDAO {
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
+
+    @SqlUpdate("DELETE FROM query_cost_time_series WHERE entityFQNHash = :entityFQNHash ")
+    void deleteWithEntityFqnHash(@BindFQN("entityFQNHash") String entityFQNHash);
   }
 
   interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
