@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -208,8 +209,10 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
     List<Table> tables =
         tableRepository.listAllForCSV(
-            tableRepository.getFields("owners,tags,domain,extension"),
+            tableRepository.getFields("owners,tags,domain,extension,columns"),
             schema.getFullyQualifiedName());
+    tables.forEach(
+        table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
     tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
     // Get stored procedures under this schema
