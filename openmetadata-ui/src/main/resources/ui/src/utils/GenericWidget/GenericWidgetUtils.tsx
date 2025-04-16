@@ -46,6 +46,7 @@ import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import SearchIndexFieldsTab from '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
 import { FrequentlyJoinedTables } from '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import TableConstraints from '../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
@@ -162,4 +163,5 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: () => (
     <StoredProcedureCodeCard />
   ),
+  [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => <PartitionedKeys newLook />,
 } as const;
