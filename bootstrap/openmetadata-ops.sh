@@ -40,7 +40,7 @@ fi
 if [ -d "${LIBS_DIR}" ]; then
   # First, add collate-service jar to the classpath.
   # This is required for cases where we override classes from dependencies.
-  for file in "${LIBS_DIR}"collate-service-*.jar;
+  for file in "${LIBS_DIR}"collate-spec-*.jar;
   do
       CLASSPATH="$CLASSPATH":"$file"
   done
