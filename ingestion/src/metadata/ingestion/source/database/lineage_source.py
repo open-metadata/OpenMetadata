@@ -47,7 +47,6 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
 )
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
-
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
