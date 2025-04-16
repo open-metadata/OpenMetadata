@@ -26,11 +26,7 @@ import networkx as nx
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.basic import (
-    FullyQualifiedEntityName,
-    SqlQuery,
-    Uuid,
-)
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -41,17 +37,13 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.sql_lineage import (
-    get_column_fqn,
-    get_lineage_by_graph,
-    get_lineage_by_query,
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_graph
+from metadata.ingestion.source.database.lineage_processors import (
+    _process_chunk_in_subprocess,
+    query_lineage_generator,
+    view_lineage_generator,
 )
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
-from metadata.ingestion.source.models import TableView
-from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -63,132 +55,6 @@ THREAD_TIMEOUT = 10 * 60
 PROCESS_TIMEOUT = 10 * 60
 # Maximum number of processes to use for parallel processing
 MAX_PROCESSES = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs
-
-# pylint: disable=invalid-name
-# Function that will run in separate processes - defined at module level for pickling
-def _process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
-    """
-    Process a chunk of data in a subprocess.
-
-    Args:
-        chunk_and_processor_fn: Tuple containing (chunk, processor_fn, queue, *args)
-
-    Returns:
-        True if processing succeeded, False otherwise
-    """
-    try:
-        # Process each item in the chunk
-        processor_fn(chunk, queue, *args)
-        time.sleep(0.1)
-        return True
-    except Exception as e:
-        logger.error(f"Error processing chunk in subprocess: {e}")
-        logger.debug(traceback.format_exc())
-        return False
-
-
-def _query_already_processed(metadata: OpenMetadata, table_query: TableQuery) -> bool:
-    """
-    Check if a query has already been processed by validating if exists
-    in ES with lineageProcessed as True
-    """
-    checksums = metadata.es_get_queries_with_lineage(
-        service_name=table_query.serviceName,
-    )
-    return fqn.get_query_checksum(table_query.query) in checksums or {}
-
-
-def query_lineage_generator(
-    table_queries: List[TableQuery],
-    queue: Queue,
-    metadata: OpenMetadata,
-    dialect: Dialect,
-    graph: nx.DiGraph,
-    parsingTimeoutLimit: int,
-    serviceName: str,
-) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-    """
-    Generate lineage for a list of table queries
-    """
-    for table_query in table_queries or []:
-        if not _query_already_processed(metadata, table_query):
-            lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
-                metadata,
-                query=table_query.query,
-                service_name=table_query.serviceName,
-                database_name=table_query.databaseName,
-                schema_name=table_query.databaseSchema,
-                dialect=dialect,
-                timeout_seconds=parsingTimeoutLimit,
-                graph=graph,
-            )
-
-            for lineage_request in lineages or []:
-                queue.put(lineage_request)
-
-                # If we identified lineage properly, ingest the original query
-                if lineage_request.right:
-                    queue.put(
-                        Either(
-                            right=CreateQueryRequest(
-                                query=SqlQuery(table_query.query),
-                                query_type=table_query.query_type,
-                                duration=table_query.duration,
-                                processedLineage=True,
-                                service=FullyQualifiedEntityName(
-                                    serviceName=serviceName
-                                ),
-                            )
-                        )
-                    )
-
-
-def view_lineage_generator(
-    views: List[TableView],
-    queue: Queue,
-    metadata: OpenMetadata,
-    serviceName: str,
-    connectionType: str,
-    parsingTimeoutLimit: int,
-    overrideViewLineage: bool,
-) -> Iterable[Either[AddLineageRequest]]:
-    """
-    Generate lineage for a list of views
-    """
-    try:
-        for view in views:
-            for lineage in get_view_lineage(
-                view=view,
-                metadata=metadata,
-                service_name=serviceName,
-                connection_type=connectionType,
-                timeout_seconds=parsingTimeoutLimit,
-            ):
-                if lineage.right is not None:
-                    view_fqn = fqn.build(
-                        metadata=metadata,
-                        entity_type=Table,
-                        service_name=serviceName,
-                        database_name=view.db_name,
-                        schema_name=view.schema_name,
-                        table_name=view.table_name,
-                        skip_es_search=True,
-                    )
-                    queue.put(
-                        Either(
-                            right=OMetaLineageRequest(
-                                lineage_request=lineage.right,
-                                override_lineage=overrideViewLineage,
-                                entity_fqn=view_fqn,
-                                entity=Table,
-                            )
-                        )
-                    )
-                else:
-                    queue.put(lineage)
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Error processing view {view}: {exc}")
 
 
 class LineageSource(QueryParserSource, ABC):
