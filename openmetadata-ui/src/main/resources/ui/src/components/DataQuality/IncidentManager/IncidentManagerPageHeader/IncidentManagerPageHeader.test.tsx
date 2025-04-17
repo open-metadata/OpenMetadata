@@ -276,7 +276,7 @@ describe('Incident Manager Page Header component', () => {
       screen.getByText('TestCaseIncidentManagerStatus.component')
     ).toBeInTheDocument();
     // Assignee
-    expect(screen.getByText('label.assignee')).toBeInTheDocument();
+    expect(screen.getByTestId('assignee')).toBeInTheDocument();
     // Severity
     expect(screen.getByText('label.severity')).toBeInTheDocument();
     expect(screen.getByText('Severity.component')).toBeInTheDocument();
