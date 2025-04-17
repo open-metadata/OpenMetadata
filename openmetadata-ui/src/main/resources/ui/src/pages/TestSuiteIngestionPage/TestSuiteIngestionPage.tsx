@@ -126,8 +126,7 @@ const TestSuiteIngestionPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
-        cardClassName: 'm-x-auto max-w-md',
+        className: 'content-resizable-panel-container max-width-md m-x-auto',
         allowScroll: true,
         children: (
           <div>

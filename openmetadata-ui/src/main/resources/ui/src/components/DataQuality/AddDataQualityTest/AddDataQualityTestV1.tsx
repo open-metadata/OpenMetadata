@@ -281,8 +281,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     <ResizablePanels
       className="content-height-with-resizable-panel "
       firstPanel={{
-        className: 'content-resizable-panel-container',
-        cardClassName: 'steps-form-container',
+        className: 'content-resizable-panel-container max-width-md m-x-auto',
         allowScroll: true,
         children: (
           <>
