@@ -724,7 +724,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};
   protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
-  private MetadataOperation[] getViewOperations(Fields fields) {
+  protected MetadataOperation[] getViewOperations(Fields fields) {
     if (fields.getFieldList().isEmpty()) {
       return VIEW_BASIC_OPERATIONS;
     }

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.glossary;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -72,7 +73,12 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -222,6 +228,19 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           String parentTermFQNParam) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
+
+    ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
+    OperationContext glossaryOperationContext =
+        new OperationContext(GLOSSARY, getViewOperations(fields));
+    OperationContext glossaryTermOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+    ResourceContextInterface glossaryTermResourceContext = new ResourceContext<>(GLOSSARY_TERM);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(glossaryOperationContext, glossaryResourceContext),
+            new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
     // Filter by glossary
     String fqn = null;
