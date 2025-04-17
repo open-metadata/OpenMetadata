@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 import { CheckOutlined } from '@ant-design/icons';
-import { Dropdown, Space, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { isEmpty, some } from 'lodash';
+import { isEmpty } from 'lodash';
+import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
+import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
+import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
+import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
+import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
+
 import React, {
   ReactNode,
   useCallback,
@@ -26,7 +32,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import {
   LIGHT_GREEN_COLOR,
-  NO_DATA_PLACEHOLDER,
   TERM_ADMIN,
   TERM_USER,
 } from '../../../../constants/constants';
@@ -42,6 +47,7 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../../utils/RouterUtils';
+import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
@@ -51,6 +57,7 @@ type ListMenuItemProps = {
   readMoreLabelRenderer: (count: number) => ReactNode;
   readMoreKey: string;
   sizeLimit?: number;
+  itemKey: string;
 };
 
 const renderLimitedListMenuItem = ({
@@ -59,6 +66,7 @@ const renderLimitedListMenuItem = ({
   readMoreLabelRenderer,
   sizeLimit = 2,
   readMoreKey,
+  itemKey,
 }: ListMenuItemProps) => {
   const remainingCount =
     listItems.length ?? 0 > sizeLimit
@@ -68,11 +76,18 @@ const renderLimitedListMenuItem = ({
   const items = listItems.slice(0, sizeLimit);
 
   return isEmpty(items)
-    ? [{ label: NO_DATA_PLACEHOLDER, key: readMoreKey.replace('more', 'no') }]
+    ? [
+        {
+          label: getEmptyTextFromUserProfileItem(itemKey),
+          key: readMoreKey.replace('more', 'no'),
+          disabled: true,
+        },
+      ]
     : [
         ...(items?.map((item) => ({
           label: labelRenderer(item),
           key: item.id,
+          disabled: ['roles', 'inheritedRoles'].includes(itemKey),
         })) ?? []),
         ...[
           remainingCount > 0
@@ -137,18 +152,18 @@ export const UserProfileIcon = () => {
       inheritedRoles: currentUser?.inheritedRoles,
       personas: currentUser?.personas,
     };
-  }, [currentUser]);
+  }, [currentUser, currentUser?.personas]);
 
   const personaLabelRenderer = useCallback(
     (item: EntityReference) => (
       <Space
-        className="w-full"
+        className="w-full d-flex justify-between"
         data-testid="persona-label"
         onClick={() => handleSelectedPersonaChange(item)}>
-        {getEntityName(item)}{' '}
+        {getEntityName(item)}
         {selectedPersona?.id === item.id && (
           <CheckOutlined
-            className="m-l-xs"
+            className="m-x-xs"
             data-testid="check-outlined"
             style={{ color: LIGHT_GREEN_COLOR }}
           />
@@ -203,7 +218,7 @@ export const UserProfileIcon = () => {
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
               ellipsis={{ rows: 1, tooltip: true }}>
-              {userName}
+              {t('label.view-entity', { entity: t('label.profile') })}
             </Typography.Paragraph>
           </Link>
         ),
@@ -220,11 +235,15 @@ export const UserProfileIcon = () => {
           labelRenderer: getEntityName,
           readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-roles',
+          itemKey: 'roles',
         }),
         label: (
-          <span className="text-grey-muted text-xs">
-            {i18n.t('label.role-plural')}
-          </span>
+          <div className="text-base-color d-flex items-center gap-2">
+            <RoleIcon height={20} width={20} />
+            <span className="font-medium text-grey-900">
+              {i18n.t('label.role-plural')}
+            </span>
+          </div>
         ),
         type: 'group',
       },
@@ -239,11 +258,15 @@ export const UserProfileIcon = () => {
           labelRenderer: getEntityName,
           readMoreLabelRenderer: readMoreTeamRenderer,
           readMoreKey: 'more-inherited-roles',
+          itemKey: 'inheritedRoles',
         }),
         label: (
-          <span className="text-grey-muted text-xs">
-            {i18n.t('label.inherited-role-plural')}
-          </span>
+          <div className="d-flex items-center gap-2">
+            <IconStruct className="text-base-color" height={20} width={20} />
+            <span className="font-medium text-grey-900">
+              {i18n.t('label.inherited-role-plural')}
+            </span>
+          </div>
         ),
         type: 'group',
       },
@@ -259,11 +282,15 @@ export const UserProfileIcon = () => {
           sizeLimit: showAllPersona ? personas?.length : 2,
           labelRenderer: personaLabelRenderer,
           readMoreLabelRenderer: (count) => readMoreTeamRenderer(count, true),
+          itemKey: 'personas',
         }),
         label: (
-          <span className="text-grey-muted text-xs">
-            {i18n.t('label.persona-plural')}
-          </span>
+          <div className="d-flex items-center gap-2">
+            <PersonaIcon className="text-base-color" height={20} width={20} />
+            <span className="font-medium text-grey-900">
+              {i18n.t('label.persona-plural')}
+            </span>
+          </div>
         ),
         type: 'group',
       },
@@ -278,11 +305,15 @@ export const UserProfileIcon = () => {
           readMoreKey: 'more-teams',
           labelRenderer: teamLabelRenderer,
           readMoreLabelRenderer: readMoreTeamRenderer,
+          itemKey: 'teams',
         }),
         label: (
-          <span className="text-grey-muted text-xs">
-            {i18n.t('label.team-plural')}
-          </span>
+          <div className="d-flex items-center gap-2">
+            <TeamIcon className="text-base-color" height={20} width={20} />
+            <span className="font-medium text-grey-900">
+              {i18n.t('label.team-plural')}
+            </span>
+          </div>
         ),
         type: 'group',
       },
@@ -293,11 +324,13 @@ export const UserProfileIcon = () => {
         key: 'logout',
         icon: '',
         label: (
-          <Typography.Paragraph
-            className="font-medium cursor-pointer text-link-color m-b-0"
+          <Button
+            className="text-primary d-flex items-center gap-2 p-0 font-medium"
+            type="text"
             onClick={onLogoutHandler}>
+            <LogoutIcon height={20} width={20} />
             {i18n.t('label.logout')}
-          </Typography.Paragraph>
+          </Button>
         ),
         type: 'group',
       },
@@ -313,32 +346,21 @@ export const UserProfileIcon = () => {
     ]
   );
 
-  useEffect(() => {
-    let defaultPersona = currentUser?.defaultPersona ?? ({} as EntityReference);
-    if (currentUser?.defaultPersona?.id) {
-      defaultPersona = some(
-        currentUser?.personas,
-        (persona) => persona.id === currentUser?.defaultPersona?.id
-      )
-        ? currentUser?.defaultPersona
-        : ({} as EntityReference);
-    }
-    updateSelectedPersona(defaultPersona);
-  }, [currentUser?.defaultPersona, currentUser?.personas]);
-
   return (
     <Dropdown
       menu={{
         items,
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
-        rootClassName: 'profile-dropdown',
+        rootClassName: 'profile-dropdown w-68 p-x-md p-y-sm',
       }}
       trigger={['click']}>
-      <div className="app-user-icon" data-testid="dropdown-profile">
-        <div className="d-flex gap-2 w-40 items-center">
-          {isImgUrlValid ? (
+      <Button
+        className="user-profile-btn flex-center"
+        data-testid="dropdown-profile"
+        icon={
+          isImgUrlValid ? (
             <img
-              alt="user"
+              alt={getEntityName(currentUser)}
               className="app-bar-user-profile-pic"
               data-testid="app-bar-user-profile-pic"
               referrerPolicy="no-referrer"
@@ -346,26 +368,34 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <ProfilePicture name={currentUser?.name ?? ''} width="36" />
-          )}
-          <div className="d-flex flex-col">
-            <Tooltip title={getEntityName(currentUser)}>
-              <Typography.Text className="username truncate w-max-112">
-                {getEntityName(currentUser)}
-              </Typography.Text>
-            </Tooltip>
+            <ProfilePicture
+              displayName={currentUser?.name}
+              name={currentUser?.name ?? ''}
+              width="40"
+            />
+          )
+        }
+        size="large"
+        type="text">
+        <div className="name-persona-container">
+          <Tooltip title={getEntityName(currentUser)}>
             <Typography.Text
-              className="text-grey-muted text-xs w-28"
-              data-testid="default-persona"
-              ellipsis={{ tooltip: true }}>
-              {isEmpty(selectedPersona)
-                ? t('label.default')
-                : getEntityName(selectedPersona)}
+              className="font-semibold"
+              data-testid="nav-user-name">
+              {getEntityName(currentUser)}
             </Typography.Text>
-          </div>
+          </Tooltip>
+
+          <Typography.Text
+            data-testid="default-persona"
+            ellipsis={{ tooltip: true }}>
+            {isEmpty(selectedPersona)
+              ? t('label.default')
+              : getEntityName(selectedPersona)}
+          </Typography.Text>
         </div>
-        <DropDownIcon width={16} />
-      </div>
+        <DropDownIcon width={12} />
+      </Button>
     </Dropdown>
   );
 };

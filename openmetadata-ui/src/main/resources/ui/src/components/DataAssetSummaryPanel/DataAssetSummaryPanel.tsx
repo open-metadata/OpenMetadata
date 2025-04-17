@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -30,6 +30,7 @@ import {
   getEntityOverview,
 } from '../../utils/EntityUtils';
 
+import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
@@ -37,6 +38,7 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import CommonEntitySummaryInfo from '../Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
@@ -51,11 +53,14 @@ export const DataAssetSummaryPanel = ({
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
 }: DataAssetSummaryPanelProps) => {
+  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
   const [additionalInfo, setAdditionalInfo] = useState<
     Record<string, number | string>
   >({});
   const [charts, setCharts] = useState<Chart[]>([]);
+  const [chartsDetailsLoading, setChartsDetailsLoading] =
+    useState<boolean>(false);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
@@ -71,9 +76,10 @@ export const DataAssetSummaryPanel = ({
       entityType === EntityType.DASHBOARD
         ? ({ ...dataAsset, charts } as any)
         : dataAsset,
-      highlights
+      highlights,
+      entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
     );
-  }, [dataAsset, entityType, highlights]);
+  }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
   const isEntityDeleted = useMemo(() => dataAsset.deleted, [dataAsset]);
 
@@ -105,12 +111,14 @@ export const DataAssetSummaryPanel = ({
   }, [dataAsset?.fullyQualifiedName, entityPermissions]);
 
   const fetchChartsDetails = useCallback(async () => {
+    setChartsDetailsLoading(true);
     try {
       const chartDetails = await fetchCharts((dataAsset as Dashboard).charts);
-
       setCharts(chartDetails);
     } catch (err) {
       // Error
+    } finally {
+      setChartsDetailsLoading(false);
     }
   }, [dataAsset]);
 
@@ -175,16 +183,42 @@ export const DataAssetSummaryPanel = ({
       case EntityType.TOPIC:
         return (
           <>
+            {entityInfo.some((info) =>
+              info.visible?.includes(componentType)
+            ) && (
+              <Row
+                className="p-md border-radius-card summary-panel-card"
+                gutter={[0, 4]}>
+                <Col span={24}>
+                  <CommonEntitySummaryInfo
+                    componentType={componentType}
+                    entityInfo={entityInfo}
+                  />
+                </Col>
+              </Row>
+            )}
+
             <Row
               className="p-md border-radius-card summary-panel-card"
-              gutter={[0, 4]}>
+              gutter={[0, 8]}>
               <Col span={24}>
-                <CommonEntitySummaryInfo
-                  componentType={componentType}
-                  entityInfo={entityInfo}
+                <Typography.Text
+                  className="summary-panel-section-title"
+                  data-testid="domain-header">
+                  {t('label.domain')}
+                </Typography.Text>
+              </Col>
+              <Col className="d-flex flex-wrap gap-2" span={24}>
+                <DomainLabel
+                  domain={dataAsset.domain}
+                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
+                  entityId={dataAsset.id ?? ''}
+                  entityType={entityType}
+                  textClassName="render-domain-lebel-style"
                 />
               </Col>
             </Row>
+
             {entityType === EntityType.TABLE && (
               <TableSummary entityDetails={dataAsset as Table} />
             )}

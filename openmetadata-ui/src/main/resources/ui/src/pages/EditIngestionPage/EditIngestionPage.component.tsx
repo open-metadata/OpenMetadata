@@ -39,6 +39,7 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
@@ -49,6 +50,7 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -59,8 +61,8 @@ import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
-  const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
+  const { t } = useTranslation();
   const { ingestionType, serviceCategory } = useParams<{
     ingestionType: string;
     serviceCategory: string;
@@ -251,7 +253,7 @@ const EditIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -279,7 +281,7 @@ const EditIngestionPage = () => {
           onUpdateIngestion={onEditIngestionSave}
         />
       </div>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -313,6 +315,8 @@ const EditIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.ingestion'),
@@ -327,4 +331,8 @@ const EditIngestionPage = () => {
   );
 };
 
-export default EditIngestionPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.ingestion'),
+  })
+)(EditIngestionPage);

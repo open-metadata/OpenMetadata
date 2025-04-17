@@ -28,6 +28,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   showActivityFeedEditor = false,
   onAfterClose,
   onUpdateEntityDetails,
+  isForFeedTab = false,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -56,6 +57,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         <TaskFeedCardNew
           feed={feed}
           isActive={isActive}
+          isForFeedTab={isForFeedTab}
           key={feed.id}
           onAfterClose={onAfterClose}
           onUpdateEntityDetails={onUpdateEntityDetails}
@@ -64,6 +66,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
         <ActivityFeedCardNew
           feed={feed}
           isActive={isActive}
+          isForFeedTab={isForFeedTab}
           isPost={false}
           post={mainFeed}
           showActivityFeedEditor={showActivityFeedEditor}

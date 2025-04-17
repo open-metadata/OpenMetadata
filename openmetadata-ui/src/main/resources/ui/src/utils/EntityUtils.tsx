@@ -140,7 +140,7 @@ import {
   getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { bytesToSize, stringToHTML } from './StringsUtils';
+import { bytesToSize, getEncodedFqn, stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -1644,7 +1644,8 @@ export const getBreadcrumbForTable = (
             name: entity.name,
             url: getEntityLinkFromType(
               entity.fullyQualifiedName ?? '',
-              (entity as SourceType).entityType as EntityType
+              ((entity as SourceType).entityType as EntityType) ??
+                EntityType.TABLE
             ),
           },
         ]
@@ -1931,7 +1932,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE
           ),
         },
       ];
@@ -1968,7 +1970,8 @@ export const getEntityBreadcrumbs = (
           name: entity.name,
           url: getEntityLinkFromType(
             entity.fullyQualifiedName ?? '',
-            (entity as SourceType).entityType as EntityType
+            ((entity as SourceType).entityType as EntityType) ??
+              EntityType.DATABASE_SCHEMA
           ),
         },
       ];
@@ -1982,6 +1985,17 @@ export const getEntityBreadcrumbs = (
             getServiceRouteFromServiceType(ServiceCategory.DATABASE_SERVICES)
           ),
         },
+        ...(includeCurrent
+          ? [
+              {
+                name: entity.name,
+                url: getServiceDetailsPath(
+                  entity?.name,
+                  ServiceCategory.DATABASE_SERVICES
+                ),
+              },
+            ]
+          : []),
       ];
 
     case EntityType.DASHBOARD_SERVICE:
@@ -2497,7 +2511,7 @@ export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {
   return ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace(
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 };
 
 /**

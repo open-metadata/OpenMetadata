@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -21,9 +21,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
-  NO_DATA_PLACEHOLDER,
   PAGE_SIZE,
 } from '../../../../constants/constants';
+import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS,
@@ -34,7 +34,6 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
-import { EntityReference } from '../../../../generated/entity/type';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -53,15 +52,13 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
+import { ownerTableObject } from '../../../../utils/TableColumn.util';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -69,6 +66,7 @@ import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 
 export const DatabaseSchemaTable = ({
   isVersionPage = false,
+  isCustomizationPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
@@ -260,27 +258,14 @@ export const DatabaseSchemaTable = ({
         width: 300,
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewerV1 markdown={text} />
+            <RichTextEditorPreviewerNew markdown={text} />
           ) : (
             <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.description') })}
             </span>
           ),
       },
-      {
-        title: t('label.owner-plural'),
-        dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-        key: TABLE_COLUMNS_KEYS.OWNERS,
-        width: 120,
-        render: (owners: EntityReference[]) =>
-          !isEmpty(owners) && owners.length > 0 ? (
-            <OwnerLabel owners={owners} />
-          ) : (
-            <Typography.Text data-testid="no-owner-text">
-              {NO_DATA_PLACEHOLDER}
-            </Typography.Text>
-          ),
-      },
+      ...ownerTableObject<DatabaseSchema>(),
       {
         title: t('label.usage'),
         dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
@@ -300,66 +285,72 @@ export const DatabaseSchemaTable = ({
   };
 
   useEffect(() => {
+    if (isCustomizationPage) {
+      setSchemas(DATABASE_SCHEMAS_DUMMY_DATA);
+      setIsLoading(false);
+
+      return;
+    }
+
     fetchDatabaseSchema();
-  }, [decodedDatabaseFQN, pageSize, showDeletedSchemas, isDatabaseDeleted]);
+  }, [
+    decodedDatabaseFQN,
+    pageSize,
+    showDeletedSchemas,
+    isDatabaseDeleted,
+    isCustomizationPage,
+  ]);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={12}>
-        <Searchbar
-          removeMargin
-          placeholder={t('label.search-for-type', {
-            type: t('label.schema'),
-          })}
-          searchValue={searchValue}
-          typingInterval={500}
-          onSearch={onSchemaSearch}
-        />
-      </Col>
-      <Col className="flex items-center justify-end" span={12}>
-        <Switch
-          checked={showDeletedSchemas}
-          data-testid="show-deleted"
-          onClick={handleShowDeletedSchemas}
-        />
-        <Typography.Text className="m-l-xs">
-          {t('label.deleted')}
-        </Typography.Text>{' '}
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          columns={schemaTableColumns}
-          data-testid="database-databaseSchemas"
-          dataSource={schemas}
-          defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
-          extraTableFilters={getBulkEditButton(
+    <Table
+      columns={schemaTableColumns}
+      customPaginationProps={{
+        currentPage,
+        showPagination,
+        isLoading,
+        isNumberBased: Boolean(searchValue),
+        pageSize,
+        paging,
+        pagingHandler: handleSchemaPageChange,
+        onShowSizeChange: handlePageSizeChange,
+      }}
+      data-testid="database-databaseSchemas"
+      dataSource={schemas}
+      defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
+      extraTableFilters={
+        <>
+          <span>
+            <Switch
+              checked={showDeletedSchemas}
+              data-testid="show-deleted"
+              onClick={handleShowDeletedSchemas}
+            />
+            <Typography.Text className="m-l-xs">
+              {t('label.deleted')}
+            </Typography.Text>{' '}
+          </span>
+          {getBulkEditButton(
             permissions.databaseSchema.EditAll && !isDatabaseDeleted,
             handleEditTable
           )}
-          loading={isLoading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-        />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={Boolean(searchValue)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleSchemaPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
-      </Col>
-    </Row>
+        </>
+      }
+      loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="m-y-md border-none" />,
+      }}
+      pagination={false}
+      rowKey="id"
+      searchProps={{
+        placeholder: t('label.search-for-type', {
+          type: t('label.schema'),
+        }),
+        value: searchValue,
+        typingInterval: 500,
+        onSearch: onSchemaSearch,
+      }}
+      size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+    />
   );
 };

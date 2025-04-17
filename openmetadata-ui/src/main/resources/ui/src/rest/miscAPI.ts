@@ -19,6 +19,7 @@ import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvid
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { SearchRequest } from '../generated/search/searchRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import { SearchResponse } from '../interface/search.interface';
@@ -166,7 +167,8 @@ export const getAggregateFieldOptions = (
   index: SearchIndex | SearchIndex[],
   field: string,
   value: string,
-  q: string
+  q: string,
+  sourceFields?: string
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -176,6 +178,7 @@ export const getAggregateFieldOptions = (
     field,
     value: withWildCardValue,
     q,
+    sourceFields,
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
@@ -183,6 +186,38 @@ export const getAggregateFieldOptions = (
     {
       params,
     }
+  );
+};
+
+/**
+ * Posts aggregate field options request with parameters in the body.
+ *
+ * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
+ * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
+ * @param {string} value - The value to filter the aggregation on.
+ * @param {string} q - The search query.
+ * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
+ * containing the aggregate field options.
+ */
+export const postAggregateFieldOptions = (
+  index: SearchIndex | SearchIndex[],
+  field: string,
+  value: string,
+  q: string
+) => {
+  const withWildCardValue = value
+    ? `.*${escapeESReservedCharacters(value)}.*`
+    : '.*';
+  const body: SearchRequest = {
+    index: index as string,
+    fieldName: field,
+    fieldValue: withWildCardValue,
+    query: q,
+  };
+
+  return APIClient.post<SearchResponse<ExploreSearchIndex>>(
+    `/search/aggregate`,
+    body
   );
 };
 

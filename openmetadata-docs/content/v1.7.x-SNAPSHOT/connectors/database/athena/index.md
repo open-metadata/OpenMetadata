@@ -7,7 +7,7 @@ slug: /connectors/database/athena
 name="Athena"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 
@@ -21,9 +21,10 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/database/athena/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
@@ -237,6 +238,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+
+{% partial file="/v1.7/connectors/database/athena/reverse-metadata.md" collate: true  /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

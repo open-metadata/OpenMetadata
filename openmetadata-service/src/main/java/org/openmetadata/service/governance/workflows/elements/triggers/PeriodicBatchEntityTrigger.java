@@ -144,7 +144,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
             .build();
 
     FieldExtension searchFilterExpr =
-        new FieldExtensionBuilder()
+        new FieldExtensionBuilder(false)
             .fieldName("searchFilterExpr")
             .fieldValue(triggerDefinition.getConfig().getFilters())
             .build();

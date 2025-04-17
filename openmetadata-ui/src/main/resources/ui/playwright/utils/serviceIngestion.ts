@@ -12,9 +12,10 @@
  */
 
 import { expect, Page } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { toastNotification } from './common';
+import { getApiContext, toastNotification } from './common';
 import { escapeESReservedCharacters } from './entity';
 
 export enum Services {
@@ -92,9 +93,7 @@ export const deleteService = async (
   // click on created service
   await page.click(`[data-testid="service-name-${serviceName}"]`);
 
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    serviceName
-  );
+  await expect(page.getByTestId('entity-header-name')).toHaveText(serviceName);
 
   // Clicking on permanent delete radio button and checking the service name
   await page.click('[data-testid="manage-button"]');
@@ -124,11 +123,26 @@ export const deleteService = async (
   // Closing the toast notification
   await toastNotification(
     page,
-    `Delete operation initiated for ${serviceName}`
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
+  ); // Wait for up to 5 minutes for the toast notification to appear
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const serviceSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(serviceName)
+    )}*`
   );
 
+  await page.fill('[data-testid="searchbar"]', serviceName);
+
+  await serviceSearchResponse;
+
   await page.waitForSelector(`[data-testid="service-name-${serviceName}"]`, {
-    state: 'hidden',
+    state: 'detached',
   });
 };
 
@@ -164,4 +178,26 @@ export const checkServiceFieldSectionHighlighting = async (
   field: string
 ) => {
   await page.waitForSelector(`[data-id="${field}"][data-highlighted="true"]`);
+};
+
+export const makeRetryRequest = async (data: {
+  url: string;
+  page: Page;
+  retries?: number;
+}) => {
+  const { url, page, retries = 3 } = data;
+  const { apiContext } = await getApiContext(page);
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await apiContext.get(url);
+
+      return response.json();
+    } catch (error) {
+      if (i === retries - 1) {
+        throw error;
+      }
+      await page.waitForTimeout(1000 * (i + 1)); // Exponential backoff
+    }
+  }
 };

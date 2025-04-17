@@ -184,7 +184,7 @@ test.describe('User with Admin Roles', () => {
     );
   });
 
-  test.skip('Admin soft & hard delete and restore user from profile page', async ({
+  test('Admin soft & hard delete and restore user from profile page', async ({
     adminPage,
   }) => {
     await redirectToHomePage(adminPage);
@@ -199,10 +199,7 @@ test.describe('User with Admin Roles', () => {
       user.responseData.displayName
     );
 
-    await restoreUserProfilePage(
-      adminPage,
-      user.responseData.fullyQualifiedName
-    );
+    await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
   });
 });
@@ -247,6 +244,11 @@ test.describe('User with Data Consumer Roles', () => {
 
     // Check CRUD for Glossary
     await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+
+    await dataConsumerPage.waitForLoadState('networkidle');
+    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(
       dataConsumerPage.locator('[data-testid="add-glossary"]')
@@ -322,7 +324,7 @@ test.describe('User with Data Consumer Roles', () => {
     await checkDataConsumerPermissions(dataConsumerPage);
   });
 
-  test.skip('Update user details for Data Consumer', async ({
+  test('Update user details for Data Consumer', async ({
     dataConsumerPage,
   }) => {
     await redirectToHomePage(dataConsumerPage);
@@ -358,9 +360,7 @@ test.describe('User with Data Consumer Roles', () => {
 test.describe('User with Data Steward Roles', () => {
   test.slow(true);
 
-  test.skip('Update user details for Data Steward', async ({
-    dataStewardPage,
-  }) => {
+  test('Update user details for Data Steward', async ({ dataStewardPage }) => {
     await redirectToHomePage(dataStewardPage);
 
     await updateUserDetails(dataStewardPage, {
@@ -447,5 +447,45 @@ test.describe('User with Data Steward Roles', () => {
     );
 
     await visitOwnProfilePage(dataStewardPage);
+  });
+});
+
+test.describe('User Profile Feed Interactions', () => {
+  test('Should navigate to user profile from feed card avatar click', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    const feedResponse = adminPage.waitForResponse(
+      '/api/v1/feed?type=Conversation'
+    );
+
+    await visitOwnProfilePage(adminPage);
+    await feedResponse;
+
+    await adminPage.waitForSelector('[data-testid="message-container"]');
+    const userDetailsResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*'
+    );
+    const userFeedResponse = adminPage.waitForResponse(
+      '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
+    );
+
+    const avatar = adminPage
+      .locator('[data-testid="message-container"]')
+      .first()
+      .locator('[data-testid="profile-avatar"]');
+
+    await avatar.hover();
+    await adminPage.waitForSelector('.ant-popover-card');
+    await adminPage.getByTestId('user-name').nth(1).click();
+
+    await userDetailsResponse;
+    await userFeedResponse;
+    const response = await userDetailsResponse;
+    const { fullyQualifiedName } = await response.json();
+
+    await expect(
+      adminPage.locator('[data-testid="user-display-name"]')
+    ).toHaveText(fullyQualifiedName);
   });
 });

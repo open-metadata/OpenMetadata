@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Popover, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Popover, Space, Tabs, Typography } from 'antd';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +35,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
@@ -53,6 +54,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
 export const UserTeamSelectableList = ({
   hasPermission,
   owner,
+  onClose,
   onUpdate = noop,
   children,
   popoverProps,
@@ -159,8 +161,11 @@ export const UserTeamSelectableList = ({
       updateData = updateItems;
     }
 
-    await onUpdate(updateData);
-    setPopupVisible(false);
+    try {
+      await onUpdate(updateData);
+    } finally {
+      setPopupVisible(false);
+    }
   };
 
   // Fetch and store count for Users tab
@@ -210,6 +215,11 @@ export const UserTeamSelectableList = ({
     },
     []
   );
+
+  const handleCancelSelectableList = () => {
+    setPopupVisible(false);
+    onClose?.();
+  };
 
   const onRemove = (id: string) => {
     setSelectedUsers((prevUsers) => {
@@ -302,7 +312,7 @@ export const UserTeamSelectableList = ({
                       type: t('label.team'),
                     })}
                     selectedItems={defaultTeams}
-                    onCancel={() => setPopupVisible(false)}
+                    onCancel={handleCancelSelectableList}
                     onChange={handleChange}
                     onUpdate={handleUpdate}
                   />
@@ -326,7 +336,7 @@ export const UserTeamSelectableList = ({
                       type: t('label.user'),
                     })}
                     selectedItems={defaultUsers}
-                    onCancel={() => setPopupVisible(false)}
+                    onCancel={handleCancelSelectableList}
                     onChange={handleChange}
                     onUpdate={handleUpdate}
                   />
@@ -350,23 +360,21 @@ export const UserTeamSelectableList = ({
       {...popoverProps}>
       {children ??
         (hasPermission && (
-          <Tooltip
+          <EditIconButton
+            newLook
+            data-testid="edit-owner"
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+            size="small"
             title={
-              !popupVisible &&
-              (tooltipText ??
-                t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
-                }))
-            }>
-            <Button
-              className="flex-center p-0 edit-owner-button"
-              data-testid="edit-owner"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-              onClick={openPopover}
-            />
-          </Tooltip>
+              !popupVisible
+                ? tooltipText ??
+                  t('label.edit-entity', {
+                    entity: t('label.owner-plural'),
+                  })
+                : undefined
+            }
+            onClick={openPopover}
+          />
         ))}
     </Popover>
   );

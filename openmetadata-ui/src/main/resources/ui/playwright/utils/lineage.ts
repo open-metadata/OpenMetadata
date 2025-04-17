@@ -503,6 +503,7 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
+  await page.waitForLoadState('networkidle');
 };
 
 export const fillLineageConfigForm = async (
@@ -632,6 +633,46 @@ export const verifyExportLineageCSV = async (
 
     expect(matchingRow).toBeDefined(); // Ensure a matching row exists
   });
+};
+
+export const verifyExportLineagePNG = async (
+  page: Page,
+  isPNGSelected?: boolean
+) => {
+  await page.waitForSelector('[data-testid="lineage-export"]', {
+    state: 'visible',
+  });
+
+  await expect(page.getByTestId('lineage-export')).toBeEnabled();
+
+  await page.getByTestId('lineage-export').click();
+
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
+
+  if (!isPNGSelected) {
+    await page.getByTestId('export-type-select').click();
+    await page.locator('.ant-select-item[title="PNG"]').click();
+  }
+
+  await expect(
+    page.getByTestId('export-type-select').getByText('PNGBeta')
+  ).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click(
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
+    ),
+  ]);
+
+  const filePath = await download.path();
+
+  expect(filePath).not.toBeNull();
 };
 
 export const verifyColumnLineageInCSV = async (

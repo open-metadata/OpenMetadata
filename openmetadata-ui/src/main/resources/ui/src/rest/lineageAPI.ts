@@ -87,6 +87,32 @@ export const getLineageDataByFQN = async ({
   return response.data;
 };
 
+export const getPlatformLineage = async ({
+  config,
+  queryFilter,
+  view,
+}: {
+  config?: LineageConfig;
+  queryFilter?: string;
+  view: string;
+}) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const API_PATH = `lineage/getPlatformLineage`;
+
+  const response = await APIClient.get<LineageData>(API_PATH, {
+    params: {
+      view,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+      size: config?.nodesPerLayer,
+    },
+  });
+
+  return response.data;
+};
+
 export const getDataQualityLineage = async (
   fqn: string,
   config?: Partial<LineageConfig>,

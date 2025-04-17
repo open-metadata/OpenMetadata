@@ -30,6 +30,19 @@ jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<div data-testid="editor">Editor</div>)
 );
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () =>

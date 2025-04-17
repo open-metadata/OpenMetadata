@@ -15,6 +15,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { filter, isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+
 import { useTranslation } from 'react-i18next';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -34,6 +35,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { OwnerType } from '../../enums/user.enum';
 import { CreateQuery } from '../../generated/api/data/createQuery';
 import { Table } from '../../generated/entity/data/table';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
@@ -48,13 +50,14 @@ import {
   getEntityName,
 } from '../../utils/EntityUtils';
 import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
-  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { fqn: datasetFQN } = useFqn();
+  const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const [form] = Form.useForm();
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
@@ -172,7 +175,9 @@ const AddQueryPage = () => {
     try {
       await postQuery(updatedValues);
       showSuccessToast(
-        t('server.create-entity-success', { entity: t('label.query') })
+        t('server.create-entity-success', {
+          entity: t('label.query'),
+        })
       );
       handleCancelClick();
     } catch (error) {
@@ -221,15 +226,19 @@ const AddQueryPage = () => {
     <ResizablePanels
       className="content-height-with-resizable-panel"
       firstPanel={{
+        allowScroll: true,
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div>
             <TitleBreadcrumb titleLinks={titleBreadcrumb} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.query') })}
+                {t('label.add-new-entity', {
+                  entity: t('label.query'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="query-form"
@@ -319,7 +328,7 @@ const AddQueryPage = () => {
             </Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -327,4 +336,8 @@ const AddQueryPage = () => {
   );
 };
 
-export default AddQueryPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.query'),
+  })
+)(AddQueryPage);

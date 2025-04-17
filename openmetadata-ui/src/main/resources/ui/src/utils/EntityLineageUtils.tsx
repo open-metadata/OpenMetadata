@@ -38,6 +38,7 @@ import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg'
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/topic-grey.svg';
 import Loader from '../components/common/Loader/Loader';
+import { ExportViewport } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CustomEdge } from '../components/Entity/EntityLineage/CustomEdge.component';
 import CustomNodeV1 from '../components/Entity/EntityLineage/CustomNodeV1.component';
 import {
@@ -62,6 +63,7 @@ import {
   ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../constants/Lineage.constants';
+import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import {
   EntityLineageDirection,
   EntityLineageNodeType,
@@ -1652,17 +1654,119 @@ export const removeUnconnectedNodes = (
   let updatedNodes = [...nodes];
 
   if (targetNode && sourceNode) {
+    // Check both incoming and outgoing edges for source node
     const outgoersSourceNode = getOutgoers(sourceNode, nodes, edges);
+    const incomersSourceNode = getIncomers(sourceNode, nodes, edges);
+
+    // Check both incoming and outgoing edges for target node
+    const outgoersTargetNode = getOutgoers(targetNode, nodes, edges);
     const incomersTargetNode = getIncomers(targetNode, nodes, edges);
 
-    if (outgoersSourceNode.length === 1) {
+    // Remove source node if it has no other connections
+    if (outgoersSourceNode.length + incomersSourceNode.length <= 1) {
       updatedNodes = updatedNodes.filter((n) => n.id !== sourceNode.id);
     }
 
-    if (incomersTargetNode.length === 1) {
+    // Remove target node if it has no other connections
+    if (outgoersTargetNode.length + incomersTargetNode.length <= 1) {
       updatedNodes = updatedNodes.filter((n) => n.id !== targetNode.id);
     }
   }
 
   return updatedNodes;
+};
+
+// Helper function to calculate bounds for all nodes
+export const getNodesBoundsReactFlow = (nodes: Node[]) => {
+  const bounds = {
+    xMin: Infinity,
+    yMin: Infinity,
+    xMax: -Infinity,
+    yMax: -Infinity,
+  };
+
+  nodes.forEach((node) => {
+    const { x, y } = node.position;
+    bounds.xMin = Math.min(bounds.xMin, x);
+    bounds.yMin = Math.min(bounds.yMin, y);
+    bounds.xMax = Math.max(bounds.xMax, x + (node.width ?? 0));
+    bounds.yMax = Math.max(bounds.yMax, y + (node.height ?? 0));
+  });
+
+  return bounds;
+};
+
+// Helper function to calculate the viewport for the full React Flow Graph
+export const getViewportForBoundsReactFlow = (
+  bounds: { xMin: number; yMin: number; xMax: number; yMax: number },
+  imageWidth: number,
+  imageHeight: number,
+  scaleFactor = 1
+) => {
+  const width = bounds.xMax - bounds.xMin;
+  const height = bounds.yMax - bounds.yMin;
+
+  // Scale the image to fit the container
+  const scale =
+    Math.min(imageWidth / width, imageHeight / height) * scaleFactor;
+
+  // Calculate translation to center the flow
+  const translateX = (imageWidth - width * scale) / 2 - bounds.xMin * scale;
+  const translateY = (imageHeight - height * scale) / 2 - bounds.yMin * scale;
+
+  return { x: translateX, y: translateY, zoom: scale };
+};
+
+export const getViewportForLineageExport = (
+  nodes: Node[],
+  documentSelector: string
+): ExportViewport => {
+  const exportElement = document.querySelector(documentSelector) as HTMLElement;
+
+  const imageWidth = exportElement.scrollWidth;
+  const imageHeight = exportElement.scrollHeight;
+
+  const nodesBounds = getNodesBoundsReactFlow(nodes);
+
+  // Calculate the viewport to fit all nodes
+  return getViewportForBoundsReactFlow(nodesBounds, imageWidth, imageHeight);
+};
+
+export const getLineageEntityExclusionFilter = () => {
+  return {
+    query: {
+      bool: {
+        must_not: [
+          {
+            term: {
+              entityType: EntityType.GLOSSARY_TERM,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.TAG,
+            },
+          },
+          {
+            term: {
+              entityType: EntityType.DATA_PRODUCT,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
+
+export const getEntityTypeFromPlatformView = (
+  platformView: LineagePlatformView
+): string => {
+  switch (platformView) {
+    case LineagePlatformView.DataProduct:
+      return EntityType.DATA_PRODUCT;
+    case LineagePlatformView.Domain:
+      return EntityType.DOMAIN;
+    default:
+      return 'service';
+  }
 };

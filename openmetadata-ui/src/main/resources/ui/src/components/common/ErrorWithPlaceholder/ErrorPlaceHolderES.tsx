@@ -29,6 +29,7 @@ import {
 import {
   ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
   ERROR_PLACEHOLDER_TYPE,
+  SIZE,
 } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
@@ -40,6 +41,7 @@ type Props = {
   type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   errorMessage?: string;
   query?: Qs.ParsedQs;
+  size?: SIZE;
 };
 
 const stepsData = [
@@ -69,7 +71,7 @@ const stepsData = [
   },
 ];
 
-const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
+const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
@@ -87,21 +89,30 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
     return (
       <div className="text-center" data-testid="no-search-results">
         {isQuery ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.FILTER} />
+          <ErrorPlaceHolder
+            className="border-none"
+            size={size}
+            type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          />
         ) : ['glossaries', 'tags'].includes(tab) ? (
           <ErrorPlaceHolder
             permission
+            className="border-none"
             doc={tab === 'tags' ? TAGS_DOCS : GLOSSARIES_DOCS}
             heading={
               tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
             }
+            size={size}
             type={ERROR_PLACEHOLDER_TYPE.CREATE}
             onClick={() =>
               history.push(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
             }
           />
         ) : (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <ErrorPlaceHolder
+            className="border-none"
+            size={size}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <Typography.Paragraph style={{ marginBottom: '0' }}>
               {t('message.no-data-available-entity', {
                 entity: activeDomain,
@@ -188,7 +199,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query }: Props) => {
   }, [errorMessage]);
 
   return (
-    <div className="mt-12 text-base font-medium">
+    <div className="text-base font-medium">
       {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
         ? noRecordForES
         : elasticSearchError}

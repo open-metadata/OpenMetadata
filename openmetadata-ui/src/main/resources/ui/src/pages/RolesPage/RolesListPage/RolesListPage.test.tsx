@@ -45,7 +45,7 @@ jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
 );
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewNew',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 

@@ -10,18 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
-import { useParams } from 'react-router-dom';
-import { EntityTabs } from '../../../enums/entity.enum';
-import { Page, PageType, Tab } from '../../../generated/system/ui/page';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
-import {
-  getDefaultWidgetForTab,
-  getWidgetsFromKey,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { useGenericContext } from '../GenericProvider/GenericProvider';
+import './generic-tab.less';
 
 const ReactGridLayout = WidthProvider(RGL);
 
@@ -30,48 +28,41 @@ interface GenericTabProps {
 }
 
 export const GenericTab = ({ type }: GenericTabProps) => {
-  const { currentPersonaDocStore } = useCustomizeStore();
-  const { tab } = useParams<{ tab: EntityTabs }>();
-
-  const layout = useMemo(() => {
-    if (!currentPersonaDocStore) {
-      return getDefaultWidgetForTab(type, tab);
-    }
-
-    const page = currentPersonaDocStore?.data?.pages?.find(
-      (p: Page) => p.pageType === type
-    );
-
-    if (page) {
-      return page.tabs.find((t: Tab) => t.id === tab)?.layout;
-    } else {
-      return getDefaultWidgetForTab(type, tab);
-    }
-  }, [currentPersonaDocStore, tab, type]);
+  const { layout } = useGenericContext();
 
   const widgets = useMemo(() => {
-    return layout.map((widget: WidgetConfig) => {
-      const renderedWidget = getWidgetsFromKey(type, widget);
-
-      return renderedWidget ? (
+    return layout?.map((widget: WidgetConfig) => {
+      return (
         <div
-          className="overflow-scroll"
+          className="overflow-auto-y"
           data-grid={widget}
           id={widget.i}
           key={widget.i}>
-          {renderedWidget}
+          {getWidgetsFromKey(type, widget)}
         </div>
-      ) : null;
+      );
     });
   }, [layout, type]);
+
+  // For default tabs we have rigid layout where we are not applying any bg to container
+  // So we need to check if left panel is present to apply bg to container
+  const leftSideWidgetPresent = useMemo(() => {
+    return layout?.some((widget) =>
+      widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [layout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
   return (
     <ReactGridLayout
-      className="grid-container"
+      autoSize
+      className={classNames('grid-container bg-grey', {
+        'custom-tab': !leftSideWidgetPresent,
+      })}
       cols={8}
+      containerPadding={[0, 0]}
       isDraggable={false}
       isResizable={false}
       margin={[16, 16]}

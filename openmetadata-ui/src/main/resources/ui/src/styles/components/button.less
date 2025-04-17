@@ -17,11 +17,16 @@
 button {
   &:disabled {
     cursor: not-allowed;
+
     img,
     svg {
       opacity: 0.5;
     }
   }
+}
+
+.ant-btn.ant-btn-default:not(:hover) {
+  border-color: @blue-15;
 }
 
 .ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
@@ -39,6 +44,7 @@ button {
 .ant-btn-link-custom:hover {
   color: @primary-color;
 }
+
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom {
   background: @primary-color;
@@ -53,6 +59,7 @@ button {
   border-color: @primary-color;
   border-left-color: #ffffff;
 }
+
 .ant-btn-primary-custom:hover,
 .ant-dropdown-button.ant-btn-primary-dropdown > .ant-btn-primary,
 .ant-btn-primary-custom span:hover {
@@ -75,19 +82,74 @@ button {
   color: @primary-color;
   background: transparent;
 }
-.ant-btn-group {
+
+.ant-btn.ant-btn-icon-only.bordered {
+  border: 1px solid @border-light;
+  background-color: @white;
+
+  &.ant-btn-sm {
+    width: 20px;
+    height: 20px;
+    border-radius: @border-radius-base;
+
+    svg {
+      width: 12px;
+      height: 12px;
+      vertical-align: text-top;
+    }
+  }
+
+  svg {
+    color: @grey-600;
+  }
+}
+
+.ant-btn-group.spaced {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 12px;
+
   .ant-btn {
-    background-color: @background-color;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    min-width: 50px;
+    padding: 10px 16px;
     border-radius: 8px;
     box-shadow: 0px 1px 2px 0px #0a0d120f, 0px 1px 3px 0px #0a0d121a;
+  }
+
+  .ant-btn-primary:first-child:not(:last-child) {
+    border-right-color: transparent;
+  }
+
+  .ant-btn-default:not(.ant-btn-primary):not([disabled]) {
+    border-left-color: @blue-15;
+
+    &:hover {
+      border-left-color: @primary-color;
+    }
+  }
+
+  .ant-btn-default {
+    background-color: @background-color;
+
+    &:hover {
+      background-color: @blue-11;
+      border-color: @primary-color;
+    }
   }
 
   > .ant-btn:first-child:not(:last-child),
   > span:first-child:not(:last-child) > .ant-btn {
     border-radius: 8px;
   }
+}
+
+// Remove background color from button
+.remove-button-background-hover.ant-btn-text:hover {
+  background-color: @white;
+  color: inherit;
 }

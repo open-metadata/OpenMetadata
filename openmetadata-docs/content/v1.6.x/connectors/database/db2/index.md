@@ -37,6 +37,7 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/db2/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
 
@@ -125,7 +126,4 @@ For further reference, check this IBM post: [Everything About Db2 Connect Licens
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
-
 {% partial file="/v1.6/connectors/database/related.md" /%}
-

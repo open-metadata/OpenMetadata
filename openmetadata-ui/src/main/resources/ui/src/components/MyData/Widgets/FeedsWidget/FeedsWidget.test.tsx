@@ -76,7 +76,7 @@ const widgetProps = {
 const tabs = ['All', 'Mentions', 'Tasks'];
 
 jest.mock(
-  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component',
+  '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1New.component',
   () => jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
@@ -96,6 +96,9 @@ jest.mock(
 
 jest.mock('../../../../rest/feedsAPI', () => ({
   getFeedsWithFilter: jest.fn().mockReturnValue(Promise.resolve(mockThread)),
+  getFeedCount: jest
+    .fn()
+    .mockResolvedValue([{ openTaskCount: 0, mentionCount: 0 }]),
 }));
 
 jest.mock('../../../../utils/CommonUtils', () => ({

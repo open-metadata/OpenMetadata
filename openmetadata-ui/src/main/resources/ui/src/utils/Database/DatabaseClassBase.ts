@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -48,7 +47,27 @@ export interface DatabaseDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+type DatabaseWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.DATABASE_SCHEMA
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+
 class DatabaseClassBase {
+  defaultWidgetHeight: Record<DatabaseWidgetKeys, number>;
+
+  constructor() {
+    this.defaultWidgetHeight = {
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.DATABASE_SCHEMA]: 4,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
+  }
   public getDatabaseDetailPageTabs(
     tabProps: DatabaseDetailPageTabProps
   ): TabProps[] {
@@ -57,7 +76,7 @@ class DatabaseClassBase {
 
   public getDatabaseDetailPageTabsIds(): Tab[] {
     return [
-      EntityTabs.SCHEMA,
+      EntityTabs.SCHEMAS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
@@ -65,34 +84,47 @@ class DatabaseClassBase {
       name: tab,
       displayName: getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
-      editable: tab === EntityTabs.SCHEMA,
+      editable: tab === EntityTabs.SCHEMAS,
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
-    if (tab && tab !== EntityTabs.SCHEMA) {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
+    if (tab && tab !== EntityTabs.SCHEMAS) {
       return [];
     }
 
     return [
       {
-        h: 2,
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DATABASE_SCHEMA] +
+          0.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATABASE_SCHEMA],
+            i: DetailPageWidgetKeys.DATABASE_SCHEMA,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
-        h: 11,
-        i: DetailPageWidgetKeys.DATABASE_SCHEMA,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
-      },
-      {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -100,7 +132,7 @@ class DatabaseClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -108,7 +140,7 @@ class DatabaseClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -116,7 +148,7 @@ class DatabaseClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -134,7 +166,7 @@ class DatabaseClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.TABLE_SCHEMA,
+        fullyQualifiedName: DetailPageWidgetKeys.DATABASE_SCHEMA,
         name: i18n.t('label.schema'),
         data: {
           gridSizes: ['large'] as GridSizes[],
@@ -149,6 +181,25 @@ class DatabaseClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDatabaseWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.DATABASE_SCHEMA:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATABASE_SCHEMA];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

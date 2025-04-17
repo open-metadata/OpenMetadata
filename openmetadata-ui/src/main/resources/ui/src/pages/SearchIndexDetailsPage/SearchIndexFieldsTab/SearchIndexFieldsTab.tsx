@@ -11,35 +11,19 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
-import { ExpandableConfig } from 'antd/lib/table/interface';
-import { isEmpty, sortBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import Searchbar from '../../../components/common/SearchBarComponent/SearchBar.component';
+import React, { useCallback, useMemo } from 'react';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import {
   SearchIndex,
   SearchIndexField,
 } from '../../../generated/entity/data/searchIndex';
 import { useFqn } from '../../../hooks/useFqn';
-import {
-  getAllRowKeysByKeyName,
-  getTableExpandableConfig,
-  searchInFields,
-} from '../../../utils/TableUtils';
+import { getAllRowKeysByKeyName } from '../../../utils/TableUtils';
 import SearchIndexFieldsTable from '../SearchIndexFieldsTable/SearchIndexFieldsTable';
 
 function SearchIndexFieldsTab() {
-  const { t } = useTranslation();
-  const [searchText, setSearchText] = useState('');
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [searchedFields, setSearchedFields] = useState<Array<SearchIndexField>>(
-    []
-  );
   const { fqn: entityFqn } = useFqn();
   const { data, permissions, onUpdate } = useGenericContext<SearchIndex>();
-
   const { fields, deleted } = useMemo(() => data, [data.fields, data.deleted]);
 
   const {
@@ -57,45 +41,12 @@ function SearchIndexFieldsTab() {
     [permissions]
   );
 
-  const sortByOrdinalPosition = useMemo(
-    () => sortBy(fields, 'ordinalPosition'),
-    [fields]
-  );
-
-  const handleSearchAction = useCallback((searchValue: string) => {
-    setSearchText(searchValue);
-  }, []);
-
   const fieldAllRowKeys = useMemo(() => {
     return getAllRowKeysByKeyName<SearchIndexField>(
       fields,
       'fullyQualifiedName'
     );
   }, [fields]);
-
-  const toggleExpandAll = useCallback(() => {
-    if (expandedRowKeys.length < fieldAllRowKeys.length) {
-      setExpandedRowKeys(fieldAllRowKeys);
-    } else {
-      setExpandedRowKeys([]);
-    }
-  }, [expandedRowKeys, fieldAllRowKeys]);
-
-  const expandableConfig: ExpandableConfig<SearchIndexField> = useMemo(
-    () => ({
-      ...getTableExpandableConfig<SearchIndexField>(),
-      rowExpandable: (record) => !isEmpty(record.children),
-      expandedRowKeys,
-      onExpand: (expanded, record) => {
-        setExpandedRowKeys(
-          expanded
-            ? [...expandedRowKeys, record.fullyQualifiedName ?? '']
-            : expandedRowKeys.filter((key) => key !== record.fullyQualifiedName)
-        );
-      },
-    }),
-    [expandedRowKeys]
-  );
 
   const handleSearchIndexFieldsUpdate = useCallback(
     async (updatedFields: Array<SearchIndexField>) => {
@@ -107,50 +58,17 @@ function SearchIndexFieldsTab() {
     [data, onUpdate]
   );
 
-  useEffect(() => {
-    if (!searchText) {
-      setSearchedFields(sortByOrdinalPosition);
-      setExpandedRowKeys([]);
-    } else {
-      const searchFields = searchInFields<SearchIndexField>(
-        sortByOrdinalPosition,
-        searchText
-      );
-      setSearchedFields(searchFields);
-      setExpandedRowKeys(fieldAllRowKeys);
-    }
-  }, [searchText, sortByOrdinalPosition]);
-
   return (
-    <Row align="middle" gutter={16} justify="space-between">
-      <Col span={12}>
-        <Searchbar
-          removeMargin
-          placeholder={`${t('message.find-in-table')}`}
-          searchValue={searchText}
-          typingInterval={500}
-          onSearch={handleSearchAction}
-        />
-      </Col>
-
-      <Col span={24}>
-        <SearchIndexFieldsTable
-          entityFqn={entityFqn}
-          expandableConfig={expandableConfig}
-          expandedRowKeys={expandedRowKeys}
-          fieldAllRowKeys={fieldAllRowKeys}
-          hasDescriptionEditAccess={hasDescriptionEditAccess}
-          hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
-          hasTagEditAccess={hasTagEditAccess}
-          isReadOnly={Boolean(deleted)}
-          searchIndexFields={fields}
-          searchText={searchText}
-          searchedFields={searchedFields}
-          toggleExpandAll={toggleExpandAll}
-          onUpdate={handleSearchIndexFieldsUpdate}
-        />
-      </Col>
-    </Row>
+    <SearchIndexFieldsTable
+      entityFqn={entityFqn}
+      fieldAllRowKeys={fieldAllRowKeys}
+      hasDescriptionEditAccess={hasDescriptionEditAccess}
+      hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
+      hasTagEditAccess={hasTagEditAccess}
+      isReadOnly={Boolean(deleted)}
+      searchIndexFields={fields}
+      onUpdate={handleSearchIndexFieldsUpdate}
+    />
   );
 }
 

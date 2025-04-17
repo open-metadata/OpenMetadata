@@ -137,7 +137,8 @@ import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR, TEXT_BODY_COLOR } from '../constants/constants';
+import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { ExportTypes } from '../constants/Export.constants';
 import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
@@ -556,21 +557,18 @@ export function getTableExpandableConfig<T>(
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
       expandable ? (
         <>
-          {isDraggable && (
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
-          )}
+          {isDraggable && <IconDrag className="drag-icon" />}
           <Icon
-            className="m-r-xs vertical-baseline"
+            className="table-expand-icon vertical-baseline"
             component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
             onClick={(e) => onExpand(record, e)}
           />
         </>
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            <IconDrag className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )
@@ -703,7 +701,7 @@ export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
     ...omit(tag, 'isRemovable'),
     labelType: LabelType.Manual,
     state: State.Confirmed,
-    source: tag.source || 'Classification',
+    source: tag.source ?? 'Classification',
     tagFQN: tag.tagFQN,
   }));
 
@@ -746,6 +744,66 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
   });
 };
 
+export const getTableColumnConfigSelections = (
+  userFqn: string,
+  entityType: string | undefined,
+  isFullViewTable: boolean,
+  defaultColumns: string[] | undefined
+) => {
+  if (!userFqn) {
+    return [];
+  }
+
+  const storageKey = `selectedColumns-${userFqn}`;
+  const selectedColumns = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
+
+  if (entityType) {
+    if (selectedColumns[entityType]) {
+      return selectedColumns[entityType];
+    } else if (!isFullViewTable) {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({
+          ...selectedColumns,
+          [entityType]: defaultColumns,
+        })
+      );
+
+      return defaultColumns;
+    }
+  }
+
+  return [];
+};
+
+export const handleUpdateTableColumnSelections = (
+  selected: boolean,
+  key: string,
+  columnDropdownSelections: string[],
+  userFqn: string,
+  entityType: string | undefined
+) => {
+  const updatedSelections = selected
+    ? [...columnDropdownSelections, key]
+    : columnDropdownSelections.filter((item) => item !== key);
+
+  // Updating localStorage
+  const selectedColumns = JSON.parse(
+    localStorage.getItem(`selectedColumns-${userFqn}`) ?? '{}'
+  );
+  if (entityType) {
+    localStorage.setItem(
+      `selectedColumns-${userFqn}`,
+      JSON.stringify({
+        ...selectedColumns,
+        [entityType]: updatedSelections,
+      })
+    );
+  }
+
+  return updatedSelections;
+};
+
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isTourOpen,
@@ -753,7 +811,7 @@ export const getTableDetailPageBaseTabs = ({
   activeTab,
   deleted,
   tableDetails,
-  totalFeedCount,
+  feedCount,
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
@@ -783,7 +841,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          count={totalFeedCount}
+          count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={get(
@@ -798,8 +856,9 @@ export const getTableDetailPageBaseTabs = ({
         <ActivityFeedTab
           refetchFeed
           columns={tableDetails?.columns}
-          entityFeedTotalCount={totalFeedCount}
+          entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TABLE}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={tableDetails?.owners}
           onFeedUpdate={getEntityFeedCount}
@@ -908,7 +967,7 @@ export const getTableDetailPageBaseTabs = ({
       children: (
         <QueryViewer
           sqlQuery={
-            get(tableDetails, 'dataModel.sql', '') ||
+            get(tableDetails, 'dataModel.sql', '') ??
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
@@ -956,13 +1015,11 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TABLE>
-            entityType={EntityType.TABLE}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TABLE>
+          entityType={EntityType.TABLE}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
     },
   ];
@@ -1122,6 +1179,7 @@ export const ExtraTableDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportTableDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />
@@ -1140,13 +1198,13 @@ export const getTableWidgetFromKey = (
   } else if (
     widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
   ) {
-    return <TableConstraints />;
+    return <TableConstraints newLook />;
   } else if (
     widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
   ) {
-    return <FrequentlyJoinedTables />;
+    return <FrequentlyJoinedTables newLook />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
-    return <PartitionedKeys />;
+    return <PartitionedKeys newLook />;
   } else {
     return (
       <CommonWidgets
@@ -1155,4 +1213,86 @@ export const getTableWidgetFromKey = (
       />
     );
   }
+};
+
+/**
+ * Helper function to find a column by entity link in a nested structure
+ * Recursively searches through the column hierarchy to find a matching column
+ *
+ * @param tableFqn - The fully qualified name of the table
+ * @param columns - Array of columns to search through
+ * @param entityLink - The entity link to match against
+ * @returns The matching column or null if not found
+ */
+export const findColumnByEntityLink = (
+  tableFqn: string,
+  columns: Column[],
+  entityLink: string
+): Column | null => {
+  for (const column of columns) {
+    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
+      column.fullyQualifiedName ?? '',
+      false
+    );
+
+    // Generate the entity link for this column and compare with the target entity link
+    const columnEntityLink = EntityLink.getTableEntityLink(
+      tableFqn,
+      columnName
+    );
+    if (columnEntityLink === entityLink) {
+      return column;
+    }
+
+    // If this column has children, recursively search them
+    if (column.children && column.children.length > 0) {
+      const found = findColumnByEntityLink(
+        tableFqn,
+        column.children,
+        entityLink
+      );
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Helper function to update a column in a nested structure
+ * Recursively traverses the column hierarchy to find and update the target column
+ *
+ * @param columns - Array of columns to search through
+ * @param targetFqn - The fully qualified name of the column to update
+ * @param update - The properties to update on the matching column
+ * @returns Updated array of columns with the target column modified
+ */
+export const updateColumnInNestedStructure = (
+  columns: Column[],
+  targetFqn: string,
+  update: Partial<Column>
+): Column[] => {
+  return columns.map((column: Column) => {
+    if (column.fullyQualifiedName === targetFqn) {
+      return {
+        ...column,
+        ...update,
+      };
+    }
+    // If this column has children, recursively search them
+    else if (column.children && column.children.length > 0) {
+      return {
+        ...column,
+        children: updateColumnInNestedStructure(
+          column.children,
+          targetFqn,
+          update
+        ),
+      };
+    } else {
+      return column;
+    }
+  });
 };

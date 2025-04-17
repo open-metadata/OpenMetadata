@@ -10,18 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
-import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
+import { EntityType } from '../../../../enums/entity.enum';
 import {
   DataProduct,
   TagLabel,
@@ -30,14 +24,11 @@ import {
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import {
-  getEntityVersionByField,
-  getOwnerVersionLabel,
-} from '../../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
-import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { OwnerLabelV2 } from '../../../DataAssets/OwnerLabelV2/OwnerLabelV2';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import '../../domain.less';
@@ -52,7 +43,6 @@ const DocumentationTab = ({
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
-  const { t } = useTranslation();
   const resourceType =
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
@@ -65,8 +55,6 @@ const DocumentationTab = ({
 
   const {
     editDescriptionPermission,
-    editOwnerPermission,
-    editAllPermission,
     editCustomAttributePermission,
     viewAllPermission,
     editTagsPermission,
@@ -135,144 +123,81 @@ const DocumentationTab = ({
         ...domain,
         description: updatedHTML,
       };
-      onUpdate(updatedTableDetails);
+      await onUpdate(updatedTableDetails);
     }
-  };
-
-  const handleUpdatedOwner = async (newOwners: Domain['owners']) => {
-    const updatedData = {
-      ...domain,
-      owners: newOwners,
-    };
-    await onUpdate(updatedData as Domain | DataProduct);
   };
 
   return (
     <ResizablePanels
-      className="domain-height-with-resizable-panel"
+      className="h-full domain-height-with-resizable-panel"
       firstPanel={{
         className: 'domain-resizable-panel-container',
         children: (
-          <div className="p-md domain-content-container">
-            <DescriptionV1
-              removeBlur
-              description={description}
-              entityName={getEntityName(domain)}
-              entityType={EntityType.DOMAIN}
-              hasEditAccess={editDescriptionPermission}
-              showCommentsIcon={false}
-              onDescriptionUpdate={onDescriptionUpdate}
-            />
-          </div>
+          <DescriptionV1
+            newLook
+            removeBlur
+            wrapInCard
+            description={description}
+            entityName={getEntityName(domain)}
+            entityType={EntityType.DOMAIN}
+            hasEditAccess={editDescriptionPermission}
+            showCommentsIcon={false}
+            onDescriptionUpdate={onDescriptionUpdate}
+          />
         ),
         ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
       }}
       secondPanel={{
+        wrapInCard: true,
         children: (
-          <Row gutter={[0, 40]}>
-            <Col data-testid="domain-owner-name" span="24">
-              <div className="d-flex items-center m-b-xss">
-                <Typography.Text className="right-panel-label">
-                  {t('label.owner-plural')}
-                </Typography.Text>
-                {editOwnerPermission &&
-                  domain.owners &&
-                  domain.owners.length > 0 && (
-                    <UserTeamSelectableList
-                      hasPermission
-                      multiple={{ team: false, user: true }}
-                      owner={domain.owners}
-                      onUpdate={(updatedUser) =>
-                        handleUpdatedOwner(updatedUser)
-                      }>
-                      <Tooltip
-                        title={t('label.edit-entity', {
-                          entity: t('label.owner-plural'),
-                        })}>
-                        <Button
-                          className="cursor-pointer flex-center m-l-xss"
-                          data-testid="edit-owner"
-                          icon={
-                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                          }
-                          size="small"
-                          type="text"
-                        />
-                      </Tooltip>
-                    </UserTeamSelectableList>
-                  )}
-              </div>
+          <div className="d-flex flex-column gap-5 p-md">
+            <OwnerLabelV2 dataTestId="domain-owner-name" />
 
-              <Space className="m-r-xss" size={4}>
-                {getOwnerVersionLabel(
-                  domain,
-                  isVersionsView,
-                  TabSpecificField.OWNERS,
-                  editOwnerPermission || editAllPermission
-                )}
-              </Space>
-              {domain.owners?.length === 0 && editOwnerPermission && (
-                <UserTeamSelectableList
-                  hasPermission
-                  multiple={{ team: false, user: true }}
-                  owner={domain.owners}
-                  onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
-                  <TagButton
-                    className="text-primary cursor-pointer"
-                    icon={<PlusIcon height={16} name="plus" width={16} />}
-                    label={t('label.add')}
-                    tooltip=""
-                  />
-                </UserTeamSelectableList>
-              )}
-            </Col>
+            <TagsContainerV2
+              newLook
+              displayType={DisplayType.READ_MORE}
+              entityFqn={domain.fullyQualifiedName}
+              entityType={EntityType.DOMAIN}
+              permission={editTagsPermission}
+              selectedTags={domain.tags ?? []}
+              showTaskHandler={false}
+              tagType={TagSource.Classification}
+              onSelectionChange={async (updatedTags: TagLabel[]) =>
+                await onTagsUpdate(updatedTags)
+              }
+            />
 
-            <Col data-testid="domain-tags" span="24">
-              <TagsContainerV2
-                displayType={DisplayType.READ_MORE}
-                entityFqn={domain.fullyQualifiedName}
-                entityType={EntityType.DOMAIN}
-                permission={editTagsPermission as boolean}
-                selectedTags={domain.tags ?? []}
-                showTaskHandler={false}
-                tagType={TagSource.Classification}
-                onSelectionChange={async (updatedTags: TagLabel[]) =>
-                  await onTagsUpdate(updatedTags)
-                }
-              />
-            </Col>
+            <TagsContainerV2
+              newLook
+              displayType={DisplayType.READ_MORE}
+              entityFqn={domain.fullyQualifiedName}
+              entityType={EntityType.DOMAIN}
+              permission={editGlossaryTermsPermission}
+              selectedTags={domain.tags ?? []}
+              showTaskHandler={false}
+              tagType={TagSource.Glossary}
+              onSelectionChange={async (updatedTags: TagLabel[]) =>
+                await onTagsUpdate(updatedTags)
+              }
+            />
 
-            <Col data-testid="domain-glossary-terms" span="24">
-              <TagsContainerV2
-                displayType={DisplayType.READ_MORE}
-                entityFqn={domain.fullyQualifiedName}
-                entityType={EntityType.DOMAIN}
-                permission={editGlossaryTermsPermission as boolean}
-                selectedTags={domain.tags ?? []}
-                showTaskHandler={false}
-                tagType={TagSource.Glossary}
-                onSelectionChange={async (updatedTags: TagLabel[]) =>
-                  await onTagsUpdate(updatedTags)
-                }
-              />
-            </Col>
+            <DomainExpertWidget newLook />
 
-            <DomainExpertWidget />
-
-            {type === DocumentationEntity.DOMAIN && <DomainTypeWidget />}
+            {type === DocumentationEntity.DOMAIN && (
+              <DomainTypeWidget newLook />
+            )}
 
             {domain && type === DocumentationEntity.DATA_PRODUCT && (
-              <Col data-testid="custom-properties-right-panel" span="24">
-                <CustomPropertyTable<EntityType.DATA_PRODUCT>
-                  isRenderedInRightPanel
-                  entityType={EntityType.DATA_PRODUCT}
-                  hasEditAccess={Boolean(editCustomAttributePermission)}
-                  hasPermission={Boolean(viewAllPermission)}
-                  maxDataCap={5}
-                />
-              </Col>
+              <CustomPropertyTable<EntityType.DATA_PRODUCT>
+                isRenderedInRightPanel
+                newLook
+                entityType={EntityType.DATA_PRODUCT}
+                hasEditAccess={Boolean(editCustomAttributePermission)}
+                hasPermission={Boolean(viewAllPermission)}
+                maxDataCap={5}
+              />
             )}
-          </Row>
+          </div>
         ),
         ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
         className:

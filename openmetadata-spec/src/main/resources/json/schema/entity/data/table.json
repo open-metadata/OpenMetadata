@@ -42,7 +42,8 @@
         "Local",
         "Partitioned",
         "Foreign",
-        "Transient"
+        "Transient",
+        "Stream"
       ],
       "javaEnums": [
         {
@@ -77,6 +78,9 @@
         },
         {
           "name": "Transient"
+        },
+        {
+          "name": "Stream"
         }
       ]
     },
@@ -772,6 +776,11 @@
           "type": "integer",
           "default": 50,
           "title": "Sample Data Rows Count"
+        },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": true
         },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",

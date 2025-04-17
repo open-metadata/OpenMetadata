@@ -11,22 +11,27 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
+
 .data-assets-header-container {
-  .data-asset-button-group {
-    .ant-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 10px 16px;
-    }
-  }
   .data-asset-header-metadata {
     border-radius: 12px;
-    border: 0.5px solid @grey-300;
-    padding: 20px;
-    gap: 50px;
+    border: 1px solid @blue-15;
+    padding: 16px 20px;
+    gap: 16px;
+    display: flex;
     background-color: @background-color;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
   }
+
+  .data-asset-header-less-items {
+    justify-content: initial;
+
+    .ant-divider {
+      margin: 0 20px 0 100px;
+    }
+  }
+
   .ant-space-item {
     .entity-no-tier {
       color: @primary-heading-color;
@@ -38,6 +43,10 @@
 
   .ant-btn-icon-only.edit-tier-button {
     border: 1px solid @border-light;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+
     svg {
       color: @grey-600;
     }
@@ -51,15 +60,7 @@
   .ant-typography > .extra-info-value {
     color: @grey-700;
   }
-  .ant-typography {
-    .showAsATag {
-      background-color: @background-primary;
-      padding: 4px 8px;
-      border-radius: 8px;
-      font-weight: 400;
-      color: @tag-text;
-    }
-  }
+
   .header-icon {
     height: 72px;
     width: 60px;
@@ -69,6 +70,7 @@
   .no-tier-text {
     color: @grey-700;
   }
+
   .ant-typography.extra-info-link {
     color: @primary-heading-color;
     max-width: 200px;
@@ -80,15 +82,42 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 148px;
   }
-}
-
-.ant-btn-group {
-  .ant-btn {
-    height: 40px;
+  a.source-url-link {
+    text-decoration: none;
+    &:hover {
+      text-decoration: none;
+    }
   }
-}
+  .ant-btn.ant-btn-default.source-url-button {
+    background-color: @blue-11;
+    color: @blue-9;
+    span.anticon {
+      border-radius: 50%;
+      background-color: @blue-19;
+      padding: 4px;
+      height: 32px;
+      width: 32px;
+      border: 4px solid @blue-14;
+    }
 
-.ant-divider.ant-divider-vertical.vertical-divider {
-  height: 50px;
+    svg {
+      fill: transparent;
+    }
+  }
+
+  .ant-divider.ant-divider-vertical.vertical-divider {
+    height: 50px;
+  }
+
+  .tier-container,
+  .extra-info-container {
+    max-width: 148px;
+  }
+  .tier-heading-container {
+    svg {
+      fill: @de-active-color;
+    }
+  }
 }

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,9 @@
 import re
 import traceback
 from typing import Any, Iterable, List, Optional, Union
+
+from pydantic import EmailStr
+from pydantic_core import PydanticCustomError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -48,8 +51,10 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -67,7 +72,6 @@ from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,
     filter_by_datamodel,
-    filter_by_project,
 )
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri
@@ -94,87 +98,57 @@ class PowerbiSource(DashboardServiceSource):
         self.workspace_data = []
         self.datamodel_file_mappings = []
 
-    def prepare(self):
-        """
-        - Since we get all the required info i.e. reports, dashboards, charts, datasets
-          with workflow scan approach, we are populating bulk data for workspace.
-        - Some individual APIs are not able to yield data with details.
-        """
-        if self.service_connection.useAdminApis:
-            groups = self.get_admin_workspace_data()
-        else:
-            groups = self.get_org_workspace_data()
-        if groups:
-            self.workspace_data = self.get_filtered_workspaces(groups)
-        return super().prepare()
-
     def close(self):
         self.metadata.close()
         if self.client.file_client:
             self.client.file_client.delete_tmp_files()
 
-    def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
+    def get_org_workspace_data(self) -> Iterable[Optional[Group]]:
         """
-        Method to get the workspaces filtered by project filter pattern
-        """
-        filtered_groups = []
-        for group in groups:
-            if filter_by_project(
-                self.source_config.projectFilterPattern,
-                group.name,
-            ):
-                self.status.filter(
-                    group.name,
-                    "Workspace Filtered Out",
-                )
-                continue
-            filtered_groups.append(group)
-        return filtered_groups
-
-    def get_org_workspace_data(self) -> Optional[List[Group]]:
-        """
-        fetch all the group workspace ids
+        fetch all the workspace data for non-admin users
         """
         filter_pattern = self.source_config.projectFilterPattern
-        groups = self.client.api_client.fetch_all_workspaces(filter_pattern)
-        for group in groups:
-            # add the dashboards to the groups
-            group.dashboards.extend(
-                self.client.api_client.fetch_all_org_dashboards(group_id=group.id) or []
+        workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+        for workspace in workspaces:
+            # add the dashboards to the workspace
+            workspace.dashboards.extend(
+                self.client.api_client.fetch_all_org_dashboards(group_id=workspace.id)
+                or []
             )
-            for dashboard in group.dashboards:
+            for dashboard in workspace.dashboards:
                 # add the tiles to the dashboards
                 dashboard.tiles.extend(
                     self.client.api_client.fetch_all_org_tiles(
-                        group_id=group.id, dashboard_id=dashboard.id
+                        group_id=workspace.id, dashboard_id=dashboard.id
                     )
                     or []
                 )
 
-            # add the reports to the groups
-            group.reports.extend(
-                self.client.api_client.fetch_all_org_reports(group_id=group.id) or []
+            # add the reports to the workspaces
+            workspace.reports.extend(
+                self.client.api_client.fetch_all_org_reports(group_id=workspace.id)
+                or []
             )
 
-            # add the datasets to the groups
-            group.datasets.extend(
-                self.client.api_client.fetch_all_org_datasets(group_id=group.id) or []
+            # add the datasets to the workspaces
+            workspace.datasets.extend(
+                self.client.api_client.fetch_all_org_datasets(group_id=workspace.id)
+                or []
             )
-            for dataset in group.datasets:
+            for dataset in workspace.datasets:
                 # add the tables to the datasets
                 dataset.tables.extend(
                     self.client.api_client.fetch_dataset_tables(
-                        group_id=group.id, dataset_id=dataset.id
+                        group_id=workspace.id, dataset_id=dataset.id
                     )
                     or []
                 )
-        return groups
+            yield workspace
 
-    def get_admin_workspace_data(self) -> Optional[List[Group]]:
+    def get_admin_workspace_data(self) -> Iterable[Optional[Group]]:
         """
-        fetch all the workspace ids
+        fetch all the workspace data
         """
-        groups = []
         filter_pattern = self.source_config.projectFilterPattern
         workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
         if workspaces:
@@ -223,17 +197,12 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     count += 1
                     continue
-                groups.extend(
-                    [
-                        active_workspace
-                        for active_workspace in response.workspaces
-                        if active_workspace.state == "Active"
-                    ]
-                )
+                for active_workspace in response.workspaces:
+                    if active_workspace.state == "Active":
+                        yield active_workspace
                 count += 1
         else:
             logger.error("Unable to fetch any PowerBI workspaces")
-        return groups or None
 
     @classmethod
     def create(
@@ -247,23 +216,30 @@ class PowerbiSource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
+    def _prepare_workspace_data(self):
+        """
+        - Since we get all the required info i.e. reports, dashboards, charts, datasets
+          with workflow scan approach, we are populating bulk data for workspace.
+        - Some individual APIs are not able to yield data with details.
+        """
+        if self.service_connection.useAdminApis:
+            for workspace in self.get_admin_workspace_data():
+                yield workspace
+        else:
+            for workspace in self.get_org_workspace_data():
+                yield workspace
+
     def get_dashboard(self) -> Any:
         """
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
-        for workspace in self.workspace_data:
+        for workspace in self._prepare_workspace_data():
+            self.workspace_data.append(workspace)
             self.context.get().workspace = workspace
-            for dashboard in self.get_dashboards_list():
-                try:
-                    dashboard_details = self.get_dashboard_details(dashboard)
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Cannot extract dashboard details from {dashboard}: {exc}"
-                    )
-                    continue
+            self.filtered_dashboards = []
+            for dashboard in self.get_dashboards_list() or []:
+                dashboard_details = self.get_dashboard_details(dashboard)
                 dashboard_name = self.get_dashboard_name(dashboard_details)
-
                 if filter_by_dashboard(
                     self.source_config.dashboardFilterPattern,
                     dashboard_name,
@@ -273,7 +249,8 @@ class PowerbiSource(DashboardServiceSource):
                         "Dashboard Filtered Out",
                     )
                     continue
-                yield dashboard_details
+                self.filtered_dashboards.append(dashboard_details)
+            yield workspace
 
     def get_dashboards_list(
         self,
@@ -336,54 +313,118 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/{chart_url_postfix}"
         )
 
-    def list_datamodels(self) -> Iterable[Dataset]:
+    def yield_dashboard(
+        self, dashboard_details: Group
+    ) -> Iterable[Either[CreateDashboardRequest]]:
         """
-        Get All the Powerbi Datasets
-        """
-        if self.source_config.includeDataModels:
-            try:
-                for workspace in self.workspace_data:
-                    for dataset in workspace.datasets or []:
-                        if filter_by_datamodel(
-                            self.source_config.dataModelFilterPattern, dataset.name
-                        ):
-                            self.status.filter(dataset.name, "Data model filtered out.")
-                            continue
-                        yield dataset
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.error(f"Unexpected error fetching PowerBI datasets - {err}")
-
-    def yield_bulk_datamodel(
-        self, dataset: Dataset
-    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
-        """
-        Method to fetch DataModels in bulk
+        Method to Get Dashboard Entity, Dashboard Charts & Lineage
         """
         try:
-            data_model_request = CreateDashboardDataModelRequest(
-                name=EntityName(dataset.id),
-                displayName=dataset.name,
-                description=Markdown(dataset.description)
-                if dataset.description
-                else None,
-                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                dataModelType=DataModelType.PowerBIDataModel.value,
-                serviceType=DashboardServiceType.PowerBI.value,
-                columns=self._get_column_info(dataset),
-                project=self._fetch_dataset_workspace(dataset_id=dataset.id),
-            )
-            yield Either(right=data_model_request)
-            self.register_record_datamodel(datamodel_request=data_model_request)
-
-        except Exception as exc:
+            for dashboard in self.filtered_dashboards or []:
+                dashboard_details = self.get_dashboard_details(dashboard)
+                if isinstance(dashboard_details, PowerBIDashboard):
+                    dashboard_request = CreateDashboardRequest(
+                        name=EntityName(dashboard_details.id),
+                        sourceUrl=SourceUrl(
+                            self._get_dashboard_url(
+                                workspace_id=self.context.get().workspace.id,
+                                dashboard_id=dashboard_details.id,
+                            )
+                        ),
+                        project=self.get_project_name(dashboard_details),
+                        displayName=dashboard_details.displayName,
+                        dashboardType=DashboardType.Dashboard,
+                        charts=[
+                            FullyQualifiedEntityName(
+                                fqn.build(
+                                    self.metadata,
+                                    entity_type=Chart,
+                                    service_name=self.context.get().dashboard_service,
+                                    chart_name=chart,
+                                )
+                            )
+                            for chart in self.context.get().charts or []
+                        ],
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
+                        owners=self.get_owner_ref(dashboard_details=dashboard_details),
+                    )
+                else:
+                    dashboard_request = CreateDashboardRequest(
+                        name=EntityName(dashboard_details.id),
+                        dashboardType=DashboardType.Report,
+                        sourceUrl=SourceUrl(
+                            self._get_report_url(
+                                workspace_id=self.context.get().workspace.id,
+                                dashboard_id=dashboard_details.id,
+                            )
+                        ),
+                        project=self.get_project_name(dashboard_details),
+                        displayName=dashboard_details.name,
+                        service=self.context.get().dashboard_service,
+                        owners=self.get_owner_ref(dashboard_details=dashboard_details),
+                    )
+                yield Either(right=dashboard_request)
+                self.register_record(dashboard_request=dashboard_request)
+        except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
-                    name=dataset.name,
-                    error=f"Error yielding Data Model [{dataset.name}]: {exc}",
+                    name=dashboard_details.name,
+                    error=f"Error creating dashboard [{dashboard_details}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def yield_dashboard_chart(
+        self, dashboard_details: Group
+    ) -> Iterable[Either[CreateChartRequest]]:
+        """Get chart method
+        Args:
+            dashboard_details:
+        Returns:
+            Iterable[Chart]
+        """
+        for dashboard in self.filtered_dashboards or []:
+            dashboard_details = self.get_dashboard_details(dashboard)
+            if isinstance(dashboard_details, PowerBIDashboard):
+                charts = dashboard_details.tiles
+                for chart in charts or []:
+                    try:
+                        chart_title = chart.title
+                        chart_display_name = chart_title if chart_title else chart.id
+                        if filter_by_chart(
+                            self.source_config.chartFilterPattern, chart_display_name
+                        ):
+                            self.status.filter(
+                                chart_display_name, "Chart Pattern not Allowed"
+                            )
+                            continue
+                        yield Either(
+                            right=CreateChartRequest(
+                                name=EntityName(chart.id),
+                                displayName=chart_display_name,
+                                chartType=ChartType.Other.value,
+                                sourceUrl=SourceUrl(
+                                    self._get_chart_url(
+                                        report_id=chart.reportId,
+                                        workspace_id=self.context.get().workspace.id,
+                                        dashboard_id=dashboard_details.id,
+                                    )
+                                ),
+                                service=FullyQualifiedEntityName(
+                                    self.context.get().dashboard_service
+                                ),
+                            )
+                        )
+                    except Exception as exc:
+                        yield Either(
+                            left=StackTraceError(
+                                name=chart.title,
+                                error=f"Error creating chart [{chart.title}]: {exc}",
+                                stackTrace=traceback.format_exc(),
+                            )
+                        )
 
     def _get_child_measures(self, table: PowerBiTable) -> List[Column]:
         """
@@ -451,6 +492,7 @@ class PowerbiSource(DashboardServiceSource):
                     "name": table.name,
                     "displayName": table.name,
                     "description": table.description,
+                    "children": [],
                 }
                 child_columns = self._get_child_columns(table=table)
                 child_measures = self._get_child_measures(table=table)
@@ -464,63 +506,48 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield datamodel column: {exc}")
         return datasource_columns
 
-    def yield_dashboard(
-        self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
-    ) -> Iterable[Either[CreateDashboardRequest]]:
+    def _get_datamodels_list(self) -> List[Dataset]:
         """
-        Method to Get Dashboard Entity, Dashboard Charts & Lineage
+        Get All the Powerbi Datasets
+        """
+        return self.context.get().workspace.datasets
+
+    def yield_datamodel(
+        self, dashboard_details: Group
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """
+        Get All the Powerbi Datasets
         """
         try:
-            if isinstance(dashboard_details, PowerBIDashboard):
-                dashboard_request = CreateDashboardRequest(
-                    name=EntityName(dashboard_details.id),
-                    sourceUrl=SourceUrl(
-                        self._get_dashboard_url(
-                            workspace_id=self.context.get().workspace.id,
-                            dashboard_id=dashboard_details.id,
-                        )
-                    ),
-                    project=self.get_project_name(dashboard_details=dashboard_details),
-                    displayName=dashboard_details.displayName,
-                    dashboardType=DashboardType.Dashboard,
-                    charts=[
-                        FullyQualifiedEntityName(
-                            fqn.build(
-                                self.metadata,
-                                entity_type=Chart,
-                                service_name=self.context.get().dashboard_service,
-                                chart_name=chart,
-                            )
-                        )
-                        for chart in self.context.get().charts or []
-                    ],
-                    service=FullyQualifiedEntityName(
-                        self.context.get().dashboard_service
-                    ),
-                    owners=self.get_owner_ref(dashboard_details=dashboard_details),
-                )
-            else:
-                dashboard_request = CreateDashboardRequest(
-                    name=EntityName(dashboard_details.id),
-                    dashboardType=DashboardType.Report,
-                    sourceUrl=SourceUrl(
-                        self._get_report_url(
-                            workspace_id=self.context.get().workspace.id,
-                            dashboard_id=dashboard_details.id,
-                        )
-                    ),
-                    project=self.get_project_name(dashboard_details=dashboard_details),
-                    displayName=dashboard_details.name,
-                    service=self.context.get().dashboard_service,
-                    owners=self.get_owner_ref(dashboard_details=dashboard_details),
-                )
-            yield Either(right=dashboard_request)
-            self.register_record(dashboard_request=dashboard_request)
-        except Exception as exc:  # pylint: disable=broad-except
+            if self.source_config.includeDataModels:
+                for dataset in self._get_datamodels_list() or []:
+                    if filter_by_datamodel(
+                        self.source_config.dataModelFilterPattern, dataset.name
+                    ):
+                        self.status.filter(dataset.name, "Data model filtered out.")
+                        continue
+                    data_model_request = CreateDashboardDataModelRequest(
+                        name=EntityName(dataset.id),
+                        displayName=dataset.name,
+                        description=Markdown(dataset.description)
+                        if dataset.description
+                        else None,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
+                        dataModelType=DataModelType.PowerBIDataModel.value,
+                        serviceType=DashboardServiceType.PowerBI.value,
+                        columns=self._get_column_info(dataset),
+                        project=self.get_project_name(dashboard_details=dataset),
+                        owners=self.get_owner_ref(dashboard_details=dataset),
+                    )
+                    yield Either(right=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
+        except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=dashboard_details.name,
-                    error=f"Error creating dashboard [{dashboard_details}]: {exc}",
+                    name=dataset.name,
+                    error=f"Error yielding Data Model [{dataset.name}]: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -821,81 +848,50 @@ class PowerbiSource(DashboardServiceSource):
 
     def yield_dashboard_lineage_details(
         self,
-        dashboard_details: Union[PowerBIDashboard, PowerBIReport],
+        dashboard_details: Group,
         db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         We will build the logic to build the logic as below
         tables - datamodel - report - dashboard
         """
-        try:
-            if isinstance(dashboard_details, PowerBIReport):
-                yield from self.create_datamodel_report_lineage(
-                    db_service_name=db_service_name,
-                    dashboard_details=dashboard_details,
+        for dashboard in self.filtered_dashboards or []:
+            dashboard_details = self.get_dashboard_details(dashboard)
+            try:
+                if isinstance(dashboard_details, PowerBIReport):
+                    yield from self.create_datamodel_report_lineage(
+                        db_service_name=db_service_name,
+                        dashboard_details=dashboard_details,
+                    )
+                if isinstance(dashboard_details, PowerBIDashboard):
+                    yield from self.create_report_dashboard_lineage(
+                        dashboard_details=dashboard_details
+                    )
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name="Dashboard Lineage",
+                        error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
                 )
 
-            if isinstance(dashboard_details, PowerBIDashboard):
-                yield from self.create_report_dashboard_lineage(
-                    dashboard_details=dashboard_details
-                )
-
-        except Exception as exc:  # pylint: disable=broad-except
-            yield Either(
-                left=StackTraceError(
-                    name="Dashboard Lineage",
-                    error=f"Error to yield dashboard lineage details for DB service name [{db_service_name}]: {exc}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-
-    def yield_dashboard_chart(
-        self, dashboard_details: Union[PowerBIDashboard, PowerBIReport]
-    ) -> Iterable[Either[CreateChartRequest]]:
-        """Get chart method
-        Args:
-            dashboard_details:
-        Returns:
-            Iterable[Chart]
+    def yield_dashboard_lineage(
+        self, dashboard_details: Group
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """
-        if isinstance(dashboard_details, PowerBIDashboard):
-            charts = dashboard_details.tiles
-            for chart in charts or []:
-                try:
-                    chart_title = chart.title
-                    chart_display_name = chart_title if chart_title else chart.id
-                    if filter_by_chart(
-                        self.source_config.chartFilterPattern, chart_display_name
-                    ):
-                        self.status.filter(
-                            chart_display_name, "Chart Pattern not Allowed"
-                        )
-                        continue
-                    yield Either(
-                        right=CreateChartRequest(
-                            name=EntityName(chart.id),
-                            displayName=chart_display_name,
-                            chartType=ChartType.Other.value,
-                            sourceUrl=SourceUrl(
-                                self._get_chart_url(
-                                    report_id=chart.reportId,
-                                    workspace_id=self.context.get().workspace.id,
-                                    dashboard_id=dashboard_details.id,
-                                )
-                            ),
-                            service=FullyQualifiedEntityName(
-                                self.context.get().dashboard_service
-                            ),
-                        )
-                    )
-                except Exception as exc:
-                    yield Either(
-                        left=StackTraceError(
-                            name=chart.title,
-                            error=f"Error creating chart [{chart.title}]: {exc}",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
+        Yields lineage if config is enabled.
+
+        We will look for the data in all the services
+        we have informed.
+        """
+        db_service_names = self.get_db_service_names()
+        if not db_service_names:
+            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
+        for db_service_name in db_service_names or []:
+            yield from self.yield_dashboard_lineage_details(
+                dashboard_details, db_service_name
+            ) or []
 
     def _fetch_dataset_from_workspace(
         self, dataset_id: Optional[str]
@@ -937,21 +933,6 @@ class PowerbiSource(DashboardServiceSource):
                     return report_data
         return None
 
-    def _fetch_dataset_workspace(self, dataset_id: Optional[str]) -> Optional[str]:
-        """
-        Method to search the workspace name in which the dataset in contained
-        """
-        if dataset_id:
-            workspace_names = (
-                workspace.name
-                for workspace in self.workspace_data
-                for dataset in workspace.datasets
-                if dataset.id == dataset_id
-            )
-            return next(iter(workspace_names), None)
-
-        return None
-
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
         """
         Get the project / workspace / folder / collection name of the dashboard
@@ -963,4 +944,45 @@ class PowerbiSource(DashboardServiceSource):
             logger.warning(
                 f"Error fetching project name for {dashboard_details.id}: {exc}"
             )
+        return None
+
+    def get_owner_ref(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details: Any
+    ) -> Optional[EntityReferenceList]:
+        """
+        Method to process the dashboard owners
+        """
+        try:
+            owner_ref_list = []  # to assign multiple owners to entity if they exist
+            for owner in dashboard_details.users or []:
+                if owner.email:
+                    owner_ref = None
+                    try:
+                        owner_email = EmailStr._validate(owner.email)
+                        owner_ref = self.metadata.get_reference_by_email(
+                            owner_email.lower()
+                        )
+                    except PydanticCustomError:
+                        logger.warning(
+                            f"Could not fetch owner data for email: {owner.email}"
+                        )
+                        if owner.displayName:
+                            owner_ref = self.metadata.get_reference_by_name(
+                                name=owner.displayName
+                            )
+                    except Exception as err:
+                        logger.warning(
+                            f"Error processing current owner data in {dashboard_details.id}: {err}"
+                        )
+                    if owner_ref:
+                        owner_ref_list.append(owner_ref.root[0])
+            if len(owner_ref_list) > 0:
+                logger.debug(
+                    f"Successfully fetched owners data for {dashboard_details.id}"
+                )
+                return EntityReferenceList(root=owner_ref_list)
+            return None
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None

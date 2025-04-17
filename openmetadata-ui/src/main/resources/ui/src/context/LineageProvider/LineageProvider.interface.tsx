@@ -47,6 +47,7 @@ export enum LineagePlatformView {
   None = 'None',
   Service = 'Service',
   Domain = 'Domain',
+  DataProduct = 'DataProduct',
 }
 
 export interface LineageContextType {
@@ -71,6 +72,7 @@ export interface LineageContextType {
   activeLayer: LineageLayer[];
   platformView: LineagePlatformView;
   expandAllColumns: boolean;
+  isPlatformLineage: boolean;
   toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
@@ -101,7 +103,11 @@ export interface LineageContextType {
   onColumnEdgeRemove: () => void;
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
-  updateEntityData: (entityType: EntityType, entity?: SourceType) => void;
+  updateEntityData: (
+    entityType: EntityType,
+    entity?: SourceType,
+    isPlatformLineage?: boolean
+  ) => void;
   onUpdateLayerView: (layers: LineageLayer[]) => void;
   redraw: () => Promise<void>;
 }

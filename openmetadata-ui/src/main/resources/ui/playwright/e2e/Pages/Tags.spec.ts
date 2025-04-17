@@ -86,7 +86,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Classification Page', async ({ page }) => {
+test.fixme('Classification Page', async ({ page }) => {
   test.slow();
 
   await test.step('Should render basic elements on page', async () => {

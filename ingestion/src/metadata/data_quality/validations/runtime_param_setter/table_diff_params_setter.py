@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -237,7 +237,10 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         # path needs to include the database AND schema in some of the connectors
         if hasattr(db_service.connection.config, "supportsDatabase"):
             kwargs["path"] = f"/{database}"
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake}:
+        # this can be found by going to:
+        # https://github.com/open-metadata/collate-data-diff/blob/main/data_diff/databases/<connector>.py
+        # and looking at the `CONNECT_URI_HELPER` variable
+        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             kwargs["path"] = f"/{database}/{schema}"
         return url._replace(**kwargs).geturl()
 

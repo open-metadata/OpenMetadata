@@ -58,6 +58,10 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["name", "serviceType"],

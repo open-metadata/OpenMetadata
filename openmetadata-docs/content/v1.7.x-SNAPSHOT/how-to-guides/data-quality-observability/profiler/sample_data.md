@@ -11,9 +11,7 @@ Note that this requires OpenMetadata 1.2.1 or higher.
 
 {% /note %}
 
-While running the profiler workflow if you have enabled the `Generate Sample Data` flag in your profiler configuration, 
-sample data will be ingested for all the tables included in the profiler workflow. This data is a randomly sampled 
-from the table and by default would contain 50 rows of data, which is now configurable.
+While running the auto-classification workflow if you have enabled the `Generate Sample Data` flag in your profiler configuration, sample data will be ingested for all the tables included in the  auto-classification workflow. This data is a randomly sampled from the table and by default would contain 50 rows of data, which is now configurable.
 
 With OpenMetadata release 1.2.1, a new capability allows users to take advantage of this sample data by uploading
 it to an S3 bucket in Parquet format. This means that the random sample, once generated, can be stored in a standardized, 

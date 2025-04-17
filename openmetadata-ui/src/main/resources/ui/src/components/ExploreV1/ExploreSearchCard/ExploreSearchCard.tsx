@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isObject, isString, startCase, uniqueId } from 'lodash';
@@ -17,6 +18,7 @@ import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -62,6 +64,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       checked = false,
       onCheckboxChange,
       searchValue,
+      score,
+      classNameForBreadcrumb,
     },
     ref
   ) => {
@@ -103,7 +107,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source?.owners as EntityReference[]) ?? []} />
+            <OwnerLabel
+              avatarSize={18}
+              owners={(source?.owners as EntityReference[]) ?? []}
+            />
           ),
         },
 
@@ -201,16 +208,28 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             </Col>
           )}
           {!hideBreadcrumbs && (
-            <Col className="d-flex" flex="auto">
+            <Col className="d-flex justify-between items-center" flex="auto">
               <div className="d-flex gap-2 items-center">
-                {serviceIcon}
+                {breadcrumbs.length > 0 && serviceIcon}
                 <div className="entity-breadcrumb" data-testid="category-name">
                   <TitleBreadcrumb
+                    className={classNameForBreadcrumb}
                     titleLinks={breadcrumbs}
                     widthDeductions={780}
                   />
                 </div>
               </div>
+              {score && (
+                <div className="flex items-center gap-1 score-container">
+                  <Icon className="text-xs" component={ScoreIcon} />
+                  <Typography.Text className="text-xs score">
+                    <span className="font-normal">
+                      {t('label.score-label').toUpperCase()}
+                    </span>
+                    <span className="font-semibold">{score.toFixed(4)}</span>
+                  </Typography.Text>
+                </div>
+              )}
             </Col>
           )}
           <Col

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Switch, Typography } from 'antd';
+import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
@@ -33,15 +33,14 @@ import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
-import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../../../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { getDataModels } from '../../../../rest/dashboardAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 
 const DataModelTable = () => {
@@ -91,7 +90,7 @@ const DataModelTable = () => {
         key: TABLE_COLUMNS_KEYS.DESCRIPTION,
         render: (description: ServicePageData['description']) =>
           !isUndefined(description) && description.trim() ? (
-            <RichTextEditorPreviewerV1 markdown={description} />
+            <RichTextEditorPreviewerNew markdown={description} />
           ) : (
             <span className="text-grey-muted">
               {t('label.no-entity', {
@@ -153,50 +152,41 @@ const DataModelTable = () => {
   }, [pageSize, showDeleted]);
 
   return (
-    <Row className="p-t-sm" gutter={[0, 16]}>
-      <Col className="p-x-lg" data-testid="table-container" span={24}>
-        <Table
-          bordered
-          className="mt-4 table-shadow"
-          columns={tableColumn}
-          data-testid="data-models-table"
-          dataSource={dataModels}
-          defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
-          extraTableFilters={
-            <span>
-              <Switch
-                checked={showDeleted}
-                data-testid="show-deleted"
-                onClick={handleShowDeletedChange}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
-            </span>
-          }
-          loading={isLoading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-          staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-        />
-      </Col>
-      <Col className="p-b-sm" span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleDataModelPageChange}
-            onShowSizeChange={handlePageSizeChange}
+    <Table
+      columns={tableColumn}
+      customPaginationProps={{
+        currentPage,
+        isLoading,
+        pageSize,
+        paging,
+        pagingHandler: handleDataModelPageChange,
+        onShowSizeChange: handlePageSizeChange,
+        showPagination,
+      }}
+      data-testid="data-models-table"
+      dataSource={dataModels}
+      defaultVisibleColumns={DEFAULT_DATA_MODEL_TYPE_VISIBLE_COLUMNS}
+      extraTableFilters={
+        <span>
+          <Switch
+            checked={showDeleted}
+            data-testid="show-deleted"
+            onClick={handleShowDeletedChange}
           />
-        )}
-      </Col>
-    </Row>
+          <Typography.Text className="m-l-xs">
+            {t('label.deleted')}
+          </Typography.Text>
+        </span>
+      }
+      loading={isLoading}
+      locale={{
+        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+      }}
+      pagination={false}
+      rowKey="id"
+      size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+    />
   );
 };
 

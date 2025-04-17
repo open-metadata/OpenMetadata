@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Module to define overriden dialect methods
+Module to define overridden dialect methods
 """
 import operator
 from functools import reduce
@@ -37,13 +37,17 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_STREAM_DEFINITION,
+    SNOWFLAKE_GET_STREAM_NAMES,
     SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_GET_VIEW_DEFINITION,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
     SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
@@ -52,6 +56,7 @@ from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
+    get_view_definition_wrapper,
 )
 
 dialect = SnowflakeDialect()
@@ -82,6 +87,15 @@ VIEW_QUERY_MAPS = {
     "incremental": {
         "views": SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
         "materialized_views": SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
+    },
+}
+
+STREAM_QUERY_MAPS = {
+    "full": {
+        "default": SNOWFLAKE_GET_STREAM_NAMES,
+    },
+    "incremental": {
+        "default": SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES,
     },
 }
 
@@ -150,6 +164,20 @@ def get_view_names_reflection(self, schema=None, **kw):
         )
 
 
+def get_stream_names_reflection(self, schema=None, **kw):
+    """Return all stream names in `schema`.
+
+    :param schema: Optional, retrieve names from a non-default schema.
+        For special quoting, use :class:`.quoted_name`.
+
+    """
+
+    with self._operation_context() as conn:  # pylint: disable=protected-access
+        return self.dialect.get_stream_names(
+            conn, schema, info_cache=self.info_cache, **kw
+        )
+
+
 def _get_query_map(
     incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]
 ):
@@ -162,7 +190,7 @@ def _get_query_map(
 def _get_query_parameters(
     self, connection, schema: str, incremental: Optional[IncrementalConfig]
 ):
-    """Returns the proper query parameters depending if the extraciton is Incremental or Full"""
+    """Returns the proper query parameters depending if the extraction is Incremental or Full"""
     parameters = {"schema": fqn.unquote_name(schema)}
 
     if incremental and incremental.enabled:
@@ -225,25 +253,53 @@ def get_view_names(self, connection, schema, **kw):
     return result
 
 
+def get_stream_names(self, connection, schema, **kw):
+    incremental = kw.get("incremental")
+
+    queries = _get_query_map(incremental, STREAM_QUERY_MAPS)
+    parameters = _get_query_parameters(self, connection, schema, incremental)
+
+    query = queries["default"]
+
+    cursor = connection.execute(query.format(**parameters))
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(name=self.normalize_name(row[1]), deleted=None)
+            for row in cursor
+        ]
+    )
+    return result
+
+
 @reflection.cache
-def get_view_definition(  # pylint: disable=unused-argument
-    self, connection, view_name, schema=None, **kw
+def get_view_definition(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    return get_view_definition_wrapper(
+        self,
+        connection,
+        table_name=table_name,
+        schema=schema,
+        query=SNOWFLAKE_GET_VIEW_DEFINITION,
+    )
+
+
+@reflection.cache
+def get_stream_definition(  # pylint: disable=unused-argument
+    self, connection, stream_name, schema=None, **kw
 ):
     """
-    Gets the view definition
+    Gets the stream definition
     """
     schema = schema or self.default_schema_name
-    if schema:
-        cursor = connection.execute(
-            f"SELECT GET_DDL('VIEW','{schema}.{view_name}') AS \"text\""
-        )
-    else:
-        cursor = connection.execute(f"SELECT GET_DDL('VIEW','{view_name}') AS \"text\"")
-    n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
+    stream_name = f"{schema}.{stream_name}" if schema else stream_name
+    cursor = connection.execute(
+        SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)
+    )
     try:
-        ret = cursor.fetchone()
-        if ret:
-            return ret[n2i["text"]]
+        result = cursor.fetchone()
+        if result:
+            return result[0]
     except Exception:
         pass
     return None
@@ -346,11 +402,13 @@ def get_schema_columns(self, connection, schema, **kw):
                 ),
                 "comment": comment,
                 "primary_key": (
-                    column_name
-                    in schema_primary_keys[table_name]["constrained_columns"]
-                )
-                if current_table_pks
-                else False,
+                    (
+                        column_name
+                        in schema_primary_keys[table_name]["constrained_columns"]
+                    )
+                    if current_table_pks
+                    else False
+                ),
             }
         )
         if is_identity == "YES":

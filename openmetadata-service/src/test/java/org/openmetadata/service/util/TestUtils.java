@@ -50,6 +50,7 @@ import java.util.UUID;
 import javax.json.JsonObject;
 import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Form;
 import javax.ws.rs.core.MediaType;
@@ -185,7 +186,7 @@ public final class TestUtils {
 
   public static final SearchConnection OPEN_SEARCH_CONNECTION =
       new SearchConnection()
-          .withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
+          .withConfig(new OpenSearchConnection().withHostPort(getUri("http://localhost:9200")));
 
   public static final ApiConnection API_SERVICE_CONNECTION =
       new ApiConnection()
@@ -369,6 +370,13 @@ public final class TestUtils {
     Response response =
         SecurityUtil.addHeaders(target, headers)
             .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    readResponse(response, expectedStatus.getStatusCode());
+  }
+
+  public static void put(WebTarget target, Status expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
+    Invocation.Builder builder = SecurityUtil.addHeaders(target, headers);
+    Response response = builder.method("PUT");
     readResponse(response, expectedStatus.getStatusCode());
   }
 

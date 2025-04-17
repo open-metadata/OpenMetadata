@@ -171,7 +171,7 @@ export class UserClass {
   }
 
   async logout(page: Page) {
-    await page.getByTestId('app-bar-item-logout').click();
+    await page.getByRole('menuitem', { name: 'Logout' }).click();
     await page.getByTestId('confirm-logout').click();
   }
 }

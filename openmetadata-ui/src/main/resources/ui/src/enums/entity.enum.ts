@@ -76,6 +76,7 @@ export enum EntityType {
   API_ENDPOINT = 'apiEndpoint',
   METRIC = 'metric',
   WORKFLOW_DEFINITION = 'workflowDefinition',
+  SERVICE = 'service',
 }
 
 export enum EntityLineageDirection {
@@ -178,6 +179,7 @@ export enum FqnPart {
 
 export enum EntityTabs {
   SCHEMA = 'schema',
+  SCHEMAS = 'schemas',
   ACTIVITY_FEED = 'activity_feed',
   SAMPLE_DATA = 'sample_data',
   TABLE_QUERIES = 'table_queries',

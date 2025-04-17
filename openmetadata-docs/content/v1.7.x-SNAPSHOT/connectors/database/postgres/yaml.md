@@ -7,8 +7,8 @@ slug: /connectors/database/postgres/yaml
 name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Sample Data"]
-unavailableFeatures=["Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Sample Data", "Stored Procedures", "Reverse Metadata (Collate Only)"]
+unavailableFeatures=[]
 / %}
 
 In this section, we provide guides and references to use the PostgreSQL connector.
@@ -23,7 +23,7 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
-
+{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements

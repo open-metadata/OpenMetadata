@@ -26,16 +26,17 @@ import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.HttpUrl;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -49,6 +50,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -78,7 +81,8 @@ public class SettingsCache {
         Entity.getSystemRepository().getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = getDefaultSmtpSettings();
+      SmtpSettings emailConfig =
+          applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings();
 
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
@@ -90,14 +94,11 @@ public class SettingsCache {
         Entity.getSystemRepository()
             .getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
     if (storedOpenMetadataBaseUrlConfiguration == null) {
-      String url =
-          new HttpUrl.Builder().scheme("http").host("localhost").port(8585).build().toString();
-      String baseUrl = url.substring(0, url.length() - 1);
-
       Settings setting =
           new Settings()
               .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(baseUrl));
+              .withConfigValue(
+                  applicationConfig.getOperationalApplicationConfigProvider().getServerUrl());
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
@@ -143,16 +144,26 @@ public class SettingsCache {
       Entity.getSystemRepository().createNewSetting(setting);
     }
 
-    // Initialise Rbac Settings
-    Settings storedRbacSettings =
+    // Initialise Search Settings
+    Settings storedSearchSettings =
         Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS.toString());
-    if (storedRbacSettings == null) {
-      // Only in case a config doesn't exist in DB we insert it
-      Settings setting =
-          new Settings()
-              .withConfigType(SEARCH_SETTINGS)
-              .withConfigValue(new SearchSettings().withEnableAccessControl(false));
-      Entity.getSystemRepository().createNewSetting(setting);
+    if (storedSearchSettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(SEARCH_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, SearchSettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
+      }
     }
 
     // Initialise Certification Settings
@@ -206,6 +217,17 @@ public class SettingsCache {
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       throw new EntityNotFoundException("Setting not found");
+    }
+  }
+
+  public static <T> T getSettingOrDefault(
+      SettingsType settingName, T defaultValue, Class<T> clazz) {
+    try {
+      String json = JsonUtils.pojoToJson(CACHE.get(settingName.toString()).getConfigValue());
+      return JsonUtils.readValue(json, clazz);
+    } catch (Exception ex) {
+      LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
+      return defaultValue;
     }
   }
 

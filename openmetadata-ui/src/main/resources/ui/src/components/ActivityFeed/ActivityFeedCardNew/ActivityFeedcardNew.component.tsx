@@ -14,13 +14,14 @@ import { Card, Col, Input, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ASSET_CARD_STYLES } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { CardStyle, Post, Thread } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
@@ -37,7 +38,7 @@ import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -52,6 +53,8 @@ interface ActivityFeedCardNewProps {
   post: Post;
   showActivityFeedEditor?: boolean;
   showThread?: boolean;
+  isForFeedTab?: boolean;
+  isOpenInDrawer?: boolean;
 }
 
 const ActivityFeedCardNew = ({
@@ -61,6 +64,8 @@ const ActivityFeedCardNew = ({
   showActivityFeedEditor,
   showThread,
   isActive,
+  isForFeedTab,
+  isOpenInDrawer = false,
 }: ActivityFeedCardNewProps) => {
   const { entityFQN, entityType } = useMemo(() => {
     const entityFQN = getEntityFQN(feed.about) ?? '';
@@ -74,6 +79,14 @@ const ActivityFeedCardNew = ({
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const { updateFeed } = useActivityFeedProvider();
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: feed.createdBy ?? '',
+  });
+
+  useEffect(() => {
+    setShowFeedEditor(false);
+  }, [feed.id]);
 
   const onSave = (message: string) => {
     postFeed(message, selectedThread?.id ?? '').catch(() => {
@@ -89,14 +102,10 @@ const ActivityFeedCardNew = ({
     setIsEditPost(!isEditPost);
   };
 
-  const { isUserOrTeam, showEntityLink } = useMemo(() => {
+  const { isUserOrTeam } = useMemo(() => {
     return {
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
-      showEntityLink: ![
-        CardStyle.EntityCreated,
-        CardStyle.EntityDeleted,
-      ].includes(feed.cardStyle ?? CardStyle.Default),
     };
   }, [entityFQN, entityType, feed.cardStyle]);
   const renderEntityLink = useMemo(() => {
@@ -124,7 +133,7 @@ const ActivityFeedCardNew = ({
           </Link>
         </UserPopOverCard>
       );
-    } else if (showEntityLink) {
+    } else {
       return (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <div
@@ -149,32 +158,8 @@ const ActivityFeedCardNew = ({
           </div>
         </EntityPopOverCard>
       );
-    } else {
-      return (
-        <div
-          className={classNames('break-word header-link d-flex', {
-            'items-start': showThread,
-            'items-center': !showThread,
-            ' m-t-xss':
-              showThread && feed.entityRef?.type === EntityType.CONTAINER,
-          })}>
-          {searchClassBase.getEntityIcon(entityType ?? '') && (
-            <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
-              {searchClassBase.getEntityIcon(entityType ?? '')}
-            </span>
-          )}
-          <Typography.Text
-            className={classNames('text-sm', {
-              'max-one-line': !showThread,
-            })}>
-            {feed?.entityRef
-              ? getEntityName(feed.entityRef)
-              : entityDisplayName(entityType, entityFQN)}
-          </Typography.Text>
-        </div>
-      );
     }
-  }, [feed.cardStyle, entityType, entityFQN, showEntityLink, isUserOrTeam]);
+  }, [feed.cardStyle, entityType, entityFQN, isUserOrTeam]);
   const feedHeaderText = getFeedHeaderTextFromCardStyle(
     feed.fieldOperation,
     feed.cardStyle,
@@ -194,12 +179,17 @@ const ActivityFeedCardNew = ({
     </Tooltip>
   ) : null;
 
+  const closeFeedEditor = () => {
+    setShowFeedEditor(false);
+  };
+
   return (
     <Card
       className={classNames(
         'relative activity-feed-card-new',
         {
-          'activity-feed-card-new-right-panel m-0 gap-0': showThread || isPost,
+          'activity-feed-card-new-right-panel m-0 gap-0':
+            showThread || isPost || isOpenInDrawer,
         },
         { 'activity-feed-reply-card': isPost },
         { 'active-card is-active': isActive }
@@ -213,12 +203,15 @@ const ActivityFeedCardNew = ({
               'items-start':
                 showThread && feed.entityRef?.type === EntityType.CONTAINER,
             })}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              key={feed.id}
-              name={feed.createdBy ?? ''}
-              size={showThread ? 40 : 32}
-            />
+            <UserPopOverCard userName={feed.createdBy ?? ''}>
+              <div className="d-flex items-center">
+                <ProfilePicture
+                  key={feed.id}
+                  name={feed.createdBy ?? ''}
+                  width={showThread ? '40' : '32'}
+                />
+              </div>
+            </UserPopOverCard>
             <Space className="d-flex flex-col align-start gap-2" size={0}>
               <Space
                 className={classNames('d-flex align-center gap-2', {
@@ -238,7 +231,7 @@ const ActivityFeedCardNew = ({
                     })}
                     userName={feed.createdBy ?? ''}>
                     <Link to={getUserPath(feed.createdBy ?? '')}>
-                      {feed.createdBy}
+                      {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
                 </Typography.Text>
@@ -258,7 +251,9 @@ const ActivityFeedCardNew = ({
                       showThread &&
                       feed.entityRef?.type !== EntityType.CONTAINER,
                   })}>
-                  <Typography.Text className="card-style-feed-header text-sm">
+                  <Typography.Text
+                    className="card-style-feed-header text-sm"
+                    data-testid="headerText">
                     {feedHeaderText}
                   </Typography.Text>
 
@@ -271,6 +266,7 @@ const ActivityFeedCardNew = ({
           <FeedCardBodyNew
             feed={feed}
             isEditPost={isEditPost}
+            isForFeedTab={isForFeedTab}
             isPost={isPost}
             message={
               !isPost
@@ -283,13 +279,18 @@ const ActivityFeedCardNew = ({
           />
 
           {(isPost || (!showThread && !isPost)) && (
-            <FeedCardFooterNew feed={feed} isPost={isPost} post={post} />
+            <FeedCardFooterNew
+              feed={feed}
+              isForFeedTab={isForFeedTab}
+              isPost={isPost}
+              post={post}
+            />
           )}
         </Space>
       </Space>
-      {showThread && (
+      {(showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
-          {showActivityFeedEditor && (
+          {(showActivityFeedEditor || isOpenInDrawer) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">
               {t('label.comment-plural')}
             </Typography.Text>
@@ -299,7 +300,9 @@ const ActivityFeedCardNew = ({
               className={classNames(
                 'm-t-md feed-editor activity-feed-editor-container-new',
                 {
-                  'm-b-md': showActivityFeedEditor && feed?.posts?.length === 0,
+                  'm-b-md':
+                    (showActivityFeedEditor && feed?.posts?.length === 0) ||
+                    isOpenInDrawer,
                 }
               )}
               onSave={onSave}
@@ -307,12 +310,15 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <ProfilePictureNew
-                  avatarType="outlined"
-                  key={feed.id}
-                  name={getEntityName(currentUser)}
-                  size={32}
-                />
+                <UserPopOverCard userName={getEntityName(currentUser)}>
+                  <div className="d-flex items-center">
+                    <ProfilePicture
+                      key={feed.id}
+                      name={getEntityName(currentUser)}
+                      width="32"
+                    />
+                  </div>
+                </UserPopOverCard>
               </div>
 
               <Input
@@ -331,6 +337,7 @@ const ActivityFeedCardNew = ({
                 .sort((a, b) => (b.postTs as number) - (a.postTs as number))
                 .map((reply, index, arr) => (
                   <CommentCard
+                    closeFeedEditor={closeFeedEditor}
                     feed={feed}
                     isLastReply={index === arr.length - 1}
                     key={reply.id}

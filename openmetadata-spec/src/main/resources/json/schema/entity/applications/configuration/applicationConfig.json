@@ -32,7 +32,7 @@
           "$ref": "internal/dataRetentionConfiguration.json"
         },
         {
-          "$ref": "internal/dayOneExperienceAppConfig.json"
+          "$ref": "internal/autoPilotAppConfig.json"
         }
       ]
     },

@@ -12,6 +12,10 @@ ADD COLUMN status VARCHAR(20)
 GENERATED ALWAYS AS (json ->> 'status') STORED;
 
 ALTER TABLE workflow_instance_time_series
+ADD COLUMN exceptionStacktrace TEXT
+GENERATED ALWAYS AS (json ->> 'exception') STORED;
+
+ALTER TABLE workflow_instance_time_series
 ADD COLUMN entityLink VARCHAR(255) GENERATED ALWAYS AS
 ((json -> 'variables' ->> 'global_relatedEntity')) STORED;
 
@@ -19,6 +23,10 @@ ADD COLUMN entityLink VARCHAR(255) GENERATED ALWAYS AS
 ALTER TABLE workflow_instance_state_time_series
 ADD COLUMN status VARCHAR(20)
 GENERATED ALWAYS AS (json ->> 'status') STORED;
+
+ALTER TABLE workflow_instance_state_time_series
+ADD COLUMN exceptionStacktrace TEXT
+GENERATED ALWAYS AS (json ->> 'exception') STORED;
 
 -- Query Cost History Time Series
 CREATE TABLE query_cost_time_series (
@@ -33,3 +41,13 @@ CREATE TABLE query_cost_time_series (
 );
 CREATE INDEX IF NOT EXISTS query_cost_time_series_id on query_cost_time_series (id);
 CREATE INDEX IF NOT EXISTS query_cost_time_series_id_timestamp  on test_case_resolution_status_time_series  (id, timestamp);
+
+ UPDATE workflow_definition_entity
+ SET json = jsonb_set(json, '{trigger,type}', '"eventBasedEntity"')
+ WHERE json->'trigger'->>'type' in ('eventBasedEntityTrigger', 'eventBasedEntityWorkflow');
+
+ UPDATE workflow_definition_entity
+ SET json = jsonb_set(json, '{trigger,type}', '"periodicBatchEntity"')
+ WHERE json->'trigger'->>'type' in ('periodicBatchEntityTrigger', 'periodicBatchEntityWorkflow');
+
+DELETE FROM apps_extension_time_series;

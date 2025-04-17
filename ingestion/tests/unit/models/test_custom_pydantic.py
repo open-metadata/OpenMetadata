@@ -2,7 +2,14 @@ import uuid
 from typing import List
 from unittest import TestCase
 
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -112,6 +119,28 @@ class CustomPydanticValidationTest(TestCase):
         sourceHash=None,
     )
 
+    create_request_dashboard_datamodel = CreateDashboardDataModelRequest(
+        name=EntityName('test"dashboarddatamodel"'),
+        displayName='test"dashboarddatamodel"',
+        description=Markdown(
+            root="test__reserved__quote__dashboarddatamodel__reserved__quote__"
+        ),
+        dataModelType=DataModelType.PowerBIDataModel,
+        service=FullyQualifiedEntityName(
+            root='New Gyro 360.New Gyro 360."AdventureWorks2017.HumanResources"'
+        ),
+        columns=[
+            Column(
+                name="struct",
+                dataType=DataType.STRUCT,
+                arrayDataType="UNKNOWN",
+                children=[
+                    Column(name='test "struct_children"', dataType=DataType.BIGINT)
+                ],
+            )
+        ],
+    )
+
     def test_replace_separator(self):
         assert (
             self.create_request.name.root
@@ -124,6 +153,16 @@ class CustomPydanticValidationTest(TestCase):
         assert (
             self.create_request.tableConstraints[0].columns[0]
             == "Sales__reserved__colon__Last__reserved__arrow__Year"
+        )
+
+        assert (
+            self.create_request_dashboard_datamodel.name.root
+            == "test__reserved__quote__dashboarddatamodel__reserved__quote__"
+        )
+
+        assert (
+            self.create_request_dashboard_datamodel.columns[0].children[0].name.root
+            == "test __reserved__quote__struct_children__reserved__quote__"
         )
 
     def test_revert_separator(self):
@@ -140,6 +179,27 @@ class CustomPydanticValidationTest(TestCase):
             databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
             fullyQualifiedName="test-service-table.test-db.test-schema.test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
+        )
+
+        fetch_response_revert_separator_3 = DashboardDataModel(
+            id=uuid.uuid4(),
+            name="test__reserved__quote__dashboarddatamodel__reserved__quote__",
+            fullyQualifiedName="test-service-table.test-db.test-schema.test__reserved__quote__dashboarddatamodel__reserved__quote__",
+            dataModelType=DataModelType.PowerBIDataModel,
+            columns=[
+                Column(
+                    name="struct",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(name='test "struct_children"', dataType=DataType.BIGINT)
+                    ],
+                )
+            ],
+        )
+        assert fetch_response_revert_separator_3.name.root == 'test"dashboarddatamodel"'
+        assert (
+            fetch_response_revert_separator_3.columns[0].children[0].name.root
+            == 'test "struct_children"'
         )
         assert fetch_response_revert_separator.name.root == "test::table"
         assert fetch_response_revert_separator_2.name.root == "test::table>"

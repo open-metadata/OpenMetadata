@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -48,7 +47,28 @@ export interface DashboardDetailsTabsProps {
   labelMap: Record<EntityTabs, string>;
 }
 
+type DashboardDetailsWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.CHARTS_TABLE
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+
 class DashboardDetailsClassBase {
+  defaultWidgetHeight: Record<DashboardDetailsWidgetKeys, number>;
+
+  constructor() {
+    this.defaultWidgetHeight = {
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.CHARTS_TABLE]: 4,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
+  }
+
   public getDashboardDetailPageTabs(
     tabsProps: DashboardDetailsTabsProps
   ): TabProps[] {
@@ -70,30 +90,43 @@ class DashboardDetailsClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.DETAILS) {
       return [];
     }
 
     return [
       {
-        h: 1,
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.CHARTS_TABLE] +
+          0.3,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.CHARTS_TABLE],
+            i: DetailPageWidgetKeys.CHARTS_TABLE,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
-        h: 6,
-        i: DetailPageWidgetKeys.CHARTS_TABLE,
-        w: 6,
-        x: 0,
-        y: 2,
-        static: false,
-      },
-      {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -101,7 +134,7 @@ class DashboardDetailsClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -109,7 +142,7 @@ class DashboardDetailsClassBase {
         static: false,
       },
       {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -117,7 +150,7 @@ class DashboardDetailsClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -150,6 +183,25 @@ class DashboardDetailsClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDashboardWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.CHARTS_TABLE:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CHARTS_TABLE];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

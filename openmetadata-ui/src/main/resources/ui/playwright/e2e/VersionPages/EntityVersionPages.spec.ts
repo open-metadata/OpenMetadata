@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
@@ -33,6 +34,7 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   container: true,
   searchIndex: true,
   dashboardDataModel: true,
+  entityDetails: true,
 };
 
 const entities = [
@@ -126,6 +128,8 @@ test.describe('Entity Version pages', () => {
 
   entities.forEach((entity) => {
     test(`${entity.getType()}`, async ({ page }) => {
+      test.slow();
+
       await entity.visitEntityPage(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
@@ -254,7 +258,11 @@ test.describe('Entity Version pages', () => {
 
           await deleteResponse;
 
-          await toastNotification(page, /Delete operation initiated for/);
+          await toastNotification(
+            page,
+            /deleted successfully!/,
+            BIG_ENTITY_DELETE_TIMEOUT
+          );
 
           await page.reload();
 

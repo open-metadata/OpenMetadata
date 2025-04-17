@@ -13,20 +13,28 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../utils/FeedUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -37,16 +45,47 @@ interface CommentCardInterface {
   feed: Thread;
   post: any;
   isLastReply: boolean;
+  closeFeedEditor: () => void;
 }
 
-const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
+const CommentCard = ({
+  feed,
+  post,
+  isLastReply,
+  closeFeedEditor,
+}: CommentCardInterface) => {
   const { updateFeed } = useActivityFeedProvider();
   const [isHovered, setIsHovered] = useState(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [postMessage, setPostMessage] = useState<string>('');
   const seperator = '.';
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isEditPost &&
+        editorRef.current &&
+        !editorRef.current.contains(event.target as Node)
+      ) {
+        setIsEditPost(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEditPost]);
+
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: feed.updatedBy ?? '',
+  });
 
   const onEditPost = () => {
+    closeFeedEditor();
     setIsEditPost(!isEditPost);
   };
 
@@ -69,14 +108,16 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
       return (
-        <ActivityFeedEditor
-          focused
-          className="mb-8 reply-feed-editor"
-          defaultValue={defaultValue}
-          editorClass="is_edit_post"
-          onSave={handleSave}
-          onTextChange={(message) => setPostMessage(message)}
-        />
+        <div ref={editorRef}>
+          <ActivityFeedEditor
+            focused
+            className="mb-8 reply-feed-editor"
+            defaultValue={defaultValue}
+            editorClass="is_edit_post"
+            onSave={handleSave}
+            onTextChange={(message) => setPostMessage(message)}
+          />
+        </div>
       );
     }
 
@@ -96,12 +137,11 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div className="profile-picture m-r-xs">
-        <ProfilePictureNew
-          avatarType="outlined"
-          key={feed.id}
-          name={feed.updatedBy!}
-          size={32}
-        />
+        <UserPopOverCard userName={feed.updatedBy ?? ''}>
+          <div className="d-flex items-center">
+            <ProfilePicture key={feed.id} name={feed.updatedBy!} width="32" />
+          </div>
+        </UserPopOverCard>
       </div>
       <div className="w-full">
         <div className="d-flex items-center gap-2 flex-wrap">
@@ -110,7 +150,7 @@ const CommentCard = ({ feed, post, isLastReply }: CommentCardInterface) => {
               <Link
                 className="reply-card-user-name"
                 to={getUserPath(feed.updatedBy ?? '')}>
-                {feed.updatedBy}
+                {getEntityName(user)}
               </Link>
             </UserPopOverCard>
           </Typography.Text>

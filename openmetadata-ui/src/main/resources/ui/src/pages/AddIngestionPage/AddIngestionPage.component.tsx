@@ -35,6 +35,7 @@ import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { CreateIngestionPipeline } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
@@ -45,6 +46,7 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
@@ -237,7 +239,7 @@ const AddIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <div>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -302,8 +304,12 @@ const AddIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
-      pageTitle={t('label.add-entity', { entity: t('label.ingestion') })}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.ingestion'),
+      })}
       secondPanel={{
         children: secondPanelChildren,
         className: 'service-doc-panel content-resizable-panel-container',
@@ -314,4 +320,8 @@ const AddIngestionPage = () => {
   );
 };
 
-export default AddIngestionPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.ingestion'),
+  })
+)(AddIngestionPage);

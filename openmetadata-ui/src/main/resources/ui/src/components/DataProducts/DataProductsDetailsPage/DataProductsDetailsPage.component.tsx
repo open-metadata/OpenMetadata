@@ -33,6 +33,7 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -428,23 +429,22 @@ const DataProductsDetailsPage = ({
               key: DataProductTabs.ASSETS,
               children: (
                 <ResizablePanels
-                  className="domain-height-with-resizable-panel"
+                  className="h-full domain-height-with-resizable-panel"
                   firstPanel={{
                     className: 'domain-resizable-panel-container',
+                    wrapInCard: false,
                     children: (
-                      <div className="p-x-md p-y-md">
-                        <AssetsTabs
-                          assetCount={assetCount}
-                          entityFqn={dataProduct.fullyQualifiedName}
-                          isSummaryPanelOpen={false}
-                          permissions={dataProductPermission}
-                          ref={assetTabRef}
-                          type={AssetsOfEntity.DATA_PRODUCT}
-                          onAddAsset={() => setAssetModelVisible(true)}
-                          onAssetClick={handleAssetClick}
-                          onRemoveAsset={handleAssetSave}
-                        />
-                      </div>
+                      <AssetsTabs
+                        assetCount={assetCount}
+                        entityFqn={dataProduct.fullyQualifiedName}
+                        isSummaryPanelOpen={false}
+                        permissions={dataProductPermission}
+                        ref={assetTabRef}
+                        type={AssetsOfEntity.DATA_PRODUCT}
+                        onAddAsset={() => setAssetModelVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
                     ),
                     minWidth: 800,
                     flex: 0.87,
@@ -452,6 +452,7 @@ const DataProductsDetailsPage = ({
                   hideSecondPanel={!previewAsset}
                   pageTitle={t('label.domain')}
                   secondPanel={{
+                    wrapInCard: false,
                     children: previewAsset && (
                       <EntitySummaryPanel
                         entityDetails={previewAsset}
@@ -477,18 +478,16 @@ const DataProductsDetailsPage = ({
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <div className="p-md">
-            <CustomPropertyTable<EntityType.DATA_PRODUCT>
-              entityType={EntityType.DATA_PRODUCT}
-              hasEditAccess={
-                (dataProductPermission.EditAll ||
-                  dataProductPermission.EditCustomFields) &&
-                !isVersionsView
-              }
-              hasPermission={dataProductPermission.ViewAll}
-              isVersionView={isVersionsView}
-            />
-          </div>
+          <CustomPropertyTable<EntityType.DATA_PRODUCT>
+            entityType={EntityType.DATA_PRODUCT}
+            hasEditAccess={
+              (dataProductPermission.EditAll ||
+                dataProductPermission.EditCustomFields) &&
+              !isVersionsView
+            }
+            hasPermission={dataProductPermission.ViewAll}
+            isVersionView={isVersionsView}
+          />
         ),
       },
     ];
@@ -543,9 +542,10 @@ const DataProductsDetailsPage = ({
           />
         </Col>
         <Col className="p-x-md" flex="320px">
-          <div style={{ textAlign: 'right' }}>
+          <div className="d-flex justify-end gap-3">
             {!isVersionsView && dataProductPermission.Create && (
               <Button
+                className="h-10"
                 data-testid="data-product-details-add-button"
                 type="primary"
                 onClick={() => setAssetModelVisible(true)}>
@@ -555,7 +555,7 @@ const DataProductsDetailsPage = ({
               </Button>
             )}
 
-            <ButtonGroup className="p-l-xs" size="small">
+            <ButtonGroup className="spaced" size="small">
               {dataProduct?.version && (
                 <Tooltip
                   title={t(
@@ -620,13 +620,13 @@ const DataProductsDetailsPage = ({
           data={dataProduct}
           isVersionView={isVersionsView}
           permissions={dataProductPermission}
-          type={EntityType.DATA_PRODUCT}
+          type={EntityType.DATA_PRODUCT as CustomizeEntityType}
           onUpdate={onUpdate}>
           <Col span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-              className="domain-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
               onChange={handleTabChange}

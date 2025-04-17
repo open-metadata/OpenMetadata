@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
-import { isUndefined, toLower } from 'lodash';
+import { toLower } from 'lodash';
 import React from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../assets/svg/ic-export.svg';
@@ -22,15 +21,14 @@ import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/A
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import { ExportTypes } from '../../constants/Export.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import {
@@ -39,7 +37,6 @@ import {
   TabSpecificField,
 } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
-import { EntityReference } from '../../generated/entity/type';
 import { PageType } from '../../generated/system/ui/page';
 import { UsageDetails } from '../../generated/type/entityUsage';
 import LimitWrapper from '../../hoc/LimitWrapper';
@@ -48,6 +45,7 @@ import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
 import { getEntityImportPath, getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
 import { getEntityDetailsPath } from '../RouterUtils';
+import { ownerTableObject } from '../TableColumn.util';
 import { getUsagePercentile } from '../TableUtils';
 import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 
@@ -106,28 +104,14 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
     key: 'description',
     render: (text: string) =>
       text?.trim() ? (
-        <RichTextEditorPreviewerV1 markdown={text} />
+        <RichTextEditorPreviewerNew markdown={text} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', { entity: t('label.description') })}
         </span>
       ),
   },
-  {
-    title: t('label.owner-plural'),
-    dataIndex: 'owners',
-    key: 'owners',
-    width: 120,
-
-    render: (owners: EntityReference[]) =>
-      !isUndefined(owners) && owners.length > 0 ? (
-        <OwnerLabel owners={owners} />
-      ) : (
-        <Typography.Text data-testid="no-owner-text">
-          {NO_DATA_PLACEHOLDER}
-        </Typography.Text>
-      ),
-  },
+  ...ownerTableObject<DatabaseSchema>(),
   {
     title: t('label.usage'),
     dataIndex: 'usageSummary',
@@ -148,18 +132,19 @@ export const getDatabasePageBaseTabs = ({
   getEntityFeedCount,
   editCustomAttributePermission,
   getDetailsByFQN,
+  labelMap,
 }: DatabaseDetailPageTabProps): TabProps[] => {
   return [
     {
       label: (
         <TabsLabel
           count={schemaInstanceCount}
-          id={EntityTabs.SCHEMA}
-          isActive={activeTab === EntityTabs.SCHEMA}
-          name={t('label.schema-plural')}
+          id={EntityTabs.SCHEMAS}
+          isActive={activeTab === EntityTabs.SCHEMAS}
+          name={labelMap?.[EntityTabs.SCHEMAS] ?? t('label.schema-plural')}
         />
       ),
-      key: EntityTabs.SCHEMA,
+      key: EntityTabs.SCHEMAS,
       children: <GenericTab type={PageType.Database} />,
     },
     {
@@ -168,7 +153,10 @@ export const getDatabasePageBaseTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-plural')}
+          name={
+            labelMap?.[EntityTabs.ACTIVITY_FEED] ??
+            t('label.activity-feed-and-task-plural')
+          }
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -177,6 +165,7 @@ export const getDatabasePageBaseTabs = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.DATABASE}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={getDetailsByFQN}
@@ -189,19 +178,20 @@ export const getDatabasePageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={
+            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
+            t('label.custom-property-plural')
+          }
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
       children: database && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.DATABASE>
-            entityType={EntityType.DATABASE}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-            isVersionView={false}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.DATABASE>
+          entityType={EntityType.DATABASE}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+          isVersionView={false}
+        />
       ),
     },
   ];
@@ -268,6 +258,7 @@ export const ExtraDatabaseDropdownOptions = (
                   showModal({
                     name: fqn,
                     onExport: exportDatabaseDetailsInCSV,
+                    exportTypes: [ExportTypes.CSV],
                   })
                 }
               />

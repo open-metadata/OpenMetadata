@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Empty, Space, Tree } from 'antd';
+import { Button, Empty, Space, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -47,6 +47,10 @@ import {
   TreeListItem,
 } from './DomainSelectableTree.interface';
 
+import classNames from 'classnames';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   onSubmit,
   value,
@@ -54,6 +58,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   onCancel,
   isMultiple = false,
   initialDomains,
+  showAllDomains = false,
 }) => {
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
@@ -62,7 +67,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const { activeDomain } = useDomainStore();
 
+  const handleMyDomainsClick = async () => {
+    await onSubmit([]);
+  };
   const handleMultiDomainSave = async () => {
     const selectedFqns = selectedDomains
       .map((domain) => domain.fullyQualifiedName)
@@ -81,16 +90,17 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   };
 
-  const handleSingleDomainSave = async () => {
-    const selectedFqn = selectedDomains[0]?.fullyQualifiedName;
+  const handleSingleDomainSave = async (domains?: Domain[]) => {
+    const availableDomains = domains ?? selectedDomains;
+    const selectedFqn = availableDomains[0]?.fullyQualifiedName;
     const initialFqn = value?.[0];
 
     if (selectedFqn !== initialFqn) {
       setIsSubmitLoading(true);
       let retn: EntityReference[] = [];
-      if (selectedDomains.length > 0) {
+      if (availableDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
-          selectedDomains[0],
+          availableDomains[0],
           EntityType.DOMAIN
         );
         retn = [domain];
@@ -136,6 +146,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       }
 
       setSelectedDomains(selectedData);
+      handleSingleDomainSave(selectedData);
     }
   };
 
@@ -237,27 +248,51 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         onChange={(e) => onSearch(e.target.value)}
       />
 
+      {showAllDomains && (
+        <div
+          className={classNames(
+            'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer',
+            {
+              'selected-node':
+                activeDomain === DEFAULT_DOMAIN_VALUE &&
+                selectedDomains.length === 0,
+            }
+          )}
+          data-testid="all-domains-selector"
+          onClick={handleMyDomainsClick}>
+          <DomainIcon height={20} name="domain" width={20} />
+          <Typography.Text
+            className={classNames({
+              'font-semibold':
+                activeDomain === DEFAULT_DOMAIN_VALUE &&
+                selectedDomains.length === 0,
+            })}>
+            {t('label.all-domain-plural')}
+          </Typography.Text>
+        </div>
+      )}
+
       {treeContent}
 
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-        <Button
-          className="update-btn"
-          data-testid="saveAssociatedTag"
-          htmlType="submit"
-          loading={isSubmitLoading}
-          size="small"
-          type="default"
-          onClick={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}>
-          {t('label.update')}
-        </Button>
-        <Button
-          data-testid="cancelAssociatedTag"
-          size="small"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Space>
+      {isMultiple ? (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            type="default"
+            onClick={handleMultiDomainSave}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            type="default"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      ) : null}
     </div>
   );
 };

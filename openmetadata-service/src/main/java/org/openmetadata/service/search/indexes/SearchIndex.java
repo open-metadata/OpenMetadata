@@ -49,6 +49,7 @@ public interface SearchIndex {
           "changeDescription",
           "incrementalChangeDescription",
           "upstreamLineage.pipeline.changeDescription",
+          "upstreamLineage.pipeline.incrementalChangeDescription",
           "connection");
 
   public static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
@@ -92,7 +93,6 @@ public interface SearchIndex {
 
   default Map<String, Object> getCommonAttributesMap(EntityInterface entity, String entityType) {
     Map<String, Object> map = new HashMap<>();
-    List<SearchSuggest> suggest = getSuggest();
     map.put(
         "displayName",
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
@@ -106,12 +106,7 @@ public interface SearchIndex {
             ? 0
             : entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes());
     map.put("descriptionStatus", getDescriptionStatus(entity));
-    map.put("suggest", suggest);
-    map.put(
-        "fqnParts",
-        getFQNParts(
-            entity.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
+    map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
 
     Optional.ofNullable(entity.getCertification())
@@ -119,6 +114,20 @@ public interface SearchIndex {
     return map;
   }
 
+  default Set<String> getFQNParts(String fqn) {
+    Set<String> fqnParts = new HashSet<>();
+    fqnParts.add(fqn);
+    String parent = FullyQualifiedName.getParentFQN(fqn);
+    while (parent != null) {
+      fqnParts.add(parent);
+      parent = FullyQualifiedName.getParentFQN(parent);
+    }
+    return fqnParts;
+  }
+
+  // Add suggest inputs to fqnParts to support partial/wildcard search on names.
+  // In some case of basic Test suite name is not part of the fullyQualifiedName, so it must be
+  // added separately.
   default Set<String> getFQNParts(String fqn, List<String> fqnSplits) {
     Set<String> fqnParts = new HashSet<>();
     fqnParts.add(fqn);

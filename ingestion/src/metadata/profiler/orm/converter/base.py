@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,7 +31,7 @@ Base = declarative_base()
 SQA_RESERVED_ATTRIBUTES = ["metadata"]
 
 
-def check_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
+def check_snowflake_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
     """Check whether column or table name are not uppercase for snowflake table.
     If so, then force quoting, If not return None to let engine backend handle the logic.
 
@@ -40,10 +40,7 @@ def check_case_sensitive(table_service_type, table_or_col) -> Optional[bool]:
     Return:
         None or True
     """
-    if table_service_type in {
-        databaseService.DatabaseServiceType.Snowflake,
-        databaseService.DatabaseServiceType.Oracle,
-    }:
+    if table_service_type == databaseService.DatabaseServiceType.Snowflake:
         return True if not str(table_or_col).isupper() else None
 
     return None
@@ -84,10 +81,9 @@ def build_orm_col(
     if _quote is not None:
         quote = _quote
     else:
-
         quote = check_if_should_quote_column_name(
             table_service_type
-        ) or check_case_sensitive(table_service_type, col.name.root)
+        ) or check_snowflake_case_sensitive(table_service_type, col.name.root)
 
     return sqlalchemy.Column(
         name=str(col.name.root),
@@ -154,7 +150,9 @@ def ometa_to_sqa_orm(
             "__table_args__": {
                 "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
-                "quote": check_case_sensitive(table.serviceType, table.name.root)
+                "quote": check_snowflake_case_sensitive(
+                    table.serviceType, table.name.root
+                )
                 or None,
             },
             **cols,

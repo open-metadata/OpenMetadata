@@ -49,10 +49,8 @@ type TaskEntity = {
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
-export const checkDisplayName = async (page: Page, displayName: string) => {
-  await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName
-  );
+export const checkName = async (page: Page, name: string) => {
+  await expect(page.getByTestId('entity-header-name')).toHaveText(name);
 };
 
 export const selectActiveGlossary = async (
@@ -166,7 +164,7 @@ export const validateForm = async (page: Page) => {
   );
 
   // Max length validation
-  await page.locator('[data-testid="name"]').type(INVALID_NAMES.MAX_LENGTH);
+  await page.getByTestId('name').fill(INVALID_NAMES.MAX_LENGTH);
 
   await expect(page.locator('#name_help')).toHaveText(
     NAME_MAX_LENGTH_VALIDATION_ERROR
@@ -174,9 +172,7 @@ export const validateForm = async (page: Page) => {
 
   // With special char validation
   await page.locator('[data-testid="name"]').clear();
-  await page
-    .locator('[data-testid="name"]')
-    .type(INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page.getByTestId('name').fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
 
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
@@ -301,7 +297,7 @@ export const createGlossary = async (
 
   await expect(page).toHaveURL(/\/glossary\//);
 
-  await checkDisplayName(page, glossaryData.name);
+  await checkName(page, glossaryData.name);
 };
 
 export const verifyGlossaryDetails = async (
@@ -313,7 +309,7 @@ export const verifyGlossaryDetails = async (
     .locator('span')
     .click();
 
-  await checkDisplayName(page, glossaryDetails.name);
+  await checkName(page, glossaryDetails.name);
 
   const viewerContainerText = await page.textContent(
     '[data-testid="viewer-container"]'
@@ -525,9 +521,7 @@ export const validateGlossaryTermTask = async (
   page: Page,
   term: GlossaryTermData
 ) => {
-  const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
-  await taskCountRes;
 
   const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page
@@ -603,6 +597,21 @@ export const validateGlossaryTerm = async (
   const escapedFqn = term.fullyQualifiedName.replace(/\"/g, '\\"');
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
+
+  await expect(page.locator('[data-testid="loader"]')).toBeHidden();
+
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Terms')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Description')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Owners')
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('glossary-terms-table').getByText('Status')
+  ).toBeVisible();
 
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
@@ -763,7 +772,8 @@ export const confirmationDragAndDropGlossary = async (
   page: Page,
   dragElement: string,
   dropElement: string,
-  isHeader = false
+  isHeader = false,
+  tickCheckbox = false
 ) => {
   await expect(
     page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
@@ -775,10 +785,14 @@ export const confirmationDragAndDropGlossary = async (
     }`
   );
 
+  if (tickCheckbox) {
+    await page.getByTestId('confirm-status-checkbox').click();
+  }
+
   const patchGlossaryTermResponse = page.waitForResponse(
     '/api/v1/glossaryTerms/*'
   );
-  await page.getByRole('button', { name: 'Confirm' }).click();
+  await page.getByRole('button', { name: 'Move' }).click();
   await patchGlossaryTermResponse;
 };
 
@@ -815,17 +829,13 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const endpoint = isGlossaryTerm
-    ? '/api/v1/glossaryTerms/*'
-    : '/api/v1/glossaries/*';
+    ? '/api/v1/glossaryTerms/async/*'
+    : '/api/v1/glossaries/async/*';
   const deleteRes = page.waitForResponse(endpoint);
   await page.click('[data-testid="confirm-button"]');
   await deleteRes;
 
-  if (isGlossaryTerm) {
-    await toastNotification(page, /"Glossary Term" deleted successfully!/);
-  } else {
-    await toastNotification(page, /"Glossary" deleted successfully!/);
-  }
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const addSynonyms = async (page: Page, synonyms: string[]) => {
@@ -1096,11 +1106,10 @@ export const approveTagsTask = async (
   await selectActiveGlossary(page, entity.data.displayName);
   await page.waitForLoadState('networkidle');
 
-  const tagVisibility = await page.isVisible(
-    `[data-testid="tag-${value.tag}"]`
-  );
+  const tagVisibility = page.locator(`[data-testid="tag-${value.tag}"]`);
+  await tagVisibility.scrollIntoViewIfNeeded();
 
-  expect(tagVisibility).toBe(true);
+  await expect(tagVisibility).toBeVisible();
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
@@ -1237,7 +1246,7 @@ export const filterStatus = async (
   const rows = glossaryTermsTable.locator(
     'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
   );
-  const statusColumnIndex = 3;
+  const statusColumnIndex = 2;
 
   for (let i = 0; i < (await rows.count()); i++) {
     const statusCell = rows
@@ -1402,6 +1411,21 @@ export const updateGlossaryTermOwners = async (
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByTestId('save-glossary-term').click();
   await glossaryTermResponse;
+};
+
+export const updateGlossaryReviewer = async (
+  page: Page,
+  reviewers: string[]
+) => {
+  await addMultiOwner({
+    page,
+    ownerNames: reviewers,
+    activatorBtnDataTestId: 'Add',
+    resultTestId: 'glossary-reviewer',
+    endpoint: EntityTypeEndpoint.Glossary,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
 };
 
 export const updateGlossaryTermReviewers = async (

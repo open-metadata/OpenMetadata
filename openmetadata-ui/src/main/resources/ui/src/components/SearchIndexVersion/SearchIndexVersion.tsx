@@ -130,7 +130,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
           <TabsLabel id={EntityTabs.FIELDS} name={t('label.field-plural')} />
         ),
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -228,9 +228,10 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
               permissions={entityPermissions}
               type={EntityType.SEARCH_INDEX}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
-                  defaultActiveKey={tab ?? EntityTabs.FIELDS}
+                  className="tabs-new"
+                  defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}
                 />

@@ -182,8 +182,8 @@ public class TeamRepository extends EntityRepository<Team> {
     validatePolicies(team.getPolicies());
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
-    Team team = getByName(null, domainName, getFields("id"));
+  public BulkOperationResult bulkAddAssets(String teamName, BulkAssets request) {
+    Team team = getByName(null, teamName, getFields("id"));
 
     // Validate all to be users
     validateAllRefUsers(request.getAssets());
@@ -311,14 +311,14 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public String exportToCsv(String parentTeam, String user) throws IOException {
+  public String exportToCsv(String parentTeam, String user, boolean recursive) throws IOException {
     Team team = getByName(null, parentTeam, Fields.EMPTY_FIELDS); // Validate team name
     return new TeamCsv(team, user).exportCsv();
   }
 
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     Team team = getByName(null, name, Fields.EMPTY_FIELDS); // Validate team name
     TeamCsv teamCsv = new TeamCsv(team, user);
     return teamCsv.importCsv(csv, dryRun);
@@ -735,7 +735,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   public static class TeamCsv extends EntityCsv<Team> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEAM);
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEAM, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
     private final Team team;
 

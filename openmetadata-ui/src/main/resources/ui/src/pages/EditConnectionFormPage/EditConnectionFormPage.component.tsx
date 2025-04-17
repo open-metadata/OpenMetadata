@@ -35,12 +35,14 @@ import {
 } from '../../constants/Services.constant';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError, getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import {
@@ -50,11 +52,11 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
-  const { t } = useTranslation();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceCategory;
   }>();
   const { fqn: serviceFQN } = useFqn();
+  const { t } = useTranslation();
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
     [serviceFQN]
@@ -73,15 +75,10 @@ function EditConnectionFormPage() {
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
 
   const handleConfigSave = (updatedData: ConfigData) => {
-    const configData: ServicesUpdateRequest = {
-      ...serviceDetails,
-      connection: {
-        config: {
-          ...serviceDetails?.connection?.config,
-          ...updatedData,
-        },
-      },
-    };
+    const configData = serviceUtilClassBase.getEditConfigData(
+      serviceDetails,
+      updatedData
+    );
 
     setServiceConfig(configData);
     setActiveServiceStep(2);
@@ -153,7 +150,9 @@ function EditConnectionFormPage() {
           url: getPathByServiceFQN(serviceCategory, serviceFQN),
         },
         {
-          name: t('label.edit-entity', { entity: t('label.connection') }),
+          name: t('label.edit-entity', {
+            entity: t('label.connection'),
+          }),
           url: '',
           activeTitle: true,
         },
@@ -189,6 +188,10 @@ function EditConnectionFormPage() {
     fetchServiceDetail();
   }, [serviceFQN, serviceCategory]);
 
+  useEffect(() => {
+    serviceUtilClassBase.setEditServiceDetails(serviceDetails);
+  }, [serviceDetails, serviceCategory]);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -201,7 +204,7 @@ function EditConnectionFormPage() {
     );
   }
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <Space className="p-b-xs">
@@ -248,7 +251,7 @@ function EditConnectionFormPage() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 
   return (
@@ -259,6 +262,8 @@ function EditConnectionFormPage() {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
       hideSecondPanel={!serviceDetails?.serviceType}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
@@ -278,4 +283,8 @@ function EditConnectionFormPage() {
   );
 }
 
-export default EditConnectionFormPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.connection'),
+  })
+)(EditConnectionFormPage);

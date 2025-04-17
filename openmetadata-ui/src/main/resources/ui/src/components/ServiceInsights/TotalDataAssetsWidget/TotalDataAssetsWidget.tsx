@@ -11,27 +11,29 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from 'antd';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-
 import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { ReactComponent as PieChartIcon } from '../../../assets/svg/pie-chart.svg';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';
 import { totalDataAssetsWidgetColors } from '../../../constants/TotalDataAssetsWidget.constants';
-import { SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { ServiceInsightsWidgetType } from '../../../enums/ServiceInsights.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
-import { getAssetsByServiceType } from '../../../utils/ServiceInsightsTabUtils';
+import {
+  getAssetsByServiceType,
+  getServiceInsightsWidgetPlaceholder,
+} from '../../../utils/ServiceInsightsTabUtils';
 import {
   getReadableCountString,
   getServiceNameQueryFilter,
 } from '../../../utils/ServiceUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ServiceInsightWidgetCommonProps } from '../ServiceInsightsTab.interface';
 import './total-data-assets-widget.less';
 
@@ -39,6 +41,7 @@ function TotalDataAssetsWidget({
   serviceName,
 }: Readonly<ServiceInsightWidgetCommonProps>) {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
@@ -52,6 +55,13 @@ function TotalDataAssetsWidget({
     useState<
       Array<{ name: string; value: number; fill: string; icon: JSX.Element }>
     >();
+
+  const showPlaceholder = useMemo(
+    () =>
+      isEmpty(entityCounts) ||
+      entityCounts?.every((entity) => entity.value === 0),
+    [entityCounts]
+  );
 
   const totalCount =
     entityCounts?.reduce((sum, entity) => sum + entity.value, 0) ?? 0;
@@ -85,6 +95,18 @@ function TotalDataAssetsWidget({
     }
   }, []);
 
+  const errorPlaceholder = useMemo(
+    () =>
+      getServiceInsightsWidgetPlaceholder({
+        height: 140,
+        width: 140,
+        chartType: ServiceInsightsWidgetType.TOTAL_DATA_ASSETS,
+        placeholderClassName: 'border-none',
+        theme,
+      }),
+    []
+  );
+
   useEffect(() => {
     getDataAssetsCount();
   }, []);
@@ -101,13 +123,8 @@ function TotalDataAssetsWidget({
         </Typography.Text>
       </div>
       <Skeleton loading={loadingCount > 0}>
-        {isEmpty(entityCounts) ? (
-          <ErrorPlaceHolder
-            placeholderText={t('message.no-entity-data-available', {
-              entity: t('label.data-asset-lowercase-plural'),
-            })}
-            size={SIZE.MEDIUM}
-          />
+        {showPlaceholder ? (
+          errorPlaceholder
         ) : (
           <div className="total-data-assets-info">
             <div className="assets-list-container">

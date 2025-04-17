@@ -71,3 +71,11 @@ export const getSettingsByType = async (
 
   return response.data.config_value as SearchSettings | LineageSettings;
 };
+
+export const restoreSettingsConfig = async (settingType: SettingType) => {
+  const response = await axiosClient.put<Settings>(
+    `/system/settings/reset/${settingType}`
+  );
+
+  return response;
+};

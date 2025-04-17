@@ -89,23 +89,27 @@ export class EntityDataClass {
 
   static async preRequisitesForTests(
     apiContext: APIRequestContext,
-    creationConfig?: EntityDataClassCreationConfig
+    creationConfig: EntityDataClassCreationConfig = {
+      entityDetails: true,
+    }
   ) {
     // Add pre-requisites for tests
-    const promises = [
-      this.domain1.create(apiContext),
-      this.domain2.create(apiContext),
-      this.glossary1.create(apiContext),
-      this.glossary2.create(apiContext),
-
-      this.user1.create(apiContext),
-      this.user2.create(apiContext),
-      this.user3.create(apiContext),
-      this.team1.create(apiContext),
-      this.team2.create(apiContext),
-      this.tierTag1.create(apiContext),
-      this.tierTag2.create(apiContext),
-    ];
+    const promises =
+      creationConfig.entityDetails || creationConfig.all
+        ? [
+            this.domain1.create(apiContext),
+            this.domain2.create(apiContext),
+            this.glossary1.create(apiContext),
+            this.glossary2.create(apiContext),
+            this.user1.create(apiContext),
+            this.user2.create(apiContext),
+            this.user3.create(apiContext),
+            this.team1.create(apiContext),
+            this.team2.create(apiContext),
+            this.tierTag1.create(apiContext),
+            this.tierTag2.create(apiContext),
+          ]
+        : [];
 
     if (creationConfig?.all || creationConfig?.table) {
       promises.push(this.table1.create(apiContext));
@@ -183,30 +187,38 @@ export class EntityDataClass {
     }
 
     await Promise.allSettled(promises);
-    await Promise.allSettled([
-      this.glossaryTerm1.create(apiContext),
-      this.glossaryTerm2.create(apiContext),
-    ]);
+
+    if (creationConfig?.all || creationConfig?.entityDetails) {
+      await Promise.allSettled([
+        this.glossaryTerm1.create(apiContext),
+        this.glossaryTerm2.create(apiContext),
+      ]);
+    }
   }
 
   static async postRequisitesForTests(
     apiContext: APIRequestContext,
-    creationConfig?: EntityDataClassCreationConfig
+    creationConfig: EntityDataClassCreationConfig = {
+      entityDetails: true,
+    }
   ) {
-    const promises = [
-      this.domain1.delete(apiContext),
-      this.domain2.delete(apiContext),
-      // deleting glossary will also delete the glossary terms
-      this.glossary1.delete(apiContext),
-      this.glossary2.delete(apiContext),
-      this.user1.delete(apiContext),
-      this.user2.delete(apiContext),
-      this.user3.delete(apiContext),
-      this.team1.delete(apiContext),
-      this.team2.delete(apiContext),
-      this.tierTag1.delete(apiContext),
-      this.tierTag2.delete(apiContext),
-    ];
+    const promises =
+      creationConfig?.entityDetails || creationConfig?.all
+        ? [
+            this.domain1.delete(apiContext),
+            this.domain2.delete(apiContext),
+            // deleting glossary will also delete the glossary terms
+            this.glossary1.delete(apiContext),
+            this.glossary2.delete(apiContext),
+            this.user1.delete(apiContext),
+            this.user2.delete(apiContext),
+            this.user3.delete(apiContext),
+            this.team1.delete(apiContext),
+            this.team2.delete(apiContext),
+            this.tierTag1.delete(apiContext),
+            this.tierTag2.delete(apiContext),
+          ]
+        : [];
 
     if (creationConfig?.all || creationConfig?.table) {
       promises.push(this.table1.delete(apiContext));

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Tabs } from 'antd';
+import { Button, Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
@@ -228,11 +228,11 @@ const CustomEntityDetailV1 = () => {
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <div data-testid="entity-custom-fields">
+          <Card data-testid="entity-custom-fields">
             <div className="flex justify-end">
               {editPermission && (
                 <Button
-                  className="m-b-md p-y-xss p-x-xs rounded-4"
+                  className="m-b-md"
                   data-testid="add-field-button"
                   size="middle"
                   type="primary"
@@ -250,20 +250,18 @@ const CustomEntityDetailV1 = () => {
               isLoading={isLoading}
               updateEntityType={updateEntityType}
             />
-          </div>
+          </Card>
         ),
       },
       {
         label: t('label.schema'),
         key: EntityTabs.SCHEMA,
         children: (
-          <div data-testid="entity-schema">
-            <SchemaEditor
-              className="custom-properties-schemaEditor p-y-md"
-              editorClass="custom-entity-schema"
-              value={JSON.parse(schema ?? '{}')}
-            />
-          </div>
+          <SchemaEditor
+            className="custom-properties-schemaEditor"
+            editorClass="custom-entity-schema"
+            value={JSON.parse(schema ?? '{}')}
+          />
         ),
       },
     ];
@@ -284,10 +282,7 @@ const CustomEntityDetailV1 = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.custom-property')}>
-      <Row
-        className="page-container"
-        data-testid="custom-entity-container"
-        gutter={[0, 16]}>
+      <Row data-testid="custom-entity-container" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -295,7 +290,12 @@ const CustomEntityDetailV1 = () => {
           <PageHeader data={customPageHeader} />
         </Col>
         <Col className="global-settings-tabs" span={24}>
-          <Tabs items={tabs} key={tab} onChange={onTabChange} />
+          <Tabs
+            className="tabs-new"
+            items={tabs}
+            key={tab}
+            onChange={onTabChange}
+          />
         </Col>
       </Row>
     </PageLayoutV1>

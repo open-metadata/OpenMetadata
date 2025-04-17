@@ -11,27 +11,21 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import {
   Alert,
   Badge,
   Button,
-  Col,
   Dropdown,
-  Input,
   InputRef,
-  Popover,
-  Row,
-  Select,
-  Space,
   Tooltip,
   Typography,
 } from 'antd';
+import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
-import { debounce, startCase, upperCase } from 'lodash';
+import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -42,14 +36,15 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
-import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
+import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
+import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
+  DEFAULT_DOMAIN_VALUE,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
@@ -57,11 +52,11 @@ import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.const
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
@@ -86,44 +81,31 @@ import {
 } from '../../utils/i18next/i18nextUtil';
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
-import {
-  getSettingPath,
-  inPageSearchOptions,
-  isInPageSearchAllowed,
-} from '../../utils/RouterUtils';
-import searchClassBase from '../../utils/SearchClassBase';
+import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import SearchOptions from '../AppBar/SearchOptions';
-import Suggestions from '../AppBar/Suggestions';
-import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
 import DomainSelectableList from '../common/DomainSelectableList/DomainSelectableList.component';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
-import { NavBarProps } from './NavBar.interface';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
 
 const cookieStorage = new CookieStorage();
 
 const NavBar = ({
-  searchValue,
-  isTourRoute = false,
-  pathname,
-  isSearchBoxOpen,
-  handleSearchBoxOpen,
-  handleSearchChange,
-  handleKeyDown,
-  handleOnClick,
-  handleClear,
-}: NavBarProps) => {
+  isSidebarCollapsed = true,
+  toggleSideBar,
+}: {
+  isSidebarCollapsed?: boolean;
+  toggleSideBar?: () => void;
+}) => {
+  const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
-  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
-  const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
@@ -132,10 +114,7 @@ const NavBar = ({
   const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
     useDomainStore();
   const { t } = useTranslation();
-  const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
-  const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
-  const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
@@ -144,7 +123,6 @@ const NavBar = ({
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const [version, setVersion] = useState<string>();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
-  const domainContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchOMVersion = async () => {
     try {
@@ -176,29 +154,6 @@ const NavBar = ({
     }
   };
 
-  const entitiesSelect = useMemo(
-    () => (
-      <Select
-        defaultActiveFirstOption
-        className="global-search-select"
-        data-testid="global-search-selector"
-        listHeight={300}
-        popupClassName="global-search-select-menu"
-        value={searchCriteria}
-        onChange={updateSearchCriteria}>
-        {searchClassBase.getGlobalSearchOptions().map(({ value, label }) => (
-          <Option
-            data-testid={`global-search-select-option-${label}`}
-            key={value}
-            value={value}>
-            {label}
-          </Option>
-        ))}
-      </Select>
-    ),
-    [searchCriteria]
-  );
-
   const language = useMemo(
     () =>
       (cookieStorage.getItem('i18next') as SupportedLocales) ||
@@ -207,17 +162,6 @@ const NavBar = ({
   );
 
   const { socket } = useWebSocketConnector();
-
-  const debouncedOnChange = useCallback(
-    (text: string): void => {
-      setSuggestionSearch(text);
-    },
-    [setSuggestionSearch]
-  );
-
-  const debounceOnSearch = useCallback(debounce(debouncedOnChange, 400), [
-    debouncedOnChange,
-  ]);
 
   const handleTaskNotificationRead = () => {
     setHasTaskNotification(false);
@@ -420,41 +364,19 @@ const NavBar = ({
     }
 
     return () => {
-      socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
-      socket && socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
+      if (socket) {
+        socket.off(SOCKET_EVENTS.TASK_CHANNEL);
+        socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+        socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+        socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
+        socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
+      }
     };
   }, [socket, onUpdateCSVExportJob]);
 
   useEffect(() => {
     fetchOMVersion();
   }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // Check if click is inside the domain-select-popover
-      const isClickInPopover = (event.target as Element)?.closest(
-        '.domain-select-popover'
-      );
-
-      if (
-        domainContainerRef.current &&
-        !domainContainerRef.current.contains(event.target as Node) &&
-        !isClickInPopover &&
-        isDomainDropdownOpen
-      ) {
-        setIsDomainDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isDomainDropdownOpen]);
 
   useEffect(() => {
     const targetNode = document.body;
@@ -479,221 +401,142 @@ const NavBar = ({
 
   const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
 
-  const handleSelectOption = useCallback((text: string) => {
-    history.replace({
-      search: `?withinPageSearch=${text}`,
-    });
-  }, []);
-
   return (
     <>
-      <div className="navbar-container bg-white flex-nowrap w-full">
-        <div
-          className="m-auto relative"
-          data-testid="navbar-search-container"
-          ref={searchContainerRef}>
-          <Popover
-            content={
-              !isTourRoute &&
-              searchValue &&
-              (isInPageSearchAllowed(pathname) ? (
-                <SearchOptions
-                  isOpen={isSearchBoxOpen}
-                  options={inPageSearchOptions(pathname)}
-                  searchText={searchValue}
-                  selectOption={handleSelectOption}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ) : (
-                <Suggestions
-                  isOpen={isSearchBoxOpen}
-                  searchCriteria={
-                    searchCriteria === '' ? undefined : searchCriteria
-                  }
-                  searchText={suggestionSearch}
-                  setIsOpen={handleSearchBoxOpen}
-                />
-              ))
-            }
-            getPopupContainer={() =>
-              searchContainerRef.current || document.body
-            }
-            open={isSearchBoxOpen}
-            overlayClassName="global-search-overlay"
-            overlayStyle={{ width: '100%', paddingTop: 0 }}
-            placement="bottomRight"
-            showArrow={false}
-            trigger={['click']}
-            onOpenChange={handleSearchBoxOpen}>
-            <Input
-              addonBefore={entitiesSelect}
-              autoComplete="off"
-              className="rounded-4  appbar-search"
-              data-testid="searchBox"
-              id="searchBox"
-              placeholder={t('label.search-for-type', {
-                type: t('label.data-asset-plural'),
-              })}
-              ref={searchRef}
-              style={{
-                height: '37px',
-              }}
-              suffix={
-                <span className="d-flex items-center">
-                  <CmdKIcon />
-                  <span className="cursor-pointer m-b-xs m-l-sm w-4 h-4 text-center">
-                    {searchValue ? (
-                      <Icon
-                        alt="icon-cancel"
-                        className={classNames('align-middle', {
-                          'text-primary': !isSearchBlur,
-                        })}
-                        component={IconCloseCircleOutlined}
-                        data-testid="cancel-icon"
-                        style={{ fontSize: '16px' }}
-                        onClick={handleClear}
-                      />
-                    ) : (
-                      <Icon
-                        alt="icon-search"
-                        className={classNames('align-middle', {
-                          'text-grey-3': isSearchBlur,
-                          'text-primary': !isSearchBlur,
-                        })}
-                        component={IconSearch}
-                        data-testid="search-icon"
-                        style={{ fontSize: '16px' }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleOnClick();
-                        }}
-                      />
-                    )}
-                  </span>
-                </span>
-              }
-              type="text"
-              value={searchValue}
-              onBlur={() => {
-                setIsSearchBlur(true);
-              }}
-              onChange={(e) => {
-                const { value } = e.target;
-                debounceOnSearch(value);
-                handleSearchChange(value);
-              }}
-              onFocus={() => {
-                setIsSearchBlur(false);
-              }}
-              onKeyDown={handleKeyDown}
-            />
-          </Popover>
-        </div>
-
-        <Space align="center" size={24}>
-          <div className="d-flex" ref={domainContainerRef}>
+      <Header>
+        <div className="navbar-container">
+          <div className="flex-center">
+            <Tooltip
+              placement="right"
+              title={
+                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
+              }>
+              <Button
+                className="mr-2 w-6 h-6 p-0 flex-center"
+                data-testid="sidebar-toggle"
+                icon={
+                  isSidebarCollapsed ? (
+                    <SidebarCollapsedIcon height={20} width={20} />
+                  ) : (
+                    <SidebarExpandedIcon height={20} width={20} />
+                  )
+                }
+                size="middle"
+                type="text"
+                onClick={toggleSideBar}
+              />
+            </Tooltip>
+            <GlobalSearchBar />
             <DomainSelectableList
               hasPermission
-              popoverProps={{ open: isDomainDropdownOpen }}
+              showAllDomains
+              popoverProps={{
+                open: isDomainDropdownOpen,
+                onOpenChange: (open) => {
+                  setIsDomainDropdownOpen(open);
+                },
+              }}
               selectedDomain={activeDomainEntityRef}
+              wrapInButton={false}
               onCancel={() => setIsDomainDropdownOpen(false)}
               onUpdate={handleDomainChange}>
-              <Row
+              <Button
+                className={classNames(
+                  'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                  {
+                    'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                  }
+                )}
                 data-testid="domain-dropdown"
-                gutter={6}
                 onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
-                <Col className="flex-center">
-                  <DomainIcon
-                    className="d-flex text-base-color"
-                    height={24}
-                    name="domain"
-                    width={24}
-                  />
-                </Col>
-                <Col className="flex-center">
-                  <Typography.Text>
-                    {activeDomainEntityRef
-                      ? getEntityName(activeDomainEntityRef)
-                      : activeDomain}
-                  </Typography.Text>
-                </Col>
-                <Col className="flex-center">
-                  <DropDownIcon height={14} width={14} />
-                </Col>
-              </Row>
+                <DomainIcon
+                  className="d-flex"
+                  height={20}
+                  name="domain"
+                  width={20}
+                />
+                <Typography.Text ellipsis className="domain-text">
+                  {activeDomainEntityRef
+                    ? getEntityName(activeDomainEntityRef)
+                    : activeDomain}
+                </Typography.Text>
+                <DropDownIcon width={12} />
+              </Button>
             </DomainSelectableList>
           </div>
 
-          <Dropdown
-            className="cursor-pointer"
-            menu={{
-              items: languageSelectOptions,
-              onClick: handleLanguageChange,
-            }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Row gutter={2}>
-              <Col>
+          <div className="flex-center gap-5 nav-bar-side-items">
+            <Dropdown
+              className="cursor-pointer"
+              menu={{
+                items: languageSelectOptions,
+                onClick: handleLanguageChange,
+              }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button
+                className="flex-center gap-2 p-x-xs font-medium"
+                type="text">
                 {upperCase(
                   (language || SupportedLocales.English).split('-')[0]
-                )}
-              </Col>
-              <Col className="flex-center">
-                <DropDownIcon height={14} width={14} />
-              </Col>
-            </Row>
-          </Dropdown>
-          <Dropdown
-            destroyPopupOnHide
-            className="cursor-pointer"
-            dropdownRender={() => (
-              <NotificationBox
-                hasMentionNotification={hasMentionNotification}
-                hasTaskNotification={hasTaskNotification}
-                onMarkMentionsNotificationRead={handleMentionsNotificationRead}
-                onMarkTaskNotificationRead={handleTaskNotificationRead}
-                onTabChange={handleActiveTab}
-              />
-            )}
-            overlayStyle={{
-              zIndex: 9999,
-              width: '425px',
-              minHeight: '375px',
-            }}
-            placement="bottomRight"
-            trigger={['click']}
-            onOpenChange={handleBellClick}>
-            <Tooltip placement="top" title={t('label.notification-plural')}>
-              <Badge dot={hasTaskNotification || hasMentionNotification}>
-                <Icon
-                  className="align-middle"
-                  component={IconBell}
-                  style={{ fontSize: '24px' }}
+                )}{' '}
+                <DropDownIcon width={12} />
+              </Button>
+            </Dropdown>
+            <Dropdown
+              destroyPopupOnHide
+              className="cursor-pointer"
+              dropdownRender={() => (
+                <NotificationBox
+                  hasMentionNotification={hasMentionNotification}
+                  hasTaskNotification={hasTaskNotification}
+                  onMarkMentionsNotificationRead={
+                    handleMentionsNotificationRead
+                  }
+                  onMarkTaskNotificationRead={handleTaskNotificationRead}
+                  onTabChange={handleActiveTab}
                 />
-              </Badge>
-            </Tooltip>
-          </Dropdown>
-          <Dropdown
-            menu={{
-              items: getHelpDropdownItems(version),
-              onClick: handleSupportClick,
-            }}
-            overlayStyle={{ width: 175 }}
-            placement="bottomRight"
-            trigger={['click']}>
-            <Tooltip placement="top" title={t('label.need-help')}>
-              <Icon
-                className="align-middle"
-                component={Help}
-                data-testid="help-icon"
-                style={{ fontSize: '24px' }}
+              )}
+              overlayStyle={{
+                width: '425px',
+                minHeight: '375px',
+              }}
+              placement="bottomRight"
+              trigger={['click']}
+              onOpenChange={handleBellClick}>
+              <Button
+                className="flex-center"
+                icon={
+                  <Badge
+                    dot={hasTaskNotification || hasMentionNotification}
+                    offset={[-3, 3]}>
+                    <IconBell data-testid="task-notifications" width={20} />
+                  </Badge>
+                }
+                title={t('label.notification-plural')}
+                type="text"
               />
-            </Tooltip>
-          </Dropdown>
-          <UserProfileIcon />
-        </Space>
-      </div>
+            </Dropdown>
+            <Dropdown
+              menu={{
+                items: getHelpDropdownItems(version),
+                onClick: handleSupportClick,
+              }}
+              overlayStyle={{ width: 175 }}
+              placement="bottomRight"
+              trigger={['click']}>
+              <Button
+                className="flex-center"
+                data-testid="help-icon"
+                icon={<Help width={20} />}
+                title={t('label.need-help')}
+                type="text"
+              />
+            </Dropdown>
+            <UserProfileIcon />
+          </div>
+        </div>
+      </Header>
       <WhatsNewModal
         header={`${t('label.whats-new')}!`}
         visible={isFeatureModalOpen}

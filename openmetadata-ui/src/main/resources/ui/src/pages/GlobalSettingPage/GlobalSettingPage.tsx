@@ -69,16 +69,17 @@ const GlobalSettingPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row className="page-container" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <PageHeader data={PAGE_HEADERS.SETTING} />
         </Col>
 
         <Col span={24}>
-          <Row gutter={[20, 20]}>
+          <Row className="setting-items-container" gutter={[20, 20]}>
             {settingItems.map((setting) => (
-              <Col key={setting?.key} span={6}>
+              <Col key={setting?.key} lg={8} md={12} sm={24}>
                 <SettingItemCard
+                  className="global-setting-card"
                   data={setting}
                   onClick={handleSettingItemClick}
                 />

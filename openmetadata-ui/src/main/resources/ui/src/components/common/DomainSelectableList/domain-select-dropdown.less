@@ -41,11 +41,22 @@
     color: @text-color;
   }
 }
-.remove-button-default-styling {
-  .ant-btn-icon-only {
-    border: 1px solid @border-light;
-    background-color: @background-color;
-    border-radius: 4px;
-    padding: 4px;
+.data-assets-header-container,
+.teams-info-header-container {
+  .remove-button-default-styling {
+    .ant-btn-icon-only {
+      border: 1px solid @border-light;
+      background-color: @background-color;
+      border-radius: 4px;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      svg {
+        font-size: 12px;
+        width: 12px;
+      }
+    }
   }
 }

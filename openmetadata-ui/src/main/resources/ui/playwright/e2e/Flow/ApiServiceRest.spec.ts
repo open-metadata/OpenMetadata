@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
   descriptionBox,
@@ -56,20 +57,18 @@ test.describe('API service', () => {
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
     await page.getByTestId('submit-btn').click();
 
-    const dayOneExperienceApplicationRequest = page.waitForRequest(
+    const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>
-        request
-          .url()
-          .includes('/api/v1/apps/trigger/DayOneExperienceApplication') &&
+        request.url().includes('/api/v1/apps/trigger/AutoPilotApplication') &&
         request.method() === 'POST'
     );
 
     await page.getByTestId('submit-btn').getByText('Save').click();
 
-    await dayOneExperienceApplicationRequest;
+    await autoPilotApplicationRequest;
 
     // step 3
-    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+    await expect(page.getByTestId('entity-header-name')).toHaveText(
       apiServiceConfig.name
     );
 
@@ -104,6 +103,10 @@ test.describe('API service', () => {
 
     await deleteResponse;
 
-    await toastNotification(page, /Delete operation initiated for/);
+    await toastNotification(
+      page,
+      /deleted successfully!/,
+      BIG_ENTITY_DELETE_TIMEOUT
+    );
   });
 });

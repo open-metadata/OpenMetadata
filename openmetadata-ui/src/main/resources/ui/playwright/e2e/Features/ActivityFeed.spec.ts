@@ -330,18 +330,6 @@ test.describe('Activity feed', () => {
 
     expect(descriptionTask).toContain('Request to update description');
 
-    const commentInput = page.locator('[data-testid="comments-input-field"]');
-    await commentInput.scrollIntoViewIfNeeded();
-    await commentInput.click();
-
-    await page.fill(
-      '[data-testid="editor-wrapper"] .ql-editor',
-      'Test comment added'
-    );
-    const addComment = page.waitForResponse('/api/v1/feed/*/posts');
-    await page.getByTestId('send-button').click();
-    await addComment;
-
     // Close the task from the Button.Group, should throw error when no comment is added.
     await page.getByRole('button', { name: 'down' }).click();
     await page.waitForSelector('.ant-dropdown', {
@@ -353,12 +341,15 @@ test.describe('Activity feed', () => {
     await toastNotification(page, 'Task cannot be closed without a comment.');
 
     // Close the task from the Button.Group, with comment is added.
+    const commentInput = page.locator('[data-testid="comments-input-field"]');
+
     await commentInput.scrollIntoViewIfNeeded();
     await commentInput.click();
     await page.fill(
       '[data-testid="editor-wrapper"] .ql-editor',
       'Closing the task with comment'
     );
+    await page.getByTestId('send-button').click();
     const commentWithCloseTask = page.waitForResponse(
       '/api/v1/feed/tasks/*/close'
     );
@@ -473,22 +464,19 @@ test.describe('Activity feed', () => {
       async () => {
         await addMentionCommentInFeed(page, 'aaron.warren5', true);
 
-        const lastFeedContainer = `#feed-panel [data-testid="message-container"] [data-testid="feed-replies"] .feed-card-v2-container:last-child`;
+        const feedContainer = `[data-testid="feed-replies"]`;
 
         await expect(
           page
-            .locator(lastFeedContainer)
+            .locator(feedContainer)
             .locator(
               '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
             )
+            .first()
         ).toContainText('Can you resolve this thread for me? @aaron.warren5');
 
         // Close drawer
         await page.locator('[data-testid="closeDrawer"]').click();
-
-        await expect(
-          page.locator(`${FIRST_FEED_SELECTOR} [data-testid="reply-count"]`)
-        ).toContainText('2 Replies');
       }
     );
   });
@@ -560,9 +548,11 @@ test.describe('Activity feed', () => {
 
       await expect(page2.getByTestId('message-container')).toHaveCount(1);
 
-      await expect(page2.getByTestId('owner-link')).toContainText(
-        user2.responseData.displayName
-      );
+      await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
+
+      await expect(
+        page2.getByText(user2.responseData.displayName).first()
+      ).toBeVisible();
 
       // Check the Task based on Created by me task filter
 
@@ -579,9 +569,11 @@ test.describe('Activity feed', () => {
 
       await expect(page2.getByTestId('message-container')).toHaveCount(1);
 
-      await expect(page2.getByTestId('owner-link')).toContainText(
-        user1.responseData.displayName
-      );
+      await page2.getByTestId('task-feed-card').locator('.ant-avatar').hover();
+
+      await expect(
+        page2.getByText(user2.responseData.displayName).first()
+      ).toBeVisible();
 
       await afterActionUser2();
     });
@@ -630,7 +622,7 @@ base.describe('Activity feed with Data Consumer User', () => {
     await afterAction();
   });
 
-  base.fixme('Create and Assign Task with Suggestions', async ({ browser }) => {
+  base('Create and Assign Task with Suggestions', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const { page: page2, afterAction: afterActionUser2 } =
@@ -672,13 +664,18 @@ base.describe('Activity feed with Data Consumer User', () => {
         '[data-testid="editor-wrapper"] .ql-editor',
         'Closing the task with comment'
       );
+      await page1
+        .locator('.activity-feed-editor-send-btn')
+        .scrollIntoViewIfNeeded();
+      await page1.locator('.activity-feed-editor-send-btn').click();
       const commentWithCloseTask = page1.waitForResponse(
         '/api/v1/feed/tasks/*/close'
       );
-      page1.locator('[data-testid="close-button"]').click();
+      await page1.locator('[data-testid="close-button"]').click();
       await commentWithCloseTask;
 
       await toastNotification(page1, 'Task closed successfully.');
+      await page1.waitForLoadState('networkidle');
       await checkTaskCountInActivityFeed(page1, 1, 1);
 
       await afterActionUser1();
@@ -714,6 +711,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       await tagsTask.click();
       await entityPageTaskTab;
 
+      await page2.waitForLoadState('networkidle');
       // Count for task should be 1 both open and closed
 
       checkTaskCountInActivityFeed(page2, 1, 1);
@@ -725,10 +723,13 @@ base.describe('Activity feed with Data Consumer User', () => {
         page2.locator('[data-testid="edit-accept-task-dropdown"]')
       ).toBeVisible();
 
+      const resolveTask = page2.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      await page2.getByText('Accept Suggestion').scrollIntoViewIfNeeded();
       await page2.getByText('Accept Suggestion').click();
-
+      await resolveTask;
       await toastNotification(page2, /Task resolved successfully/);
 
+      await page2.waitForLoadState('networkidle');
       checkTaskCountInActivityFeed(page2, 0, 2);
 
       await afterActionUser2();

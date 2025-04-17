@@ -122,32 +122,14 @@ export const addMentionCommentInFeed = async (
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  // Click on add reply
-  const feedResponse = page.waitForResponse('/api/v1/feed/*');
-
-  if (isReply) {
-    await page
-      .locator(FIRST_FEED_SELECTOR)
-      .locator('[data-testid="reply-count"]')
-      .click();
-  } else {
-    await page
-      .locator(FIRST_FEED_SELECTOR)
-      .locator('[data-testid="thread-count"]')
-      .click();
-  }
-  await feedResponse;
-
+  await page
+    .locator(FIRST_FEED_SELECTOR)
+    .locator('[data-testid="reply-count"]')
+    .click();
   await page.waitForSelector('.ant-drawer-content', {
     state: 'visible',
   });
-
-  // Type reply with mention
-  await page
-    .locator(
-      '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
-    )
-    .click();
+  await page.getByTestId('comments-input-field').click();
 
   const userSuggestionsResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${user}***`

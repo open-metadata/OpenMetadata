@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -38,9 +37,7 @@ import {
 export interface SearchIndexDetailPageTabProps {
   searchIndexDetails: SearchIndex;
   viewAllPermission: boolean;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   getEntityFeedCount: () => Promise<void>;
   fetchSearchIndexDetails: () => Promise<void>;
@@ -53,7 +50,28 @@ export interface SearchIndexDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+type SearchIndexWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.SEARCH_INDEX_FIELDS
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+
 class SearchIndexClassBase {
+  defaultWidgetHeight: Record<SearchIndexWidgetKeys, number>;
+
+  constructor() {
+    this.defaultWidgetHeight = {
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: 6,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
+  }
+
   public getSearchIndexDetailPageTabs(
     tabProps: SearchIndexDetailPageTabProps
   ): TabProps[] {
@@ -77,30 +95,45 @@ class SearchIndexClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.FIELDS) {
       return [];
     }
 
     return [
       {
-        h: 2,
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.SEARCH_INDEX_FIELDS] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          0.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[
+              DetailPageWidgetKeys.SEARCH_INDEX_FIELDS
+            ],
+            i: DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
-        h: 11,
-        i: DetailPageWidgetKeys.SEARCH_INDEX_FIELDS,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
-      },
-      {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -108,7 +141,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -116,7 +149,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -124,7 +157,7 @@ class SearchIndexClassBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -157,6 +190,27 @@ class SearchIndexClassBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getSearchIndexWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.SEARCH_INDEX_FIELDS:
+        return this.defaultWidgetHeight[
+          DetailPageWidgetKeys.SEARCH_INDEX_FIELDS
+        ];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

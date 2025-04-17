@@ -218,7 +218,8 @@ public class DataInsightsEntityEnricherProcessor
     String descriptionSource = ChangeSource.INGESTED.value();
 
     if (changeSummaryMap != null) {
-      if (changeSummaryMap.containsKey(changeSummaryKey)) {
+      if (changeSummaryMap.containsKey(changeSummaryKey)
+          && changeSummaryMap.get(changeSummaryKey).getChangeSource() != null) {
         descriptionSource = changeSummaryMap.get(changeSummaryKey).getChangeSource().value();
       }
     }

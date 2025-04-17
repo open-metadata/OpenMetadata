@@ -9,6 +9,7 @@ public class APIServiceMapper implements EntityMapper<ApiService, CreateApiServi
   public ApiService createToEntity(CreateApiService create, String user) {
     return copy(new ApiService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+        .withConnection(create.getConnection())
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

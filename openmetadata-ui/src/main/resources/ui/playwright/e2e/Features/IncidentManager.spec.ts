@@ -18,6 +18,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   getApiContext,
@@ -49,11 +50,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
-    // Todo: Remove this patch once the issue is fixed #19140
-    await resetTokenFromBotPage(page, {
-      name: 'testsuite',
-      testId: 'bot-link-TestSuiteBot',
-    });
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+    }
 
     for (const user of users) {
       await user.create(apiContext);
@@ -173,6 +173,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
         await testCaseResponse;
 
+        await clickOutside(page);
+
         await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -198,8 +200,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         );
 
         await expect(
-          page.locator('[data-testid="assignee"] [data-testid="owner-link"]')
-        ).toContainText(assignee2.displayName);
+          page.locator(`[data-testid=${assignee2.displayName}]`)
+        ).toBeVisible();
       }
     );
 

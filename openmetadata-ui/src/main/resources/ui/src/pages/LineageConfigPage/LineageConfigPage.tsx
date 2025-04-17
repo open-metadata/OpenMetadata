@@ -40,6 +40,7 @@ import {
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const LineageConfigPage = () => {
@@ -50,7 +51,7 @@ const LineageConfigPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [form] = Form.useForm();
   const history = useHistory();
-  const { setAppPreferences } = useApplicationStore();
+  const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -101,7 +102,10 @@ const LineageConfigPage = () => {
       setLineageConfig(lineageConfig);
 
       // Update lineage config in store
-      setAppPreferences({ lineageConfig });
+      setAppPreferences({
+        ...appPreferences,
+        lineageConfig,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -118,15 +122,15 @@ const LineageConfigPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizablePanels
         className="content-height-with-resizable-panel"
         firstPanel={{
           className: 'content-resizable-panel-container',
+          cardClassName: 'max-width-md m-x-auto',
+          allowScroll: true,
           children: (
-            <div
-              className="max-width-md w-9/10 service-form-container"
-              data-testid="add-metric-container">
+            <div data-testid="add-metric-container">
               <Row gutter={[16, 16]}>
                 <Col span={24}>
                   <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -245,4 +249,6 @@ const LineageConfigPage = () => {
   );
 };
 
-export default withPageLayout('lineage-config')(LineageConfigPage);
+export default withPageLayout(i18n.t('label.lineage-config'))(
+  LineageConfigPage
+);

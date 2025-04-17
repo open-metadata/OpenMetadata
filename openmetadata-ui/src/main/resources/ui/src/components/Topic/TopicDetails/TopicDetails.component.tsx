@@ -34,6 +34,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -51,6 +52,8 @@ import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/Activ
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -79,7 +82,8 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
   const history = useHistory();
-  const { customizedPage } = useCustomPages(PageType.Topic);
+  const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -237,8 +241,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -288,6 +291,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           refetchFeed
           entityFeedTotalCount={feedCount.totalCount}
           entityType={EntityType.TOPIC}
+          feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTopic}
@@ -295,7 +299,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       sampleDataTab: !viewSampleDataPermission ? (
-        <div className="m-t-xlg">
+        <div className="border-default border-radius-sm p-y-lg">
           <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
         </div>
       ) : (
@@ -321,13 +325,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         </LineageProvider>
       ),
       customPropertiesTab: topicDetails && (
-        <div className="m-sm">
-          <CustomPropertyTable<EntityType.TOPIC>
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
-        </div>
+        <CustomPropertyTable<EntityType.TOPIC>
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editCustomAttributePermission}
+          hasPermission={viewAllPermission}
+        />
       ),
       viewSampleDataPermission,
       activeTab,
@@ -365,14 +367,25 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     viewAllPermission,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Topic),
+    [tabs[0], activeTab]
+  );
+  if (isLoading) {
+    return <Loader />;
+  }
+
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.topic'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -392,16 +405,29 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           />
         </Col>
         <GenericProvider<Topic>
+          customizedPage={customizedPage}
           data={topicDetails}
+          isTabExpanded={isTabExpanded}
           permissions={topicPermissions}
           type={EntityType.TOPIC}
           onUpdate={onTopicUpdate}>
           <Col span={24}>
             <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
+              activeKey={activeTab}
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

@@ -88,6 +88,7 @@ export enum GlobalSettingOptions {
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
+  SEARCH_SETTINGS = 'search-settings',
   DOMAINS = 'domains',
 }
 
@@ -214,6 +215,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.OM_URL_CONFIG]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.OM_URL_CONFIG}`,
+  ],
+  [GlobalSettingOptions.SEARCH_SETTINGS]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}`,
   ],
 };
 

@@ -18,8 +18,7 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -27,7 +26,7 @@ import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
@@ -37,6 +36,7 @@ import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
 import { getLinkForFqn } from './ServiceUtils';
+import { ownerTableObject } from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
@@ -71,7 +71,7 @@ export const getServiceMainTabColumns = (
     width: 300,
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewerV1 markdown={description} />
+        <RichTextEditorPreviewerNew markdown={description} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {
@@ -96,18 +96,7 @@ export const getServiceMainTabColumns = (
         },
       ]
     : []),
-  {
-    title: t('label.owner-plural'),
-    dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
-    key: TABLE_COLUMNS_KEYS.OWNERS,
-    width: 200,
-    render: (owners: ServicePageData['owners']) =>
-      !isUndefined(owners) && owners.length > 0 ? (
-        <OwnerLabel owners={owners} />
-      ) : (
-        <Typography.Text data-testid="no-owner-text">--</Typography.Text>
-      ),
-  },
+  ...ownerTableObject<ServicePageData>(),
   {
     title: t('label.tag-plural'),
     dataIndex: TABLE_COLUMNS_KEYS.TAGS,

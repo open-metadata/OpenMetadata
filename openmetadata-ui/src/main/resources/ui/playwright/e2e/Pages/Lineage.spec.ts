@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { SidebarItem } from '../../constant/sidebar';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -43,9 +44,11 @@ import {
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
+  verifyExportLineagePNG,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
+import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({
@@ -136,6 +139,13 @@ for (const EntityClass of entities) {
         await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
+      await test.step('Verify Lineage Export PNG', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyExportLineagePNG(page);
+      });
+
       await test.step(
         'Remove lineage between nodes for the entity',
         async () => {
@@ -194,11 +204,23 @@ test('Verify column lineage between tables', async ({ browser }) => {
 });
 
 test('Verify column lineage between table and topic', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const topic = new TopicClass();
   await Promise.all([table.create(apiContext), topic.create(apiContext)]);
+
+  const tableServiceFqn = get(
+    table,
+    'entityResponseData.service.fullyQualifiedName'
+  );
+
+  const topicServiceFqn = get(
+    topic,
+    'entityResponseData.service.fullyQualifiedName'
+  );
 
   const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
   const sourceCol = `${sourceTableFqn}.${get(
@@ -222,6 +244,30 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await visitLineageTab(page);
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
+  // Verify relation in platform lineage
+  await sidebarClick(page, SidebarItem.LINEAGE);
+  const searchRes = page.waitForResponse('/api/v1/search/query?*');
+
+  await page.click('[data-testid="search-entity-select"]');
+  await page.keyboard.type(tableServiceFqn);
+  await searchRes;
+
+  await page.click(`[data-testid="node-suggestion-${tableServiceFqn}"]`);
+
+  await page.waitForLoadState('networkidle');
+
+  const tableServiceNode = page.locator(
+    `[data-testid="lineage-node-${tableServiceFqn}"]`
+  );
+  const topicServiceNode = page.locator(
+    `[data-testid="lineage-node-${topicServiceFqn}"]`
+  );
+
+  await expect(tableServiceNode).toBeVisible();
+  await expect(topicServiceNode).toBeVisible();
+
+  await table.visitEntityPage(page);
+  await visitLineageTab(page);
   await page.click('[data-testid="edit-lineage"]');
 
   await removeColumnLineage(page, sourceCol, targetCol);
@@ -307,6 +353,8 @@ test('Verify column lineage between table and api endpoint', async ({
 });
 
 test('Verify function data in edge drawer', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
@@ -365,6 +413,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
     const lineageReq1 = page.waitForResponse('/api/v1/lineage/getLineage?*');
     await page.reload();
     await lineageReq1;
+
+    await page.waitForLoadState('networkidle');
 
     await activateColumnLayer(page);
     await page

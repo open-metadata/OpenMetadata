@@ -48,6 +48,7 @@ const UserPage = () => {
   const { currentUser, updateCurrentUser } = useApplicationStore();
 
   const fetchUserData = async () => {
+    setIsLoading(true);
     try {
       const res = await getUserByName(username, {
         fields: [
@@ -179,7 +180,7 @@ const UserPage = () => {
     fetchUserData();
   }, [username]);
 
-  if (isLoading) {
+  if (userData?.name !== username || isLoading) {
     return <Loader />;
   }
 
@@ -188,7 +189,7 @@ const UserPage = () => {
   }
 
   return (
-    <PageLayoutV1 className="bg-grey" pageTitle={t('label.user')}>
+    <PageLayoutV1 pageTitle={t('label.user')}>
       <Users
         afterDeleteAction={afterDeleteAction}
         handlePaginate={handleEntityPaginate}

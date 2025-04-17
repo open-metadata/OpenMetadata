@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { isEmpty, lowerCase } from 'lodash';
 import {
+  BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
@@ -240,14 +241,20 @@ export const addMultiOwner = async (data: {
 
   await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   if (clearAll && isMultipleOwners) {
     await page.click('[data-testid="clear-all-button"]');
@@ -260,7 +267,10 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
 
     const ownerItem = page.getByRole('listitem', {
       name: ownerName,
@@ -737,7 +747,7 @@ export const followEntity = async (
   await followResponse;
 
   await expect(page.getByTestId('entity-follow-button')).toContainText(
-    'Following'
+    'Unfollow'
   );
 };
 
@@ -1008,6 +1018,14 @@ export const checkForEditActions = async ({
       continue;
     }
 
+    if (elementSelector === '[data-testid="entity-follow-button"]') {
+      deleted
+        ? await expect(page.locator(elementSelector)).not.toBeVisible()
+        : await expect(page.locator(elementSelector)).toBeVisible();
+
+      continue;
+    }
+
     const isDisabled = await page
       .locator(`${containerSelector} ${elementSelector}`)
       .isEnabled();
@@ -1182,7 +1200,7 @@ export const deletedEntityCommonChecks = async ({
     ).toBeVisible();
   }
 
-  await page.click('body');
+  await clickOutside(page);
 };
 
 export const restoreEntity = async (page: Page) => {
@@ -1213,7 +1231,7 @@ export const softDeleteEntity = async (
     deleted: false,
   });
 
-  await page.click('body'); // Equivalent to clicking outside
+  await clickOutside(page);
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
@@ -1231,7 +1249,11 @@ export const softDeleteEntity = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /Delete operation initiated for/);
+  await toastNotification(
+    page,
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
+  );
 
   await page.reload();
 
@@ -1245,7 +1267,7 @@ export const softDeleteEntity = async (
     deleted: true,
   });
 
-  await page.click('body'); // Equivalent to clicking outside
+  await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
     await page.click('[data-testid="breadcrumb-link"]:last-child');
@@ -1296,7 +1318,11 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await toastNotification(page, /Delete operation initiated for/);
+  await toastNotification(
+    page,
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
+  );
 };
 
 export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
@@ -1368,10 +1394,8 @@ export const getTextFromHtmlString = (description?: string): string => {
 };
 
 export const getFirstRowColumnLink = (page: Page) => {
-  const table = page.locator('[data-testid="databaseSchema-tables"]');
-  const firstRowFirstColumn = table.locator(
-    'tbody tr:first-child td:first-child'
-  );
-
-  return firstRowFirstColumn.locator('[data-testid="column-name"] a');
+  return page
+    .getByTestId('databaseSchema-tables')
+    .locator('[data-testid="column-name"] a')
+    .first();
 };

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Divider, Row, Tooltip, Typography } from 'antd';
+import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -20,14 +20,14 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
+
 const EntityHeaderTitle = ({
   icon,
   name,
@@ -39,9 +39,8 @@ const EntityHeaderTitle = ({
   badge,
   isDisabled,
   className,
-  color,
   showName = true,
-  certification,
+  showOnlyDisplayName = false,
   excludeEntityService,
   isFollowing,
   isFollowingLoading,
@@ -49,6 +48,7 @@ const EntityHeaderTitle = ({
   entityType,
   nameClassName = '',
   displayNameClassName = '',
+  isCustomizedView = false,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -66,6 +66,43 @@ const EntityHeaderTitle = ({
     [location.pathname]
   );
 
+  const entityName = useMemo(
+    () =>
+      stringToHTML(
+        showOnlyDisplayName
+          ? getEntityName({
+              displayName,
+              name,
+            })
+          : name
+      ),
+    [showOnlyDisplayName, displayName, name]
+  );
+
+  const badges = useMemo(
+    () => (
+      <>
+        {isDisabled && (
+          <Badge
+            className="m-l-xs badge-grey"
+            count={t('label.disabled')}
+            data-testid="disabled"
+          />
+        )}
+        {deleted && (
+          <Col className="text-xs" flex="100px">
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              {t('label.deleted')}
+            </span>
+          </Col>
+        )}
+        {badge && <Col>{badge}</Col>}
+      </>
+    ),
+    [isDisabled, deleted, badge]
+  );
+
   const content = (
     <Row
       align="middle"
@@ -75,107 +112,96 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={`d-flex flex-col gap-2 ${
-          deleted || badge ? 'w-max-full-140' : 'entity-header-content'
-        }`}>
+        className={classNames('d-flex flex-col gap-1', {
+          'w-max-full-140': deleted || badge,
+        })}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Tooltip placement="bottom" title={stringToHTML(name)}>
-            <Typography.Text
-              className={classNames(
-                'entity-header-name',
-                nameClassName,
-                'm-b-0 d-block display-sm font-semibold'
-              )}
-              data-testid="entity-header-name"
-              ellipsis={{ tooltip: true }}>
-              {stringToHTML(name)}
-            </Typography.Text>
-          </Tooltip>
+          <div className="d-flex items-center gap-2">
+            <Tooltip
+              placement="bottom"
+              title={stringToHTML(displayName ?? name)}>
+              <Typography.Text
+                ellipsis
+                className={classNames(
+                  'entity-header-name',
+                  nameClassName,
+                  'm-b-0 d-block display-xs font-semibold'
+                )}
+                data-testid="entity-header-display-name">
+                {stringToHTML(displayName ?? name)}
+              </Typography.Text>
+            </Tooltip>
+            {badges}
+          </div>
         ) : null}
 
         <div
           className="d-flex gap-3 items-center"
           data-testid="entity-header-title">
-          <Typography.Text
-            className={classNames(
-              'entity-header-display-name',
-              displayNameClassName,
-              'm-b-0 subheading text-md font-medium'
-            )}
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}
-            style={{ color: color ?? TEXT_COLOR }}>
-            {stringToHTML(displayName || name)}
-            {openEntityInNewPage && (
-              <IconExternalLink
-                className="anticon vertical-baseline m-l-xss"
-                height={14}
-                width={14}
-              />
-            )}
-          </Typography.Text>
+          <Tooltip placement="bottom" title={entityName}>
+            <Typography.Text
+              ellipsis
+              className={classNames(displayNameClassName, 'm-b-0', {
+                'display-xs entity-header-name font-semibold': !displayName,
+                'text-md entity-header-display-name font-medium': displayName,
+              })}
+              data-testid="entity-header-name">
+              {entityName}
+              {openEntityInNewPage && (
+                <IconExternalLink
+                  className="anticon vertical-middle m-l-xss"
+                  height={14}
+                  width={14}
+                />
+              )}
+            </Typography.Text>
+          </Tooltip>
 
           <Tooltip
             placement="topRight"
-            title={copyTooltip ?? t('message.copy-to-clipboard')}>
+            title={
+              copyTooltip ??
+              t('label.copy-item', { item: t('label.url-uppercase') })
+            }>
             <Button
               className="remove-button-default-styling copy-button flex-center p-xss "
               icon={<Icon component={ShareIcon} />}
               onClick={handleShareButtonClick}
             />
           </Tooltip>
-          {!excludeEntityService && (
-            <Tooltip
-              title={t('label.field-entity', {
-                field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
-                entity: capitalize(entityType),
-              })}>
-              <Button
-                className="entity-follow-button flex-center gap-1 text-sm "
-                data-testid="entity-follow-button"
-                disabled={deleted}
-                icon={<Icon component={StarFilledIcon} />}
-                loading={isFollowingLoading}
-                onClick={handleFollowingClick}>
-                <Typography.Text>
-                  {isFollowing ? 'Following' : 'Follow'}
-                </Typography.Text>
-              </Button>
-            </Tooltip>
-          )}
+          {!excludeEntityService &&
+            !deleted &&
+            !isCustomizedView &&
+            handleFollowingClick && (
+              <Tooltip
+                title={t('label.field-entity', {
+                  field: t(`label.${isFollowing ? 'un-follow' : 'follow'}`),
+                  entity: capitalize(entityType),
+                })}>
+                <Button
+                  className="entity-follow-button flex-center gap-1 text-sm "
+                  data-testid="entity-follow-button"
+                  disabled={deleted}
+                  icon={<Icon component={StarFilledIcon} />}
+                  loading={isFollowingLoading}
+                  onClick={handleFollowingClick}>
+                  <Typography.Text>
+                    {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
+                  </Typography.Text>
+                </Button>
+              </Tooltip>
+            )}
         </div>
       </Col>
-      {certification && (
-        <Col className="text-xs">
-          <div className="d-flex items-center">
-            <Divider className="m-x-xs h-6 m-r-sm" type="vertical" />
-            <CertificationTag certification={certification} />
-          </div>
-        </Col>
-      )}
-      {isDisabled && (
-        <Badge
-          className="m-l-xs badge-grey"
-          count={t('label.disabled')}
-          data-testid="disabled"
-        />
-      )}
-      {deleted && (
-        <Col className="text-xs" flex="100px">
-          <span className="deleted-badge-button" data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
-            {t('label.deleted')}
-          </span>
-        </Col>
-      )}
-      {badge && <Col>{badge}</Col>}
+
+      {isEmpty(displayName) ? badges : null}
     </Row>
   );
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block w-full"
+      className="no-underline d-inline-block w-40  "
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

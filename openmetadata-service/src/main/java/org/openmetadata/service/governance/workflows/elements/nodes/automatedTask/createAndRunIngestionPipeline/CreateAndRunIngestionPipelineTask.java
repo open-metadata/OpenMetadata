@@ -1,6 +1,8 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline;
 
+import static org.openmetadata.service.governance.workflows.Workflow.INGESTION_PIPELINE_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -32,7 +34,7 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess =
-        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(false).build();
+        new SubProcessBuilder().id(subProcessId).setAsync(true).exclusive(true).build();
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
@@ -46,6 +48,7 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
     ServiceTask runIngestionPipeline =
         getRunIngestionPipelineServiceTask(
             subProcessId,
+            nodeDefinition.getConfig().getShouldRun(),
             nodeDefinition.getConfig().getWaitForCompletion(),
             nodeDefinition.getConfig().getTimeoutSeconds(),
             JsonUtils.pojoToJson(nodeDefinition.getInputNamespaceMap()));
@@ -60,9 +63,24 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
 
     subProcess.addFlowElement(
         new SequenceFlow(startEvent.getId(), createIngestionPipeline.getId()));
-    subProcess.addFlowElement(
-        new SequenceFlow(createIngestionPipeline.getId(), runIngestionPipeline.getId()));
+
+    SequenceFlow runIngestionPipelineIfNotNull =
+        new SequenceFlow(createIngestionPipeline.getId(), runIngestionPipeline.getId());
+    runIngestionPipelineIfNotNull.setConditionExpression(
+        String.format(
+            "${%s != null}",
+            getNamespacedVariableName(nodeDefinition.getName(), INGESTION_PIPELINE_ID_VARIABLE)));
+    subProcess.addFlowElement(runIngestionPipelineIfNotNull);
+
     subProcess.addFlowElement(new SequenceFlow(runIngestionPipeline.getId(), endEvent.getId()));
+
+    SequenceFlow skipRunIngestionPipelineIfNull =
+        new SequenceFlow(createIngestionPipeline.getId(), endEvent.getId());
+    skipRunIngestionPipelineIfNull.setConditionExpression(
+        String.format(
+            "${%s == null}",
+            getNamespacedVariableName(nodeDefinition.getName(), INGESTION_PIPELINE_ID_VARIABLE)));
+    subProcess.addFlowElement(skipRunIngestionPipelineIfNull);
 
     if (config.getStoreStageStatus()) {
       attachWorkflowInstanceStageListeners(subProcess);
@@ -79,9 +97,15 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
 
   private ServiceTask getRunIngestionPipelineServiceTask(
       String subProcessId,
+      boolean shouldRun,
       boolean waitForCompletion,
       long timeoutSeconds,
       String inputNamespaceMap) {
+    FieldExtension shouldRunExpr =
+        new FieldExtensionBuilder()
+            .fieldName("shouldRunExpr")
+            .fieldValue(String.valueOf(shouldRun))
+            .build();
     FieldExtension waitExpr =
         new FieldExtensionBuilder()
             .fieldName("waitForCompletionExpr")
@@ -108,11 +132,13 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
     return new ServiceTaskBuilder()
         .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
         .implementation(RunIngestionPipelineDelegate.class.getName())
+        .addFieldExtension(shouldRunExpr)
         .addFieldExtension(waitExpr)
         .addFieldExtension(timeoutSecondsExpr)
         .addFieldExtension(inputNamespaceMapExpr)
         .addFieldExtension(pipelineServiceClientExpr)
         .setAsync(true)
+        .exclusive(true)
         .build();
   }
 
@@ -156,6 +182,8 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
         .addFieldExtension(ingestionPipelineMapperExpr)
         .addFieldExtension(pipelineServiceClientExpr)
         .addFieldExtension(inputNamespaceMapExpr)
+        .setAsync(true)
+        .exclusive(true)
         .build();
   }
 

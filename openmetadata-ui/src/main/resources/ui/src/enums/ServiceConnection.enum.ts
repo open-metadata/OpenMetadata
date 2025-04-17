@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+// IMPORTANT: While adding new fields, make sure to keep the order of the enum values
+// same as the order of the fields you in the UI form
 export enum ServiceConnectionFilterPatternFields {
   DATABASE_FILTER_PATTERN = 'databaseFilterPattern',
   SCHEMA_FILTER_PATTERN = 'schemaFilterPattern',

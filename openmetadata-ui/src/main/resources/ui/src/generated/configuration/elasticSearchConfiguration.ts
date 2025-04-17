@@ -35,6 +35,10 @@ export interface ElasticSearchConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
+     * Configuration for natural language search capabilities
+     */
+    naturalLanguageSearch?: NaturalLanguageSearch;
+    /**
      * Elastic Search Password for Login
      */
     password?: string;
@@ -75,6 +79,50 @@ export interface ElasticSearchConfiguration {
      * Elastic Search Username for Login
      */
     username?: string;
+}
+
+/**
+ * Configuration for natural language search capabilities
+ */
+export interface NaturalLanguageSearch {
+    /**
+     * AWS Bedrock configuration for natural language processing
+     */
+    bedrock?: Bedrock;
+    /**
+     * Enable or disable natural language search
+     */
+    enabled?: boolean;
+    /**
+     * Fully qualified class name of the NLQService implementation to use
+     */
+    providerClass?: string;
+}
+
+/**
+ * AWS Bedrock configuration for natural language processing
+ */
+export interface Bedrock {
+    /**
+     * AWS access key for Bedrock service authentication
+     */
+    accessKey?: string;
+    /**
+     * Bedrock model identifier to use for query transformation
+     */
+    modelId?: string;
+    /**
+     * AWS Region for Bedrock service
+     */
+    region?: string;
+    /**
+     * AWS secret key for Bedrock service authentication
+     */
+    secretKey?: string;
+    /**
+     * Set to true to use IAM role based authentication instead of access/secret keys.
+     */
+    useIamRole?: boolean;
 }
 
 /**

@@ -28,7 +28,6 @@ import FileNode from './File/FileNode';
 import { Focus } from './focus';
 import { Hashtag } from './hashtag';
 import { hashtagSuggestion } from './hashtag/hashtagSuggestion';
-import { Image } from './image/image';
 import { LinkExtension } from './link';
 import MathEquation from './MathEquation/MathEquation';
 import { Mention } from './mention';
@@ -116,10 +115,6 @@ export const extensions = [
   }),
   DiffView,
   TextHighlightView,
-  Image.configure({
-    allowBase64: true,
-    inline: true,
-  }),
   BlockAndDragDrop,
   Focus.configure({
     mode: 'deepest',

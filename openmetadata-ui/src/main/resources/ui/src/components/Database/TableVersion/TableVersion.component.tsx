@@ -147,7 +147,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
         key: EntityTabs.SCHEMA,
         label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -260,9 +260,10 @@ const TableVersion: React.FC<TableVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.TABLE}
               onUpdate={() => Promise.resolve()}>
-              <Col span={24}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
-                  defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                  className="tabs-new"
+                  defaultActiveKey={tab}
                   items={tabItems}
                   onChange={handleTabChange}
                 />

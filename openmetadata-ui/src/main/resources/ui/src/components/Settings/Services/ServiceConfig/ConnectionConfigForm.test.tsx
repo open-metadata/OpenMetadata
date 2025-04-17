@@ -17,42 +17,9 @@ import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
-import { getDashboardConfig } from '../../../../utils/DashboardServiceUtils';
-import { getDatabaseConfig } from '../../../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
-import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
-import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
-import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
+import { getConnectionSchemas } from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
-
-const services = [
-  {
-    name: ServiceCategory.DASHBOARD_SERVICES,
-    configVal: getDashboardConfig as jest.Mock,
-  },
-  {
-    name: ServiceCategory.MESSAGING_SERVICES,
-    configVal: getMessagingConfig as jest.Mock,
-  },
-  {
-    name: ServiceCategory.METADATA_SERVICES,
-    configVal: getMetadataConfig as jest.Mock,
-  },
-  {
-    name: ServiceCategory.ML_MODEL_SERVICES,
-    configVal: getMlmodelConfig as jest.Mock,
-  },
-  {
-    name: ServiceCategory.PIPELINE_SERVICES,
-    configVal: getPipelineConfig as jest.Mock,
-  },
-  {
-    name: ServiceCategory.SEARCH_SERVICES,
-    configVal: getSearchServiceConfig as jest.Mock,
-  },
-];
 
 const mockServicesData = {
   id: '1',
@@ -153,6 +120,20 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
 
 jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
   formatFormDataForSubmit: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
+  getConnectionSchemas: jest.fn().mockReturnValue({
+    connSch: {
+      schema: {
+        name: 'test',
+      },
+      uiSchema: {},
+    },
+    validConfig: {},
+  }),
+  getFilteredSchema: jest.fn().mockReturnValue({}),
+  getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
@@ -257,7 +238,13 @@ describe('ServiceConfig', () => {
   });
 
   it('should render no config available if form data has no schema', async () => {
-    (getDatabaseConfig as jest.Mock).mockReturnValue({ schema: {} });
+    (getConnectionSchemas as jest.Mock).mockReturnValueOnce({
+      connSch: {
+        schema: {},
+        uiSchema: {},
+      },
+      validConfig: {},
+    });
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
@@ -301,24 +288,6 @@ describe('ServiceConfig', () => {
     render(<ConnectionConfigForm {...mockProps} />);
     await act(async () => {
       expect(await screen.queryByTestId('ip-address')).not.toBeInTheDocument();
-    });
-  });
-
-  services.map((service) => {
-    it(`should render ${service.name} service`, async () => {
-      render(
-        <ConnectionConfigForm
-          disableTestConnection={false}
-          serviceCategory={service.name}
-          serviceType="testType"
-          status={LOADING_STATE.SUCCESS}
-          onFocus={mockOnFocus}
-          onSave={mockHandleUpdate}
-        />
-      );
-      await act(async () => {
-        expect(service.configVal).toHaveBeenCalled();
-      });
     });
   });
 });

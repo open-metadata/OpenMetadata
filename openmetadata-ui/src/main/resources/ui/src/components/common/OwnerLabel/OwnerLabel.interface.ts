@@ -15,6 +15,7 @@ import { EntityReference } from '../../../generated/tests/testCase';
 
 export interface OwnerLabelProps {
   owners?: EntityReference[];
+  showLabel?: boolean;
   className?: string;
   onUpdate?: (owners?: EntityReference[]) => void;
   hasPermission?: boolean;
@@ -27,4 +28,5 @@ export interface OwnerLabelProps {
   };
   tooltipText?: string;
   isCompactView?: boolean;
+  avatarSize?: number;
 }

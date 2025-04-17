@@ -56,7 +56,7 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     const databasesResponse = page.waitForResponse('/api/v1/databases?**');
 
     const headerText = await page.textContent(
-      `[data-testid="entity-header-display-name"]`
+      `[data-testid="entity-header-name"]`
     );
 
     expect(headerText).toBe(serviceName);

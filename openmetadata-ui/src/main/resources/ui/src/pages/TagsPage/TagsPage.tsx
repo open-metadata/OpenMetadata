@@ -63,6 +63,7 @@ import {
 } from '../../rest/tagAPI';
 import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   checkPermission,
   DEFAULT_ENTITY_PERMISSION,
@@ -75,6 +76,7 @@ import { DeleteTagsType, SubmitProps } from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
+  const { t } = useTranslation();
   const history = useHistory();
   const { fqn: tagCategoryName } = useFqn();
   const [classifications, setClassifications] = useState<Array<Classification>>(
@@ -100,7 +102,6 @@ const TagsPage = () => {
 
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
 
-  const { t } = useTranslation();
   const createClassificationPermission = useMemo(
     () =>
       checkPermission(
@@ -296,7 +297,9 @@ const TagsPage = () => {
     } catch (err) {
       showErrorToast(
         err as AxiosError,
-        t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+        t('server.delete-entity-error', {
+          entity: t('label.tag-lowercase'),
+        })
       );
     } finally {
       setDeleteTags({ data: undefined, state: false });
@@ -542,9 +545,6 @@ const TagsPage = () => {
               className="w-full p-x-sm m-b-sm"
               direction="vertical"
               size="middle">
-              <Typography.Text className="text-sm font-semibold">
-                {t('label.classification-plural')}
-              </Typography.Text>
               {createClassificationPermission && (
                 <Button
                   block
@@ -702,7 +702,7 @@ const TagsPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
+    <div>
       <ResizableLeftPanels
         className="content-height-with-resizable-panel"
         firstPanel={{
@@ -710,6 +710,7 @@ const TagsPage = () => {
           minWidth: 280,
           flex: 0.13,
           children: leftPanelLayout,
+          title: t('label.classification-plural'),
         }}
         pageTitle={t('label.tag-plural')}
         secondPanel={{
@@ -787,4 +788,4 @@ const TagsPage = () => {
   );
 };
 
-export default withPageLayout('tag-plural')(TagsPage);
+export default withPageLayout(i18n.t('label.tag-plural'))(TagsPage);

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { Button } from 'antd';
 import classNames from 'classnames';
 import { Change } from 'diff';
-import { uniqueId } from 'lodash';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
 import {
@@ -40,76 +40,104 @@ export const DiffViewNew = ({
   useEffect(() => {
     const checkHeight = () => {
       if (contentRef.current) {
-        const lineHeight = parseInt(
-          window.getComputedStyle(contentRef.current).lineHeight,
-          10
-        );
-        const twoLinesHeight = lineHeight * 2;
+        const computedStyle = window.getComputedStyle(contentRef.current);
+        const lineHeight = parseInt(computedStyle.lineHeight, 10);
 
-        // Get the actual content height without restrictions
-        const clone = contentRef.current.cloneNode(true) as HTMLElement;
-        clone.style.maxHeight = 'none';
-        clone.style.position = 'absolute';
-        clone.style.visibility = 'hidden';
-        document.body.appendChild(clone);
-        const fullHeight = clone.scrollHeight;
-        document.body.removeChild(clone);
+        // Force the content to be unclamped temporarily for measurement
+        (contentRef.current.style as any)['-webkit-line-clamp'] = 'none';
+        contentRef.current.style.maxHeight = 'none';
 
-        // Compare the full height with two lines height
-        setShouldShowViewMore(fullHeight > twoLinesHeight);
+        // Get the full height
+        const fullHeight = contentRef.current.scrollHeight;
+
+        // Reset the styles
+        (contentRef.current.style as any)['-webkit-line-clamp'] = '';
+        contentRef.current.style.maxHeight = '';
+
+        // Calculate max height based on number of lines
+        const maxLines = showDescTitle ? 3 : 2;
+        const maxHeight = lineHeight * maxLines;
+
+        setShouldShowViewMore(fullHeight > maxHeight);
       }
     };
 
-    // Small delay to ensure content is rendered
-    const timer = setTimeout(checkHeight, 100);
+    checkHeight();
 
-    return () => clearTimeout(timer);
-  }, [diffArr]);
+    const timer = setTimeout(checkHeight, 200);
 
-  const elements = diffArr.map((diff) => {
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [diffArr, showDescTitle]);
+
+  const contentClassName = useMemo(() => {
+    if (expanded) {
+      return '';
+    }
+
+    return showDescTitle
+      ? 'clamp-text-3 overflow-hidden'
+      : 'clamp-text-2 overflow-hidden';
+  }, [expanded, showDescTitle]);
+
+  const getDiffKey = (diff: Change) => {
     if (diff.added) {
-      return (
-        <ins
-          className="diff-added-new"
-          data-testid="diff-added"
-          key={uniqueId()}>
-          <TaskDescriptionPreviewer
-            enableSeeMoreVariant={false}
-            markdown={diff.value}
-            showReadMoreBtn={false}
-          />
-        </ins>
-      );
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-added`;
     }
     if (diff.removed) {
-      return (
-        <del
-          className="diff-removed-new"
-          data-testid="diff-removed-new"
-          key={uniqueId()}>
-          <TaskDescriptionPreviewer
-            enableSeeMoreVariant={false}
-            markdown={diff.value}
-            showReadMoreBtn={false}
-          />
-        </del>
-      );
+      return `diff-${diff.value}-${diff.removed}-${diff.added}-removed`;
     }
 
-    return (
-      <span
-        className="diff-normal-new"
-        data-testid="diff-normal-new"
-        key={uniqueId()}>
-        {' '}
-        <TaskDescriptionPreviewer
-          enableSeeMoreVariant={false}
-          markdown={diff.value}
-          showReadMoreBtn={false}
-        />
-      </span>
-    );
-  });
+    return `diff-${diff.value}-${diff.removed}-${diff.added}-normal`;
+  };
+
+  const elements = useMemo(
+    () =>
+      diffArr.map((diff) => {
+        const key = getDiffKey(diff);
+
+        if (diff.added) {
+          return (
+            <ins className="diff-added-new" data-testid="diff-added" key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </ins>
+          );
+        }
+        if (diff.removed) {
+          return (
+            <del
+              className="diff-removed-new"
+              data-testid="diff-removed-new"
+              key={key}>
+              <TaskDescriptionPreviewer
+                enableSeeMoreVariant={false}
+                markdown={diff.value}
+                showReadMoreBtn={false}
+              />
+            </del>
+          );
+        }
+
+        return (
+          <span
+            className="diff-normal-new"
+            data-testid="diff-normal-new"
+            key={key}>
+            <TaskDescriptionPreviewer
+              enableSeeMoreVariant={false}
+              markdown={diff.value}
+              showReadMoreBtn={false}
+            />
+          </span>
+        );
+      }),
+    [diffArr]
+  );
 
   return (
     <div
@@ -149,25 +177,18 @@ export const DiffViewNew = ({
         {diffArr.length ? (
           <>
             <div
-              className={classNames(
-                'relative',
-                expanded
-                  ? ''
-                  : showDescTitle
-                  ? 'clamp-text-3 overflow-hidden'
-                  : 'clamp-text-2  overflow-hidden'
-              )}
+              className={classNames('relative', contentClassName)}
               ref={contentRef}>
               {elements}
             </div>
             {shouldShowViewMore && (
               <div className="mt-2">
-                <span
-                  className="cursor-pointer view-more-less-button"
+                <Button
+                  className="view-more-less-button cursor-pointer remove-button-default-styling"
                   data-testid="view-more-button"
                   onClick={() => setExpanded(!expanded)}>
                   {expanded ? t('label.view-less') : t('label.view-more')}
-                </span>
+                </Button>
               </div>
             )}
           </>

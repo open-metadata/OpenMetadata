@@ -58,15 +58,7 @@ The workflow is modeled around the following JSON Schema.
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=9 %}
-
-- **Client ID** : Client ID of the data storage account
-- **Client Secret** : Client Secret of the account
-- **Tenant ID** : Tenant ID under which the data storage account falls
-- **Account Name** : Account Name of the data Storage
-
-{% /codeInfo %}
-
+{% partial file="/v1.6/connectors/yaml/common/azure-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
@@ -87,13 +79,11 @@ source:
     config:
       type: Datalake
       configSource:    
+        securityConfig:     
 ```
+{% partial file="/v1.6/connectors/yaml/common/azure-config.md" /%}
+
 ```yaml {% srNumber=9 %}  
-        securityConfig: 
-          clientId: client-id
-          clientSecret: client-secret
-          tenantId: tenant-id
-          accountName: account-name
       prefix: prefix
 ```
 

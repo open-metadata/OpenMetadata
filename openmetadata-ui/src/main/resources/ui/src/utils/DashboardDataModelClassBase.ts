@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -36,9 +35,7 @@ import {
 import i18n from './i18next/LocalUtil';
 
 export interface DashboardDataModelDetailPageTabProps {
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   handleFeedCount: (data: FeedCounts) => void;
   editLineagePermission: boolean;
@@ -50,7 +47,28 @@ export interface DashboardDataModelDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
 }
 
+type DashboardDataModelWidgetKeys =
+  | DetailPageWidgetKeys.DESCRIPTION
+  | DetailPageWidgetKeys.DATA_MODEL
+  | DetailPageWidgetKeys.DATA_PRODUCTS
+  | DetailPageWidgetKeys.TAGS
+  | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+
 class DashboardDataModelBase {
+  defaultWidgetHeight: Record<DashboardDataModelWidgetKeys, number>;
+
+  constructor() {
+    this.defaultWidgetHeight = {
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.DATA_MODEL]: 6,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+    };
+  }
+
   public getDashboardDataModelDetailPageTabs(
     tabsProps: DashboardDataModelDetailPageTabProps
   ): TabProps[] {
@@ -72,30 +90,43 @@ class DashboardDataModelBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.MODEL) {
       return [];
     }
 
     return [
       {
-        h: 2,
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_MODEL] +
+          0.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_MODEL],
+            i: DetailPageWidgetKeys.DATA_MODEL,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
-        h: 6,
-        i: DetailPageWidgetKeys.DATA_MODEL,
-        w: 6,
-        x: 0,
-        y: 2,
-        static: false,
-      },
-      {
-        h: 1,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
@@ -103,7 +134,7 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS],
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
@@ -111,7 +142,7 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 2,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS],
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
@@ -119,7 +150,7 @@ class DashboardDataModelBase {
         static: false,
       },
       {
-        h: 4,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
@@ -152,6 +183,25 @@ class DashboardDataModelBase {
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDashboardDataModelWidgetsFromKey(widgetConfig);
+  }
+
+  public getWidgetHeight(widgetName: string) {
+    switch (widgetName) {
+      case DetailPageWidgetKeys.DESCRIPTION:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION];
+      case DetailPageWidgetKeys.DATA_MODEL:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_MODEL];
+      case DetailPageWidgetKeys.DATA_PRODUCTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS];
+      case DetailPageWidgetKeys.TAGS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
+      case DetailPageWidgetKeys.GLOSSARY_TERMS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
+      default:
+        return 1;
+    }
   }
 }
 

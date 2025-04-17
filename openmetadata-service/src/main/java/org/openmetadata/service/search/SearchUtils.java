@@ -111,6 +111,7 @@ public final class SearchUtils {
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     return Boolean.TRUE.equals(
             SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+                .getGlobalSettings()
                 .getEnableAccessControl())
         && subjectContext != null
         && !subjectContext.isAdmin()
@@ -161,5 +162,22 @@ public final class SearchUtils {
     requiredFields.addAll(
         Set.of("fullyQualifiedName", "service", "fqnHash", "id", "entityType", "upstreamLineage"));
     return requiredFields;
+  }
+
+  public static List<Object> searchAfter(String searchAfter) {
+    if (!nullOrEmpty(searchAfter)) {
+      return List.of(searchAfter.split(","));
+    }
+    return null;
+  }
+
+  public static List<String> sourceFields(String sourceFields) {
+    if (!nullOrEmpty(sourceFields)) {
+      return Arrays.stream(sourceFields.split(","))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .collect(Collectors.toList());
+    }
+    return Collections.emptyList();
   }
 }

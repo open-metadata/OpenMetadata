@@ -13,12 +13,13 @@
 
 import { Button, Divider, Form, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
@@ -27,37 +28,21 @@ import {
   Effect,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
+import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
-import {
-  getPath,
-  getPolicyWithFqnPath,
-  getSettingPath,
-} from '../../../utils/RouterUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
+import { getPath, getPolicyWithFqnPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
-const breadcrumb = [
-  {
-    name: t('label.setting-plural'),
-    url: getSettingPath(),
-  },
-  {
-    name: t('label.policy-plural'),
-    url: policiesPath,
-  },
-  {
-    name: t('label.add-new-entity', { entity: t('label.policy') }),
-    url: '',
-  },
-];
-
 const AddPolicyPage = () => {
   const history = useHistory();
+  const { t } = useTranslation();
 
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -132,16 +117,18 @@ const AddPolicyPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-policy-container">
-            <TitleBreadcrumb titleLinks={breadcrumb} />
+          <div data-testid="add-policy-container">
+            <TitleBreadcrumb titleLinks={ADD_POLICY_PAGE_BREADCRUMB} />
             <div className="m-t-md">
               <Typography.Paragraph
                 className="text-base"
                 data-testid="form-title">
-                {t('label.add-new-entity', { entity: t('label.policy') })}
+                {t('label.add-new-entity', {
+                  entity: t('label.policy'),
+                })}
               </Typography.Paragraph>
               <Form
                 data-testid="policy-form"
@@ -208,7 +195,7 @@ const AddPolicyPage = () => {
             <Typography.Text>{t('message.add-policy-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -216,4 +203,8 @@ const AddPolicyPage = () => {
   );
 };
 
-export default AddPolicyPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.policy'),
+  })
+)(AddPolicyPage);

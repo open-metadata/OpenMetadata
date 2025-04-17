@@ -19,7 +19,6 @@ import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase'
 import EntityRightPanel from './EntityRightPanel';
 
 const editPermission = true;
-const mockExtensionUpdate = jest.fn();
 
 jest.mock(
   '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
@@ -67,6 +66,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
       },
     },
     onThreadLinkSelect: jest.fn(),
+    filterWidgets: jest.fn(),
   })),
 }));
 
@@ -89,7 +89,6 @@ describe('EntityRightPanel component test', () => {
         editCustomAttributePermission={editPermission}
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );
@@ -108,7 +107,6 @@ describe('EntityRightPanel component test', () => {
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );
@@ -128,7 +126,6 @@ describe('EntityRightPanel component test', () => {
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );
@@ -147,7 +144,6 @@ describe('EntityRightPanel component test', () => {
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );
@@ -172,7 +168,6 @@ describe('EntityRightPanel component test', () => {
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );
@@ -195,7 +190,6 @@ describe('EntityRightPanel component test', () => {
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );
@@ -216,7 +210,6 @@ describe('EntityRightPanel component test', () => {
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );
@@ -238,7 +231,6 @@ describe('EntityRightPanel component test', () => {
         entityType={EntityType.TABLE}
         selectedTags={mockSelectedTags}
         showDataProductContainer={false}
-        onExtensionUpdate={mockExtensionUpdate}
         onTagSelectionChange={mockOnTagSelectionChange}
       />
     );

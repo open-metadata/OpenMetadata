@@ -19,6 +19,30 @@
 .domain-link-text {
   color: @grey-700;
 }
+
 .domain-link-container {
-  width: 150px;
+  max-width: 148px;
+  .domain-link-text {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+}
+
+.domain-tooltip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.domain-count-button {
+  background-color: @background-tertiary;
+  height: 32px;
+  width: 32px;
+  border-radius: 200px;
+  text-align: center;
+  text-decoration: none;
+  margin-left: -4px;
 }

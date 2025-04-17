@@ -5,7 +5,8 @@ collate: false
 ---
 
 # AZURE resources on Postgres/MySQL Auth
-https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-extensions#how-to-use-postgresql-extensions
+[Azure Reference Doc](https://learn.microsoft.com/en-us/azure/postgresql/flexible-server/concepts-extensions#how-to-use-postgresql-extensions)
+
 # Requirements
 
 1. Azure Postgres or MySQL Cluster with auth enabled

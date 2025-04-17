@@ -30,27 +30,10 @@ pre {
 .text-xss {
   font-size: 10px;
 }
-.text-xs {
-  font-size: 12px;
-  line-height: 1rem /* 16px */;
-}
-.text-lg {
-  font-size: 18px;
-}
-.text-sm {
-  font-size: 14px;
-  line-height: 1rem /* 16px */;
-}
-.text-md {
-  font-size: 16px;
-}
+
 .text-base {
   font-size: 1rem /* 16px */;
   line-height: 1.5rem /* 24px */;
-}
-.text-xl {
-  font-size: 1.25rem /* 20px */;
-  line-height: 1.75rem /* 28px */;
 }
 
 .text-2xl {
@@ -96,6 +79,9 @@ pre {
 .text-white {
   color: @white;
 }
+.text-blue {
+  color: @blue-9;
+}
 .text-black {
   color: @black;
 }
@@ -104,6 +90,9 @@ pre {
 }
 .text-grey-3 {
   color: @grey-3;
+}
+.text-grey-14 {
+  color: @grey-14;
 }
 .text-grey-body {
   color: @text-color;
@@ -127,6 +116,18 @@ pre {
   &:hover {
     color: @text-color;
   }
+}
+
+.generate-text-grey-colors(@n, @i: 100) when (@i =< @n) {
+  &-@{i} {
+    color: ~'@{grey-@{i}}';
+  }
+
+  .generate-text-grey-colors(@n, (@i + 100));
+}
+
+.text-grey {
+  .generate-text-grey-colors(900);
 }
 
 .text-success {
@@ -230,19 +231,19 @@ a.ant-typography,
 }
 
 .text-xl {
-  .text-style(20px, 30px, 0%);
+  .text-style(20px, 30px);
 }
 .text-lg {
-  .text-style(18px, 28px, 0%);
+  .text-style(18px, 28px);
 }
 .text-md {
-  .text-style(16px, 24px, 0%);
+  .text-style(16px, 24px);
 }
 .text-sm {
-  .text-style(14px, 20px, 0%);
+  .text-style(14px, 20px);
 }
 .text-xs {
-  .text-style(12px, 18px, 0%);
+  .text-style(12px, 18px);
 }
 
 // =============================== End of New Design System ===============================

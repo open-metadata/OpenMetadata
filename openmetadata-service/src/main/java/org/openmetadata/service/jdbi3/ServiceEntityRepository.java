@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -83,16 +84,16 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void storeRelationships(T service) {
-    addIngestionAgentRelationship(service);
+    addIngestionRunnerRelationship(service);
   }
 
-  private void addIngestionAgentRelationship(T service) {
-    if (service.getIngestionAgent() != null) {
+  private void addIngestionRunnerRelationship(T service) {
+    if (service.getIngestionRunner() != null) {
       addRelationship(
           service.getId(),
-          service.getIngestionAgent().getId(),
+          service.getIngestionRunner().getId(),
           entityType,
-          service.getIngestionAgent().getType(),
+          service.getIngestionRunner().getType(),
           Relationship.USES);
     }
   }
@@ -133,6 +134,7 @@ public abstract class ServiceEntityRepository<
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateConnection();
+      updateIngestionRunner();
     }
 
     private void updateConnection() {
@@ -165,6 +167,17 @@ public abstract class ServiceEntityRepository<
 
           recordChange("connection", "old-encrypted-value", "new-encrypted-value", true);
         }
+      }
+    }
+
+    private void updateIngestionRunner() {
+      UUID originalAgentId =
+          original.getIngestionRunner() != null ? original.getIngestionRunner().getId() : null;
+      UUID updatedAgentId =
+          updated.getIngestionRunner() != null ? updated.getIngestionRunner().getId() : null;
+      if (!Objects.equals(originalAgentId, updatedAgentId)) {
+        addIngestionRunnerRelationship(updated);
+        recordChange("ingestionAgent", originalAgentId, updatedAgentId, true);
       }
     }
   }

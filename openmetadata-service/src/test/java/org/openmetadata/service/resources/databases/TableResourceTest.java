@@ -2108,6 +2108,24 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     "description"))
             .getChangeSource(),
         ChangeSource.AUTOMATED);
+
+    Table updateNonTrackedField = JsonUtils.deepCopy(nestedColumnUpdate, Table.class);
+    updateNonTrackedField.setTags(List.of(USER_ADDRESS_TAG_LABEL));
+    updateNonTrackedField =
+        patchEntity(
+            table.getId(),
+            JsonUtils.pojoToJson(nestedColumnUpdate),
+            updateNonTrackedField,
+            ADMIN_AUTH_HEADERS,
+            ChangeSource.AUTOMATED);
+
+    assertNotNull(updateNonTrackedField.getChangeDescription().getChangeSummary());
+    assertFalse(
+        updateNonTrackedField
+            .getChangeDescription()
+            .getChangeSummary()
+            .getAdditionalProperties()
+            .isEmpty());
   }
 
   private void assertChangeSummaryInSearch(EntityInterface entity) throws IOException {
