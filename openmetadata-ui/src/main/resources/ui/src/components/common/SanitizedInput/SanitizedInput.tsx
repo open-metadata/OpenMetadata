@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Input, InputProps } from 'antd';
-import React, { FC, useCallback } from 'react';
+import { FC, useCallback } from 'react';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
 
 const SanitizedInput: FC<InputProps> = ({ value, onChange, ...props }) => {

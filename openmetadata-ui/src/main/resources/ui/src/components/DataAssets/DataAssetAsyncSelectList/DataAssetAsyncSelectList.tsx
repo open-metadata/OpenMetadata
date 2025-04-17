@@ -13,7 +13,7 @@
 import { Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isArray, isString } from 'lodash';
-import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';

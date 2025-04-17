@@ -26,8 +26,9 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 
 import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
@@ -71,9 +72,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   onCancel,
   table,
 }) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { dashboardType } = useParams<{ dashboardType: string }>();
-
+  const { t } = useTranslation();
   const { fqn: decodedEntityFQN } = useFqn();
   const { activeColumnFqn } = useMemo(() => {
     const param = location.search;
@@ -263,7 +264,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       setCurrentColumnType(selectedColumn?.dataType);
     }
     if (selectedColumn) {
-      history.push({
+      navigate({
         search: Qs.stringify({
           activeColumnFqn: selectedColumn?.fullyQualifiedName,
         }),

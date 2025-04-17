@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Modal, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AxiosError } from 'axios';

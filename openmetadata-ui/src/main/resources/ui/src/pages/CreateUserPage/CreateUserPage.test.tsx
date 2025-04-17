@@ -42,7 +42,6 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({
     state: { isAdminPage: false },
   }),
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     bot: undefined,
   }),

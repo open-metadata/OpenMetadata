@@ -17,7 +17,7 @@ import { RangePickerProps } from 'antd/lib/date-picker';
 import { isUndefined, pick } from 'lodash';
 import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {

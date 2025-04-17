@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 import classNames from 'classnames';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { ReactComponent as IconPaperPlanePrimary } from '../../../assets/svg/paper-plane-fill.svg';
 import './send-button.less';
 

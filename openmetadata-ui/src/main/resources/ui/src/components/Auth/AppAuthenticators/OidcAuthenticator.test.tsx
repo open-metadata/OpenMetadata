@@ -40,12 +40,10 @@ jest.mock('react-oidc', () => ({
   }),
 }));
 
-const mockHistoryPush = jest.fn();
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: () => ({
-    push: mockHistoryPush,
-  }),
+  useNavigate: () => mockNavigate,
 }));
 
 jest.mock('react-helmet-async', () => ({
@@ -128,7 +126,7 @@ describe('OidcAuthenticator - Silent SignIn Tests', () => {
     // Verify the failure flow
     expect(mockTokenServiceInstance.clearRefreshInProgress).toHaveBeenCalled();
     expect(mockOnLogoutSuccess).toHaveBeenCalled();
-    expect(mockHistoryPush).toHaveBeenCalledWith(ROUTES.SIGNIN);
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.SIGNIN);
   });
 });
 

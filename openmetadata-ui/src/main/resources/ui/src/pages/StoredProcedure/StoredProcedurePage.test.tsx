@@ -122,7 +122,6 @@ jest.mock(
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'fqn', tab: 'code' })),
-  useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => {

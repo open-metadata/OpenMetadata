@@ -13,7 +13,7 @@
 import { Card, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';

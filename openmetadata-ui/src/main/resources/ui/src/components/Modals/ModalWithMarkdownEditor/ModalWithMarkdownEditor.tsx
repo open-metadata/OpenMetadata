@@ -13,7 +13,7 @@
 
 import { Button, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useRef, useState } from 'react';
+import { FunctionComponent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';

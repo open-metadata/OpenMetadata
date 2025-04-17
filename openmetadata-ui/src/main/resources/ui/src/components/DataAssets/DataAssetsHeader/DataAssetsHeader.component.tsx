@@ -16,10 +16,11 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { get, isEmpty } from 'lodash';
+import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -212,7 +213,7 @@ export const DataAssetsHeader = ({
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -399,7 +400,7 @@ export const DataAssetsHeader = ({
       return;
     }
 
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         entityType,
         dataAsset.fullyQualifiedName,
@@ -485,7 +486,9 @@ export const DataAssetsHeader = ({
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
       setIsAutoPilotTriggering(true);
-      const entityType = getEntityTypeFromServiceCategory(serviceCategory);
+      const entityType = getEntityTypeFromServiceCategory(
+        serviceCategory as ServiceTypes
+      );
       const entityLink = getEntityFeedLink(
         entityType,
         dataAsset.fullyQualifiedName ?? ''

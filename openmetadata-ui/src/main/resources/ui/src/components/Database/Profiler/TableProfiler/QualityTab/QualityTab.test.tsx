@@ -32,7 +32,6 @@ const mockTable = {
   name: 'test-table',
 };
 
-const mockPush = jest.fn();
 const mockUseTableProfiler = {
   tableProfiler: MOCK_TABLE,
   onSettingButtonClick: jest.fn(),
@@ -76,9 +75,6 @@ jest.mock('../../../../../hooks/useFqn', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 

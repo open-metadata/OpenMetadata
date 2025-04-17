@@ -47,7 +47,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
@@ -138,7 +138,7 @@ export const TaskTabNew = ({
   ...rest
 }: TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
@@ -301,7 +301,7 @@ export const TaskTabNew = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
+    navigate({
       pathname: getTaskDetailPath(taskThread),
     });
   };

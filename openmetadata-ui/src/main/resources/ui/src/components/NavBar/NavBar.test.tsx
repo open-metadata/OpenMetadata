@@ -94,10 +94,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
     .fn()
     .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
 });
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
-
 jest.mock('../common/CmdKIcon/CmdKIcon.component', () => {
   return jest.fn().mockReturnValue(<div data-testid="cmd">CmdKIcon</div>);
 });

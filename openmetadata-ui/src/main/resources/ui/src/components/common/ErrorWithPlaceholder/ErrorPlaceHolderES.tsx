@@ -13,9 +13,9 @@
 
 import { Col, Row, Space, Typography } from 'antd';
 import Qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
@@ -75,7 +75,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
   const { tab } = useParams<{ tab: string }>();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeDomain } = useDomainStore();
   const { theme } = useApplicationStore();
 
@@ -105,7 +105,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
             size={size}
             type={ERROR_PLACEHOLDER_TYPE.CREATE}
             onClick={() =>
-              history.push(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
+              navigate(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
             }
           />
         ) : (

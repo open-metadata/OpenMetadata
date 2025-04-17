@@ -14,7 +14,7 @@
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';

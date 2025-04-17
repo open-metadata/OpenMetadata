@@ -38,10 +38,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
-
 describe('Test Kill Ingestion Modal component', () => {
   it('Should render the component', async () => {
     render(<KillIngestionModal {...mockProps} />);

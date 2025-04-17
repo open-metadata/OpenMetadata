@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Typography } from 'antd';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';

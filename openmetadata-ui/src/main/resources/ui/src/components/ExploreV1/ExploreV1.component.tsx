@@ -20,7 +20,7 @@ import {
 import { Alert, Button, Card, Col, Menu, Row, Switch, Typography } from 'antd';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';

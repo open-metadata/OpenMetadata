@@ -14,9 +14,9 @@
 import { Button, Col, Divider, Modal, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
@@ -78,10 +78,10 @@ const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: testSuiteFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const afterDeleteAction = () => {
-    history.push(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
+    navigate(getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES));
   };
   const [testSuite, setTestSuite] = useState<TestSuite>();
 

@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';

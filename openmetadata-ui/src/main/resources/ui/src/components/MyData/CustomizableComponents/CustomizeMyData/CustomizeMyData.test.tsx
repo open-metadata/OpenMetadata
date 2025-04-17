@@ -24,8 +24,6 @@ import {
 import CustomizeMyData from './CustomizeMyData';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
-const mockPush = jest.fn();
-
 const mockProps: CustomizeMyDataProps = {
   initialPageData: mockDocumentData.data.pages[0],
   onSaveLayout: jest.fn(),
@@ -110,9 +108,6 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn: mockPersonaName,
     pageFqn: PageType.LandingPage,

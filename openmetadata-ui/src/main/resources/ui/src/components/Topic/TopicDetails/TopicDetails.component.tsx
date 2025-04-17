@@ -14,9 +14,9 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -81,7 +81,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedTopicFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { customizedPage, isLoading } = useCustomPages(PageType.Topic);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -170,7 +170,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey)
       );
     }
@@ -241,7 +241,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     getFeedCounts(EntityType.TOPIC, decodedTopicFQN, handleFeedCount);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 

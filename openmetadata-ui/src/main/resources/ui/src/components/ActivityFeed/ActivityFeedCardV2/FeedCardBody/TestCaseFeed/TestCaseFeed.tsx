@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { TEST_CASE_FEED_GRAPH_HEIGHT } from '../../../../../constants/constants';

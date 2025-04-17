@@ -12,18 +12,11 @@
  */
 
 import { Card, Col, Row } from 'antd';
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Redirect,
-  Route,
-  Switch,
-  useHistory,
-  useParams,
-} from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
-import { ROUTES } from '../../constants/constants';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -36,16 +29,17 @@ import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-insight.less';
 import { default as dataInsightClassBase } from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
 import DataInsightProvider from './DataInsightProvider';
 
 const DataInsightPage = () => {
-  const { tab } = useParams<{ tab: DataInsightTabs }>();
+  const { tab } = useRequiredParams<{ tab: DataInsightTabs }>();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const LeftPanel = dataInsightClassBase.getLeftPanel();
   const isHeaderVisible = useMemo(
     () =>
@@ -80,13 +74,13 @@ const DataInsightPage = () => {
   const handleScrollToChart = useCallback(
     (chartType: SystemChartType | DataInsightChartType) => {
       if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
-        history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
+        navigate(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
       } else {
-        history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
+        navigate(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
       }
       setSelectedChart(chartType);
     },
-    [history]
+    [navigate]
   );
 
   useLayoutEffect(() => {
@@ -151,19 +145,19 @@ const DataInsightPage = () => {
                     </Col>
                   )}
                   <Col span={24}>
-                    <Switch>
+                    <Routes>
                       {dataInsightTabs.map((tab) => (
                         <Route
-                          exact
-                          component={tab.component}
+                          element={<tab.component />}
                           key={tab.key}
                           path={tab.path}
                         />
                       ))}
-                      <Route exact path={ROUTES.DATA_INSIGHT}>
-                        <Redirect to={getDataInsightPathWithFqn()} />
-                      </Route>
-                    </Switch>
+                      <Route
+                        element={<Navigate to={getDataInsightPathWithFqn()} />}
+                        path="*"
+                      />
+                    </Routes>
                   </Col>
                 </Row>
               </Card>

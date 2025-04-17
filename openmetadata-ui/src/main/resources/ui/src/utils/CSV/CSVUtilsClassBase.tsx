@@ -32,6 +32,7 @@ import { EntityReference } from '../../generated/entity/type';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
 import TagSuggestion from '../../pages/TasksPage/shared/TagSuggestion';
 import Fqn from '../Fqn';
+import { t } from '../i18next/LocalUtil';
 import { EditorProps } from './CSV.utils';
 
 class CSVUtilsClassBase {

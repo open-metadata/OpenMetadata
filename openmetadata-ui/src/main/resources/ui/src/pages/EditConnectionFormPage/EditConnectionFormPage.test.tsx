@@ -45,8 +45,7 @@ const mockServiceData = {
 
 const ERROR = 'Error';
 
-const mockGoBack = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div>ErrorPlaceHolder</div>)
@@ -181,10 +180,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ serviceCategory: 'databaseServices' }),
-  useHistory: jest.fn().mockImplementation(() => ({
-    goBack: mockGoBack,
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('EditConnectionFormPage component', () => {
@@ -335,7 +331,7 @@ describe('EditConnectionFormPage component', () => {
     const cancelButton = screen.getByTestId('cancel-button');
     fireEvent.click(cancelButton);
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should show loader while fetching service details', async () => {

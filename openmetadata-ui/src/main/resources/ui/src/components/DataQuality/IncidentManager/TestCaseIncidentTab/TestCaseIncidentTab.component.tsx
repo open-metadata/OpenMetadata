@@ -13,13 +13,7 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
 import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task-new.svg';

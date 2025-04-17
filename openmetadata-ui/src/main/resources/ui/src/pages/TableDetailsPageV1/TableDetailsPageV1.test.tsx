@@ -182,7 +182,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'schema' })),
-  useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
 jest.mock('../../context/TourProvider/TourProvider', () => ({

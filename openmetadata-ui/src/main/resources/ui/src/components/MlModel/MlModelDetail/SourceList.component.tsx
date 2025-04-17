@@ -13,7 +13,7 @@
 
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import { Col, Row, Space, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';

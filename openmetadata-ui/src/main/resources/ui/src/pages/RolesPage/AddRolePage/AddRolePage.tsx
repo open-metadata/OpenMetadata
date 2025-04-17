@@ -14,9 +14,9 @@
 import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_ROLE_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
@@ -37,7 +37,7 @@ const { Option } = Select;
 const rolesPath = getPath(GlobalSettingOptions.ROLES);
 
 const AddRolePage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [name, setName] = useState<string>('');
@@ -61,7 +61,7 @@ const AddRolePage = () => {
   };
 
   const handleCancel = () => {
-    history.push(rolesPath);
+    navigate(rolesPath);
   };
 
   const handleSubmit = async () => {
@@ -76,7 +76,7 @@ const AddRolePage = () => {
     try {
       const dataResponse = await addRole(data);
       if (dataResponse) {
-        history.push(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
+        navigate(getRoleWithFqnPath(dataResponse.fullyQualifiedName || ''));
       }
     } catch (error) {
       showErrorToast(

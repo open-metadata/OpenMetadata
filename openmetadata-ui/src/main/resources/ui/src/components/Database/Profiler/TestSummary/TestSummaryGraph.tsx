@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { first, isEmpty, isUndefined } from 'lodash';
-import React, { ReactElement, useMemo, useRef, useState } from 'react';
+import { ReactElement, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,

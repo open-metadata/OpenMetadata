@@ -13,7 +13,7 @@
 import { Card, Skeleton, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';

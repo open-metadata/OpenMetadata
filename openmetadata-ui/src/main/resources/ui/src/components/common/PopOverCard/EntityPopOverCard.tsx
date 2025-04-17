@@ -13,7 +13,7 @@
 
 import { Popover, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, {
+import {
   FC,
   HTMLAttributes,
   useCallback,

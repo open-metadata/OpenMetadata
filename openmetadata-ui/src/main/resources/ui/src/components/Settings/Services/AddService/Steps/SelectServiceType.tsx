@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, Col, Row, Select } from 'antd';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
 import {

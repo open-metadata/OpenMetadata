@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FunctionComponent, useMemo } from 'react';
+import { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
 import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,

@@ -13,7 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { WEB_CHARTS } from '../../constants/DataInsight.constants';

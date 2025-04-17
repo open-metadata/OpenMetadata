@@ -17,12 +17,10 @@ import { CursorType } from '../../enums/pagination.enum';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import ApplicationPage from './ApplicationPage';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -157,7 +155,7 @@ describe('ApplicationPage', () => {
     );
 
     //  add application + view app details
-    expect(mockPush).toHaveBeenCalledTimes(2);
+    expect(mockNavigate).toHaveBeenCalledTimes(2);
   });
 
   it('error while fetching application list', async () => {

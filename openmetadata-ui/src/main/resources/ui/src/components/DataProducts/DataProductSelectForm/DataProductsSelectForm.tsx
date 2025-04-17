@@ -12,7 +12,7 @@
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Col, Row, Space } from 'antd';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { DataProductsSelectRef } from '../DataProductsSelectList/DataProductSelectList.interface';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';

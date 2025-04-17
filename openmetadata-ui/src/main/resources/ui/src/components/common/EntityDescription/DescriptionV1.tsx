@@ -13,13 +13,13 @@
 
 import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
-
 import { useCallback, useMemo, useState } from 'react';
-import { useHistory } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { useFqn } from '../../../hooks/useFqn';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
@@ -60,7 +60,7 @@ const DescriptionV1 = ({
   entityFullyQualifiedName,
   newLook = false,
 }: DescriptionProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -71,11 +71,11 @@ const DescriptionV1 = ({
   }, [entityFullyQualifiedName, fqn]);
 
   const handleRequestDescription = useCallback(() => {
-    history.push(getRequestDescriptionPath(entityType, entityFqn));
+    navigate(getRequestDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
   const handleUpdateDescription = useCallback(() => {
-    history.push(getUpdateDescriptionPath(entityType, entityFqn));
+    navigate(getUpdateDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
   // Callback to handle the edit button from description

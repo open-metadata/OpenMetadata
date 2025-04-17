@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
@@ -86,7 +86,7 @@ export const ActivityFeedTab = ({
   layoutType,
   feedCount,
 }: ActivityFeedTabProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { isAdminUser } = useAuth();
@@ -151,7 +151,7 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = (subTab: string) => {
     setIsFirstLoad(true);
-    history.push(
+    navigate(
       entityUtilClassBase.getEntityLink(
         entityType,
         fqn,
@@ -228,7 +228,7 @@ export const ActivityFeedTab = ({
     setCountData((prev) => ({ ...prev, loading: false }));
   };
 
-  const getThreadType = useCallback((activeTab) => {
+  const getThreadType = useCallback((activeTab: ActivityFeedTabs) => {
     if (activeTab === ActivityFeedTabs.TASKS) {
       return ThreadType.Task;
     } else if (activeTab === ActivityFeedTabs.ALL) {

@@ -15,15 +15,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import GlossaryLeftPanel from './GlossaryLeftPanel.component';
 
-const mockHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
   useParams: jest.fn().mockReturnValue({
     glossaryName: 'GlossaryName',
   }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -102,7 +100,7 @@ describe('Test GlossaryLeftPanel component', () => {
       fireEvent.click(addButton);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('Menu click should work properly', async () => {
@@ -118,6 +116,6 @@ describe('Test GlossaryLeftPanel component', () => {
       fireEvent.click(menuItem);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 });

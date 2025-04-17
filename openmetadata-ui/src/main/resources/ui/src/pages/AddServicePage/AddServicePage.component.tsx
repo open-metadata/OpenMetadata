@@ -15,9 +15,9 @@ import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -55,12 +55,14 @@ import {
   getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServiceConfig } from './AddServicePage.interface';
 
 const AddServicePage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
@@ -99,12 +101,12 @@ const AddServicePage = () => {
       ...prev,
       serviceType: '',
     }));
-    history.push(getAddServicePath(category));
+    navigate(getAddServicePath(category));
   };
 
   // Select service
   const handleSelectServiceCancel = () => {
-    history.push(
+    navigate(
       getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
         getServiceRouteFromServiceType(serviceCategory)
@@ -197,7 +199,7 @@ const AddServicePage = () => {
       });
     } finally {
       setSaveServiceState('initial');
-      history.push(getServiceDetailsPath(configData.name, serviceCategory));
+      navigate(getServiceDetailsPath(configData.name, serviceCategory));
     }
   };
 

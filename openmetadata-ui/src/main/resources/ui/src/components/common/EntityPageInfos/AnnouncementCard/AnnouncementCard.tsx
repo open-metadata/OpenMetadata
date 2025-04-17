@@ -12,7 +12,7 @@
  */
 
 import { Card, Space, Typography } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { ReactComponent as AnnouncementIcon } from '../../../../assets/svg/announcements-v1.svg';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import RichTextEditorPreviewerV1 from '../../RichTextEditor/RichTextEditorPreviewerV1';

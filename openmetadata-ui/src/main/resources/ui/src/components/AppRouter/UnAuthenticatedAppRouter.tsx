@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { LoginCallback } from '@okta/okta-react';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';

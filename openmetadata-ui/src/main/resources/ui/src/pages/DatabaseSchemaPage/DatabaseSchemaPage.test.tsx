@@ -204,12 +204,6 @@ const mockLocationPathname =
   '/databaseSchema/sample_data.ecommerce_db.shopify/table';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    history: {
-      push: jest.fn(),
-    },
-    replace: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),

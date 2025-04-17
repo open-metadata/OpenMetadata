@@ -15,7 +15,7 @@ import '@github/g-emoji-element';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { ReactionType } from '../../../generated/type/reaction';
 import useImage from '../../../hooks/useImage';

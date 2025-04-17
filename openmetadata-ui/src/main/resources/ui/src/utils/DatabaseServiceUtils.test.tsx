@@ -29,9 +29,6 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 describe('ExtraDatabaseServiceDropdownOptions', () => {
   it('should render import button when user has editAll permission', () => {

@@ -13,7 +13,7 @@
 import { Button, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';

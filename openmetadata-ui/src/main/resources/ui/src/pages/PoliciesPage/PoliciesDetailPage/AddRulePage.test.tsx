@@ -18,9 +18,6 @@ import { POLICY_DATA } from '../PoliciesData.mock';
 import AddRulePage from './AddRulePage';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
 }));
 

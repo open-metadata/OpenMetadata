@@ -23,12 +23,7 @@
  *  limitations under the License.
  */
 
-import React, {
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useImperativeHandle,
-} from 'react';
+import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
 import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';

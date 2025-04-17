@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { DescriptionTabs } from './DescriptionTabs';
 
 jest.mock('../../../utils/TasksUtils', () => ({

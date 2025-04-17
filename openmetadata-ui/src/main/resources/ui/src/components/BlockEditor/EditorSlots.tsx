@@ -12,7 +12,7 @@
  */
 import { Editor, ReactRenderer } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';

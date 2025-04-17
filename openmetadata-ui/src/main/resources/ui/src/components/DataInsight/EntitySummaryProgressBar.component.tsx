@@ -13,7 +13,7 @@
 import { Col, Progress, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { round } from 'lodash';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { GRAYED_OUT_COLOR } from '../../constants/constants';
 
 type EntitySummaryProgressBarProps = {

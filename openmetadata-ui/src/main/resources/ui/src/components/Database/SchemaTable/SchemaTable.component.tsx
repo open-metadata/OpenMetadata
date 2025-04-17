@@ -25,9 +25,9 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
@@ -100,7 +100,7 @@ import {
 
 const SchemaTable = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -190,10 +190,7 @@ const SchemaTable = () => {
     }
   };
 
-  const data = React.useMemo(
-    () => makeData(searchedColumns),
-    [searchedColumns]
-  );
+  const data = useMemo(() => makeData(searchedColumns), [searchedColumns]);
 
   const nestedTableFqnKeys = useMemo(
     () =>
@@ -573,9 +570,7 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    history.push({
-      pathname: getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn),
-    });
+    navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
   useEffect(() => {

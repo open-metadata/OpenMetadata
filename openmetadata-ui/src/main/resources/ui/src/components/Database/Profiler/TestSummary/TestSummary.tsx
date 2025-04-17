@@ -15,7 +15,7 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { TestCaseResult } from '../../../../generated/tests/testCase';
 import { getListTestCaseResults } from '../../../../rest/testAPI';

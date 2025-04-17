@@ -186,7 +186,6 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

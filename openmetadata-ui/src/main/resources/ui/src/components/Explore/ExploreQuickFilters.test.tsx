@@ -29,7 +29,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),

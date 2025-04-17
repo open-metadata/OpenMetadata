@@ -13,7 +13,7 @@
 import { Col, Popover, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {

@@ -19,16 +19,14 @@ import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     currentUser: { ...mockUserData, isAdmin: true },
   })),
 }));
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -124,7 +122,7 @@ describe('KPI list component', () => {
       fireEvent.click(editButton);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
 
     await act(async () => {
       fireEvent.click(deleteButton);

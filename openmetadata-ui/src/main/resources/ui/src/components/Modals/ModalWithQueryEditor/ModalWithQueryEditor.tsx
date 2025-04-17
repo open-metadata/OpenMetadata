@@ -13,7 +13,7 @@
 import { Button, Form, Modal, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { showErrorToast } from '../../../utils/ToastUtils';

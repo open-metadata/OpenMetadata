@@ -15,7 +15,7 @@ import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import { Button, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { FC, Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (

@@ -16,7 +16,7 @@ import userEvent from '@testing-library/user-event';
 import { containerVersionMockProps } from '../../../mocks/ContainerVersion.mock';
 import ContainerVersion from './ContainerVersion.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
@@ -54,9 +54,7 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'container',
   }),
@@ -128,7 +126,7 @@ describe('ContainerVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/container/s3_storage_sample.departments.finance.expenditures/versions/0.3/custom_properties'
     );
   });

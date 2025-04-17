@@ -16,7 +16,7 @@ import { AutoComplete, Form, Input, Select, TreeSelect } from 'antd';
 import { BaseOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { capitalize, startCase, uniq, uniqBy } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';

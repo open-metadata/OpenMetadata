@@ -14,9 +14,9 @@ import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -48,6 +48,7 @@ const QueryPage = () => {
   const { queryId } = useParams<{ queryId: string }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const [titleBreadcrumb, setTitleBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -175,7 +176,7 @@ const QueryPage = () => {
   };
 
   const afterDeleteAction = () => {
-    history.back();
+    navigate(-1);
   };
 
   if (isLoading.permission || isLoading.query) {

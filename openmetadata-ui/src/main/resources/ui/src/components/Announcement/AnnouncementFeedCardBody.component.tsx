@@ -15,7 +15,7 @@ import { Avatar, Button, Col, Popover, Row } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowBottom } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactionOperation } from '../../enums/reactions.enum';

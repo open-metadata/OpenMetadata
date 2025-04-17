@@ -35,6 +35,7 @@ import { PageType } from '../generated/system/ui/uiCustomization';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
+import { t } from './i18next/LocalUtil';
 
 const getUpdatedContainerColumnTags = (
   containerColumn: Column,

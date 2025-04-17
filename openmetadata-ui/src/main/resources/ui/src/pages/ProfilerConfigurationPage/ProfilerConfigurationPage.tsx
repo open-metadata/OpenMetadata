@@ -26,7 +26,8 @@ import { AxiosError } from 'axios';
 
 import { isEmpty, isEqual, values } from 'lodash';
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -54,7 +55,7 @@ import './profiler-configuration-page.style.less';
 
 const ProfilerConfigurationPage = () => {
   const [form] = Form.useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -65,6 +66,7 @@ const ProfilerConfigurationPage = () => {
       ),
     []
   );
+  const { t } = useTranslation();
 
   // Watchers
   const selectedMetricConfiguration = Form.useWatch<
@@ -280,7 +282,7 @@ const ProfilerConfigurationPage = () => {
           </Card>
         </Col>
         <Col className="d-flex justify-end gap-2" span={24}>
-          <Button data-testid="cancel-button" onClick={() => history.goBack()}>
+          <Button data-testid="cancel-button" onClick={() => navigate(-1)}>
             {t('label.cancel')}
           </Button>
           <Button

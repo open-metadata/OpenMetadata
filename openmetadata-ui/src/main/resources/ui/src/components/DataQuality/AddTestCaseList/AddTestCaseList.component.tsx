@@ -13,7 +13,7 @@
 import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, {
+import {
   UIEventHandler,
   useCallback,
   useEffect,

@@ -12,15 +12,15 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import { ItemType } from 'antd/es/menu/interface';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -83,7 +83,7 @@ const GlossaryHeader = ({
   updateVote,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
   const {
@@ -211,7 +211,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    history.push(
+    navigate(
       getGlossaryPathWithAction(
         selectedData.fullyQualifiedName ?? '',
         EntityAction.IMPORT
@@ -234,7 +234,7 @@ const GlossaryHeader = ({
           );
     }
 
-    history.push(path);
+    navigate(path);
   };
 
   const handleDelete = async () => {
@@ -286,7 +286,7 @@ const GlossaryHeader = ({
         selectedData.id,
         jsonPatch
       );
-      history.push(getGlossaryPath(fullyQualifiedName ?? name));
+      navigate(getGlossaryPath(fullyQualifiedName ?? name));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

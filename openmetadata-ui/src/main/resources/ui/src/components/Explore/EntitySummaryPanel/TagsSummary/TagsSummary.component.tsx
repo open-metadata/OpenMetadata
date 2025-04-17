@@ -12,7 +12,7 @@
  */
 
 import { Col, Row, Typography } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';

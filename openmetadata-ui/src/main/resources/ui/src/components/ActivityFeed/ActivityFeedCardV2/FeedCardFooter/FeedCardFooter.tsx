@@ -13,7 +13,7 @@
 
 import { Avatar, Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { min, noop, sortBy } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/thread-icon.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';

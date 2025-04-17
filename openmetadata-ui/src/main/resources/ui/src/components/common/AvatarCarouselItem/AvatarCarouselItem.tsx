@@ -12,7 +12,7 @@
  */
 import { Badge, Button } from 'antd';
 import classNames from 'classnames';
-import React, { RefObject, useCallback, useRef } from 'react';
+import { RefObject, useCallback, useRef } from 'react';
 import { EntityReference } from '../../../generated/entity/type';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';

@@ -16,7 +16,7 @@ import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import Loader from '../Loader/Loader';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';

@@ -80,7 +80,6 @@ jest.mock('../../hooks/useApplicationStore', () => {
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),
     useParams: jest.fn().mockImplementation(() => ({ fqn: 'testSuiteFQN' })),
     useLocation: jest.fn().mockImplementation(() => ({
       pathname: mockLocationPathname,

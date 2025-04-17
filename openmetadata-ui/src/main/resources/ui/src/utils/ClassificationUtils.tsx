@@ -24,6 +24,7 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 import { ProviderType } from '../generated/entity/bot';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
+import { t } from './i18next/LocalUtil';
 import { getClassificationTagPath } from './RouterUtils';
 import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
 

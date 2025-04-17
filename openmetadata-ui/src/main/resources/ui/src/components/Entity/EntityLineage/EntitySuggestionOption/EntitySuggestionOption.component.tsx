@@ -13,7 +13,7 @@
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import { get } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getEntityName } from '../../../../utils/EntityUtils';

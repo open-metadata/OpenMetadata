@@ -12,7 +12,7 @@
  */
 
 import { Button, Modal, Space, Typography } from 'antd';
-import React, { FunctionComponent } from 'react';
+import { FunctionComponent } from 'react';
 import { Builder, Query } from 'react-awesome-query-builder';
 import { useTranslation } from 'react-i18next';
 import './advanced-search-modal.less';

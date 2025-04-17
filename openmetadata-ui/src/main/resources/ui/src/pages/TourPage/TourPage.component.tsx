@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import Tour from '../../components/AppTour/Tour';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';

@@ -17,7 +17,7 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEqual, isUndefined, lowerCase } from 'lodash';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import ReactDOM from 'react-dom';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';

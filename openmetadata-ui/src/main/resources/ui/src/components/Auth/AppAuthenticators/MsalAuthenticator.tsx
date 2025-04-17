@@ -17,7 +17,7 @@ import {
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
 import { AxiosError } from 'axios';
-import React, {
+import {
   forwardRef,
   Fragment,
   ReactNode,

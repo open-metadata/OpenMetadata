@@ -32,6 +32,7 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { getChartById } from '../rest/chartAPI';
 import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
+import { t } from './i18next/LocalUtil';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;

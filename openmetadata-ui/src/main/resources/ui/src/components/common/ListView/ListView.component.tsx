@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Col, Row, Segmented, Space, Switch, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as GridIcon } from '../../../assets/svg/ic-grid.svg';
 import { ReactComponent as ListIcon } from '../../../assets/svg/ic-list.svg';

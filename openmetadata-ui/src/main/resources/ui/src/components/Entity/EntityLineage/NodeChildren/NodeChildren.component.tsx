@@ -14,7 +14,7 @@ import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Collapse, Input, Space } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
 import {

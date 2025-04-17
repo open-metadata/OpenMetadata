@@ -14,7 +14,7 @@ import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Divider, Row, Slider, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { TermBoost } from '../../../generated/configuration/searchSettings';

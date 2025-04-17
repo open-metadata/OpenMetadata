@@ -14,7 +14,7 @@
 import { Select, SelectProps } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Loader from '../Loader/Loader';
 
 /**

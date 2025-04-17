@@ -13,7 +13,7 @@
 import { CloseOutlined, DragOutlined } from '@ant-design/icons';
 import { Card, Space, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as FollowingEmptyIcon } from '../../../assets/svg/following-no-data-placeholder.svg';

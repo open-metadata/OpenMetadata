@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Collapse, Divider, Slider, Switch, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/setting-colored.svg';

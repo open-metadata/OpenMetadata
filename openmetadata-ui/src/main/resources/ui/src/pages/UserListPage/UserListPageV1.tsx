@@ -15,9 +15,9 @@ import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Redirect, useHistory, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -64,7 +64,7 @@ import './user-list-page-v1.less';
 const UserListPageV1 = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: GlobalSettingOptions }>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
   const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
@@ -241,9 +241,9 @@ const UserListPageV1 = () => {
   }, [pageSize, isAdminPage, searchValue, isDeleted]);
 
   const handleAddNewUser = () => {
-    history.push({
-      pathname: ROUTES.CREATE_USER,
+    navigate(ROUTES.CREATE_USER, {
       state: { isAdminPage },
+      replace: false,
     });
   };
 
@@ -423,10 +423,12 @@ const UserListPageV1 = () => {
   }, [isAdminPage, searchValue]);
 
   if (
-    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(tab)
+    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(
+      tab as GlobalSettingOptions
+    )
   ) {
     // This component is not accessible for the given tab
-    return <Redirect to={ROUTES.NOT_FOUND} />;
+    return <Navigate to={ROUTES.NOT_FOUND} />;
   }
 
   if (isEmpty(userList) && !isDeleted && !isDataLoading && !searchValue) {

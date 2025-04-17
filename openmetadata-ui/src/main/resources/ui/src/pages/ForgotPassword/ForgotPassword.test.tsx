@@ -15,7 +15,7 @@ import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvi
 import { showErrorToast } from '../../utils/ToastUtils';
 import ForgotPassword from './ForgotPassword.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockHandleForgotPassword = jest.fn();
 const mockHandleError = jest.fn().mockImplementation(() => {
   return Promise.reject({
@@ -53,9 +53,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('ForgotPassword', () => {
@@ -128,7 +126,7 @@ describe('ForgotPassword', () => {
       fireEvent.click(goBackButton);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should call show error toast', async () => {

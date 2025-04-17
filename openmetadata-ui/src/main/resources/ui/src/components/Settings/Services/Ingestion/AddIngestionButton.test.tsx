@@ -18,7 +18,7 @@ import { mockIngestionWorkFlow } from '../../../../mocks/Ingestion.mock';
 import { mockAddIngestionButtonProps } from '../../../../mocks/IngestionListTable.mock';
 import AddIngestionButton from './AddIngestionButton.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../../../hoc/LimitWrapper', () =>
   jest
@@ -27,9 +27,7 @@ jest.mock('../../../../hoc/LimitWrapper', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('AddIngestionButton', () => {
@@ -70,6 +68,6 @@ describe('AddIngestionButton', () => {
       userEvent.click(addIngestionButton);
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(0);
+    expect(mockNavigate).toHaveBeenCalledTimes(0);
   });
 });

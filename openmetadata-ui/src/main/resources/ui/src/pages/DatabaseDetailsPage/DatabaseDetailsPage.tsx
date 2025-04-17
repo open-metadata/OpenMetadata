@@ -15,7 +15,7 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -24,13 +24,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -83,6 +84,7 @@ import {
 import { getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -90,7 +92,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
   const { customizedPage, isLoading: loading } = useCustomPages(
@@ -107,7 +109,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -192,7 +194,7 @@ const DatabaseDetails: FunctionComponent = () => {
         if (
           (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
         ) {
-          history.replace(ROUTES.FORBIDDEN);
+          navigate(ROUTES.FORBIDDEN);
         }
       })
       .finally(() => {
@@ -212,7 +214,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
-      history.push({
+      navigate({
         pathname: getEntityDetailsPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
@@ -255,7 +257,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     if (withinPageSearch && serviceType) {
-      history.push(
+      navigate(
         getExplorePath({
           search: withinPageSearch,
           isPersistFilters: false,
@@ -347,7 +349,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
@@ -368,11 +370,11 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Database;
 
     setDatabase((data) => ({
@@ -385,7 +387,7 @@ const DatabaseDetails: FunctionComponent = () => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = databaseClassBase.getDatabaseDetailPageTabs({
-      activeTab,
+      activeTab: activeTab as EntityTabs,
       database,
       viewAllPermission,
       schemaInstanceCount,
@@ -437,7 +439,12 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const isExpandViewSupported = useMemo(
-    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
+    () =>
+      checkIfExpandViewSupported(
+        tabs[0],
+        activeTab as EntityTabs,
+        PageType.Database
+      ),
     [tabs[0], activeTab]
   );
 

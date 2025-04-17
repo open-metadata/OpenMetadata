@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';

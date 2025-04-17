@@ -13,9 +13,9 @@
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -48,7 +48,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const MetricListPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const {
     pageSize,
@@ -252,7 +252,7 @@ const MetricListPage = () => {
                 <Button
                   data-testid="create-metric"
                   type="primary"
-                  onClick={() => history.push(ROUTES.ADD_METRIC)}>
+                  onClick={() => navigate(ROUTES.ADD_METRIC)}>
                   {t('label.add-entity', { entity: t('label.metric') })}
                 </Button>
               </LimitWrapper>
@@ -280,7 +280,7 @@ const MetricListPage = () => {
                   heading={t('label.metric')}
                   permission={permission.Create}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() => history.push(ROUTES.ADD_METRIC)}
+                  onClick={() => navigate(ROUTES.ADD_METRIC)}
                 />
               ),
             }}

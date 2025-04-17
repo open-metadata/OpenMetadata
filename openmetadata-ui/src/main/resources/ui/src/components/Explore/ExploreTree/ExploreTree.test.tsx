@@ -14,7 +14,6 @@ import { render, waitFor } from '@testing-library/react';
 import ExploreTree from './ExploreTree';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),

@@ -13,7 +13,7 @@
 
 import { Card, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {

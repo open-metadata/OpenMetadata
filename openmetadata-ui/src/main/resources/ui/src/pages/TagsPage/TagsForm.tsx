@@ -12,7 +12,7 @@
  */
 
 import { Form, Modal, Typography } from 'antd';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';

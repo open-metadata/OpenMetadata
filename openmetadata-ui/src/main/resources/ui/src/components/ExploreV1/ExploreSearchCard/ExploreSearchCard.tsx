@@ -15,7 +15,7 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';

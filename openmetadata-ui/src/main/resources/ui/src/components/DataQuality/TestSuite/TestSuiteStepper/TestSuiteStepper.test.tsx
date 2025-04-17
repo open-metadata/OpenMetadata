@@ -23,12 +23,6 @@ jest.mock('../../../../rest/testAPI', () => ({
   createTestSuites: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
-}));
-
 jest.mock('../../AddDataQualityTest/rightPanelData', () => ({
   getRightPanelForAddTestSuitePage: jest.fn().mockReturnValue('Add test suite'),
 }));

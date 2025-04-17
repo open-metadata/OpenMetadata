@@ -14,7 +14,7 @@
 import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
-import React, {
+import {
   FC,
   HTMLAttributes,
   useCallback,

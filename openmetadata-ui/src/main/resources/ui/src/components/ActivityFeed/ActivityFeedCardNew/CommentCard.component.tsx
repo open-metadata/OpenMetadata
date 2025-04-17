@@ -13,13 +13,7 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';

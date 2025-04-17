@@ -13,7 +13,7 @@
 import { Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../generated/entity/feed/thread';
 import { getFeedById } from '../../rest/feedsAPI';

@@ -46,7 +46,6 @@ const mockUseApplicationStore = useApplicationStore as unknown as jest.Mock;
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn(),
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({

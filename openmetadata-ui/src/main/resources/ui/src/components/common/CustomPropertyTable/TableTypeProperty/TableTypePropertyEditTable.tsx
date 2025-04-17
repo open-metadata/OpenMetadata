@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import ReactDataGrid from '@inovua/reactdatagrid-community';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
 let inEdit = false;

@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Popover, Space } from 'antd';
 import { isNil, isUndefined, uniqueId } from 'lodash';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconFeedDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';

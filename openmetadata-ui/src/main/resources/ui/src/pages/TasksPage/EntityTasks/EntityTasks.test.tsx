@@ -79,12 +79,10 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('test'),
 }));
 
-const mockHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('Entity Task component', () => {
@@ -147,7 +145,7 @@ describe('Entity Task component', () => {
       fireEvent.click(taskElement);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledWith(mockUpdateTags);
+    expect(mockNavigate).toHaveBeenCalledWith(mockUpdateTags);
   });
 
   it('Handle request tags click', async () => {
@@ -172,7 +170,7 @@ describe('Entity Task component', () => {
       fireEvent.click(taskElement);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledWith(mockRequestTags);
+    expect(mockNavigate).toHaveBeenCalledWith(mockRequestTags);
   });
 
   it('Handle update description click', async () => {
@@ -192,7 +190,7 @@ describe('Entity Task component', () => {
       fireEvent.click(taskElement);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledWith(mockUpdateDescription);
+    expect(mockNavigate).toHaveBeenCalledWith(mockUpdateDescription);
   });
 
   it('Handle request description click', async () => {
@@ -218,6 +216,6 @@ describe('Entity Task component', () => {
       fireEvent.click(taskElement);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledWith(mockRequestDescription);
+    expect(mockNavigate).toHaveBeenCalledWith(mockRequestDescription);
   });
 });

@@ -51,7 +51,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => mockUseParams),
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
 }));
 jest.mock('../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest

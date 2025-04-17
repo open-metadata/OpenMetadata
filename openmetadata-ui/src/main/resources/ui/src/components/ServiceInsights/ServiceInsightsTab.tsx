@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';

@@ -20,9 +20,6 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
 };
-const mockUseHistory = {
-  push: jest.fn(),
-};
 
 // mock components
 jest.mock('./DataQualityProvider', () => {
@@ -80,16 +77,12 @@ jest.mock('../../hoc/withPageLayout', () => ({
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
-    Switch: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
     Route: jest
       .fn()
       .mockImplementation(({ component }) => (
         <div data-testid="route">{component}</div>
       )),
     useParams: jest.fn().mockImplementation(() => mockUseParam),
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
   };
 });
 

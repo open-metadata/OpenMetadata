@@ -19,7 +19,7 @@ import {
 } from '../../../mocks/MlModelVersion.mock';
 import MlModelVersion from './MlModelVersion.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
@@ -57,12 +57,10 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
   useParams: jest.fn().mockReturnValue({
     tab: 'container',
   }),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('MlModelVersion tests', () => {
@@ -140,7 +138,7 @@ describe('MlModelVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/mlmodel/mlflow_svc.eta_predictions/versions/0.3/custom_properties'
     );
   });

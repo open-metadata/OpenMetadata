@@ -13,14 +13,14 @@
 
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -65,7 +65,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { isTourOpen } = useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
@@ -112,13 +112,13 @@ const ExplorePageV1: FunctionComponent = () => {
   }, [location.search]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
-    history.push({
+    navigate({
       search: Qs.stringify({ ...parsedSearch, page, size: size ?? PAGE_SIZE }),
     });
   };
 
   const handleSortValueChange = (page: number, sortVal: string) => {
-    history.push({
+    navigate({
       search: Qs.stringify({
         ...parsedSearch,
         page,
@@ -129,7 +129,7 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const handleSortOrderChange = (page: number, sortOrderVal: string) => {
-    history.push({
+    navigate({
       search: Qs.stringify({
         ...parsedSearch,
         page,
@@ -181,7 +181,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const handleSearchIndexChange: (nSearchIndex: ExploreSearchIndex) => void =
     useCallback(
       (nSearchIndex) => {
-        history.push(
+        navigate(
           getExplorePath({
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
@@ -203,7 +203,7 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const handleQuickFilterChange = useCallback(
     (quickFilter) => {
-      history.push({
+      navigate({
         search: Qs.stringify({
           ...parsedSearch,
           quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
@@ -217,7 +217,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
-    history.push({
+    navigate({
       search: Qs.stringify({ ...parsedSearch, showDeleted, page: 1 }),
     });
   };

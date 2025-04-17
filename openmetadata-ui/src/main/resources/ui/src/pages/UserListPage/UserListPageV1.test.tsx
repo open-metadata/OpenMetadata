@@ -24,10 +24,6 @@ const mockParam = {
   tab: GlobalSettingOptions.USERS,
 };
 
-const mockHistory = {
-  replace: jest.fn(),
-};
-
 const mockLocation = {
   pathname: 'pathname',
   search: '',
@@ -42,7 +38,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParam),
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
 }));
 
 jest.mock('../../hooks/useTableFilters', () => ({

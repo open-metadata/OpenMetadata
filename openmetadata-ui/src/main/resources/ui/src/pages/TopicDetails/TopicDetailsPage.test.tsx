@@ -30,7 +30,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockReturnValue({ topicFQN: 'sample_kafka.sales', tab: 'schema' }),
-  useHistory: jest.fn(),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({

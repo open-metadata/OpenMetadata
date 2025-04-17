@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
-import React, {
+import {
   createContext,
   ReactNode,
   useCallback,

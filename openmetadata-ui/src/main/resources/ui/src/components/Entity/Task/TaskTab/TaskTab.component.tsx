@@ -37,15 +37,9 @@ import {
   unionBy,
 } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
@@ -130,7 +124,7 @@ export const TaskTab = ({
   ...rest
 }: TaskTabProps) => {
   const editorRef = useRef<EditorContentRef>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
@@ -292,7 +286,7 @@ export const TaskTab = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
+    navigate({
       pathname: getTaskDetailPath(taskThread),
     });
   };

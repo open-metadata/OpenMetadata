@@ -71,12 +71,6 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
 const mockLocationPathname = '/mock-path';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    history: {
-      push: jest.fn(),
-    },
-    replace: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),

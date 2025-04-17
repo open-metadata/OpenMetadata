@@ -23,7 +23,7 @@ import {
 import { ColumnType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, {
+import {
   forwardRef,
   Ref,
   useCallback,

@@ -24,7 +24,7 @@ import {
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { Duration } from 'luxon';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {

@@ -13,7 +13,7 @@
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';

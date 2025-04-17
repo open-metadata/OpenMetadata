@@ -13,9 +13,9 @@
 
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
@@ -30,7 +30,7 @@ const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
   const { alert, resetAlert } = useAlertStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = useCallback(
@@ -54,7 +54,7 @@ const ForgotPassword = () => {
   );
 
   const handleLogin = () => {
-    history.push(ROUTES.SIGNIN);
+    navigate(ROUTES.SIGNIN);
     resetAlert();
   };
 

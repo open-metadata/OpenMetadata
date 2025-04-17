@@ -39,9 +39,6 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
 
 // Mock EntityLink methods
 jest.mock('./EntityLink', () => ({

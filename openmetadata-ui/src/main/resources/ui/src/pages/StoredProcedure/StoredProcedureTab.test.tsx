@@ -49,9 +49,6 @@ jest.mock('react-router-dom', () => ({
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'something' })),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),

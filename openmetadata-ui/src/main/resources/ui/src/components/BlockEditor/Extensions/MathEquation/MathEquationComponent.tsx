@@ -16,7 +16,7 @@ import { Button, Input, Space, Tooltip } from 'antd';
 import { TextAreaRef } from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
 import 'katex/dist/katex.min.css';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import Latex from 'react-latex-next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';

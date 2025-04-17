@@ -28,7 +28,7 @@ import {
 import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DAY_IN_MONTH_OPTIONS,

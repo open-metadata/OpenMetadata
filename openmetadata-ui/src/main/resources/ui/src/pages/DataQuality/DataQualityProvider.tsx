@@ -13,13 +13,7 @@
 import { AxiosError } from 'axios';
 import { pick } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { DataQualityPageParams } from '../../components/DataQuality/DataQuality.interface';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';

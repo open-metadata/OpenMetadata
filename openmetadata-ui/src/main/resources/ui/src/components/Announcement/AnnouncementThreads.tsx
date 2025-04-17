@@ -12,7 +12,7 @@
  */
 
 import { Divider, Typography } from 'antd';
-import React, { FC, useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { isActiveAnnouncement } from '../../utils/AnnouncementsUtils';

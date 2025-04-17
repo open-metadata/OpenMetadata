@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isString, isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { CHART_BASE_SIZE } from '../../../constants/Chart.constants';
 import { WHITE_SMOKE } from '../../../constants/Color.constants';

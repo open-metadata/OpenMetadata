@@ -18,7 +18,6 @@ import DashboardDetailsPage from './DashboardDetailsPage.component';
 
 // Mock the required dependencies
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({ fqn: 'test-dashboard' }),
 }));
 

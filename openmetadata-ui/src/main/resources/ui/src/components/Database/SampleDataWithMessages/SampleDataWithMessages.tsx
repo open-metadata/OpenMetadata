@@ -13,7 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WORKFLOWS_METADATA_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';

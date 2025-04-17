@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getFileIcon } from '../../../../../utils/BlockEditorUtils';
 import { FileType } from '../../../BlockEditor.interface';

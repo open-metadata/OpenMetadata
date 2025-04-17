@@ -87,12 +87,11 @@ jest.mock('../../../rest/PersonaAPI', () => {
 jest.mock('../../../hooks/useFqn', () => {
   return { useFqn: jest.fn().mockReturnValue({ fqn: 'fqn' }) };
 });
-const mockUseHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+    useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   };
 });
 jest.mock(
@@ -188,7 +187,7 @@ describe('PersonaDetailsPage', () => {
 
     fireEvent.click(deleteBtn);
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith('/settings/persona');
+    expect(mockNavigate).toHaveBeenCalledWith('/settings/persona');
   });
 
   it('handleDisplayNameUpdate should call after updating displayName', async () => {

@@ -20,7 +20,7 @@ import {
 } from '../../../mocks/PipelineVersion.mock';
 import PipelineVersion from './PipelineVersion.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
@@ -70,9 +70,7 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'pipeline',
   }),
@@ -149,7 +147,7 @@ describe('PipelineVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/pipeline/sample_airflow.snowflake_etl/versions/0.3/custom_properties'
     );
   });

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Container } from '../../../generated/entity/data/container';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';

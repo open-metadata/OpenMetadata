@@ -21,7 +21,7 @@ import {
   Typography,
 } from 'antd';
 import { startCase } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter-primary.svg';

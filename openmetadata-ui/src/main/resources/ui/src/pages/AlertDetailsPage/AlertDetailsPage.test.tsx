@@ -25,7 +25,7 @@ import * as AlertsAPIs from '../../rest/alertsAPI';
 import * as ObservabilityAPIs from '../../rest/observabilityAPI';
 import AlertDetailsPage from './AlertDetailsPage';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockUpdateNotificationAlert = jest.fn();
 const mockUpdateObservabilityAlert = jest.fn();
 
@@ -34,9 +34,7 @@ jest.mock('../../hooks/useFqn', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'container',
   }),
@@ -211,7 +209,7 @@ describe('AlertDetailsPage', () => {
       userEvent.click(editButton);
     });
 
-    expect(mockPush).toHaveBeenCalledWith('notification-alert-edit-path');
+    expect(mockNavigate).toHaveBeenCalledWith('notification-alert-edit-path');
   });
 
   it('should redirect to observability alert edit path on click of edit button if isNotificationAlert is false', async () => {
@@ -227,7 +225,7 @@ describe('AlertDetailsPage', () => {
       userEvent.click(editButton);
     });
 
-    expect(mockPush).toHaveBeenCalledWith('observability-alert-edit-path');
+    expect(mockNavigate).toHaveBeenCalledWith('observability-alert-edit-path');
   });
 
   it('should call mockUpdateNotificationAlert on owner update if isNotificationAlert is true', async () => {

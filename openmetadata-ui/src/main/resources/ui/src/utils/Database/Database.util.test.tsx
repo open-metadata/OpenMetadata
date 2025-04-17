@@ -36,10 +36,6 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn(),
-}));
 
 describe('Database Util', () => {
   describe('getQueryFilterForDatabase', () => {

@@ -60,6 +60,7 @@ import {
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
 } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';

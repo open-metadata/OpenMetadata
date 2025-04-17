@@ -28,9 +28,6 @@ const mockParams = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

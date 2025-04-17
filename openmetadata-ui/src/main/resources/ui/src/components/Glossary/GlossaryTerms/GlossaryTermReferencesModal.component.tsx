@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Form, Input, Modal, Row } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';

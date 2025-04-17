@@ -15,9 +15,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -66,7 +66,7 @@ import { EntityData, Option } from '../TasksPage.interface';
 const UpdateDescription = () => {
   const { currentUser } = useApplicationStore();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
 
   const { entityType } = useParams<{ entityType: EntityType }>();
@@ -84,7 +84,7 @@ const UpdateDescription = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
-    () => getTaskEntityFQN(entityType, fqn),
+    () => getTaskEntityFQN(entityType as EntityType, fqn),
     [fqn, entityType]
   );
 
@@ -97,7 +97,7 @@ const UpdateDescription = () => {
     () =>
       getTaskMessage({
         value,
-        entityType,
+        entityType: entityType as EntityType,
         entityData,
         field,
         startMessage: 'Update description',
@@ -105,15 +105,15 @@ const UpdateDescription = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const columnObject = useMemo(() => {
     const column = sanitizeValue.split(FQN_SEPARATOR_CHAR).slice(-1);
 
     return getColumnObject(
       column[0],
-      getEntityColumnsDetails(entityType, entityData),
-      entityType
+      getEntityColumnsDetails(entityType as EntityType, entityData),
+      entityType as EntityType
     );
   }, [field, entityData, entityType]);
 
@@ -167,9 +167,9 @@ const UpdateDescription = () => {
             entity: t('label.task'),
           })
         );
-        history.push(
+        navigate(
           entityUtilClassBase.getEntityLink(
-            entityType,
+            entityType as EntityType,
             entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
@@ -181,7 +181,7 @@ const UpdateDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType, entityFQN, setEntityData);
+    fetchEntityDetail(entityType as EntityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -219,7 +219,7 @@ const UpdateDescription = () => {
           <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType),
+                ...getBreadCrumbList(entityData, entityType as EntityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),

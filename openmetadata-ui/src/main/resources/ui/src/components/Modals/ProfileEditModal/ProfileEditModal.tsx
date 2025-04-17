@@ -13,7 +13,7 @@
 
 import { Button, Input, Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FunctionComponent, useCallback, useState } from 'react';
+import { FunctionComponent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../generated/entity/teams/user';
 import { showErrorToast } from '../../../utils/ToastUtils';

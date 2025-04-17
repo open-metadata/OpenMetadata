@@ -13,7 +13,7 @@
 
 import { isEmpty } from 'lodash';
 import { User, UserManager, WebStorageStateStore } from 'oidc-client';
-import React, {
+import {
   ComponentType,
   forwardRef,
   Fragment,
@@ -22,7 +22,7 @@ import React, {
   useMemo,
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
-import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -75,7 +75,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       newUser,
       isApplicationLoading,
     } = useApplicationStore();
-    const history = useHistory();
+    const navigate = useNavigate();
     const location = useCustomLocation();
     const userManager = useMemo(
       () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
@@ -119,7 +119,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       // Since refresh token request completes with a callback
       TokenService.getInstance().clearRefreshInProgress();
       onLogoutSuccess();
-      history.push(ROUTES.SIGNIN);
+      navigate(ROUTES.SIGNIN);
     };
 
     useImperativeHandle(ref, () => ({
@@ -132,27 +132,26 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     return (
       <>
-        <Switch>
+        <Routes>
           {/* render sign in page if user is not authenticated and not signing up
            * else redirect to my data page as user is authenticated and not signing up
            */}
-          <Route exact path={ROUTES.HOME}>
+          <Route path={ROUTES.HOME}>
             {!isAuthenticated && !isSigningUp ? (
-              <Redirect to={ROUTES.SIGNIN} />
+              <Navigate to={ROUTES.SIGNIN} />
             ) : (
-              <Redirect to={ROUTES.MY_DATA} />
+              <Navigate to={ROUTES.MY_DATA} />
             )}
           </Route>
 
           {/* render the sign in route only if user is not signing up */}
           {!isSigningUp ? (
-            <Route exact component={SignInPage} path={ROUTES.SIGNIN} />
+            <Route element={<SignInPage />} path={ROUTES.SIGNIN} />
           ) : null}
 
           {/* callback route to handle the auth flow after user has successfully provided their consent */}
           <Route
-            path={ROUTES.CALLBACK}
-            render={() => (
+            element={
               <>
                 <Callback
                   userManager={userManager}
@@ -166,19 +165,20 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                   }}
                 />
               </>
-            )}
+            }
+            path={ROUTES.CALLBACK}
           />
 
           {/* silent callback route to handle the silent auth flow */}
           <Route
-            path={ROUTES.SILENT_CALLBACK}
-            render={() => (
+            element={
               <Callback
                 userManager={userManager}
                 onError={handleSilentSignInFailure}
                 onSuccess={handleSilentSignInSuccess}
               />
-            )}
+            }
+            path={ROUTES.SILENT_CALLBACK}
           />
 
           {!location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
@@ -189,12 +189,12 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               )
             ) : // render the sign in page if user is not authenticated and not signing up
             !isSigningUp && isEmpty(currentUser) && isEmpty(newUser) ? (
-              <Redirect to={ROUTES.SIGNIN} />
+              <Navigate to={ROUTES.SIGNIN} />
             ) : (
               // render the authenticator component to handle the auth flow while user is signing in
               <AppWithAuth />
             ))}
-        </Switch>
+        </Routes>
 
         {/* show loader when application is loading and user is signing up*/}
         {isApplicationLoading && isSigningUp && <Loader fullScreen />}

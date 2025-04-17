@@ -79,7 +79,6 @@ const MOCK_VERSION = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     fqn: 'Domain1',
     version: 0.4,

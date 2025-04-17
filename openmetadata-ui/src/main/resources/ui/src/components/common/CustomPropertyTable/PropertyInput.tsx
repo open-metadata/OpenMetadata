@@ -12,7 +12,7 @@
  */
 
 import { Input } from 'antd';
-import React, { ChangeEvent, FC, useState } from 'react';
+import { ChangeEvent, FC, useState } from 'react';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 
 export interface PropertyInputProps {

@@ -13,9 +13,9 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -45,7 +45,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 function ClassificationVersionPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { version } = useParams<{ version: string }>();
   const { fqn: classificationName } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -117,7 +117,7 @@ function ClassificationVersionPage() {
 
   const versionHandler = useCallback(
     (newVersion = version) => {
-      history.push(
+      navigate(
         getClassificationVersionsPath(classificationName, toString(newVersion))
       );
     },
@@ -125,7 +125,7 @@ function ClassificationVersionPage() {
   );
 
   const backHandler = useCallback(() => {
-    history.push(getClassificationDetailsPath(classificationName));
+    navigate(getClassificationDetailsPath(classificationName));
   }, []);
 
   useEffect(() => {

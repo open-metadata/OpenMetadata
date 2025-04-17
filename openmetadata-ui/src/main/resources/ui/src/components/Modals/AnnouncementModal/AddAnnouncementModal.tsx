@@ -14,7 +14,7 @@
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
 import { AxiosError } from 'axios';
 import { Moment } from 'moment';
-import React, { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {

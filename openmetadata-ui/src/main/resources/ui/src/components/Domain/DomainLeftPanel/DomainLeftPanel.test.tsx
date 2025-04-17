@@ -14,12 +14,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import DomainLeftPanel from './DomainLeftPanel.component';
 
-const mockHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     fqn: 'DomainFqn',
   }),
@@ -99,7 +97,7 @@ describe('Test DomainLeftPanel component', () => {
       fireEvent.click(addButton);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('Menu click should work properly', async () => {
@@ -115,6 +113,6 @@ describe('Test DomainLeftPanel component', () => {
       fireEvent.click(menuItem);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 });

@@ -18,7 +18,7 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
+import {
   MutableRefObject,
   useCallback,
   useEffect,

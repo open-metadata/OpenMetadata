@@ -237,12 +237,10 @@ jest.mock('antd', () => ({
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -303,7 +301,7 @@ describe('Services', () => {
       fireEvent.click(await screen.findByTestId('add-service-button'));
     });
 
-    expect(mockPush).toHaveBeenCalledWith('/pipelineServices/add-service');
+    expect(mockNavigate).toHaveBeenCalledWith('/pipelineServices/add-service');
   });
 
   it('should render columns', async () => {

@@ -15,7 +15,7 @@ import { Avatar, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { parseInt } from 'lodash';
 import { ImageShape } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';

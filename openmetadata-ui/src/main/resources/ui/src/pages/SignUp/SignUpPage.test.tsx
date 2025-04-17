@@ -24,12 +24,6 @@ let letExpectedUserName = {
 
 const mockShowErrorToast = jest.fn();
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
-}));
-
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     setIsSigningUp: jest.fn(),

@@ -13,9 +13,9 @@
 import { Card, Col, Row, Space, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import {
@@ -50,7 +50,7 @@ const DataProductsContainer = ({
   newLook = false,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
 
   const handleAddClick = () => {
@@ -77,9 +77,12 @@ const DataProductsContainer = ({
     [activeDomain]
   );
 
-  const redirectLink = useCallback((fqn) => {
-    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
-  }, []);
+  const redirectLink = useCallback(
+    (fqn: string) => {
+      navigate(getEntityDetailsPath(EntityType.DATA_PRODUCT, fqn));
+    },
+    [navigate]
+  );
 
   const handleSave = async (dataProducts: DataProduct[]) => {
     await onSave?.(dataProducts);

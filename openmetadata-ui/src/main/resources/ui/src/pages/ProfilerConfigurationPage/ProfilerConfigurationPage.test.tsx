@@ -15,9 +15,7 @@ import { SettingType } from '../../generated/settings/settings';
 import { getSettingsConfigFromConfigType } from '../../rest/settingConfigAPI';
 import ProfilerConfigurationPage from './ProfilerConfigurationPage';
 
-const mockHistory = {
-  goBack: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loading...</div>)
@@ -30,7 +28,7 @@ jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div>PageHeader.component</div>)
 );
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn().mockResolvedValue({}),
@@ -91,12 +89,12 @@ describe('ProfilerConfigurationPage', () => {
     expect(mockGetSettingsConfigFromConfigType).toHaveBeenCalledTimes(1);
   });
 
-  it("onCancel should call history's goBack method", () => {
+  it('onCancel should call navigate', () => {
     const cancelButton = screen.getByTestId('cancel-button');
     act(() => {
       cancelButton.click();
     });
 
-    expect(mockHistory.goBack).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(-1);
   });
 });

@@ -14,7 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tag } from 'antd';
 import classNames from 'classnames';
-import React, { Fragment, useCallback, useMemo } from 'react';
+import { Fragment, useCallback, useMemo } from 'react';
 import { EdgeProps } from 'reactflow';
 import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';

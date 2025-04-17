@@ -24,12 +24,6 @@ jest.mock('../../../../rest/testAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_TABLE_DATA)),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
-}));
-
 jest.mock('../../../common/RichTextEditor/RichTextEditor', () =>
   jest.fn().mockReturnValue(<>RichTextEditor</>)
 );

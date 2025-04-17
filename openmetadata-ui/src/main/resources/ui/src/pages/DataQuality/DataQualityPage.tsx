@@ -29,8 +29,8 @@ import { TestSuite } from '../../generated/tests/testSuite';
 import { useAuth } from '../../hooks/authHooks';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import TestSuiteDetailsPage from '../TestSuiteDetailsPage/TestSuiteDetailsPage.component';
+import './data-quality-page.less';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
-import './DataQualityPage.style.less';
 
 const DataQualityPage = () => {
   const { t } = useTranslation();

@@ -14,15 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, {
-  RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -69,15 +63,16 @@ import i18n from '../../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryLeftPanel from '../GlossaryLeftPanel/GlossaryLeftPanel.component';
 
 const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
-  const { action } = useParams<{ action: EntityAction }>();
+  const { action } = useRequiredParams<{ action: EntityAction }>();
   const [initialised, setInitialised] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -155,7 +150,7 @@ const GlossaryPage = () => {
   );
 
   const handleAddGlossaryClick = useCallback(() => {
-    history.push(ROUTES.ADD_GLOSSARY);
+    navigate(ROUTES.ADD_GLOSSARY);
   }, [history]);
 
   const fetchGlossaryList = useCallback(async () => {
@@ -280,7 +275,7 @@ const GlossaryPage = () => {
         );
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
-          history.replace(getGlossaryPath(glossaries[0].fullyQualifiedName));
+          navigate(getGlossaryPath(glossaries[0].fullyQualifiedName));
         setIsRightPanelLoading(false);
       }
     }
@@ -296,7 +291,7 @@ const GlossaryPage = () => {
         updateActiveGlossary({ ...updatedData, ...response });
 
         if (activeGlossary?.name !== updatedData.name) {
-          history.push(getGlossaryPath(response.fullyQualifiedName));
+          navigate(getGlossaryPath(response.fullyQualifiedName));
           fetchGlossaryList();
         }
       } catch (error) {
@@ -369,7 +364,7 @@ const GlossaryPage = () => {
         if (response) {
           setActiveGlossary(response as ModifiedGlossary);
           if (activeGlossary?.name !== updatedData.name) {
-            history.push(getGlossaryPath(response.fullyQualifiedName));
+            navigate(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
           shouldRefreshTerms && fetchGlossaryTermDetails();
@@ -403,7 +398,7 @@ const GlossaryPage = () => {
           fqnArr.pop();
           fqn = fqnArr.join(FQN_SEPARATOR_CHAR);
         }
-        history.push(getGlossaryPath(fqn));
+        navigate(getGlossaryPath(fqn));
       } catch (err) {
         showErrorToast(
           err as AxiosError,

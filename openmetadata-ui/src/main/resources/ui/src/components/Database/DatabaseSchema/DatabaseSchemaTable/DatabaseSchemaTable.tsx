@@ -18,7 +18,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -50,6 +50,7 @@ import {
   getEntityBulkEditPath,
   highlightSearchText,
 } from '../../../../utils/EntityUtils';
+import { t } from '../../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import { ownerTableObject } from '../../../../utils/TableColumn.util';
@@ -69,7 +70,7 @@ export const DatabaseSchemaTable = ({
   isCustomizationPage = false,
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { permissions } = usePermissionProvider();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
@@ -185,7 +186,7 @@ export const DatabaseSchemaTable = ({
   );
 
   const onSchemaSearch = (value: string) => {
-    history.push({
+    navigate({
       search: QueryString.stringify({
         schema: isEmpty(value) ? undefined : value,
       }),
@@ -279,9 +280,7 @@ export const DatabaseSchemaTable = ({
   );
 
   const handleEditTable = () => {
-    history.push({
-      pathname: getEntityBulkEditPath(EntityType.DATABASE, decodedDatabaseFQN),
-    });
+    navigate(getEntityBulkEditPath(EntityType.DATABASE, decodedDatabaseFQN));
   };
 
   useEffect(() => {

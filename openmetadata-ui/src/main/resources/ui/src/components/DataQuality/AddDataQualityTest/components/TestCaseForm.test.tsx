@@ -17,7 +17,7 @@ import {
   waitForElement,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { act } from 'react-dom/test-utils';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
@@ -75,10 +75,10 @@ const mockTestDefinition = {
     },
   ],
 };
-const mockUseHistory = { push: jest.fn() };
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => {
@@ -235,7 +235,7 @@ describe('TestCaseForm', () => {
       userEvent.click(await screen.findByText('last_name'));
     });
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith({
+    expect(mockNavigate).toHaveBeenCalledWith({
       search:
         'activeColumnFqn=sample_data.ecommerce_db.shopify.dim_address.last_name',
     });

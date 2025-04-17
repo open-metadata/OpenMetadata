@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Empty, Form, Modal, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
@@ -167,7 +167,7 @@ const TableConstraintsModal = ({
           <div className="constraint-breadcrumb">
             <Space wrap align="start" className="w-full" size={4}>
               {breadcrumbs.slice(0, 4).map((breadcrumb, index) => (
-                <React.Fragment key={breadcrumb.name}>
+                <Fragment key={breadcrumb.name}>
                   <Typography.Text
                     className="constraint-breadcrumb-item"
                     ellipsis={{ tooltip: true }}>
@@ -178,7 +178,7 @@ const TableConstraintsModal = ({
                       {t('label.slash-symbol')}
                     </Typography.Text>
                   )}
-                </React.Fragment>
+                </Fragment>
               ))}
             </Space>
             <Typography.Text

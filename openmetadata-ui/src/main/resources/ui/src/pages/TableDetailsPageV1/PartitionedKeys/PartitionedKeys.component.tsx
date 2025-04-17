@@ -16,6 +16,7 @@ import classNames from 'classnames';
 
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import Table from '../../../components/common/Table/Table';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
@@ -26,6 +27,7 @@ import {
 
 export const PartitionedKeys = ({ newLook = false }: { newLook?: boolean }) => {
   const { data, filterWidgets } = useGenericContext<TableType>();
+  const { t } = useTranslation();
 
   const partitionColumnDetails = useMemo(
     () =>

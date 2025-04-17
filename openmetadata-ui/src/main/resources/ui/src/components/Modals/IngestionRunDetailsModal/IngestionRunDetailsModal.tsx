@@ -15,7 +15,7 @@ import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { isArray, startCase } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA } from '../../../constants/constants';
 import { AppRunRecord } from '../../../generated/entity/applications/appRunRecord';

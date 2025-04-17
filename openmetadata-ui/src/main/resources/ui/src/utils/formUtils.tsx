@@ -28,7 +28,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
 import { compact, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';

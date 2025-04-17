@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC, useMemo } from 'react';
-import { Helmet } from 'react-helmet-async';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
+import { useParams as useRouterParams } from 'react-router-dom';
 
-interface DocumentTitleProps {
-  title: string;
+export function useRequiredParams<T extends Record<string, string>>(): T {
+  const params = useRouterParams<T>();
+
+  if (!params) {
+    throw new Error('Route parameters are required but were not found');
+  }
+
+  return params as T;
 }
-
-const DocumentTitle: FC<DocumentTitleProps> = ({ title }) => {
-  const pageTitle = useMemo(() => {
-    return brandClassBase.getPageTitle();
-  }, []);
-
-  return (
-    <Helmet>
-      <title>{`${title} | ${pageTitle}`}</title>
-    </Helmet>
-  );
-};
-
-export default DocumentTitle;

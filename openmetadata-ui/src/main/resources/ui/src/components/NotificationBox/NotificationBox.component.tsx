@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Badge, Button, List, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
 import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';

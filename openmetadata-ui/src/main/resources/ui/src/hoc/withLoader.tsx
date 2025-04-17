@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { ComponentType, PropsWithChildren } from 'react';
+import { ComponentType, PropsWithChildren } from 'react';
 import Loader from '../components/common/Loader/Loader';
 
 export interface ComponentProps<T> {

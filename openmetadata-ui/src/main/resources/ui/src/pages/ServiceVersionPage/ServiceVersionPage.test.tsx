@@ -26,11 +26,11 @@ const mockParams = {
   version: '1.2',
   fqn: 'sample_data',
 };
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockOtherData = { data: [], paging: {} };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({ push: mockPush })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
@@ -147,8 +147,8 @@ describe('ServiceVersionPage tests', () => {
       versionHandler.click();
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/service/databaseServices/sample_data/versions/0.7'
     );
   });
@@ -166,8 +166,8 @@ describe('ServiceVersionPage tests', () => {
       onBack.click();
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/service/databaseServices/sample_data'
     );
   });

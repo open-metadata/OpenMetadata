@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import AppearanceConfigSettingsPage from './AppearanceConfigSettingsPage';
 
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -29,9 +29,7 @@ jest.mock(
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    goBack: mockGoBack,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../rest/settingConfigAPI', () => ({
@@ -78,7 +76,7 @@ describe('Test appearance config page', () => {
     const cancelButton = screen.getByTestId('cancel-btn');
     userEvent.click(cancelButton);
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('Should call updateSettingsConfig function on click of reset button', async () => {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row, Typography } from 'antd';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import IncidentManager from '../../components/IncidentManager/IncidentManager.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';

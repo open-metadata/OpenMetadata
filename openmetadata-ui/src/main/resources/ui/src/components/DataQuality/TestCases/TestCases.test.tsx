@@ -27,7 +27,6 @@ const testCasePermission = {
 const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
   tab?: DataQualityPageTabs;
 };
-const mockUseHistory = { push: jest.fn() };
 const mockLocation = { search: '' };
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -67,7 +66,6 @@ jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
     useParams: jest.fn().mockImplementation(() => mockUseParam),
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
   };
 });
 jest.mock('../../common/NextPrevious/NextPrevious', () => {

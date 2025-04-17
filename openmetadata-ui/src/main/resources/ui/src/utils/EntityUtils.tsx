@@ -1792,11 +1792,11 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   },
   {
     name: entity.name,
-    url: {
-      pathname: getEntityLinkFromType(
-        entity.fullyQualifiedName ?? '',
-        (entity as SourceType)?.entityType as EntityType
-      ),
+    url: getEntityLinkFromType(
+      entity.fullyQualifiedName ?? '',
+      (entity as SourceType)?.entityType as EntityType
+    ),
+    options: {
       state: {
         breadcrumbData: [
           {

@@ -12,7 +12,8 @@
  */
 import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
-import React, {
+import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -29,7 +30,7 @@ import {
   ValueField,
   ValueSource,
 } from 'react-awesome-query-builder';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -51,7 +52,7 @@ import {
   SearchOutputType,
 } from './AdvanceSearchProvider.interface';
 
-const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
+const AdvancedSearchContext = createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
 );
 
@@ -80,7 +81,7 @@ export const AdvanceSearchProvider = ({
   const tabsInfo = searchClassBase.getTabsInfo();
   const tierOptions = useMemo(getTierOptions, []);
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -180,7 +181,7 @@ export const AdvanceSearchProvider = ({
 
   const handleTreeUpdate = useCallback(
     (tree?: ImmutableTree) => {
-      history.push({
+      navigate({
         pathname: location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
@@ -189,7 +190,7 @@ export const AdvanceSearchProvider = ({
         }),
       });
     },
-    [history, parsedSearch, location.pathname]
+    [navigate, parsedSearch, location.pathname]
   );
 
   const toggleModal = (show: boolean) => {
@@ -206,7 +207,7 @@ export const AdvanceSearchProvider = ({
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
     setSQLQuery('');
-    history.push({
+    navigate({
       pathname: location.pathname,
       search: Qs.stringify({
         quickFilter: undefined,
@@ -214,7 +215,7 @@ export const AdvanceSearchProvider = ({
         page: 1,
       }),
     });
-  }, [history, location.pathname]);
+  }, [navigate, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
     const subfields: Record<string, Field> = {};

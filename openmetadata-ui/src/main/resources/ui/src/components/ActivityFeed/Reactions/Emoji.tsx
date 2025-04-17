@@ -14,7 +14,7 @@
 import '@github/g-emoji-element';
 import { Button, Popover } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';

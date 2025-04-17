@@ -15,7 +15,7 @@ import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import Qs from 'qs';
-import React, {
+import {
   createContext,
   useCallback,
   useContext,

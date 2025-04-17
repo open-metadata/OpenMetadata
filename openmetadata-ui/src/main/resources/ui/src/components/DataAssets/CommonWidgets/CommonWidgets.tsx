@@ -12,7 +12,7 @@
  */
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {

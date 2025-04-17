@@ -13,7 +13,7 @@
 
 import { Button, Modal, Space, Typography } from 'antd';
 
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Team } from '../../../generated/entity/teams/team';
 import { FormData, FormModalProp, FormRef } from './FormModal.interface';

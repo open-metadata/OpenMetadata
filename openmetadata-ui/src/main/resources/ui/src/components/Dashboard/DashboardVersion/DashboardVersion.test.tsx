@@ -23,7 +23,7 @@ import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
   return jest
@@ -73,9 +73,7 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'dashboard',
   }),
@@ -213,7 +211,7 @@ describe('DashboardVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/dashboard/sample_superset.eta_predictions_performance/versions/0.3/custom_properties'
     );
   });

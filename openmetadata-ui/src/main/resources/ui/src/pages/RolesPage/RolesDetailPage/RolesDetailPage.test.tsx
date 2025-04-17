@@ -20,9 +20,6 @@ import RolesDetailPage from './RolesDetailPage';
 const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>link</a>),
 }));

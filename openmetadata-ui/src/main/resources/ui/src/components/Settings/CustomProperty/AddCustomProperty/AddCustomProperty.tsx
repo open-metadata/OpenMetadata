@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
@@ -48,6 +48,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
+import { t } from '../../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -57,7 +58,7 @@ import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.com
 const AddCustomProperty = () => {
   const [form] = Form.useForm();
   const { entityType } = useParams<{ entityType: EntityType }>();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [typeDetail, setTypeDetail] = useState<Type>();
 
@@ -163,7 +164,7 @@ const AddCustomProperty = () => {
     }
   };
 
-  const handleCancel = useCallback(() => history.goBack(), [history]);
+  const handleCancel = useCallback(() => navigate(-1), [navigate]);
 
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
     const isDescription = event.target.classList.contains('ProseMirror');
@@ -241,7 +242,7 @@ const AddCustomProperty = () => {
       ) as unknown as CustomProperty;
 
       await addPropertyToEntity(typeDetail?.id ?? '', payload);
-      history.goBack();
+      navigate(-1);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

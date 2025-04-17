@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEqual, orderBy } from 'lodash';
-import React, {
+import {
   createContext,
   ReactNode,
   useCallback,

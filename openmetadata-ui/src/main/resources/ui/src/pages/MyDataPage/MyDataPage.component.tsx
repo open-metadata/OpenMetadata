@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';

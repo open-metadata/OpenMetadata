@@ -149,13 +149,9 @@ jest.mock('../../utils/EntityVersionUtils', () => ({
   getCommonExtraInfoForVersionDetails: jest.fn().mockReturnValue({}),
 }));
 
-const mockPush = jest.fn();
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => MOCK_PARAMS),
-  useHistory: jest.fn(() => ({
-    push: mockPush,
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),

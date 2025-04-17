@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
+import { FC } from 'react';
 import './banner.less';
 
 import { LoadingOutlined } from '@ant-design/icons';

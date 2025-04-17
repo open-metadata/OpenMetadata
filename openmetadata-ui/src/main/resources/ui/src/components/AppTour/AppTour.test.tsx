@@ -44,7 +44,6 @@ jest.mock('../Modals/TourEndModal/TourEndModal', () =>
 
 const mockUpdateIsTourOpen = jest.fn();
 const mockUpdateTourPage = jest.fn();
-const mockPush = jest.fn();
 const mockProps = {
   steps: [] as TourSteps[],
 };
@@ -58,10 +57,10 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockImplementation(() => mockUseTourProvider()),
 }));
 
+const mockNavigate = jest.fn();
+
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 describe('AppTour component', () => {
@@ -80,7 +79,7 @@ describe('AppTour component', () => {
     expect(mockUpdateTourPage).toHaveBeenCalledWith(
       CurrentTourPageType.MY_DATA_PAGE
     );
-    expect(mockPush).toHaveBeenCalledWith('/');
+    expect(mockNavigate).toHaveBeenCalledWith('/');
 
     userEvent.click(screen.getByTestId('last-step-button'));
 

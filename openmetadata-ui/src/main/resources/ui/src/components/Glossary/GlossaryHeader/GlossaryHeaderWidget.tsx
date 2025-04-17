@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';

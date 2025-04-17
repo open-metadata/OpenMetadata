@@ -34,10 +34,6 @@ jest.mock('../../rest/permissionAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-}));
-
 let currentUser: { id: string; name: string } | null = {
   id: '123',
   name: 'Test User',

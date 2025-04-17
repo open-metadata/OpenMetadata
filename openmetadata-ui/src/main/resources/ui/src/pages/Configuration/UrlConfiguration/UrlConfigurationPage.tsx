@@ -13,9 +13,9 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -33,7 +33,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const UrlConfigurationPage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState<boolean>(false);
   const [urlConfig, setUrlConfig] =
     useState<OpenMetadataBaseURLConfiguration>();
@@ -66,7 +66,7 @@ const UrlConfigurationPage = () => {
   };
 
   const handleEditClick = () => {
-    history.push(ROUTES.SETTINGS_OM_URL_CONFIG);
+    navigate(ROUTES.SETTINGS_OM_URL_CONFIG);
   };
 
   useEffect(() => {

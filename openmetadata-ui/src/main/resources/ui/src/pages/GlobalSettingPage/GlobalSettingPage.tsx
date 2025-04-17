@@ -13,9 +13,9 @@
 
 import { Col, Row } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -33,7 +33,7 @@ import { getSettingPath } from '../../utils/RouterUtils';
 import './global-setting-page.style.less';
 
 const GlobalSettingPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const { permissions } = usePermissionProvider();
@@ -60,7 +60,7 @@ const GlobalSettingPage = () => {
   );
 
   const handleSettingItemClick = useCallback((category: string) => {
-    history.push(getSettingPath(category));
+    navigate(getSettingPath(category));
   }, []);
 
   if (isEmpty(settingItems)) {

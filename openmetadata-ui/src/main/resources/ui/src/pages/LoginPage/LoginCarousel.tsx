@@ -12,11 +12,13 @@
  */
 
 import { Carousel, Typography } from 'antd';
-
 import { uniqueId } from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { LOGIN_SLIDE } from '../../constants/Login.constants';
 
 const LoginCarousel = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="carousal-container" data-testid="carousel-container">
       <Carousel autoplay dots autoplaySpeed={3000} easing="ease-in-out">

@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import { entries, isNumber, isString, omit, startCase } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';

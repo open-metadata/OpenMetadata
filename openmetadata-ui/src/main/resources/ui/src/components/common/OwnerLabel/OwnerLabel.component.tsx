@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';

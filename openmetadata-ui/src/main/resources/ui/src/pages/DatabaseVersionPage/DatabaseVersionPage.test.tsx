@@ -25,16 +25,14 @@ const DATABASE_SCHEMA_TABLE = 'DatabaseSchemaTable';
 const TAGS_CONTAINER_V2 = 'TagsContainerV2';
 const CUSTOM_PROPERTY_TAB_NAME = 'label.custom-property-plural';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn(() => ({
     version: '1.2',
     tab: EntityTabs.SCHEMA,
   })),
-  useHistory: jest.fn(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -182,7 +180,7 @@ describe('DatabaseVersionPage', () => {
       })
     );
 
-    expect(mockPush).toHaveBeenCalledTimes(3);
+    expect(mockNavigate).toHaveBeenCalledTimes(3);
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {

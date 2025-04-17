@@ -12,7 +12,7 @@
  */
 
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ItemType } from 'antd/es/menu/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 

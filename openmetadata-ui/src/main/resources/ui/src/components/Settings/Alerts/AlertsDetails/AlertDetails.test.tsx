@@ -116,7 +116,7 @@ describe('AlertDetailsComponent', () => {
   it('should call action handlers on click of buttons', () => {
     const history = createMemoryHistory();
 
-    history.push = mockPush;
+    navigate = mockPush;
 
     render(
       <Router history={history}>

@@ -43,7 +43,6 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     glossaryFqn: 'glossaryFqn',
     action: 'action',

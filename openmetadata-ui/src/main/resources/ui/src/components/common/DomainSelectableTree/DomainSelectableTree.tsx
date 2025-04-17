@@ -14,14 +14,7 @@ import { Button, Empty, Space, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';

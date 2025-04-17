@@ -24,9 +24,9 @@ import {
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
@@ -75,7 +75,7 @@ import {
 
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn } = useFqn();
   const { t } = useTranslation();
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
@@ -175,7 +175,7 @@ const AddNotificationPage = () => {
           updateAlertAPI: updateNotificationAlert,
           afterSaveAction: async (fqn: string) => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
-            history.push(getNotificationAlertDetailsPath(fqn));
+            navigate(getNotificationAlertDetailsPath(fqn));
           },
           setInlineAlertDetails,
         });
@@ -185,7 +185,7 @@ const AddNotificationPage = () => {
         setIsButtonLoading(false);
       }
     },
-    [fqn, history, initialData, currentUser]
+    [fqn, navigate, initialData, currentUser]
   );
 
   const [selectedTrigger] =
@@ -337,7 +337,7 @@ const AddNotificationPage = () => {
                         <Button
                           className="float-right"
                           data-testid="cancel-button"
-                          onClick={() => history.goBack()}>
+                          onClick={() => navigate(-1)}>
                           {t('label.cancel')}
                         </Button>
                       </Col>

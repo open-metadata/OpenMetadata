@@ -15,7 +15,7 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -75,15 +75,15 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { customizedPage, isLoading } = useCustomPages(PageType.APICollection);
-  const { tab: activeTab = EntityTabs.API_ENDPOINT } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [apiCollection, setAPICollection] = useState<APICollection>(
     {} as APICollection
@@ -167,7 +167,7 @@ const APICollectionPage: FunctionComponent = () => {
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN);
       }
     } finally {
       setIsAPICollectionLoading(false);
@@ -205,8 +205,8 @@ const APICollectionPage: FunctionComponent = () => {
 
   const activeTabHandler = useCallback(
     (activeKey: string) => {
-      if (activeKey !== activeTab) {
-        history.push({
+      if (activeKey !== tab) {
+        navigate({
           pathname: getEntityDetailsPath(
             EntityType.API_COLLECTION,
             decodedAPICollectionFQN,
@@ -215,7 +215,7 @@ const APICollectionPage: FunctionComponent = () => {
         });
       }
     },
-    [activeTab, decodedAPICollectionFQN]
+    [tab, decodedAPICollectionFQN]
   );
 
   const handleUpdateOwner = useCallback(
@@ -318,7 +318,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.API_COLLECTION,
           decodedAPICollectionFQN,
@@ -329,7 +329,7 @@ const APICollectionPage: FunctionComponent = () => {
   }, [currentVersion, decodedAPICollectionFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 
@@ -398,7 +398,7 @@ const APICollectionPage: FunctionComponent = () => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = apiCollectionClassBase.getAPICollectionDetailPageTabs({
-      activeTab,
+      activeTab: tab,
       feedCount,
       apiCollection,
       fetchAPICollectionDetails,
@@ -416,7 +416,7 @@ const APICollectionPage: FunctionComponent = () => {
       EntityTabs.API_ENDPOINT
     );
   }, [
-    activeTab,
+    tab,
     customizedPage,
     feedCount,
     apiCollection,
@@ -446,9 +446,8 @@ const APICollectionPage: FunctionComponent = () => {
   };
 
   const isExpandViewSupported = useMemo(
-    () =>
-      checkIfExpandViewSupported(tabs[0], activeTab, PageType.APICollection),
-    [tabs[0], activeTab]
+    () => checkIfExpandViewSupported(tabs[0], tab, PageType.APICollection),
+    [tabs[0], tab]
   );
   if (isPermissionsLoading || isLoading) {
     return <Loader />;
@@ -510,7 +509,7 @@ const APICollectionPage: FunctionComponent = () => {
             onUpdate={handleAPICollectionUpdate}>
             <Col span={24}>
               <Tabs
-                activeKey={activeTab}
+                activeKey={tab}
                 className="tabs-new"
                 data-testid="tabs"
                 items={tabs}

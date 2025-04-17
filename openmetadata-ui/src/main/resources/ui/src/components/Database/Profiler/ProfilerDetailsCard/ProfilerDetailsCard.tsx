@@ -12,7 +12,7 @@
  */
 
 import { Card, Col, Row, Typography } from 'antd';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   CartesianGrid,
   Legend,

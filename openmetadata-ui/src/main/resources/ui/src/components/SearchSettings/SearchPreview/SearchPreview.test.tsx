@@ -62,9 +62,6 @@ const mockSearchResponse = {
 
 jest.mock('react-router-dom', () => ({
   useParams: () => ({ fqn: 'table' }),
-  useHistory: () => ({
-    push: jest.fn(),
-  }),
   useLocation: () => ({
     pathname: '/search',
     search: '',

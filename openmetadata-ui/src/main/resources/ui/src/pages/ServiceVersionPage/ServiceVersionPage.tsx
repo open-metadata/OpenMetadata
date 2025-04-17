@@ -15,9 +15,9 @@ import { Col, Row, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { PagingWithoutTotal, ServiceTypes } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -72,7 +72,7 @@ import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { serviceCategory, version } = useParams<{
     serviceCategory: ServiceTypes;
@@ -371,7 +371,7 @@ function ServiceVersionPage() {
 
   const versionHandler = useCallback(
     (newVersion = version) => {
-      history.push(
+      navigate(
         getServiceVersionPath(
           serviceCategory,
           decodedServiceFQN,
@@ -383,7 +383,7 @@ function ServiceVersionPage() {
   );
 
   const backHandler = useCallback(() => {
-    history.push(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
+    navigate(getServiceDetailsPath(decodedServiceFQN, serviceCategory));
   }, [decodedServiceFQN, serviceCategory]);
 
   const pagingHandler = useCallback(

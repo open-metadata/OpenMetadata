@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { FC } from 'react';
+import { FC } from 'react';
 import PageLayoutV1 from '../components/PageLayoutV1/PageLayoutV1';
 
 export const withPageLayout =

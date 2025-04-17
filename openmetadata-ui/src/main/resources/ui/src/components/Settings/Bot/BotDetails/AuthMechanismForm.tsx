@@ -13,7 +13,7 @@
 
 import { Button, Form, FormProps, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {

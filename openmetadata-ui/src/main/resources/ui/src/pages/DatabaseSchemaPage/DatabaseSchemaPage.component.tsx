@@ -15,7 +15,7 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, {
+import {
   FunctionComponent,
   useCallback,
   useEffect,
@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -90,7 +90,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
@@ -184,7 +184,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN);
       }
     } finally {
       setIsSchemaDetailsLoading(false);
@@ -206,7 +206,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        history.push({
+        navigate({
           pathname: getEntityDetailsPath(
             EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN,
@@ -277,7 +277,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleToggleDelete = (version?: number) => {
-    history.replace({
+    navigate('', {
       state: {
         cursorData: null,
         pageSize: null,
@@ -321,7 +321,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const versionHandler = useCallback(() => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.DATABASE_SCHEMA,
           decodedDatabaseSchemaFQN,
@@ -332,7 +332,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [currentVersion, decodedDatabaseSchemaFQN]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 

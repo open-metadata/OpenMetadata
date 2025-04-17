@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, {
+import {
   FC,
   ReactNode,
   useCallback,

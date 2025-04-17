@@ -14,6 +14,7 @@
 import { Card, Typography } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 
+import dayjs from 'dayjs';
 import {
   first,
   get,
@@ -29,7 +30,6 @@ import {
   toNumber,
   uniqBy,
 } from 'lodash';
-import moment from 'moment';
 import {
   CartesianGrid,
   LegendProps,
@@ -408,8 +408,7 @@ export const getWebChartSummary = (
 
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   // Can not select days before today
-
-  return current && current.isBefore(moment().subtract(1, 'day'));
+  return current && current.isBefore(dayjs().subtract(1, 'day'));
 };
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {

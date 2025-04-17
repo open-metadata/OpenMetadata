@@ -18,7 +18,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface DataModelVersionProp {
-  version: string;
+  version?: string;
   currentVersionData: DashboardDataModel;
   isVersionLoading: boolean;
   owners: DashboardDataModel['owners'];

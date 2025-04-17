@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   DIMENSIONS_DATA,
   NO_DIMENSION,

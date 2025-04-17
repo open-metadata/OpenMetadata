@@ -129,9 +129,7 @@ const mockParams = {
 const mockLocation = {
   search: '?type=teams',
 };
-const mockHistory = {
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
@@ -139,7 +137,7 @@ jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   }));
 });
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 jest.mock('../../../rest/teamsAPI', () => ({
@@ -246,7 +244,7 @@ describe('ImportTeamsPage', () => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledWith({
+    expect(mockNavigate).toHaveBeenCalledWith({
       pathname: getTeamsWithFqnPath(MOCK_CURRENT_TEAM.fullyQualifiedName),
       search: 'activeTab=teams',
     });
@@ -280,7 +278,7 @@ describe('ImportTeamsPage', () => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockHistory.push).toHaveBeenCalledWith({
+    expect(mockNavigate).toHaveBeenCalledWith({
       pathname: getTeamsWithFqnPath(MOCK_CURRENT_TEAM.fullyQualifiedName),
       search: 'activeTab=users',
     });

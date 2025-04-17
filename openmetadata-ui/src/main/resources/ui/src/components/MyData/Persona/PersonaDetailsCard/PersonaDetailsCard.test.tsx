@@ -14,7 +14,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PersonaDetailsCard } from './PersonaDetailsCard';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const personaWithDescription = {
   id: '123',
   name: 'John Doe',
@@ -35,9 +35,7 @@ jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
@@ -86,7 +84,7 @@ describe('PersonaDetailsCard Component', () => {
       userEvent.click(personaCardTitle);
     });
 
-    expect(mockPush).toHaveBeenCalledWith('/settings/persona/john-doe');
+    expect(mockNavigate).toHaveBeenCalledWith('/settings/persona/john-doe');
   });
 
   it('should not navigate when persona.fullyQualifiedName is missing', async () => {
@@ -104,6 +102,6 @@ describe('PersonaDetailsCard Component', () => {
       userEvent.click(personaCardTitle);
     });
 
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

@@ -22,9 +22,9 @@ import {
   Typography,
 } from 'antd';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
 import {
@@ -66,7 +66,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   refreshAgentsList,
 }: IngestionProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { fqn: decodedServiceFQN } = useFqn();
   const { serviceCategory, tab, subTab } = useParams<{
     serviceCategory: ServiceCategory;
@@ -129,7 +129,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     (e: RadioChangeEvent) => {
       const key = e.target.value;
 
-      history.replace({
+      navigate({
         pathname: getServiceDetailsPath(
           decodedServiceFQN,
           serviceCategory,

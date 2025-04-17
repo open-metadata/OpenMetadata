@@ -13,7 +13,7 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
 import { capitalize } from 'lodash';
-import React, { FC } from 'react';
+import { FC } from 'react';
 import TreeSelectWidget from './TreeSelectWidget';
 
 const SelectWidget: FC<WidgetProps> = (props) => {

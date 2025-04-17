@@ -16,8 +16,7 @@ import userEvent from '@testing-library/user-event';
 import { tableVersionMockProps } from '../../../mocks/TableVersion.mock';
 import TableVersion from './TableVersion.component';
 
-const mockPush = jest.fn();
-
+const mockNavigate = jest.fn();
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
@@ -54,9 +53,7 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
@@ -126,7 +123,7 @@ describe('TableVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
   });

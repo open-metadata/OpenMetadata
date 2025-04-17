@@ -109,7 +109,6 @@ jest.mock('../../../../hooks/useAirflowStatus', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useLocation: jest.fn().mockReturnValue({
     pathname: '/test/path',
     search: '',

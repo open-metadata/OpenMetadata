@@ -21,7 +21,6 @@ import PoliciesDetailPage from './PoliciesDetailPage';
 const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
 }));
 

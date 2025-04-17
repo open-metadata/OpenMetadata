@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
