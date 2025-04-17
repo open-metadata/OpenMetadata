@@ -36,12 +36,25 @@ class PostgresIngestionClass extends ServiceBaseClass {
   filterPattern: string;
   queryLogFilePath: string;
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       POSTGRES.serviceName,
       POSTGRES.serviceType,
-      POSTGRES.tableName
+      POSTGRES.tableName,
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     this.filterPattern = 'sales';
