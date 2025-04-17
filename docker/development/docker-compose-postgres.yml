@@ -45,6 +45,7 @@ services:
   opensearch:
     image: opensearchproject/opensearch:latest
     container_name: openmetadata_opensearch
+    restart: unless-stopped
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
@@ -293,6 +294,7 @@ services:
       context: ../../.
       dockerfile: docker/development/Dockerfile
     container_name: openmetadata_server
+    restart: unless-stopped
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -487,6 +489,7 @@ services:
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
+    restart: unless-stopped
     environment:
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
