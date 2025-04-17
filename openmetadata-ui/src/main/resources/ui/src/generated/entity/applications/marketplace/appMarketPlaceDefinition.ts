@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the applications for Open-Metadata.
  */
 export interface AppMarketPlaceDefinition {
+    /**
+     * This schema defines the type of the agent.
+     */
+    agentType?: AgentType;
     /**
      * Allow users to configure the app from the UI. If `false`, the `configure` step will be
      * hidden.
@@ -71,6 +73,10 @@ export interface AppMarketPlaceDefinition {
      */
     domain?: EntityReference;
     /**
+     * Event subscriptions that will be created when the application is installed.
+     */
+    eventSubscriptions?: CreateEventSubscription[];
+    /**
      * Features of the Application.
      */
     features?: string;
@@ -86,6 +92,10 @@ export interface AppMarketPlaceDefinition {
      * Unique identifier of this application.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Name of the Application.
      */
@@ -152,16 +162,30 @@ export interface AppMarketPlaceDefinition {
 }
 
 /**
+ * This schema defines the type of the agent.
+ *
+ * This schema defines the type of application.
+ */
+export enum AgentType {
+    CollateAI = "CollateAI",
+    Metadata = "Metadata",
+}
+
+/**
  * Configuration for the CollateAI External Application.
  *
  * Configuration for the Automator External Application.
+ *
+ * This schema defines the Slack App Token Configuration
  *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
- * This schema defines the Slack App Token Configuration
+ * Configuration for the Collate AI Quality Agent.
+ *
+ * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
     /**
@@ -186,14 +210,23 @@ export interface CollateAIAppConfig {
     /**
      * Entities selected to run the automation.
      */
-    resources?:             Resource;
+    resources?: Resource;
+    /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
+     * User Token
+     */
+    userToken?:             string;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
      *
      * Maximum number of events sent in a batch (Default 100).
      */
-    batchSize?: number;
+    batchSize?:           number;
+    moduleConfiguration?: ModuleConfiguration;
     /**
      * Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property
      * Type and are facing errors. Bear in mind that recreating the index will delete your
@@ -247,13 +280,20 @@ export interface CollateAIAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
-     * Bot Token
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the AutoPilot Workflow should be active or not.
      */
-    botToken?: string;
+    active?: boolean;
     /**
-     * User Token
+     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
+     * one month).
      */
-    userToken?: string;
+    changeEventRetentionPeriod?: number;
+    /**
+     * Service Entity Link for which to trigger the application.
+     */
+    entityLink?: string;
 }
 
 /**
@@ -268,7 +308,19 @@ export interface CollateAIAppConfig {
  *
  * Remove Owner Action Type
  *
+ * Add a Custom Property to the selected assets.
+ *
+ * Add Test Cases to the selected assets.
+ *
+ * Remove Test Cases Action Type
+ *
  * Add owners to the selected assets.
+ *
+ * Remove Custom Properties Action Type
+ *
+ * Add a Data Product to the selected assets.
+ *
+ * Remove a Data Product to the selected assets.
  *
  * Propagate description, tags and glossary terms via lineage
  *
@@ -279,14 +331,18 @@ export interface Action {
      * Apply tags to the children of the selected assets that match the criteria. E.g., columns,
      * tasks, topic fields,...
      *
-     * Remove tags from all the children of the selected assets. E.g., columns, tasks, topic
+     * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
-     * Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic
+     * Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
+     *
+     * Add tests to the selected table columns
+     *
+     * Remove tests to the selected table columns
      */
     applyToChildren?: string[];
     /**
@@ -299,11 +355,21 @@ export interface Action {
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
      *
+     * Update the Custom Property even if it is defined in the asset. By default, we will only
+     * apply the owners to assets without the given Custom Property informed.
+     *
      * Update the tier even if it is defined in the asset. By default, we will only apply the
      * tier to assets without tier.
      *
+     * Update the test even if it is defined in the asset. By default, we will only apply the
+     * test to assets without the existing test already existing.
+     *
      * Update the owners even if it is defined in the asset. By default, we will only apply the
      * owners to assets without owner.
+     *
+     * Update the Data Product even if the asset belongs to a different Domain. By default, we
+     * will only add the Data Product if the asset has no Domain, or it belongs to the same
+     * domain as the Data Product.
      *
      * Update descriptions, tags and Glossary Terms via lineage even if they are already defined
      * in the asset. By default, descriptions are only updated if they are not already defined
@@ -321,6 +387,16 @@ export interface Action {
      */
     type: ActionType;
     /**
+     * Remove tags from all the children and parent of the selected assets.
+     *
+     * Remove descriptions from all the children and parent of the selected assets.
+     */
+    applyToAll?: boolean;
+    /**
+     * Remove tags by its label type
+     */
+    labels?: LabelElement[];
+    /**
      * Domain to apply
      */
     domain?: EntityReference;
@@ -329,13 +405,37 @@ export interface Action {
      */
     description?: string;
     /**
+     * Owners to apply
+     *
+     * Custom Properties keys to remove
+     */
+    customProperties?: any;
+    /**
      * tier to apply
      */
     tier?: TagLabel;
     /**
+     * Test Cases to apply
+     */
+    testCases?: TestCaseDefinitions[];
+    /**
+     * Remove all test cases
+     */
+    removeAll?: boolean;
+    /**
+     * Test Cases to remove
+     */
+    testCaseDefinitions?: string[];
+    /**
      * Owners to apply
      */
     owners?: EntityReference[];
+    /**
+     * Data Products to apply
+     *
+     * Data Products to remove
+     */
+    dataProducts?: EntityReference[];
     /**
      * Propagate the metadata to columns via column-level lineage.
      */
@@ -428,6 +528,15 @@ export interface EntityReference {
 }
 
 /**
+ * Remove tags by its label type
+ */
+export enum LabelElement {
+    Automated = "Automated",
+    Manual = "Manual",
+    Propagated = "Propagated",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
@@ -452,7 +561,7 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelType;
+    labelType: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
      */
@@ -477,7 +586,7 @@ export interface TagLabel {
  * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
  * used to determine the tag label.
  */
-export enum LabelType {
+export enum LabelTypeEnum {
     Automated = "Automated",
     Derived = "Derived",
     Manual = "Manual",
@@ -517,6 +626,42 @@ export interface Style {
 }
 
 /**
+ * Minimum set of requirements to get a Test Case request ready
+ */
+export interface TestCaseDefinitions {
+    /**
+     * Compute the passed and failed row count for the test case.
+     */
+    computePassedFailedRowCount?: boolean;
+    parameterValues?:             TestCaseParameterValue[];
+    /**
+     * Fully qualified name of the test definition.
+     */
+    testDefinition?: string;
+    /**
+     * If the test definition supports it, use dynamic assertion to evaluate the test case.
+     */
+    useDynamicAssertion?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * This schema defines the parameter values that can be passed for a Test Case.
+ */
+export interface TestCaseParameterValue {
+    /**
+     * name of the parameter. Must match the parameter names in testCaseParameterDefinition
+     */
+    name?: string;
+    /**
+     * value to be passed for the Parameters. These are input from Users. We capture this in
+     * string and convert during the runtime.
+     */
+    value?: string;
+    [property: string]: any;
+}
+
+/**
  * Application Type
  *
  * Add Tags action type.
@@ -529,30 +674,48 @@ export interface Style {
  *
  * Add Description Action Type.
  *
+ * Add Custom Properties Action Type.
+ *
  * Remove Description Action Type
  *
  * Add Tier Action Type.
  *
  * Remove Tier Action Type
  *
+ * Add Test Case Action Type.
+ *
+ * Remove Test Case Action Type
+ *
  * Remove Owner Action Type
+ *
+ * Remove Custom Properties Action Type.
+ *
+ * Add Data Products Action Type.
+ *
+ * Remove Data Products Action Type.
  *
  * Lineage propagation action type.
  *
  * ML PII Tagging action type.
  */
 export enum ActionType {
+    AddCustomPropertiesAction = "AddCustomPropertiesAction",
+    AddDataProductAction = "AddDataProductAction",
     AddDescriptionAction = "AddDescriptionAction",
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
     MLTaggingAction = "MLTaggingAction",
+    RemoveCustomPropertiesAction = "RemoveCustomPropertiesAction",
+    RemoveDataProductAction = "RemoveDataProductAction",
     RemoveDescriptionAction = "RemoveDescriptionAction",
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
 
@@ -573,6 +736,83 @@ export interface BackfillConfiguration {
      */
     startDate?: Date;
     [property: string]: any;
+}
+
+/**
+ * Different Module Configurations
+ */
+export interface ModuleConfiguration {
+    /**
+     * App Analytics Module configuration
+     */
+    appAnalytics: AppAnalyticsConfig;
+    /**
+     * Cost Analysis Insights Module configuration
+     */
+    costAnalysis: CostAnalysisConfig;
+    /**
+     * Data Assets Insights Module configuration
+     */
+    dataAssets: DataAssetsConfig;
+    /**
+     * Data Quality Insights Module configuration
+     */
+    dataQuality: DataQualityConfig;
+}
+
+/**
+ * App Analytics Module configuration
+ */
+export interface AppAnalyticsConfig {
+    /**
+     * If Enabled, App Analytics insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Cost Analysis Insights Module configuration
+ */
+export interface CostAnalysisConfig {
+    /**
+     * If Enabled, Cost Analysis insights will be populated when the App runs.
+     */
+    enabled: boolean;
+}
+
+/**
+ * Data Assets Insights Module configuration
+ */
+export interface DataAssetsConfig {
+    /**
+     * If Enabled, Data Asset insights will be populated when the App runs.
+     */
+    enabled: boolean;
+    /**
+     * List of Entities to Reindex
+     */
+    entities?: string[];
+    /**
+     * Defines the number of days the Data Assets Insights information will be kept. After it
+     * they will be deleted.
+     */
+    retention?:     number;
+    serviceFilter?: ServiceFilter;
+}
+
+export interface ServiceFilter {
+    serviceName?: string;
+    serviceType?: string;
+}
+
+/**
+ * Data Quality Insights Module configuration
+ */
+export interface DataQualityConfig {
+    /**
+     * If Enabled, Data Quality insights will be populated when the App runs.
+     */
+    enabled: boolean;
 }
 
 /**
@@ -609,8 +849,10 @@ export enum SearchIndexMappingLanguage {
  * Application type.
  */
 export enum Type {
+    AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
     CollateAI = "CollateAI",
+    CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -630,6 +872,7 @@ export enum AppType {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -648,6 +891,29 @@ export interface ChangeDescription {
     previousVersion?: number;
 }
 
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
+}
+
 export interface FieldChange {
     /**
      * Name of the entity field that changed.
@@ -663,6 +929,400 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * This defines schema for sending alerts for OpenMetadata
+ */
+export interface CreateEventSubscription {
+    /**
+     * Type of Alert
+     */
+    alertType: AlertType;
+    /**
+     * Maximum number of events sent in a batch (Default 10).
+     */
+    batchSize?: number;
+    /**
+     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
+     */
+    className?: string;
+    config?:    { [key: string]: any };
+    /**
+     * A short description of the Alert, comprehensible to regular users.
+     */
+    description?: string;
+    /**
+     * Subscription Config.
+     */
+    destinations?: Destination[];
+    /**
+     * Display name for this Alert.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the domain the Table belongs to.
+     */
+    domain?: string;
+    /**
+     * Is the alert enabled.
+     */
+    enabled?: boolean;
+    /**
+     * Input for the Filters.
+     */
+    input?: AlertFilteringInput;
+    /**
+     * Name that uniquely identifies this Alert.
+     */
+    name: string;
+    /**
+     * Owners of this Alert.
+     */
+    owners?: EntityReference[];
+    /**
+     * Poll Interval in seconds.
+     */
+    pollInterval?: number;
+    provider?:     ProviderType;
+    /**
+     * Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.
+     */
+    resources?: string[];
+    /**
+     * Number of times to retry callback on failure. (Default 3).
+     */
+    retries?: number;
+    trigger?: Trigger;
+}
+
+/**
+ * Type of Alert
+ *
+ * Type of Alerts supported.
+ */
+export enum AlertType {
+    ActivityFeed = "ActivityFeed",
+    Custom = "Custom",
+    GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
+    Notification = "Notification",
+    Observability = "Observability",
+}
+
+/**
+ * Subscription which has a type and the config.
+ */
+export interface Destination {
+    category: SubscriptionCategory;
+    config?:  Webhook;
+    /**
+     * Is the subscription enabled.
+     */
+    enabled?: boolean;
+    /**
+     * Unique identifier that identifies this Event Subscription.
+     */
+    id?: string;
+    /**
+     * Read timeout in seconds. (Default 12s).
+     */
+    readTimeout?:   number;
+    statusDetails?: TionStatus;
+    /**
+     * Connection timeout in seconds. (Default 10s).
+     */
+    timeout?: number;
+    type:     SubscriptionType;
+}
+
+/**
+ * Subscription Endpoint Type.
+ */
+export enum SubscriptionCategory {
+    Admins = "Admins",
+    Assignees = "Assignees",
+    External = "External",
+    Followers = "Followers",
+    Mentions = "Mentions",
+    Owners = "Owners",
+    Teams = "Teams",
+    Users = "Users",
+}
+
+/**
+ * This schema defines webhook for receiving events from OpenMetadata.
+ *
+ * This schema defines email config for receiving events from OpenMetadata.
+ *
+ * A generic map that can be deserialized later.
+ */
+export interface Webhook {
+    /**
+     * Endpoint to receive the webhook events over POST requests.
+     */
+    endpoint?: string;
+    /**
+     * Custom headers to be sent with the webhook request.
+     */
+    headers?: { [key: string]: any };
+    /**
+     * HTTP operation to send the webhook request. Supports POST or PUT.
+     */
+    httpMethod?: HTTPMethod;
+    /**
+     * List of receivers to send mail to
+     */
+    receivers?: string[];
+    /**
+     * Secret set by the webhook client used for computing HMAC SHA256 signature of webhook
+     * payload and sent in `X-OM-Signature` header in POST requests to publish the events.
+     */
+    secretKey?: string;
+    /**
+     * Send the Event to Admins
+     *
+     * Send the Mails to Admins
+     */
+    sendToAdmins?: boolean;
+    /**
+     * Send the Event to Followers
+     *
+     * Send the Mails to Followers
+     */
+    sendToFollowers?: boolean;
+    /**
+     * Send the Event to Owners
+     *
+     * Send the Mails to Owners
+     */
+    sendToOwners?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * HTTP operation to send the webhook request. Supports POST or PUT.
+ */
+export enum HTTPMethod {
+    Post = "POST",
+    Put = "PUT",
+}
+
+/**
+ * Current status of the subscription, including details on the last successful and failed
+ * attempts, and retry information.
+ *
+ * Detailed status of the destination during a test operation, including HTTP response
+ * information.
+ */
+export interface TionStatus {
+    /**
+     * Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.
+     */
+    lastFailedAt?: number;
+    /**
+     * Detailed reason for the last failure received during callback.
+     */
+    lastFailedReason?: string;
+    /**
+     * HTTP status code received during the last failed callback attempt.
+     */
+    lastFailedStatusCode?: number;
+    /**
+     * Timestamp of the last successful callback in UNIX UTC epoch time in milliseconds.
+     */
+    lastSuccessfulAt?: number;
+    /**
+     * Timestamp for the next retry attempt in UNIX epoch time in milliseconds. Only valid if
+     * `status` is `awaitingRetry`.
+     */
+    nextAttempt?: number;
+    /**
+     * Status is `disabled` when the event subscription was created with `enabled` set to false
+     * and it never started publishing events. Status is `active` when the event subscription is
+     * functioning normally and a 200 OK response was received for the callback notification.
+     * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
+     * response was received for the callback notification. Status is `awaitingRetry` when the
+     * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
+     * `retryLimitReached` after all retries fail.
+     *
+     * Overall test status, indicating if the test operation succeeded or failed.
+     */
+    status?: Status;
+    /**
+     * Current timestamp of this status in UNIX epoch time in milliseconds.
+     *
+     * Timestamp when the response was received, in UNIX epoch time milliseconds.
+     */
+    timestamp?: number;
+    /**
+     * Body of the HTTP response, if any, returned by the server.
+     */
+    entity?: string;
+    /**
+     * HTTP headers returned in the response as a map of header names to values.
+     */
+    headers?: any;
+    /**
+     * URL location if the response indicates a redirect or newly created resource.
+     */
+    location?: string;
+    /**
+     * Media type of the response entity, if specified (e.g., application/json).
+     */
+    mediaType?: string;
+    /**
+     * Detailed reason for failure if the test did not succeed.
+     */
+    reason?: string;
+    /**
+     * HTTP status code of the response (e.g., 200 for OK, 404 for Not Found).
+     */
+    statusCode?: number;
+    /**
+     * HTTP status reason phrase associated with the status code (e.g., 'Not Found').
+     */
+    statusInfo?: string;
+}
+
+/**
+ * Status is `disabled` when the event subscription was created with `enabled` set to false
+ * and it never started publishing events. Status is `active` when the event subscription is
+ * functioning normally and a 200 OK response was received for the callback notification.
+ * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
+ * response was received for the callback notification. Status is `awaitingRetry` when the
+ * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
+ * `retryLimitReached` after all retries fail.
+ *
+ * Overall test status, indicating if the test operation succeeded or failed.
+ */
+export enum Status {
+    Active = "active",
+    AwaitingRetry = "awaitingRetry",
+    Disabled = "disabled",
+    Failed = "failed",
+    RetryLimitReached = "retryLimitReached",
+    StatusFailed = "Failed",
+    Success = "Success",
+}
+
+/**
+ * Subscription Endpoint Type.
+ */
+export enum SubscriptionType {
+    ActivityFeed = "ActivityFeed",
+    Email = "Email",
+    GChat = "GChat",
+    GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
+    MSTeams = "MsTeams",
+    Slack = "Slack",
+    Webhook = "Webhook",
+}
+
+/**
+ * Input for the Filters.
+ *
+ * Observability of the event subscription.
+ */
+export interface AlertFilteringInput {
+    /**
+     * List of filters for the event subscription.
+     */
+    actions?: ArgumentsInput[];
+    /**
+     * List of filters for the event subscription.
+     */
+    filters?: ArgumentsInput[];
+}
+
+/**
+ * Observability Filters for Event Subscription.
+ */
+export interface ArgumentsInput {
+    /**
+     * Arguments List
+     */
+    arguments?: Argument[];
+    effect?:    Effect;
+    /**
+     * Name of the filter
+     */
+    name?: string;
+    /**
+     * Prefix Condition for the filter.
+     */
+    prefixCondition?: PrefixCondition;
+}
+
+/**
+ * Argument for the filter.
+ */
+export interface Argument {
+    /**
+     * Value of the Argument
+     */
+    input?: string[];
+    /**
+     * Name of the Argument
+     */
+    name?: string;
+}
+
+export enum Effect {
+    Exclude = "exclude",
+    Include = "include",
+}
+
+/**
+ * Prefix Condition for the filter.
+ *
+ * Prefix Condition to be applied to the Condition.
+ */
+export enum PrefixCondition {
+    And = "AND",
+    Or = "OR",
+}
+
+/**
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled.
+ */
+export enum ProviderType {
+    System = "system",
+    User = "user",
+}
+
+/**
+ * Trigger Configuration for Alerts.
+ */
+export interface Trigger {
+    /**
+     * Cron Expression in case of Custom scheduled Trigger
+     */
+    cronExpression?: string;
+    /**
+     * Schedule Info
+     */
+    scheduleInfo?: ScheduleInfo;
+    triggerType:   TriggerType;
+}
+
+/**
+ * Schedule Info
+ */
+export enum ScheduleInfo {
+    Custom = "Custom",
+    Daily = "Daily",
+    Monthly = "Monthly",
+    Weekly = "Weekly",
+}
+
+/**
+ * Trigger Configuration for Alerts.
+ */
+export enum TriggerType {
+    RealTime = "RealTime",
+    Scheduled = "Scheduled",
 }
 
 /**

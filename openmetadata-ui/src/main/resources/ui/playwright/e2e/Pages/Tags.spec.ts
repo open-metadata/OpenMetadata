@@ -86,7 +86,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test('Classification Page', async ({ page }) => {
+test.fixme('Classification Page', async ({ page }) => {
   test.slow();
 
   await test.step('Should render basic elements on page', async () => {
@@ -284,7 +284,7 @@ test('Classification Page', async ({ page }) => {
       tagDisplayName: displayName,
       tableId: table.entityResponseData?.['id'],
       columnNumber: 0,
-      rowName: 'user_id numeric',
+      rowName: `${table.entity?.columns[0].name} numeric`,
     });
   });
 

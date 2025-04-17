@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { GlobalSettingOptions } from '../constant/settings';
 import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { descriptionBox, toastNotification, uuid } from './common';
 import { addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
+import { settingClick } from './sidebar';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
 
@@ -264,7 +266,7 @@ export const searchTeam = async (
   if (searchWillBeEmpty) {
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   } else {
-    await expect(page.locator('table')).toContainText(teamName);
+    await expect(page.getByRole('cell', { name: teamName })).toBeVisible();
   }
 };
 
@@ -301,7 +303,7 @@ export const verifyAssetsInTeamsPage = async (
     .locator(`a:has-text("${team.data.displayName}")`)
     .click();
 
-  const res = page.waitForResponse('/api/v1/search/query?*size=15');
+  const res = page.waitForResponse('/api/v1/search/query?*size=15*');
   await page.getByTestId('assets').click();
   await res;
 
@@ -354,6 +356,9 @@ export const checkTeamTabCount = async (page: Page) => {
   const fetchResponse = page.waitForResponse(
     '/api/v1/teams/name/*?fields=*childrenCount*include=all'
   );
+
+  await settingClick(page, GlobalSettingOptions.TEAMS);
+
   const response = await fetchResponse;
   const jsonRes = await response.json();
 

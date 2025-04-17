@@ -1,8 +1,8 @@
 #  Copyright 2023 Schlameel
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -214,17 +214,37 @@ class OMetaRolePolicyTest(TestCase):
         policies = cls.metadata.list_entities(entity=Policy)
         for policy in policies.entities:
             if model_str(policy.name).startswith(model_str(cls.policy_entity.name)):
-                cls.metadata.delete(entity=Policy, entity_id=model_str(policy.id))
+                cls.metadata.delete(
+                    entity=Policy,
+                    entity_id=model_str(policy.id),
+                    hard_delete=True,
+                    recursive=True,
+                )
 
-        cls.metadata.delete(entity=Policy, entity_id=model_str(cls.role_policy_1.id))
-        cls.metadata.delete(entity=Policy, entity_id=model_str(cls.role_policy_2.id))
+        cls.metadata.delete(
+            entity=Policy,
+            entity_id=model_str(cls.role_policy_1.id),
+            hard_delete=True,
+            recursive=True,
+        )
+        cls.metadata.delete(
+            entity=Policy,
+            entity_id=model_str(cls.role_policy_2.id),
+            hard_delete=True,
+            recursive=True,
+        )
 
         roles = cls.metadata.list_entities(entity=Role)
         for role in roles.entities:
             if model_str(role.name.root).startswith(
                 model_str(cls.role_entity.name.root)
             ):
-                cls.metadata.delete(entity=Role, entity_id=model_str(role.id))
+                cls.metadata.delete(
+                    entity=Role,
+                    entity_id=model_str(role.id),
+                    hard_delete=True,
+                    recursive=True,
+                )
 
     def test_policy_create(self):
         """
@@ -328,7 +348,12 @@ class OMetaRolePolicyTest(TestCase):
         res_id = self.metadata.get_by_id(entity=Policy, entity_id=res_name.id)
 
         # Delete
-        self.metadata.delete(entity=Policy, entity_id=model_str(res_id.id))
+        self.metadata.delete(
+            entity=Policy,
+            entity_id=model_str(res_id.id),
+            hard_delete=True,
+            recursive=True,
+        )
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Policy)
@@ -547,7 +572,9 @@ class OMetaRolePolicyTest(TestCase):
         res_id = self.metadata.get_by_id(entity=Role, entity_id=res_name.id)
 
         # Delete
-        self.metadata.delete(entity=Role, entity_id=str(res_id.id.root))
+        self.metadata.delete(
+            entity=Role, entity_id=str(res_id.id.root), hard_delete=True, recursive=True
+        )
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Role)
@@ -626,7 +653,9 @@ class OMetaRolePolicyTest(TestCase):
         )
         assert res.users.root[0].id == user.id
 
-        self.metadata.delete(entity=User, entity_id=user.id)
+        self.metadata.delete(
+            entity=User, entity_id=user.id, hard_delete=True, recursive=True
+        )
 
     def test_role_add_team(self):
         """
@@ -657,8 +686,12 @@ class OMetaRolePolicyTest(TestCase):
         )
         assert res.teams.root[0].id == team.id
 
-        self.metadata.delete(entity=Team, entity_id=team.id)
-        self.metadata.delete(entity=User, entity_id=user.id)
+        self.metadata.delete(
+            entity=Team, entity_id=team.id, hard_delete=True, recursive=True
+        )
+        self.metadata.delete(
+            entity=User, entity_id=user.id, hard_delete=True, recursive=True
+        )
 
     def test_role_patch_policies(self):
         """

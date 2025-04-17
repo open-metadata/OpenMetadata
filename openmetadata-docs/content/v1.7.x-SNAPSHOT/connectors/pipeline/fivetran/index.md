@@ -7,7 +7,7 @@ slug: /connectors/pipeline/fivetran
 name="Fivetran"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Usage"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -17,6 +17,7 @@ Configure and schedule Fivetran metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/pipeline/fivetran/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/fivetran/yaml"} /%}
 
@@ -62,5 +63,3 @@ For more detailed documentation visit [here](https://fivetran.com/docs/rest-api/
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

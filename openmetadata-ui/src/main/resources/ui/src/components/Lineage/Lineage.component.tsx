@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Card } from 'antd';
-import { debounce } from 'lodash';
 import Qs from 'qs';
 import React, {
   DragEvent,
@@ -24,7 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ReactFlow, {
   Background,
-  Controls,
+  MiniMap,
   Panel,
   ReactFlowProvider,
 } from 'reactflow';
@@ -47,7 +46,9 @@ import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
+import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
+import { SourceType } from '../SearchedData/SearchedData.interface';
 import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
@@ -55,6 +56,7 @@ const Lineage = ({
   hasEditAccess,
   entity,
   entityType,
+  isPlatformLineage,
 }: LineageProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -74,9 +76,8 @@ const Lineage = ({
     entityLineage,
     onPaneClick,
     onConnect,
-    onZoomUpdate,
     onInitReactFlow,
-    updateEntityType,
+    updateEntityData,
   } = useLineageProvider();
 
   const queryParams = new URLSearchParams(location.search);
@@ -99,10 +100,6 @@ const Lineage = ({
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleZoomLevel = debounce((value: number) => {
-    onZoomUpdate(value);
-  }, 150);
-
   const breadcrumbs = useMemo(
     () =>
       entity
@@ -119,8 +116,8 @@ const Lineage = ({
   );
 
   useEffect(() => {
-    updateEntityType(entityType);
-  }, [entityType]);
+    updateEntityData(entityType, entity as SourceType, isPlatformLineage);
+  }, [entity, entityType, isPlatformLineage]);
 
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
@@ -128,30 +125,33 @@ const Lineage = ({
     <Card
       className="lineage-card card-body-full w-auto border-none card-padding-0"
       data-testid="lineage-details">
-      {isFullScreen && (
+      {isFullScreen && breadcrumbs.length > 0 && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
       <div
         className="h-full relative lineage-container"
         data-testid="lineage-container"
+        id="lineage-container" // ID is required for export PNG functionality
         ref={reactFlowWrapper}>
         {entityLineage && (
-          <CustomControlsComponent
-            className="absolute top-1 right-1 p-xs"
-            deleted={deleted}
-            handleFullScreenViewClick={
-              !isFullScreen ? onFullScreenClick : undefined
-            }
-            hasEditAccess={hasEditAccess}
-            onExitFullScreenViewClick={
-              isFullScreen ? onExitFullScreenViewClick : undefined
-            }
-          />
+          <>
+            <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
+            <LineageControlButtons
+              deleted={deleted}
+              entityType={entityType}
+              handleFullScreenViewClick={
+                !isFullScreen ? onFullScreenClick : undefined
+              }
+              hasEditAccess={hasEditAccess}
+              onExitFullScreenViewClick={
+                isFullScreen ? onExitFullScreenViewClick : undefined
+              }
+            />
+          </>
         )}
         {init ? (
           <ReactFlowProvider>
             <ReactFlow
-              onlyRenderVisibleElements
               className="custom-react-flow"
               data-testid="react-flow-component"
               deleteKeyCode={null}
@@ -180,7 +180,6 @@ const Lineage = ({
               }}
               onEdgesChange={onEdgesChange}
               onInit={onInitReactFlow}
-              onMove={(_e, viewPort) => handleZoomLevel(viewPort.zoom)}
               onNodeClick={(_e, node) => {
                 onNodeClick(node);
                 _e.stopPropagation();
@@ -195,9 +194,10 @@ const Lineage = ({
               onNodesChange={onNodesChange}
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
-              <Controls position="bottom-right" showInteractive={false} />
+              <MiniMap pannable zoomable position="bottom-right" />
+
               <Panel position="bottom-left">
-                <LineageLayers />
+                <LineageLayers entity={entity} entityType={entityType} />
               </Panel>
             </ReactFlow>
           </ReactFlowProvider>

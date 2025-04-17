@@ -7,7 +7,7 @@ slug: /connectors/database/sqlite
 name="SQLite"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -21,6 +21,7 @@ Configure and schedule Presto metadata and profiler workflows from the OpenMetad
 - [Lineage](/how-to-guides/data-lineage/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/sqlite/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sqlite/yaml"} /%}
 
@@ -64,7 +65,5 @@ To extract metadata, the user needs to be able to perform `.tables`, `.schema`, 
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

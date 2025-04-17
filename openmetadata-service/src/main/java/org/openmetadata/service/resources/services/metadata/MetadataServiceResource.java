@@ -105,7 +105,7 @@ public class MetadataServiceResource
         LOG.error("[MetadataService] Missing Elastic Search Config.");
       }
       repository.setFullyQualifiedName(openMetadataService);
-      repository.createOrUpdate(null, openMetadataService);
+      repository.createOrUpdate(null, openMetadataService, ADMIN_USER_NAME);
     } else {
       throw new IOException("Failed to initialize OpenMetadata Service.");
     }
@@ -497,6 +497,37 @@ public class MetadataServiceResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteMetadataServiceAsync",
+      summary = "Asynchronously delete a metadata service by Id",
+      description =
+          "Asynchronously delete a metadata services. If some service belong the service, it can't be deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "MetadataService service for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the metadata service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE

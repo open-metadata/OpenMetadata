@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { getRoleByName } from '../../../rest/rolesAPIV1';
 import { ROLE_DATA } from '../Roles.mock';
 import RolesDetailPage from './RolesDetailPage';
+
+const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({
@@ -23,6 +26,12 @@ jest.mock('react-router-dom', () => ({
   }),
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
   Link: jest.fn().mockImplementation(({ to }) => <a href={to}>link</a>),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: mockEntityPermissionByFqn,
+  })),
 }));
 
 jest.mock('../../../rest/rolesAPIV1', () => ({
@@ -49,6 +58,16 @@ jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
+jest.mock(
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockReturnValue(<div>EntityHeaderTitle</div>)
+);
+
+jest.mock(
+  '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
+  () => jest.fn().mockReturnValue(<div>ManageButton</div>)
+);
+
 jest.mock('../../../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
@@ -68,8 +87,16 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
 });
 
 describe('Test Roles Details Page', () => {
-  it('Should render the detail component', async () => {
-    render(<RolesDetailPage />);
+  it('Should render the role details component', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    await act(async () => {
+      render(<RolesDetailPage />);
+    });
 
     const container = await screen.findByTestId('role-details-container');
 

@@ -22,6 +22,7 @@ import {
 } from 'antd';
 import Input, { InputRef } from 'antd/lib/input/Input';
 import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
 import React, {
   ChangeEvent,
   useCallback,
@@ -31,6 +32,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deleteEntity } from '../../../rest/miscAPI';
@@ -57,6 +59,7 @@ const DeleteWidgetModal = ({
   onCancel,
   entityId,
   prepareType = true,
+  isAsyncDelete = false,
   isRecursiveDelete,
   afterDeleteAction,
   successMessage,
@@ -67,6 +70,7 @@ const DeleteWidgetModal = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const { currentUser, onLogoutHandler } = useApplicationStore();
+  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const [deleteConfirmationText, setDeleteConfirmationText] =
     useState<string>('');
   const [deletionType, setDeletionType] = useState<DeleteType>(
@@ -74,21 +78,31 @@ const DeleteWidgetModal = ({
   );
   const [isLoading, setIsLoading] = useState(false);
   const deleteTextInputRef = useRef<InputRef>(null);
+  const entityTypeName = useMemo(() => {
+    return startCase(entityType);
+  }, [entityType]);
 
   const DELETE_OPTION = useMemo(
     () => [
       {
-        title: `${t('label.delete')} ${entityType} "${entityName}"`,
-        description: `${deleteWidgetClassBase.getDeleteMessage(
-          entityName,
-          entityType,
-          true
-        )} ${softDeleteMessagePostFix}`,
+        title: `${t('label.delete')} ${entityTypeName} "${entityName}"`,
+        description: (
+          <>
+            {deleteWidgetClassBase.getDeleteMessage(
+              entityName,
+              entityType,
+              true
+            )}
+            {softDeleteMessagePostFix}
+          </>
+        ),
         type: DeleteType.SOFT_DELETE,
         isAllowed: allowSoftDelete,
       },
       {
-        title: `${t('label.permanently-delete')} ${entityType} "${entityName}"`,
+        title: `${t(
+          'label.permanently-delete'
+        )} ${entityTypeName} "${entityName}"`,
         description: (
           <>
             {deleteMessage ??
@@ -192,6 +206,38 @@ const DeleteWidgetModal = ({
     ]
   );
 
+  const onFormFinish = useCallback(
+    async (values: DeleteWidgetFormFields) => {
+      if (isAsyncDelete) {
+        setIsLoading(true);
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName,
+          entityId: entityId ?? '',
+          entityType,
+          deleteType: values.deleteType,
+          prepareType,
+          isRecursiveDelete: isRecursiveDelete ?? false,
+          afterDeleteAction,
+        });
+        setIsLoading(false);
+        handleOnEntityDeleteCancel();
+      } else {
+        onDelete ? onDelete(values) : handleOnEntityDeleteConfirm(values);
+      }
+    },
+    [
+      entityId,
+      onDelete,
+      entityName,
+      entityType,
+      prepareType,
+      isRecursiveDelete,
+      handleOnEntityDeleteConfirm,
+      handleOnEntityDeleteCancel,
+      afterDeleteAction,
+    ]
+  );
+
   const onChange = useCallback((e: RadioChangeEvent) => {
     const value = e.target.value;
     setDeletionType(value);
@@ -278,7 +324,7 @@ const DeleteWidgetModal = ({
         open={visible}
         title={`${t('label.delete')} ${entityType} "${entityName}"`}
         onCancel={handleOnEntityDeleteCancel}>
-        <Form form={form} onFinish={onDelete ?? handleOnEntityDeleteConfirm}>
+        <Form form={form} onFinish={onFormFinish}>
           <Form.Item<DeleteWidgetFormFields> className="m-0" name="deleteType">
             <Radio.Group onChange={onChange}>
               {(deleteOptions ?? DELETE_OPTION).map(

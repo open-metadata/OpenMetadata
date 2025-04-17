@@ -10,24 +10,80 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SpinProps, Table as AntdTable, TableProps } from 'antd';
-import React, { useMemo } from 'react';
+import Icon from '@ant-design/icons';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Row,
+  SpinProps,
+  Table as AntdTable,
+  Typography,
+} from 'antd';
+import { ColumnType } from 'antd/lib/table';
+import classNames from 'classnames';
+import { isEmpty } from 'lodash';
+import React, {
+  forwardRef,
+  Ref,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useAntdColumnResize } from 'react-antd-column-resize';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  getCustomizeColumnDetails,
+  getReorderedColumns,
+} from '../../../utils/CustomizeColumnUtils';
+import {
+  getTableColumnConfigSelections,
+  getTableExpandableConfig,
+  handleUpdateTableColumnSelections,
+} from '../../../utils/TableUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
+import NextPrevious from '../NextPrevious/NextPrevious';
+import Searchbar from '../SearchBarComponent/SearchBar.component';
+import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
+import {
+  TableColumnDropdownList,
+  TableComponentProps,
+} from './Table.interface';
+import './table.less';
 
-interface TableComponentProps<T> extends TableProps<T> {
-  resizableColumns?: boolean;
-}
+type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
-const Table = <T extends object = any>({
-  loading,
-  ...rest
-}: TableComponentProps<T>) => {
+const Table = <T extends Record<string, unknown>>(
+  {
+    loading,
+    searchProps,
+    customPaginationProps,
+    entityType,
+    defaultVisibleColumns,
+    ...rest
+  }: TableProps<T>,
+  ref: Ref<HTMLDivElement> | null | undefined
+) => {
+  const { t } = useTranslation();
+  const { type } = useGenericContext();
+  const { currentUser } = useApplicationStore();
+  const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
+  const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
+  const [dropdownColumnList, setDropdownColumnList] = useState<
+    TableColumnDropdownList[]
+  >([]);
+  const [columnDropdownSelections, setColumnDropdownSelections] = useState<
+    string[]
+  >([]);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
-    () => ({ columns: rest.columns || [], minWidth: 150 }),
-    [rest.columns]
+    () => ({ columns: propsColumns, minWidth: 80 }),
+    [propsColumns]
   );
 
   const isLoading = useMemo(
@@ -35,39 +91,97 @@ const Table = <T extends object = any>({
     [loading]
   );
 
-  // TODO: Need to remove the skeleton loading to fix: https://github.com/open-metadata/OpenMetadata/issues/16655
-  // Let's circle back once we have a better solution for this.
-  //   const dataSource = useMemo(
-  //     () => getUniqueArray(SMALL_TABLE_LOADER_SIZE) as T[],
-  //     []
-  //   );
+  const entityKey = useMemo(() => type ?? entityType, [type, entityType]);
 
-  //   if (isLoading) {
-  //     const { columns } = { ...rest };
-  //     const column = columns?.map((column) => {
-  //       return {
-  //         ...column,
-  //         render: () => (
-  //           <Skeleton
-  //             title
-  //             active={isLoading}
-  //             key={column.key}
-  //             paragraph={false}
-  //           />
-  //         ),
-  //       };
-  //     });
+  // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
+  const isFullViewTable = useMemo(
+    () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
+    [rest.staticVisibleColumns, defaultVisibleColumns]
+  );
 
-  //     return (
-  //       <AntdTable
-  //         {...rest}
-  //         columns={column}
-  //         data-testid="skeleton-table"
-  //         dataSource={isEmpty(rest.dataSource) ? dataSource : rest.dataSource}
-  //         expandable={undefined}
-  //       />
-  //     );
-  //   }
+  const handleMoveItem = useCallback(
+    (updatedList: TableColumnDropdownList[]) => {
+      setDropdownColumnList(updatedList);
+      setPropsColumns(getReorderedColumns(updatedList, propsColumns));
+    },
+    [propsColumns]
+  );
+
+  const handleColumnItemSelect = useCallback(
+    (key: string, selected: boolean) => {
+      const updatedSelections = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        currentUser?.fullyQualifiedName ?? '',
+        entityKey
+      );
+
+      setColumnDropdownSelections(updatedSelections);
+    },
+    [columnDropdownSelections, entityKey]
+  );
+
+  const handleBulkColumnAction = useCallback(() => {
+    if (dropdownColumnList.length === columnDropdownSelections.length) {
+      setColumnDropdownSelections([]);
+    } else {
+      setColumnDropdownSelections(
+        dropdownColumnList.map((option) => option.value)
+      );
+    }
+  }, [dropdownColumnList, columnDropdownSelections]);
+
+  const menu = useMemo(
+    () => ({
+      items: [
+        {
+          key: 'header',
+          label: (
+            <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
+              <Typography.Text
+                className="text-sm text-grey-muted font-medium"
+                data-testid="column-dropdown-title">
+                {t('label.column')}
+              </Typography.Text>
+              <Button
+                className="text-primary text-sm p-0"
+                data-testid="column-dropdown-action-button"
+                type="text"
+                onClick={handleBulkColumnAction}>
+                {dropdownColumnList.length === columnDropdownSelections.length
+                  ? t('label.hide-all')
+                  : t('label.view-all')}
+              </Button>
+            </div>
+          ),
+        },
+        {
+          key: 'columns',
+          label: dropdownColumnList.map(
+            (item: TableColumnDropdownList, index: number) => (
+              <DraggableMenuItem
+                currentItem={item}
+                index={index}
+                itemList={dropdownColumnList}
+                key={item.value}
+                selectedOptions={columnDropdownSelections}
+                onMoveItem={handleMoveItem}
+                onSelect={handleColumnItemSelect}
+              />
+            )
+          ),
+        },
+      ],
+    }),
+    [
+      dropdownColumnList,
+      columnDropdownSelections,
+      handleMoveItem,
+      handleColumnItemSelect,
+      handleBulkColumnAction,
+    ]
+  );
 
   const resizingTableProps = rest.resizableColumns
     ? {
@@ -83,21 +197,129 @@ const Table = <T extends object = any>({
       }
     : {};
 
+  const handleSearchAction = (value: string) => {
+    searchProps?.onSearch?.(value);
+  };
+
+  useEffect(() => {
+    if (!isFullViewTable) {
+      setDropdownColumnList(
+        getCustomizeColumnDetails<T>(rest.columns, rest.staticVisibleColumns)
+      );
+    }
+  }, [isFullViewTable, rest.columns, rest.staticVisibleColumns]);
+
+  useEffect(() => {
+    if (isFullViewTable) {
+      setPropsColumns(rest.columns ?? []);
+    } else {
+      const filteredColumns = (rest.columns ?? []).filter(
+        (item) =>
+          columnDropdownSelections.includes(item.key as string) ||
+          (rest.staticVisibleColumns ?? []).includes(item.key as string)
+      );
+
+      setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
+    }
+  }, [
+    isFullViewTable,
+    rest.columns,
+    columnDropdownSelections,
+    rest.staticVisibleColumns,
+  ]);
+
+  useEffect(() => {
+    const selections = getTableColumnConfigSelections(
+      currentUser?.fullyQualifiedName ?? '',
+      entityKey,
+      isFullViewTable,
+      defaultVisibleColumns
+    );
+
+    setColumnDropdownSelections(selections);
+  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
+
   return (
-    <AntdTable
-      {...rest}
-      expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
-      loading={{
-        spinning: isLoading,
-        indicator: <Loader />,
-      }}
-      locale={{
-        ...rest.locale,
-        emptyText: isLoading ? null : rest.locale?.emptyText,
-      }}
-      {...resizingTableProps}
-    />
+    <Row className={classNames('table-container', rest.containerClassName)}>
+      <Col
+        className={classNames({
+          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
+        })}
+        span={24}>
+        <Row className="p-x-md">
+          {searchProps ? (
+            <Col span={12}>
+              <Searchbar
+                {...searchProps}
+                removeMargin
+                placeholder={searchProps?.placeholder ?? t('label.search')}
+                searchValue={searchProps?.value}
+                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                onSearch={handleSearchAction}
+              />
+            </Col>
+          ) : null}
+          {(rest.extraTableFilters || !isFullViewTable) && (
+            <Col
+              className={classNames(
+                'd-flex justify-end items-center gap-5',
+                rest.extraTableFiltersClassName
+              )}
+              span={searchProps ? 12 : 24}>
+              {rest.extraTableFilters}
+              {!isFullViewTable && (
+                <DndProvider backend={HTML5Backend}>
+                  <Dropdown
+                    className="custom-column-dropdown-menu text-primary"
+                    menu={menu}
+                    open={isDropdownVisible}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setIsDropdownVisible}>
+                    <Button
+                      className="remove-button-background-hover"
+                      data-testid="column-dropdown"
+                      icon={<Icon component={ColumnIcon} />}
+                      size="small"
+                      type="text">
+                      {t('label.column-plural')}
+                    </Button>
+                  </Dropdown>
+                </DndProvider>
+              )}
+            </Col>
+          )}
+        </Row>
+      </Col>
+
+      <Col span={24}>
+        <AntdTable
+          {...rest}
+          columns={propsColumns}
+          expandable={{
+            ...getTableExpandableConfig<T>(),
+            ...rest.expandable,
+          }}
+          loading={{
+            spinning: isLoading,
+            indicator: <Loader />,
+          }}
+          locale={{
+            ...rest.locale,
+            emptyText: isLoading ? null : rest.locale?.emptyText,
+          }}
+          ref={ref}
+          tableLayout="fixed"
+          {...resizingTableProps}
+        />
+      </Col>
+      {customPaginationProps && customPaginationProps.showPagination ? (
+        <Col span={24}>
+          <NextPrevious {...customPaginationProps} />
+        </Col>
+      ) : null}
+    </Row>
   );
 };
 
-export default Table;
+export default forwardRef<HTMLDivElement, TableProps<any>>(Table);

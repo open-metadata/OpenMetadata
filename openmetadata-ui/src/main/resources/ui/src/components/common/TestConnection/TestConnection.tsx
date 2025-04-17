@@ -33,13 +33,11 @@ import {
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
   Workflow,
   WorkflowStatus,
-  WorkflowType,
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
@@ -53,12 +51,12 @@ import {
 } from '../../../rest/workflowAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   getServiceType,
-  getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { getErrorText } from '../../../utils/StringsUtils';
 import Loader from '../Loader/Loader';
 import './test-connection.style.less';
 import { TestConnectionProps, TestStatus } from './TestConnection.interface';
@@ -85,6 +83,11 @@ const TestConnection: FC<TestConnectionProps> = ({
   const [message, setMessage] = useState<string>(
     TEST_CONNECTION_INITIAL_MESSAGE
   );
+
+  const [errorMessage, setErrorMessage] = useState<{
+    description?: string;
+    subDescription?: string;
+  }>();
 
   const [testConnectionStep, setTestConnectionStep] = useState<
     TestConnectionStep[]
@@ -136,7 +139,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       setTestConnectionStep(response.steps);
       setDialogOpen(true);
-    } catch (error) {
+    } catch {
       throw t('message.test-connection-cannot-be-triggered');
     }
   };
@@ -165,7 +168,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     setTestConnectionStepResult([]);
     setTestStatus(undefined);
     setIsConnectionTimeout(false);
-    setProgress(0);
+    setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.ZERO);
   };
 
   const handleDeleteWorkflow = async (workflowId: string) => {
@@ -176,7 +179,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     try {
       await deleteWorkflowById(workflowId, true);
       setCurrentWorkflow(undefined);
-    } catch (error) {
+    } catch {
       // do not throw error for this API
     }
   };
@@ -206,6 +209,7 @@ const TestConnection: FC<TestConnectionProps> = ({
     response: Workflow,
     intervalObject: {
       intervalId?: number;
+      timeoutId?: number;
     }
   ) => {
     // return a promise that wraps the interval and handles errors inside it
@@ -242,6 +246,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
             // clear the current interval
             clearInterval(intervalObject.intervalId);
+            clearTimeout(intervalObject.timeoutId);
 
             // set testing connection to false
             setIsTestingConnection(false);
@@ -269,19 +274,17 @@ const TestConnection: FC<TestConnectionProps> = ({
     // current interval id
     const intervalObject: {
       intervalId?: number;
+      timeoutId?: number;
     } = {};
 
     try {
-      const createWorkflowData: CreateWorkflow = {
-        name: getTestConnectionName(connectionType),
-        workflowType: WorkflowType.TestConnection,
-        request: {
-          connection: { config: updatedFormData as ConfigClass },
-          serviceType,
+      const createWorkflowData: CreateWorkflow =
+        serviceUtilClassBase.getAddWorkflowData(
           connectionType,
+          serviceType,
           serviceName,
-        },
-      };
+          updatedFormData
+        );
 
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
@@ -312,7 +315,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       }
 
       // stop fetching the workflow after 2 minutes
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // clear the current interval
         clearInterval(intervalObject.intervalId);
 
@@ -333,6 +336,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
 
+      intervalObject.timeoutId = Number(timeoutId);
+
       // Handle workflow polling and completion
       await handleWorkflowPolling(response, intervalObject);
     } catch (error) {
@@ -341,7 +346,18 @@ const TestConnection: FC<TestConnectionProps> = ({
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
-      showErrorToast(error as AxiosError);
+      if ((error as AxiosError)?.status === 500) {
+        setErrorMessage({
+          description: t('server.unexpected-response'),
+        });
+      } else {
+        setErrorMessage({
+          description: getErrorText(
+            error as AxiosError,
+            t('server.unexpected-error')
+          ),
+        });
+      }
 
       // delete the workflow if there is an exception
       const workflowId = currentWorkflowRef.current?.id;
@@ -351,10 +367,15 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
+  const handleCloseErrorMessage = () => {
+    setErrorMessage(undefined);
+  };
+
   const handleTestConnection = () => {
     if (shouldValidateForm) {
       const isFormValid =
         onValidateFormRequiredFields && onValidateFormRequiredFields();
+      handleCloseErrorMessage();
       if (isFormValid) {
         testConnection();
       }
@@ -473,6 +494,8 @@ const TestConnection: FC<TestConnectionProps> = ({
         </Button>
       )}
       <TestConnectionModal
+        errorMessage={errorMessage}
+        handleCloseErrorMessage={handleCloseErrorMessage}
         isConnectionTimeout={isConnectionTimeout}
         isOpen={dialogOpen}
         isTestingConnection={isTestingConnection}

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the SMTP Settings for sending Email
  */
 export interface SMTPSettings {
@@ -24,10 +22,6 @@ export interface SMTPSettings {
      * If this is enable password will details will be shared on mail
      */
     enableSmtpServer?: boolean;
-    /**
-     * Openmetadata Server Endpoint
-     */
-    openMetadataUrl: string;
     /**
      * Smtp Server Password
      */

@@ -17,6 +17,7 @@ Configure and schedule GCS metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/storage/gcs/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/gcs/yaml"} /%}
 
@@ -103,7 +104,7 @@ Select GCS as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.7/connectors/GCS/select-service.png"
+  src="/images/v1.7/connectors/gcs/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -129,7 +130,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.7/connectors/GCS/add-new-service.png"
+  src="/images/v1.7/connectors/gcs/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -151,7 +152,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.7/connectors/GCS/service-connection.png"
+  src="/images/v1.7/connectors/gcs/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -173,5 +174,3 @@ desired.
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

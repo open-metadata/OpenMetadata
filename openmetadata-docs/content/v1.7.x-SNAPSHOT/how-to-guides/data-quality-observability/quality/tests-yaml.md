@@ -322,6 +322,13 @@ Write you own SQL test. When writting your query you can use 2 strategies:
 **How to use the Threshold Parameter?**
 The threshold allows you to define a limit for which you test should pass or fail - by defaut this number is 0. For example if my custom SQL query test returns 10 rows (or a COUNT value of 10) and my threshold is 5 the test will fail. If I update my threshold to 11 on my next run my test will pass.
 
+{% note %}
+
+- When configuring a **Table Custom SQL Test**, specify the table using the format `database.schema.table`.
+- Using only the table name may not work, as it depends on the SQL engine's requirements.
+
+{% /note %}
+
 **Properties**
 
 * `sqlExpression`: SQL expression

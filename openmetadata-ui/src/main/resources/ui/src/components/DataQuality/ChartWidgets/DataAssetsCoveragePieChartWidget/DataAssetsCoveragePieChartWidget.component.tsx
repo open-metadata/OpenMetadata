@@ -29,6 +29,7 @@ import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.compone
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 
 const DataAssetsCoveragePieChartWidget = ({
+  className = '',
   chartFilter,
 }: PieChartWidgetCommonProps) => {
   const { t } = useTranslation();
@@ -104,7 +105,7 @@ const DataAssetsCoveragePieChartWidget = ({
         notCovered: total - covered,
         total: total,
       });
-    } catch (error) {
+    } catch {
       setDataAssetsCoverageStates(INITIAL_DATA_ASSETS_COVERAGE_STATES);
     } finally {
       setIsLoading(false);
@@ -116,11 +117,11 @@ const DataAssetsCoveragePieChartWidget = ({
   }, [chartFilter]);
 
   return (
-    <Card loading={isLoading}>
+    <Card className={className} loading={isLoading}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <DataAssetsCoverageIcon height={20} width={20} />
-          <Typography.Text className="font-medium text-md text-grey-muted">
+          <Typography.Text className="font-medium text-md">
             {t('label.data-asset-plural-coverage')}
           </Typography.Text>
         </div>

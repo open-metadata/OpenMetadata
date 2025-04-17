@@ -21,6 +21,7 @@ on:
       - opened
       - synchronize
       - reopened
+      - ready_for_review
     paths-ignore:
       - 'openmetadata-docs/**'
       - '.github/**'
@@ -39,7 +40,8 @@ concurrency:
 
 jobs:
   playwright-ci-mysql:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     environment: test
     strategy:
       fail-fast: false
@@ -58,7 +60,7 @@ jobs:
           swap-storage: true
           docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.3
+        uses: lewagon/wait-on-check-action@v1.3.4
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -82,7 +84,7 @@ jobs:
 
       - name: Cache Maven Dependencies
         id: cache-output
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -94,16 +96,21 @@ jobs:
         with:
           python-version: '3.9'
           args: "-d mysql"
-          ingestion_dependency: "all"
+          ingestion_dependency: "playwright"
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
       - name: Install Playwright Browsers
-        run: npx playwright@1.44.1 install --with-deps
+        run: npx playwright@1.48.2 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+        run: |
+          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
+            npx playwright test --grep-invert @nightlyOnlyTests --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          else
+            npx playwright test --grep-invert @nightlyOnlyTests --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          fi
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}

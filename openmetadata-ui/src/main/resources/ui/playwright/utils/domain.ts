@@ -172,6 +172,7 @@ export const selectDataProduct = async (
 
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await checkDomainDisplayName(page, domain.displayName);
   await page.getByTestId('assets').click();
 };
@@ -344,14 +345,26 @@ export const addAssetsToDomain = async (
   }
 
   const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);
+  const searchRes = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    const queryParams = new URLSearchParams(url.search);
+    const queryFilter = queryParams.get('query_filter');
+
+    return (
+      response
+        .url()
+        .includes('/api/v1/search/query?q=**&index=all&from=0&size=15') &&
+      queryFilter !== null &&
+      queryFilter !== ''
+    );
+  });
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
 
-  const countRes = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all&from=0&size=15'
-  );
+  await searchRes;
+
   await page.reload();
-  await countRes;
+  await page.waitForLoadState('networkidle');
 
   await checkAssetsCount(page, assets.length);
 };
@@ -576,5 +589,60 @@ export const verifyDataProductAssetsAfterDelete = async (
       }
       await checkAssetsCount(page, 0);
     }
+  );
+};
+
+export const addTagsAndGlossaryToDomain = async (
+  page: Page,
+  {
+    tagFqn,
+    glossaryTermFqn,
+    isDomain = true,
+  }: {
+    tagFqn: string;
+    glossaryTermFqn: string;
+    isDomain?: boolean;
+  }
+) => {
+  const addTagOrTerm = async (
+    containerType: 'tags' | 'glossary',
+    value: string
+  ) => {
+    const container = `[data-testid="${containerType}-container"]`;
+
+    // Click add button
+    await page.locator(`${container} [data-testid="add-tag"]`).click();
+
+    // Fill and select tag/term
+    const input = page.locator(`${container} #tagsForm_tags`);
+    await input.click();
+    await input.fill(value);
+    await page.getByTestId(`tag-${value}`).click();
+
+    // Save and wait for response
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('saveAssociatedTag').click();
+    await updateResponse;
+  };
+
+  // Add tag
+  await addTagOrTerm('tags', tagFqn);
+
+  // Add glossary term
+  await addTagOrTerm('glossary', glossaryTermFqn);
+};
+
+/**
+ * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
+ */
+export const verifyActiveDomainIsDefault = async (page: Page) => {
+  await expect(page.getByTestId('domain-dropdown')).toContainText(
+    'All Domains'
   );
 };

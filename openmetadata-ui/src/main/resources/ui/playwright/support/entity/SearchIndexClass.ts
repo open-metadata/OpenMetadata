@@ -45,43 +45,45 @@ export class SearchIndexClass extends EntityClass {
 
   children = [
     {
-      name: 'name',
+      name: `name${uuid()}`,
       dataType: 'TEXT',
       dataTypeDisplay: 'text',
       description: 'Table Entity Name.',
-      fullyQualifiedName: `${this.fqn}.name`,
       tags: [],
     },
     {
-      name: 'description',
+      name: `databaseSchema${uuid()}`,
+      dataType: 'TEXT',
+      dataTypeDisplay: 'text',
+      description: 'Table Entity Database Schema.',
+      tags: [],
+    },
+    {
+      name: `description${uuid()}`,
       dataType: 'TEXT',
       dataTypeDisplay: 'text',
       description: 'Table Entity Description.',
-      fullyQualifiedName: `${this.fqn}.description`,
       tags: [],
     },
     {
-      name: 'columns',
+      name: `columns${uuid()}`,
       dataType: 'NESTED',
       dataTypeDisplay: 'nested',
       description: 'Table Columns.',
-      fullyQualifiedName: `${this.fqn}.columns`,
       tags: [],
       children: [
         {
-          name: 'name',
+          name: `name${uuid()}`,
           dataType: 'TEXT',
           dataTypeDisplay: 'text',
           description: 'Column Name.',
-          fullyQualifiedName: `${this.fqn}.columns.name`,
           tags: [],
         },
         {
-          name: 'description',
+          name: `description${uuid()}`,
           dataType: 'TEXT',
           dataTypeDisplay: 'text',
           description: 'Column Description.',
-          fullyQualifiedName: `${this.fqn}.columns.description`,
           tags: [],
         },
       ],
@@ -104,7 +106,7 @@ export class SearchIndexClass extends EntityClass {
     this.service.name = name ?? this.service.name;
     this.type = 'SearchIndex';
     this.childrenTabId = 'fields';
-    this.childrenSelectorId = this.children[0].fullyQualifiedName;
+    this.childrenSelectorId = `${this.fqn}.${this.children[0].name}`;
     this.serviceCategory = SERVICE_TYPE.Search;
     this.serviceType = ServiceTypes.SEARCH_SERVICES;
   }

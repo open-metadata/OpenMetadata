@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DI Chart Entity
  */
 export interface DataInsightCustomChart {
@@ -54,6 +52,10 @@ export interface DataInsightCustomChart {
      */
     id?: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Flag to indicate if the chart is system generated or user created.
      */
     isSystemChart?: boolean;
@@ -86,6 +88,7 @@ export interface DataInsightCustomChart {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -102,6 +105,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -132,6 +158,10 @@ export interface LineChart {
      */
     excludeGroups?: string[];
     /**
+     * Regex to exclude fields from the data insight chart when xAxisField is specified.
+     */
+    excludeXAxisField?: string;
+    /**
      * Breakdown field for the data insight chart.
      */
     groupBy?: string;
@@ -139,7 +169,11 @@ export interface LineChart {
      * List of groups to be included in the data insight chart when groupBy is specified.
      */
     includeGroups?: string[];
-    kpiDetails?:    KpiDetails;
+    /**
+     * Regex to include fields in the data insight chart when xAxisField is specified.
+     */
+    includeXAxisFiled?: string;
+    kpiDetails?:        KpiDetails;
     /**
      * Metrics for the data insight chart.
      */

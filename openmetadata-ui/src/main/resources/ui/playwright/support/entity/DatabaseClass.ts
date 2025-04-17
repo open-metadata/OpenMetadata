@@ -348,6 +348,6 @@ export class DatabaseClass extends EntityClass {
     await assignDomain(page, domain1);
     await this.verifyDomainPropagation(page, domain1);
     await updateDomain(page, domain2);
-    await removeDomain(page);
+    await removeDomain(page, domain2);
   }
 }

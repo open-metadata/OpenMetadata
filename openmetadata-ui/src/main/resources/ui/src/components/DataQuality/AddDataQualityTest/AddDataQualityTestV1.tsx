@@ -26,7 +26,6 @@ import {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
@@ -51,6 +50,7 @@ import {
   getEntityBreadcrumbs,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
@@ -279,11 +279,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel "
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <>
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <div className="m-t-md">
               {addIngestion ? (
@@ -315,7 +317,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                 </Row>
               )}
             </div>
-          </div>
+          </>
         ),
         minWidth: 700,
         flex: 0.6,
@@ -325,7 +327,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.4,
       }}

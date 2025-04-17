@@ -17,6 +17,7 @@
 {% connectorInfoCard name="Doris" stage="PROD" href="/connectors/database/doris" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Druid" stage="PROD" href="/connectors/database/druid" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DynamoDB" stage="PROD" href="/connectors/database/dynamodb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Exasol" stage="PROD" href="/connectors/database/exasol" platform="OpenMetadata" / %}
 {% connectorInfoCard name="GCS Datalake" stage="PROD" href="/connectors/database/gcs-datalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Glue" stage="PROD" href="/connectors/database/glue" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Greenplum" stage="BETA" href="/connectors/database/greenplum" platform="OpenMetadata" / %}
@@ -29,17 +30,18 @@
 {% connectorInfoCard name="MySQL" stage="PROD" href="/connectors/database/mysql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Oracle" stage="PROD" href="/connectors/database/oracle" platform="OpenMetadata" / %}
 {% connectorInfoCard name="PinotDB" stage="PROD" href="/connectors/database/pinotdb" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Postgres" stage="PROD" href="/connectors/database/postgres" platform="OpenMetadata" / %}
+{% connectorInfoCard name="PostgreSQL" stage="PROD" href="/connectors/database/postgres" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Presto" stage="PROD" href="/connectors/database/presto" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Redshift" stage="PROD" href="/connectors/database/redshift" platform="OpenMetadata" / %}
+{% connectorInfoCard name="S3 Datalake" stage="PROD" href="/connectors/database/s3-datalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Salesforce" stage="PROD" href="/connectors/database/salesforce" platform="OpenMetadata" / %}
-{% connectorInfoCard name="SAP Hana" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAP ERP" stage="PROD" href="/connectors/database/sap-erp" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SAP HANA" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAS" stage="BETA" href="/connectors/database/sas" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SingleStore" stage="PROD" href="/connectors/database/singlestore" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Snowflake" stage="PROD" href="/connectors/database/snowflake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SQLite" stage="PROD" href="/connectors/database/sqlite" platform="OpenMetadata" / %}
-{% connectorInfoCard name="S3 Datalake" stage="PROD" href="/connectors/database/s3-datalake" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Synapse" stage="PROD" href="/connectors/database/synapse" platform="Collate" / %}
 {% connectorInfoCard name="Teradata" stage="PROD" href="/connectors/database/teradata" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Trino" stage="PROD" href="/connectors/database/trino" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Unity Catalog" stage="PROD" href="/connectors/database/unity-catalog" platform="OpenMetadata" / %}

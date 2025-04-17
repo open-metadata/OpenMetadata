@@ -18,6 +18,8 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-qlik-sense-connection-with-ssl-in-openmetadata)
+- [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/qliksense/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/qliksense/yaml"} /%}
 
@@ -118,4 +120,4 @@ Refer to the guide on how to generate authentication certificates so that OpenMe
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}

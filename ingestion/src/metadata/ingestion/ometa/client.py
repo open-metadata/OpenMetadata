@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +14,7 @@ Python API REST wrapper and helpers
 import time
 import traceback
 from datetime import datetime, timezone
+from json import JSONDecodeError
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
@@ -117,6 +118,8 @@ class ClientConfig(ConfigModel):
     verify: Optional[Union[bool, str]] = None
     cookies: Optional[Any] = None
     ttl_cache: int = 60
+    timeout: Optional[int] = None
+    cert: Optional[Union[str, tuple]] = None
 
 
 # pylint: disable=too-many-instance-attributes
@@ -140,6 +143,8 @@ class REST:
         self._auth_token_mode = self.config.auth_token_mode
         self._verify = self.config.verify
         self._cookies = self.config.cookies
+        self._cert = self.config.cert
+        self._timeout = self.config.timeout
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
@@ -177,6 +182,7 @@ class REST:
                     self.config.expires_in = (
                         datetime.now(timezone.utc).timestamp() + expiry - 120
                     )
+
         if self.config.auth_header:
             headers[self.config.auth_header] = (
                 f"{self._auth_token_mode} {self.config.access_token}"
@@ -189,6 +195,7 @@ class REST:
         # the value will be set to that value.
         # Example: "Proxy-Authorization": "%(Authorization)s"
         # This will result in the Authorization value being set for the Proxy-Authorization Extra Header
+        # Any header which is comming as extra header from client will overwrite the header with same name in headers
         if self.config.extra_headers:
             extra_headers: Dict[str, str] = self.config.extra_headers
             extra_headers = {k: (v % headers) for k, v in extra_headers.items()}
@@ -209,6 +216,12 @@ class REST:
         opts[method_key] = data
         if json:
             opts["json"] = json
+
+        if self._cert:
+            opts["cert"] = self._cert
+
+        if self._timeout:
+            opts["timeout"] = self._timeout
 
         total_retries = self._retry if self._retry > 0 else 0
         retry = total_retries
@@ -250,6 +263,12 @@ class REST:
             if resp.text != "":
                 try:
                     return resp.json()
+                except JSONDecodeError as json_decode_error:
+                    logger.error(
+                        f"Json decoding error while returning response {resp} in json format - {json_decode_error}."
+                        f"The Response still returned to be handled by client..."
+                    )
+                    return resp
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
@@ -308,6 +327,7 @@ class REST:
         Parameters:
             path (str):
             data ():
+            json ():
 
         Returns:
             Response

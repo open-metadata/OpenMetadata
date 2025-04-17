@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -295,6 +295,10 @@ export interface OidcClientConfig {
      * Client ID.
      */
     id?: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
     /**
      * Max Clock Skew
      */

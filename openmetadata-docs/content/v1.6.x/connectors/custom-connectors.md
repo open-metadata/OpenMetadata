@@ -22,7 +22,7 @@ We'd recommend to go through the example to better understand how all the pieces
 
 Watch OpenMetadata's [Webinar on Custom Connectors](https://www.youtube.com/watch?v=fDUj30Ub9VE)
 
-{% youtube videoId="fDUj30Ub9VE" start="0:00" end="36:33" width="560px" height="315px" /%}
+{% youtube videoId="fDUj30Ub9VE" start="0:00" end="36:33" width="800px" height="450px" /%}
 
 # Steps to Set Up a Custom Connector
 

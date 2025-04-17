@@ -25,10 +25,12 @@ import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/
 import { TabSpecificField } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { getTestSuiteDetailsPath } from '../../utils/TestSuiteUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -36,7 +38,6 @@ import { showErrorToast } from '../../utils/ToastUtils';
 const TestSuiteIngestionPage = () => {
   const { fqn: testSuiteFQN, ingestionFQN } = useFqn();
   const { t } = useTranslation();
-
   const [isLoading, setIsLoading] = useState(true);
   const [testSuite, setTestSuite] = useState<TestSuite>();
   const [ingestionPipeline, setIngestionPipeline] =
@@ -126,8 +127,10 @@ const TestSuiteIngestionPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'm-x-auto max-w-md',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div>
             <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
             <div className="m-t-md">
               <TestSuiteIngestion
@@ -145,7 +148,7 @@ const TestSuiteIngestionPage = () => {
       })}
       secondPanel={{
         children: <RightPanel data={TEST_SUITE_INGESTION_PAGE_DATA} />,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -153,4 +156,8 @@ const TestSuiteIngestionPage = () => {
   );
 };
 
-export default TestSuiteIngestionPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.test-suite'),
+  })
+)(TestSuiteIngestionPage);

@@ -7,8 +7,8 @@ slug: /connectors/dashboard/quicksight
   name="QuickSight"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Lineage"]
-  unavailableFeatures=["Owners", "Tags", "Datamodels", "Projects"]
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Datamodels"]
+  unavailableFeatures=["Owners", "Tags", "Projects"]
 / %}
 
 In this section, we provide guides and references to use the QuickSight connector.
@@ -17,6 +17,8 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/quicksight)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/quicksight/yaml"} /%}
 ## Requirements
@@ -135,6 +137,12 @@ This is a required field if you'd like to `AssumeRole`.
 
 Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 
+{%note%}
+When using Assume Role authentication, ensure you provide the following details:  
+- **AWS Region**: Specify the AWS region for your deployment.  
+- **Assume Role ARN**: Provide the ARN of the role in your AWS account that OpenMetadata will assume.  
+{%/note%}
+
 - **Assume Role Session Name**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
   is assumed by different principals or for different reasons.
 
@@ -161,4 +169,4 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/dashboard/dashboard-lineage.md" /%}

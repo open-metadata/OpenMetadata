@@ -12,6 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -68,6 +71,8 @@ public class AppScheduler {
   public static final String APPS_TRIGGER_GROUP = "OMAppsJobGroup";
   public static final String APP_INFO_KEY = "applicationInfoKey";
   public static final String APP_NAME = "appName";
+  public static String APP_CONFIG_KEY = "configOverride";
+
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
@@ -92,14 +97,19 @@ public class AppScheduler {
     // Add OMJob Listener
     this.scheduler
         .getListenerManager()
-        .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
+        .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    this.resetErrorTriggers();
+    ScheduledExecutorService threadScheduler = Executors.newScheduledThreadPool(1);
+    threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
 
     // Start Scheduler
     this.scheduler.start();
   }
 
+  /* Quartz triggers can go into an "ERROR" state in some cases. Most notably when the jobs
+  constructor throws an error. I do not know why this happens and the issues seem to be transient.
+  This method resets all triggers in the ERROR state to the normal state.
+   */
   private void resetErrorTriggers() {
     try {
       scheduler
@@ -156,10 +166,13 @@ public class AppScheduler {
     throw new UnhandledServerException("App Scheduler is not Initialized");
   }
 
-  public void addApplicationSchedule(App application) {
+  public void scheduleApplication(App application) {
     try {
       if (scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP)) != null) {
-        LOG.info("Job already exists for the application, skipping the scheduling");
+        LOG.info(
+            "Job already exists for the application {}, rescheduling it", application.getName());
+        scheduler.rescheduleJob(
+            new TriggerKey(application.getName(), APPS_TRIGGER_GROUP), trigger(application));
         return;
       }
       AppRuntime context = getAppRuntime(application);
@@ -238,7 +251,7 @@ public class AppScheduler {
     throw new IllegalArgumentException("Invalid Trigger Info for the scheduled application.");
   }
 
-  public void triggerOnDemandApplication(App application) {
+  public void triggerOnDemandApplication(App application, Map<String, Object> config) {
     if (application.getFullyQualifiedName() == null) {
       throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
     }
@@ -262,22 +275,22 @@ public class AppScheduler {
       }
 
       AppRuntime context = getAppRuntime(application);
-      if (Boolean.TRUE.equals(context.getEnabled())) {
-        JobDetail newJobDetail =
-            jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
-        newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
-        newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
-        Trigger trigger =
-            TriggerBuilder.newTrigger()
-                .withIdentity(
-                    String.format("%s-%s", application.getName(), ON_DEMAND_JOB),
-                    APPS_TRIGGER_GROUP)
-                .startNow()
-                .build();
-        scheduler.scheduleJob(newJobDetail, trigger);
-      } else {
+      if (Boolean.FALSE.equals(context.getEnabled())) {
         LOG.info("[Applications] App cannot be scheduled since it is disabled");
+        return;
       }
+      JobDetail newJobDetail =
+          jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
+      newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
+      newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
+      newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
+      Trigger trigger =
+          TriggerBuilder.newTrigger()
+              .withIdentity(
+                  String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_TRIGGER_GROUP)
+              .startNow()
+              .build();
+      scheduler.scheduleJob(newJobDetail, trigger);
     } catch (ObjectAlreadyExistsException ex) {
       throw new UnhandledServerException("Job is already running, please wait for it to complete.");
     } catch (SchedulerException | ClassNotFoundException ex) {

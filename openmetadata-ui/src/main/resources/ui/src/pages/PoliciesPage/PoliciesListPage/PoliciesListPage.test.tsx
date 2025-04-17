@@ -18,10 +18,13 @@ import { POLICY_LIST_WITH_PAGING } from '../../RolesPage/Roles.mock';
 import PoliciesListPage from './PoliciesListPage';
 
 const mockPush = jest.fn();
-
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
+  })),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
   })),
   Link: jest.fn().mockImplementation(({ children, to, ...res }) => (
     <a href={to} {...res}>

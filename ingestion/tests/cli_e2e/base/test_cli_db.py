@@ -1,8 +1,8 @@
 #  Copyright 2022 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -85,6 +85,8 @@ class CliDBBase(TestCase):
                 3. build config file for auto classification
                 4. run auto classification
             """
+            self.delete_table_and_view()
+            self.create_table_and_view()
             self.build_config_file()
             self.run_command()
             self.build_config_file(
@@ -217,10 +219,14 @@ class CliDBBase(TestCase):
                 E2EType.INGEST_DB_FILTER_SCHEMA,
                 {"includes": self.get_includes_schemas()},
             )
+            service_type = self.get_connector_name()
+            if hasattr(self, "get_service_type"):
+                service_type = self.get_service_type()
+
             self.run_command()
             self.build_config_file(
                 E2EType.LINEAGE,
-                {"source": f"{self.get_connector_name()}-lineage"},
+                {"source": f"{service_type}-lineage"},
             )
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)

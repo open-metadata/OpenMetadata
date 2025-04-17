@@ -9,7 +9,7 @@ name="Iceberg"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Owners"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures", "Sample Data"]
 / %}
 
 
@@ -20,6 +20,7 @@ Configure and schedule Iceberg metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-rest-catalog-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/iceberg/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/iceberg/yaml"} /%}
 
@@ -165,6 +166,12 @@ This is a required field if you'd like to `AssumeRole`.
 
 Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 
+{%note%}
+When using Assume Role authentication, ensure you provide the following details:  
+- **AWS Region**: Specify the AWS region for your deployment.  
+- **Assume Role ARN**: Provide the ARN of the role in your AWS account that OpenMetadata will assume.  
+{%/note%}
+
 - **Assume Role Session Name (Not Supported)**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
     is assumed by different principals or for different reasons.
 
@@ -205,7 +212,5 @@ When using `SSL` to establish secure connections between OpenMetadata and Rest C
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

@@ -7,8 +7,8 @@ slug: /connectors/dashboard/qlikcloud
   name="Qlik Cloud"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Datamodels", "Lineage", "Column Lineage"]
-  unavailableFeatures=["Owners", "Tags", "Projects"]
+  availableFeatures=["Projects", "Dashboards", "Charts", "Datamodels", "Lineage", "Column Lineage"]
+  unavailableFeatures=["Owners", "Tags"]
 / %}
 
 In this section, we provide guides and references to use the Qlik Cloud connector.
@@ -17,6 +17,8 @@ Configure and schedule QlikCloud metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/qlikcloud/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/qlikcloud/yaml"} /%}
 
@@ -28,14 +30,14 @@ To deploy OpenMetadata, check the Deployment guides.
 
 ## Metadata Ingestion
 
-{% partial 
-  file="/v1.7/connectors/metadata-ingestion-ui.md" 
+{% partial
+  file="/v1.7/connectors/metadata-ingestion-ui.md"
   variables={
     connector: "QlikCloud",
     selectServicePath: "/images/v1.7/connectors/qlikcloud/select-service.png",
     addNewServicePath: "/images/v1.7/connectors/qlikcloud/add-new-service.png",
     serviceConnectionPath: "/images/v1.7/connectors/qlikcloud/service-connection.png",
-} 
+ }
 /%}
 
 {% stepsContainer %}
@@ -45,6 +47,7 @@ To deploy OpenMetadata, check the Deployment guides.
 
 - **Qlik Cloud Host Port**: This field refers to the base url of your Qlik Cloud Portal, will be used for generating the redirect links for dashboards and charts. Example: `https://<TenantURL>.qlikcloud.com`
 - **Qlik Cloud API Token**: Enter the API token for Qlik Cloud APIs access. Refer to [this](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Admin/mc-generate-api-keys.htm) document for more details about. Example: `eyJhbGciOiJFU***`.
+- **Qlik Cloud Space Types**: Select relevant space types of Qlik Cloud to filter the dashboards ingested into the platform. Example: `Personal`, `Shared`, `Managed`.
 
 {% /extraContent %}
 
@@ -56,4 +59,4 @@ To deploy OpenMetadata, check the Deployment guides.
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/dashboard/dashboard-lineage.md" /%}

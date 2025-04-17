@@ -28,6 +28,7 @@ public class AppMarketPlaceMapper
             .withPrivacyPolicyUrl(create.getPrivacyPolicyUrl())
             .withClassName(create.getClassName())
             .withAppType(create.getAppType())
+            .withAgentType(create.getAgentType())
             .withScheduleType(create.getScheduleType())
             .withRuntime(create.getRuntime())
             .withAppConfiguration(create.getAppConfiguration())
@@ -38,7 +39,8 @@ public class AppMarketPlaceMapper
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
             .withSystem(create.getSystem())
-            .withSupportsInterrupt(create.getSupportsInterrupt());
+            .withSupportsInterrupt(create.getSupportsInterrupt())
+            .withEventSubscriptions(create.getEventSubscriptions());
 
     // Validate App
     validateApplication(app);

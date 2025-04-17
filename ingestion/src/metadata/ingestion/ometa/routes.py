@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -46,6 +46,9 @@ from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.data.createQueryCostRecord import (
+    CreateQueryCostRecordRequest,
+)
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
@@ -92,6 +95,7 @@ from metadata.generated.schema.api.services.createStorageService import (
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
 )
+from metadata.generated.schema.api.teams.createPersona import CreatePersonaRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -132,6 +136,7 @@ from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
+from metadata.generated.schema.entity.data.queryCostRecord import QueryCostRecord
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
@@ -157,6 +162,7 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
+from metadata.generated.schema.entity.teams.persona import Persona
 from metadata.generated.schema.entity.teams.role import Role
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
@@ -217,6 +223,8 @@ ROUTES = {
     CreateTeamRequest.__name__: "/teams",
     User.__name__: "/users",
     CreateUserRequest.__name__: "/users",
+    Persona.__name__: "/personas",
+    CreatePersonaRequest.__name__: "/personas",
     AuthenticationMechanism.__name__: "/users/auth-mechanism",
     Bot.__name__: "/bots",
     CreateBot.__name__: "/bots",
@@ -276,4 +284,7 @@ ROUTES = {
     CreateAppMarketPlaceDefinitionRequest.__name__: "/apps/marketplace",
     # Settings
     Settings.__name__: "/system/settings",
+    # Query Cost
+    QueryCostRecord.__name__: "/queryCostRecord",
+    CreateQueryCostRecordRequest.__name__: "/queryCostRecord",
 }

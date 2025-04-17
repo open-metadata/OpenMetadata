@@ -71,7 +71,6 @@ export const ExtensionTable = ({
 
   return (
     <Table
-      bordered
       className={classNames('m-md', tableClassName)}
       columns={tableColumn}
       data-testid="custom-properties-table"

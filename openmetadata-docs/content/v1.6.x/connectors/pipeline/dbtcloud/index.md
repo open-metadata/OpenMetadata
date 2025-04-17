@@ -22,7 +22,7 @@ Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMe
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/pipeline/dbtcloud/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
@@ -98,10 +98,6 @@ By successfully completing these steps, the lineage information for the service 
 {% image
   src="/images/v1.6/connectors/dbtcloud/lineage.png"
   alt="DBT Cloud Lineage" /%}
-
-
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a DBT Cloud service, follow these steps to diagnose the issue.

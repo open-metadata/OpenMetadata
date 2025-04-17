@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 @import (reference) url('../../styles/variables.less');
-.domain-content-container {
-  height: @domain-page-height;
-  overflow-y: auto;
-}
 
 .domain-details-page-tabs {
-  .ant-tabs-nav {
-    padding: 0 20px;
-    margin: 0 !important;
+  .ant-tabs-tabpane {
+    height: @domain-page-height;
+    overflow-y: auto;
   }
 }
 
@@ -33,6 +29,7 @@
       min-height: 150px;
     }
   }
+
   .toastui-editor-md-preview {
     min-height: 150px;
   }
@@ -40,9 +37,11 @@
 
 .ant-tooltip.domain-type-tooltip-container {
   max-width: 750px;
+
   .ant-tooltip-arrow-content::before {
     background: @white;
   }
+
   .ant-tooltip-inner {
     background: @white;
     padding: 20px;

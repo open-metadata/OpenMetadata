@@ -21,11 +21,17 @@
     },
     "applyToChildren": {
       "title": "Apply to Children",
-      "description": "Remove descriptions from all children of the selected assets. E.g., columns, tasks, topic fields,...",
+      "description": "Remove descriptions from the children of the selected assets. E.g., columns, tasks, topic fields,...",
       "type": "array",
       "items": {
         "$ref": "../../../../../type/basic.json#/definitions/entityName"
       },
+      "default": null
+    },
+    "applyToAll": {
+      "title": "Apply to All",
+      "description": "Remove descriptions from all the children and parent of the selected assets.",
+      "type": "boolean",
       "default": null
     }
   },

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -115,7 +115,7 @@ EXPECTED_COLUMN_VALUE = [
         dataTypeDisplay="textarea",
         description="Contact Description",
         fullyQualifiedName=None,
-        tags=None,
+        tags=[],
         constraint=Constraint.NULL,
         ordinalPosition=1,
         jsonSchema=None,
@@ -134,7 +134,7 @@ EXPECTED_COLUMN_VALUE = [
         dataTypeDisplay="reference",
         description="Owner ID",
         fullyQualifiedName=None,
-        tags=None,
+        tags=[],
         constraint=Constraint.NOT_NULL,
         ordinalPosition=2,
         jsonSchema=None,
@@ -153,7 +153,7 @@ EXPECTED_COLUMN_VALUE = [
         dataTypeDisplay="phone",
         description="Phone",
         fullyQualifiedName=None,
-        tags=None,
+        tags=[],
         constraint=Constraint.NOT_NULL,
         ordinalPosition=3,
         jsonSchema=None,
@@ -172,7 +172,7 @@ EXPECTED_COLUMN_VALUE = [
         dataTypeDisplay="anytype",
         description="Created By ID",
         fullyQualifiedName=None,
-        tags=None,
+        tags=[],
         constraint=Constraint.NOT_NULL,
         ordinalPosition=4,
         jsonSchema=None,
@@ -449,8 +449,12 @@ class SalesforceUnitTest(TestCase):
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA
 
-    def test_table_column(self):
-        result = self.salesforce_source.get_columns(SALESFORCE_FIELDS)
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description"
+    )
+    def test_table_column(self, get_table_column_description):
+        get_table_column_description.return_value = None
+        result = self.salesforce_source.get_columns("TEST_TABLE", SALESFORCE_FIELDS)
         assert EXPECTED_COLUMN_VALUE == result
 
     def test_column_type(self):

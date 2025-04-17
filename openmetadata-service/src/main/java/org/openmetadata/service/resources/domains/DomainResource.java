@@ -45,9 +45,11 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
@@ -57,6 +59,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -71,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
   private final DomainMapper mapper = new DomainMapper();
-  static final String FIELDS = "children,owners,experts";
+  static final String FIELDS = "tags,children,owners,experts,extension";
 
   public DomainResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOMAIN, authorizer, limits);
@@ -311,6 +315,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
@@ -337,6 +344,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
@@ -416,6 +426,24 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDomainAsync",
+      summary = "Asynchronously delete a domain by Id",
+      description = "Asynchronously delete a domain by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Domain for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDomainByFQN",
@@ -432,5 +460,33 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name) {
     return deleteByName(uriInfo, securityContext, name, true, true);
+  }
+
+  @GET
+  @Path("/hierarchy")
+  @Operation(
+      operationId = "listDomainsHierarchy",
+      summary = "List domains in hierarchical order",
+      description = "Get a list of Domains in hierarchical order.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Domains in hierarchical order",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHierarchyList.class)))
+      })
+  public ResultList<EntityHierarchy> listHierarchy(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam) {
+
+    return new EntityHierarchyList(repository.buildHierarchy(fieldsParam, limitParam));
   }
 }

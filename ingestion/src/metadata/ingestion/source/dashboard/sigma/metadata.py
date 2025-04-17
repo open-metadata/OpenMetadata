@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -52,6 +52,7 @@ from metadata.ingestion.source.dashboard.sigma.models import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
@@ -196,39 +197,36 @@ class SigmaSource(DashboardServiceSource):
         return None
 
     def _get_table_entity_from_node(
-        self, node: NodeDetails, db_service_name: str
+        self, node: NodeDetails, db_service_name: Optional[str]
     ) -> Optional[Table]:
         """
         Get the table entity for lineage
         """
         if node.node_schema:
             try:
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=db_service_name,
+                fqn_search_string = build_es_fqn_search_string(
+                    database_name=None,
                     schema_name=node.node_schema,
+                    service_name=db_service_name or "*",
                     table_name=node.name,
-                    database_name="",
                 )
-                if table_fqn:
-                    return self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=table_fqn,
-                    )
+                return self.metadata.search_in_any_service(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
+                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error occured while finding table fqn: {exc}")
         return None
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: WorkbookDetails, db_service_name: Optional[str]
+        self,
+        dashboard_details: WorkbookDetails,
+        db_service_name: Optional[str] = None,
     ):
         """
         yield dashboard lineage
         """
-        if not db_service_name:
-            return
         # charts and datamodels are same here as we are using charts as metadata for datamodels
         for data_model in self.data_models or []:
             try:

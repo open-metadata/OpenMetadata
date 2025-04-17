@@ -21,3 +21,5 @@ export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   { name: t('label.configure'), step: 2 },
   { name: t('label.schedule'), step: 3 },
 ];
+
+export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';

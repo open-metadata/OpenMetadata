@@ -46,12 +46,12 @@ const mockCustomEdgeProp = {
     edge: {
       fromEntity: {
         id: '1',
-        fqn: 'table1',
+        fullyQualifiedName: 'table1',
         type: 'table',
       },
       toEntity: {
         id: '2',
-        fqn: 'table2',
+        fullyQualifiedName: 'table2',
         type: 'table',
       },
       pipeline: {

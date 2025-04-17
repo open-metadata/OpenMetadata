@@ -15,12 +15,9 @@ import { ColumnsType } from 'antd/lib/table';
 import React from 'react';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
-import { CursorType } from '../../../enums/pagination.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineServiceType } from '../../../generated/entity/data/pipeline';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { getServices } from '../../../rest/serviceAPI';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Services from './Services';
 
 let isDescription = true;
@@ -140,9 +137,20 @@ jest.mock('../../../rest/serviceAPI', () => ({
   searchService: mockSearchService,
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Glue'),
+jest.mock('../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
 }));
+
+jest.mock('../../../utils/EntityUtils', () => {
+  const actual = jest.requireActual('../../../utils/EntityUtils');
+
+  return {
+    ...actual,
+    getEntityName: jest.fn().mockReturnValue('Glue'),
+    highlightSearchText: jest.fn((text) => text),
+  };
+});
 
 jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
@@ -156,28 +164,6 @@ jest.mock('../../../utils/ServiceUtils', () => ({
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return () => <div data-testid="error-placeholder">ErrorPlaceHolder</div>;
-});
-
-jest.mock('../../common/NextPrevious/NextPrevious', () => {
-  return ({
-    pagingHandler,
-  }: {
-    pagingHandler: ({ cursorType, currentPage }: PagingHandlerParams) => void;
-  }) => (
-    <div data-testid="next-previous-container">
-      NextPrevious
-      <button
-        data-testid="next-previous-button"
-        onClick={() =>
-          pagingHandler({
-            currentPage: 0,
-            cursorType: CursorType.AFTER,
-          })
-        }>
-        NextPrevious
-      </button>
-    </div>
-  );
 });
 
 jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
@@ -318,24 +304,6 @@ describe('Services', () => {
     });
 
     expect(mockPush).toHaveBeenCalledWith('/pipelineServices/add-service');
-  });
-
-  it('should call handleServicePageChange', async () => {
-    await act(async () => {
-      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
-    });
-
-    await act(async () => {
-      fireEvent.click(await screen.findByTestId('next-previous-button'));
-    });
-
-    expect(getServices as jest.Mock).toHaveBeenCalledWith({
-      after: undefined,
-      before: undefined,
-      include: 'non-deleted',
-      limit: 10,
-      serviceName: 'pipelineServices',
-    });
   });
 
   it('should render columns', async () => {

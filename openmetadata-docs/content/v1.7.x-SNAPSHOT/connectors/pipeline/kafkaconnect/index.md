@@ -7,7 +7,7 @@ slug: /connectors/pipeline/kafkaconnect
 name="KafkaConnect"
 stage="PROD"
 platform="Collate"
-availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Usage"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -22,7 +22,7 @@ Configure and schedule KafkaConnect metadata and profiler workflows from the Ope
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/pipeline/glue-pipeline/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/kafkaconnect/yaml"} /%}
@@ -95,8 +95,6 @@ Currently, the following source and sink connectors for Kafka Connect are suppor
 * [Amazon S3](/connectors/storage/s3)
 
 For these connectors, lineage information can be obtained provided they are configured with a source or sink and the corresponding metadata ingestion is enabled.
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a Kafka Connect service, follow these steps to diagnose the issue.

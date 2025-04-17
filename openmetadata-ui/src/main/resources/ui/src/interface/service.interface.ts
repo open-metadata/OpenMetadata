@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ServicesUpdateRequest } from 'Models';
 import { FormSubmitType } from '../enums/form.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
@@ -135,4 +136,15 @@ export interface IngestionWorkflowFormProps {
   onFocus: (fieldId: string) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
+  serviceData?: ServicesUpdateRequest;
 }
+
+export type ExtraInfoType = {
+  name: string;
+  displayName?: string;
+  description?: string;
+  href?: string;
+  location?: string;
+  type?: string;
+  headerKey?: string;
+};

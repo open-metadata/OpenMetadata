@@ -25,6 +25,7 @@ import { EntityClass } from './EntityClass';
 
 export class DashboardDataModelClass extends EntityClass {
   private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
+  private projectName = `pw-project-${uuid()}`;
   service = {
     name: `pw-dashboard-service-${uuid()}`,
     serviceType: 'Superset',
@@ -58,6 +59,7 @@ export class DashboardDataModelClass extends EntityClass {
     service: this.service.name,
     columns: this.children,
     dataModelType: 'SupersetDataModel',
+    project: this.projectName,
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;

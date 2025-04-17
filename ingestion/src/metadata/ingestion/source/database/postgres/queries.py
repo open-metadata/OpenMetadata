@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -212,98 +212,30 @@ POSTGRES_FETCH_FK = """
     ORDER BY 1
 """
 
-POSTGRES_GET_JSON_FIELDS = """
-    WITH RECURSIVE json_hierarchy AS (
-        SELECT
-            key AS path,
-            json_typeof(value) AS type,
-            value,
-            json_build_object() AS properties,
-            key AS title
-        FROM
-            {table_name} tbd,
-            LATERAL json_each({column_name}::json)
-    ),
-    build_hierarchy AS (
-        SELECT
-            path,
-            type,
-            title,
-            CASE
-                WHEN type = 'object' THEN
-                    json_build_object(
-                        'title', title,
-                        'type', 'object',
-                        'properties', (
-                            SELECT json_object_agg(
-                                key,
-                                json_build_object(
-                                    'title', key,
-                                    'type', json_typeof(value),
-                                    'properties', (
-                                        CASE
-                                            WHEN json_typeof(value) = 'object' THEN
-                                                (
-                                                    SELECT json_object_agg(
-                                                        key,
-                                                        json_build_object(
-                                                            'title', key,
-                                                            'type', json_typeof(value),
-                                                            'properties',
-                                                            json_build_object()
-                                                        )
-                                                    )
-                                                    FROM json_each(value::json) AS sub_key_value
-                                                )
-                                            ELSE json_build_object()
-                                        END
-                                    )
-                                )
-                            )
-                            FROM json_each(value::json) AS key_value
-                        )
-                    )
-                WHEN type = 'array' THEN
-                    json_build_object(
-                        'title', title,
-                        'type', 'array',
-                        'properties', json_build_object()
-                    )
-                ELSE
-                    json_build_object(
-                        'title', title,
-                        'type', type
-                    )
-            END AS hierarchy
-        FROM
-            json_hierarchy
-    ),
-    aggregate_hierarchy AS (
-        select
-            json_build_object(
-            'title','{column_name}',
-            'type','object',
-            'properties',
-            json_object_agg(
-                path,
-                hierarchy
-            )) AS result
-        FROM
-            build_hierarchy
-    )
-    SELECT
-        result
-    FROM
-        aggregate_hierarchy;
-"""
-
 POSTGRES_GET_STORED_PROCEDURES = """
     SELECT proname AS procedure_name,
         nspname AS schema_name,
         proargtypes AS argument_types,
         prorettype::regtype AS return_type,
-        prosrc AS definition
+        prosrc AS definition,
+        'StoredProcedure' as procedure_type
     FROM pg_proc
     JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
     WHERE prokind = 'p';
+"""
+
+POSTGRES_GET_FUNCTIONS = """
+SELECT
+    proname AS procedure_name,
+    nspname AS schema_name,
+    proargtypes AS argument_types,
+    prorettype :: regtype AS return_type,
+    prosrc AS definition,
+    'Function' as procedure_type
+FROM
+    pg_proc
+    JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid
+WHERE
+    prokind = 'f'
+    and pg_namespace.nspname NOT IN ('pg_catalog', 'information_schema');
 """

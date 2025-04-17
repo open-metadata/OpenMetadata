@@ -191,7 +191,7 @@ const ImportTeamsPage = () => {
             : t('label.team-plural'),
       })}>
       <Row
-        className="import-teams w-full page-container"
+        className="import-teams w-full"
         data-testid="import-teams"
         gutter={[16, 8]}>
         <Col span={24}>

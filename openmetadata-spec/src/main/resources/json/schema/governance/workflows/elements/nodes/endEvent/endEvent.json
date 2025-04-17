@@ -18,14 +18,17 @@
       "default": "endEvent"
     },
     "name": {
+      "title": "Name",
       "description": "Name that identifies this Node.",
       "$ref": "../../../../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
+      "title": "Display Name",
       "description": "Display Name that identifies this Node.",
       "type": "string"
     },
     "description": {
+      "title": "Description",
       "description": "Description of the Node.",
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
     }

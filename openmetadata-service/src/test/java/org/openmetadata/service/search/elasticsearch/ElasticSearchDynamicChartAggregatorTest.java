@@ -63,9 +63,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     XContentParser parser =
         XContentFactory.xContent(expectedJsonReq)
             .createParser(
-                ElasticSearchClient.xContentRegistry,
-                LoggingDeprecationHandler.INSTANCE,
-                expectedJsonReq);
+                EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, expectedJsonReq);
     SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
 
     // Create a SearchRequest and set the SearchSourceBuilder

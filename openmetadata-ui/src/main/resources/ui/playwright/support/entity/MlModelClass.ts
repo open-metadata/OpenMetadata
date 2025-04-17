@@ -40,9 +40,14 @@ export class MlModelClass extends EntityClass {
 
   children = [
     {
-      name: 'sales',
+      name: `sales-${uuid()}`,
       dataType: 'numerical',
       description: 'Sales amount',
+    },
+    {
+      name: 'persona',
+      dataType: 'categorical',
+      description: 'type of buyer',
     },
   ];
 

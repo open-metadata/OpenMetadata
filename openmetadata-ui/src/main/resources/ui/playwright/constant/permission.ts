@@ -40,6 +40,7 @@ export const DESCRIPTION = `This is ${POLICY_NAME} description`;
 export const RULE_NAME = `Rule / test-${uuid()}`;
 export const RULE_DESCRIPTION = `This is ${RULE_NAME} description`;
 export const UPDATED_DESCRIPTION = 'This is updated description';
+export const UPDATED_POLICY_NAME = `PW Updated ${POLICY_NAME}`;
 
 export const NEW_RULE_NAME = `New / Rule-test-${uuid()}`;
 export const NEW_RULE_DESCRIPTION = `This is ${NEW_RULE_NAME} description`;

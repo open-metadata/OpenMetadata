@@ -37,16 +37,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.FieldInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -60,13 +63,16 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
@@ -98,10 +104,12 @@ public final class Entity {
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
   @Getter @Setter private static SearchRepository searchRepository;
   @Getter @Setter private static SuggestionRepository suggestionRepository;
+  @Getter @Setter private static TypeRepository typeRepository;
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
+  public static final String FIELD_SERVICE = "service";
   public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
@@ -111,6 +119,9 @@ public final class Entity {
   public static final String FIELD_DELETED = "deleted";
   public static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
   public static final String FIELD_DISPLAY_NAME = "displayName";
+  public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
+  public static final String FIELD_FULLY_QUALIFIED_NAME_HASH = "fqnHash";
+  public static final String FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD = "fqnHash.keyword";
   public static final String FIELD_EXTENSION = "extension";
   public static final String FIELD_USAGE_SUMMARY = "usageSummary";
   public static final String FIELD_CHILDREN = "children";
@@ -172,6 +183,7 @@ public final class Entity {
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";
+  public static final String QUERY_COST_RECORD = "queryCostRecord";
 
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
@@ -395,6 +407,13 @@ public final class Entity {
     return repository.getReference(id, include);
   }
 
+  public static List<EntityReference> getEntityReferencesByIds(
+      @NonNull String entityType, @NonNull List<UUID> ids, Include include) {
+    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    include = repository.supportsSoftDelete ? Include.ALL : include;
+    return repository.getReferences(ids, include);
+  }
+
   public static EntityReference getEntityReferenceByName(
       @NonNull String entityType, String fqn, Include include) {
     if (fqn == null) {
@@ -433,6 +452,23 @@ public final class Entity {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
+  }
+
+  public static <T> List<T> getEntities(
+      List<EntityReference> refs, String fields, Include include) {
+    if (CollectionUtils.isEmpty(refs)) {
+      return new ArrayList<>();
+    }
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(refs.get(0).getType());
+    @SuppressWarnings("unchecked")
+    List<T> entities =
+        (List<T>)
+            entityRepository.get(
+                null,
+                refs.stream().map(EntityReference::getId).toList(),
+                entityRepository.getFields(fields),
+                include);
+    return entities;
   }
 
   public static <T> T getEntityOrNull(
@@ -474,6 +510,16 @@ public final class Entity {
   public static <T> T getEntityByName(
       String entityType, String fqn, String fields, Include include) {
     return getEntityByName(entityType, fqn, fields, include, true);
+  }
+
+  public static <T> List<T> getEntityByNames(
+      String entityType, List<String> tagFQNs, String fields, Include include) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    @SuppressWarnings("unchecked")
+    List<T> entities =
+        (List<T>)
+            entityRepository.getByNames(null, tagFQNs, entityRepository.getFields(fields), include);
+    return entities;
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
@@ -665,5 +711,38 @@ public final class Entity {
       return ENTITY_SERVICE_TYPE_MAP.get(entityType);
     }
     return entityType;
+  }
+
+  public static Set<String> getEntityTypeInService(String serviceType) {
+    return ENTITY_SERVICE_TYPE_MAP.entrySet().stream()
+        .filter(entry -> entry.getValue().equals(serviceType))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toSet());
+  }
+
+  public static boolean entityHasField(String entityType, String field) {
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    return entityRepository.getAllowedFields().contains(field);
+  }
+
+  public static List<ServiceEntityInterface> getAllServicesForLineage() {
+    List<ServiceEntityInterface> allServices = new ArrayList<>();
+    Set<ServiceType> serviceTypes = new HashSet<>(List.of(ServiceType.values()));
+    serviceTypes.remove(ServiceType.METADATA);
+
+    for (ServiceType serviceType : serviceTypes) {
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getServiceEntityRepository(serviceType);
+      ListFilter filter = new ListFilter(Include.ALL);
+      List<ServiceEntityInterface> services =
+          (List<ServiceEntityInterface>) repository.listAll(repository.getFields("id"), filter);
+      allServices.addAll(services);
+    }
+
+    return allServices;
+  }
+
+  public static UserRepository getUserRepository() {
+    return (UserRepository) Entity.getEntityRepository(Entity.USER);
   }
 }

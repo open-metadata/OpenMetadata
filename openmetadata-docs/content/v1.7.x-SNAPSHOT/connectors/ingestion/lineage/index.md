@@ -110,7 +110,7 @@ You can check the queries being used here:
 - [MSSQL](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/mssql/queries.py)
 - [Redshift](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/redshift/queries.py)
 - [Clickhouse](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/clickhouse/queries.py)
-- [Postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/queries.py)
+- [PostgreSQL](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/queries.py)
 
 By default, we apply a result limit of 1000 records. You might also need to increase that for databases with big volumes
 of queries.

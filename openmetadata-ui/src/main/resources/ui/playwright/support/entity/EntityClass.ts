@@ -124,7 +124,7 @@ export class EntityClass {
   ) {
     await assignDomain(page, domain1);
     await updateDomain(page, domain2);
-    await removeDomain(page);
+    await removeDomain(page, domain2);
   }
 
   async owner(
@@ -208,7 +208,7 @@ export class EntityClass {
     await removeTag(page, [tag1]);
 
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.Tags')
       .getByTestId('tags-container')
       .getByTestId('Add')
       .isVisible();
@@ -265,7 +265,7 @@ export class EntityClass {
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId('Add')
       .isVisible();

@@ -7,7 +7,7 @@ slug: /how-to-guides/guide-for-data-users/follow-data-asset
 
 Users can get timely information about all the **activities**, **announcements**, and **feeds** related to a data asset by following those assets. The owners of the data assets will receive all the updates by default. The follow option can be used for the assets that you do not own.
 
-{% youtube videoId="xKg596qN7LA" start="0:00" end="1:52" width="560px" height="315px" /%}
+{% youtube videoId="xKg596qN7LA" start="0:00" end="1:52" width="800px" height="450px" /%}
 
 To follow a data asset, 
 - Navigate to the **Explore** page.

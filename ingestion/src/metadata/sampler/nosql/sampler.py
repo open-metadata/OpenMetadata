@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,10 @@ class NoSQLSampler(SamplerInterface):
     """NoSQL generic implementation for the sampler"""
 
     client: NoSQLAdaptor
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client = self.get_client()
 
     @property
     def raw_dataset(self):
@@ -82,10 +86,10 @@ class NoSQLSampler(SamplerInterface):
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.raw_dataset)
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            limit = num_rows * (self.sample_config.profile_sample / 100)
-        elif self.sample_config.profile_sample_type == ProfileSampleType.ROWS:
-            limit = self.sample_config.profile_sample
+        if self.sample_config.profileSampleType == ProfileSampleType.PERCENTAGE:
+            limit = num_rows * (self.sample_config.profileSample or 100 / 100)
+        elif self.sample_config.profileSampleType == ProfileSampleType.ROWS:
+            limit = self.sample_config.profileSample
         else:
             limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit

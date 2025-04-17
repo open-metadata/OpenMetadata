@@ -7,7 +7,7 @@ slug: /connectors/pipeline/domo-pipeline
 name="Domo"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Usage"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -17,6 +17,7 @@ Configure and schedule Domo-Pipeline metadata and profiler workflows from the Op
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/pipeline/domo-pipeline/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/domo-pipeline/yaml"} /%}
 
@@ -57,5 +58,3 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

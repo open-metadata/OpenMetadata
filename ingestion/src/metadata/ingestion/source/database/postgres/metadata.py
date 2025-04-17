@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -60,6 +60,7 @@ from metadata.ingestion.source.database.postgres.models import PostgresStoredPro
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_ALL_TABLE_PG_POLICY,
     POSTGRES_GET_DB_NAMES,
+    POSTGRES_GET_FUNCTIONS,
     POSTGRES_GET_STORED_PROCEDURES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
@@ -70,7 +71,6 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_columns,
     get_etable_owner,
     get_foreign_keys,
-    get_json_fields_and_type,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -113,7 +113,6 @@ PGDialect.ischema_names = ischema_names
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
-Inspector.get_json_fields_and_type = get_json_fields_and_type
 
 PGDialect.get_foreign_keys = get_foreign_keys
 
@@ -275,25 +274,33 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 )
             )
 
+    def _get_stored_procedures_internal(
+        self, query: str
+    ) -> Iterable[PostgresStoredProcedure]:
+        results = self.engine.execute(query).all()
+        for row in results:
+            try:
+                stored_procedure = PostgresStoredProcedure.model_validate(
+                    dict(row._mapping)
+                )
+                yield stored_procedure
+            except Exception as exc:
+                logger.error()
+                self.status.failed(
+                    error=StackTraceError(
+                        name=dict(row).get("name", "UNKNOWN"),
+                        error=f"Error parsing Stored Procedure payload: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
     def get_stored_procedures(self) -> Iterable[PostgresStoredProcedure]:
         """List stored procedures"""
         if self.source_config.includeStoredProcedures:
-            results = self.engine.execute(POSTGRES_GET_STORED_PROCEDURES).all()
-            for row in results:
-                try:
-                    stored_procedure = PostgresStoredProcedure.model_validate(
-                        dict(row._mapping)
-                    )
-                    yield stored_procedure
-                except Exception as exc:
-                    logger.error()
-                    self.status.failed(
-                        error=StackTraceError(
-                            name=dict(row).get("name", "UNKNOWN"),
-                            error=f"Error parsing Stored Procedure payload: {exc}",
-                            stackTrace=traceback.format_exc(),
-                        )
-                    )
+            yield from self._get_stored_procedures_internal(
+                POSTGRES_GET_STORED_PROCEDURES
+            )
+            yield from self._get_stored_procedures_internal(POSTGRES_GET_FUNCTIONS)
 
     def yield_stored_procedure(
         self, stored_procedure
@@ -314,6 +321,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     database_name=self.context.get().database,
                     schema_name=self.context.get().database_schema,
                 ),
+                storedProcedureType=stored_procedure.procedure_type,
             )
             yield Either(right=stored_procedure_request)
             self.register_record_stored_proc_request(stored_procedure_request)

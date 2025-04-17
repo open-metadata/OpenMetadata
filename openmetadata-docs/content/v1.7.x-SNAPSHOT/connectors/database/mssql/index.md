@@ -7,7 +7,7 @@ slug: /connectors/database/mssql
 name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 
@@ -15,7 +15,7 @@ In this section, we provide guides and references to use the MSSQL connector.
 
 Configure and schedule MSSQL metadata and profiler workflows from the OpenMetadata UI:
 
-- [Remote-Connection]() 
+- [Remote-Connection](#for-remote-connection)
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
@@ -23,6 +23,8 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/mssql/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
 
@@ -120,6 +122,6 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/database/mssql/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

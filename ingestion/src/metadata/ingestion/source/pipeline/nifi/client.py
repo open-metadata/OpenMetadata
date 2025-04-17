@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,11 +12,19 @@
 Client to interact with Nifi apis
 """
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Dict, Iterable, List
 
-import requests
-from requests import HTTPError
-
+from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import (
+    NifiBasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.nifi.clientCertificateAuth import (
+    NifiClientCertificateAuth,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
+    NifiConnection,
+)
+from metadata.ingestion.ometa.client import REST, ClientConfig, HTTPError
+from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -26,6 +34,8 @@ IDENTIFIER = "identifier"
 PROCESS_GROUPS_STARTER = "/process-groups/"
 RESOURCES = "resources"
 REQUESTS_TIMEOUT = 60 * 5
+CONTENT_HEADER = {"Content-type": "application/x-www-form-urlencoded"}
+NIFI_API_BASE_ENDPOINT = "/nifi-api"
 
 
 class NifiClient:
@@ -33,39 +43,43 @@ class NifiClient:
     Wrapper on top of Nifi REST API
     """
 
-    # pylint: disable=too-many-arguments
-    def __init__(
-        self,
-        host_port: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        ca_file_path: Optional[str] = None,
-        client_cert_path: Optional[str] = None,
-        client_key_path: Optional[str] = None,
-        verify: bool = False,
-    ):
-        self._token = None
-        self._resources = None
+    client: REST
 
-        self.content_headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        self.api_endpoint = clean_uri(host_port) + "/nifi-api"
-        self.username = username
-        self.password = password
+    def __init__(self, connection: NifiConnection):
+        self.connection = connection
+        self._token, self._resources, self.data = None, None, None
+        self.api_endpoint = clean_uri(self.connection.hostPort) + NIFI_API_BASE_ENDPOINT
 
-        if all(setting for setting in [self.username, self.password]):
-            self.data = {"username": self.username, "password": self.password}
-            self.verify = verify
-            self.headers = {
-                "Authorization": f"Bearer {self.token}",
-                **self.content_headers,
+        client_config = ClientConfig(
+            api_version="",
+            timeout=REQUESTS_TIMEOUT,
+            base_url=self.api_endpoint,
+            extra_headers=CONTENT_HEADER,
+        )
+
+        if isinstance(self.connection.nifiConfig, NifiBasicAuth):
+            self.verify = self.connection.nifiConfig.verifySSL
+            self.data = {
+                "username": self.connection.nifiConfig.username,
+                "password": self.connection.nifiConfig.password.get_secret_value()
+                if self.connection.nifiConfig.password
+                else None,
             }
-            self.client_cert = None
-        else:
-            self.data = None
-            self.verify = ca_file_path if ca_file_path else False
-            self.client_cert = (client_cert_path, client_key_path)
-            self.headers = self.content_headers
-            access = self.get("access")
+            client_config.verify = self.connection.nifiConfig.verifySSL
+            client_config.auth_header = AUTHORIZATION_HEADER
+            client_config.access_token = self.token
+
+            self.client = REST(client_config)
+        elif isinstance(self.connection.nifiConfig, NifiClientCertificateAuth):
+            ca_path = self.connection.nifiConfig.certificateAuthorityPath
+            cc_path = self.connection.nifiConfig.clientCertificatePath
+            ck_path = self.connection.nifiConfig.clientkeyPath
+
+            client_config.verify = ca_path if ca_path else False
+            client_config.cert = (cc_path, ck_path)
+
+            self.client = REST(client_config)
+            access = self.client.get("access")
             logger.debug(access)
 
     @property
@@ -76,13 +90,19 @@ class NifiClient:
         """
         if not self._token:
             try:
-                res = requests.post(
-                    f"{self.api_endpoint}/access/token",
-                    verify=self.verify,
-                    headers=self.content_headers,
-                    data=self.data,
-                    timeout=REQUESTS_TIMEOUT,
+                client = REST(
+                    ClientConfig(
+                        base_url=self.api_endpoint,
+                        verify=self.verify,
+                        extra_headers=CONTENT_HEADER,
+                        timeout=REQUESTS_TIMEOUT,
+                        api_version="",
+                        auth_token_mode=None,
+                        auth_token=lambda: (NO_ACCESS_TOKEN, 0),
+                    )
                 )
+
+                res = client.post("access/token", data=self.data)
                 self._token = res.text
 
                 if res.status_code not in (200, 201):
@@ -100,6 +120,7 @@ class NifiClient:
 
             except Exception as err:
                 logger.error(f"Fetching token failed due to - {err}")
+                logger.debug(traceback.format_exc())
                 raise err
 
         return self._token
@@ -110,40 +131,13 @@ class NifiClient:
         This can be expensive. Only query it once.
         """
         if not self._resources:
-            self._resources = self.get(RESOURCES)  # API endpoint
+            self._resources = self.client.get(RESOURCES)  # API endpoint
 
         # Get the first `resources` key from the dict
         try:
             return self._resources.get(RESOURCES)  # Dict key
         except AttributeError:
             return []
-
-    def get(self, path: str) -> Optional[Any]:
-        """
-        GET call wrapper
-        """
-        try:
-            res = requests.get(
-                f"{self.api_endpoint}/{path}",
-                verify=self.verify,
-                headers=self.headers,
-                timeout=REQUESTS_TIMEOUT,
-                cert=self.client_cert,
-            )
-
-            return res.json()
-
-        except HTTPError as err:
-            logger.warning(f"Connection error calling the Nifi API - {err}")
-            raise err
-
-        except ValueError as err:
-            logger.warning(f"Cannot pick up the JSON from API response - {err}")
-            raise err
-
-        except Exception as err:
-            logger.warning(f"Unknown error calling Nifi API - {err}")
-            raise err
 
     def _get_process_group_ids(self) -> List[str]:
         return [
@@ -152,10 +146,10 @@ class NifiClient:
             if elem.get(IDENTIFIER).startswith(PROCESS_GROUPS_STARTER)
         ]
 
-    def get_process_group(self, id_: str) -> dict:
-        return self.get(f"flow/process-groups/{id_}")
+    def get_process_group(self, id_: str) -> Dict:
+        return self.client.get(f"flow/process-groups/{id_}")
 
-    def list_process_groups(self) -> Iterable[dict]:
+    def list_process_groups(self) -> Iterable[Dict]:
         """
         This will call the API endpoints
         one at a time.

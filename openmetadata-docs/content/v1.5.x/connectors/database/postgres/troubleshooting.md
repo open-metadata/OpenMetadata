@@ -1,11 +1,11 @@
 ---
-title: Postgres Connector Troubleshooting
+title: PostgreSQL Connector Troubleshooting
 slug: /connectors/database/postgres/troubleshooting
 ---
 
 # Troubleshooting
 
-Learn how to resolve the most common problems people encounter in the Postgres connector.
+Learn how to resolve the most common problems people encounter in the PostgreSQL connector.
 
 ## Column XYZ does not exist
 
@@ -46,7 +46,7 @@ LINE 2:                 SELECT relispartition as is_partition
 ```
 
 Then you might be using an unsupported postgres version. If we double-check the requirements for the postgres connector:
-Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
+Note that we only support officially supported PostgreSQL versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
 
 ## Error: `no pg_hba.conf entry for host`
 
@@ -57,7 +57,7 @@ When trying to connect to a PostgreSQL server hosted on Azure/AWS using basic au
 ```
 
 
-This error generally indicates that the host trying to access the Postgres server is not permitted according to the server's `pg_hba.conf` configuration, which manages authentication.
+This error generally indicates that the host trying to access the PostgreSQL server is not permitted according to the server's `pg_hba.conf` configuration, which manages authentication.
 
 1. **Whitelist the IP address**  
    Ensure that the IP address provided by the OpenMetadata Service wizard is whitelisted in the Azure network firewall rules. You should also verify that the correct IP is added in the firewall for the database to allow connections from OpenMetadata.

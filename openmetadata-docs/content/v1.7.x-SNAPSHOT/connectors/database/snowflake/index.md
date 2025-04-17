@@ -7,7 +7,7 @@ slug: /connectors/database/snowflake
 name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -24,6 +24,8 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/snowflake/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
 
@@ -85,7 +87,6 @@ You can find more information about the `account_usage` schema [here](https://do
 
 - **Ingesting Stored Procedures**: Openmetadata fetches the information by querying `snowflake.account_usage.procedures` & `snowflake.account_usage.functions`.
 
-
 ## Metadata Ingestion
 
 {% partial 
@@ -112,9 +113,14 @@ You can find more information about the `account_usage` schema [here](https://do
 - **Private Key (Optional)**: If you have configured the key pair authentication for the given user you will have to pass the private key associated with the user in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
   - The multi-line key needs to be converted to one line with `\n` for line endings i.e. `-----BEGIN ENCRYPTED PRIVATE KEY-----\nMII...\n...\n-----END ENCRYPTED PRIVATE KEY-----`
 - **Snowflake Passphrase Key (Optional)**: If you have configured the encrypted key pair authentication for the given user you will have to pass the paraphrase associated with the private key in this field. You can checkout [this](https://docs.snowflake.com/en/user-guide/key-pair-auth) doc to get more details about key-pair authentication.
-- **Include Temporary and Transient Tables**: 
+- **Include Temporary and Transient Tables**:
 Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By default, it will skip the `TRANSIENT` and `TEMPORARY` tables.
+- **Include Streams**:
+Optional configuration for ingestion of streams, By default, it will skip the streams.
 - **Client Session Keep Alive**: Optional Configuration to keep the session active in case the ingestion job runs for longer duration.
+- **Account Usage Schema Name**: Full name of account usage schema, used in case your used do not have direct access to `SNOWFLAKE.ACCOUNT_USAGE` schema. In such case you can replicate tables `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS` to a custom schema let's say `CUSTOM_DB.CUSTOM_SCHEMA` and provide the same name in this field.
+
+When using this field make sure you have all these tables available within your custom schema  `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS`.
 
 {% partial file="/v1.7/connectors/database/advanced-configuration.md" /%}
 
@@ -127,8 +133,6 @@ Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By d
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
 ### Incomplete Column Level for Views
 
@@ -144,5 +148,7 @@ GRANT APPLY TAG TO ROLE NEW_ROLE;
 ```
 
 Depending on your view ddl you can grant the relevant privileged as per above queries.
+
+{% partial file="/v1.7/connectors/database/snowflake/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

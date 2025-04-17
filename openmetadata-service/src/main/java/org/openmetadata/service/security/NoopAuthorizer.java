@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +67,12 @@ public class NoopAuthorizer implements Authorizer {
     /* Always authorize */
   }
 
+  @Override
+  public void authorizeRequests(
+      SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic) {
+    /* Always authorize */
+  }
+
   private void addAnonymousUser() {
     String username = "anonymous";
     try {
@@ -82,7 +90,7 @@ public class NoopAuthorizer implements Authorizer {
   private void addOrUpdateUser(User user) {
     try {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user);
+      PutResponse<User> addedUser = userRepository.createOrUpdate(null, user, ADMIN_USER_NAME);
       LOG.debug("Added anonymous user entry: {}", addedUser);
     } catch (Exception exception) {
       // In HA set up the other server may have already added the user.

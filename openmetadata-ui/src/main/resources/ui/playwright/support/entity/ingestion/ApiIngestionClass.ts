@@ -21,7 +21,7 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class ApiIngestionClass extends ServiceBaseClass {
   constructor() {
-    super(Services.API, `pw-api-with-%-${uuid()}`, 'Rest', 'Containers');
+    super(Services.API, `pw-api-with-%-${uuid()}`, 'Rest', 'store');
   }
 
   async createService(page: Page) {
@@ -33,7 +33,7 @@ class ApiIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    const openAPISchemaURL = 'https://docs.open-metadata.org/swagger.json';
+    const openAPISchemaURL = 'https://petstore3.swagger.io/api/v3/openapi.json';
 
     await page.locator('#root\\/openAPISchemaURL').fill(openAPISchemaURL);
     await checkServiceFieldSectionHighlighting(page, 'openAPISchemaURL');

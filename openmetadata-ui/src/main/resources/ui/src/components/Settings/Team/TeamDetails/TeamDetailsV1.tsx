@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Button,
-  Card,
   Col,
   Collapse,
   Modal,
@@ -39,14 +38,15 @@ import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
+import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
-import { ReactComponent as IconTeams } from '../../../../assets/svg/teams.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
   ROLE_DOCS,
   TEAMS_DOCS,
 } from '../../../../constants/docs.constants';
+import { ExportTypes } from '../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -60,8 +60,8 @@ import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
-  EntityReference as UserTeams,
   User,
+  EntityReference as UserTeams,
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -89,7 +89,6 @@ import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageBut
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -115,14 +114,12 @@ import { UserTab } from './UserTab/UserTab.component';
 const TeamDetailsV1 = ({
   assetsCount,
   currentTeam,
-  isDescriptionEditable,
   isTeamMemberLoading,
   childTeams,
   onTeamExpand,
   handleAddTeam,
   updateTeamHandler,
   onDescriptionUpdate,
-  descriptionHandler,
   showDeletedTeam,
   onShowDeletedTeamChange,
   handleJoinTeamClick,
@@ -202,8 +199,6 @@ const TeamDetailsV1 = ({
     entity: t('label.role'),
   });
 
-  const addTeam = t('label.add-entity', { entity: t('label.team') });
-
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
     [currentTeam]
@@ -217,12 +212,16 @@ const TeamDetailsV1 = ({
     history.push({ search: Qs.stringify({ activeTab: key }) });
   };
 
-  const createTeamPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
-    [permissions]
-  );
+  const { createTeamPermission, editUserPermission } = useMemo(() => {
+    return {
+      createTeamPermission:
+        !isEmpty(permissions) &&
+        checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
+      editUserPermission:
+        checkPermission(Operation.EditAll, ResourceEntity.TEAM, permissions) ||
+        checkPermission(Operation.EditUsers, ResourceEntity.TEAM, permissions),
+    };
+  }, [permissions]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -251,7 +250,7 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important"
+        className="mt-0-important border-none"
         doc={doc}
         heading={heading}
         permission={permission}
@@ -297,7 +296,7 @@ const TeamDetailsV1 = ({
           };
         })
       );
-    } catch (error) {
+    } catch {
       setChildTeamList([]);
     }
   };
@@ -493,6 +492,7 @@ const TeamDetailsV1 = ({
       showModal({
         name: currentTeam?.name,
         onExport: exportTeam,
+        exportTypes: [ExportTypes.CSV],
       });
     }
   }, [currentTeam]);
@@ -621,7 +621,7 @@ const TeamDetailsV1 = ({
   );
 
   const teamsTableRender = useMemo(() => {
-    let addUserButtonTitle = createTeamPermission
+    let addUserButtonTitle = editUserPermission
       ? t('label.add-entity', { entity: t('label.team') })
       : t('message.no-permission-for-action');
 
@@ -633,6 +633,7 @@ const TeamDetailsV1 = ({
 
     return currentTeam.childrenCount === 0 && !searchTerm ? (
       <ErrorPlaceHolder
+        className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>
@@ -655,7 +656,7 @@ const TeamDetailsV1 = ({
           <Button
             ghost
             data-testid="add-placeholder-button"
-            disabled={!createTeamPermission || isTeamDeleted}
+            disabled={!editUserPermission || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
             onClick={handleAddTeamButtonClick}>
@@ -664,56 +665,21 @@ const TeamDetailsV1 = ({
         </Tooltip>
       </ErrorPlaceHolder>
     ) : (
-      <Row
-        className="team-list-container"
-        gutter={[0, 16]}
-        justify="space-between">
-        <Col span={8}>
-          <Searchbar
-            removeMargin
-            placeholder={t('label.search-entity', {
-              entity: t('label.team'),
-            })}
-            searchValue={searchTerm}
-            typingInterval={500}
-            onSearch={handleTeamSearch}
-          />
-        </Col>
-        <Col>
-          <Space align="center">
-            <span>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="show-deleted"
-                onClick={onShowDeletedTeamChange}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
-            </span>
-
-            {createTeamPermission && !isTeamDeleted && (
-              <Button
-                data-testid="add-team"
-                type="primary"
-                onClick={handleAddTeamButtonClick}>
-                {addTeam}
-              </Button>
-            )}
-          </Space>
-        </Col>
-        <Col span={24}>
-          <TeamHierarchy
-            currentTeam={currentTeam}
-            data={childTeamList}
-            isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
-            onTeamExpand={onTeamExpand}
-          />
-        </Col>
-      </Row>
+      <TeamHierarchy
+        createTeamPermission={createTeamPermission}
+        currentTeam={currentTeam}
+        data={childTeamList}
+        handleAddTeamButtonClick={handleAddTeamButtonClick}
+        handleTeamSearch={handleTeamSearch}
+        isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isTeamDeleted={isTeamDeleted}
+        searchTerm={searchTerm}
+        showDeletedTeam={showDeletedTeam}
+        onShowDeletedTeamChange={onShowDeletedTeamChange}
+        onTeamExpand={onTeamExpand}
+      />
     );
   }, [
-    addTeam,
     searchTerm,
     isTeamDeleted,
     currentTeam,
@@ -949,15 +915,17 @@ const TeamDetailsV1 = ({
     () => (
       <>
         <Space wrap className="w-full justify-between">
-          <Space className="w-full" size="middle">
-            <Avatar className="teams-profile" size={40}>
-              <IconTeams className="text-primary" width={20} />
-            </Avatar>
-
-            <div className="d-flex flex-column gap-1">
-              {!isOrganization && (
-                <TitleBreadcrumb titleLinks={slashedTeamName} />
-              )}
+          <Space
+            align="start"
+            className="w-full flex-col justify-center p-t-xs"
+            size="middle">
+            {!isOrganization && (
+              <TitleBreadcrumb titleLinks={slashedTeamName} />
+            )}
+            <div className="d-flex  gap-2">
+              <Avatar className="teams-profile" size={40}>
+                <IconTeams className="text-primary" width={20} />
+              </Avatar>
 
               <TeamsHeadingLabel
                 currentTeam={currentTeam}
@@ -1004,7 +972,7 @@ const TeamDetailsV1 = ({
             )}
           </Space>
         </Space>
-        <div className="p-t-md p-l-xss">
+        <div className="p-t-md ">
           <TeamsInfo
             childTeamsCount={childTeams.length}
             currentTeam={currentTeam}
@@ -1060,7 +1028,7 @@ const TeamDetailsV1 = ({
 
   const tabsChildrenRender = useCallback(
     (key: TeamsPageTab) => (
-      <Row className="teams-tabs-content-container p-x-lg">
+      <Row className="teams-tabs-content-container">
         <Col className="teams-scroll-component" span={previewAsset ? 18 : 24}>
           {isFetchingAdvancedDetails ? <Loader /> : getTabChildren(key)}
         </Col>
@@ -1133,43 +1101,45 @@ const TeamDetailsV1 = ({
     <div className="teams-layout">
       <Row className="h-full" data-testid="team-details-container">
         {isOrganization && (
-          <Col className="p-x-lg p-y-sm" span={24}>
+          <Col className="p-y-sm" span={24}>
             <TitleBreadcrumb titleLinks={breadcrumbs} />
           </Col>
         )}
 
         <Col
-          className="teams-profile-container p-x-lg"
+          className="teams-profile-container"
           data-testid="team-detail-header"
           span={24}>
           <Collapse
             accordion
             bordered={false}
-            className="header-collapse-custom-collapse">
+            className="header-collapse-custom-collapse"
+            expandIcon={({ isActive }) => (
+              <span
+                className={classNames('ant-collapse-arrow', {
+                  'arrow-icon-non-organization': !isOrganization,
+                })}>
+                {isActive ? <DownOutlined /> : <RightOutlined />}
+              </span>
+            )}
+            expandIconPosition="end">
             <Collapse.Panel
-              className="header-collapse-custom-panel"
+              className={classNames('collapse-panel-container', {
+                'm-t-sm': !isOrganization,
+              })}
               data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">
-              <Row>
-                <Col className="border-top" span={24}>
-                  <Card
-                    className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"
-                    data-testid="teams-description">
-                    <DescriptionV1
-                      description={currentTeam.description ?? ''}
-                      entityName={getEntityName(currentTeam)}
-                      entityType={EntityType.TEAM}
-                      hasEditAccess={editDescriptionPermission}
-                      isEdit={isDescriptionEditable}
-                      showCommentsIcon={false}
-                      onCancel={() => descriptionHandler(false)}
-                      onDescriptionEdit={() => descriptionHandler(true)}
-                      onDescriptionUpdate={onDescriptionUpdate}
-                    />
-                  </Card>
-                </Col>
-              </Row>
+              <DescriptionV1
+                newLook
+                wrapInCard
+                description={currentTeam.description ?? ''}
+                entityName={getEntityName(currentTeam)}
+                entityType={EntityType.TEAM}
+                hasEditAccess={editDescriptionPermission}
+                showCommentsIcon={false}
+                onDescriptionUpdate={onDescriptionUpdate}
+              />
             </Collapse.Panel>
           </Collapse>
         </Col>
@@ -1178,7 +1148,7 @@ const TeamDetailsV1 = ({
           <Tabs
             destroyInactiveTabPane
             activeKey={currentTab}
-            className="entity-details-page-tabs"
+            className="tabs-new"
             items={tabs}
             onChange={updateActiveTab}
           />

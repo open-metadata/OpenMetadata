@@ -7,13 +7,15 @@ slug: /connectors/pipeline/airflow
 name="Airflow"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Owners"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Owners", "Usage"]
 unavailableFeatures=["Tags"]
 / %}
 
 In this section, we provide guides and references to use the Airflow connector.
 
 Configure and schedule Airflow metadata workflow from the OpenMetadata UI:
+
+- [Troubleshooting](/connectors/search/airflow/troubleshooting)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/airflow/yaml"} /%}
 
@@ -62,5 +64,3 @@ In terms of `connection` we support the following selections:
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

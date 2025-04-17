@@ -37,6 +37,12 @@ This structured hierarchy enhances your control over team management and resourc
 
 ## Access Control Design: Roles and Policies
 
+{% image
+src="/images/v1.7/how-to-guides/roles-policies/evaluation.png"
+alt="Policy Evaluation"
+caption="Policy Evaluation"
+/%}
+
 OpenMetadata incorporates a robust Access Control framework that merges Role-Based Access Control (RBAC) with Attribute-Based Access Control (ABAC) in a powerful hybrid model. This security design is reinforced by
 
 **Authentication with SSO Integration:** OpenMetadata seamlessly integrates with various Single Sign-On (SSO) providers, including Azure AD, Google, Okta, Auth0, OneLogin, and more. This ensures a unified and secure authentication experience for users.
@@ -85,6 +91,57 @@ caption="Resources Correspond to Entities"
 **What Operation (API Call):** Each API call is linked to a specific operation, such as editing descriptions, deleting tags, changing ownership, etc.
 
 There are common operations such as Create, Delete, and ViewAll that apply to all the resources. Each resource can also have its specific operation, such as ViewTests, ViewQueries for Table.
+
+## Difference Between ViewBasic and ViewAll in OpenMetadata
+
+The operations **ViewBasic** and **ViewAll** in OpenMetadata differ in the level of detail they provide access to. Below is a detailed explanation of each operation:
+
+### ViewBasic
+- Provides access to the **basic details** of an asset.
+- Includes information such as:
+  - Description
+  - Tags
+  - Owner
+  - Fundamental metadata
+- **Excludes** more detailed information, including:
+  - Profile data
+  - Sample data
+  - Data profile
+  - Tests
+  - Queries
+
+### Key Points:
+- Suitable for viewing foundational asset metadata.
+- Limited access for users who do not require in-depth technical details.
+
+### ViewAll
+- Provides access to **all details** of an asset.
+- Includes everything available in **ViewBasic**, along with:
+  - Profile data
+  - Sample data
+  - Data profile
+  - Tests
+  - Queries
+
+### Key Points:
+- Designed for users who need a complete view of the asset.
+- Offers comprehensive insights and detailed metadata.
+
+## Summary Table
+
+| Feature            | **ViewBasic**                          | **ViewAll**                          |
+|--------------------|----------------------------------------|--------------------------------------|
+| Basic Details      | ✅ Included                           | ✅ Included                          |
+| Profile Data       | ❌ Not Included                        | ✅ Included                          |
+| Sample Data        | ❌ Not Included                        | ✅ Included                          |
+| Data Profile       | ❌ Not Included                        | ✅ Included                          |
+| Tests & Queries    | ❌ Not Included                        | ✅ Included                          |
+
+### Overview:
+- **ViewBasic**: Focused on essential metadata.
+- **ViewAll**: Provides a complete view, including advanced details.
+
+Choose the appropriate operation based on the level of access required.
 
 {% image
 src="/images/v1.7/how-to-guides/roles-policies/rules2.png"

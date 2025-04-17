@@ -1,9 +1,12 @@
 {
   "settings": {
+   "index": {
+     "max_ngram_diff": 17
+   },
     "analysis": {
       "tokenizer": {
-        "edge_ngram_tokenizer": {
-          "type": "edge_ngram",
+        "n_gram_tokenizer": {
+          "type": "ngram",
           "min_gram": 3,
           "max_gram": 20,
           "token_chars": ["letter", "digit"]
@@ -13,9 +16,7 @@
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase"]
         }
       },
       "analyzer": {
@@ -29,7 +30,7 @@
         },
         "om_ngram": {
           "type": "custom",
-          "tokenizer": "edge_ngram_tokenizer",
+          "tokenizer": "n_gram_tokenizer",
           "filter": ["lowercase"]
         }
       },
@@ -90,7 +91,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "similarity": "boolean"
       },
       "version": {
         "type": "float"
@@ -269,7 +270,7 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
+                "similarity": "boolean",
                 "analyzer": "om_analyzer"
               },
               "fullyQualifiedName": {
@@ -370,7 +371,7 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
+                "similarity": "boolean",
                 "analyzer": "om_analyzer"
               },
               "fullyQualifiedName": {
@@ -411,7 +412,7 @@
                     "type": "text"
                   },
                   "name": {
-                    "type": "keyword",
+                    "type": "text",
                     "fields": {
                       "keyword": {
                         "type": "keyword",
@@ -429,7 +430,13 @@
                     "properties": {
                       "tagFQN": {
                         "type": "keyword",
-                        "normalizer": "lowercase_normalizer"
+                        "normalizer": "lowercase_normalizer",
+                        "fields": {
+                          "text": {
+                            "type": "text",
+                            "analyzer": "om_analyzer"
+                          }
+                        }
                       },
                       "labelType": {
                         "type": "keyword"
@@ -476,6 +483,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -560,7 +568,13 @@
       "tier": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -580,7 +594,13 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -633,7 +653,13 @@
             "properties": {
               "tagFQN": {
                 "type": "keyword",
-                "normalizer": "lowercase_normalizer"
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
               },
               "labelType": {
                 "type": "keyword"

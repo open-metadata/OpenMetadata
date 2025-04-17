@@ -84,6 +84,19 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock(
   '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails',
   () => jest.fn().mockImplementation(() => <div>AlertConfigDetails</div>)
@@ -123,10 +136,8 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest
-    .fn()
-    .mockImplementation(({ firstPanel }) => <div>{firstPanel.children}</div>)
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
 jest.mock(

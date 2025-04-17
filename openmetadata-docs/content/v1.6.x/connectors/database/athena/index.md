@@ -7,7 +7,7 @@ slug: /connectors/database/athena
 name="Athena"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Tags", "dbt", "Sample Data"]
 unavailableFeatures=["Owners", "Stored Procedures"]
 / %}
 
@@ -21,7 +21,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/database/athena/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 
@@ -204,6 +204,12 @@ This is a required field if you'd like to `AssumeRole`.
 
 Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 
+{%note%}
+When using Assume Role authentication, ensure you provide the following details:  
+- **AWS Region**: Specify the AWS region for your deployment.  
+- **Assume Role ARN**: Provide the ARN of the role in your AWS account that OpenMetadata will assume.  
+{%/note%}
+
 - **Assume Role Session Name**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
   is assumed by different principals or for different reasons.
 
@@ -230,7 +236,5 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

@@ -17,7 +17,6 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -33,12 +32,15 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -126,7 +128,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'description',
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewerV1 markdown={text} />
+            <RichTextEditorPreviewerNew markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
@@ -186,7 +188,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           <TabsLabel id={EntityTabs.TASKS} name={t('label.task-plural')} />
         ),
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -198,7 +200,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <Table
-                    bordered
                     columns={tableColumn}
                     data-testid="schema-table"
                     dataSource={pipelineVersionTableData}
@@ -245,7 +246,6 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.PIPELINE}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -286,13 +286,22 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                defaultActiveKey={tab ?? EntityTabs.TASKS}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.PIPELINE}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs
+                  className="tabs-new"
+                  defaultActiveKey={tab}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}

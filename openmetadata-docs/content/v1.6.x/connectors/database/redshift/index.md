@@ -7,7 +7,7 @@ slug: /connectors/database/redshift
 name="Redshift"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Sample Data"]
 unavailableFeatures=["Owners", "Tags"]
 / %}
 
@@ -24,6 +24,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-redshift-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/redshift/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/redshift/yaml"} /%}
 
@@ -40,6 +41,14 @@ CREATE USER test_user with PASSWORD 'password';
 -- Grant SELECT on table
 GRANT SELECT ON TABLE svv_table_info to test_user;
 ```
+
+{% note %}
+Ensure that the ingestion user has **USAGE** privileges on the schema containing the views. If additional access is needed, run the following command:  
+
+```sql
+GRANT USAGE ON SCHEMA "<schema_name>" TO <ingestion_user>;
+```
+{% /note %}
 
 ### Profiler & Data Quality
 Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](/how-to-guides/data-quality-observability/quality).
@@ -118,7 +127,5 @@ Under `Advanced Config`, specify the SSL mode appropriate for your connection, s
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

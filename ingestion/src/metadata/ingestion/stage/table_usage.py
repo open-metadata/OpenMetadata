@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,7 +32,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Stage
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
-from metadata.utils.helpers import init_staging_dir
+from metadata.utils.helpers import get_query_hash, init_staging_dir
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -62,8 +62,10 @@ class TableUsageStage(Stage):
         self.metadata = metadata
         self.table_usage = {}
         self.table_queries = {}
+        self.query_cost = {}
         init_staging_dir(self.config.filename)
         self.wrote_something = False
+        self.service_name = ""
 
     @property
     def name(self) -> str:
@@ -107,6 +109,7 @@ class TableUsageStage(Stage):
     def _add_sql_query(self, record, table):
         users, used_by = self._get_user_entity(record.userName)
         if self.table_queries.get((table, record.date)):
+            self.service_name = record.serviceName
             self.table_queries[(table, record.date)].append(
                 CreateQueryRequest(
                     query=record.sql,
@@ -172,6 +175,30 @@ class TableUsageStage(Stage):
             )
         yield Either(right=table)
 
+    def _handle_query_cost(self, parsed_data: ParsedData):
+        query_hash = get_query_hash(parsed_data.sql)
+        if (query_hash, parsed_data.date) in self.query_cost:
+            self.query_cost[(query_hash, parsed_data.date)].update(
+                {
+                    "cost": self.query_cost[(query_hash, parsed_data.date)]["cost"]
+                    + (parsed_data.cost or 0),
+                    "count": self.query_cost[(query_hash, parsed_data.date)]["count"]
+                    + 1,
+                    "totalDuration": self.query_cost[(query_hash, parsed_data.date)][
+                        "totalDuration"
+                    ]
+                    + (parsed_data.duration or 0),
+                }
+            )
+        else:
+            self.query_cost[(query_hash, parsed_data.date)] = {
+                "cost": parsed_data.cost or 0,
+                "count": 1,
+                "query": parsed_data.sql,
+                "dialect": parsed_data.dialect,
+                "totalDuration": parsed_data.duration or 0,
+            }
+
     def _run(self, record: QueryParserData) -> Iterable[Either[str]]:
         """
         Process the parsed data and store it in a file
@@ -187,15 +214,40 @@ class TableUsageStage(Stage):
                 yield from self._handle_table_usage(
                     parsed_data=parsed_data, table=table
                 )
+            self._handle_query_cost(parsed_data)
         self.dump_data_to_file()
 
     def dump_data_to_file(self):
+        """
+        Dump the table usage data to a file.
+        """
         for key, value in self.table_usage.items():
             if value:
                 value.sqlQueries = self.table_queries.get(key, [])
                 data = value.model_dump_json()
                 with open(
                     os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),
+                    "a+",
+                    encoding=UTF_8,
+                ) as file:
+                    file.write(json.dumps(data))
+                    file.write("\n")
+
+        for key, value in self.query_cost.items():
+            if value:
+                data = {
+                    "queryHash": key[0],
+                    "date": key[1],
+                    "cost": value["cost"],
+                    "count": value["count"],
+                    "query": value["query"],
+                    "dialect": value["dialect"],
+                    "totalDuration": value["totalDuration"],
+                }
+                with open(
+                    os.path.join(
+                        self.config.filename, f"{self.service_name}_{key[1]}_query"
+                    ),
                     "a+",
                     encoding=UTF_8,
                 ) as file:

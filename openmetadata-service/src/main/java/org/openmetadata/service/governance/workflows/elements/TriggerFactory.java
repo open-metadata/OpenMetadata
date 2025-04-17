@@ -1,28 +1,29 @@
 package org.openmetadata.service.governance.workflows.elements;
 
+import org.openmetadata.schema.governance.workflows.TriggerType;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
-import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
+import org.openmetadata.service.governance.workflows.elements.triggers.NoOpTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
-import org.openmetadata.service.util.JsonUtils;
 
 public class TriggerFactory {
-  public static TriggerInterface createTrigger(WorkflowDefinition workflowDefinition) {
-    String mainWorkflowName = workflowDefinition.getFullyQualifiedName();
-    String triggerWorkflowId = getTriggerWorkflowId(mainWorkflowName);
+  public static TriggerInterface createTrigger(WorkflowDefinition workflow) {
+    String triggerWorkflowId = getTriggerWorkflowId(workflow.getFullyQualifiedName());
 
-    return switch (workflowDefinition.getType()) {
-      case EVENT_BASED_ENTITY_WORKFLOW -> new EventBasedEntityTrigger(
-          mainWorkflowName,
+    return switch (TriggerType.fromValue(workflow.getTrigger().getType())) {
+      case EVENT_BASED_ENTITY -> new EventBasedEntityTrigger(
+          workflow.getName(),
           triggerWorkflowId,
-          JsonUtils.readOrConvertValue(
-              workflowDefinition.getTrigger(), EventBasedEntityTriggerDefinition.class));
-      case PERIODIC_BATCH_ENTITY_WORKFLOW -> new PeriodicBatchEntityTrigger(
-          mainWorkflowName,
+          (EventBasedEntityTriggerDefinition) workflow.getTrigger());
+      case NO_OP -> new NoOpTrigger(
+          workflow.getName(), triggerWorkflowId, (NoOpTriggerDefinition) workflow.getTrigger());
+      case PERIODIC_BATCH_ENTITY -> new PeriodicBatchEntityTrigger(
+          workflow.getName(),
           triggerWorkflowId,
-          JsonUtils.readOrConvertValue(
-              workflowDefinition.getTrigger(), PeriodicBatchEntityTriggerDefinition.class));
+          (PeriodicBatchEntityTriggerDefinition) workflow.getTrigger());
     };
   }
 

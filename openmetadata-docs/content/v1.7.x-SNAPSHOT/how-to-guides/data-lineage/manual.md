@@ -39,7 +39,7 @@ caption="Column-Level Lineage"
 /%}
 
 Here's a quick video on manually adding lineage.
-{%  youtube videoId="hU8h1n_WmWg" start="00:01" end="00:23" width="560px" height="315px" /%}
+{%  youtube videoId="hU8h1n_WmWg" start="00:01" end="00:23" width="800px" height="450px" /%}
 
 Watch the recording of the Webinar on Lineage (13:30 to 15:50)
-{%  youtube videoId="jEbN1tt89H0" start="13:30" end="15:48" width="560px" height="315px" /%}
+{%  youtube videoId="jEbN1tt89H0" start="13:30" end="15:48" width="800px" height="450px" /%}

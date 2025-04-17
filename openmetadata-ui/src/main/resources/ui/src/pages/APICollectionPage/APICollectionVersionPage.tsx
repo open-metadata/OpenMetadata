@@ -19,21 +19,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import {
-  getEntityDetailsPath,
-  getVersionPath,
-  PAGE_SIZE,
-} from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -69,6 +67,7 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import APIEndpointsTab from './APIEndpointsTab';
 
@@ -281,18 +280,17 @@ const APICollectionVersionPage = () => {
         ),
         key: EntityTabs.API_ENDPOINT,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <APIEndpointsTab
-                isVersionView
-                apiCollectionDetails={currentVersionData}
-                apiEndpoints={apiEndpoints}
-                apiEndpointsLoading={apiEndpointsLoading}
-                currentEndpointsPage={currentPage}
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
+            <Col className="p-t-sm m-x-lg" span={24}>
+              <DescriptionV1
                 description={description}
-                endpointPaginationHandler={endpointPaginationHandler}
-                pagingInfo={pagingInfo}
+                entityType={EntityType.API_COLLECTION}
+                isDescriptionExpanded={isEmpty(apiEndpoints)}
+                showActions={false}
               />
+            </Col>
+            <Col className="p-t-sm m-x-lg" flex="auto">
+              <APIEndpointsTab isVersionView />
             </Col>
             <Col
               className="entity-tag-right-panel-container"
@@ -331,15 +329,12 @@ const APICollectionVersionPage = () => {
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityDetails={currentVersionData}
-              entityType={EntityType.API_COLLECTION}
-              hasEditAccess={false}
-              hasPermission={viewVersionPermission}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.API_COLLECTION}
+            hasEditAccess={false}
+            hasPermission={viewVersionPermission}
+          />
         ),
       },
     ],
@@ -387,15 +382,23 @@ const APICollectionVersionPage = () => {
                   onVersionClick={backHandler}
                 />
               </Col>
-              <Col span={24}>
-                <Tabs
-                  className="entity-details-page-tabs"
-                  data-testid="tabs"
-                  defaultActiveKey={tab ?? EntityTabs.API_COLLECTION}
-                  items={tabs}
-                  onChange={handleTabChange}
-                />
-              </Col>
+              <GenericProvider
+                isVersionView
+                currentVersionData={currentVersionData}
+                data={currentVersionData}
+                permissions={collectionPermissions}
+                type={EntityType.API_COLLECTION}
+                onUpdate={() => Promise.resolve()}>
+                <Col className="entity-version-page-tabs" span={24}>
+                  <Tabs
+                    className="tabs-new"
+                    data-testid="tabs"
+                    defaultActiveKey={tab}
+                    items={tabs}
+                    onChange={handleTabChange}
+                  />
+                </Col>
+              </GenericProvider>
             </Row>
           </div>
         )}

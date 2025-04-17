@@ -26,6 +26,7 @@ import { EntityClass } from './EntityClass';
 export class DashboardClass extends EntityClass {
   private dashboardName = `pw-dashboard-${uuid()}`;
   private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
+  private projectName = `pw-project-${uuid()}`;
   service = {
     name: `pw-dashboard-service-${uuid()}`,
     serviceType: 'Superset',
@@ -51,8 +52,23 @@ export class DashboardClass extends EntityClass {
     name: this.dashboardName,
     displayName: this.dashboardName,
     service: this.service.name,
+    project: this.projectName,
   };
   children = [
+    {
+      name: 'merchant',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'merchant',
+    },
+    {
+      name: 'notes',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'merchant',
+    },
     {
       name: 'country_name',
       dataType: 'VARCHAR',
@@ -76,12 +92,13 @@ export class DashboardClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   chartsResponseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(name?: string) {
+  constructor(name?: string, dataModelType = 'SupersetDataModel') {
     super(EntityTypeEndpoint.Dashboard);
     this.service.name = name ?? this.service.name;
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
+    this.dataModel.dataModelType = dataModelType;
   }
 
   async create(apiContext: APIRequestContext) {

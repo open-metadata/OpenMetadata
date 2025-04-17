@@ -8,7 +8,7 @@ name="Couchbase"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=["Owners", "Tags", "Stored Procedures", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+unavailableFeatures=["Owners", "Tags", "Stored Procedures", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 / %}
 
 
@@ -17,6 +17,7 @@ In this section, we provide guides and references to use the Couchbase connector
 Configure and schedule Couchbase metadata workflows from the OpenMetadata UI:
 
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/database/couchbase/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/couchbase/yaml"} /%}
 
@@ -53,7 +54,5 @@ Configure and schedule Couchbase metadata workflows from the OpenMetadata UI:
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

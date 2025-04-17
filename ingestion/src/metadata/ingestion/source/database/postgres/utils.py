@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +13,6 @@
 """
 Postgres SQLAlchemy util methods
 """
-import json
 import re
 import traceback
 from typing import Dict, Optional, Tuple
@@ -24,18 +23,15 @@ from sqlalchemy.dialects.postgresql.base import ENUM
 from sqlalchemy.engine import reflection
 from sqlalchemy.sql import sqltypes
 
-from metadata.generated.schema.entity.data.table import Column
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_COL_IDENTITY,
     POSTGRES_FETCH_FK,
-    POSTGRES_GET_JSON_FIELDS,
     POSTGRES_GET_SERVER_VERSION,
     POSTGRES_SQL_COLUMNS,
     POSTGRES_TABLE_COMMENTS,
     POSTGRES_TABLE_OWNERS,
     POSTGRES_VIEW_DEFINITIONS,
 )
-from metadata.parsers.json_schema_parser import parse_json_schema
 from metadata.utils.logger import utils_logger
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
@@ -188,28 +184,6 @@ def get_table_comment(
         schema=schema,
         query=POSTGRES_TABLE_COMMENTS,
     )
-
-
-@reflection.cache
-def get_json_fields_and_type(
-    self, table_name, column_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    try:
-        query = POSTGRES_GET_JSON_FIELDS.format(
-            table_name=table_name, column_name=column_name
-        )
-        cursor = self.engine.execute(query)
-        result = cursor.fetchone()
-        if result:
-            parsed_column = parse_json_schema(json.dumps(result[0]), Column)
-            if parsed_column:
-                return parsed_column[0].children
-    except Exception as err:
-        logger.warning(
-            f"Unable to parse the json fields for {table_name}.{column_name} - {err}"
-        )
-        logger.debug(traceback.format_exc())
-    return None
 
 
 @reflection.cache

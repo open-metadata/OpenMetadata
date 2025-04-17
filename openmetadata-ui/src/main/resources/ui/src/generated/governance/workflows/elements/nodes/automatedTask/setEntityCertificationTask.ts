@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Sets the Entity Certification to the configured value.
  */
 export interface SetEntityCertificationTask {
-    config?: CertificationConfiguration;
+    config?: NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -24,8 +22,9 @@ export interface SetEntityCertificationTask {
     /**
      * Display Name that identifies this Node.
      */
-    displayName?: string;
-    input?:       string[];
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
     /**
      * Name that identifies this Node.
      */
@@ -35,13 +34,24 @@ export interface SetEntityCertificationTask {
     [property: string]: any;
 }
 
-export interface CertificationConfiguration {
+export interface NodeConfiguration {
+    /**
+     * Choose which Certification to apply to the Data Asset
+     */
     certification: CertificationEnum;
 }
 
+/**
+ * Choose which Certification to apply to the Data Asset
+ */
 export enum CertificationEnum {
     CertificationBronze = "Certification.Bronze",
     CertificationGold = "Certification.Gold",
     CertificationSilver = "Certification.Silver",
     Empty = "",
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
+    updatedBy?:    string;
 }

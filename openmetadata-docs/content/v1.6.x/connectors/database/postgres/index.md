@@ -1,14 +1,14 @@
 ---
-title: Postgres
+title: PostgreSQL
 slug: /connectors/database/postgres
 ---
 
 {% connectorDetailsHeader
-name="Postgres"
+name="PostgreSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags"]
-unavailableFeatures=["Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data", "Stored Procedures Lineage"]
+unavailableFeatures=[]
 / %}
 
 In this section, we provide guides and references to use the PostgreSQL connector.
@@ -23,18 +23,23 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/postgres/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
 
 ## Requirements
 
 {% note %}
-Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
+Starting from OpenMetadata **version 1.6.5**, support for **Stored Procedures Lineage** has been introduced. This feature enables tracking the relationships and dependencies between stored procedures and other database objects, enhancing lineage visibility and data traceability.
+{% /note %}
+
+{% note %}
+Note that we only support officially supported PostgreSQL versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
 {% /note %}
 
 ### Usage and Lineage considerations
 
-When extracting lineage and usage information from Postgres we base our finding on the `pg_stat_statements` table.
+When extracting lineage and usage information from PostgreSQL we base our finding on the `pg_stat_statements` table.
 You can find more information about it on the official [docs](https://www.postgresql.org/docs/current/pgstatstatements.html#id-1.11.7.39.6).
 
 Another interesting consideration here is explained in the following SO [question](https://stackoverflow.com/questions/50803147/what-is-the-timeframe-for-pg-stat-statements).
@@ -50,12 +55,39 @@ Then, when extracting usage and lineage data, the query log duration will have n
 GRANT pg_read_all_stats TO your_user;
 ```
 
+## Stored Procedures
+
+When executing stored procedures in PostgreSQL, lineage extraction relies on capturing the SQL queries executed within the procedure. However, by default, PostgreSQL does not track the internal queries of a stored procedure in `pg_stat_statements`.
+
+### Enabling Query Tracking for Lineage
+
+To ensure OpenMetadata captures lineage from stored procedures, follow these steps:
+
+1. **Enable Logging for All Statements**
+   Modify the `postgresql.conf` file and set:
+
+   ```ini
+   log_statement = 'all'
+   ```
+
+ This will log all executed SQL statements, including those inside stored procedures.
+
+2. **Configure `pg_stat_statements` to Track Nested Queries**
+   
+By default, `pg_stat_statements` may only capture top-level procedure calls and not the internal queries. To change this behavior, update:
+
+   ```ini
+   pg_stat_statements.track = 'all'
+   ```
+
+This ensures that statements executed within procedures are recorded.
+
 ## Metadata Ingestion
 
 {% partial 
   file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
-    connector: "Postgres", 
+    connector: "PostgreSQL", 
     selectServicePath: "/images/v1.6/connectors/postgres/select-service.png",
     addNewServicePath: "/images/v1.6/connectors/postgres/add-new-service.png",
     serviceConnectionPath: "/images/v1.6/connectors/postgres/service-connection.png",
@@ -67,10 +99,10 @@ GRANT pg_read_all_stats TO your_user;
 
 #### Connection Details
 
-- **Username**: Specify the User to connect to Postgres. It should have enough privileges to read all the metadata.
+- **Username**: Specify the User to connect to PostgreSQL. It should have enough privileges to read all the metadata.
 - **Auth Type**: Basic Auth or IAM based auth to connect to instances / cloud rds.
   - **Basic Auth**: 
-    - **Password**: Password to connect to Postgres.
+    - **Password**: Password to connect to PostgreSQL.
   - **IAM Based Auth**: 
     - **AWS Access Key ID** & **AWS Secret Access Key**: When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have
   permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and
@@ -120,6 +152,12 @@ GRANT pg_read_all_stats TO your_user;
 
     Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 
+    {%note%}
+    When using Assume Role authentication, ensure you provide the following details:  
+    - **AWS Region**: Specify the AWS region for your deployment.  
+    - **Assume Role ARN**: Provide the ARN of the role in your AWS account that OpenMetadata will assume.  
+    {%/note%}
+
     - **Assume Role Session Name**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
       is assumed by different principals or for different reasons.
 
@@ -131,11 +169,11 @@ GRANT pg_read_all_stats TO your_user;
       information in AWS CloudTrail logs to determine who took actions with a role.
 
     Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
-- **Host and Port**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
+- **Host and Port**: Enter the fully qualified hostname and port number for your PostgreSQL deployment in the Host and Port field.
 
 **SSL Modes**
 
-There are a couple of types of SSL modes that Postgres supports which can be added to ConnectionArguments, they are as follows:
+There are a couple of types of SSL modes that PostgreSQL supports which can be added to ConnectionArguments, they are as follows:
 - **disable**: SSL is disabled and the connection is not encrypted.
 - **allow**: SSL is used if the server requires it.
 - **prefer**: SSL is used if the server supports it.
@@ -159,7 +197,7 @@ In order to integrate SSL in the Metadata Ingestion Config, the user will have t
 
 {% /stepsContainer %}
 
-## Securing Postgres Connection with SSL in OpenMetadata
+## Securing PostgreSQL Connection with SSL in OpenMetadata
 
 To establish secure connections between OpenMetadata and a PostgreSQL database, you can configure SSL using different SSL modes provided by PostgreSQL, each offering varying levels of security.
 
@@ -176,7 +214,5 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

@@ -7,7 +7,7 @@ slug: /connectors/pipeline/flink
 name="Flink"
 stage="BETA"
 platform="Collate"
-availableFeatures=["Pipelines", "Pipeline Status"]
+availableFeatures=["Pipelines", "Pipeline Status", "Usage"]
 unavailableFeatures=["Owners", "Tags", "Lineage"]
 / %}
 
@@ -22,7 +22,7 @@ Configure and schedule Flink metadata from the OpenMetadata UI:
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/pipeline/flink/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/flink/yaml"} /%}
@@ -72,6 +72,3 @@ The ingestion framework uses flink REST APIs to connect to the instance and perf
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

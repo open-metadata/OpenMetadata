@@ -60,6 +60,12 @@
           "$ref": "automator/removeTierAction.json"
         },
         {
+          "$ref": "automator/addTestCaseAction.json"
+        },
+        {
+          "$ref": "automator/removeTestCaseAction.json"
+        },
+        {
           "$ref": "automator/addOwnerAction.json"
         },
         {
@@ -67,6 +73,12 @@
         },
         {
           "$ref": "automator/removeCustomPropertiesAction.json"
+        },
+        {
+          "$ref": "automator/addDataProductAction.json"
+        },
+        {
+          "$ref": "automator/removeDataProductAction.json"
         },
         {
           "$ref": "automator/lineagePropagationAction.json"

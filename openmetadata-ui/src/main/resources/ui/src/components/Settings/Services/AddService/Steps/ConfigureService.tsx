@@ -64,7 +64,7 @@ const ConfigureService = ({
   ];
 
   const handleSubmit: FormProps['onFinish'] = (data) => {
-    onNext({ serviceName: data.name, description: data.description ?? '' });
+    onNext({ name: data.name, description: data.description ?? '' });
   };
 
   return (

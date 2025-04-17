@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { isUndefined } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
@@ -46,6 +47,38 @@ export class ContainerClass extends EntityClass {
     name: this.containerName,
     displayName: this.containerName,
     service: this.service.name,
+    dataModel: {
+      isPartitioned: true,
+      columns: [
+        {
+          name: `merchant${uuid()}`,
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+          description: 'The merchant for this transaction.',
+          tags: [],
+          ordinalPosition: 2,
+        },
+        {
+          name: `columbia${uuid()}`,
+          dataType: 'NUMERIC',
+          dataTypeDisplay: 'numeric',
+          description:
+            'The ID of the executed transaction. This column is the primary key for this table.',
+          tags: [],
+          constraint: 'PRIMARY_KEY',
+          ordinalPosition: 1,
+        },
+        {
+          name: `delivery${uuid()}`,
+          dataType: 'TIMESTAMP',
+          dataTypeDisplay: 'timestamp',
+          description: 'The time the transaction took place.',
+          tags: [],
+          ordinalPosition: 3,
+        },
+      ],
+    },
   };
   childContainer = {
     name: this.childContainerName,
@@ -57,6 +90,7 @@ export class ContainerClass extends EntityClass {
   entityResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
   childResponseData: ResponseDataType = {} as ResponseDataType;
+  childArrayResponseData: ResponseDataType[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Container);
@@ -66,7 +100,10 @@ export class ContainerClass extends EntityClass {
     this.serviceCategory = SERVICE_TYPE.Storage;
   }
 
-  async create(apiContext: APIRequestContext) {
+  async create(
+    apiContext: APIRequestContext,
+    customChildContainer?: { name: string; displayName: string }[]
+  ) {
     const serviceResponse = await apiContext.post(
       '/api/v1/services/storageServices',
       {
@@ -80,19 +117,39 @@ export class ContainerClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
-    const childContainer = {
-      ...this.childContainer,
-      parent: {
-        id: this.entityResponseData.id,
-        type: 'container',
-      },
-    };
+    if (!isUndefined(customChildContainer)) {
+      const childArrayResponseData: ResponseDataType[] = [];
+      for (const child of customChildContainer) {
+        const childContainer = {
+          ...child,
+          service: this.service.name,
+          parent: {
+            id: this.entityResponseData.id,
+            type: 'container',
+          },
+        };
+        const childResponse = await apiContext.post('/api/v1/containers', {
+          data: childContainer,
+        });
 
-    const childResponse = await apiContext.post('/api/v1/containers', {
-      data: childContainer,
-    });
+        childArrayResponseData.push(await childResponse.json());
+      }
+      this.childArrayResponseData = childArrayResponseData;
+    } else {
+      const childContainer = {
+        ...this.childContainer,
+        parent: {
+          id: this.entityResponseData.id,
+          type: 'container',
+        },
+      };
 
-    this.childResponseData = await childResponse.json();
+      const childResponse = await apiContext.post('/api/v1/containers', {
+        data: childContainer,
+      });
+
+      this.childResponseData = await childResponse.json();
+    }
 
     return {
       service: serviceResponse.body,

@@ -23,7 +23,20 @@ caption="Add or Edit the Data Asset Description"
 /%}
 
 - You can add or edit the description from the editor. You can also preview the description.
-- The description is supported in Markdown. You can also use the edit options available like Headers, Bold, Italics, Strikethrough, Bulleted list, Numbered list, Hyperlinks, Line break, Block quote, Inline code, Code block,
+
+## Markdown Support
+
+The editor supports **Markdown formatting**, which can be applied using the toolbar options or command-based formatting.
+
+**Legacy Markdown syntax is no longer supported.** Instead, you can use the toolbar-based formatting for actions such as:
+
+- **Headers**
+- **Bold, Italics, Strikethrough**
+- **Bulleted and Numbered lists**
+- **Hyperlinks**
+- **Line breaks, Block quotes**
+- **Inline code**, `Code blocks`
+
 - Refer to the [Markdown Guide](https://www.markdownguide.org/cheat-sheet/) for more information.
 
 {% image

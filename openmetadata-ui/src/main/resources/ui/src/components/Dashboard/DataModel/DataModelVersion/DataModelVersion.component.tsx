@@ -18,7 +18,6 @@ import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { getVersionPath } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
 import {
@@ -34,10 +33,12 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getVersionPath } from '../../../../utils/RouterUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -135,7 +136,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
         key: EntityTabs.MODEL,
         label: <TabsLabel id={EntityTabs.MODEL} name={t('label.model')} />,
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -191,15 +192,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           />
         ),
         children: (
-          <div className="p-md">
-            <CustomPropertyTable
-              isVersionView
-              entityDetails={currentVersionData as DashboardDataModel}
-              entityType={EntityType.DASHBOARD_DATA_MODEL}
-              hasEditAccess={false}
-              hasPermission={entityPermissions.ViewAll}
-            />
-          </div>
+          <CustomPropertyTable
+            isVersionView
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={false}
+            hasPermission={entityPermissions.ViewAll}
+          />
         ),
       },
     ],
@@ -207,51 +205,56 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   );
 
   return (
-    <>
-      <div data-testid="data-model-version-container">
-        {isVersionLoading ? (
-          <Loader />
-        ) : (
-          <div
-            className={classNames('version-data')}
-            data-testid="version-data">
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
-                <DataAssetsVersionHeader
-                  breadcrumbLinks={slashedDataModelName}
-                  currentVersionData={currentVersionData}
-                  deleted={deleted}
-                  displayName={displayName}
-                  domainDisplayName={domainDisplayName}
-                  entityType={EntityType.DASHBOARD_DATA_MODEL}
-                  ownerDisplayName={ownerDisplayName}
-                  ownerRef={ownerRef}
-                  serviceName={currentVersionData.service?.name}
-                  tierDisplayName={tierDisplayName}
-                  version={version}
-                  onVersionClick={backHandler}
-                />
-              </Col>
-              <Col span={24}>
+    <div data-testid="data-model-version-container">
+      {isVersionLoading ? (
+        <Loader />
+      ) : (
+        <div className={classNames('version-data')} data-testid="version-data">
+          <Row gutter={[0, 12]}>
+            <Col span={24}>
+              <DataAssetsVersionHeader
+                breadcrumbLinks={slashedDataModelName}
+                currentVersionData={currentVersionData}
+                deleted={deleted}
+                displayName={displayName}
+                domainDisplayName={domainDisplayName}
+                entityType={EntityType.DASHBOARD_DATA_MODEL}
+                ownerDisplayName={ownerDisplayName}
+                ownerRef={ownerRef}
+                serviceName={currentVersionData.service?.name}
+                tierDisplayName={tierDisplayName}
+                version={version}
+                onVersionClick={backHandler}
+              />
+            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.DASHBOARD_DATA_MODEL}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
                 <Tabs
-                  activeKey={tab ?? EntityTabs.MODEL}
+                  activeKey={tab}
+                  className="tabs-new"
                   items={tabItems}
                   onChange={handleTabChange}
                 />
               </Col>
-            </Row>
-          </div>
-        )}
+            </GenericProvider>
+          </Row>
+        </div>
+      )}
 
-        <EntityVersionTimeLine
-          currentVersion={version}
-          entityType={EntityType.DASHBOARD_DATA_MODEL}
-          versionHandler={versionHandler}
-          versionList={versionList}
-          onBack={backHandler}
-        />
-      </div>
-    </>
+      <EntityVersionTimeLine
+        currentVersion={version}
+        entityType={EntityType.DASHBOARD_DATA_MODEL}
+        versionHandler={versionHandler}
+        versionList={versionList}
+        onBack={backHandler}
+      />
+    </div>
   );
 };
 

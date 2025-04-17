@@ -91,6 +91,7 @@ test.describe('Add Nested Teams and Test TeamsSelectable', () => {
       const dropdown = page.locator('.ant-tree-select-dropdown');
 
       await expect(dropdown).toContainText(teamName);
+      await expect(dropdown.getByText(teamName)).toHaveCount(1);
     }
 
     for (const teamName of teamNames) {

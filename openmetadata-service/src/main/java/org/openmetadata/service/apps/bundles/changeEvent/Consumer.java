@@ -13,16 +13,16 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.util.ResultList;
 import org.quartz.JobExecutionContext;
 
 public interface Consumer<T> {
-  List<T> pollEvents(long offset, long batchSize);
+  ResultList<T> pollEvents(long offset, long batchSize);
 
   void publishEvents(Map<ChangeEvent, Set<UUID>> events);
 

@@ -1,7 +1,7 @@
-# 1.6.2 Release 🎉
+# 1.6.8 Release 🎉
 
 {% note noteType="Tip" %}
-**Jan 13th, 2025**
+**Apr 8th, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,46 +10,24 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.2!
+Learn how to upgrade your OpenMetadata instance to 1.6.8!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.2-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.8-release).
 
-- Fix: Test case getting removed from logical test suite after editing the test case.
-- Fix: Edit Lineage Operation not working with isOwner() condition
-- Fix: EditLineage permission not allowing users to edit the lineage.
-- Fix: ViewAll permission not working with matchAnyTag() and isOwner() conditions
-- Fix: Vulnerability security on 1.5.6 version package com.google.protobuf_protobuf-java.
-- Fix: DBT Data ingestion not working.
-- Fix: Table owners not shown properly after a dbt ingestion and re-indexing.
-- Fix: Glossary Listing Limits to 50 without scrolling to next page.
-- Fix: Mask encrypted password for email.
-- Fix: Profiler failing on ingesting data type for postgres.
-- Fix: Column lineage ingestion failed to parse column due to subquery raw_name AttributeError.
-- Fix: Data Insight Tier Filter does not work.
-- Fix: Add depth support for storage connector.
-- Fix: Replace the description editor with a new block editor.
-- Fix: Redshift Metadata ingestion failing for Stored Procedure.
-- Fix: Lineage view not showing all the nodes in case of circular lineage.
-- Fix: Deleting Data Product should delete the data asset relationships.
-- Fix: styling (color, icon) is lost if a glossaryTerm is updated via the bulk upload.
-- Fix: Unable to see complete column type info for long column type.
-- Fix: ApiEndpoint reindexing failure.
-- Fix: Auto Classification Ingestion - AttributeError: 'DataType' object has no attribute 'dialect_impl'.
-- Fix: Adding the profiler for doris failing to execute.
-- Fix: Unable to remove existing values from custom property (enum data type).
-- Fix: Custom DI description getting added with HTML p tag. (Collate)
-- Fix: Knowledge Page hierarchy state doesn't persist on refresh. (Collate)
-- Fix: Reindex Page Entitiy is Missing on Collate. (Collate)
-- Fix: Avoid pluralizing for custom charts. (Collate)
-- Improvement: Ability to sort the DI charts based on date or term.
-- Improvement: Support test connection api cancellation on click of cancel.
-- Improvement: Highlight the search term for schema table on table details page.
-- Improvement: Add Algorithm option for authentication token validation in yaml.
-- Improvement: Make all Test Suites executable.
-- Improvement: Activity feed pagination.
-- Improvement: Add the missing filters for different assets in the Automator(Ex. Database filter for Database Schema asset).  (Collate)
-- Improvement: Add Glossary Term and Metric as assets for Automation. (Collate)
+- Added support for Wherescape connector.
+- PowerBI owners ingestion for assets, improved filter query performance.
+- REST connector enhancements.
+- Implement column validation in lineage patch api.
+- Fixed tableau ingestion for null upstream table queries.
+- Fixed public schema lieage for postgres.
+- Fixed PowerBI filter query.
+- Fixed IncidentManager date filtering and update table column title.
+- Fixed dbt cloud latest run execution.
+- Fixed Unpinned google-cloud-secret-manager version in ingestion dependencies.
+- Fixed update query to fix domain asset update.
+- Fixed DQ for local webserver.
+- Fixed placeholder issue for empty metrics.
 
-**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.6.1-release...1.6.2-release
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.7-release...1.6.8-release)

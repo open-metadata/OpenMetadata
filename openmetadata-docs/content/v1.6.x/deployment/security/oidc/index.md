@@ -18,6 +18,14 @@ Security requirements for your **production** environment:
 This guide provides instructions on setting up OpenID Connect (OIDC) configuration for your application. OpenID Connect is a simple identity layer built on top of the OAuth 2.0 protocol that allows clients to verify the identity of the end-user.
 Below configurations are universally applicable to all SSO provider like Google, Auth0, Okta, Keycloak, etc.
 
+{% note %}
+
+OpenMetadata sessions are currently stored **in-memory**, which may cause issues when using **OIDC authentication** in a multi-replica setup.
+
+- If you are experiencing **authentication failures with "Missing state parameter" errors**, enabling **sticky sessions** can serve as a temporary workaround.
+
+{% /note %}
+
 Below are the configuration types to set up the OIDC Authentication with a Confidential Client type:
 
 ```yaml

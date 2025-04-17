@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,6 +36,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -49,6 +50,7 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -57,8 +59,8 @@ import {
 } from './AddObservabilityPage.interface';
 
 function AddObservabilityPage() {
-  const { t } = useTranslation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
@@ -199,10 +201,11 @@ function AddObservabilityPage() {
       hideSecondPanel
       className="content-height-with-resizable-panel"
       firstPanel={{
-        className: 'content-resizable-panel-container',
+        className: 'content-resizable-panel-container ',
+        allowScroll: true,
         children: (
-          <div className="steps-form-container">
-            <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
+          <Card className="steps-form-container">
+            <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Col>
@@ -327,12 +330,15 @@ function AddObservabilityPage() {
                 </Form>
               </Col>
             </Row>
-          </div>
+          </Card>
         ),
         minWidth: 700,
         flex: 0.7,
+        wrapInCard: false,
       }}
-      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.observability'),
+      })}
       secondPanel={{
         children: <></>,
         minWidth: 0,
@@ -342,4 +348,8 @@ function AddObservabilityPage() {
   );
 }
 
-export default AddObservabilityPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.observability'),
+  })
+)(AddObservabilityPage);

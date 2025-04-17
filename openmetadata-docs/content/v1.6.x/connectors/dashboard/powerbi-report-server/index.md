@@ -4,7 +4,7 @@ slug: /connectors/dashboard/powerbireportserver
 ---
 
 {% connectorDetailsHeader
-  name="PowerBIReportServer"
+  name="PowerBI Report Server"
   stage="BETA"
   platform="Collate"
   availableFeatures=["Dashboards"]
@@ -17,6 +17,7 @@ Configure and schedule PowerBI Report Server metadata from CLI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/dashboard/powerbireportserver/troubleshooting)
 
 {% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
@@ -63,5 +64,3 @@ Web Portal Virtual Directory name which you have configured in your PowerBI Repo
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

@@ -5,7 +5,7 @@ slug: /how-to-guides/data-discovery/openmetadata-extension
 
 # OpenMetadata Chrome Extension
 
-{% youtube videoId="ZQckSIXAA6k" start="0:00" end="01:37" width="560px" height="315px" /%}
+{% youtube videoId="ZQckSIXAA6k" start="0:00" end="01:37" width="800px" height="450px" /%}
 
 # Access Metadata Without Leaving Your Workspace
 

@@ -42,7 +42,8 @@
         "Local",
         "Partitioned",
         "Foreign",
-        "Transient"
+        "Transient",
+        "Stream"
       ],
       "javaEnums": [
         {
@@ -77,6 +78,9 @@
         },
         {
           "name": "Transient"
+        },
+        {
+          "name": "Stream"
         }
       ]
     },
@@ -164,7 +168,9 @@
         "BITMAP",
         "UINT",
         "BIT",
-        "MONEY"
+        "MONEY",
+        "MEASURE HIDDEN",
+        "MEASURE VISIBLE"
       ]
     },
     "constraint": {
@@ -193,7 +199,8 @@
             "PRIMARY_KEY",
             "FOREIGN_KEY",
             "SORT_KEY",
-            "DIST_KEY"
+            "DIST_KEY",
+            "CLUSTER_KEY"
           ]
         },
         "columns": {
@@ -770,6 +777,11 @@
           "default": 50,
           "title": "Sample Data Rows Count"
         },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": true
+        },
         "profileQuery": {
           "description": "Users' raw SQL query to fetch sample data and profile the table",
           "type": "string",
@@ -1096,6 +1108,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -1141,6 +1157,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the table",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

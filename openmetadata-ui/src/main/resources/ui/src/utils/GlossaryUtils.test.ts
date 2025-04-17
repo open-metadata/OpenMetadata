@@ -28,6 +28,7 @@ import {
   findExpandableKeys,
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
+  glossaryTermTableColumnsWidth,
 } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
@@ -351,5 +352,33 @@ describe('Glossary Utils - findAndUpdateNested', () => {
     const updatedTerms = findAndUpdateNested(terms, newTerm);
 
     expect(updatedTerms).toEqual(terms);
+  });
+});
+
+describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
+  it('should return columnsWidth object based on Table width', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, true);
+
+    expect(columnWidthObject).toEqual({
+      description: 210,
+      name: 200,
+      owners: 170,
+      reviewers: 330,
+      status: 200,
+      synonyms: 330,
+    });
+  });
+
+  it('should return columnsWidth object based on Table width when not having create permission', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, false);
+
+    expect(columnWidthObject).toEqual({
+      description: 330,
+      name: 200,
+      owners: 170,
+      reviewers: 330,
+      status: 200,
+      synonyms: 330,
+    });
   });
 });

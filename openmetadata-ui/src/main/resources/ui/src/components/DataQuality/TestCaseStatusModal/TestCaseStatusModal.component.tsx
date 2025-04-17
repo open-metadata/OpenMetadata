@@ -13,7 +13,7 @@
 import { Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -22,13 +22,21 @@ import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCase
 import Assignees from '../../../pages/TasksPage/shared/Assignees';
 import { Option } from '../../../pages/TasksPage/TasksPage.interface';
 import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import {
+  getEntityReferenceFromEntity,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_MEDIUM,
+  VALIDATION_MESSAGES,
+} from '../../../constants/constants';
+import { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
+import { getUsers } from '../../../rest/userAPI';
 import { generateFormFields } from '../../../utils/formUtils';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
@@ -38,13 +46,13 @@ export const TestCaseStatusModal = ({
   testCaseFqn,
   onSubmit,
   onCancel,
-  usersList,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
 
   const { assigneeOptions } = useMemo(() => {
     const initialAssignees = data?.testCaseResolutionStatusDetails?.assignee
@@ -155,6 +163,27 @@ export const TestCaseStatusModal = ({
     }),
     [data?.testCaseResolutionStatusDetails?.testCaseFailureComment]
   );
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users once and store in state
+    fetchInitialAssign();
+  }, []);
 
   useEffect(() => {
     const assignee = data?.testCaseResolutionStatusDetails?.assignee;

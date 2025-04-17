@@ -34,6 +34,5 @@ public class MlModelServiceRepository
         UPDATE_FIELDS,
         ServiceType.ML_MODEL);
     supportsSearch = true;
-    parent = true;
   }
 }

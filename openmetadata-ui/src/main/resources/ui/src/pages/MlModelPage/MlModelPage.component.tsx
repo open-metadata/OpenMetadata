@@ -22,17 +22,15 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
-import { getVersionPath, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
   getMlModelByFQN,
@@ -43,11 +41,11 @@ import {
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { defaultFields } from '../../utils/MlModelDetailsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const MlModelPage = () => {
@@ -134,20 +132,6 @@ const MlModelPage = () => {
     [mlModelDetail]
   );
 
-  const descriptionUpdateHandler = async (updatedMlModel: Mlmodel) => {
-    try {
-      const response = await saveUpdatedMlModelData(updatedMlModel);
-      const { description, version } = response;
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        description,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   const followMlModel = async () => {
     try {
       const res = await addFollower(mlModelDetail.id, USERId);
@@ -186,24 +170,6 @@ const MlModelPage = () => {
     }
   };
 
-  const onTagUpdate = async (updatedMlModel: Mlmodel) => {
-    try {
-      const { tags, version } = await saveUpdatedMlModelData(updatedMlModel);
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        tags: sortTagsCaseInsensitive(tags ?? []),
-        version: version,
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.tag-plural'),
-        })
-      );
-    }
-  };
-
   const settingsUpdateHandler = async (
     updatedMlModel: Mlmodel
   ): Promise<void> => {
@@ -222,54 +188,6 @@ const MlModelPage = () => {
         error as AxiosError,
         t('server.entity-updating-error', {
           entity: getEntityName(mlModelDetail),
-        })
-      );
-    }
-  };
-
-  const updateMlModelFeatures = async (updatedMlModel: Mlmodel) => {
-    try {
-      const { mlFeatures, version } = await saveUpdatedMlModelData(
-        updatedMlModel
-      );
-      setMlModelDetail((preVDetail) => ({
-        ...preVDetail,
-        mlFeatures,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleExtensionUpdate = useCallback(
-    async (updatedMlModel: Mlmodel) => {
-      try {
-        const data = await saveUpdatedMlModelData({
-          ...mlModelDetail,
-          extension: updatedMlModel.extension,
-        });
-        setMlModelDetail(data);
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-updating-error', {
-            entity: getEntityName(mlModelDetail),
-          })
-        );
-      }
-    },
-    [saveUpdatedMlModelData, setMlModelDetail, mlModelDetail]
-  );
-
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
         })
       );
     }
@@ -320,6 +238,26 @@ const MlModelPage = () => {
     }));
   }, []);
 
+  const handleMlModelUpdate = useCallback(
+    async (data: Mlmodel) => {
+      try {
+        const response = await saveUpdatedMlModelData(data);
+        setMlModelDetail((prev) => ({
+          ...prev,
+          ...response,
+        }));
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: getEntityName(mlModelDetail),
+          })
+        );
+      }
+    },
+    [saveUpdatedMlModelData]
+  );
+
   useEffect(() => {
     fetchResourcePermission(mlModelFqn);
   }, [mlModelFqn]);
@@ -342,19 +280,15 @@ const MlModelPage = () => {
 
   return (
     <MlModelDetailComponent
-      createThread={createThread}
-      descriptionUpdateHandler={descriptionUpdateHandler}
       fetchMlModel={() => fetchMlModelDetails(mlModelFqn)}
       followMlModelHandler={followMlModel}
       handleToggleDelete={handleToggleDelete}
       mlModelDetail={mlModelDetail}
       settingsUpdateHandler={settingsUpdateHandler}
-      tagUpdateHandler={onTagUpdate}
       unFollowMlModelHandler={unFollowMlModel}
       updateMlModelDetailsState={updateMlModelDetailsState}
-      updateMlModelFeatures={updateMlModelFeatures}
       versionHandler={versionHandler}
-      onExtensionUpdate={handleExtensionUpdate}
+      onMlModelUpdate={handleMlModelUpdate}
       onUpdateVote={updateVote}
     />
   );

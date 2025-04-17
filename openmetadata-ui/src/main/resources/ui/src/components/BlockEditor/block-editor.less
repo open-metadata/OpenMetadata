@@ -157,12 +157,12 @@
       border-radius: @border-radius;
       margin-top: 10px;
       max-width: 100%;
+      display: block;
     }
 
     p {
       margin-top: 10px;
       margin-bottom: 0px;
-      color: @text-color;
       word-break: break-word;
       line-height: 20px;
       &:first-child {
@@ -195,6 +195,33 @@
           height: 16px;
           width: 16px;
         }
+      }
+    }
+
+    &.drag-over {
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border: 2px dashed @primary-color;
+        border-radius: 6px;
+        pointer-events: none;
+      }
+
+      * {
+        cursor: copy;
+      }
+    }
+
+    // For block movement
+    &.is-dragging {
+      * {
+        cursor: grabbing;
       }
     }
   }
@@ -274,6 +301,9 @@
       width: 32px;
       height: 32px;
       box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px;
+      &.svg-image {
+        padding: 4px;
+      }
     }
   }
 }
@@ -384,21 +414,6 @@
   svg {
     fill: @primary-color;
   }
-}
-.image-placeholder {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  background-color: @grey-2;
-  border-width: 2px;
-  border-style: dashed;
-  border-radius: 4px;
-  user-select: none;
-  cursor: pointer;
-  padding: 1.5rem;
-  width: 100%;
-  font-size: 20px;
 }
 
 .om-image-node-wrapper {

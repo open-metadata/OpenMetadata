@@ -37,6 +37,10 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
+jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
+});
+
 jest.mock('../../BulkImport/BulkEntityImport.component', () =>
   jest.fn().mockImplementation(({ onSuccess, onValidateCsvString }) => (
     <div>
@@ -87,7 +91,6 @@ describe('Import Glossary', () => {
     render(<ImportGlossary glossaryName={glossaryName} />);
 
     expect(await screen.findByTestId('breadcrumb')).toBeInTheDocument();
-    expect(await screen.findByTestId('title')).toBeInTheDocument();
     expect(screen.getByText('BulkEntityImport')).toBeInTheDocument();
     expect(screen.getByText('SuccessButton')).toBeInTheDocument();
     expect(screen.getByText('ValidateCsvButton')).toBeInTheDocument();

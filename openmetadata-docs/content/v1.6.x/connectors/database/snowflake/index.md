@@ -7,7 +7,7 @@ slug: /connectors/database/snowflake
 name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -24,6 +24,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/snowflake/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
 
@@ -114,6 +115,9 @@ You can find more information about the `account_usage` schema [here](https://do
 - **Include Temporary and Transient Tables**: 
 Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By default, it will skip the `TRANSIENT` and `TEMPORARY` tables.
 - **Client Session Keep Alive**: Optional Configuration to keep the session active in case the ingestion job runs for longer duration.
+- **Account Usage Schema Name**: Full name of account usage schema, used in case your used do not have direct access to `SNOWFLAKE.ACCOUNT_USAGE` schema. In such case you can replicate tables `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS` to a custom schema let's say `CUSTOM_DB.CUSTOM_SCHEMA` and provide the same name in this field.
+
+When using this field make sure you have all these tables available within your custom schema  `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS`.
 
 {% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
@@ -126,8 +130,6 @@ Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By d
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Incomplete Column Level for Views
 

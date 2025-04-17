@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Modal, Row, Space, Typography } from 'antd';
+import { Button, Col, Modal, Row, Space, Typography } from 'antd';
 import cronstrue from 'cronstrue';
 import { isEmpty } from 'lodash';
 import React, {
@@ -40,6 +40,7 @@ import { AppScheduleProps } from './AppScheduleProps.interface';
 const AppSchedule = ({
   appData,
   loading: { isRunLoading, isDeployLoading },
+  jsonSchema,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -127,6 +128,7 @@ const AppSchedule = ({
       return (
         <AppRunsHistory
           appData={appData}
+          jsonSchema={jsonSchema}
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}
@@ -242,9 +244,9 @@ const AppSchedule = ({
           </Col>
         )}
 
-        <Divider />
-
-        <Col span={24}>{appRunHistory}</Col>
+        <Col className="mt-4" span={24}>
+          {appRunHistory}
+        </Col>
       </Row>
       <Modal
         destroyOnClose

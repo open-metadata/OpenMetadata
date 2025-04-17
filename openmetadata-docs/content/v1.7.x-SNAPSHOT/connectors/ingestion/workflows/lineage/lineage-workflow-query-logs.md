@@ -14,7 +14,7 @@ log information is available from WITHIN the database in the following services:
 - [Redshift](/connectors/database/redshift)
 - [Clickhouse](/connectors/database/clickhouse)
 - [Databricks](/connectors/database/databricks)
-- [Postgres](/connectors/database/postgres)
+- [PostgreSQL](/connectors/database/postgres)
 
 If you are using any other database connector, direct execution of lineage workflow is not possible. 
 This is mainly because these database connectors does not maintain query execution logs which is required for lineage workflow. 

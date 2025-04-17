@@ -45,11 +45,9 @@ jest.mock(
       )
 );
 
-jest.mock('./DiffView', () => ({
-  DiffView: jest
-    .fn()
-    .mockReturnValue(<div data-testid="DiffView">DiffView</div>),
-}));
+jest.mock('./DiffView/DiffView', () =>
+  jest.fn().mockReturnValue(<div data-testid="DiffView">DiffView</div>)
+);
 
 const mockProps = {
   value: 'description',

@@ -1,6 +1,8 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,8 +14,11 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -47,8 +52,11 @@ import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -104,10 +112,21 @@ public class TestCaseResultResource
       @Valid CreateTestCaseResult createTestCaseResults) {
     // Needed in further validation to check if the testCase exists
     createTestCaseResults.withFqn(fqn);
+    TestCase testCase = getTestCase(fqn);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext =
+    OperationContext operationContext = new OperationContext(TEST_CASE, MetadataOperation.EDIT_ALL);
+    ResourceContextInterface entityResourceContext =
+        TestCaseResourceContext.builder()
+            .entityLink(MessageParser.EntityLink.parse(testCase.getEntityLink()))
+            .build();
+    OperationContext entityOperationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(entityOperationContext, entityResourceContext),
+            new AuthRequest(operationContext, resourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     return repository.addTestCaseResult(
         securityContext.getUserPrincipal().getName(),
         uriInfo,
@@ -150,10 +169,23 @@ public class TestCaseResultResource
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    TestCase testCase = getTestCase(fqn);
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    OperationContext testCaseOperationContext =
+        new OperationContext(TEST_CASE, MetadataOperation.VIEW_ALL);
+    ResourceContextInterface entityResourceContext =
+        TestCaseResourceContext.builder()
+            .entityLink(MessageParser.EntityLink.parse(testCase.getEntityLink()))
+            .build();
+    OperationContext entityOperationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(testCaseOperationContext, testCaseResourceContext),
+            new AuthRequest(entityOperationContext, entityResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     return repository.getTestCaseResults(fqn, startTs, endTs);
   }
 
@@ -272,7 +304,12 @@ public class TestCaseResultResource
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
-          String q)
+          String q,
+      @Parameter(
+              description = "raw elasticsearch query to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("queryString")
+          String queryString)
       throws IOException {
     if (latest.equals("true") && (testSuiteId == null && entityFQN == null)) {
       throw new IllegalArgumentException("latest=true requires testSuiteId");
@@ -294,12 +331,7 @@ public class TestCaseResultResource
     Optional.ofNullable(dataQualityDimension)
         .ifPresent(dqd -> searchListFilter.addQueryParam("dataQualityDimension", dqd));
 
-    ResourceContextInterface resourceContextInterface = getResourceContext(testCaseFQN);
-    // Override OperationContext to change the entity to table
-    // and operation from VIEW_ALL to VIEW_TESTS
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-
+    List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
     if (latest.equals("true")) {
       return listLatestFromSearch(
           securityContext,
@@ -307,8 +339,8 @@ public class TestCaseResultResource
           searchListFilter,
           "testCaseFQN.keyword",
           q,
-          operationContext,
-          resourceContextInterface);
+          authRequests,
+          AuthorizationLogic.ANY);
     }
     return listInternalFromSearch(
         securityContext,
@@ -318,8 +350,9 @@ public class TestCaseResultResource
         offset,
         new SearchSortFilter("timestamp", "desc", null, null),
         q,
-        operationContext,
-        resourceContextInterface);
+        queryString,
+        authRequests,
+        AuthorizationLogic.ANY);
   }
 
   @GET
@@ -379,14 +412,10 @@ public class TestCaseResultResource
     Optional.ofNullable(testSuiteId)
         .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
 
-    ResourceContextInterface resourceContextInterface = getResourceContext(testCaseFQN);
-    // Override OperationContext to change the entity to table
-    // and operation from VIEW_ALL to VIEW_TESTS
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
 
     return super.latestInternalFromSearch(
-        securityContext, fields, searchListFilter, q, operationContext, resourceContextInterface);
+        securityContext, fields, searchListFilter, q, authRequests, AuthorizationLogic.ANY);
   }
 
   @PATCH
@@ -418,10 +447,23 @@ public class TestCaseResultResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext =
+    TestCase testCase = getTestCase(fqn);
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    OperationContext testCaseOperationContext =
+        new OperationContext(TEST_CASE, MetadataOperation.EDIT_ALL);
+    ResourceContextInterface entityResourceContext =
+        TestCaseResourceContext.builder()
+            .entityLink(MessageParser.EntityLink.parse(testCase.getEntityLink()))
+            .build();
+    OperationContext entityOperationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(entityOperationContext, entityResourceContext),
+            new AuthRequest(testCaseOperationContext, testCaseResourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     RestUtil.PatchResponse<TestCaseResult> patchResponse =
         repository.patchTestCaseResults(
             fqn, timestamp, patch, securityContext.getUserPrincipal().getName());
@@ -454,10 +496,19 @@ public class TestCaseResultResource
       @Parameter(description = "Timestamp of the testCase result", schema = @Schema(type = "long"))
           @PathParam("timestamp")
           Long timestamp) {
+    TestCase testCase = getTestCase(fqn);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+    OperationContext operationContext = new OperationContext(TEST_CASE, MetadataOperation.DELETE);
+    ResourceContextInterface entityResourceContext =
+        TestCaseResourceContext.builder()
+            .entityLink(MessageParser.EntityLink.parse(testCase.getEntityLink()))
+            .build();
+    OperationContext entityOperationContext = new OperationContext(TABLE, MetadataOperation.DELETE);
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(entityOperationContext, entityResourceContext),
+            new AuthRequest(operationContext, resourceContext));
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
     return repository.deleteTestCaseResult(fqn, timestamp).toResponse();
   }
 
@@ -477,5 +528,43 @@ public class TestCaseResultResource
       resourceContext = TestCaseResourceContext.builder().build();
     }
     return resourceContext;
+  }
+
+  private List<AuthRequest> getAuthRequestsForListOps(String testCaseFQN, String testSuiteId) {
+    List<AuthRequest> authRequests = new ArrayList<>();
+    if (testCaseFQN != null) {
+      TestCase testCase = getTestCase(testCaseFQN);
+      ResourceContextInterface testCaseResourceContext =
+          TestCaseResourceContext.builder().name(testCaseFQN).build();
+      OperationContext testCaseOperationContext =
+          new OperationContext(TEST_CASE, MetadataOperation.VIEW_ALL);
+      ResourceContextInterface entityResourceContext =
+          TestCaseResourceContext.builder()
+              .entityLink(MessageParser.EntityLink.parse(testCase.getEntityLink()))
+              .build();
+      OperationContext entityOperationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      authRequests.add(new AuthRequest(entityOperationContext, entityResourceContext));
+      authRequests.add(new AuthRequest(testCaseOperationContext, testCaseResourceContext));
+    } else {
+      ResourceContextInterface resourceContext = getResourceContext(null);
+      OperationContext operationContext =
+          new OperationContext(TEST_CASE, MetadataOperation.VIEW_ALL);
+      authRequests.add(new AuthRequest(operationContext, resourceContext));
+    }
+
+    if (testSuiteId != null) {
+      ResourceContextInterface testSuiteResourceContext =
+          new ResourceContext<>(Entity.TEST_SUITE, UUID.fromString(testSuiteId), null);
+      OperationContext testSuiteOperationContext =
+          new OperationContext(TEST_SUITE, MetadataOperation.VIEW_ALL);
+      authRequests.add(new AuthRequest(testSuiteOperationContext, testSuiteResourceContext));
+    }
+
+    return authRequests;
+  }
+
+  private TestCase getTestCase(String fqn) {
+    return Entity.getEntityByName(TEST_CASE, fqn, "", Include.ALL);
   }
 }

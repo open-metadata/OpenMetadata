@@ -73,7 +73,7 @@ import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
+import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
@@ -264,14 +264,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Asset Servlet Registration
     registerAssetServlet(catalogConfig.getWebConfiguration(), environment);
 
-    // Handle Pipeline Service Client Status job
-    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
-        PipelineServiceStatusJobHandler.create(
-            catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
-    pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
+    // Handle Services Jobs
+    registerHealthCheckJobs(catalogConfig);
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+  }
+
+  private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
+    ServicesStatusJobHandler healthCheckStatusHandler =
+        ServicesStatusJobHandler.create(
+            catalogConfig.getEventMonitorConfiguration(),
+            catalogConfig.getPipelineServiceClientConfiguration(),
+            catalogConfig.getClusterName());
+    healthCheckStatusHandler.addPipelineServiceStatusJob();
+    healthCheckStatusHandler.addDatabaseAndSearchStatusJobs();
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {
@@ -466,8 +473,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
-            conf.getPipelineServiceClientConfiguration(),
-            conf.getAuthenticationConfiguration(),
+            conf,
             false);
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();

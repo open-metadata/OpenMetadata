@@ -13,13 +13,15 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
 import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
+import { EntityTypeEndpoint } from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
 import { Glossary } from './Glossary';
 import {
   GlossaryTermData,
   GlossaryTermResponseDataType,
 } from './Glossary.interface';
 
-export class GlossaryTerm {
+export class GlossaryTerm extends EntityClass {
   randomName = getRandomLastName();
   data: GlossaryTermData = {
     name: `PW.${uuid()}%${this.randomName}`,
@@ -36,6 +38,7 @@ export class GlossaryTerm {
     {} as GlossaryTermResponseDataType;
 
   constructor(glossary: Glossary, parent?: string, name?: string) {
+    super(EntityTypeEndpoint.GlossaryTerm);
     this.data.glossary = glossary.data.name;
     if (parent) {
       this.data.parent = parent;
@@ -45,6 +48,10 @@ export class GlossaryTerm {
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
     this.data.reviewers = glossary.data.reviewers;
+  }
+
+  async visitEntityPage(page: Page) {
+    await this.visitPage(page);
   }
 
   async visitPage(page: Page) {

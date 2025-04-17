@@ -7,7 +7,7 @@ slug: /connectors/database/mysql
 name="MySQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage", "Query Usage", "Sample Data", "Reverse Metadata (Collate Only)"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -22,6 +22,8 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
 - [Data Lineage](/how-to-guides/data-lineage/workflow)
+- [Troubleshooting](/connectors/database/mysql/troubleshooting)
+{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
 
@@ -43,6 +45,9 @@ GRANT SELECT ON world.* TO '<username>';
 
 -- Grant select on a specific object
 GRANT SELECT ON world.hello TO '<username>';
+
+-- Grant show view to extract ddl
+GRANT SHOW VIEW ON world.* to '<username>';
 ```
 
 ### Lineage & Usage 
@@ -56,6 +61,71 @@ set GLOBAL log_output='table';
 -- Grant SELECT on log table
 GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
 ```
+
+#### Log Table Management
+The `mysql.general_log` table grows continuously as it stores query logs. This can consume significant storage space over time and affect the execution time of lineage and usage procedures.
+
+- Note: We recommend cleaning up log tables only after successful execution of Usage & Lineage workflows to ensure no loss of query data during extraction. Once cleanup occurs, the query history is lost.
+
+Here are some important considerations and best practices:
+
+### Create Manual Schedule to rotate logs
+
+When you rotate log tables manually, the current log table is copied to a backup log table and the entries in the current log table are removed. If the backup log table already exists, then it is deleted before the current log table is copied to the backup. You can query the backup log table if needed. The backup log table for the `mysql.general_log` table is named `mysql.general_log_backup`.
+The backup log table for the `mysql.slow_log table` is named `mysql.slow_log_backup`
+```sql
+-- rotate general logs
+CREATE PROCEDURE rotate_general_log()
+BEGIN
+  -- Step 1: Drop the backup table if it exists
+  DROP TABLE IF EXISTS mysql.general_log_backup;
+
+  -- Step 2: Copy current general_log table to backup
+  CREATE TABLE mysql.general_log_backup AS SELECT * FROM mysql.general_log;
+
+  -- Step 3: Truncate the general_log table (clears all records)
+  TRUNCATE TABLE mysql.general_log;
+END;
+-- call this procedure
+CALL rotate_general_log();
+
+-- rotate slow logs
+CREATE PROCEDURE rotate_slow_log()
+BEGIN
+  DROP TABLE IF EXISTS mysql.slow_log_backup;
+  CREATE TABLE mysql.slow_log_backup AS SELECT * FROM mysql.slow_log;
+  TRUNCATE TABLE mysql.slow_log;
+END
+-- call this procedure
+CALL rotate_slow_log();
+```
+
+You can also check table size by running below query
+```sql
+SELECT table_name, round(data_length/1024/1024, 2) AS size_in_mb
+FROM information_schema.tables
+WHERE table_schema = 'mysql' AND table_name IN ('general_log', 'slow_log', 'general_log_backup', 'slow_log_backup');
+```
+
+### Create Automatic Event to clear older logs
+
+You can also create automatic event like showed below which runs every week to clear older logs.
+```sql
+CREATE EVENT mysql.cleanup_general_log ON SCHEDULE EVERY 7 DAY DO DELETE FROM mysql.general_log WHERE event_time < NOW() - INTERVAL 7 DAY;
+```
+
+Note: If you are using rds then you can rotate the `mysql.general_log` table manually by calling the `mysql.rds_rotate_general_log` procedure. You can rotate the `mysql.slow_log` table by calling the `mysql.rds_rotate_slow_log` procedure.
+
+You can also check below docs about more info on logs & its rotation methods.
+- [Rotating mysql query logs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/mysql-stored-proc-logging.html)
+- [RDS for MySQL database logs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.MySQL.LogFileSize.html#USER_LogAccess.MySQL.Generallog)
+- [Aurora for MySQL database logs](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/USER_LogAccess.MySQL.LogFileSize.html#USER_LogAccess.MySQL.Generallog)
+
+**Best Practices**:
+- Monitor log table size regularly
+- Implement a log rotation schedule
+- Consider automating log cleanup after DAG execution
+- Keep logging enabled only when needed for lineage extraction
 
 ### Profiler & Data Quality
 Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](/how-to-guides/data-quality-observability/quality).
@@ -130,6 +200,11 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
     Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
 
+    {%note%}
+    When using Assume Role authentication, ensure you provide the following details:  
+    - **AWS Region**: Specify the AWS region for your deployment.  
+    {%/note%}
+
     - **Assume Role Session Name**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role
       is assumed by different principals or for different reasons.
 
@@ -162,7 +237,7 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ## Securing MySQL Connection with SSL in OpenMetadata
 
-To establish secure connections between OpenMetadata and MySQL, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`.  Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
+To establish secure connections between OpenMetadata and MySQL, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`.  Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client's SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server's certificate.
 
 {% image
   src="/images/v1.7/connectors/ssl_connection.png"
@@ -170,6 +245,6 @@ To establish secure connections between OpenMetadata and MySQL, navigate to the 
   height="450px"
   caption="SSL Configuration" /%}
 
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/database/mysql/reverse-metadata.md" collate: true /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

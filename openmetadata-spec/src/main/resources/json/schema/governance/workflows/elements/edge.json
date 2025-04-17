@@ -16,7 +16,7 @@
     },
     "condition": {
       "description": "Defines if the edge will follow a path depending on the source node result.",
-      "type": "boolean"
+      "type": "string"
     }
   },
   "required": ["to", "from"],

@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { getTagValue } from '../../../../../utils/CommonUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
+import AppBadge from '../../../../common/Badge/Badge.component';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
@@ -45,12 +46,20 @@ function SummaryListItem({
                 iconClassName: 'm-r-xss',
                 iconWidth: '14px',
               })}
-            {entityDetails.title}
+            <Typography.Text
+              className="m-r-xs"
+              ellipsis={{ tooltip: entityDetails.title }}>
+              {entityDetails.title}
+            </Typography.Text>
 
             {entityDetails.type && (
-              <Typography.Text
-                className="text-grey-muted text-xs p-l-xs"
-                data-testid="entity-type">{`(${entityDetails.type})`}</Typography.Text>
+              <AppBadge
+                bgColor="#E6DDFF80"
+                className="m-l-auto"
+                color="#703EFD"
+                data-testid="entity-type"
+                label={entityDetails.type}
+              />
             )}
           </Col>
 
@@ -77,7 +86,9 @@ function SummaryListItem({
                   maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                 />
               ) : (
-                t('label.no-entity', { entity: t('label.description') })
+                <Text className="text-sm no-data-chip-placeholder">
+                  {t('label.no-entity', { entity: t('label.description') })}
+                </Text>
               )}
             </Paragraph>
           </Col>

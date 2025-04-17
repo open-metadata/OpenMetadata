@@ -28,6 +28,11 @@ To ingest tableau metadata, minimum `Site Role: Viewer` is required for the tabl
 To create lineage between tableau dashboard and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server.
 For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html)
 
+{% note %}
+- If using a **default site** on Tableau Server, leave the **Site URL** and **Site Name** fields **blank** in the ingestion configuration.  
+- Ensure that the **Metadata API** is enabled for the user performing the ingestion. If it is not enabled, ingestion may fail. Follow the official Tableau documentation to [enable the Metadata API](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html#enable-the-tableau-metadata-api-for-tableau-server).  
+{% /note %}
+
 ### Python Requirements
 
 {% partial file="/v1.6/connectors/python-requirements.md" /%}

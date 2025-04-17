@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,6 +44,7 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from croniter import croniter
 from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
@@ -203,7 +204,9 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
+    config = json.loads(
+        workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
+    )
     workflow = MetadataWorkflow.create(config)
 
     workflow.execute()
@@ -247,11 +250,19 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     :param ingestion_pipeline: pipeline configs
     :return: dict to use as kwargs
     """
+    # Determine start_date based on schedule_interval using croniter
+    schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
+    now = datetime.now()
 
-    if ingestion_pipeline.airflowConfig.startDate:
-        start_date = ingestion_pipeline.airflowConfig.startDate.root
+    if schedule_interval is None:
+        # On-demand DAG, set start_date to now
+        start_date = now
+    elif croniter.is_valid(schedule_interval):
+        cron = croniter(schedule_interval, now)
+        start_date = cron.get_prev(datetime)
     else:
-        start_date = datetime.now() - timedelta(days=1)
+        # Handle invalid cron expressions if necessary
+        start_date = now
 
     return {
         "dag_id": clean_dag_id(ingestion_pipeline.name.root),
@@ -272,7 +283,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline
         or False,
         "catchup": ingestion_pipeline.airflowConfig.pipelineCatchup or False,
-        "schedule_interval": ingestion_pipeline.airflowConfig.scheduleInterval,
+        "schedule_interval": schedule_interval,
         "tags": [
             "OpenMetadata",
             clean_name_tag(ingestion_pipeline.displayName)

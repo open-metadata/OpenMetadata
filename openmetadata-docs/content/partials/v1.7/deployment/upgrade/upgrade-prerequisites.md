@@ -46,6 +46,23 @@ You can refer to the following guide to get more details about the backup and re
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
+## Understanding the "Running" State in OpenMetadata
+
+In OpenMetadata, the **"Running"** state indicates that the OpenMetadata server has received a response from Airflow confirming that a workflow is in progress. However, if Airflow unexpectedly stops or crashes before it can send a failure status update through the **Failure Callback**, OpenMetadata remains unaware of the workflow’s actual state. As a result, the workflow may appear to be stuck in **"Running"** even though it is no longer executing.  
+
+This situation can also occur during an OpenMetadata upgrade. If an ingestion pipeline was running at the time of the upgrade and the process caused Airflow to shut down, OpenMetadata would not receive any further updates from Airflow. Consequently, the pipeline status remains **"Running"** indefinitely.
+
+{% image
+  src="/images/v1.7/deployment/upgrade/running-state-in-openmetadata.png"
+  alt="Running State in OpenMetadata"
+  caption="Running State in OpenMetadata" /%}
+
+### Expected Steps to Resolve
+To resolve this issue:  
+- Ensure that Airflow is restarted properly after an unexpected shutdown.  
+- Manually update the pipeline status if necessary.  
+- Check Airflow logs to verify if the DAG execution was interrupted.
+
 ### Update `sort_buffer_size` (MySQL) or `work_mem` (Postgres)
 
 Before running the migrations, it is important to update these parameters to ensure there are no runtime errors.
@@ -86,83 +103,129 @@ After the migration is finished, you can revert this changes.
 
 # Backward Incompatible Changes
 
-## 1.6.0
+## 1.7.0
 
-### Ingestion Workflow Status
+### Removing support for Python 3.8
 
-We are updating how we compute the success percentage. Previously, we took into account for partial success the results
-of the Source (e.g., the tables we were able to properly retrieve from Snowflake, Redshift, etc.). This means that we had 
-an error threshold in there were if up to 90% of the tables were successfully ingested, we would still consider the
-workflow as successful. However, any errors when sending the information to OpenMetadata would be considered as a failure.
+Python 3.8 was [officially EOL on 2024-10-07](https://devguide.python.org/versions/). Some of our dependencies have already
+started removing support for higher versions, and are following suit to ensure we are using the latest and most stable
+versions of our dependencies.
 
-Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
-then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
+This means that for Release 1.7, the supported Python versions for the Ingestion Framework are 3.9, 3.10 and 3.11.
 
-# Database Metadata & Lineage Workflow
+We were already shipping our Docker images with Python 3.10, so this change should not affect you if you are using our Docker images.
+However, if you installed the `openmetadata-ingestion` package directly, please make sure to update your Python version to 3.9 or higher.
 
-With 1.6 Release we are moving the `View Lineage` & `Stored Procedure Lineage` computation from metadata workflow to lineage workflow.
+### Putting your Metadata Ingestion on AutoPilot
 
-This means that we are removing the `overrideViewLineage` property from the `DatabaseServiceMetadataPipeline` schema which will be moved to the `DatabaseServiceQueryLineagePipeline` schema.
+{%  youtube videoId="lo4SrBAmTZM" start="0:00" end="2:06" width="800px" height="450px" /%}
 
-### Profiler & Auto Classification Workflow
+OpenMetadata provides workflows out of the box to extract different types of metadata from your data services such as schemas, lineage, usage and profiling. To accelerate the onboarding of new services, we have created the new AutoPilot Application, which will automatically deploy and trigger all these Metadata Agents when a new service is created!
 
-We are creating a new `Auto Classification` workflow that will take care of managing the sample data and PII classification,
-which was previously done by the Profiler workflow. This change will allow us to have a more modular and scalable system.
+As part of the new flow, we’ve also improved how you define filters for your service: We’re adding default filters to ensure you are only ingesting relevant metadata and giving you the autonomy to add other default filters that can be applied to any other workflow. This helps you move faster and ensure consistency.
 
-The Profiler workflow will now only focus on the profiling part of the data, while the Auto Classification will take care
-of the rest.
+Additionally, the new Service Insights page provides immediate KPIs on your data, based on your data assets distribution, and coverage on key metrics such as descriptions, ownership, tiering and PII.
 
-This means that we are removing these properties from the `DatabaseServiceProfilerPipeline` schema:
-- `generateSampleData`
-- `processPiiSensitive`
-- `confidence`
-which will be moved to the new `DatabaseServiceAutoClassificationPipeline` schema.
+With OpenMetadata AutoPilot, you can get all of your metadata with just one click!
 
-What you will need to do:
-- If you are using the **EXTERNAL** ingestion for the profiler (YAML configuration), you will need to update your configuration,
-removing these properties as well.
-- If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
-from the UI.
+### Accelerating Onboarding New Services with AI Agents
 
-### RBAC Policy Updates for `EditTags`
+{%  youtube videoId="mn4edHpHZWo" start="0:00" end="1:45" width="800px" height="450px" /%}
 
-We have given more granularity to the `EditTags` policy. Previously, it was a single policy that allowed the user to manage
-any kind of tagging to the assets, including adding tags, glossary terms, and Tiers. 
+At Collate, we’re taking the AutoPilot experience one step further by adding AI Agents to the mix. Based on the information extracted from the Metadata Agents, Collate AI Agents will automatically generate tiers, descriptions, and Data Quality tests:
 
-Now, we have split this policy to give further control on which kind of tagging the user can manage. The `EditTags` policy has been
-split into:
+- The Tier Agent analyzes your table usage and lineage to determine the business criticality of each asset in your organization.
+- The Documentation Agent automatically generates descriptions based on the shape of your data, as well as enabling a Text2SQL chat experience.
+- The Data Quality Agent validates tables’ constraints to intelligently create Data Quality Tests, in addition to learning from what tests are already present in similar tables.
 
-- `EditTags`: to add tags.
-- `EditGlossaryTerms`: to add Glossary Terms.
-- `EditTier`: to add Tier tags.
+Collate also brings **enhanced Service Insights** helping you:
 
-### Collate - Metadata Actions for ML Tagging - Deprecation Notice
+- Track how much metadata has been automatically generated by Collate AI.
+- Identify your Service distribution of PII and Tiers.
+- Analyze what are your most used data assets.
+- As well as a new view for your most expensive queries for Snowflake and BigQuery, which you can then have Collate AI optimize for you!
+- And understand the Data Quality health and coverage of your Service.
 
-Since we are introducing the `Auto Classification` workflow, **we are going to remove in 1.7 the `ML Tagging` action**
-from the Metadata Actions. That feature will be covered already by the `Auto Classification` workflow, which even brings
-more flexibility allow the on-the-fly usage of the sample data for classification purposes without having to store
-it in the database.
+Collate AI Agents in AutoPilot are like having additional team members, helping you evaluate your metadata management to the next level while saving you time and resources.
 
-### Service Spec for the Ingestion Framework
+### Boosting your Discovery thanks to Search Relevancy Settings
 
-This impacts users who maintain their own connectors for the ingestion framework that are **NOT** part of the
-[OpenMetadata python library (openmetadata-ingestion)](https://github.com/open-metadata/OpenMetadata/tree/ff261fb3738f3a56af1c31f7151af9eca7a602d5/ingestion/src/metadata/ingestion/source).
-Introducing the ["connector specifcication class (`ServiceSpec`)"](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/service_spec/service_spec.py). 
-The `ServiceSpec` class serves as the entrypoint for the connector and holds the references for the classes that will be used
-to ingest and process the metadata from the source.
-You can see [postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/service_spec.py) for an
-implementation example.
+{%  youtube videoId="9Uy95t11hs0" start="0:00" end="1:56" width="800px" height="450px" /%}
 
+As Data Platforms grow, ensuring that the right piece of data appears first for your search results can help reduce time to action for your users. OpenMetadata was already boosting results based on Tiers - business criticality - and usage. However, different organizations might have different ranking needs based on other properties.
 
-### Fivetran
+We are introducing Search Relevancy Settings to help you **customize the discovery** experience for your users, giving you complete control over:
 
-The filtering of Fivetran pipelines now supports using their names instead of IDs. This change may affect existing configurations that rely on pipeline IDs for filtering.
+- Choosing which fields of the asset you want to match during the search, such as names, descriptions, or columns.
+- Changing the default boosting on Tiers and uage, or add other tags you want to boost higher.
+- Specifying the above to all or specific asset types, such as Tables, Dashboards, or Topics.
 
-### DBT Cloud Pipeline Service
+Thanks to the new Search Relevancy customization, you can ensure your users will always find the right data!
 
-We are removing the field `jobId` which we required to ingest dbt metadata from a specific job, instead of this we added a new field called `jobIds` which will accept multiple job ids to ingest metadata from multiple jobs.
+### Understanding Data Better with New Lineage Layers
 
-### MicroStrategy
+{%  youtube videoId="5iiN2gtJzwo" start="0:00" end="1:13" width="800px" height="450px" /%}
 
-The `serviceType` for MicroStrategy connector is renamed from `Mstr` to `MicroStrategy`.
+OpenMetadata continues to make improvements to the lineage, both in how we capture and parse queries, as well as how users can explore and utilize lineage information.
 
+In Release 1.7, we’re adding exciting additions to the Lineage UI, including:
+
+- An enhanced toolbar,
+- A minimap to better explore large lineage,
+- And new lineage layers!
+
+The existing Column and Observability Layers already help you understand how your data moves, as well as analyze both the root cause and impact of Data Quality issues.
+
+Now, we’re adding a **Service Layer**, giving you a comprehensive view of how data flows from service to service. We’re also introducing a Domain Layer, which will help you better visualize the shape of your Data Mesh, along with the Data Product Layer.
+
+Lineage is a key element for understanding your data, and OpenMetadata enhances this further by providing even more perspectives to it.
+
+### Catering to All your Users Needs with Persona Customizations
+
+{%  youtube videoId="Cf-dSJLRQcc" start="0:00" end="2:32" width="800px" height="450px" /%}
+
+OpenMetadata has detailed information about your data assets, including their schema, lineage, data quality, and observability. Now, we’ve focused on making sure different users can concentrate on the specific information most important for them!
+
+In previous releases, we allowed the customization of the Landing Page based on your User Personas. Release 1.7 expands these capabilities to the left **navigation panel, governance entities**, and **data assets**.
+
+- Add, remove, and sort the elements of the navigation panel,
+- And for governance entities and data assets, reorganize the existing tabs, add new tabs, or remove them! You can then add and size widgets to better showcase Custom Properties, have larger spaces for descriptions, and more!
+
+UI Customizations are a flexible and powerful approach that will let you tailor the experience for each of your users, improving the experience of managing all of your processes within OpenMetadata.
+
+### Finding the Right Data Faster with the New UX
+
+{%  youtube videoId="r5CMDA4Fcsw" start="0:00" end="1:24" width="800px" height="450px" /%}
+
+With Release 1.7, we’ve invested in our core design principles with improvements to the User Experience, particularly for addressing the needs of the diverse Personas that rely on OpenMetadata daily.
+
+These changes include:
+- Streamlining the navigation panels, 
+- Improving the placement and labeling of key information in the asset pages,
+- And restructuring the information on user pages, highlighting profile information, and improving how users can navigate and manage their open tasks.
+
+Combined with the improvements around Search Relevancy, Customizable UI for Personas, and the AutoPilot Application, this release accelerates the onboarding of both Services and users, in addition to making it easier for users to find the right data faster and act upon it.
+
+### Activating your Metadata in Collate with Reverse Metadata
+
+{%  youtube videoId="3RVTwfbgvLQ" start="0:00" end="2:16" width="800px" height="450px" /%}
+
+Thanks to Collate’s collaboration and automation features, it’s simple to add tags, descriptions, and owners to all your assets. But how can we ensure this metadata is seen and used by the source systems as well?
+
+Reverse Metadata is a new application that will allow you to send descriptions, tags, and owners collected in Collate back into the source! You can configure which assets you want to listen for changes, and updates will be **propagated in real time!**
+
+Pairing this feature with source systems capabilities, such as Snowflake handling Masking Policies based on tags, it’s a powerful approach to centralize policy management directly in Collate.
+
+Moreover, linking this application to other features such as Metadata Automations or Auto Classification workflows, Collate becomes a key pillar in your **end-to-end automated governance strategy**.
+
+### Expanded Connector Ecosystem and Diversity
+
+OpenMetadata’s ingestion framework contains 90+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
+
+We bring new connectors in each release, continuously expanding our coverage. This time, Release 1.7 comes with four new connectors:
+
+- **Opensearch:** Bringing your index metadata into OpenMetadata.
+- **Cassandra:** Ingesting from the NoSQL Distributed Database.
+- **Cockroach DB:** The cloud native distributed SQL Database.
+
+And in Collate, we are bringing a new Pipeline connector: **Wherescape**.

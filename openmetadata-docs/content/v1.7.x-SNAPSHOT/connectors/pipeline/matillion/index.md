@@ -21,7 +21,7 @@ Configure and schedule Matillion metadata and profiler workflows from the OpenMe
     - [Matillion Versions](#matillion-versions)
 - [Metadata Ingestion](#metadata-ingestion)
     - [Connection Details](#connection-details)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/pipeline/matillion/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/matillion/yaml"} /%}
@@ -30,6 +30,8 @@ Configure and schedule Matillion metadata and profiler workflows from the OpenMe
 To extract metadata from Matillion, you need to create a user with the following permissions:
 
 - `API` Permission ( While Creating the User, from Admin -> User )
+- To retrieve lineage data, the user must be granted [Component-level permissions](https://docs.matillion.com/metl/docs/2932106/#component).
+- To enable lineage tracking in Matillion, **Matillion Enterprise Mode** is required. For detailed setup instructions and further information, refer to the official documentation: [Matillion Lineage Documentation](https://docs.matillion.com/metl/docs/2881895/).
 
 ### Matillion Versions
 
@@ -75,5 +77,3 @@ By successfully completing these steps, the lineage information for the service 
 {% image
   src="/images/v1.7/connectors/matillion/lineage.webp"
   alt="Matillion Lineage" /%}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

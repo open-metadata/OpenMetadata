@@ -110,22 +110,22 @@ source:
       type: DBTCloud
 ```
 ```yaml {% srNumber=1 %}
-        host: "https://account_prefix.account_region.dbt.com"
+      host: "https://account_prefix.account_region.dbt.com"
 ```
 ```yaml {% srNumber=2 %}
-        discoveryAPI: "https://metadata.cloud.getdbt.com/graphql"
+      discoveryAPI: "https://metadata.cloud.getdbt.com/graphql"
 ```
 ```yaml {% srNumber=3 %}
-        accountId: "numeric_account_id"
+      accountId: "numeric_account_id"
 ```
 ```yaml {% srNumber=4 %}
-        # jobIds: ["job_id_1", "job_id_2", "job_id_3"]
+      # jobIds: ["job_id_1", "job_id_2", "job_id_3"]
 ```
 ```yaml {% srNumber=5 %}
-        # projectIds: ["project_id_1", "project_id_2", "project_id_3"]
+      # projectIds: ["project_id_1", "project_id_2", "project_id_3"]
 ```
 ```yaml {% srNumber=6 %}
-        token: auth_token
+      token: auth_token
 ```
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}

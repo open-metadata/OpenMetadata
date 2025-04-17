@@ -79,10 +79,9 @@ class BigQueryIngestionClass extends ServiceBaseClass {
       )}`
     );
     await checkServiceFieldSectionHighlighting(page, 'clientX509CertUrl');
-    await page.click('[data-testid="add-item-Taxonomy Project IDs"]');
-    await checkServiceFieldSectionHighlighting(page, 'taxonomyProjectID');
-    await page.fill('#root\\/taxonomyProjectID\\/0', projectIdTaxonomy);
-    await checkServiceFieldSectionHighlighting(page, 'taxonomyProjectID');
+
+    await page.fill(`#root\\/taxonomyProjectID`, projectIdTaxonomy);
+    await page.locator(`#root\\/taxonomyProjectID`).press('Enter');
   }
 
   async fillIngestionDetails(page: Page) {

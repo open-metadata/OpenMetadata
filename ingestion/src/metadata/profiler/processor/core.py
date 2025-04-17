@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -165,6 +165,7 @@ class Profiler(Generic[TMetric]):
                 column
                 for column in self.profiler_interface.get_columns()
                 if column.name in self._get_included_columns()
+                or self._get_included_columns() == {"all"}
             ]
 
         if not self._get_included_columns():
@@ -550,12 +551,12 @@ class Profiler(Generic[TMetric]):
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(
-                    self.profiler_interface.sampler.sample_config.profile_sample
+                    self.profiler_interface.sampler.sample_config.profileSample
                     if self.profiler_interface.sampler.sample_config
                     else None
                 ),
                 profileSampleType=(
-                    self.profiler_interface.sampler.sample_config.profile_sample_type
+                    self.profiler_interface.sampler.sample_config.profileSampleType
                     if self.profiler_interface.sampler.sample_config
                     else None
                 ),

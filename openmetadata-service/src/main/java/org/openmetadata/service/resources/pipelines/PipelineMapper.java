@@ -12,6 +12,7 @@ public class PipelineMapper implements EntityMapper<Pipeline, CreatePipeline> {
   public Pipeline createToEntity(CreatePipeline create, String user) {
     return copy(new Pipeline(), create, user)
         .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
+        .withState(create.getState())
         .withTasks(create.getTasks())
         .withSourceUrl(create.getSourceUrl())
         .withConcurrency(create.getConcurrency())

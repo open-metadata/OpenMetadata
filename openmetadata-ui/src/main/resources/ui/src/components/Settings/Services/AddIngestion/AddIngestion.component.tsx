@@ -29,7 +29,10 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getSuccessMessage } from '../../../../utils/IngestionUtils';
+import {
+  getDefaultFilterPropertyValues,
+  getSuccessMessage,
+} from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
@@ -84,10 +87,23 @@ const AddIngestion = ({
     ? getScheduleOptionsFromSchedules(pipelineSchedules)
     : undefined;
 
+  const filterProperties = useMemo(
+    () =>
+      getDefaultFilterPropertyValues({
+        pipelineType,
+        serviceCategory,
+        ingestionData: data,
+        serviceData,
+        isEditMode,
+      }),
+    [pipelineType, serviceCategory, data, serviceData, isEditMode]
+  );
+
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
+      ...filterProperties,
       name: data?.name ?? generateUUID(),
       displayName:
         data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
@@ -289,6 +305,7 @@ const AddIngestion = ({
             operationType={status}
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
+            serviceData={serviceData}
             workflowData={workflowData}
             onCancel={handleCancelClick}
             onChange={handleDataChange}

@@ -56,7 +56,7 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     const databasesResponse = page.waitForResponse('/api/v1/databases?**');
 
     const headerText = await page.textContent(
-      `[data-testid="entity-header-display-name"]`
+      `[data-testid="entity-header-name"]`
     );
 
     expect(headerText).toBe(serviceName);
@@ -64,6 +64,7 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
     await databasesResponse;
 
     const schemaResponse = page.waitForResponse('/api/v1/databaseSchemas?**');
+    await page.click('[data-testid="databases"]');
     await page.click(
       `[data-testid="table-container"] >> text=${table.database.name}`
     );

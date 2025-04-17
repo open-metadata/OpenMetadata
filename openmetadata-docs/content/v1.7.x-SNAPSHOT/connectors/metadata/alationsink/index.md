@@ -7,7 +7,7 @@ slug: /connectors/metadata/alationsink
 name="AlationSink"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=[]
+availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
@@ -22,8 +22,7 @@ Configure and schedule Alation Sink metadata workflow from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Data Mapping and Assumptions](#data-mapping-and-assumptions)
 - [Metadata Ingestion](#metadata-ingestion)
-
-{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/alation/yaml"} /%}
+- [Troubleshooting](/connectors/metadata/alationsink/troubleshooting)
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
@@ -102,5 +101,3 @@ datasourceLinks: {
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.7/connectors/troubleshooting.md" /%}

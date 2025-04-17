@@ -90,6 +90,22 @@ test('Search Index Application', async ({ page }) => {
     await verifyLastExecutionRun(page);
   });
 
+  await test.step('View App Run Config', async () => {
+    await page.getByTestId('app-historical-config').click();
+    await page.waitForSelector('[role="dialog"].ant-modal');
+
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+    await expect(page.locator('.ant-modal-title')).toContainText(
+      'Search Indexing Configuration'
+    );
+
+    await page.click('[data-testid="app-run-config-close"]');
+    await page.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'detached',
+    });
+  });
+
   await test.step('Edit application', async () => {
     await page.click('[data-testid="edit-button"]');
     await page.waitForSelector('[data-testid="schedular-card-container"]');
@@ -109,6 +125,12 @@ test('Search Index Application', async ({ page }) => {
     );
 
     await page.click('[data-testid="configuration"]');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('#search-indexing-application')).toContainText(
+      'Search Indexing Application'
+    );
+
     await page.fill('#root\\/batchSize', '0');
 
     await page.getByTestId('tree-select-widget').click();
@@ -178,16 +200,21 @@ test('Search Index Application', async ({ page }) => {
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const installApplicationResponse = page.waitForResponse('api/v1/apps');
+    const getApplications = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/apps?limit') &&
+        request.method() === 'GET'
+    );
     await page.click('[data-testid="deploy-button"]');
     await installApplicationResponse;
 
     await toastNotification(page, 'Application installed successfully');
 
-    const card = page.locator(
-      '[data-testid="search-indexing-application-card"]'
-    );
+    await getApplications;
 
-    expect(await card.isVisible()).toBe(true);
+    await expect(
+      page.getByTestId('search-indexing-application-card')
+    ).toBeVisible();
   });
 
   if (process.env.PLAYWRIGHT_IS_OSS) {

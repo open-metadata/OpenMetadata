@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.SearchSuggest;
 
 public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
@@ -24,7 +25,10 @@ public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     Map<String, Object> commonAttributes = getCommonAttributesMap(dataProduct, Entity.DATA_PRODUCT);
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.DATA_PRODUCT, dataProduct));
+    doc.put("tags", parseTags.getTags());
     doc.putAll(commonAttributes);
+    doc.put("upstreamLineage", SearchIndex.getLineageData(dataProduct.getEntityReference()));
     return doc;
   }
 

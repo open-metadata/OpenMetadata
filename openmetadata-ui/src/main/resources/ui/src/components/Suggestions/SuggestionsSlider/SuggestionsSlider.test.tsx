@@ -15,6 +15,9 @@ import React from 'react';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from './SuggestionsSlider';
 
+const acceptRejectAllSuggestions = jest.fn();
+const fetchSuggestions = jest.fn();
+
 jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
   useSuggestionsContext: jest.fn(),
 }));
@@ -23,15 +26,22 @@ jest.mock('../../common/AvatarCarousel/AvatarCarousel', () => {
   return jest.fn(() => <p>Avatar Carousel</p>);
 });
 
+jest.mock('../SuggestionsProvider/SuggestionsProvider', () => ({
+  useSuggestionsContext: jest.fn().mockImplementation(() => ({
+    suggestions: [{ id: '1' }, { id: '2' }],
+    selectedUserSuggestions: { combinedData: [{ id: '1' }, { id: '2' }] },
+    suggestionLimit: 2,
+    acceptRejectAllSuggestions,
+    fetchSuggestions,
+    loadingAccept: false,
+    loadingReject: false,
+  })),
+  __esModule: true,
+  default: 'SuggestionsProvider',
+}));
+
 describe('SuggestionsSlider', () => {
   it('renders buttons when there are selected user suggestions', () => {
-    (useSuggestionsContext as jest.Mock).mockReturnValue({
-      selectedUserSuggestions: [{ id: '1' }, { id: '2' }],
-      acceptRejectAllSuggestions: jest.fn(),
-      loadingAccept: false,
-      loadingReject: false,
-    });
-
     render(<SuggestionsSlider />);
 
     expect(screen.getByTestId('accept-all-suggestions')).toBeInTheDocument();
@@ -39,17 +49,37 @@ describe('SuggestionsSlider', () => {
   });
 
   it('calls acceptRejectAllSuggestions on button click', () => {
-    const acceptRejectAllSuggestions = jest.fn();
-    (useSuggestionsContext as jest.Mock).mockReturnValue({
-      selectedUserSuggestions: [{ id: '1' }, { id: '2' }],
+    render(<SuggestionsSlider />);
+    fireEvent.click(screen.getByTestId('accept-all-suggestions'));
+
+    expect(acceptRejectAllSuggestions).toHaveBeenCalled();
+  });
+
+  it('should not renders more suggestion button if limit is match', () => {
+    render(<SuggestionsSlider />);
+
+    expect(
+      screen.queryByTestId('more-suggestion-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show the more suggestion if limit and suggestion doesn't match", () => {
+    (useSuggestionsContext as jest.Mock).mockReturnValueOnce({
+      suggestions: [{ id: '1' }, { id: '2' }],
+      selectedUserSuggestions: { combinedData: [{ id: '1' }, { id: '2' }] },
+      suggestionLimit: 20,
       acceptRejectAllSuggestions,
+      fetchSuggestions,
       loadingAccept: false,
       loadingReject: false,
     });
 
     render(<SuggestionsSlider />);
-    fireEvent.click(screen.getByTestId('accept-all-suggestions'));
 
-    expect(acceptRejectAllSuggestions).toHaveBeenCalled();
+    expect(screen.getByTestId('more-suggestion-button')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('more-suggestion-button'));
+
+    expect(fetchSuggestions).toHaveBeenCalled();
   });
 });

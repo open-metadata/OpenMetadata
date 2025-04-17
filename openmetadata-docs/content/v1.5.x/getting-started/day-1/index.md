@@ -24,7 +24,7 @@ with links to more detailed documentation.
 ## Step 1: Set up a Data Connector
 
 Once you’re able to login to your Collate instance, set up a data connector to start bringing metadata into Collate. 
-There are [80+ turnkey connectors](/connectors) to various services: data warehouses, data lakes, databases, dashboards,
+There are [90+ turnkey connectors](/connectors) to various services: data warehouses, data lakes, databases, dashboards,
 messaging services, pipelines, ML models, storage services, and other Metadata Services.
 Connections to [custom data sources](/connectors/custom-connectors) can also be created via API.
 

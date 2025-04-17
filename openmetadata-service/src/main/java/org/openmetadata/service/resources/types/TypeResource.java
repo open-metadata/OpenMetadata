@@ -118,9 +118,11 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                 type.setCustomProperties(storedType.getCustomProperties());
               }
             } catch (Exception e) {
-              LOG.debug("Creating entity that does not exist ", e);
+              LOG.debug(
+                  "Type '{}' not found. Proceeding to add new type entity in database.",
+                  type.getName());
             }
-            this.repository.createOrUpdate(null, type);
+            this.repository.createOrUpdate(null, type, ADMIN_USER_NAME);
             this.repository.addToRegistry(type);
           } catch (Exception e) {
             LOG.error("Error loading type {}", type.getName(), e);
@@ -424,6 +426,24 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, true);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTypeAsync",
+      summary = "Asynchronously delete a type by id",
+      description = "Asynchronously delete a type by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "type for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the type", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
   @DELETE

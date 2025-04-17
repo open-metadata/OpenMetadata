@@ -1,0 +1,95 @@
+{
+    "$id": "https://open-metadata.org/schema/metadataIngestion/reverseIngestionPipeline.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "reverseIngestionPipeline",
+    "javaType": "org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline",
+    "description": "Apply a set of operations on a service",
+    "type": "object",
+    "definitions": {
+        "reverseIngestionType": {
+            "description": "Reverse Ingestion Config Pipeline type",
+            "type": "string",
+            "enum": [
+                "ReverseIngestion"
+            ],
+            "default": "ReverseIngestion"
+        },
+        "operation": {
+            "description": "Operation to be performed on the entity",
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "The id of the operation",
+                    "$ref": "../type/basic.json#/definitions/uuid"
+                },
+                "entityLink": {
+                    "description": "Entity to be modified",
+                    "$ref": "../type/basic.json#/definitions/entityLink"
+                },
+                "type": {
+                    "description": "Type of operation to perform",
+                    "type": "string",
+                    "javaType": "org.openmetadata.schema.metadataIngestion.reverseIngestionOperationType",
+                    "enum": [
+                        "UPDATE_DESCRIPTION",
+                        "UPDATE_OWNER",
+                        "UPDATE_TAGS"
+                    ]
+                },
+                "SQLTemplate": {
+                    "description": "Templated SQL command to be used for the operation. Context parameters will be populated based on the event type.",
+                    "type": "string"
+                },
+                "parameters": {
+                    "description": "The configuration for the operation to be applied",
+                    "oneOf": [
+                        {
+                            "$ref": "./reverseingestionconfig/descriptionConfig.json"
+                        },
+                        {
+                            "$ref": "./reverseingestionconfig/ownerConfig.json"
+                        },
+                        {
+                            "$ref": "./reverseingestionconfig/tagsConfig.json"
+                        }
+                    ]
+                }
+            },
+            "required": [
+                "id",
+                "entityLink",
+                "type",
+                "parameters"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "properties": {
+        "type": {
+            "description": "Pipeline type",
+            "$ref": "#/definitions/reverseIngestionType",
+            "default": "ReverseIngestion"
+        },
+        "service": {
+            "description": "Service to be modified",
+            "$ref": "../type/entityReference.json"
+        },
+        "operations": {
+            "description": "List of operations to be performed on the service",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/operation"
+            }
+        },
+        "ingestionRunner": {
+            "description": "Optional value of the ingestion runner name responsible for running the workflow",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "type",
+        "service",
+        "operations"
+    ]
+}

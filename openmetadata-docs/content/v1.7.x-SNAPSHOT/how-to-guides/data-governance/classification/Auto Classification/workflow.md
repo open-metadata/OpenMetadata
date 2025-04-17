@@ -1,6 +1,6 @@
 ---
 title: Adding Auto Classification Workflow through UI
-slug: /how-to-guides/data-governance/classification/auto/workflow
+slug: /how-to-guides/data-governance/classification/auto-classification/workflow
 ---
 
 # Adding Auto Classification Ingestion through the UI
@@ -47,6 +47,14 @@ caption="Access the Ingestion Tab"
 src="/images/v1.7/how-to-guides/governance/ac-4.png"
 alt="Configure Auto Classification Details"
 caption="Configure Auto Classification Details"
+/%}
+
+- By default, the store sample data option is enabled. If you prefer not to ingest sample data during a scheduled run, please ensure that this option is disabled in the ingestion configuration.
+
+{% image
+src="/images/v1.7/how-to-guides/governance/acnew.png"
+alt="Disable sample data"
+caption="Disable sample data"
 /%}
 
 ## 4. Set the Schedule
