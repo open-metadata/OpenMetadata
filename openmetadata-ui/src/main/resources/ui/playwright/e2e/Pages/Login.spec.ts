@@ -52,7 +52,7 @@ test.describe('Login flow should work properly', () => {
       // update expiry for 3 mins
       await updateJWTTokenExpiryTime(
         apiContext,
-        JWT_EXPIRY_TIME_MAP['3 minutes']
+        JWT_EXPIRY_TIME_MAP['2 minutes']
       );
 
       await afterAction();
@@ -140,7 +140,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test.fixme('Refresh should work', async ({ browser }) => {
+  test('Refresh should work', async ({ browser }) => {
     const browserContext = await browser.newContext();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),
@@ -189,7 +189,7 @@ test.describe('Login flow should work properly', () => {
     await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
 
     // Wait for token expiry
-    await page2.waitForTimeout(3 * 60 * 1000);
+    await page2.waitForTimeout(2 * 61 * 1000);
 
     await redirectToHomePage(page2);
 
