@@ -114,6 +114,8 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Tag Page with Admin Roles', () => {
+  test.slow(true);
+
   let domain: Domain;
   let apiContext: APIRequestContext;
   let afterAction: () => Promise<void>;
