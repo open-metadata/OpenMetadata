@@ -28,6 +28,7 @@ import {
 import {
   addAssetsToTag,
   editTagPageDescription,
+  fillTagForm,
   LIMITED_USER_RULES,
   removeAssetsFromTag,
   setupAssetsForTag,
@@ -108,6 +109,12 @@ base.afterAll('Cleanup', async ({ browser }) => {
 
 test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
+
+  const NEW_CLASSIFICATION = {
+    name: `PlaywrightClassification-${uuid()}`,
+    displayName: `PlaywrightClassification-${uuid()}`,
+    description: 'This is the PlaywrightClassification',
+  };
 
   test('Verify Tag UI', async ({ adminPage }) => {
     await verifyTagPageUI(adminPage, classification.data.name, tag);
@@ -232,6 +239,83 @@ test.describe('Tag Page with Admin Roles', () => {
       await removeAssetsFromTag(adminPage, assets, tag);
       await assetCleanup();
     });
+  });
+
+  test('Create tag with domain', async ({ adminPage }) => {
+    const { apiContext } = await getApiContext(adminPage);
+    const domain = new Domain();
+
+    await test.step(
+      'Create classification with validation checks',
+      async () => {
+        await redirectToHomePage(adminPage);
+        await classification.visitPage(adminPage);
+        await adminPage.click('[data-testid="add-classification"]');
+        await adminPage.waitForSelector('.ant-modal-content', {
+          state: 'visible',
+        });
+
+        await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
+
+        await validateForm(adminPage);
+
+        await adminPage.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
+        await adminPage.fill(
+          '[data-testid="displayName"]',
+          NEW_CLASSIFICATION.displayName
+        );
+        await adminPage
+          .locator(descriptionBox)
+          .fill(NEW_CLASSIFICATION.description);
+        await adminPage.click('[data-testid="mutually-exclusive-button"]');
+
+        const createTagCategoryResponse = adminPage.waitForResponse(
+          'api/v1/classifications'
+        );
+        await submitForm(adminPage);
+        await createTagCategoryResponse;
+
+        await expect(
+          adminPage.locator('[data-testid="modal-container"]')
+        ).not.toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="data-summary-container"]')
+        ).toContainText(NEW_CLASSIFICATION.displayName);
+      }
+    );
+
+    await domain.create(apiContext);
+    await adminPage.reload();
+    await adminPage.click(`text=${NEW_CLASSIFICATION.displayName}`);
+
+    await expect(adminPage.locator('.activeCategory')).toContainText(
+      NEW_CLASSIFICATION.displayName
+    );
+
+    await adminPage.click('[data-testid="add-new-tag-button"]');
+
+    await adminPage.waitForSelector('.ant-modal-content', {
+      state: 'visible',
+    });
+
+    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
+
+    await validateForm(adminPage);
+
+    await fillTagForm(adminPage, domain);
+
+    const createTagResponse = adminPage.waitForResponse((response) => {
+      if (response.url().includes('api/v1/tags')) {
+        return (
+          response.request().postDataJSON().domain ===
+          domain.responseData.fullyQualifiedName
+        );
+      }
+
+      return false;
+    });
+    await submitForm(adminPage);
+    await createTagResponse;
   });
 });
 
@@ -361,109 +445,5 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
       await assetCleanup();
       await afterAction();
     }
-  });
-});
-
-test.describe('Create tag with domain', () => {
-  const NEW_CLASSIFICATION = {
-    name: `PlaywrightClassification-${uuid()}`,
-    displayName: `PlaywrightClassification-${uuid()}`,
-    description: 'This is the PlaywrightClassification',
-  };
-  const NEW_TAG = {
-    name: `PlaywrightTag-${uuid()}`,
-    displayName: `PlaywrightTag-${uuid()}`,
-    renamedName: `PlaywrightTag-${uuid()}`,
-    description: 'This is the PlaywrightTag',
-    color: '#FF5733',
-    icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
-  };
-
-  test('Create tag with domain', async ({ adminPage, request }) => {
-    await test.step(
-      'Create classification with validation checks',
-      async () => {
-        await redirectToHomePage(adminPage);
-        await classification.visitPage(adminPage);
-        await adminPage.click('[data-testid="add-classification"]');
-        await adminPage.waitForSelector('.ant-modal-content', {
-          state: 'visible',
-        });
-
-        await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
-
-        await validateForm(adminPage);
-
-        await adminPage.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-        await adminPage.fill(
-          '[data-testid="displayName"]',
-          NEW_CLASSIFICATION.displayName
-        );
-        await adminPage
-          .locator(descriptionBox)
-          .fill(NEW_CLASSIFICATION.description);
-        await adminPage.click('[data-testid="mutually-exclusive-button"]');
-
-        const createTagCategoryResponse = adminPage.waitForResponse(
-          'api/v1/classifications'
-        );
-        await submitForm(adminPage);
-        await createTagCategoryResponse;
-
-        await expect(
-          adminPage.locator('[data-testid="modal-container"]')
-        ).not.toBeVisible();
-        await expect(
-          adminPage.locator('[data-testid="data-summary-container"]')
-        ).toContainText(NEW_CLASSIFICATION.displayName);
-      }
-    );
-
-    const { apiContext } = await getApiContext(adminPage);
-    const domain = new Domain();
-    await domain.create(apiContext);
-    await adminPage.reload();
-    await adminPage.click(`text=${NEW_CLASSIFICATION.displayName}`);
-
-    await expect(adminPage.locator('.activeCategory')).toContainText(
-      NEW_CLASSIFICATION.displayName
-    );
-
-    await adminPage.click('[data-testid="add-new-tag-button"]');
-
-    await adminPage.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
-
-    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
-
-    await validateForm(adminPage);
-
-    await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
-    await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
-    await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
-    await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
-    await adminPage.fill(
-      '[data-testid="tags_color-color-input"]',
-      NEW_TAG.color
-    );
-    await adminPage.click('[data-testid="add-domain"]');
-
-    await adminPage
-      .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
-      .click();
-
-    const createTagResponse = adminPage.waitForResponse((response) => {
-      if (response.url().includes('api/v1/tags')) {
-        return (
-          response.request().postDataJSON().domain ===
-          domain.responseData.fullyQualifiedName
-        );
-      }
-
-      return false;
-    });
-    await submitForm(adminPage);
-    await createTagResponse;
   });
 });
