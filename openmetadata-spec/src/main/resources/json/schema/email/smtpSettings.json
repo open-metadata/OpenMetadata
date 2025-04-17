@@ -55,6 +55,5 @@
       "default": "openmetadata"
     }
   },
-  "additionalProperties": false,
-  "required": ["serverEndpoint", "serverPort", "senderMail"]
+  "additionalProperties": false
 }
