@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 /**
- * This schema defines Event Publisher Job Error Schema.
+ * This schema defines Event Publisher Job Error Schema. Additional properties exist for
+ * backward compatibility. Don't use it.
  */
 export interface IndexingError {
     errorSource?:      ErrorSource;
@@ -23,6 +24,7 @@ export interface IndexingError {
     stackTrace?:       string;
     submittedCount?:   number;
     successCount?:     number;
+    [property: string]: any;
 }
 
 export enum ErrorSource {
