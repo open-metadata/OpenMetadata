@@ -159,8 +159,8 @@ public class RunAppImpl {
       long timeoutMillis) {
     int maxRetries = 5;
     int attempt = 0;
-    long initialBackoffMillis = 1000; // 10 second
-    long maxBackoffMillis = 1000; // 60 seconds
+    long initialBackoffMillis = 10000; // 10 second
+    long maxBackoffMillis = 60000; // 60 seconds
 
     while (attempt < maxRetries) {
       try {
