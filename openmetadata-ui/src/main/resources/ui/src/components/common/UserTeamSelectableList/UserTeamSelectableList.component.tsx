@@ -54,6 +54,7 @@ export const TeamListItemRenderer = (props: EntityReference) => {
 export const UserTeamSelectableList = ({
   hasPermission,
   owner,
+  onClose,
   onUpdate = noop,
   children,
   popoverProps,
@@ -215,6 +216,11 @@ export const UserTeamSelectableList = ({
     []
   );
 
+  const handleCancelSelectableList = () => {
+    setPopupVisible(false);
+    onClose?.();
+  };
+
   const onRemove = (id: string) => {
     setSelectedUsers((prevUsers) => {
       const removedUser = prevUsers.find((user) => user.id === id);
@@ -306,7 +312,7 @@ export const UserTeamSelectableList = ({
                       type: t('label.team'),
                     })}
                     selectedItems={defaultTeams}
-                    onCancel={() => setPopupVisible(false)}
+                    onCancel={handleCancelSelectableList}
                     onChange={handleChange}
                     onUpdate={handleUpdate}
                   />
@@ -330,7 +336,7 @@ export const UserTeamSelectableList = ({
                       type: t('label.user'),
                     })}
                     selectedItems={defaultUsers}
-                    onCancel={() => setPopupVisible(false)}
+                    onCancel={handleCancelSelectableList}
                     onChange={handleChange}
                     onUpdate={handleUpdate}
                   />
