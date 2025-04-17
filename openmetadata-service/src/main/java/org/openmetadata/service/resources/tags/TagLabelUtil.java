@@ -21,6 +21,7 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -53,8 +55,52 @@ public class TagLabelUtil {
     return Entity.getEntityByName(Entity.TAG, tagFqn, "", NON_DELETED);
   }
 
+  public static Map<String, List<TagLabel>> populateTagLabel(
+      List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tagUsages) {
+    Map<String, List<String>> tagFqnMap = new HashMap<>();
+    Map<String, List<String>> termFqnMap = new HashMap<>();
+
+    for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash usage : tagUsages) {
+      String targetHash = usage.getTargetFQNHash();
+      String tagFQN = usage.getTagFQN();
+
+      if (usage.getSource() == TagSource.CLASSIFICATION.ordinal()) {
+        tagFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
+      } else if (usage.getSource() == TagSource.GLOSSARY.ordinal()) {
+        termFqnMap.computeIfAbsent(targetHash, k -> new ArrayList<>()).add(tagFQN);
+      }
+    }
+
+    Set<String> allTargetHashes = new HashSet<>();
+    allTargetHashes.addAll(tagFqnMap.keySet());
+    allTargetHashes.addAll(termFqnMap.keySet());
+
+    Map<String, List<TagLabel>> result = new HashMap<>();
+
+    for (String targetHash : allTargetHashes) {
+      List<TagLabel> tagLabels = new ArrayList<>();
+
+      List<String> tagFQNs = tagFqnMap.getOrDefault(targetHash, Collections.emptyList());
+      List<String> termFQNs = termFqnMap.getOrDefault(targetHash, Collections.emptyList());
+
+      Tag[] tags = getTags(tagFQNs).toArray(new Tag[0]);
+      GlossaryTerm[] terms = getGlossaryTerms(termFQNs).toArray(new GlossaryTerm[0]);
+
+      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(tags)));
+      tagLabels.addAll(listOrEmpty(EntityUtil.toTagLabels(terms)));
+
+      result.put(targetHash, tagLabels);
+    }
+
+    return result;
+  }
+
   public static List<Tag> getTags(List<String> tagFQNs) {
     return Entity.getEntityByNames(Entity.TAG, tagFQNs, "", NON_DELETED);
+  }
+
+  public static List<GlossaryTerm> getGlossaryTerms(List<String> tagFQNs) {
+    return Entity.getEntityByNames(Entity.GLOSSARY_TERM, tagFQNs, "", NON_DELETED);
   }
 
   public static Glossary getGlossary(String glossaryName) {

@@ -54,6 +54,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -4293,26 +4294,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyMap();
     }
 
-    // Fetch tags from DAO
-    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tags =
-        daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs);
-
-    // Map from targetFQNHash to targetFQN
-    Map<String, String> fqnHashToFqnMap =
-        entityFQNs.stream().collect(Collectors.toMap(FullyQualifiedName::buildHash, fqn -> fqn));
-
-    // Map to hold targetFQN to list of TagLabel
-    Map<String, List<TagLabel>> tagsMap = new HashMap<>();
-    for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagWithHash : tags) {
-      String targetFQNHash = tagWithHash.getTargetFQNHash();
-      String targetFQN = fqnHashToFqnMap.get(targetFQNHash);
-
-      if (targetFQN != null) {
-        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagWithHash.toTagLabel());
-      }
-    }
-
-    return tagsMap;
+    Map<String, List<TagLabel>> targetHashToTagLabel =
+        populateTagLabel(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs)));
+    return entityFQNs.stream()
+        .collect(
+            Collectors.toMap(
+                Function.identity(),
+                fqn -> {
+                  String targetFQNHash = FullyQualifiedName.buildHash(fqn);
+                  return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
+                      .filter(list -> !list.isEmpty())
+                      .orElseGet(ArrayList::new);
+                }));
   }
 
   private Map<UUID, EntityReference> batchFetchDomain(List<T> entities) {
