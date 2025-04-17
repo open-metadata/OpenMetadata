@@ -15,7 +15,7 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -39,6 +39,7 @@ import metricDetailsClassBase from '../../../utils/MetricEntityUtils/MetricDetai
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -64,7 +65,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();
   const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
