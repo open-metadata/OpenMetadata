@@ -39,7 +39,7 @@ export const TAG_INVALID_NAMES = {
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
 };
 
-const NEW_TAG = {
+export const NEW_TAG = {
   name: `PlaywrightTag-${uuid()}`,
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,

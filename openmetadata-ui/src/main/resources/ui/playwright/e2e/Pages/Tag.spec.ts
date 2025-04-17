@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Page,
+  test as base,
+} from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -30,6 +35,7 @@ import {
   editTagPageDescription,
   fillTagForm,
   LIMITED_USER_RULES,
+  NEW_TAG,
   removeAssetsFromTag,
   setupAssetsForTag,
   submitForm,
@@ -108,13 +114,20 @@ base.afterAll('Cleanup', async ({ browser }) => {
 });
 
 test.describe('Tag Page with Admin Roles', () => {
-  test.slow(true);
+  let domain: Domain;
+  let apiContext: APIRequestContext;
+  let afterAction: () => Promise<void>;
 
-  const NEW_CLASSIFICATION = {
-    name: `PlaywrightClassification-${uuid()}`,
-    displayName: `PlaywrightClassification-${uuid()}`,
-    description: 'This is the PlaywrightClassification',
-  };
+  test.beforeEach(async ({ adminPage }) => {
+    ({ apiContext, afterAction } = await getApiContext(adminPage));
+    domain = new Domain();
+    await domain.create(apiContext);
+  });
+
+  test.afterEach(async () => {
+    await domain.delete?.(apiContext);
+    await afterAction?.();
+  });
 
   test('Verify Tag UI', async ({ adminPage }) => {
     await verifyTagPageUI(adminPage, classification.data.name, tag);
@@ -242,54 +255,13 @@ test.describe('Tag Page with Admin Roles', () => {
   });
 
   test('Create tag with domain', async ({ adminPage }) => {
-    const { apiContext } = await getApiContext(adminPage);
-    const domain = new Domain();
+    await classification.visitPage(adminPage);
 
-    await test.step(
-      'Create classification with validation checks',
-      async () => {
-        await redirectToHomePage(adminPage);
-        await classification.visitPage(adminPage);
-        await adminPage.click('[data-testid="add-classification"]');
-        await adminPage.waitForSelector('.ant-modal-content', {
-          state: 'visible',
-        });
-
-        await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
-
-        await validateForm(adminPage);
-
-        await adminPage.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-        await adminPage.fill(
-          '[data-testid="displayName"]',
-          NEW_CLASSIFICATION.displayName
-        );
-        await adminPage
-          .locator(descriptionBox)
-          .fill(NEW_CLASSIFICATION.description);
-        await adminPage.click('[data-testid="mutually-exclusive-button"]');
-
-        const createTagCategoryResponse = adminPage.waitForResponse(
-          'api/v1/classifications'
-        );
-        await submitForm(adminPage);
-        await createTagCategoryResponse;
-
-        await expect(
-          adminPage.locator('[data-testid="modal-container"]')
-        ).not.toBeVisible();
-        await expect(
-          adminPage.locator('[data-testid="data-summary-container"]')
-        ).toContainText(NEW_CLASSIFICATION.displayName);
-      }
-    );
-
-    await domain.create(apiContext);
     await adminPage.reload();
-    await adminPage.click(`text=${NEW_CLASSIFICATION.displayName}`);
+    await adminPage.click(`text=${classification.data.displayName}`);
 
     await expect(adminPage.locator('.activeCategory')).toContainText(
-      NEW_CLASSIFICATION.displayName
+      classification.data.displayName
     );
 
     await adminPage.click('[data-testid="add-new-tag-button"]');
@@ -304,18 +276,17 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await fillTagForm(adminPage, domain);
 
-    const createTagResponse = adminPage.waitForResponse((response) => {
-      if (response.url().includes('api/v1/tags')) {
-        return (
-          response.request().postDataJSON().domain ===
-          domain.responseData.fullyQualifiedName
-        );
-      }
+    const createTagResponse = adminPage.waitForResponse('api/v1/tags');
 
-      return false;
-    });
     await submitForm(adminPage);
+
     await createTagResponse;
+
+    await adminPage.click(`[data-testid=${NEW_TAG.name}]`);
+
+    await expect(adminPage.getByTestId('domain-link')).toContainText(
+      domain.data.displayName
+    );
   });
 });
 
