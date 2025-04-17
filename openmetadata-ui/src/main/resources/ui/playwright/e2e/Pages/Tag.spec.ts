@@ -118,13 +118,13 @@ test.describe('Tag Page with Admin Roles', () => {
   let apiContext: APIRequestContext;
   let afterAction: () => Promise<void>;
 
-  test.beforeEach(async ({ adminPage }) => {
+  test.beforeAll(async ({ adminPage }) => {
     ({ apiContext, afterAction } = await getApiContext(adminPage));
     domain = new Domain();
     await domain.create(apiContext);
   });
 
-  test.afterEach(async () => {
+  test.afterAll(async () => {
     await domain.delete?.(apiContext);
     await afterAction?.();
   });
