@@ -15,7 +15,7 @@ import { Checkbox, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isString, startCase } from 'lodash';
 import { ExtraInfo } from 'Models';
-import React, { forwardRef, useMemo } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';

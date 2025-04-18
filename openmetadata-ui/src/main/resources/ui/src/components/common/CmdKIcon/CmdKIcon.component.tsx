@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { ReactComponent as CmdButton } from '../../../assets/svg/command-button.svg';
 import { ReactComponent as CtrlButton } from '../../../assets/svg/control-button.svg';
 import { ReactComponent as KButton } from '../../../assets/svg/k-button.svg';

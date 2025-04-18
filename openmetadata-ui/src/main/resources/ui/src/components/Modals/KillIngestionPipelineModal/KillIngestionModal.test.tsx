@@ -12,7 +12,6 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
 import { KillIngestionModalProps } from './KillIngestionPipelineModal.interface';
@@ -37,10 +36,6 @@ jest.mock('../../../rest/ingestionPipelineAPI', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
 }));
 
 describe('Test Kill Ingestion Modal component', () => {

@@ -12,9 +12,7 @@
  */
 
 import { fireEvent, render } from '@testing-library/react';
-import React from 'react';
 import { ReactionType } from '../../../generated/type/reaction';
-import Reactions from './Reactions';
 
 jest.mock('./Emoji', () =>
   jest.fn().mockReturnValue(<button data-testid="emoji">Emoji</button>)

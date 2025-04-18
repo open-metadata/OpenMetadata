@@ -13,7 +13,7 @@
 import { Select, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, {
+import {
   forwardRef,
   useCallback,
   useImperativeHandle,

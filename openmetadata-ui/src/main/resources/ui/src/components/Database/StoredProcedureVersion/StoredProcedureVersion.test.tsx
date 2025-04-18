@@ -13,11 +13,10 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { storedProcedureVersionMockProps } from '../../../mocks/StoredProcedureVersion.mock';
 import StoredProcedureVersion from './StoredProcedureVersion.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
@@ -51,9 +50,7 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
@@ -122,7 +119,7 @@ describe('StoredProcedureVersion tests', () => {
       userEvent.click(customPropertyTabLabel);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/storedProcedure/sample_data.ecommerce_db.shopify.update_dim_address_table/versions/0.3/custom_properties'
     );
   });

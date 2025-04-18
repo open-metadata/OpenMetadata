@@ -12,15 +12,9 @@
  */
 import { Button, Col, Form, Input, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FocusEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -50,7 +44,7 @@ const LineageConfigPage = () => {
   const [lineageConfig, setLineageConfig] = useState<LineageSettings>();
   const [isUpdating, setIsUpdating] = useState(false);
   const [form] = Form.useForm();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { setAppPreferences, appPreferences } = useApplicationStore();
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -211,7 +205,7 @@ const LineageConfigPage = () => {
                     <Col className="d-flex justify-end gap-2" span={24}>
                       <Button
                         data-testid="cancel-button"
-                        onClick={() => history.goBack()}>
+                        onClick={() => navigate(-1)}>
                         {t('label.cancel')}
                       </Button>
                       <Button

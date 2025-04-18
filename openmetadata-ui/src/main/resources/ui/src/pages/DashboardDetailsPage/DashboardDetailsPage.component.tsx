@@ -14,9 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
@@ -56,7 +56,7 @@ const DashboardDetailsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { fqn: dashboardFQN } = useFqn();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
@@ -133,7 +133,7 @@ const DashboardDetailsPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN);
       } else {
         showErrorToast(
           error as AxiosError,
@@ -208,7 +208,7 @@ const DashboardDetailsPage = () => {
 
   const versionHandler = () => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(EntityType.DASHBOARD, dashboardFQN, toString(version))
       );
   };

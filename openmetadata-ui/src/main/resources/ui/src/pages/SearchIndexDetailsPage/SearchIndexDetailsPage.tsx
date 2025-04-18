@@ -16,9 +16,9 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -73,7 +73,7 @@ function SearchIndexDetailsPage() {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
@@ -208,7 +208,7 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -472,7 +472,7 @@ function SearchIndexDetailsPage() {
 
   const versionHandler = useCallback(() => {
     version &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -482,7 +482,7 @@ function SearchIndexDetailsPage() {
   }, [version]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 

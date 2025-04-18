@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   getEntityPermissionByFqn,
   getEntityPermissionById,
@@ -33,10 +32,6 @@ jest.mock('../../rest/permissionAPI', () => ({
   getResourcePermission: jest
     .fn()
     .mockImplementation(() => Promise.resolve({})),
-}));
-
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
 }));
 
 let currentUser: { id: string; name: string } | null = {

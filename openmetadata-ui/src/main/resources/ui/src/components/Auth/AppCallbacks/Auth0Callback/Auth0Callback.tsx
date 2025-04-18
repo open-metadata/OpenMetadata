@@ -12,8 +12,8 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { t } from 'i18next';
-import React, { VFC } from 'react';
+
+import { VFC } from 'react';
 
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { setOidcToken } from '../../../../utils/LocalStorageUtils';

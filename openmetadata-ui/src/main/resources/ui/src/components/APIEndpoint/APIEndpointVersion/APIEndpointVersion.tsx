@@ -13,9 +13,9 @@
 
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/apiEndpoint';
@@ -52,7 +52,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   domain,
 }: APIEndpointVersionProp) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -77,7 +77,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   }, [currentVersionData]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.API_ENDPOINT,
         currentVersionData.fullyQualifiedName ?? '',

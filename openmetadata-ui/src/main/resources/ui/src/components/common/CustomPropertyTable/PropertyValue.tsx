@@ -28,7 +28,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import {
   isArray,
   isEmpty,
@@ -39,14 +39,7 @@ import {
   toNumber,
 } from 'lodash';
 import moment, { Moment } from 'moment';
-import React, {
-  CSSProperties,
-  FC,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';

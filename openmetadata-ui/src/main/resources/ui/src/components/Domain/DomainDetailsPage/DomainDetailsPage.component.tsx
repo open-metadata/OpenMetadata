@@ -22,21 +22,15 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { ItemType } from 'antd/es/menu/interface';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { useForm } from 'antd/lib/form/Form';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, toString } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -125,7 +119,7 @@ const DomainDetailsPage = ({
   const { t } = useTranslation();
   const [form] = useForm();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab, version } =
     useParams<{ tab: EntityTabs; version: string }>();
   const { fqn: domainFqn } = useFqn();
@@ -293,7 +287,7 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(
+        navigate(
           getEntityDetailsPath(
             EntityType.DATA_PRODUCT,
             res.fullyQualifiedName ?? ''
@@ -324,7 +318,7 @@ const DomainDetailsPage = ({
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
-    history.push(path);
+    navigate(path);
   };
 
   const fetchDataProducts = async () => {
@@ -385,7 +379,7 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDomainDetailsPath(domainFqn, activeKey));
+      navigate(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
 
@@ -427,9 +421,12 @@ const DomainDetailsPage = ({
     activeTab !== 'assets' && handleTabChange('assets');
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handleCloseDataProductModal = useCallback(
     () => setShowAddDataProductModal(false),

@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicyByName } from '../../../rest/rolesAPIV1';
@@ -22,7 +21,6 @@ import PoliciesDetailPage from './PoliciesDetailPage';
 const mockEntityPermissionByFqn = jest.fn().mockImplementation(() => null);
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({ fqn: 'policy' }),
 }));
 

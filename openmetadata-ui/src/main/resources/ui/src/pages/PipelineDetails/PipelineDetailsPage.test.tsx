@@ -12,12 +12,10 @@
  */
 
 import { act, findByText, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PipelineDetailsPage from './PipelineDetailsPage.component';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
     pipelineFQN: 'sample_airflow.snowflake_etl',
     tab: 'details',

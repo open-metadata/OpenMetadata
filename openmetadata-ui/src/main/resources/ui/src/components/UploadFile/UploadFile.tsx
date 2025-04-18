@@ -13,8 +13,8 @@
 import { Space, Typography, UploadProps } from 'antd';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
-import React, { FC, useCallback, useState } from 'react';
+
+import { FC, useCallback, useState } from 'react';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

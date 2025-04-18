@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import {
   getSystemProfileList,
   getTableProfilesList,
@@ -23,7 +22,6 @@ const mockFQN = 'testFQN';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ fqn: mockFQN })),
-  useHistory: jest.fn(),
 }));
 jest.mock('../../../../../rest/tableAPI');
 jest.mock('../../ProfilerLatestValue/ProfilerLatestValue', () => {

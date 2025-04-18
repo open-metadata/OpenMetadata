@@ -14,9 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -54,7 +54,7 @@ const APIEndpointPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
-  const history = useHistory();
+  const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: apiEndpointFqn } = useFqn();
@@ -148,7 +148,7 @@ const APIEndpointPage = () => {
       } else if (
         (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
       ) {
-        history.replace(ROUTES.FORBIDDEN);
+        navigate(ROUTES.FORBIDDEN);
       } else {
         showErrorToast(
           error as AxiosError,
@@ -203,7 +203,7 @@ const APIEndpointPage = () => {
 
   const versionHandler = () => {
     currentVersion &&
-      history.push(
+      navigate(
         getVersionPath(
           EntityType.API_ENDPOINT,
           apiEndpointFqn,

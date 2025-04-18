@@ -21,7 +21,6 @@ import {
   waitForElement,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { MOCK_TREE_SELECT_WIDGET } from '../../../../../mocks/SelectWidget.mock';
 import TreeSelectWidget from './TreeSelectWidget';
 

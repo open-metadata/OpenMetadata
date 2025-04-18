@@ -12,9 +12,9 @@
  */
 import { Card, Typography } from 'antd';
 import { isEqual } from 'lodash';
-import React, { FC, Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ANNOUNCEMENT_BG,
   ANNOUNCEMENT_BORDER,
@@ -49,7 +49,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   updateThreadHandler,
 }) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { updatedFeedList: updatedThreads, relativeDays } =
     getFeedListWithRelativeDays(threads);
 
@@ -58,7 +58,7 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
   };
 
   const handleCardClick = (task: Thread, isTask: boolean) => {
-    isTask && history.push(getTaskDetailPath(task));
+    isTask && navigate(getTaskDetailPath(task));
   };
 
   return (

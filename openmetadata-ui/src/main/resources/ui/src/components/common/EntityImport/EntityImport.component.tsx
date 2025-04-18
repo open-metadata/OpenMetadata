@@ -13,13 +13,7 @@
 import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as SuccessBadgeIcon } from '../../../assets/svg/success-badge.svg';
 import { SOCKET_EVENTS } from '../../../constants/constants';

@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import React from 'react';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManager from './IncidentManager.component';
@@ -49,9 +48,6 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
-  useHistory: jest.fn().mockImplementation(() => ({
-    replace: jest.fn(),
-  })),
 }));
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({

@@ -14,7 +14,7 @@ import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,

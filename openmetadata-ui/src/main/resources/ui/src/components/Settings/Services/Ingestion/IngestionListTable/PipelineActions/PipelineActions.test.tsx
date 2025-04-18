@@ -13,8 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 
-import React from 'react';
-
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
@@ -24,12 +22,10 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import PipelineActions from './PipelineActions';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('./PipelineActionsDropdown', () =>
@@ -168,7 +164,7 @@ describe('PipelineAction', () => {
       userEvent.click(logsButton);
     });
 
-    expect(mockPush).toHaveBeenCalledWith(
+    expect(mockNavigate).toHaveBeenCalledWith(
       '/searchServices/OpenMetadata.OpenMetadata_elasticSearchReIndex/logs'
     );
   });

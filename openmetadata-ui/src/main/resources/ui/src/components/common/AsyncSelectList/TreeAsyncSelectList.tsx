@@ -25,7 +25,7 @@ import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowIcon } from '../../../assets/svg/ic-arrow-down.svg';
 import { PAGE_SIZE_LARGE, TEXT_BODY_COLOR } from '../../../constants/constants';

@@ -31,7 +31,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { isEmpty, isEqual, isNil, isUndefined, pick, startCase } from 'lodash';
-import React, {
+import {
   Reducer,
   useCallback,
   useEffect,

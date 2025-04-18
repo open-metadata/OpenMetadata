@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
 import { ImagePopoverContentProps } from '../ImageComponent.interface';

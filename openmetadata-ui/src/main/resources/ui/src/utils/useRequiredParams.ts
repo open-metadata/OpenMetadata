@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useParams as useRouterParams } from 'react-router-dom';
 
-import { createBrowserHistory } from 'history';
-import process from 'process';
+export function useRequiredParams<T extends Record<string, string>>(): T {
+  const params = useRouterParams<T>();
 
-const subPath = process.env.APP_SUB_PATH ?? '';
+  if (!params) {
+    throw new Error('Route parameters are required but were not found');
+  }
 
-export const history = createBrowserHistory(
-  subPath
-    ? {
-        basename: subPath,
-      }
-    : {}
-);
+  return params as T;
+}

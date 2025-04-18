@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
 import { importGlossaryInCSVFormat } from '../../../rest/glossaryAPI';
 import ImportGlossary from './ImportGlossary';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const glossaryName = 'Glossary1';
 const mockCsvImportResult = {
   dryRun: true,
@@ -61,9 +60,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../../utils/RouterUtils', () => ({
@@ -104,7 +101,7 @@ describe('Import Glossary', () => {
       fireEvent.click(successButton);
     });
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 
   it('should call the importGlossaryInCSVFormat api when validate props is trigger', async () => {

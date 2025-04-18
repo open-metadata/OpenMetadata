@@ -12,12 +12,11 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ScheduleType } from '../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import AppInstall from './AppInstall.component';
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
 const mockFormatFormDataForSubmit = jest.fn();
@@ -36,9 +35,7 @@ const NO_SCHEDULE_DATA = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock(
@@ -194,7 +191,7 @@ describe('AppInstall component', () => {
     );
 
     // will call for Submit ScheduleInterval and Cancel AppInstallVerifyCard
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('actions check with allowConfiguration', async () => {

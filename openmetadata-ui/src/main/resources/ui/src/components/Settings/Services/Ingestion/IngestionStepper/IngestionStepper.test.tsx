@@ -12,7 +12,6 @@
  */
 
 import { getByTestId, queryByTestId, render } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import IngestionStepper from './IngestionStepper.component';
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import React from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 import { FilterTablePlaceHolderProps } from './placeholder.interface';

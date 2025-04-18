@@ -14,9 +14,9 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -66,7 +66,7 @@ const PipelineDetails = ({
   onExtensionUpdate,
   handleToggleDelete,
 }: PipeLineDetailsProp) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -233,7 +233,7 @@ const PipelineDetails = ({
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.push({
+      navigate({
         pathname: getEntityDetailsPath(
           EntityType.PIPELINE,
           pipelineFQN,
@@ -254,7 +254,7 @@ const PipelineDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 

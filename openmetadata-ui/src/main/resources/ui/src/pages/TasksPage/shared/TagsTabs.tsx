@@ -14,7 +14,7 @@
 import { Tabs, Tag } from 'antd';
 import { ArrayChange, diffArrays } from 'diff';
 import { uniqueId } from 'lodash';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { TaskTabs } from '../TasksPage.interface';
 import { TagsDiffView } from './TagsDiffView';

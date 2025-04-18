@@ -30,7 +30,7 @@ import 'codemirror/mode/javascript/javascript';
 import 'codemirror/mode/python/python';
 import 'codemirror/mode/sql/sql';
 import 'codemirror/mode/yaml/yaml';
-import { t } from 'i18next';
+
 import katex from 'katex';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';

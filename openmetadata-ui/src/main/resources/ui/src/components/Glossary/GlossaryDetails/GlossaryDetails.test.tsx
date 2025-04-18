@@ -36,9 +36,6 @@ jest.mock('react-router-dom', () => ({
     glossaryName: 'GlossaryName',
     tab: 'terms',
   })),
-  useHistory: jest.fn().mockImplementation(() => {
-    jest.fn();
-  }),
 }));
 
 jest.mock(

@@ -21,7 +21,7 @@ import {
   toString,
   uniqueId,
 } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';

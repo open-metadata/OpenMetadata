@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
+import { TreeDataNode } from 'antd';
+
 export interface LeftSidebarItem {
   key: string;
   isBeta?: boolean;
   title: string;
   redirect_url?: string;
-  icon: SvgComponent;
+  icon: TreeDataNode['icon'];
   dataTestId: string;
   children?: Array<LeftSidebarItem>;
 }

@@ -15,10 +15,6 @@ import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import AddGlossaryPage from './AddGlossaryPage.component';
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-}));
-
 jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
   jest.fn().mockReturnValue(<p>Sidebar</p>)
 );

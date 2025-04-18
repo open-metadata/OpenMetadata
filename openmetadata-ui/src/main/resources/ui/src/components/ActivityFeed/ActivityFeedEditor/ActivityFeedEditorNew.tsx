@@ -12,7 +12,7 @@
  */
 
 import classNames from 'classnames';
-import React, {
+import {
   forwardRef,
   HTMLAttributes,
   useImperativeHandle,

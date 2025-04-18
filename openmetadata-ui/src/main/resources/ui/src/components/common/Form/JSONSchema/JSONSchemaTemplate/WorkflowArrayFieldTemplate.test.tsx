@@ -13,8 +13,7 @@
 
 import { FieldProps, IdSchema, Registry } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { t } from 'i18next';
-import React from 'react';
+
 import { MOCK_WORKFLOW_ARRAY_FIELD_TEMPLATE } from '../../../../../mocks/Templates.mock';
 import WorkflowArrayFieldTemplate from './WorkflowArrayFieldTemplate';
 

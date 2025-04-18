@@ -26,7 +26,7 @@ import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';

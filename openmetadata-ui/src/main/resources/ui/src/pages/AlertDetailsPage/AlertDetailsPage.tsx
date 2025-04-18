@@ -16,9 +16,9 @@ import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import AlertConfigDetails from '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails';
@@ -68,16 +68,16 @@ import {
 } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
   isNotificationAlert = false,
 }: Readonly<AlertDetailsPageProps>) {
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { tab = AlertDetailTabs.CONFIGURATION } =
-    useParams<{ tab: AlertDetailTabs }>();
+  const { tab } = useRequiredParams<{ tab: AlertDetailTabs }>();
   const { fqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
   const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
@@ -196,12 +196,12 @@ function AlertDetailsPage({
 
   const handleAlertDelete = useCallback(async () => {
     isNotificationAlert
-      ? history.push(ROUTES.NOTIFICATION_ALERTS)
-      : history.push(ROUTES.OBSERVABILITY_ALERTS);
+      ? navigate(ROUTES.NOTIFICATION_ALERTS)
+      : navigate(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
 
   const handleAlertEdit = useCallback(async () => {
-    history.push(
+    navigate(
       isNotificationAlert
         ? getNotificationAlertsEditPath(fqn)
         : getObservabilityAlertsEditPath(fqn)
@@ -295,7 +295,7 @@ function AlertDetailsPage({
 
   const handleTabChange = useCallback(
     (activeKey: string) => {
-      history.replace(
+      navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
           : getObservabilityAlertDetailsPath(fqn, activeKey)

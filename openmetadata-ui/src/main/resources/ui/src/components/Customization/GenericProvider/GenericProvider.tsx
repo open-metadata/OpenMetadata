@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { isEmpty, once } from 'lodash';
-import React, {
+import {
   useCallback,
   useContext,
   useEffect,

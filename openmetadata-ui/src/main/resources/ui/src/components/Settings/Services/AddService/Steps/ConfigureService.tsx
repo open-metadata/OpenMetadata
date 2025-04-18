@@ -12,8 +12,7 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+
 import { ENTITY_NAME_REGEX } from '../../../../../constants/regex.constants';
 import {
   FieldProp,

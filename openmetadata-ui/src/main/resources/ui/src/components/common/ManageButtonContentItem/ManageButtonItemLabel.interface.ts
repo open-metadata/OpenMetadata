@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TFunction } from 'i18next';
 import { ReactNode } from 'react';
 
 export interface MangeButtonItemLabelProps {
-  name: ReactNode;
+  name: ReactNode | TFunction;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   icon: SvgComponent;
   description: string;

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { t } from 'i18next';
+
 import { StepperStepType } from 'Models';
 
 export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [

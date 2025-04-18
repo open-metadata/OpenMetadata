@@ -14,9 +14,9 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -71,7 +71,7 @@ const GlossaryV1 = ({
   const { customizedPage } = useCustomPages(
     isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
   );
-  const history = useHistory();
+  const navigate = useNavigate();
   const [activeGlossaryTerm, setActiveGlossaryTerm] =
     useState<GlossaryTerm | null>(null);
   const { getEntityPermission } = usePermissionProvider();
@@ -220,7 +220,7 @@ const GlossaryV1 = ({
       // Update store with newly created term
       insertNewGlossaryTermToChildTerms(term);
       if (!isGlossaryActive && tab !== 'terms') {
-        history.push(
+        navigate(
           getGlossaryTermDetailsPath(
             selectedData.fullyQualifiedName || '',
             EntityTabs.TERMS

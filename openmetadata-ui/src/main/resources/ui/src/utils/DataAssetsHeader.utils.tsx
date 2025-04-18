@@ -13,7 +13,7 @@
  */
 
 import { Divider } from 'antd';
-import { t } from 'i18next';
+
 import { isArray, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
 import {
@@ -60,6 +60,7 @@ import {
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
 } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringsUtils';
 import { getUsagePercentile } from './TableUtils';

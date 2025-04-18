@@ -14,7 +14,7 @@
 import { Skeleton, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import React, { ReactElement, useEffect, useState } from 'react';
+import { ReactElement, useEffect, useState } from 'react';
 import { useLimitStore } from '../context/LimitsProvider/useLimitsStore';
 
 interface LimitWrapperProps {

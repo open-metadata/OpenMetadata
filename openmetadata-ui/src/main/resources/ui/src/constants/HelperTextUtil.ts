@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-
 export const NO_PERMISSION_FOR_ACTION = t('message.no-permission-for-action');
 
 export const NO_PERMISSION_TO_VIEW = t('message.no-permission-to-view');

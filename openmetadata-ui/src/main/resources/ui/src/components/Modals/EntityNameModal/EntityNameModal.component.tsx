@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Form, FormProps, Modal, Typography } from 'antd';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import SanitizedInput from '../../common/SanitizedInput/SanitizedInput';

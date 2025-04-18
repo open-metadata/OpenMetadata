@@ -20,19 +20,13 @@ import {
   Tabs,
   Tooltip,
 } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ItemType } from 'antd/es/menu/interface';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, startsWith } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
@@ -104,7 +98,7 @@ import { TagTabs } from './TagPage.inteface';
 const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
   const { permissions, getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
@@ -143,9 +137,12 @@ const TagPage = () => {
       : [];
   }, [tagItem]);
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const { editTagsPermission, editDescriptionPermission } = useMemo(() => {
     if (tagItem) {
@@ -231,7 +228,7 @@ const TagPage = () => {
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
-      history.push({
+      navigate({
         pathname: getClassificationTagPath(
           tagItem.fullyQualifiedName ?? '',
           tab
@@ -298,7 +295,7 @@ const TagPage = () => {
       setIsLoading(true);
 
       if (tagItem?.classification?.fullyQualifiedName) {
-        history.push(
+        navigate(
           getClassificationDetailsPath(
             tagItem.classification.fullyQualifiedName
           )
@@ -322,7 +319,7 @@ const TagPage = () => {
   };
 
   const handleAddTagClick = () => {
-    history.push(ROUTES.TAGS);
+    navigate(ROUTES.TAGS);
   };
 
   const fetchClassificationTagAssets = async () => {

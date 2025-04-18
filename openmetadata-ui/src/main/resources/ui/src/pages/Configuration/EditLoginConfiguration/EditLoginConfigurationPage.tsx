@@ -12,9 +12,9 @@
  */
 import { Button, Col, Form, Row } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -43,7 +43,7 @@ import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const EditLoginConfiguration = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [form] = Form.useForm<LoginConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
@@ -130,7 +130,7 @@ const EditLoginConfiguration = () => {
     },
   ];
 
-  const handleGoBack = () => history.goBack();
+  const handleGoBack = () => navigate(-1);
 
   const handleSubmit = async (configValues: LoginConfiguration) => {
     try {

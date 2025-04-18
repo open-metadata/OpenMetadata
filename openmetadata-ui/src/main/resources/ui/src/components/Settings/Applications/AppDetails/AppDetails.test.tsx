@@ -18,7 +18,6 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppDetails from './AppDetails.component';
@@ -50,7 +49,7 @@ const mockTriggerOnDemandApp = jest.fn();
 const mockUninstallApp = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 const mockPatchApplication = jest.fn().mockReturnValue(mockApplicationData);
 const mockGetApplicationByName = jest.fn().mockReturnValue(mockApplicationData);
 
@@ -155,9 +154,7 @@ jest.mock('./ApplicationsClassBase', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 const renderAppDetails = async () => {
@@ -186,7 +183,9 @@ describe('AppDetails component', () => {
       screen.getByRole('button', { name: 'left label.browse-app-plural' })
     );
 
-    expect(mockPush).toHaveBeenCalledWith(GlobalSettingOptions.APPLICATIONS);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
 
     // menu items
     userEvent.click(screen.getByTestId('manage-button'));
@@ -195,13 +194,17 @@ describe('AppDetails component', () => {
     ConfirmAction('label.uninstall');
 
     expect(mockUninstallApp).toHaveBeenCalledWith(expect.anything(), true);
-    expect(mockPush).toHaveBeenCalledWith(GlobalSettingOptions.APPLICATIONS);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
 
     // disable app
     ConfirmAction('label.disable');
 
     expect(mockUninstallApp).toHaveBeenCalledWith(expect.anything(), false);
-    expect(mockPush).toHaveBeenCalledWith(GlobalSettingOptions.APPLICATIONS);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
   });
 
   it('check for restore button', async () => {

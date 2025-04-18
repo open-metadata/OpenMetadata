@@ -13,8 +13,7 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
-import { t } from 'i18next';
-import React from 'react';
+
 import './login-button.style.less';
 
 interface LoginButtonProps {

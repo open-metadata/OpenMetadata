@@ -18,7 +18,7 @@ import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
-import React, {
+import {
   forwardRef,
   KeyboardEvent,
   useCallback,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';

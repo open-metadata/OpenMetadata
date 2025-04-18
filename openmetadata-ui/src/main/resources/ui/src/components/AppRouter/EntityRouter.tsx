@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
-import { Redirect, Route, Switch, useParams } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
@@ -27,16 +27,14 @@ const EntityRouter = () => {
   );
 
   return (
-    <Switch>
-      {/* Handle Entity Import and Edit pages */}
+    <Routes>
       <Route
-        component={EntityImportRouter}
+        element={<EntityImportRouter />}
         path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
       />
 
       <Route
-        exact
-        component={EntityVersionPage}
+        element={<EntityVersionPage />}
         path={[
           ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
           ROUTES.ENTITY_VERSION_DETAILS,
@@ -44,8 +42,7 @@ const EntityRouter = () => {
       />
       {Component ? (
         <Route
-          exact
-          component={Component}
+          element={<Component />}
           path={[
             ROUTES.ENTITY_DETAILS,
             ROUTES.ENTITY_DETAILS_WITH_TAB,
@@ -53,10 +50,9 @@ const EntityRouter = () => {
           ]}
         />
       ) : (
-        // If not route match is found then redirect to not found page
-        <Redirect to={ROUTES.NOT_FOUND} />
+        <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
       )}
-    </Switch>
+    </Routes>
   );
 };
 

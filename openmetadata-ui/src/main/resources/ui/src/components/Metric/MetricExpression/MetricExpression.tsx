@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Card, Col, Form, Row, Tooltip, Typography } from 'antd';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';

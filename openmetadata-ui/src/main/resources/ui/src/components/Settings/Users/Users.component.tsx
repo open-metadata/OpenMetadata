@@ -14,9 +14,9 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
@@ -64,7 +64,7 @@ const Users = ({
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
   const [currentTab, setCurrentTab] = useState<UserPageTabs>(activeTab);
@@ -100,7 +100,7 @@ const Users = ({
   const activeTabHandler = (activeKey: string) => {
     location.search = '';
     if (activeKey !== currentTab) {
-      history.push({
+      navigate({
         pathname: getUserPath(decodedUsername, activeKey),
         search: location.search,
       });
@@ -114,7 +114,7 @@ const Users = ({
 
   const handleTabRedirection = useCallback(() => {
     if (!isLoggedInUser && activeTab === UserPageTabs.ACCESS_TOKEN) {
-      history.push({
+      navigate({
         pathname: getUserPath(decodedUsername, UserPageTabs.ACTIVITY),
         search: location.search,
       });
@@ -143,7 +143,7 @@ const Users = ({
               assetCount={assetCount}
               isSummaryPanelOpen={Boolean(previewAsset)}
               permissions={{ ...DEFAULT_ENTITY_PERMISSION, Create: true }}
-              onAddAsset={() => history.push(ROUTES.EXPLORE)}
+              onAddAsset={() => navigate(ROUTES.EXPLORE)}
               onAssetClick={handleAssetClick}
               {...props}
             />

@@ -15,9 +15,9 @@ import { Button, Form, FormProps, Input, Space, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -63,7 +63,7 @@ const RequestDescription = () => {
   const { currentUser } = useApplicationStore();
   const { t } = useTranslation();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = useForm();
   const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
@@ -82,7 +82,7 @@ const RequestDescription = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const entityFQN = useMemo(
-    () => getTaskEntityFQN(entityType, fqn),
+    () => getTaskEntityFQN(entityType as EntityType, fqn),
     [fqn, entityType]
   );
 
@@ -90,7 +90,7 @@ const RequestDescription = () => {
     () =>
       getTaskMessage({
         value,
-        entityType,
+        entityType: entityType as EntityType,
         entityData,
         field,
         startMessage: 'Request description',
@@ -98,7 +98,7 @@ const RequestDescription = () => {
     [value, entityType, field, entityData]
   );
 
-  const back = () => history.goBack();
+  const back = () => navigate(-1);
 
   const onSearch = (query: string) => {
     const data = {
@@ -149,9 +149,9 @@ const RequestDescription = () => {
               entity: t('label.task'),
             })
           );
-          history.push(
+          navigate(
             entityUtilClassBase.getEntityLink(
-              entityType,
+              entityType as EntityType,
               entityFQN,
               EntityTabs.ACTIVITY_FEED,
               ActivityFeedTabs.TASKS
@@ -166,7 +166,7 @@ const RequestDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType, entityFQN, setEntityData);
+    fetchEntityDetail(entityType as EntityType, entityFQN, setEntityData);
   }, [entityFQN, entityType]);
 
   useEffect(() => {
@@ -199,7 +199,7 @@ const RequestDescription = () => {
           <div className="d-grid gap-4">
             <TitleBreadcrumb
               titleLinks={[
-                ...getBreadCrumbList(entityData, entityType),
+                ...getBreadCrumbList(entityData, entityType as EntityType),
                 {
                   name: t('label.create-entity', {
                     entity: t('label.task'),
@@ -309,7 +309,7 @@ const RequestDescription = () => {
             source={
               {
                 ...entityData,
-                entityType,
+                entityType: entityType as EntityType,
               } as SearchedDataProps['data'][number]['_source']
             }
           />

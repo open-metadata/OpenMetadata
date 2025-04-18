@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';
 import QueryString from 'qs';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';

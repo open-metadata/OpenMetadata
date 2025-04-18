@@ -15,7 +15,7 @@ import { Col, Row, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';

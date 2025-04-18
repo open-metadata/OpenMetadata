@@ -16,9 +16,9 @@ import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { LIST_SIZE } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
@@ -75,7 +75,7 @@ const TagsContainerV2 = ({
   newLook = false,
   sizeCap = LIST_SIZE,
 }: TagsContainerV2Props) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const { t } = useTranslation();
   const { onThreadLinkSelect } = useGenericContext();
@@ -221,7 +221,7 @@ const TagsContainerV2 = ({
   ]);
 
   const handleTagsTask = (hasTags: boolean) => {
-    history.push(
+    navigate(
       (hasTags ? getUpdateTagsPath : getRequestTagsPath)(
         entityType as string,
         entityFqn as string

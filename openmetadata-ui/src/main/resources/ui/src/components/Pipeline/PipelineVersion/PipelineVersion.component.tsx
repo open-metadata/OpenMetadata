@@ -14,9 +14,9 @@
 import { Col, Row, Space, Table, Tabs, TabsProps } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
-import { t } from 'i18next';
-import React, { FC, useEffect, useMemo, useState } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+
+import { FC, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -63,7 +63,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   versionHandler,
   entityPermissions,
 }: PipelineVersionProp) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
@@ -93,7 +93,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   }, [currentVersionData]);
 
   const handleTabChange = (activeKey: string) => {
-    history.push(
+    navigate(
       getVersionPath(
         EntityType.PIPELINE,
         currentVersionData.fullyQualifiedName ?? '',

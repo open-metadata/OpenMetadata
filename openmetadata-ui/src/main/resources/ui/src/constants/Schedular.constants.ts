@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
 import { toString } from 'lodash';
 import { Combination } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { SchedularOptions } from '../enums/Schedular.enum';

@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Edge } from 'reactflow';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -121,7 +121,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'table1',
   }),

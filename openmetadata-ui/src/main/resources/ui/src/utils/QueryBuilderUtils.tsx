@@ -12,9 +12,7 @@
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
-import { t } from 'i18next';
 import { isUndefined } from 'lodash';
-import React from 'react';
 import {
   FieldGroup,
   Fields,
@@ -29,6 +27,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { t } from './i18next/LocalUtil';
 import { generateUUID } from './StringsUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [

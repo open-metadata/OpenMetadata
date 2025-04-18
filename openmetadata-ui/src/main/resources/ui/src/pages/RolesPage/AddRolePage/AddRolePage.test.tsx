@@ -18,12 +18,6 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicies } from '../../../rest/rolesAPIV1';
 import AddRolePage from './AddRolePage';
 
-jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
-}));
-
 jest.mock('../../../hoc/withPageLayout', () => ({
   withPageLayout: jest.fn().mockImplementation(
     () =>

@@ -38,7 +38,7 @@ import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare, Operation } from 'fast-json-patch';
-import i18next, { t } from 'i18next';
+import i18next from 'i18next';
 import {
   isEmpty,
   isEqual,
@@ -49,7 +49,7 @@ import {
   trim,
   uniqBy,
 } from 'lodash';
-import React, { Fragment } from 'react';
+import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -107,6 +107,7 @@ import {
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
+import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
 import { showSuccessToast } from '../ToastUtils';

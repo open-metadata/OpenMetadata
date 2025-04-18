@@ -13,7 +13,7 @@
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,

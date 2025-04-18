@@ -13,9 +13,9 @@
 
 import { Button, Modal, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { clone } from 'lodash';
-import React, { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import CloseIcon from '../CloseIcon.component';
 import './schema-modal.less';

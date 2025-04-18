@@ -21,13 +21,7 @@ import {
   Select,
   Typography,
 } from 'antd';
-import React, {
-  ReactNode,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { useFqn } from '../../../hooks/useFqn';

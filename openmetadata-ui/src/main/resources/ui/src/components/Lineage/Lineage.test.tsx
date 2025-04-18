@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { MOCK_EXPLORE_SEARCH_RESULTS } from '../Explore/Explore.mock';
 import Lineage from './Lineage.component';
@@ -98,7 +97,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'fqn',
   }),

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -37,10 +36,6 @@ jest.mock(
       .mockImplementation(() => <div>ManageButtonItemLabel</div>),
   })
 );
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn(),
-}));
 
 describe('Database Util', () => {
   describe('getQueryFilterForDatabase', () => {

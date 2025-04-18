@@ -15,7 +15,7 @@ import { ColumnsType, TableProps } from 'antd/lib/table';
 import { TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { isNil, map, startCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';

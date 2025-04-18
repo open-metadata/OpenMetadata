@@ -15,9 +15,9 @@ import { Col, Row, Table, Tabs, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -68,7 +68,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
@@ -139,7 +139,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
       );
     }
@@ -294,7 +294,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   }, [mlModelDetail, mlModelStoreColumn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     []
   );
 

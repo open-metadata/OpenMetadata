@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
-import React, {
+import {
   createContext,
   DragEvent,
   useCallback,

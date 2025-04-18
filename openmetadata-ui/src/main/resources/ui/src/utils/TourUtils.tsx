@@ -12,7 +12,6 @@
  */
 
 import i18next from 'i18next';
-import React from 'react';
 import { EntityTabs } from '../enums/entity.enum';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';

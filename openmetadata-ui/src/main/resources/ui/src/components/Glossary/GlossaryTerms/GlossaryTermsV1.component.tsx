@@ -12,16 +12,10 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { t } from 'i18next';
+
 import { isEmpty } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -89,7 +83,7 @@ const GlossaryTermsV1 = ({
 }: GlossaryTermsV1Props) => {
   const { tab, version } = useParams<{ tab: EntityTabs; version: string }>();
   const { fqn: glossaryFqn } = useFqn();
-  const history = useHistory();
+  const navigate = useNavigate();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -114,7 +108,7 @@ const GlossaryTermsV1 = ({
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
-    history.push({
+    navigate({
       pathname: version
         ? getGlossaryTermsVersionsPath(glossaryFqn, version, tab)
         : getGlossaryTermDetailsPath(glossaryFqn, tab),

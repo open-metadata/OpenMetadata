@@ -12,27 +12,31 @@
  */
 
 import React from 'react';
-import { Redirect, Route, RouteProps } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ROUTES } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 
-interface AdminProtectedRouteProps extends RouteProps {
+interface AdminProtectedRouteProps {
+  children: React.ReactNode;
   hasPermission?: boolean;
 }
 
-const AdminProtectedRoute = (routeProps: AdminProtectedRouteProps) => {
+const AdminProtectedRoute = ({
+  children,
+  hasPermission,
+}: AdminProtectedRouteProps) => {
   const { isAdminUser } = useAuth();
-  const hasPermission = Boolean(routeProps.hasPermission);
+  const location = useLocation();
 
   if (isAdminUser || hasPermission) {
-    return <Route {...routeProps} />;
+    return <>{children}</>;
   } else if (!hasPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  } else {
-    return <Redirect to={ROUTES.SIGNIN} />;
   }
+
+  return <Navigate replace state={{ from: location }} to={ROUTES.SIGNIN} />;
 };
 
 export default AdminProtectedRoute;

@@ -15,15 +15,9 @@ import { Button, Card, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
-import {
-  default as React,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -52,7 +46,7 @@ import './custom-properties-pageV1.less';
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
   const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<EntityTabs>(
     EntityTabs.CUSTOM_PROPERTIES
@@ -115,7 +109,7 @@ const CustomEntityDetailV1 = () => {
 
   const handleAddProperty = useCallback(() => {
     const path = getAddCustomPropertyPath(tabAttributePath);
-    history.push(path);
+    navigate(path);
   }, [tabAttributePath, history]);
 
   const updateEntityType = useCallback(

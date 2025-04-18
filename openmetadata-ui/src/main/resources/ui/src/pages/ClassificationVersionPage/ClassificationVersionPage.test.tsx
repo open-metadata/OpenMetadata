@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
@@ -29,9 +28,6 @@ const mockParams = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: jest.fn(),
-  })),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

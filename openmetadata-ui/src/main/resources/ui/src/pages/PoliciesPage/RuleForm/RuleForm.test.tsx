@@ -13,7 +13,6 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Form } from 'antd';
-import React from 'react';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import RuleForm, { RuleFormProps } from './RuleForm';
 

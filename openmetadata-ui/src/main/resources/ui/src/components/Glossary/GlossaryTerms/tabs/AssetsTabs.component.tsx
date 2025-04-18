@@ -26,13 +26,13 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { ItemType } from 'antd/es/menu/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { isEmpty, isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import React, {
+import {
   forwardRef,
   useCallback,
   useEffect,

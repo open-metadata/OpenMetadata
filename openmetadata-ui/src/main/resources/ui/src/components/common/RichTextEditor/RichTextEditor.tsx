@@ -14,7 +14,7 @@
 /* eslint-disable */
 
 import classNames from 'classnames';
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
   formatContent,
   formatValueBasedOnContent,

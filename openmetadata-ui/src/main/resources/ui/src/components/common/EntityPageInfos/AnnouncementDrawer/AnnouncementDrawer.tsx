@@ -15,7 +15,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import React, { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
 import { postFeedById } from '../../../../rest/feedsAPI';

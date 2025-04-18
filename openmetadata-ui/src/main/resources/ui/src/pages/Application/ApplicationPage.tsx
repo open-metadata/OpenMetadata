@@ -13,9 +13,9 @@
 import { Button, Card, Col, Row, Skeleton, Space, Switch } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -50,7 +50,7 @@ const ApplicationPage = () => {
     handlePageSizeChange,
     showPagination,
   } = usePaging();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
   const [showDisabled, setShowDisabled] = useState(false);
@@ -96,11 +96,11 @@ const ApplicationPage = () => {
   };
 
   const viewAppDetails = (item: App) => {
-    history.push(getApplicationDetailsPath(item.fullyQualifiedName ?? ''));
+    navigate(getApplicationDetailsPath(item.fullyQualifiedName ?? ''));
   };
 
   const handleAddApplication = () => {
-    history.push(ROUTES.MARKETPLACE);
+    navigate(ROUTES.MARKETPLACE);
   };
 
   const errorPlaceHolder = useMemo(() => {

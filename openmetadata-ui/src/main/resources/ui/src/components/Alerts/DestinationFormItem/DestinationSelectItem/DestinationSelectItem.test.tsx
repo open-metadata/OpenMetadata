@@ -21,7 +21,6 @@ import {
 import userEvent from '@testing-library/user-event';
 import { Form } from 'antd';
 import { isString } from 'lodash';
-import React from 'react';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 

@@ -13,9 +13,9 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -62,7 +62,7 @@ const DashboardDetails = ({
 }: DashboardDetailsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab = EntityTabs.DETAILS } =
     useParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.Dashboard);
@@ -130,7 +130,7 @@ const DashboardDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getEntityDetailsPath(
           EntityType.DASHBOARD,
           decodedDashboardFQN,
@@ -203,8 +203,8 @@ const DashboardDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
-    []
+    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
+    [navigate]
   );
 
   const {

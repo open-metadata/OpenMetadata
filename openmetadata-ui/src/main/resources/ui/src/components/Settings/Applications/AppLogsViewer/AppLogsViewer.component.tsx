@@ -24,7 +24,7 @@ import {
   Typography,
 } from 'antd';
 import { capitalize, isEmpty, isNil } from 'lodash';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
 import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';

@@ -15,8 +15,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import AddNotificationPage from './AddNotificationPage';
 
-const mockPush = jest.fn();
-const mockGoBack = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('../../rest/alertsAPI', () => ({
   getAlertsFromName: jest.fn().mockImplementation(() =>
@@ -67,10 +66,7 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-    goBack: mockGoBack,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -142,6 +138,6 @@ describe('AddNotificationPage', () => {
       fireEvent.click(cancelButton);
     });
 
-    expect(mockGoBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
   });
 });

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { PageType } from '../../../generated/system/ui/page';

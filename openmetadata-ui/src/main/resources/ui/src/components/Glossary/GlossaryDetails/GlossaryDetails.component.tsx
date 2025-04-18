@@ -13,9 +13,9 @@
 
 import { Col, Row, Tabs } from 'antd';
 import { isEmpty, noop } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
@@ -47,7 +47,7 @@ const GlossaryDetails = ({
   isTabExpanded,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { activeGlossary: glossary } = useGlossaryStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -73,7 +73,7 @@ const GlossaryDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      navigate(
         getGlossaryTermDetailsPath(glossary.fullyQualifiedName ?? '', activeKey)
       );
     }

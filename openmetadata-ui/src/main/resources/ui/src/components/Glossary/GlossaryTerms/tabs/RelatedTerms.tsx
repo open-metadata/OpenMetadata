@@ -13,10 +13,10 @@
 
 import { Card, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { t } from 'i18next';
+
 import { isArray, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
@@ -45,7 +45,7 @@ import TagButton from '../../../common/TagButton/TagButton.component';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
 const RelatedTerms = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const {
     data: glossaryTerm,
     onUpdate,
@@ -69,7 +69,7 @@ const RelatedTerms = () => {
   }, [selectedOption]);
 
   const handleRelatedTermClick = (fqn: string) => {
-    history.push(getGlossaryPath(fqn));
+    navigate(getGlossaryPath(fqn));
   };
 
   const handleRelatedTermsSave = async (

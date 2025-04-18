@@ -23,10 +23,10 @@ import {
   Typography,
 } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Builder,
   Config,

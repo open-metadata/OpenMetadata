@@ -17,10 +17,8 @@ import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
 import RequestTag from './RequestTagPage';
 
-const mockUseHistory = {
-  push: jest.fn(),
-  goBack: jest.fn(),
-};
+const mockNavigate = jest.fn();
+
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
     search: 'field=columns&value="address.street_name"',
@@ -42,7 +40,7 @@ jest.mock('../../../hoc/withPageLayout', () => ({
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
-  useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
@@ -128,7 +126,7 @@ describe('RequestTagPage', () => {
       fireEvent.click(cancelBtn);
     });
 
-    expect(mockUseHistory.goBack).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledTimes(-1);
   });
 
   it('should submit form when submit button is clicked', async () => {

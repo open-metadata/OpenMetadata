@@ -14,9 +14,9 @@
 import { Col, Row, Tabs } from 'antd';
 import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -41,7 +41,7 @@ import './service-page.less';
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const queryParams = qs.parse(
@@ -125,9 +125,7 @@ const ServicesPage = () => {
                   ]
                 : []),
             ]}
-            onChange={(activeKey) =>
-              history.push({ search: `tab=${activeKey}` })
-            }
+            onChange={(activeKey) => navigate({ search: `tab=${activeKey}` })}
           />
         </Col>
       </Row>

@@ -14,7 +14,7 @@ import { Badge, Form, Input, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, lowerCase } from 'lodash';
-import React, {
+import {
   ReactNode,
   useCallback,
   useEffect,
