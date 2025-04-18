@@ -78,7 +78,7 @@
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
     <jackson.version>2.17.2</jackson.version>
-    <dropwizard.version>2.1.11</dropwizard.version>
+    <dropwizard.version>4.0.13</dropwizard.version>
     <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
     <diffMatch.version>1.0</diffMatch.version>
     <jersey-bom.version>2.40</jersey-bom.version>
