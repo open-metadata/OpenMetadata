@@ -84,6 +84,10 @@ export interface DashboardDataModel {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this dashboard data model.
+     */
+    parent?: EntityReference;
+    /**
      * Name of the project / workspace / collection in which the dataModel is contained
      */
     project?: string;
@@ -530,6 +534,8 @@ export interface CustomMetric {
  * the domain from the dashboard service it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this dashboard data model.
  *
  * Link to service where this data model is hosted in.
  */

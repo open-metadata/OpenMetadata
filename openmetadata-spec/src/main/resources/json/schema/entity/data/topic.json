@@ -141,6 +141,11 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "parent": {
+      "description": "Parent of this topic.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"

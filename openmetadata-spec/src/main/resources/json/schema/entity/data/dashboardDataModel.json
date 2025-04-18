@@ -162,6 +162,11 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
+    "parent": {
+      "description": "Parent of this dashboard data model.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "domain": {
       "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
       "$ref": "../../type/entityReference.json"

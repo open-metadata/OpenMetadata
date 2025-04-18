@@ -90,6 +90,10 @@ export interface StoredProcedure {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this Stored Procedure, database schema.
+     */
+    parent?: EntityReference;
+    /**
      * Processed lineage for the stored procedure
      */
     processedLineage?: boolean;
@@ -328,6 +332,8 @@ export interface FieldChange {
  * domain from the database schemna it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this Stored Procedure, database schema.
  *
  * Link to Database service this table is hosted in.
  */

@@ -83,6 +83,10 @@ export interface DatabaseSchema {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this database schema, database.
+     */
+    parent?: EntityReference;
+    /**
      * Retention period of the data in the database schema. Period is expressed as duration in
      * ISO 8601 format in UTC. Example - `P23DT23H`. When not set, the retention period is
      * inherited from the parent database, if it exists.
@@ -321,6 +325,8 @@ export interface FieldChange {
  * the database it belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
+ *
+ * Parent of this database schema, database.
  *
  * Link to the database cluster/service where this schema is hosted in.
  */

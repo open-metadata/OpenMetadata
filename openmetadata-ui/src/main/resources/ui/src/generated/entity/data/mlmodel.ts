@@ -98,6 +98,10 @@ export interface Mlmodel {
      */
     owners?: EntityReference[];
     /**
+     * Parent of this MLModel.
+     */
+    parent?: EntityReference;
+    /**
      * Endpoint that makes the ML Model available, e.g,. a REST API serving the data or
      * computing predictions.
      */
@@ -337,6 +341,8 @@ export interface FieldChange {
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Description of the Data Source (e.g., a Table).
+ *
+ * Parent of this MLModel.
  *
  * Link to service where this pipeline is hosted in.
  */

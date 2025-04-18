@@ -51,6 +51,11 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "parent": {
+      "description": "Parent of this apiCollection.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
