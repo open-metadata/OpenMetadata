@@ -95,7 +95,7 @@ class KinesisPartitions(BaseModel):
     """
 
     Shards: Optional[List[KinesisShards]]
-    NextToken: Optional[str]
+    NextToken: Optional[str] = None
 
 
 class KinesisShardIterator(BaseModel):
