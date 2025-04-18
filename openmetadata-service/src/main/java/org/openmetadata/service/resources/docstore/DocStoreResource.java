@@ -149,8 +149,13 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
               description = "Returns list of personas after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
-    ListFilter filter = new ListFilter(Include.ALL);
+          String after,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("domain", domain);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
     }

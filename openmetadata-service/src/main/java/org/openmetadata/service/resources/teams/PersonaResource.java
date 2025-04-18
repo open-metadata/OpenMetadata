@@ -126,9 +126,15 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
               description = "Returns list of personas after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
+          String after,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
+    ListFilter filter = new ListFilter(null).addQueryParam("domain", domain);
     return super.listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET

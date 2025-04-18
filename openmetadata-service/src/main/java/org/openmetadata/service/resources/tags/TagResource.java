@@ -201,11 +201,17 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Filter services by domain",
+              schema = @Schema(type = "string", example = "Marketing"))
+          @QueryParam("domain")
+          String domain) {
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("parent", parent)
-            .addQueryParam("classification.disabled", disabled);
+            .addQueryParam("classification.disabled", disabled)
+            .addQueryParam("domain", domain);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
