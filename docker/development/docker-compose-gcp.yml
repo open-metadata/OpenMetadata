@@ -48,6 +48,7 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
     container_name: openmetadata_elasticsearch
+    restart: unless-stopped
     environment:
       - discovery.type=single-node
       - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
@@ -289,6 +290,7 @@ services:
       context: ../../.
       dockerfile: docker/development/Dockerfile
     container_name: openmetadata_server
+    restart: unless-stopped
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /key.json
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
@@ -492,6 +494,7 @@ services:
       args:
         INGESTION_DEPENDENCY: ${INGESTION_DEPENDENCY:-all}
     container_name: openmetadata_ingestion
+    restart: unless-stopped
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /key.json
       AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
