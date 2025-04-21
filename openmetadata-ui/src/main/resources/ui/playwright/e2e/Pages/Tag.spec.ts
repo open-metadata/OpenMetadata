@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { Domain } from '../../support/domain/Domain';
@@ -117,18 +112,17 @@ test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
 
   let domain: Domain;
-  let apiContext: APIRequestContext;
-  let afterAction: () => Promise<void>;
 
-  test.beforeAll(async ({ adminPage }) => {
-    ({ apiContext, afterAction } = await getApiContext(adminPage));
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext } = await performAdminLogin(browser);
     domain = new Domain();
     await domain.create(apiContext);
   });
 
-  test.afterAll(async () => {
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.delete?.(apiContext);
-    await afterAction?.();
+    await afterAction();
   });
 
   test('Verify Tag UI', async ({ adminPage }) => {
