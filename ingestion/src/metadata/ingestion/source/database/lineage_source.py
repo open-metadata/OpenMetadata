@@ -17,9 +17,9 @@ import os
 import time
 import traceback
 from abc import ABC
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from functools import partial
-from multiprocessing import Process, Queue
+from queue import Queue
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
 import networkx as nx
@@ -118,8 +118,8 @@ class LineageSource(QueryParserSource, ABC):
             )
             yield from self.yield_table_query()
 
-    @staticmethod
     def generate_lineage_with_processes(
+        self,
         producer_fn: Callable[[], Iterable[Any]],
         processor_fn: Callable[[Any, Queue], None],
         args: Tuple[Any, ...],
@@ -127,53 +127,39 @@ class LineageSource(QueryParserSource, ABC):
         processor_timeout: int = PROCESS_TIMEOUT,
     ):
         """
-        Process data in separate processes with timeout control.
+        Optimized multithreaded lineage generation with improved error handling and performance.
 
         Args:
-            producer_fn: Function that yields data chunks
-            processor_fn: Function that processes data and adds results to the queue
-            chunk_size: Size of chunks to process
-            processor_timeout: Maximum time in seconds to wait for a processor process
+            producer_fn: Function that yields input items
+            processor_fn: Function to process each input item
+            chunk_size: Optional batching to reduce thread creation overhead
         """
 
         def chunk_generator():
-            """Group items from producer into chunks of specified size."""
             temp_chunk = []
-            for item in producer_fn():
-                temp_chunk.append(item)
+            for chunk in producer_fn():
+                temp_chunk.append(chunk)
                 if len(temp_chunk) >= chunk_size:
                     yield temp_chunk
                     temp_chunk = []
+
             if temp_chunk:
                 yield temp_chunk
 
-        # Use multiprocessing Queue instead of threading Queue
-        queue = Queue()
-        active_processes = []
+        from multiprocessing import Manager
 
-        # Dictionary to track process start times
-        process_start_times = {}
+        manager = Manager()
+        queue = manager.Queue()
 
-        # Start processing each chunk in a separate process
-        for _, chunk in enumerate(chunk_generator()):
-            # Start a process for processing
-            process = Process(
-                target=_process_chunk_in_subprocess,
-                args=(chunk, processor_fn, queue, *args),
+        thread_pool = ProcessPoolExecutor(max_workers=self.source_config.threads)
+
+        futures = [
+            thread_pool.submit(
+                _process_chunk_in_subprocess, chunk, processor_fn, queue, *args
             )
-            process.daemon = True
-            process_start_times[
-                process.name
-            ] = time.time()  # Track when the process started
-            logger.info(
-                f"Process {process.name} started at {process_start_times[process.name]}"
-            )
-            active_processes.append(process)
-            process.start()
-
-        # Process results from the queue and check for timed-out processes
-        while active_processes or not queue.empty():
-            # Process any available results
+            for chunk in chunk_generator()
+        ]
+        while True:
             try:
                 while not queue.empty():
                     yield queue.get_nowait()
@@ -181,38 +167,18 @@ class LineageSource(QueryParserSource, ABC):
                 logger.warning(f"Error processing queue: {exc}")
                 logger.debug(traceback.format_exc())
 
-            # Check for completed or timed-out processes
-            still_active = []
-            for process in active_processes:
-                if process.is_alive():
-                    # Check if the process has timed out
-                    if (
-                        time.time() - process_start_times[process.name]
-                        > processor_timeout
-                    ):
-                        logger.warning(
-                            f"Process {process.name} timed out after {processor_timeout}s"
-                        )
-                        process.terminate()  # Force terminate the timed out process
-                    else:
-                        still_active.append(process)
-                else:
-                    # Clean up completed process
-                    process.join()
+            if not futures:
+                break
 
-            active_processes = still_active
-
-            # Small pause to prevent CPU spinning
-            if active_processes:
-                time.sleep(0.1)
-
-        # Final check for any remaining results
-        try:
-            while not queue.empty():
-                yield queue.get_nowait()
-        except Exception as exc:
-            logger.warning(f"Error processing queue: {exc}")
-            logger.debug(traceback.format_exc())
+            for i, future in enumerate(futures):
+                if future.done():
+                    try:
+                        future.result(timeout=THREAD_TIMEOUT)
+                    except Exception as e:
+                        logger.debug(f"Error in future: {e}")
+                        logger.debug(traceback.format_exc())
+                    futures.pop(i)
+            time.sleep(0.01)
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
