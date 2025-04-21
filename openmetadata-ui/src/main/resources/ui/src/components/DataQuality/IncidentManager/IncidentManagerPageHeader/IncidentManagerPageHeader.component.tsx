@@ -17,7 +17,7 @@ import { first, isUndefined, last } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/api/feed/createThread';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -56,6 +56,7 @@ import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.inte
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import './incident-manager.less';
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
@@ -68,7 +69,7 @@ const IncidentManagerPageHeader = ({
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useRequiredParams<{ fqn: string }>();
   const decodedFqn = getDecodedFqn(fqn);
   const {
     setActiveThread,

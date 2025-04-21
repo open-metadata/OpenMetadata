@@ -28,7 +28,7 @@ import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
@@ -60,6 +60,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import {
   TestCaseFormProps,
   TestCaseFormType,
@@ -73,7 +74,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   table,
 }) => {
   const navigate = useNavigate();
-  const { dashboardType } = useParams<{ dashboardType: string }>();
+  const { dashboardType } = useRequiredParams<{ dashboardType: string }>();
   const { t } = useTranslation();
   const { fqn: decodedEntityFQN } = useFqn();
   const { activeColumnFqn } = useMemo(() => {

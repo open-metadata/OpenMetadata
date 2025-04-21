@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 
 import { FC, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -34,6 +34,7 @@ import {
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -64,7 +65,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   entityPermissions,
 }: PipelineVersionProp) => {
   const navigate = useNavigate();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );

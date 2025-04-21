@@ -17,7 +17,7 @@ import { isEmpty } from 'lodash';
 import { ServicesUpdateRequest } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -59,11 +59,12 @@ import {
 import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const EditIngestionPage = () => {
   const { fetchAirflowStatus } = useAirflowStatus();
   const { t } = useTranslation();
-  const { ingestionType, serviceCategory } = useParams<{
+  const { ingestionType, serviceCategory } = useRequiredParams<{
     ingestionType: string;
     serviceCategory: string;
   }>();

@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Navigate,
-  Route,
-  Routes,
-  useNavigate,
-  useParams,
-} from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { SUPPORTED_BULK_IMPORT_EDIT_ENTITY } from '../../constants/BulkImport.constant';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -25,11 +19,12 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { useFqn } from '../../hooks/useFqn';
 import BulkEntityImportPage from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const EntityImportRouter = () => {
   const navigate = useNavigate();
   const { fqn } = useFqn();
-  const { entityType } = useParams<{ entityType: ResourceEntity }>();
+  const { entityType } = useRequiredParams<{ entityType: ResourceEntity }>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [entityPermission, setEntityPermission] = useState(

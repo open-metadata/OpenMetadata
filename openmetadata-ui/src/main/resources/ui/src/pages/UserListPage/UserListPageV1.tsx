@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { capitalize, isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -58,12 +58,13 @@ import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 import './user-list-page-v1.less';
 
 const UserListPageV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: GlobalSettingOptions }>();
+  const { tab } = useRequiredParams<{ tab: GlobalSettingOptions }>();
   const navigate = useNavigate();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();

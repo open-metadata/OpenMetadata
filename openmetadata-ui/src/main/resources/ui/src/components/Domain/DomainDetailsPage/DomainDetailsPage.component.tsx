@@ -30,7 +30,7 @@ import classNames from 'classnames';
 import { cloneDeep, isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -96,6 +96,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -121,7 +122,7 @@ const DomainDetailsPage = ({
   const { getEntityPermission, permissions } = usePermissionProvider();
   const navigate = useNavigate();
   const { tab: activeTab, version } =
-    useParams<{ tab: EntityTabs; version: string }>();
+    useRequiredParams<{ tab: EntityTabs; version: string }>();
   const { fqn: domainFqn } = useFqn();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);

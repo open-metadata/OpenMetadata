@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/table';
@@ -27,6 +27,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -55,7 +56,7 @@ const StoredProcedureVersion = ({
 }: StoredProcedureVersionProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );

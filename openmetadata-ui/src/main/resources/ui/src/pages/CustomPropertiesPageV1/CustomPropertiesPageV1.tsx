@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -41,11 +41,12 @@ import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils'
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getAddCustomPropertyPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './custom-properties-pageV1.less';
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: keyof typeof ENTITY_PATH }>();
+  const { tab } = useRequiredParams<{ tab: keyof typeof ENTITY_PATH }>();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<EntityTabs>(

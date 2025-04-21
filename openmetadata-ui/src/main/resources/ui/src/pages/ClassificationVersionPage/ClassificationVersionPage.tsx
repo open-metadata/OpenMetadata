@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -42,11 +42,12 @@ import {
   getClassificationVersionsPath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function ClassificationVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { version } = useParams<{ version: string }>();
+  const { version } = useRequiredParams<{ version: string }>();
   const { fqn: classificationName } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [currentVersionData, setCurrentVersionData] = useState<Classification>(

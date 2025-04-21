@@ -15,7 +15,7 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -39,6 +39,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -63,7 +64,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedApiEndpointFqn } = useFqn();
   const navigate = useNavigate();
   const [feedCount, setFeedCount] = useState<FeedCounts>(

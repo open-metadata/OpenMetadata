@@ -17,7 +17,7 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { DATA_ASSET_ICON_DIMENSION } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -34,6 +34,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -63,7 +64,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
 }: DashboardVersionProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );

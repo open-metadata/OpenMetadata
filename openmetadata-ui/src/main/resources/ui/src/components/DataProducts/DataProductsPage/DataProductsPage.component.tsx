@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { toString } from 'lodash';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -36,6 +36,7 @@ import {
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -45,7 +46,7 @@ import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDeta
 const DataProductsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { version } = useParams<{ version: string }>();
+  const { version } = useRequiredParams<{ version: string }>();
   const { fqn: dataProductFqn } = useFqn();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [dataProduct, setDataProduct] = useState<DataProduct>();

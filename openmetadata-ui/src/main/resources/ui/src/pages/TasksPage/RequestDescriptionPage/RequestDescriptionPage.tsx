@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -55,6 +55,7 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import '../task-page.style.less';
 import { EntityData, Option } from '../TasksPage.interface';
@@ -67,7 +68,7 @@ const RequestDescription = () => {
   const [form] = useForm();
   const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);

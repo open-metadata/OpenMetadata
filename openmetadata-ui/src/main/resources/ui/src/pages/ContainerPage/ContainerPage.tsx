@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -75,13 +75,14 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const ContainerPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Container
   );

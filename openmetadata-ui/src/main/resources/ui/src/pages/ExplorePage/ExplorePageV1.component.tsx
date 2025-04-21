@@ -20,7 +20,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -55,6 +55,7 @@ import {
 import i18n from '../../utils/i18next/LocalUtil';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
@@ -71,7 +72,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
 
-  const { tab } = useParams<UrlParams>();
+  const { tab } = useRequiredParams<UrlParams>();
 
   const { searchCriteria } = useApplicationStore();
 

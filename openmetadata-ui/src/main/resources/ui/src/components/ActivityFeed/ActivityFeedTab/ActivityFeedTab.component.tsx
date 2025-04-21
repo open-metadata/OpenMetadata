@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
@@ -55,6 +55,7 @@ import {
   getEntityUserLink,
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import { TaskTabNew } from '../../Entity/Task/TaskTab/TaskTabNew.component';
@@ -97,7 +98,7 @@ export const ActivityFeedTab = ({
     rootMargin: '0px 0px 2px 0px',
   });
   const { subTab: activeTab = subTab } =
-    useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
+    useRequiredParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
   const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
     ThreadTaskStatus.Open
   );

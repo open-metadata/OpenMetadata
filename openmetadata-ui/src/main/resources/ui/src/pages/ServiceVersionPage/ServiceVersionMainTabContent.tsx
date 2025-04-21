@@ -16,7 +16,6 @@ import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../../components/common/Table/Table';
@@ -28,6 +27,7 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
@@ -42,7 +42,7 @@ function ServiceVersionMainTabContent({
   entityType,
   changeDescription,
 }: ServiceVersionMainTabContentProps) {
-  const { serviceCategory } = useParams<{
+  const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceTypes;
   }>();
 

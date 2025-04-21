@@ -20,7 +20,7 @@ import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
@@ -71,6 +71,7 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -203,7 +204,8 @@ export const DataAssetsHeader = ({
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
 }: DataAssetsHeaderProps) => {
-  const { serviceCategory } = useParams<{ serviceCategory: ServiceCategory }>();
+  const { serviceCategory } =
+    useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser } = useApplicationStore();
   const { selectedUserSuggestions } = useSuggestionsContext();
   const USER_ID = currentUser?.id ?? '';

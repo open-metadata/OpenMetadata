@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
@@ -30,6 +30,7 @@ import { restoreUser } from '../../../rest/userAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
@@ -60,7 +61,7 @@ const Users = ({
   updateUserDetails,
 }: Props) => {
   const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
-    useParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+    useRequiredParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();

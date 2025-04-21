@@ -18,7 +18,7 @@ import { isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -66,11 +66,12 @@ import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function SearchIndexDetailsPage() {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();

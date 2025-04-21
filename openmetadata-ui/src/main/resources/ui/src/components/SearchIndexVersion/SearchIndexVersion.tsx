@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
@@ -35,6 +35,7 @@ import {
 } from '../../utils/EntityVersionUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import Loader from '../common/Loader/Loader';
 import TabsLabel from '../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
@@ -59,7 +60,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
 }: SearchIndexVersionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
   );

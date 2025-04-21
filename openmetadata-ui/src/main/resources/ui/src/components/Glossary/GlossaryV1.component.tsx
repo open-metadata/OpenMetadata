@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -40,6 +40,7 @@ import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -66,8 +67,11 @@ const GlossaryV1 = ({
   refreshActiveGlossaryTerm,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
-  const { action, tab } =
-    useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
+  const { action, tab } = useRequiredParams<{
+    action: EntityAction;
+    glossaryName: string;
+    tab: string;
+  }>();
   const { customizedPage } = useCustomPages(
     isGlossaryActive ? PageType.Glossary : PageType.GlossaryTerm
   );

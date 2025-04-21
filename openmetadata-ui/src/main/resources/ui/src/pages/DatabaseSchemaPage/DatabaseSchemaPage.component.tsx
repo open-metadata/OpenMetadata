@@ -23,7 +23,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -81,6 +81,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -88,7 +89,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const { setFilters, filters } = useTableFilters(INITIAL_TABLE_FILTERS);
   const { tab: activeTab = EntityTabs.TABLE } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const navigate = useNavigate();
 

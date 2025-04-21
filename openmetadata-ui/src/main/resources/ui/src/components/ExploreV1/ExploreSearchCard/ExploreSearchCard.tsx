@@ -17,7 +17,7 @@ import { isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -35,6 +35,7 @@ import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -70,7 +71,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ref
   ) => {
     const { t } = useTranslation();
-    const { tab } = useParams<{ tab: string }>();
+    const { tab } = useRequiredParams<{ tab: string }>();
     const { isTourOpen } = useTourProvider();
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)

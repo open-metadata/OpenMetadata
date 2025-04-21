@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -54,12 +54,13 @@ import {
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function DatabaseVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { version, tab } = useParams<{
+  const { version, tab } = useRequiredParams<{
     version: string;
     tab: EntityTabs;
   }>();

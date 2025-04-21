@@ -15,7 +15,7 @@ import { Col, Row, Space, Typography } from 'antd';
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import {
   CONNECTORS_DOCS,
@@ -35,6 +35,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
 
 type Props = {
@@ -73,7 +74,7 @@ const stepsData = [
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
-  const { tab } = useParams<{ tab: string }>();
+  const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { activeDomain } = useDomainStore();

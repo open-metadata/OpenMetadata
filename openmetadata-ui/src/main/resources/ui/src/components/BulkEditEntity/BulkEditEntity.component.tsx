@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -24,6 +24,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEncodedFqn } from '../../utils/StringsUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
@@ -53,7 +54,7 @@ const BulkEditEntity = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
     useEntityExportModalProvider();
 

@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 
 import { toString } from 'lodash';
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -31,6 +31,7 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -47,7 +48,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
     version,
     tab = 'overview',
     id,
-  } = useParams<{ version: string; tab: string; id: string }>();
+  } = useRequiredParams<{ version: string; tab: string; id: string }>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );

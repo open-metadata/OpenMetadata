@@ -30,7 +30,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import {
   CSVImportAsyncWebsocketResponse,
@@ -69,6 +69,7 @@ import {
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import './bulk-entity-import-page.less';
 
 let inEdit = false;
@@ -86,7 +87,7 @@ const BulkEntityImportPage = () => {
 
   const location = useLocation();
   const { t } = useTranslation();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
   const [validationData, setValidationData] = useState<CSVImportResult>();

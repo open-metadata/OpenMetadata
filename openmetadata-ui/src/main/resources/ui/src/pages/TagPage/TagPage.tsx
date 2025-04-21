@@ -26,7 +26,7 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, startsWith } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
@@ -92,6 +92,7 @@ import {
   getTagImageSrc,
 } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';
 import { TagTabs } from './TagPage.inteface';
 
@@ -99,7 +100,8 @@ const TagPage = () => {
   const { t } = useTranslation();
   const { fqn: tagFqn } = useFqn();
   const navigate = useNavigate();
-  const { tab: activeTab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
+  const { tab: activeTab = TagTabs.OVERVIEW } =
+    useRequiredParams<{ tab?: string }>();
   const { permissions, getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();

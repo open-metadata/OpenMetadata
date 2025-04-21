@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
@@ -51,13 +51,14 @@ import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUt
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 
 const AddCustomProperty = () => {
   const [form] = Form.useForm();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const navigate = useNavigate();
 
   const [typeDetail, setTypeDetail] = useState<Type>();

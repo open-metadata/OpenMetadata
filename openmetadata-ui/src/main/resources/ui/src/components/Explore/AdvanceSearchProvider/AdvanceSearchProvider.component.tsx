@@ -30,7 +30,7 @@ import {
   ValueField,
   ValueSource,
 } from 'react-awesome-query-builder';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -43,6 +43,7 @@ import {
 } from '../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
@@ -82,7 +83,7 @@ export const AdvanceSearchProvider = ({
   const tierOptions = useMemo(getTierOptions, []);
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { tab } = useParams<UrlParams>();
+  const { tab } = useRequiredParams<UrlParams>();
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 

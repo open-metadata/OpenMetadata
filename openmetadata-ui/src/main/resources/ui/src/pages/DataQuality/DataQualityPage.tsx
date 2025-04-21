@@ -14,13 +14,7 @@
 import { Card, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Navigate,
-  Route,
-  Routes,
-  useNavigate,
-  useParams,
-} from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -28,6 +22,7 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { TestSuite } from '../../generated/tests/testSuite';
 import { useAuth } from '../../hooks/authHooks';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import TestSuiteDetailsPage from '../TestSuiteDetailsPage/TestSuiteDetailsPage.component';
 import './data-quality-page.less';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
@@ -35,7 +30,7 @@ import { DataQualityPageTabs } from './DataQualityPage.interface';
 const DataQualityPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { tab } = useParams<{ tab: DataQualityPageTabs }>();
+  const { tab } = useRequiredParams<{ tab: DataQualityPageTabs }>();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
 

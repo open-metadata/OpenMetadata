@@ -16,7 +16,7 @@ import { compare, Operation as PatchOperation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -42,6 +42,7 @@ import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
@@ -54,7 +55,7 @@ const IncidentManagerDetailPage = () => {
     useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
 
   const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
-    useParams<{ tab: EntityTabs }>();
+    useRequiredParams<{ tab: EntityTabs }>();
 
   const { fqn: testCaseFQN } = useFqn();
 

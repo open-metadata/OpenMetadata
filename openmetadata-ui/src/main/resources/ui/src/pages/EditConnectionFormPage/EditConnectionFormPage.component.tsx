@@ -18,7 +18,7 @@ import { isEmpty, isUndefined, startCase } from 'lodash';
 import { LoadingState, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -50,9 +50,10 @@ import {
   getServiceType,
 } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 function EditConnectionFormPage() {
-  const { serviceCategory } = useParams<{
+  const { serviceCategory } = useRequiredParams<{
     serviceCategory: ServiceCategory;
   }>();
   const { fqn: serviceFQN } = useFqn();

@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -58,6 +58,7 @@ import {
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Assignees from '../shared/Assignees';
 import { TagsTabs } from '../shared/TagsTabs';
 import '../task-page.style.less';
@@ -70,7 +71,7 @@ const UpdateTag = () => {
   const [form] = useForm();
   const { currentUser } = useApplicationStore();
 
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);

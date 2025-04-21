@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -45,6 +45,7 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -69,7 +70,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const navigate = useNavigate();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { customizedPage, isLoading } = useCustomPages(PageType.MlModel);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 

@@ -19,7 +19,7 @@ import classNames from 'classnames';
 import { cloneDeep, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -63,6 +63,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -98,7 +99,7 @@ const DataProductsDetailsPage = ({
   const navigate = useNavigate();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { tab: activeTab, version } =
-    useParams<{ tab: string; version: string }>();
+    useRequiredParams<{ tab: string; version: string }>();
   const { fqn: dataProductFqn } = useFqn();
 
   const [dataProductPermission, setDataProductPermission] =

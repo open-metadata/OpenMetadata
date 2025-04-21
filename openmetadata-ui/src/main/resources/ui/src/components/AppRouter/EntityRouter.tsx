@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import { Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import EntityVersionPage from '../../pages/EntityVersionPage/EntityVersionPage.component';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import EntityImportRouter from './EntityImportRouter';
 
 const EntityRouter = () => {
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const Component = useMemo(
     () => entityUtilClassBase.getEntityDetailComponent(entityType),

@@ -21,7 +21,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
@@ -37,6 +36,7 @@ import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.i
 import { postThread } from '../../../rest/feedsAPI';
 import { getLayoutFromCustomizedPage } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 
@@ -87,7 +87,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
-  const { tab } = useParams<{ tab: EntityTabs }>();
+  const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
     getLayoutFromCustomizedPage(pageType, tab, customizedPage)

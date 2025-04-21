@@ -16,7 +16,7 @@ import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -36,10 +36,11 @@ import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-page.less';
 
 const ServicesPage = () => {
-  const { tab } = useParams<{ tab: string }>();
+  const { tab } = useRequiredParams<{ tab: string }>();
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();

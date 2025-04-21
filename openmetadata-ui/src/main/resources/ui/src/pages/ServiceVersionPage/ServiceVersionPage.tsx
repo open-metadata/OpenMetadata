@@ -17,7 +17,7 @@ import { isEmpty, toString } from 'lodash';
 import { PagingWithoutTotal, ServiceTypes } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -68,13 +68,14 @@ import {
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
 } from '../../utils/ServiceUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceVersionMainTabContent from './ServiceVersionMainTabContent';
 
 function ServiceVersionPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { serviceCategory, version } = useParams<{
+  const { serviceCategory, version } = useRequiredParams<{
     serviceCategory: ServiceTypes;
     version: string;
   }>();

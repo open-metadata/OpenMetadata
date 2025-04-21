@@ -20,7 +20,7 @@ import { compare } from 'fast-json-patch';
 import { cloneDeep, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
@@ -68,6 +68,7 @@ import {
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Voting from '../../Entity/Voting/Voting.component';
@@ -94,10 +95,10 @@ const GlossaryHeader = ({
     type: entityType,
   } = useGenericContext<GlossaryTerm>();
 
-  const { version } = useParams<{
+  const { version, id } = useRequiredParams<{
     version: string;
+    id: string;
   }>();
-  const { id } = useParams<{ id: string }>();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
     TitleBreadcrumbProps['titleLinks']

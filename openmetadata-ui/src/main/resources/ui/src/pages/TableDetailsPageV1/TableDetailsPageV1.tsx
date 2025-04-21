@@ -19,7 +19,7 @@ import { isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
@@ -101,6 +101,7 @@ import {
 } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 
 const TableDetailsPageV1: React.FC = () => {
@@ -109,7 +110,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const navigate = useNavigate();

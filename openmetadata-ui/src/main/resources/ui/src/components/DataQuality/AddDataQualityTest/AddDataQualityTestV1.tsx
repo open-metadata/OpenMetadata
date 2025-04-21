@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -51,6 +51,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -68,7 +69,7 @@ import TestSuiteIngestion from './TestSuiteIngestion';
 const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   table,
 }: AddDataQualityTestProps) => {
-  const { dashboardType } = useParams<{ dashboardType: string }>();
+  const { dashboardType } = useRequiredParams<{ dashboardType: string }>();
   const { fqn } = useFqn();
   const isColumnFqn = dashboardType === ProfilerDashboardType.COLUMN;
   const isTableFqn = dashboardType === ProfilerDashboardType.TABLE;

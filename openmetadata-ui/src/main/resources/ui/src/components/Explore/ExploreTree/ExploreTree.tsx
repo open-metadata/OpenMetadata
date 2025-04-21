@@ -16,7 +16,6 @@ import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
@@ -42,6 +41,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
@@ -80,7 +80,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { t } = useTranslation();
-  const { tab } = useParams<UrlParams>();
+  const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
 
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();

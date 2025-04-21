@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -72,13 +72,15 @@ import {
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const navigate = useNavigate();
-  const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.CODE } =
+    useRequiredParams<{ tab: EntityTabs }>();
 
   const { fqn: decodedStoredProcedureFQN } = useFqn();
   const { getEntityPermissionByFqn } = usePermissionProvider();

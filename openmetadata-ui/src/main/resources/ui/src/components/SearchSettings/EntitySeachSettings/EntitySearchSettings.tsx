@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
 import { ENTITY_PATH } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -49,6 +48,7 @@ import {
   scoreModeOptions,
 } from '../../../utils/SearchSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CollapseHeader from '../../common/CollapseHeader/CollapseHeader';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -62,7 +62,7 @@ import './entity-search-settings.less';
 
 const EntitySearchSettings = () => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{
+  const { fqn } = useRequiredParams<{
     fqn: keyof typeof ENTITY_PATH;
   }>();
 

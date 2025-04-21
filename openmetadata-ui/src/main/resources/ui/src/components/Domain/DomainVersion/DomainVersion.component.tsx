@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 import { noop, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -29,6 +29,7 @@ import {
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
@@ -37,7 +38,7 @@ import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component'
 
 const DomainVersion = () => {
   const navigate = useNavigate();
-  const { version } = useParams<{ version: string }>();
+  const { version } = useRequiredParams<{ version: string }>();
   const { fqn } = useFqn();
   const [loading, setLoading] = useState(true);
   const [domain, setDomain] = useState<Domain>();

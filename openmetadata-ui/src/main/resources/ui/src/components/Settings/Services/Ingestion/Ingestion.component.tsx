@@ -24,7 +24,7 @@ import {
 import { isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
 import {
@@ -36,6 +36,7 @@ import { getCountBadge } from '../../../../utils/CommonUtils';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import SearchDropdown from '../../../SearchDropdown/SearchDropdown';
@@ -68,7 +69,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: decodedServiceFQN } = useFqn();
-  const { serviceCategory, tab, subTab } = useParams<{
+  const { serviceCategory, tab, subTab } = useRequiredParams<{
     serviceCategory: ServiceCategory;
     tab: string;
     subTab: string;
