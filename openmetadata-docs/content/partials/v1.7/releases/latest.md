@@ -18,6 +18,82 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 The latest Release 1.7 of OpenMetadata and Collate delivers new features to accelerate the onboarding of both data services and users, taking discovery, automations, and customizations one step further.
 
+## Features
+
+### Automate Metadata Onboarding Instantly with OpenMetadata AutoPilot
+
+Data teams often face manual, repetitive tasks onboarding new services—configuring workflows individually for schemas, lineage, usage, and profiling. This slows down onboarding and can cause inconsistent metadata coverage.
+
+**OpenMetadata’s AutoPilot makes onboarding effortless:**
+
+- **Automated Workflows:** Automatically triggers metadata extraction for schemas, lineage, usage, and profiling whenever a new service is added. No manual setup required.
+- **Optimized Filtering:** Includes default filters for relevant metadata, with the flexibility to add custom filters, ensuring consistency and efficiency.
+- **Immediate Insights:** Provides real-time KPIs on asset distribution, metadata coverage (descriptions, ownership), tiering, and PII tagging to proactively improve data governance.
+
+### Automate Documentation, Classification, and Data Quality with Collate AI Agents (Collate)
+
+Collate is enhancing AutoPilot by integrating powerful AI Agents that automate critical metadata tasks—saving your team time and increasing metadata coverage instantly.
+
+- **Automated Tiering:** The Tier Agent analyzes usage patterns and lineage to automatically identify the business-critical data assets within your organization.
+- **Intelligent Documentation:** The Documentation Agent automatically generates accurate descriptions of your data assets and powers a seamless Text2SQL chat experience.
+- **Data Quality Automation:** The Data Quality Agent intelligently creates Data Quality tests based on data constraints and learns from existing tests across similar datasets.
+
+With Collate AI Agents in AutoPilot, it’s like adding expert team members who streamline metadata management—accelerating onboarding, improving governance, and freeing your team to focus on higher-value tasks.
+
+### Customize Your Data Discovery with Enhanced Search Relevancy Settings
+
+As your data platform expands, quickly finding the most relevant data assets becomes essential. OpenMetadata already boosts search results based on business-criticality (Tiers) and usage patterns—but your organization’s preferences might vary.
+
+**With the new Search Relevancy Settings, OpenMetadata gives you complete control to tailor your discovery experience by:**
+
+- Fine-tuning searchable fields such as asset names, descriptions, or column details.
+- Adjusting result boosting based on default properties like Tiers and usage, or adding custom tags to further enhance relevancy.
+- Applying customized ranking across all data assets or specific asset types like Tables, Dashboards, or Topics.
+
+Ensure users always discover the right data, quickly and intuitively, by customizing your search experience with OpenMetadata’s enhanced relevancy settings.
+
+### Navigate Your Data Ecosystem with Hierarchical Lineage
+
+OpenMetadata’s enhanced Lineage UI in Release 1.7 introduces **Hierarchical Lineage Layers**, enabling teams to intuitively explore data lineage from a high-level overview down to granular details:
+
+- **Service Layer:** Provides visibility into data flows between different platforms or services.
+- **Domain Layer:** Clearly illustrates how data traverses across Data Mesh domains.
+- **Data Product Layer:** Shows lineage across specific data products, aligning closely with business definitions.
+
+Alongside these layers, **column-level lineage** remains easily accessible, helping teams precisely understand data transformations and impacts—simplifying root-cause analysis and governance decisions.
+
+### Simplify the User Experience with Persona-Based Customizations
+
+OpenMetadata provides detailed information on your data assets—covering schema, lineage, data quality, and observability. But different user personas have different needs and workflows, and one size doesn’t fit all.
+
+**With Release 1.7, you can now fully personalize OpenMetadata’s user experience based on defined User Personas:**
+
+- **Navigation Panel Customization:** Tailor the navigation panel by adding, removing, or sorting elements to match the workflow of each persona.
+- **Data Assets & Governance Entities:** Reorganize, add, or remove tabs and customize widget layouts—highlighting relevant custom properties, descriptions, or key insights specific to each persona.
+
+Persona-based customization ensures each user sees only what’s relevant and important to their role—streamlining workflows, improving usability, and enhancing adoption across your organization.
+
+### Discover the Right Data Even Faster with an Enhanced UX
+
+OpenMetadata is already known for its intuitive UI and simplified user experience. In Release 1.7, the UX is elevated further, making it even easier for diverse user personas to quickly find and act on the data they need.
+
+**Key UX improvements include:**
+
+- **Streamlined Navigation:** Simplified navigation panels to quickly guide users through key actions.
+- **Clearer Asset Information:** Improved placement and labeling of critical information on data asset pages, ensuring immediate understanding.
+- **Enhanced User Profiles:** Restructured user pages for better visibility into profile details and more intuitive management of open tasks.
+
+### Automatically Propagate Collate Metadata into Your Data Platforms (Collate)
+
+Collate already simplifies capturing and managing metadata—tags, descriptions, and ownership—across your entire data ecosystem. But making sure this enriched metadata reaches back into your source systems is equally crucial.
+
+**With the new Reverse Metadata feature, you can:**
+
+- Automatically push centralized metadata from Collate directly back into your databases (MySQL, Postgres), warehouses (Snowflake, BigQuery), and dashboards (e.g., Power BI).
+- Select which assets should synchronize, and your source systems will instantly receive metadata updates in real time.
+
+This seamless, two-way metadata synchronization enables powerful governance use-cases—such as **automating data masking policies in Snowflake based on centrally managed tags**—and turns Collate into a single source of truth at the heart of your end-to-end automated governance strategy.
+
 ## Breaking Changes
 
 ### Removing support for Python 3.8
