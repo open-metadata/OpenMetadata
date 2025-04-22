@@ -30,6 +30,9 @@
         },
         {
           "$ref": "internal/dataRetentionConfiguration.json"
+        },
+        {
+          "$ref": "internal/autoPilotAppConfig.json"
         }
       ]
     },

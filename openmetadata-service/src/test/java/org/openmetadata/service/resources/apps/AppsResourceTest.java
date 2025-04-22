@@ -6,6 +6,8 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -42,7 +44,6 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppConfiguration;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -220,7 +221,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
                         new AccessDetails()
                             .withTimestamp(tableAccessedAt)
                             .withAccessedBy(user.getEntityReference())));
-    tableRepository.createOrUpdate(null, table);
+    tableRepository.createOrUpdate(null, table, ADMIN_USER_NAME);
 
     // Adding the ProfileData for the CostAnalysis Workflow to use it
     tableResourceTest.putTableProfileData(
@@ -317,7 +318,13 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     // -------------------------------------------------
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
-    Request request = new Request("GET", "di-data-assets-*/_search");
+    String clusterAlias = getSearchRepository().getClusterAlias();
+    String endpointSuffix = "di-data-assets-*";
+    String endpoint =
+        !(clusterAlias == null || clusterAlias.isEmpty())
+            ? String.format("%s-%s", clusterAlias, endpointSuffix)
+            : endpointSuffix;
+    Request request = new Request("GET", String.format("%s/_search", endpoint));
     String payload =
         String.format(
             "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}}}",
@@ -356,6 +363,23 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     assertAppStatusAvailableAfterTrigger(appName);
     assertListExtension(appName, AppExtension.ExtensionType.STATUS);
     assertAppRanAfterTriggerWithStatus(appName, AppRunRecord.Status.SUCCESS);
+
+    postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("batchSize", 1234));
+
+    assertEventually(
+        "triggerCustomConfig",
+        () ->
+            Assertions.assertEquals(
+                1234, getLatestAppRun(appName, ADMIN_AUTH_HEADERS).getConfig().get("batchSize")));
+  }
+
+  @Test
+  void post_trigger_app_400() {
+    String appName = "SearchIndexingApplication";
+    assertResponseContains(
+        () -> postTriggerApp(appName, ADMIN_AUTH_HEADERS, Map.of("thisShouldFail", "but will it?")),
+        BAD_REQUEST,
+        "Unrecognized field \"thisShouldFail\"");
   }
 
   private void assertAppStatusAvailableAfterTrigger(String appName) {
@@ -422,7 +446,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             .withAppType(AppType.Internal)
             .withScheduleType(ScheduleType.Scheduled)
             .withRuntime(new ScheduledExecutionContext().withEnabled(true))
-            .withAppConfiguration(new AppConfiguration())
+            .withAppConfiguration(Map.of())
             .withPermission(NativeAppPermission.All)
             .withEventSubscriptions(
                 List.of(
@@ -446,9 +470,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // install app
     CreateApp installApp =
-        new CreateApp()
-            .withName(createRequest.getName())
-            .withAppConfiguration(new AppConfiguration());
+        new CreateApp().withName(createRequest.getName()).withAppConfiguration(Map.of());
     createEntity(installApp, ADMIN_AUTH_HEADERS);
     TestUtils.get(
         getResource(String.format("events/subscriptions/name/%s", subscriptionName)),
@@ -501,6 +523,87 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         String.format("eventsubscription instance for %s not found", subscriptionName));
   }
 
+  @Test
+  void test_data_retention_app_deletes_old_change_events()
+      throws IOException, InterruptedException {
+    // Create database service, database, and schema
+    DatabaseServiceResourceTest databaseServiceResourceTest = new DatabaseServiceResourceTest();
+    DatabaseService databaseService =
+        databaseServiceResourceTest.createEntity(
+            databaseServiceResourceTest
+                .createRequest("RetentionTestService")
+                .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseResourceTest databaseResourceTest = new DatabaseResourceTest();
+    Database database =
+        databaseResourceTest.createEntity(
+            databaseResourceTest
+                .createRequest("retention_test_db")
+                .withService(databaseService.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaResourceTest = new DatabaseSchemaResourceTest();
+    DatabaseSchema schema =
+        schemaResourceTest.createEntity(
+            schemaResourceTest
+                .createRequest("retention_test_schema")
+                .withDatabase(database.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create a new table to work with
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    String tableName = "retention_test_table_" + System.currentTimeMillis();
+
+    Table table =
+        tableResourceTest.createEntity(
+            tableResourceTest
+                .createRequest(tableName)
+                .withDatabaseSchema(schema.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    // Create some change events by updating the table multiple times
+    for (int i = 0; i < 5; i++) {
+      Table updatedTable = JsonUtils.deepCopy(table, Table.class);
+      updatedTable.setDescription("Updated description " + i);
+      tableResourceTest.patchEntity(
+          table.getId(), JsonUtils.pojoToJson(updatedTable), updatedTable, ADMIN_AUTH_HEADERS);
+      table = updatedTable;
+
+      // Add a small delay between updates to ensure they're recorded as separate events
+      Thread.sleep(100);
+    }
+
+    // Wait a moment for change events to be processed
+    Thread.sleep(1000);
+
+    // Trigger the Data Retention application
+    postTriggerApp("DataRetentionApplication", ADMIN_AUTH_HEADERS);
+
+    // Wait for the app to complete
+    Thread.sleep(5000);
+
+    // Assert the app status is available after trigger
+    assertAppStatusAvailableAfterTrigger("DataRetentionApplication");
+
+    // Assert the app ran with SUCCESS status
+    assertAppRanAfterTriggerWithStatus("DataRetentionApplication", AppRunRecord.Status.SUCCESS);
+
+    // Get the latest run record to check statistics
+    AppRunRecord latestRun = getLatestAppRun("DataRetentionApplication", ADMIN_AUTH_HEADERS);
+    Assertions.assertNotNull(latestRun);
+
+    // Check whether successContext is not null
+    Assertions.assertNotNull(latestRun.getSuccessContext());
+
+    // Clean up - delete the test entities
+    tableResourceTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
+    schemaResourceTest.deleteEntity(schema.getId(), true, true, ADMIN_AUTH_HEADERS);
+    databaseResourceTest.deleteEntity(database.getId(), true, true, ADMIN_AUTH_HEADERS);
+    databaseServiceResourceTest.deleteEntity(
+        databaseService.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
   @Override
   public void validateCreatedEntity(
       App createdEntity, CreateApp request, Map<String, String> authHeaders)
@@ -543,8 +646,15 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
   private void postTriggerApp(String appName, Map<String, String> authHeaders)
       throws HttpResponseException {
+    postTriggerApp(appName, authHeaders, Map.of());
+  }
+
+  private void postTriggerApp(
+      String appName, Map<String, String> authHeaders, Map<String, Object> config)
+      throws HttpResponseException {
     WebTarget target = getResource("apps/trigger").path(appName);
-    Response response = SecurityUtil.addHeaders(target, authHeaders).post(null);
+    Response response =
+        SecurityUtil.addHeaders(target, authHeaders).post(javax.ws.rs.client.Entity.json(config));
     readResponse(response, OK.getStatusCode());
   }
 

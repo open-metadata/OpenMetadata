@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Pipeline entity request
  */
 export interface CreatePipeline {
@@ -77,6 +75,10 @@ export interface CreatePipeline {
      * Start date of the workflow
      */
     startDate?: Date;
+    /**
+     * State of the pipeline.
+     */
+    state?: PipelineState;
     /**
      * Tags for this Pipeline.
      */
@@ -187,6 +189,16 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * State of the pipeline.
+ *
+ * Enum defining the possible Pipeline State.
+ */
+export enum PipelineState {
+    Active = "Active",
+    Inactive = "Inactive",
 }
 
 /**

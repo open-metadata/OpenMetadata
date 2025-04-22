@@ -65,6 +65,19 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
+jest.mock('../../../utils/AdvancedSearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getURLSearchParams: jest.fn().mockReturnValue({}),
+    getQueryFilters: jest.fn().mockReturnValue({}),
+    buildQueryFilter: jest.fn().mockReturnValue({}),
+    createQueryFilter: jest.fn().mockReturnValue({}),
+    handleAdvanceSearchClick: jest.fn(),
+    autocomplete: jest.fn(),
+    getQbConfigs: jest.fn().mockReturnValue({}),
+  },
+}));
+
 const Children = () => {
   const { toggleModal, onResetAllFilters } = useAdvanceSearch();
 

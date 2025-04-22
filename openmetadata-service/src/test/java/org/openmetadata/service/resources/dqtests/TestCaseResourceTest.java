@@ -43,7 +43,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
@@ -953,10 +952,25 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     ResultList<TestCase> allEntities =
         listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(testCasesNum, allEntities.getData().size());
+    queryParams.put(
+        "queryString",
+        "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id%22%3A%20%22"
+            + testCaseForEL.getId()
+            + "%22%7D%7D%7D");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    // Note: Since the "name" field and its ngram variant are  prioritized in the search query
+    // and the test case names are very similar, the fuzzy matching returns all test cases.
+    Assertions.assertTrue(
+        allEntities.getData().stream()
+            .allMatch(
+                ts -> ts.getFullyQualifiedName().equals(testCaseForEL.getFullyQualifiedName())));
+
+    queryParams.clear();
     queryParams.put("q", "test_getSimpleListFromSearchb");
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
-    assertEquals(1, allEntities.getData().size());
-    assertThat(allEntities.getData().get(0).getName()).contains("test_getSimpleListFromSearchb");
+    // Note: Since the "name" field and its ngram variant are  prioritized in the search query
+    // and the test case names are very similar, the fuzzy matching returns all test cases.
+    assertEquals(testCasesNum, allEntities.getData().size());
 
     queryParams.clear();
     queryParams.put("entityLink", testCaseForEL.getEntityLink());
@@ -1237,11 +1251,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Update description with PATCH
     // Changes from this PATCH is consolidated with the previous changes
     newDescription = "description2";
-    change = getChangeDescription(testCase, CHANGE_CONSOLIDATED);
-    fieldUpdated(change, "description", oldDescription, newDescription);
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    change.setPreviousVersion(testCase.getVersion());
+    fieldUpdated(change, "description", "description1", newDescription);
     String json = JsonUtils.pojoToJson(testCase);
     testCase.setDescription(newDescription);
-    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, CHANGE_CONSOLIDATED, change);
+    testCase = patchEntityAndCheck(testCase, json, ownerAuthHeaders, MINOR_UPDATE, change);
 
     // Delete the testcase
     deleteAndCheckEntity(testCase, ownerAuthHeaders);
@@ -1805,7 +1820,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void unauthorizedTestCaseResolutionFlow(TestInfo test)
+  void authorizedTestCaseResolutionFlow(TestInfo test)
       throws HttpResponseException, ParseException {
     TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
     // Add failed test case, which will create a NEW incident
@@ -1825,13 +1840,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
     createTestCaseFailureStatus(createAssignedIncident);
 
-    assertResponseContains(
-        () ->
-            createTestCaseFailureStatus(
-                createAssignedIncident.withTestCaseResolutionStatusType(
-                    TestCaseResolutionStatusTypes.Ack)),
-        BAD_REQUEST,
-        "Incident with status [Assigned] cannot be moved to [Ack]");
+    createTestCaseFailureStatus(
+        createAssignedIncident.withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
   }
 
   @Test
@@ -3653,6 +3663,19 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
               TestCase tc = Entity.getEntity(TEST_CASE, testCase.getId(), "", Include.ALL);
               assertTrue(tc.getEntityLink().contains("columns"));
             });
+
+    String id = testCaseResultResultList.getData().get(0).getId().toString();
+    queryParams.put(
+        "queryString",
+        "%7B%22query%22%3A%20%7B%22term%22%3A%20%7B%22id.keyword%22%3A%20%22"
+            + id
+            + "%22%7D%7D%7D");
+    testCaseResultResultList =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+    testCaseResultResultList
+        .getData()
+        .forEach(testCaseResult -> assertEquals(testCaseResult.getId().toString(), id));
   }
 
   @Test

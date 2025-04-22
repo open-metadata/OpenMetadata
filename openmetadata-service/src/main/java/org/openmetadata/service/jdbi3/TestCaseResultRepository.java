@@ -221,7 +221,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
 
     EntityRepository.EntityUpdater entityUpdater =
-        testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH);
+        testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
     entityUpdater.update();
     updateTestSuiteSummary(updated);
   }
@@ -257,7 +257,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                         .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
           }
           EntityRepository.EntityUpdater entityUpdater =
-              testSuiteRepository.getUpdater(original, testSuite, EntityRepository.Operation.PATCH);
+              testSuiteRepository.getUpdater(
+                  original, testSuite, EntityRepository.Operation.PATCH, null);
           entityUpdater.update();
         }
       }

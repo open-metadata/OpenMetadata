@@ -21,7 +21,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -33,6 +33,7 @@ import {
   getDomainList,
   patchDomains,
 } from '../../rest/domainAPI';
+import i18n from '../../utils/i18next/LocalUtil';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -43,8 +44,8 @@ import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
 
 const DomainPage = () => {
-  const { t } = useTranslation();
   const { fqn: domainFqn } = useFqn();
+  const { t } = useTranslation();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
   const { domains, updateDomains, domainLoading, updateDomainLoading } =
@@ -64,7 +65,7 @@ const DomainPage = () => {
         fields: 'parent',
       });
       updateDomains(data);
-    } catch (error) {
+    } catch {
       // silent fail
     } finally {
       updateDomainLoading(false);
@@ -134,6 +135,7 @@ const DomainPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.PARENT,
           TabSpecificField.EXPERTS,
+          TabSpecificField.TAGS,
         ],
       });
       setActiveDomain(data);
@@ -185,7 +187,8 @@ const DomainPage = () => {
     return (
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
-          className="mt-0-important"
+          className="mt-0-important border-none"
+          size={SIZE.X_LARGE}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
       </div>
@@ -197,9 +200,10 @@ const DomainPage = () => {
       <div className="d-flex justify-center items-center full-height">
         <ErrorPlaceHolder
           buttonId="add-domain"
-          className="mt-0-important"
+          className="mt-0-important border-none"
           heading={t('label.domain')}
           permission={createDomainPermission}
+          size={SIZE.X_LARGE}
           type={
             createDomainPermission
               ? ERROR_PLACEHOLDER_TYPE.CREATE
@@ -213,25 +217,24 @@ const DomainPage = () => {
   }
 
   return (
-    <div className="m--t-sm">
-      <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          minWidth: 280,
-          flex: 0.13,
-          children: <DomainsLeftPanel domains={rootDomains} />,
-        }}
-        pageTitle={t('label.domain')}
-        secondPanel={{
-          children: domainPageRender,
-          className: 'content-resizable-panel-container p-t-sm',
-          minWidth: 800,
-          flex: 0.87,
-        }}
-      />
-    </div>
+    <ResizableLeftPanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        minWidth: 280,
+        flex: 0.13,
+        title: t('label.domain-plural'),
+        children: <DomainsLeftPanel domains={rootDomains} />,
+      }}
+      pageTitle={t('label.domain')}
+      secondPanel={{
+        children: domainPageRender,
+        className: 'content-resizable-panel-container',
+        minWidth: 800,
+        flex: 0.87,
+      }}
+    />
   );
 };
 
-export default withPageLayout('domain')(DomainPage);
+export default withPageLayout(i18n.t('label.domain'))(DomainPage);

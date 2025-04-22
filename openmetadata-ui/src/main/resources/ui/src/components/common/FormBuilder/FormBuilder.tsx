@@ -26,6 +26,7 @@ import DescriptionFieldTemplate from '../Form/JSONSchema/JSONSchemaTemplate/Desc
 import { FieldErrorTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import { ObjectFieldTemplate } from '../Form/JSONSchema/JSONSchemaTemplate/ObjectFieldTemplate';
 import AsyncSelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/AsyncSelectWidget';
+import CodeWidget from '../Form/JSONSchema/JsonSchemaWidgets/CodeWidget/CodeWidget';
 import PasswordWidget from '../Form/JSONSchema/JsonSchemaWidgets/PasswordWidget';
 import QueryBuilderWidget from '../Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import SelectWidget from '../Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
@@ -76,6 +77,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
       PasswordWidget: PasswordWidget,
       autoComplete: AsyncSelectWidget,
       queryBuilder: QueryBuilderWidget,
+      code: CodeWidget,
       ...(useSelectWidget && { SelectWidget: SelectWidget }),
     };
 

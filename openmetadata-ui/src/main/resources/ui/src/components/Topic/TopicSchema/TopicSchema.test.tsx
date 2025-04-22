@@ -27,18 +27,47 @@ import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
-const mockOnUpdate = jest.fn();
+const mockProps: TopicSchemaFieldsProps = {};
 
-const mockProps: TopicSchemaFieldsProps = {
-  messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
-  hasDescriptionEditAccess: true,
-  isReadOnly: false,
-  onUpdate: mockOnUpdate,
-  hasTagEditAccess: true,
-  hasGlossaryTermEditAccess: true,
-  entityFqn: 'topic.fqn',
-  onThreadLinkSelect: jest.fn(),
-};
+jest.mock('../../Database/TableDescription/TableDescription.component', () =>
+  jest.fn().mockImplementation(({ onClick, isReadOnly }) => (
+    <div data-testid="table-description">
+      Table Description
+      {!isReadOnly && (
+        <button data-testid="edit-button" onClick={onClick}>
+          Edit
+        </button>
+      )}
+    </div>
+  ))
+);
+
+jest.mock('../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+      expandable ? (
+        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
+          ExpandIcon
+        </button>
+      ) : null
+    ),
+  })),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  handleUpdateTableColumnSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+}));
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="description-preview">Description Preview</div>
+    )
+);
 
 jest.mock('../../../utils/TagsUtils', () => ({
   getAllTagsList: jest.fn().mockImplementation(() => Promise.resolve([])),
@@ -91,6 +120,41 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
     ))
 );
 
+const mockOnUpdate = jest.fn();
+const mockTopicDetails = {
+  columns: [],
+  displayName: 'test-display-name',
+  description: 'test-description',
+  tags: [],
+  owner: 'test-owner',
+  deleted: false,
+  service: {
+    id: 'test-service-id',
+    name: 'test-service-name',
+    displayName: 'test-service-display-name',
+    description: 'test-service-description',
+    tags: [],
+    owner: 'test-owner',
+  },
+  messageSchema: MESSAGE_SCHEMA as Topic['messageSchema'],
+};
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockTopicDetails,
+    isVersionView: false,
+    permissions: {
+      EditAll: true,
+    },
+    onUpdate: mockOnUpdate,
+    type: 'topic',
+  })),
+}));
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue('test-fqn'),
+}));
+
 describe('Topic Schema', () => {
   it('Should render the schema component', async () => {
     render(<TopicSchema {...mockProps} />);
@@ -107,7 +171,7 @@ describe('Topic Schema', () => {
 
     const name = await findByText(row1, 'Order');
     const dataType = await findByText(row1, 'RECORD');
-    const description = await findByText(row1, 'Description Preview');
+    const description = await findByText(row1, 'Table Description');
     const tagsContainer = await findAllByTestId(row1, 'table-tag-container');
 
     expect(name).toBeInTheDocument();
@@ -162,9 +226,8 @@ describe('Topic Schema', () => {
   });
 
   it('Should not render the edit action if isReadOnly', async () => {
-    render(
-      <TopicSchema {...mockProps} isReadOnly hasDescriptionEditAccess={false} />
-    );
+    mockTopicDetails.deleted = true;
+    render(<TopicSchema {...mockProps} />);
 
     const rows = await screen.findAllByRole('row');
 

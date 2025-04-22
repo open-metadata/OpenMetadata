@@ -121,6 +121,7 @@ const TagsV1 = ({
           ) : (
             startIcon
           )}
+
           <Typography.Paragraph
             ellipsis
             className="m-0 tags-label"

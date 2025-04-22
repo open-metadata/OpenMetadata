@@ -36,7 +36,8 @@ public class EventSubscriptionMapper
         .withClassName(
             validateConsumerClass(
                 Optional.ofNullable(create.getClassName())
-                    .orElse(AlertPublisher.class.getCanonicalName())));
+                    .orElse(AlertPublisher.class.getCanonicalName())))
+        .withConfig(create.getConfig());
   }
 
   private String validateConsumerClass(String className) {

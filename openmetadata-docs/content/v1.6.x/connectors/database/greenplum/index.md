@@ -7,7 +7,7 @@ slug: /connectors/database/greenplum
 name="Greenplum"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "Sample Data"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
 / %}
 
@@ -23,6 +23,7 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 - [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-greenplum-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/greenplum/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/greenplum/yaml"} /%}
 
@@ -161,7 +162,5 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

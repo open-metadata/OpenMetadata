@@ -18,7 +18,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
-import ActivityFeedProvider from '../../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
+import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -39,9 +39,11 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
+import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
 
@@ -242,65 +244,64 @@ const IncidentManagerDetailPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle="Incident Manager Detail Page">
-      <ActivityFeedProvider>
-        <Row
-          data-testid="incident-manager-details-page-container"
-          gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
-            <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
-          </Col>
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
-            <Row gutter={16}>
-              <Col span={23}>
-                <EntityHeaderTitle
-                  className="w-max-full-45"
-                  displayName={testCase?.displayName}
-                  icon={<TestCaseIcon className="h-9" />}
-                  name={testCase?.name ?? ''}
-                  serviceName="testCase"
-                />
-              </Col>
-              <Col className="d-flex justify-end" span={1}>
-                <ManageButton
-                  isRecursiveDelete
-                  afterDeleteAction={() =>
-                    history.push(ROUTES.INCIDENT_MANAGER)
-                  }
-                  allowSoftDelete={false}
-                  canDelete={hasDeletePermission}
-                  displayName={testCase.displayName}
-                  editDisplayNamePermission={editDisplayNamePermission}
-                  entityFQN={testCase.fullyQualifiedName}
-                  entityId={testCase.id}
-                  entityName={testCase.name}
-                  entityType={EntityType.TEST_CASE}
-                  onEditDisplayName={handleDisplayNameChange}
-                />
-              </Col>
-            </Row>
-          </Col>
-          <Col className="p-x-lg">
-            <IncidentManagerPageHeader
-              fetchTaskCount={getEntityFeedCount}
-              testCaseData={testCase}
-              onOwnerUpdate={handleOwnerChange}
-            />
-          </Col>
-          <Col span={24}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="entity-details-page-tabs"
-              data-testid="tabs"
-              items={tabDetails}
-              onChange={handleTabChange}
-            />
-          </Col>
-        </Row>
-      </ActivityFeedProvider>
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: getEntityName(testCase) || t('label.test-case'),
+      })}>
+      <Row
+        data-testid="incident-manager-details-page-container"
+        gutter={[0, 12]}>
+        <Col span={24}>
+          <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
+        </Col>
+        <Col data-testid="entity-page-header" span={24}>
+          <Row gutter={16}>
+            <Col span={23}>
+              <EntityHeaderTitle
+                className="w-max-full-45"
+                displayName={testCase?.displayName}
+                icon={<TestCaseIcon className="h-9" />}
+                name={testCase?.name ?? ''}
+                serviceName="testCase"
+              />
+            </Col>
+            <Col className="d-flex justify-end" span={1}>
+              <ManageButton
+                isRecursiveDelete
+                afterDeleteAction={() => history.push(ROUTES.INCIDENT_MANAGER)}
+                allowSoftDelete={false}
+                canDelete={hasDeletePermission}
+                displayName={testCase.displayName}
+                editDisplayNamePermission={editDisplayNamePermission}
+                entityFQN={testCase.fullyQualifiedName}
+                entityId={testCase.id}
+                entityName={testCase.name}
+                entityType={EntityType.TEST_CASE}
+                onEditDisplayName={handleDisplayNameChange}
+              />
+            </Col>
+          </Row>
+        </Col>
+        <Col className="w-full">
+          <IncidentManagerPageHeader
+            fetchTaskCount={getEntityFeedCount}
+            testCaseData={testCase}
+            onOwnerUpdate={handleOwnerChange}
+          />
+        </Col>
+        <Col className="incident-manager-details-tabs" span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="tabs-new"
+            data-testid="tabs"
+            items={tabDetails}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
     </PageLayoutV1>
   );
 };
 
-export default IncidentManagerDetailPage;
+export default withActivityFeed(IncidentManagerDetailPage);

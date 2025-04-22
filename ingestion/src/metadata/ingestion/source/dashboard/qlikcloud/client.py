@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -29,6 +29,8 @@ from metadata.ingestion.source.dashboard.qlikcloud.constants import (
 from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikApp,
     QlikAppResponse,
+    QlikSpace,
+    QlikSpaceResponse,
 )
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDataModelResult,
@@ -59,7 +61,7 @@ class QlikCloudClient:
         self.socket_connection = None
 
         client_config: ClientConfig = ClientConfig(
-            base_url=str(self.config.hostPort),
+            base_url=clean_uri(self.config.hostPort),
             api_version=API_VERSION,
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (self.config.token.get_secret_value(), 0),
@@ -105,7 +107,7 @@ class QlikCloudClient:
 
     def get_dashboard_charts(self, dashboard_id: str) -> List[QlikSheet]:
         """
-        Get dahsboard chart list
+        Get dashboard chart list
         """
         try:
             self.connect_websocket(dashboard_id)
@@ -164,7 +166,7 @@ class QlikCloudClient:
 
     def get_dashboard_models(self) -> List[QlikTable]:
         """
-        Get dahsboard data models
+        Get dashboard data models
         """
         try:
             self._websocket_send_request(APP_LOADMODEL_REQ)
@@ -181,3 +183,24 @@ class QlikCloudClient:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard datamodels")
         return []
+
+    def get_projects_list(self) -> Iterable[QlikSpace]:
+        """
+        Get list of all spaces
+        """
+        try:
+            link = f"/v1/spaces?limit={API_LIMIT}"
+            while True:
+                resp_spaces = self.client.get(link)
+                if resp_spaces:
+                    resp = QlikSpaceResponse(**resp_spaces)
+                    yield from resp.spaces
+                    if resp.links and resp.links.next and resp.links.next.href:
+                        link = resp.links.next.href.replace(
+                            f"{self.config.hostPort}{API_VERSION}", ""
+                        )
+                    else:
+                        break
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the space list")

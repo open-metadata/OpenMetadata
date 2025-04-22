@@ -23,7 +23,6 @@ import { Operation } from '../../generated/entity/policies/accessControl/resourc
 import { TeamType } from '../../generated/entity/teams/team';
 import AddNotificationPage from '../../pages/AddNotificationPage/AddNotificationPage';
 import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
-import AlertsActivityFeedPage from '../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage';
 import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
@@ -51,7 +50,7 @@ import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/Pro
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
-import SearchRBACSettingsPage from '../../pages/SearchRBACSettingsPage/SearchRBACSettingsPage';
+import SearchSettingsPage from '../../pages/SearchSettingsPage/SearchSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
@@ -62,6 +61,7 @@ import {
   getSettingPath,
   getTeamsWithFqnPath,
 } from '../../utils/RouterUtils';
+import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
@@ -262,10 +262,20 @@ const SettingsRouter = () => {
 
       <AdminProtectedRoute
         exact
-        component={SearchRBACSettingsPage}
+        component={SearchSettingsPage}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.SEARCH_RBAC
+          GlobalSettingOptions.SEARCH_SETTINGS
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={EntitySearchSettings}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_SETTINGS,
+          true
         )}
       />
 
@@ -362,16 +372,6 @@ const SettingsRouter = () => {
         exact
         component={ServicesPage}
         path={getSettingCategoryPath(GlobalSettingsMenuCategory.SERVICES)}
-      />
-
-      <AdminProtectedRoute
-        exact
-        component={AlertsActivityFeedPage}
-        hasPermission={false}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ACTIVITY_FEED
-        )}
       />
 
       <AdminProtectedRoute

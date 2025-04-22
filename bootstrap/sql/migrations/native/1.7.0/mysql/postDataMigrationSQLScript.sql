@@ -1,7 +1,17 @@
-UPDATE workflow_definition_entity
-SET json = JSON_SET(json, '$.trigger.type', 'eventBasedEntity')
-WHERE JSON_EXTRACT(json, '$.trigger.type') = 'eventBasedEntityTrigger';
+UPDATE test_case
+SET json = json_set(json, '$.createdBy', json->>'$.updatedBy')
+WHERE json->>'$.createdBy' IS NULL;
 
-UPDATE workflow_definition_entity
-SET json = JSON_SET(json, '$.trigger.type', 'periodicBatchEntity')
-WHERE JSON_EXTRACT(json, '$.trigger.type') = 'periodicBatchEntityTrigger';
+-- Made httpPath a required field for Databricks, updating records 
+-- where httpPath is NULL or missing to an empty string.
+UPDATE
+    dbservice_entity
+SET
+    json = JSON_SET(json, '$.connection.config.httpPath', '')
+WHERE
+    serviceType = 'Databricks'
+    AND (
+        JSON_CONTAINS_PATH(json, 'one', '$.connection.config.httpPath') = 0
+        OR JSON_UNQUOTE(json ->> '$.connection.config.httpPath') IS NULL
+        OR json ->> '$.connection.config.httpPath' = 'null'
+    );

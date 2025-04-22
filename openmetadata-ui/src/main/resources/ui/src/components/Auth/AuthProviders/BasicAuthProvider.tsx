@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import React, { createContext, ReactNode, useContext, useState } from 'react';
+import React, { createContext, ReactNode, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
@@ -39,6 +39,7 @@ import {
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
 import { toLower } from 'lodash';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import { extractDetailsFromToken } from '../../../utils/AuthProvider.util';
 import {
   getOidcToken,
@@ -60,7 +61,6 @@ interface InitialContext {
   handleForgotPassword: (email: string) => Promise<void>;
   handleResetPassword: (payload: PasswordResetRequest) => Promise<void>;
   handleLogout: () => void;
-  loginError?: string | null;
 }
 
 /**
@@ -90,13 +90,10 @@ const BasicAuthProvider = ({
   onLoginFailure,
 }: BasicAuthProps) => {
   const { t } = useTranslation();
-
-  const [loginError, setLoginError] = useState<string | null>(null);
   const history = useHistory();
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      setLoginError(null);
       try {
         const response = await basicAuthSignIn({
           email,
@@ -124,7 +121,7 @@ const BasicAuthProvider = ({
       } catch (error) {
         const err = error as AxiosError<{ code: number; message: string }>;
 
-        setLoginError(err.response?.data.message || LOGIN_FAILED_ERROR);
+        showErrorToast(err.response?.data.message ?? LOGIN_FAILED_ERROR);
         onLoginFailure();
       }
     } catch (err) {
@@ -181,6 +178,8 @@ const BasicAuthProvider = ({
       try {
         await logoutUser({ token, refreshToken });
         setOidcToken('');
+        setRefreshToken('');
+        TokenService.getInstance().clearRefreshInProgress();
         history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -194,7 +193,6 @@ const BasicAuthProvider = ({
     handleForgotPassword,
     handleResetPassword,
     handleLogout,
-    loginError,
   };
 
   return (

@@ -127,6 +127,7 @@ class TokenService {
   // Clear the refresh flag (used after refresh is complete)
   clearRefreshInProgress() {
     localStorage.removeItem(REFRESH_IN_PROGRESS_KEY);
+    localStorage.removeItem(REFRESHED_KEY);
   }
 
   // Check if a refresh is already in progress (used by other tabs)

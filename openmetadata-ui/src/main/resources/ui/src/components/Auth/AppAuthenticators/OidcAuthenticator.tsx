@@ -115,6 +115,9 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       // eslint-disable-next-line no-console
       console.error(error);
 
+      // Clear the refresh token in progress flag
+      // Since refresh token request completes with a callback
+      TokenService.getInstance().clearRefreshInProgress();
       onLogoutSuccess();
       history.push(ROUTES.SIGNIN);
     };

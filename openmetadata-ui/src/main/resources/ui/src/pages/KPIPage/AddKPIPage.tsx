@@ -27,7 +27,6 @@ import {
 } from 'antd';
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { t } from 'i18next';
 import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -35,6 +34,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ADD_KPI_BREADCRUMB } from '../../constants/Breadcrumb.constants';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -43,13 +43,12 @@ import {
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
-import {
-  getDataInsightPathWithFqn,
-  getDisabledDates,
-} from '../../utils/DataInsightUtils';
+import { getDisabledDates } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -59,25 +58,9 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
 
-const breadcrumb = [
-  {
-    name: t('label.data-insight'),
-    url: getDataInsightPathWithFqn(),
-  },
-  {
-    name: t('label.kpi-list'),
-    url: ROUTES.KPI_LIST,
-  },
-  {
-    name: t('label.add-new-entity', { entity: t('label.kpi-uppercase') }),
-    url: '',
-    activeTitle: true,
-  },
-];
-
 const AddKPIPage = () => {
-  const { t } = useTranslation();
   const history = useHistory();
+  const { t } = useTranslation();
   const [form] = useForm<KPIFormValues>();
 
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
@@ -195,11 +178,14 @@ const AddKPIPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-kpi-container">
-            <TitleBreadcrumb className="my-4" titleLinks={breadcrumb} />
+          <div data-testid="add-kpi-container">
+            <TitleBreadcrumb
+              className="m-t-0 my-4"
+              titleLinks={ADD_KPI_BREADCRUMB}
+            />
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
@@ -412,7 +398,7 @@ const AddKPIPage = () => {
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </div>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}
@@ -420,4 +406,8 @@ const AddKPIPage = () => {
   );
 };
 
-export default AddKPIPage;
+export default withPageLayout(
+  i18n.t('label.add-new-entity', {
+    entity: i18n.t('label.kpi-uppercase'),
+  })
+)(AddKPIPage);

@@ -69,6 +69,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -423,6 +424,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
@@ -449,6 +453,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
@@ -536,6 +543,32 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTeamAsync",
+      summary = "Asynchronously delete a team by id",
+      description = "Asynchronously delete a team by given `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Recursively delete this team and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteTeamByName",
@@ -609,7 +642,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
-    return exportCsvInternalAsync(securityContext, name);
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -630,7 +663,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -661,7 +694,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -683,6 +716,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context SecurityContext securityContext,
       @PathParam("teamId") UUID teamId,
       List<EntityReference> users) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
         .toResponse();
@@ -713,6 +749,9 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Parameter(description = "Id of the user being removed", schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_USERS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .deleteTeamUser(
             securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
@@ -747,6 +786,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 }

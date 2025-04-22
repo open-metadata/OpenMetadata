@@ -30,7 +30,7 @@ import useCustomLocation from '../useCustomLocation/useCustomLocation';
 
 interface CursorState {
   cursorType: CursorType | null;
-  cursorValue: string | null;
+  cursorValue?: string;
 }
 
 interface PagingHistoryStateData {

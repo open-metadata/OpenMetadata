@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Sets the GlossaryTerm Status to the configured value.
  */
 export interface SetGlossaryTermStatusTask {
-    config?: Config;
+    config?: NodeConfiguration;
     /**
      * Description of the Node.
      */
@@ -24,8 +22,9 @@ export interface SetGlossaryTermStatusTask {
     /**
      * Display Name that identifies this Node.
      */
-    displayName?: string;
-    input?:       string[];
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
     /**
      * Name that identifies this Node.
      */
@@ -35,14 +34,25 @@ export interface SetGlossaryTermStatusTask {
     [property: string]: any;
 }
 
-export interface Config {
-    glossaryTermStatus?: Status;
+export interface NodeConfiguration {
+    /**
+     * Choose which Status to apply to the Glossary Term
+     */
+    glossaryTermStatus: Status;
 }
 
+/**
+ * Choose which Status to apply to the Glossary Term
+ */
 export enum Status {
     Approved = "Approved",
     Deprecated = "Deprecated",
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+}
+
+export interface InputNamespaceMap {
+    relatedEntity: string;
+    updatedBy?:    string;
 }

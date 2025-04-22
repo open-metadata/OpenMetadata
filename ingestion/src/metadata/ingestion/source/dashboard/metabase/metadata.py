@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
     MetabaseConnection,
 )
@@ -42,9 +43,8 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.metabase.models import (
@@ -56,6 +56,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DASHBAORD
 from metadata.utils.filters import filter_by_chart
+from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     clean_uri,
     get_standard_chart_type,
@@ -285,15 +286,13 @@ class MetabaseSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: MetabaseDashboardDetails,
-        db_service_name: Optional[str],
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """Get lineage method
 
         Args:
             dashboard_details
         """
-        if not db_service_name:
-            return
         chart_ids, dashboard_name = (
             dashboard_details.card_ids,
             str(dashboard_details.id),
@@ -333,11 +332,17 @@ class MetabaseSource(DashboardServiceSource):
                     )
                 )
 
-    def _get_database_service(self, db_service_name: str):
+    def _get_database_service(self, db_service_name: Optional[str]):
+        if not db_service_name:
+            return None
         return self.metadata.get_by_name(DatabaseService, db_service_name)
 
+    # pylint: disable=too-many-locals
     def _yield_lineage_from_query(
-        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
+        self,
+        chart_details: MetabaseChart,
+        db_service_name: Optional[str],
+        dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         database = self.client.get_database(chart_details.database_id)
 
@@ -360,20 +365,23 @@ class MetabaseSource(DashboardServiceSource):
             query,
             ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
             if db_service
-            else None,
+            else Dialect.ANSI,
         )
 
         for table in lineage_parser.source_tables:
             database_schema_name, table = fqn.split(str(table))[-2:]
             database_schema_name = self.check_database_schema_name(database_schema_name)
-            from_entities = search_table_entities(
-                metadata=self.metadata,
-                database=database_name,
-                service_name=db_service_name,
-                database_schema=database_schema_name,
-                table=table,
+            fqn_search_string = build_es_fqn_search_string(
+                database_name=database_name,
+                schema_name=database_schema_name,
+                service_name=db_service_name or "*",
+                table_name=table,
             )
-
+            from_entities = self.metadata.search_in_any_service(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+                fetch_multiple_entities=True,
+            )
             to_fqn = fqn.build(
                 self.metadata,
                 entity_type=LineageDashboard,
@@ -385,13 +393,16 @@ class MetabaseSource(DashboardServiceSource):
                 fqn=to_fqn,
             )
 
-            for from_entity in from_entities:
+            for from_entity in from_entities or []:
                 yield self._get_add_lineage_request(
                     to_entity=to_entity, from_entity=from_entity
                 )
 
     def _yield_lineage_from_api(
-        self, chart_details: MetabaseChart, db_service_name: str, dashboard_name: str
+        self,
+        chart_details: MetabaseChart,
+        db_service_name: Optional[str],
+        dashboard_name: str,
     ) -> Iterable[Either[AddLineageRequest]]:
         table = self.client.get_table(chart_details.table_id)
         table_name = table.name or table.display_name
@@ -400,14 +411,17 @@ class MetabaseSource(DashboardServiceSource):
             return
 
         database_name = table.db.details.db if table.db and table.db.details else None
-        from_entities = search_table_entities(
-            metadata=self.metadata,
-            database=database_name,
-            service_name=db_service_name,
-            database_schema=table.table_schema,
-            table=table_name,
+        fqn_search_string = build_es_fqn_search_string(
+            database_name=database_name,
+            schema_name=table.table_schema,
+            service_name=db_service_name or "*",
+            table_name=table_name,
         )
-
+        from_entities = self.metadata.search_in_any_service(
+            entity_type=Table,
+            fqn_search_string=fqn_search_string,
+            fetch_multiple_entities=True,
+        )
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -420,7 +434,7 @@ class MetabaseSource(DashboardServiceSource):
             fqn=to_fqn,
         )
 
-        for from_entity in from_entities:
+        for from_entity in from_entities or []:
             yield self._get_add_lineage_request(
                 to_entity=to_entity, from_entity=from_entity
             )

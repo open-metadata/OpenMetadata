@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -69,6 +69,9 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.snowflake.constants import (
+    DEFAULT_STREAM_COLUMNS,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
     SnowflakeStoredProcedure,
@@ -86,6 +89,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_STORED_PROCEDURES,
+    SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
@@ -96,6 +100,9 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_pk_constraint,
     get_schema_columns,
     get_schema_foreign_keys,
+    get_stream_definition,
+    get_stream_names,
+    get_stream_names_reflection,
     get_table_comment,
     get_table_ddl,
     get_table_names,
@@ -109,12 +116,17 @@ from metadata.ingestion.source.database.snowflake.utils import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_comments,
+    get_all_table_ddls,
+    get_all_view_definitions,
+)
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 ischema_names["VARIANT"] = VARIANT
 ischema_names["GEOGRAPHY"] = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
+ischema_names["VECTOR"] = create_sqlalchemy_type("VECTOR")
 
 logger = ingestion_logger()
 
@@ -122,9 +134,11 @@ logger = ingestion_logger()
 SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
 SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
+SnowflakeDialect.get_stream_names = get_stream_names
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
+SnowflakeDialect.get_all_view_definitions = get_all_view_definitions
 SnowflakeDialect.get_view_definition = get_view_definition
 SnowflakeDialect.get_unique_constraints = get_unique_constraints
 SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
@@ -132,6 +146,7 @@ SnowflakeDialect._get_schema_columns = (  # pylint: disable=protected-access
 )
 Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
+Inspector.get_stream_names = get_stream_names_reflection
 SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-access
     _current_database_schema
 )
@@ -140,6 +155,7 @@ SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
+Inspector.get_stream_definition = get_stream_definition
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
@@ -303,9 +319,11 @@ class SnowflakeSource(
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -418,6 +436,7 @@ class SnowflakeSource(
                     SNOWFLAKE_FETCH_ALL_TAGS.format(
                         database_name=self.context.get().database,
                         schema_name=schema_name,
+                        account_usage=self.service_connection.accountUsageSchema,
                     )
                 )
 
@@ -431,6 +450,7 @@ class SnowflakeSource(
                         SNOWFLAKE_FETCH_ALL_TAGS.format(
                             database_name=f'"{self.context.get().database}"',
                             schema_name=f'"{self.context.get().database_schema}"',
+                            account_usage=self.service_connection.accountUsageSchema,
                         )
                     )
                 except Exception as inner_exc:
@@ -455,6 +475,8 @@ class SnowflakeSource(
                     classification_name=row[0],
                     tag_description="SNOWFLAKE TAG VALUE",
                     classification_description="SNOWFLAKE TAG NAME",
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
     def _get_table_names_and_types(
@@ -492,6 +514,33 @@ class SnowflakeSource(
             for table in snowflake_tables.get_not_deleted()
         ]
 
+    def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
+        table_type = TableType.Stream
+
+        snowflake_streams = self.inspector.get_stream_names(
+            schema=schema_name,
+            incremental=self.incremental,
+        )
+
+        self.context.get_global().deleted_tables.extend(
+            [
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=schema_name,
+                    table_name=stream.name,
+                )
+                for stream in snowflake_streams.get_deleted()
+            ]
+        )
+
+        return [
+            TableNameAndType(name=stream.name, type_=table_type)
+            for stream in snowflake_streams.get_not_deleted()
+        ]
+
     def query_table_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
@@ -519,6 +568,9 @@ class SnowflakeSource(
                     schema_name, table_type=TableType.Transient
                 )
             )
+
+        if self.service_connection.includeStreams:
+            table_list.extend(self._get_stream_names_and_types(schema_name))
 
         return table_list
 
@@ -635,6 +687,7 @@ class SnowflakeSource(
             query.format(
                 database_name=self.context.get().database,
                 schema_name=self.context.get().database_schema,
+                account_usage=self.service_connection.accountUsageSchema,
             )
         ).all()
         for row in results:
@@ -746,3 +799,86 @@ class SnowflakeSource(
                 )
         else:
             yield from super().mark_tables_as_deleted()
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        """
+        Get columns of table/view/stream
+        """
+        if table_type == TableType.Stream:
+            cursor = self.connection.execute(
+                SNOWFLAKE_GET_STREAM.format(stream_name=table_name, schema=schema_name)
+            )
+            try:
+                result = cursor.fetchone()
+                if result:
+                    table_name = result[6].split(".")[-1]
+            except Exception:
+                pass
+
+        columns = inspector.get_columns(
+            table_name, schema_name, table_type=table_type, db_name=db_name
+        )
+
+        if table_type == TableType.Stream:
+            columns = [*columns, *DEFAULT_STREAM_COLUMNS]
+
+        return columns
+
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> Optional[str]:
+        """
+        Get the DDL statement, View Definition or Stream Definition for a table
+
+        To fetch the view definition, we have followed an optimised approach
+        i.e. fetching view definition of all the views in schema storing it
+        in cache and using the same cache to fetch the view definition.
+
+        To fetch defintion for other types of tables, we have used the
+        get_ddl method, since this method only accepts string literal as arguments
+        it is not possible to do something like this:
+
+        select table_name, schema, get_ddl('table', table_name) from information_schema.tables
+        so we have to fetch the ddl for each table individually.
+
+        Alternavies are executing an stroed procedure to automate this but
+        it requires additional permissions like execute which users may not be comfortable doing.
+        Or reconstruct the ddl from column types, which we can explore in the future.
+        """
+        try:
+            schema_definition = None
+            if table_type in (TableType.View, TableType.MaterializedView):
+                schema_definition = inspector.get_view_definition(
+                    table_name, schema_name
+                )
+            elif table_type == TableType.Stream:
+                schema_definition = inspector.get_stream_definition(
+                    self.connection, table_name, schema_name
+                )
+            elif self.source_config.includeDDL or table_type == TableType.Dynamic:
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
+                )
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
+
+        return None

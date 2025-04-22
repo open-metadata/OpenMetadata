@@ -34,11 +34,11 @@ import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
+import i18n from '../../../utils/i18next/LocalUtil';
 
 const PersonaPageLayout = () => {
   const { isAdminUser } = useAuth();
   const { t } = useTranslation();
-
   const [persona, setPersona] = useState<Persona[]>();
 
   const [addEditPersona, setAddEditPersona] = useState<Persona>();
@@ -71,7 +71,7 @@ const PersonaPageLayout = () => {
 
       setPersona(data);
       handlePagingChange(paging);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);
@@ -91,6 +91,7 @@ const PersonaPageLayout = () => {
       <Col className="h-full text-center" span={24}>
         <ErrorPlaceHolder
           buttonId="add-persona-button"
+          className="border-none"
           heading={t('label.persona')}
           permission={isAdminUser}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -136,7 +137,7 @@ const PersonaPageLayout = () => {
   }
 
   return (
-    <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
+    <Row className="user-listing p-b-md" gutter={[16, 16]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </Col>
@@ -191,4 +192,6 @@ const PersonaPageLayout = () => {
   );
 };
 
-export const PersonaPage = withPageLayout('persona-plural')(PersonaPageLayout);
+export const PersonaPage = withPageLayout(i18n.t('label.persona-plural'))(
+  PersonaPageLayout
+);

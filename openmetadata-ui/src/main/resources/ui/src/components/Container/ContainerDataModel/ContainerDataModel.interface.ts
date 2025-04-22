@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ThreadType } from '../../../generated/api/feed/createThread';
 import { Container } from '../../../generated/entity/data/container';
 
 export interface ContainerDataModelProps {
@@ -20,6 +19,5 @@ export interface ContainerDataModelProps {
   hasGlossaryTermEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
-  onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (updatedDataModel: Container['dataModel']) => Promise<void>;
 }

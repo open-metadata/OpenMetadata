@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -44,7 +44,6 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.dashboard.metabase import metadata as MetabaseMetadata
 from metadata.ingestion.source.dashboard.metabase.metadata import MetabaseSource
 from metadata.ingestion.source.dashboard.metabase.models import (
     DatasetQuery,
@@ -277,7 +276,7 @@ class MetabaseUnitTest(TestCase):
 
     @patch.object(fqn, "build", return_value=None)
     @patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD)
-    @patch.object(MetabaseMetadata, "search_table_entities", return_value=EXAMPLE_TABLE)
+    @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
     @patch.object(
         MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE
     )
@@ -294,7 +293,7 @@ class MetabaseUnitTest(TestCase):
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=MOCK_DASHBOARD_DETAILS, db_service_name=None
         )
-        self.assertEqual(list(result), [])
+        self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_api
         mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)

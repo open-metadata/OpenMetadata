@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,17 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
-from typing import Generic, Iterable, Iterator, List, Optional, Set, Type, TypeVar
+from typing import (
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Type,
+    TypeVar,
+    Union,
+)
 from urllib.parse import quote_plus
 
 from pydantic import Field
@@ -29,7 +39,7 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import quote
 from metadata.ingestion.source.models import TableView
-from metadata.utils.elasticsearch import ES_INDEX_MAP
+from metadata.utils.elasticsearch import ES_INDEX_MAP, get_entity_from_es_result
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -391,6 +401,7 @@ class ESMixin(Generic[T]):
     def yield_es_view_def(
         self,
         service_name: str,
+        incremental: bool = False,
     ) -> Iterable[TableView]:
         """
         Get the view definition from ES
@@ -435,6 +446,11 @@ class ESMixin(Generic[T]):
                                                         "tableType": TableType.Dynamic.value
                                                     }
                                                 },
+                                                {
+                                                    "term": {
+                                                        "tableType": TableType.Stream.value
+                                                    }
+                                                },
                                             ]
                                         }
                                     }
@@ -451,6 +467,23 @@ class ESMixin(Generic[T]):
                 }
             }
         }
+        if incremental:
+            query.get("query").get("bool").get("must").append(
+                {
+                    "bool": {
+                        "should": [
+                            {"term": {"processedLineage": False}},
+                            {
+                                "bool": {
+                                    "must_not": {
+                                        "exists": {"field": "processedLineage"}
+                                    }
+                                }
+                            },
+                        ]
+                    }
+                }
+            )
         query = json.dumps(query)
         for response in self._paginate_es_internal(
             entity=Table,
@@ -469,3 +502,28 @@ class ESMixin(Generic[T]):
                         schema_name=schema_name,
                         table_name=table_name,
                     )
+
+    def search_in_any_service(
+        self,
+        entity_type: Type[T],
+        fqn_search_string: str,
+        fetch_multiple_entities: bool = False,
+    ) -> Optional[Union[List[Table], Table]]:
+        """
+        fetch table from es when with/without `db_service_name`
+        """
+        try:
+            entity_result = get_entity_from_es_result(
+                entity_list=self.es_search_from_fqn(
+                    entity_type=entity_type,
+                    fqn_search_string=fqn_search_string,
+                ),
+                fetch_multiple_entities=fetch_multiple_entities,
+            )
+            return entity_result
+        except Exception as exc:
+            logger.debug(
+                f"Error to fetch entity: fqn={fqn_search_string} from es: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return None

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,8 +12,9 @@
 """
 Source connection helper
 """
+import re
 import traceback
-from typing import Any
+from typing import Any, List, Tuple
 
 from pydantic import BaseModel
 from sqlalchemy import inspect
@@ -142,3 +143,10 @@ def get_foreign_keys(
             f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}"
         )
         return []
+
+
+def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:
+    """
+    This function is used to parse BigQuery label string into a list of tuples.
+    """
+    return re.findall(r'STRUCT\("([^"]+)",\s*"([^"]+)"\)', labels)

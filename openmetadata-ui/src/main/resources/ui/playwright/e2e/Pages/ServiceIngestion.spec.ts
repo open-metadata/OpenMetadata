@@ -27,9 +27,15 @@ import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/Redshi
 import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
-import { INVALID_NAMES, redirectToHomePage } from '../../utils/common';
+import { TableClass } from '../../support/entity/TableClass';
+import {
+  createNewPage,
+  INVALID_NAMES,
+  redirectToHomePage,
+} from '../../utils/common';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
+const table = new TableClass();
 const services = [
   ApiIngestionClass,
   S3IngestionClass,
@@ -137,5 +143,37 @@ test.describe('Service form', () => {
     await page.click('[data-testid="next-button"]');
 
     await expect(page.getByTestId('step-icon-3')).toHaveClass(/active/);
+  });
+});
+
+test.describe('Service Ingestion Pagination', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+    await table.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Clean up', async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+    await table.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+  });
+
+  test('Default Pagination size should be 15', async ({ page }) => {
+    const servicePageResponse = page.waitForResponse(
+      '/api/v1/services/databaseServices/name/*'
+    );
+    const validateIngestionPipelineLimitSize = page.waitForResponse(
+      '/api/v1/services/ingestionPipelines?fields=**&limit=15'
+    );
+
+    await page.getByText(table.service.name).click();
+    await servicePageResponse;
+    await validateIngestionPipelineLimitSize;
   });
 });

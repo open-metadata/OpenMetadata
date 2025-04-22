@@ -23,6 +23,7 @@ import { EntityExportModalProvider } from './components/Entity/EntityExportModal
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
+import AsyncDeleteProvider from './context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
@@ -74,27 +75,29 @@ const App: FC = () => {
       <div className="content-wrapper" data-testid="content-wrapper">
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
-            <ErrorBoundary>
-              <AntDConfigProvider>
-                <AuthProvider childComponentType={AppRouter}>
-                  <TourProvider>
-                    <HelmetProvider>
+            <HelmetProvider>
+              <ErrorBoundary>
+                <AntDConfigProvider>
+                  <AuthProvider childComponentType={AppRouter}>
+                    <TourProvider>
                       <WebAnalyticsProvider>
                         <PermissionProvider>
                           <WebSocketProvider>
                             <ApplicationsProvider>
-                              <EntityExportModalProvider>
-                                <AppRouter />
-                              </EntityExportModalProvider>
+                              <AsyncDeleteProvider>
+                                <EntityExportModalProvider>
+                                  <AppRouter />
+                                </EntityExportModalProvider>
+                              </AsyncDeleteProvider>
                             </ApplicationsProvider>
                           </WebSocketProvider>
                         </PermissionProvider>
                       </WebAnalyticsProvider>
-                    </HelmetProvider>
-                  </TourProvider>
-                </AuthProvider>
-              </AntDConfigProvider>
-            </ErrorBoundary>
+                    </TourProvider>
+                  </AuthProvider>
+                </AntDConfigProvider>
+              </ErrorBoundary>
+            </HelmetProvider>
           </I18nextProvider>
         </Router>
       </div>

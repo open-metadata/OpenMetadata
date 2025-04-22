@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
@@ -61,6 +62,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -76,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductMapper mapper = new DataProductMapper();
-  static final String FIELDS = "domain,owners,experts,assets,extension";
+  static final String FIELDS = "domain,owners,experts,assets,extension,tags";
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -335,6 +337,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
   }
 
@@ -361,6 +366,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
@@ -441,6 +449,27 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, true, true);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDataProductAsync",
+      summary = "Asynchronously delete a dataProduct by Id",
+      description = "Asynchronously delete a dataProduct by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
   @DELETE

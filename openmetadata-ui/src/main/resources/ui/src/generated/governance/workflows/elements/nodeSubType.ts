@@ -15,9 +15,10 @@
  */
 export enum NodeSubType {
     CheckEntityAttributesTask = "checkEntityAttributesTask",
+    CreateAndRunIngestionPipelineTask = "createAndRunIngestionPipelineTask",
     EndEvent = "endEvent",
-    JSONLogicTask = "jsonLogicTask",
-    PythonWorkflowAutomationTask = "pythonWorkflowAutomationTask",
+    ParallelGateway = "parallelGateway",
+    RunAppTask = "runAppTask",
     SetEntityCertificationTask = "setEntityCertificationTask",
     SetGlossaryTermStatusTask = "setGlossaryTermStatusTask",
     StartEvent = "startEvent",

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -84,6 +84,7 @@ from metadata.ingestion.source.database.redshift.utils import (
     _get_pg_column_info,
     _get_schema_column_info,
     get_columns,
+    get_redshift_columns,
     get_table_comment,
     get_view_definition,
 )
@@ -109,18 +110,15 @@ STANDARD_TABLE_TYPES = {
     "v": TableType.View,
 }
 
-
-RedshiftDialectMixin._get_column_info = (  # pylint: disable=protected-access
-    _get_column_info
-)
-RedshiftDialectMixin._get_schema_column_info = (  # pylint: disable=protected-access
-    _get_schema_column_info
-)
+# pylint: disable=protected-access
+RedshiftDialectMixin._get_column_info = _get_column_info
+RedshiftDialectMixin._get_schema_column_info = _get_schema_column_info
 RedshiftDialectMixin.get_columns = get_columns
-PGDialect._get_column_info = _get_pg_column_info  # pylint: disable=protected-access
+PGDialect._get_column_info = _get_pg_column_info
 RedshiftDialect.get_all_table_comments = get_all_table_comments
 RedshiftDialect.get_table_comment = get_table_comment
 RedshiftDialect.get_view_definition = get_view_definition
+RedshiftDialect._get_redshift_columns = get_redshift_columns
 RedshiftDialect._get_all_relation_info = (  # pylint: disable=protected-access
     _get_all_relation_info
 )

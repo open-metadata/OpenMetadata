@@ -7,7 +7,7 @@ slug: /connectors/database/adls-datalake
 name="ADLS Datalake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 
@@ -18,6 +18,7 @@ Configure and schedule Datalake metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
+- [Troubleshooting](/connectors/database/adls-datalake/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/adls-datalake/yaml"} /%}
 
@@ -31,8 +32,8 @@ The ADLS Datalake connector supports extracting metadata from file types `JSON`,
 
 To extract metadata from Azure ADLS (Storage Account - StorageV2), you will need an **App Registration** with the following
 permissions on the Storage Account:
-- Storage Blob Data Contributor
-- Storage Queue Data Contributor
+- Storage Blob Data Reader
+- Storage Queue Data Reader
 
 ## Metadata Ingestion
 
@@ -61,8 +62,8 @@ permissions on the Storage Account:
 - **Required Roles**
 
   Please make sure the following roles associated with the data storage account.
-   - `Storage Blob Data Contributor`
-   - `Storage Queue Data Contributor`
+   - `Storage Blob Data Reader`
+   - `Storage Queue Data Reader`
 
 The current approach for authentication is based on `app registration`, reach out to us on [slack](https://slack.open-metadata.org/) if you find the need for another auth system
 
@@ -77,7 +78,5 @@ The current approach for authentication is based on `app registration`, reach ou
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

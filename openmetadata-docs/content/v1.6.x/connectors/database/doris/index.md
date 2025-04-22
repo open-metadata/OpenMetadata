@@ -7,7 +7,7 @@ slug: /connectors/database/doris
 name="Doris"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -21,6 +21,7 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-doris-connection-with-ssl-in-openmetadata)
+- [Troubleshooting](/connectors/database/doris/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
 
@@ -75,7 +76,5 @@ To establish secure connections between OpenMetadata and Doris, navigate to the 
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

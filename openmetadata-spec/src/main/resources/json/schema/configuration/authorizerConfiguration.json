@@ -51,6 +51,14 @@
       "description": "Principal Domain",
       "type": "string"
     },
+    "allowedDomains": {
+      "description": "Allowed Domains to access",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
     "enforcePrincipalDomain": {
       "description": "Enable Enforce Principal Domain",
       "type": "boolean"

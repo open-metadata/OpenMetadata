@@ -71,10 +71,7 @@ import {
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './policies-detail.less';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
-
-const { TabPane } = Tabs;
 
 type Attribute = 'roles' | 'teams';
 
@@ -87,7 +84,6 @@ const PoliciesDetailPage = () => {
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
   const [isloadingOnSave, setIsloadingOnSave] = useState(false);
-  const [editDescription, setEditDescription] = useState<boolean>(false);
   const [selectedEntity, setEntity] =
     useState<{ attribute: Attribute; record: EntityReference }>();
   const [policyPermission, setPolicyPermission] =
@@ -169,8 +165,6 @@ const PoliciesDetailPage = () => {
       setPolicy({ ...policy, description: data.description });
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setEditDescription(false);
     }
   };
 
@@ -374,6 +368,150 @@ const PoliciesDetailPage = () => {
     }
   };
 
+  const rulesTab = useMemo(() => {
+    return (
+      <Card>
+        {isEmpty(policy.rules) ? (
+          <ErrorPlaceHolder className="border-none" />
+        ) : (
+          <>
+            <div className="flex justify-end m-b-md">
+              <Button
+                data-testid="add-rule"
+                type="primary"
+                onClick={() => history.push(getAddPolicyRulePath(fqn))}>
+                {t('label.add-entity', {
+                  entity: t('label.rule'),
+                })}
+              </Button>
+            </div>
+
+            <Space className="w-full" direction="vertical" size={20}>
+              {policy.rules.map((rule) => (
+                <Card data-testid="rule-card" key={rule.name || 'rule'}>
+                  <Space
+                    align="baseline"
+                    className="w-full justify-between p-b-lg"
+                    direction="horizontal">
+                    <Typography.Text
+                      className="font-medium text-base text-grey-body"
+                      data-testid="rule-name">
+                      {rule.name}
+                    </Typography.Text>
+                    {getRuleActionElement(rule)}
+                  </Space>
+
+                  <Space className="w-full" direction="vertical" size={12}>
+                    {rule.description && (
+                      <Row data-testid="description">
+                        <Col span={2}>
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.description')}:`}
+                          </Typography.Text>
+                        </Col>
+                        <Col span={22}>
+                          <RichTextEditorPreviewerV1
+                            markdown={rule.description || ''}
+                          />
+                        </Col>
+                      </Row>
+                    )}
+
+                    <Row data-testid="resources">
+                      <Col span={2}>
+                        <Typography.Text className="text-grey-muted m-b-0">
+                          {`${t('label.resource-plural')}:`}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={22}>
+                        <Typography.Text className="text-grey-body">
+                          {rule.resources
+                            ?.map((resource) => startCase(resource))
+                            ?.join(', ')}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+
+                    <Row data-testid="operations">
+                      <Col span={2}>
+                        <Typography.Text className="text-grey-muted">
+                          {`${t('label.operation-plural')}:`}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={22}>
+                        <Typography.Text className="text-grey-body">
+                          {rule.operations?.join(', ')}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                    <Row data-testid="effect">
+                      <Col span={2}>
+                        <Typography.Text className="text-grey-muted">
+                          {`${t('label.effect')}:`}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={22}>
+                        <Typography.Text className="text-grey-body">
+                          {startCase(rule.effect)}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                    {rule.condition && (
+                      <Row data-testid="condition">
+                        <Col span={2}>
+                          <Typography.Text className="text-grey-muted">
+                            {`${t('label.condition')}:`}
+                          </Typography.Text>
+                        </Col>
+                        <Col span={22}>
+                          <code>{rule.condition}</code>
+                        </Col>
+                      </Row>
+                    )}
+                  </Space>
+                </Card>
+              ))}
+            </Space>
+          </>
+        )}
+      </Card>
+    );
+  }, [policy]);
+
+  const tabItems = useMemo(() => {
+    return [
+      {
+        key: 'rules',
+        label: t('label.rule-plural'),
+        children: rulesTab,
+      },
+      {
+        key: 'roles',
+        label: t('label.role-plural'),
+        children: (
+          <PoliciesDetailsList
+            hasAccess
+            list={policy.roles ?? []}
+            type="role"
+            onDelete={(record) => setEntity({ record, attribute: 'roles' })}
+          />
+        ),
+      },
+      {
+        key: 'teams',
+        label: t('label.team-plural'),
+        children: (
+          <PoliciesDetailsList
+            hasAccess
+            list={policy.teams ?? []}
+            type="team"
+            onDelete={(record) => setEntity({ record, attribute: 'teams' })}
+          />
+        ),
+      },
+    ];
+  }, [rulesTab, policy]);
+
   useEffect(() => {
     init();
   }, [fqn, policyPermission]);
@@ -383,13 +521,16 @@ const PoliciesDetailPage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={t('label.policy-plural')}>
-      <div className="page-container" data-testid="policy-details-container">
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: t('label.policy'),
+      })}>
+      <div data-testid="policy-details-container">
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         <>
           {isEmpty(policy) ? (
-            <ErrorPlaceHolder>
+            <ErrorPlaceHolder className="border-none">
               <div className="text-center">
                 <p>
                   {t('message.no-entity-found-for-name', {
@@ -443,148 +584,17 @@ const PoliciesDetailPage = () => {
                 hasEditAccess
                 className="m-y-md"
                 description={policy.description || ''}
-                entityFqn={policy.fullyQualifiedName}
                 entityName={policyName}
                 entityType={EntityType.POLICY}
-                isEdit={editDescription}
                 showCommentsIcon={false}
-                onCancel={() => setEditDescription(false)}
-                onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}
               />
 
-              <Tabs defaultActiveKey="rules">
-                <TabPane key="rules" tab={t('label.rule-plural')}>
-                  {isEmpty(policy.rules) ? (
-                    <ErrorPlaceHolder />
-                  ) : (
-                    <Space
-                      className="w-full tabpane-space"
-                      direction="vertical">
-                      <Button
-                        data-testid="add-rule"
-                        type="primary"
-                        onClick={() => history.push(getAddPolicyRulePath(fqn))}>
-                        {t('label.add-entity', {
-                          entity: t('label.rule'),
-                        })}
-                      </Button>
-
-                      <Space className="w-full" direction="vertical" size={20}>
-                        {policy.rules.map((rule) => (
-                          <Card
-                            data-testid="rule-card"
-                            key={rule.name || 'rule'}>
-                            <Space
-                              align="baseline"
-                              className="w-full justify-between p-b-lg"
-                              direction="horizontal">
-                              <Typography.Text
-                                className="font-medium text-base text-grey-body"
-                                data-testid="rule-name">
-                                {rule.name}
-                              </Typography.Text>
-                              {getRuleActionElement(rule)}
-                            </Space>
-
-                            <Space
-                              className="w-full"
-                              direction="vertical"
-                              size={12}>
-                              {rule.description && (
-                                <Row data-testid="description">
-                                  <Col span={2}>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.description')}:`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col span={22}>
-                                    <RichTextEditorPreviewerV1
-                                      markdown={rule.description || ''}
-                                    />
-                                  </Col>
-                                </Row>
-                              )}
-
-                              <Row data-testid="resources">
-                                <Col span={2}>
-                                  <Typography.Text className="text-grey-muted m-b-0">
-                                    {`${t('label.resource-plural')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col span={22}>
-                                  <Typography.Text className="text-grey-body">
-                                    {rule.resources
-                                      ?.map((resource) => startCase(resource))
-                                      ?.join(', ')}
-                                  </Typography.Text>
-                                </Col>
-                              </Row>
-
-                              <Row data-testid="operations">
-                                <Col span={2}>
-                                  <Typography.Text className="text-grey-muted">
-                                    {`${t('label.operation-plural')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col span={22}>
-                                  <Typography.Text className="text-grey-body">
-                                    {rule.operations?.join(', ')}
-                                  </Typography.Text>
-                                </Col>
-                              </Row>
-                              <Row data-testid="effect">
-                                <Col span={2}>
-                                  <Typography.Text className="text-grey-muted">
-                                    {`${t('label.effect')}:`}
-                                  </Typography.Text>
-                                </Col>
-                                <Col span={22}>
-                                  <Typography.Text className="text-grey-body">
-                                    {startCase(rule.effect)}
-                                  </Typography.Text>
-                                </Col>
-                              </Row>
-                              {rule.condition && (
-                                <Row data-testid="condition">
-                                  <Col span={2}>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.condition')}:`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col span={22}>
-                                    <code>{rule.condition}</code>
-                                  </Col>
-                                </Row>
-                              )}
-                            </Space>
-                          </Card>
-                        ))}
-                      </Space>
-                    </Space>
-                  )}
-                </TabPane>
-                <TabPane key="roles" tab={t('label.role-plural')}>
-                  <PoliciesDetailsList
-                    hasAccess
-                    list={policy.roles ?? []}
-                    type="role"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'roles' })
-                    }
-                  />
-                </TabPane>
-                <TabPane key="teams" tab={t('label.team-plural')}>
-                  <PoliciesDetailsList
-                    hasAccess
-                    list={policy.teams ?? []}
-                    type="team"
-                    onDelete={(record) =>
-                      setEntity({ record, attribute: 'teams' })
-                    }
-                  />
-                </TabPane>
-              </Tabs>
+              <Tabs
+                className="tabs-new"
+                defaultActiveKey="rules"
+                items={tabItems}
+              />
             </div>
           )}
         </>

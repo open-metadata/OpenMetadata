@@ -113,12 +113,9 @@ test.describe.serial('Add role and assign it to the user', () => {
     await visitUserProfilePage(page, userName);
 
     await page.waitForSelector('[data-testid="user-profile"]');
-    await page.click(
-      '[data-testid="user-profile"] .ant-collapse-expand-icon > .anticon'
-    );
 
-    await expect(
-      page.getByTestId('user-profile').getByTestId('user-profile-roles')
-    ).toContainText(roleName);
+    await expect(page.getByTestId('user-profile-roles')).toContainText(
+      roleName
+    );
   });
 });

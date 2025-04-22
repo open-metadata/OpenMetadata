@@ -2,14 +2,15 @@ package org.openmetadata.schema.governance.workflows.elements;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
-import org.openmetadata.schema.governance.workflows.elements.triggers.CustomSignalTriggerDefinition;
+import java.util.Set;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.triggers.PeriodicBatchEntityTriggerDefinition;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({
   @JsonSubTypes.Type(value = EventBasedEntityTriggerDefinition.class, name = "eventBasedEntity"),
-  @JsonSubTypes.Type(value = CustomSignalTriggerDefinition.class, name = "customSignal"),
+  @JsonSubTypes.Type(value = NoOpTriggerDefinition.class, name = "noOp"),
   @JsonSubTypes.Type(
       value = PeriodicBatchEntityTriggerDefinition.class,
       name = "periodicBatchEntity"),
@@ -20,4 +21,6 @@ public interface WorkflowTriggerInterface {
   String getType();
 
   Object getConfig();
+
+  Set<String> getOutput();
 }

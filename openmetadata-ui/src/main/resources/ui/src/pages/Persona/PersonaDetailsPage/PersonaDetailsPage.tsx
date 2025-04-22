@@ -49,16 +49,21 @@ export const PersonaDetailsPage = () => {
   const history = useHistory();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
-  const [isEdit, setIsEdit] = useState(false);
   const { t } = useTranslation();
   const [entityPermission, setEntityPermission] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
   const location = useCustomLocation();
-  const activeKey = useMemo(
-    () => location.hash?.replace('#', '') || 'users',
-    [location]
-  );
+  const { activeKey, fullHash } = useMemo(() => {
+    const activeKey = (location.hash?.replace('#', '') || 'users').split(
+      '.'
+    )[0];
+
+    return {
+      activeKey,
+      fullHash: location.hash?.replace('#', ''),
+    };
+  }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -112,8 +117,6 @@ export const PersonaDetailsPage = () => {
       setPersonaDetails(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
     }
   };
 
@@ -129,8 +132,6 @@ export const PersonaDetailsPage = () => {
       setPersonaDetails(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
     }
   };
 
@@ -146,8 +147,6 @@ export const PersonaDetailsPage = () => {
         setPersonaDetails(response);
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
       }
     },
     [personaDetails]
@@ -168,11 +167,18 @@ export const PersonaDetailsPage = () => {
     history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 
-  const handleTabChange = (activeKey: string) => {
-    history.push({
-      hash: activeKey,
-    });
-  };
+  const handleTabClick = useCallback(
+    (key: string) => {
+      if (fullHash === key) {
+        return;
+      }
+
+      history.push({
+        hash: key,
+      });
+    },
+    [history, fullHash]
+  );
 
   const tabItems = useMemo(() => {
     return [
@@ -204,7 +210,7 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md page-container" gutter={[0, 16]}>
+      <Row className="m-b-md" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
             <div className="w-full">
@@ -239,35 +245,39 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <DescriptionV1
-            hasEditAccess
+            newLook
             description={personaDetails.description}
+            entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
-            isEdit={isEdit}
+            hasEditAccess={
+              entityPermission.EditAll || entityPermission.EditDescription
+            }
             showCommentsIcon={false}
-            onCancel={() => setIsEdit(false)}
-            onDescriptionEdit={() => setIsEdit(true)}
             onDescriptionUpdate={handleDescriptionUpdate}
           />
         </Col>
         <Col span={24}>
           <Tabs
             activeKey={activeKey}
+            className="tabs-new"
             items={tabItems}
             tabBarExtraContent={
-              <UserSelectableList
-                hasPermission
-                multiSelect
-                selectedUsers={personaDetails.users ?? []}
-                onUpdate={(users) => handlePersonaUpdate({ users })}>
-                <Button
-                  data-testid="add-persona-button"
-                  size="small"
-                  type="primary">
-                  {t('label.add-entity', { entity: t('label.user') })}
-                </Button>
-              </UserSelectableList>
+              activeKey === 'users' && (
+                <UserSelectableList
+                  hasPermission
+                  multiSelect
+                  selectedUsers={personaDetails.users ?? []}
+                  onUpdate={(users) => handlePersonaUpdate({ users })}>
+                  <Button
+                    data-testid="add-persona-button"
+                    size="small"
+                    type="primary">
+                    {t('label.add-entity', { entity: t('label.user') })}
+                  </Button>
+                </UserSelectableList>
+              )
             }
-            onChange={handleTabChange}
+            onTabClick={handleTabClick}
           />
         </Col>
       </Row>

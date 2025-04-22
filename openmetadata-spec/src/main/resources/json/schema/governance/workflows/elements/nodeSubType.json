@@ -12,7 +12,8 @@
     "setGlossaryTermStatusTask",
     "endEvent",
     "startEvent",
-    "pythonWorkflowAutomationTask",
-    "jsonLogicTask"
+    "createAndRunIngestionPipelineTask",
+    "runAppTask",
+    "parallelGateway"
   ]
 }

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 .metric-header-info-popover {
   min-width: 250px;
   .ant-popover-inner-content {
@@ -18,4 +19,16 @@
   .selectable-list-item.active {
     background-color: #f2f6fc;
   }
+}
+.ant-btn.ant-btn-text.edit-metrics {
+  border: 1px solid @border-light;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  svg {
+    color: @grey-600;
+  }
+}
+.metric-header-info-container {
+  max-width: 148px;
 }

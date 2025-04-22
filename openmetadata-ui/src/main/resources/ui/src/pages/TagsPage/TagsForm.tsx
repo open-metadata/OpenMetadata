@@ -11,18 +11,25 @@
  *  limitations under the License.
  */
 
-import { Form, Modal, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Form, Modal, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
+import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   HEX_COLOR_CODE_REGEX,
   TAG_NAME_REGEX,
 } from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
+import { EntityType } from '../../enums/entity.enum';
+import { EntityReference } from '../../generated/tests/testCase';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import {
   FieldProp,
   FieldTypes,
+  FormItemLayout,
   HelperTextType,
 } from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
@@ -45,11 +52,16 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const selectedDomain = Form.useWatch<EntityReference | undefined>(
+    'domain',
+    form
+  );
 
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     form
   );
+  const { activeDomainEntityRef } = useDomainStore();
 
   useEffect(() => {
     form.setFieldsValue({
@@ -216,12 +228,40 @@ const TagsForm = ({
           },
         ] as FieldProp[])
       : []),
+    {
+      name: 'domain',
+      id: 'root/domain',
+      required: false,
+      label: t('label.domain'),
+      type: FieldTypes.DOMAIN_SELECT,
+      props: {
+        selectedDomain: activeDomainEntityRef,
+        children: (
+          <Button
+            data-testid="add-domain"
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            size="small"
+            type="primary"
+          />
+        ),
+      },
+      formItemLayout: FormItemLayout.HORIZONTAL,
+      formItemProps: {
+        valuePropName: 'selectedDomain',
+        trigger: 'onUpdate',
+        initialValue: activeDomainEntityRef,
+      },
+    },
   ];
 
   const handleSave = async (data: SubmitProps) => {
     try {
       setSaving(true);
-      await onSubmit(data);
+      const submitData = {
+        ...data,
+        domain: selectedDomain?.fullyQualifiedName,
+      };
+      await onSubmit(submitData);
       form.setFieldsValue(DEFAULT_FORM_VALUE);
     } catch {
       // Parent will handle the error
@@ -254,15 +294,32 @@ const TagsForm = ({
         form.setFieldsValue(DEFAULT_FORM_VALUE);
         onCancel();
       }}>
-      <Form
-        form={form}
-        initialValues={initialValues ?? DEFAULT_FORM_VALUE}
-        layout="vertical"
-        name="tags"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSave}>
-        {generateFormFields(formFields)}
-      </Form>
+      <EntityAttachmentProvider
+        entityFqn={initialValues?.fullyQualifiedName}
+        entityType={
+          isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
+        }>
+        <Form
+          form={form}
+          initialValues={initialValues ?? DEFAULT_FORM_VALUE}
+          layout="vertical"
+          name="tags"
+          validateMessages={VALIDATION_MESSAGES}
+          onFinish={handleSave}>
+          {generateFormFields(formFields)}
+        </Form>
+        {selectedDomain && (
+          <DomainLabel
+            domain={selectedDomain}
+            entityFqn=""
+            entityId=""
+            entityType={
+              isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
+            }
+            hasPermission={false}
+          />
+        )}
+      </EntityAttachmentProvider>
     </Modal>
   );
 };

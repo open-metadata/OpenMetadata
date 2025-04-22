@@ -31,6 +31,7 @@ export interface EventSubscription {
      * Java class for the Event Subscription.
      */
     className?: string;
+    config?:    { [key: string]: any };
     /**
      * A short description of the Event Subscription, comprehensible to regular users.
      */
@@ -69,6 +70,10 @@ export interface EventSubscription {
      * Unique identifier that identifies this Event Subscription.
      */
     id: string;
+    /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
     /**
      * Input for the Filters.
      */
@@ -116,6 +121,7 @@ export interface EventSubscription {
  */
 export enum AlertType {
     ActivityFeed = "ActivityFeed",
+    Custom = "Custom",
     GovernanceWorkflowChangeEvent = "GovernanceWorkflowChangeEvent",
     Notification = "Notification",
     Observability = "Observability",
@@ -125,8 +131,11 @@ export enum AlertType {
  * Change that led to this version of the Event Subscription.
  *
  * Description of the change.
+ *
+ * Change that lead to this version of the entity.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -143,6 +152,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {

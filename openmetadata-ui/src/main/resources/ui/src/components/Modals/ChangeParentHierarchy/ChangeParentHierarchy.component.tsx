@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 
-import { Form, Modal, Select } from 'antd';
+import { Checkbox, Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_RES_MAX_SIZE } from '../../../constants/constants';
+import { Status } from '../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTerms } from '../../../rest/glossaryAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { StatusClass } from '../../../utils/GlossaryUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import {
   ChangeParentHierarchyProps,
   SelectOptions,
@@ -35,8 +39,13 @@ const ChangeParentHierarchy = ({
     isSaving: false,
     isFetching: true,
   });
+  const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
   const [options, setOptions] = useState<SelectOptions[]>([]);
+
+  const hasReviewers = Boolean(
+    selectedData.reviewers && selectedData.reviewers.length > 0
+  );
 
   const fetchGlossaryTerm = async () => {
     setLoadingState((prev) => ({ ...prev, isFetching: true }));
@@ -79,6 +88,7 @@ const ChangeParentHierarchy = ({
         form: 'change-parent-hierarchy-modal',
         htmlType: 'submit',
         loading: loadingState.isSaving,
+        disabled: hasReviewers && !confirmCheckboxChecked,
       }}
       okText={t('label.submit')}
       title={t('label.change-entity', { entity: t('label.parent') })}
@@ -102,7 +112,11 @@ const ChangeParentHierarchy = ({
             },
           ]}>
           <Select
+            showSearch
             data-testid="change-parent-select"
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
             loading={loadingState.isFetching}
             options={options}
             placeholder={t('label.select-field', {
@@ -110,6 +124,34 @@ const ChangeParentHierarchy = ({
             })}
           />
         </Form.Item>
+
+        {hasReviewers && (
+          <div className="m-t-md">
+            <Checkbox
+              checked={confirmCheckboxChecked}
+              className="text-grey-700"
+              data-testid="confirm-status-checkbox"
+              onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}>
+              <span>
+                <Transi18next
+                  i18nKey="message.entity-transfer-confirmation-message"
+                  renderElement={<strong />}
+                  values={{
+                    from: getEntityName(selectedData),
+                  }}
+                />
+                <span className="d-inline-block m-l-xss">
+                  <StatusBadge
+                    className="p-x-xs p-y-xss"
+                    dataTestId=""
+                    label={Status.InReview}
+                    status={StatusClass[Status.InReview]}
+                  />
+                </span>
+              </span>
+            </Checkbox>
+          </div>
+        )}
       </Form>
     </Modal>
   );

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Workflow Settings.
  */
 export interface WorkflowSettings {
@@ -34,6 +32,11 @@ export interface ExecutorConfiguration {
      * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
      */
     corePoolSize?: number;
+    /**
+     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
+     * jobs that takes too long to run being retried while running.
+     */
+    jobLockTimeInMillis?: number;
     /**
      * Maximum worker Pool Size. The Workflow Executor could grow up to this number of workers.
      */

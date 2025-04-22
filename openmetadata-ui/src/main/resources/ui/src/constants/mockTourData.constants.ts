@@ -415,7 +415,7 @@ export const mockDatasetData = {
               'insert into sample_data.ecommerce_db.shopify."dim.product" as select * from sample_data.ecommerce_db.shopify.raw_customer',
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               '1983c7f1-52fd-4dc7-89b9-29a8fffcfd6f-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
           },
           {
@@ -442,7 +442,7 @@ export const mockDatasetData = {
               'select * from sample_data.ecommerce_db.shopify.raw_order',
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
           },
         ],
@@ -621,7 +621,7 @@ export const mockDatasetData = {
               'create ecommerce_db.shopify."dim.product.variant" as select * from sample_data.ecommerce_db.shopify.raw_customer',
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               '1983c7f1-52fd-4dc7-89b9-29a8fffcfd6f-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
           },
           {
@@ -648,7 +648,7 @@ export const mockDatasetData = {
               'select * from sample_data.ecommerce_db.shopify.raw_order',
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
           },
         ],
@@ -875,7 +875,7 @@ export const mockDatasetData = {
             sqlQuery: null,
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
           },
           {
@@ -902,7 +902,7 @@ export const mockDatasetData = {
               'select * from sample_data.ecommerce_db.shopify.raw_order',
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
           },
           {
@@ -929,7 +929,7 @@ export const mockDatasetData = {
               'select * from sample_data.ecommerce_db.shopify.raw_order',
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
           },
         ],
@@ -1194,7 +1194,7 @@ export const mockDatasetData = {
             sqlQuery: null,
             description: null,
             source: 'Manual',
-            doc_id:
+            docId:
               'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
           },
         ],
@@ -1463,7 +1463,7 @@ export const mockDatasetData = {
         sqlQuery: null,
         description: null,
         source: 'Manual',
-        doc_id:
+        docId:
           'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
       },
       {
@@ -1489,7 +1489,7 @@ export const mockDatasetData = {
         sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
         description: null,
         source: 'Manual',
-        doc_id:
+        docId:
           'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
       },
       {
@@ -1515,7 +1515,7 @@ export const mockDatasetData = {
         sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
         description: null,
         source: 'Manual',
-        doc_id:
+        docId:
           'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
       },
     ],
@@ -1555,7 +1555,7 @@ export const mockDatasetData = {
           sqlQuery: null,
           description: null,
           source: 'Manual',
-          doc_id:
+          docId:
             'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
         },
         {
@@ -1581,7 +1581,7 @@ export const mockDatasetData = {
           sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
           description: null,
           source: 'Manual',
-          doc_id:
+          docId:
             'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
         },
         {
@@ -1607,7 +1607,7 @@ export const mockDatasetData = {
           sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
           description: null,
           source: 'Manual',
-          doc_id:
+          docId:
             'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
         },
       ],

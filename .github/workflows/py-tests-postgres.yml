@@ -12,15 +12,8 @@
 name: py-tests-postgres
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - '0.[0-9]+.[0-9]+'
-    paths-ignore:
-      - 'openmetadata-docs/**'
-      - 'openmetadata-docs-v1/**'
   pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
       - "ingestion/**"
       - "openmetadata-service/**"
@@ -34,6 +27,7 @@ permissions:
 jobs:
   py-run-tests:
     runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +46,7 @@ jobs:
         docker-images: false
 
     - name: Wait for the labeler
-      uses: lewagon/wait-on-check-action@v1.3.3
+      uses: lewagon/wait-on-check-action@v1.3.4
       if: ${{ github.event_name == 'pull_request_target' }}
       with:
         ref: ${{ github.event.pull_request.head.sha }}
@@ -70,7 +64,7 @@ jobs:
         disable-reviews: true  # To not auto approve changes
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
@@ -83,7 +77,6 @@ jobs:
         ingestion_dependency: "mysql,elasticsearch,sample-data"
 
     - name: Run Python Tests
-      if: ${{ matrix.py-version != '3.9' }}
       run: |
         source env/bin/activate
         make run_python_tests

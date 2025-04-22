@@ -70,12 +70,14 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
       searchInterface =
           new ElasticSearchDataInsightsClient(
-              (RestClient) getSearchRepository().getSearchClient().getLowLevelClient());
+              (RestClient) getSearchRepository().getSearchClient().getLowLevelClient(),
+              getSearchRepository().getClusterAlias());
     } else {
       searchInterface =
           new OpenSearchDataInsightsClient(
               (os.org.opensearch.client.RestClient)
-                  getSearchRepository().getSearchClient().getLowLevelClient());
+                  getSearchRepository().getSearchClient().getLowLevelClient(),
+              getSearchRepository().getClusterAlias());
     }
     try {
       for (String dataAssetType : dataAssetTypes) {
@@ -86,7 +88,8 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
               dataStreamName,
               dataAssetType,
               getSearchRepository().getIndexMapping(dataAssetType),
-              "en");
+              "en",
+              7);
         }
       }
     } catch (IOException ex) {

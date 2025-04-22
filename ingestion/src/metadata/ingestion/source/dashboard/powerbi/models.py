@@ -1,8 +1,8 @@
 #  Copyright 2023 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -32,6 +32,15 @@ class Tile(BaseModel):
     reportId: Optional[str] = None
 
 
+class PowerBIUser(BaseModel):
+    """
+    PowerBI User Model
+    """
+
+    displayName: Optional[str] = None
+    email: Optional[str] = Field(alias="emailAddress", default=None)
+
+
 class PowerBIDashboard(BaseModel):
     """
     PowerBI PowerBIDashboard Model
@@ -43,6 +52,7 @@ class PowerBIDashboard(BaseModel):
     webUrl: Optional[str] = None
     embedUrl: Optional[str] = None
     tiles: Optional[List[Tile]] = []
+    users: Optional[List[PowerBIUser]] = []
 
 
 class PowerBIReport(BaseModel):
@@ -54,6 +64,7 @@ class PowerBIReport(BaseModel):
     id: str
     name: str
     datasetId: Optional[str] = None
+    users: Optional[List[PowerBIUser]] = []
 
 
 class DashboardsResponse(BaseModel):
@@ -98,6 +109,37 @@ class PowerBiColumns(BaseModel):
     description: Optional[str] = None
 
 
+class PowerBiMeasureModel(BaseModel):
+    """
+    Represents a Power BI measure, used before converting to a Column instance.
+    """
+
+    dataType: str
+    dataTypeDisplay: str
+    name: str
+    description: str
+
+
+class PowerBiMeasures(BaseModel):
+    """
+    PowerBI Column Model
+    Definition: https://learn.microsoft.com/en-us/rest/api/power-bi/push-datasets/datasets-get-tables-in-group#measure
+    """
+
+    name: str
+    expression: str
+    description: Optional[str] = None
+    isHidden: bool
+
+
+class PowerBITableSource(BaseModel):
+    """
+    PowerBI Table Source
+    """
+
+    expression: str
+
+
 class PowerBiTable(BaseModel):
     """
     PowerBI Table Model
@@ -106,7 +148,9 @@ class PowerBiTable(BaseModel):
 
     name: str
     columns: Optional[List[PowerBiColumns]] = None
+    measures: Optional[List[PowerBiMeasures]] = None
     description: Optional[str] = None
+    source: Optional[List[PowerBITableSource]] = None
 
 
 class TablesResponse(BaseModel):
@@ -129,6 +173,7 @@ class Dataset(BaseModel):
     name: str
     tables: Optional[List[PowerBiTable]] = []
     description: Optional[str] = None
+    users: Optional[List[PowerBIUser]] = []
 
 
 class DatasetResponse(BaseModel):

@@ -40,4 +40,5 @@ export const {
   CUSTOM_PROPERTIES_DOCS,
   DATA_DISCOVERY_DOCS,
   HOW_TO_GUIDE_DOCS,
+  AUTO_CLASSIFICATION_DOCS,
 } = documentationLinksClassBase.getDocsURLS();

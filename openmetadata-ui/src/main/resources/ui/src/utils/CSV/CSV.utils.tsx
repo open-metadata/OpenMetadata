@@ -52,6 +52,10 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   description: 300,
   tags: 280,
   glossaryTerms: 280,
+  'entityType*': 230,
+  arrayDataType: 210,
+  dataTypeDisplay: 220,
+  fullyQualifiedName: 300,
   tiers: 120,
   status: 70,
 };
@@ -84,6 +88,7 @@ const renderColumnDataEditor = (
   const { value } = recordData;
   switch (column) {
     case 'status':
+    case 'glossaryStatus':
       return statusRenderer(value as Status);
     case 'description':
       return (
@@ -112,7 +117,7 @@ export const getColumnConfig = (
     sortable: false,
     renderEditor: csvUtilsClassBase.getEditor(colType, entityType),
     minWidth: COLUMNS_WIDTH[colType] ?? 180,
-    render: (recordData) => renderColumnDataEditor(column, recordData),
+    render: (recordData) => renderColumnDataEditor(colType, recordData),
   } as TypeColumn;
 };
 

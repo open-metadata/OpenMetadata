@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Collapse, Row, Typography } from 'antd';
+import { Collapse, Row, Skeleton, Typography } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,14 +26,23 @@ export default function SummaryList({
   formattedEntityData,
   entityType,
   emptyPlaceholderText,
-}: SummaryListProps) {
+  loading = false,
+}: Readonly<SummaryListProps>) {
   const { t } = useTranslation();
+
+  if (loading) {
+    return (
+      <Row align="middle" data-testid="summary-list-loader">
+        <Skeleton active paragraph={{ rows: 1 }} />
+      </Row>
+    );
+  }
 
   return (
     <Row align="middle" data-testid="summary-list">
       {isEmpty(formattedEntityData) ? (
         <div>
-          <Text className="text-grey-body">
+          <Text className="no-data-chip-placeholder">
             {emptyPlaceholderText ?? t('message.no-data-available')}
           </Text>
         </div>

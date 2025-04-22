@@ -26,6 +26,7 @@ import { AuthorizerConfiguration } from '../generated/configuration/authorizerCo
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
@@ -41,6 +42,7 @@ export interface HelperFunctions {
 
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
+  searchConfig?: SearchSettings;
 }
 
 export interface ApplicationStore
@@ -51,7 +53,7 @@ export interface ApplicationStore
   setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
-  selectedPersona: EntityReference;
+  selectedPersona?: EntityReference;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
@@ -90,7 +92,7 @@ export interface DomainStore {
   activeDomainEntityRef?: EntityReference;
   domainOptions: ItemType[];
   updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
-  updateActiveDomain: (activeDomainKey: string) => void;
+  updateActiveDomain: (domain: EntityReference) => void;
   setDomains: (domains: Domain[]) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
   updateDomainLoading: (loading: boolean) => void;

@@ -7,7 +7,7 @@ slug: /connectors/database/bigquery
 name="BigQuery"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures", "Sample Data"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -24,6 +24,7 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/bigquery/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
 
@@ -41,6 +42,8 @@ description="Check out this documentation on how to create a custom role and ass
 link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
+
+{% partial file="/v1.6/connectors/database/partitioned-tables.md" /%}
 
 ### Data Catalog API Permissions 
 
@@ -70,6 +73,7 @@ To execute metadata extraction and usage workflow successfully the user or the s
 | 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
 | 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
 | 14   | logging.operations.list       | Incremental Metadata Ingestion    |
+| 15   | logging.logEntries.list       | Incremental Metadata Ingestion    |
 
 {% /multiTablesWrapper %}
 
@@ -159,7 +163,5 @@ the GCP credentials empty. This is why they are not marked as required.
 ### Cross Project Lineage
 
 We support cross-project lineage, but the data must be ingested within a single service. This means you need to perform lineage ingestion for just one service while including multiple projects.
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

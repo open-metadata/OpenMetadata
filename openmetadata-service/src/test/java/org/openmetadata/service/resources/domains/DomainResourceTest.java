@@ -406,7 +406,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         getDomain.getChildren(),
         getDomain.getOwners(),
         getDomain.getExperts());
-    String fields = "children,owners,parent,experts";
+    String fields = "children,owners,parent,experts,tags";
     getDomain =
         byName
             ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

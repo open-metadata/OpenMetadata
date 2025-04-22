@@ -117,7 +117,9 @@ export const useCustomEditor = (
   useEffect(() => {
     let isMounted = true;
 
-    const instance = new Editor(options);
+    const instance = new Editor({
+      ...options,
+    });
 
     setEditor(instance);
 

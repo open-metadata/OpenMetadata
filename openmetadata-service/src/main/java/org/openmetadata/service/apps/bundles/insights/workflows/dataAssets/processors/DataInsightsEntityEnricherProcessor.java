@@ -4,7 +4,6 @@ import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
-import static org.openmetadata.service.search.SearchIndexUtils.parseFollowers;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -14,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -22,9 +22,14 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeSummaryMap;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -146,7 +151,12 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.keySet().retainAll((List<String>) contextData.get(ENTITY_TYPE_FIELDS_KEY));
 
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
-    List<Class<?>> interfaces = List.of(entity.getClass().getInterfaces());
+
+    Map<String, ChangeSummary> changeSummaryMap =
+        Optional.ofNullable(entity.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
+            .map(ChangeSummaryMap::getAdditionalProperties)
+            .orElse(null);
 
     // Enrich with EntityType
     if (CommonUtil.nullOrEmpty(entityType)) {
@@ -160,13 +170,108 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.put("startTimestamp", startTimestamp);
     entityMap.put("endTimestamp", endTimestamp);
 
-    // Enrich with Team
+    // Process Description Source
+    entityMap.put("descriptionSources", processDescriptionSources(entity, changeSummaryMap));
+
+    // Process Tag Source
+    TagAndTierSources tagAndTierSources = processTagAndTierSources(entity);
+    entityMap.put("tagSources", tagAndTierSources.getTagSources());
+    entityMap.put("tierSources", tagAndTierSources.getTierSources());
+
+    // Process Team
+    Optional.ofNullable(processTeam(entity)).ifPresent(team -> entityMap.put("team", team));
+
+    // Process Tier
+    Optional.ofNullable(processTier(entity)).ifPresent(tier -> entityMap.put("tier", tier));
+
+    // Enrich with Description Stats
+    entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
+
+    if (hasColumns(entity)) {
+      entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
+      entityMap.put(
+          "numberOfColumnsWithDescription",
+          ((ColumnsEntityInterface) entity)
+              .getColumns().stream()
+                  .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
+                  .reduce(0, Integer::sum));
+    }
+
+    // Modify Custom Property key
+    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.get("extension"));
+    oCustomProperties.ifPresent(
+        o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
+
+    return entityMap;
+  }
+
+  private boolean hasColumns(EntityInterface entity) {
+    return List.of(entity.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
+  }
+
+  private String getDescriptionSource(
+      String description, Map<String, ChangeSummary> changeSummaryMap, String changeSummaryKey) {
+    if (description == null) {
+      return null;
+    }
+
+    String descriptionSource = ChangeSource.INGESTED.value();
+
+    if (changeSummaryMap != null) {
+      if (changeSummaryMap.containsKey(changeSummaryKey)
+          && changeSummaryMap.get(changeSummaryKey).getChangeSource() != null) {
+        descriptionSource = changeSummaryMap.get(changeSummaryKey).getChangeSource().value();
+      }
+    }
+    return descriptionSource;
+  }
+
+  private void processDescriptionSource(
+      EntityInterface entity,
+      Map<String, ChangeSummary> changeSummaryMap,
+      Map<String, Integer> descriptionSources) {
+    Optional.ofNullable(
+            getDescriptionSource(entity.getDescription(), changeSummaryMap, "description"))
+        .ifPresent(
+            source ->
+                descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
+  }
+
+  private void processColumnDescriptionSources(
+      ColumnsEntityInterface entity,
+      Map<String, ChangeSummary> changeSummaryMap,
+      Map<String, Integer> descriptionSources) {
+    for (Column column : entity.getColumns()) {
+      Optional.ofNullable(
+              getDescriptionSource(
+                  column.getDescription(),
+                  changeSummaryMap,
+                  String.format("columns.%s.description", column.getName())))
+          .ifPresent(
+              source ->
+                  descriptionSources.put(source, descriptionSources.getOrDefault(source, 0) + 1));
+    }
+  }
+
+  private Map<String, Integer> processDescriptionSources(
+      EntityInterface entity, Map<String, ChangeSummary> changeSummaryMap) {
+    Map<String, Integer> descriptionSources = new HashMap<>();
+    processDescriptionSource(entity, changeSummaryMap, descriptionSources);
+    if (hasColumns(entity)) {
+      processColumnDescriptionSources(
+          (ColumnsEntityInterface) entity, changeSummaryMap, descriptionSources);
+    }
+    return descriptionSources;
+  }
+
+  private String processTeam(EntityInterface entity) {
+    String team = null;
     Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
     if (oEntityOwners.isPresent() && !oEntityOwners.get().isEmpty()) {
       EntityReference entityOwner = oEntityOwners.get().get(0);
       String ownerType = entityOwner.getType();
       if (ownerType.equals(Entity.TEAM)) {
-        entityMap.put("team", entityOwner.getName());
+        team = entityOwner.getName();
       } else {
         try {
           Optional<User> oOwner =
@@ -179,7 +284,7 @@ public class DataInsightsEntityEnricherProcessor
             List<EntityReference> teams = owner.getTeams();
 
             if (!teams.isEmpty()) {
-              entityMap.put("team", teams.get(0).getName());
+              team = teams.get(0).getName();
             }
           }
         } catch (EntityNotFoundException ex) {
@@ -189,53 +294,78 @@ public class DataInsightsEntityEnricherProcessor
               String.format(
                   "Owner %s for %s '%s' version '%s' not found.",
                   entityOwner.getFullyQualifiedName(),
-                  entityType,
+                  Entity.getEntityTypeFromObject(entity),
                   entity.getFullyQualifiedName(),
                   entity.getVersion()));
         }
       }
     }
+    return team;
+  }
 
-    // Enrich with Tier
+  private void processTagAndTierSources(
+      List<TagLabel> tagList, TagAndTierSources tagAndTierSources) {
+    Optional.ofNullable(tagList)
+        .ifPresent(
+            tags -> {
+              tags.forEach(
+                  tag -> {
+                    String tagSource = tag.getLabelType().value();
+                    if (tag.getTagFQN().startsWith("Tier.")) {
+                      tagAndTierSources
+                          .getTierSources()
+                          .put(
+                              tagSource,
+                              tagAndTierSources.getTierSources().getOrDefault(tagSource, 0) + 1);
+                    } else {
+                      tagAndTierSources
+                          .getTagSources()
+                          .put(
+                              tagSource,
+                              tagAndTierSources.getTagSources().getOrDefault(tagSource, 0) + 1);
+                    }
+                  });
+            });
+  }
+
+  private void processEntityTagSources(
+      EntityInterface entity, TagAndTierSources tagAndTierSources) {
+    processTagAndTierSources(entity.getTags(), tagAndTierSources);
+  }
+
+  private void processColumnTagSources(
+      ColumnsEntityInterface entity, TagAndTierSources tagAndTierSources) {
+    for (Column column : entity.getColumns()) {
+      processTagAndTierSources(column.getTags(), tagAndTierSources);
+    }
+  }
+
+  private TagAndTierSources processTagAndTierSources(EntityInterface entity) {
+    TagAndTierSources tagAndTierSources = new TagAndTierSources();
+    processEntityTagSources(entity, tagAndTierSources);
+    if (hasColumns(entity)) {
+      processColumnTagSources((ColumnsEntityInterface) entity, tagAndTierSources);
+    }
+    return tagAndTierSources;
+  }
+
+  private String processTier(EntityInterface entity) {
+    String tier = null;
+
+    if (!NON_TIER_ENTITIES.contains(Entity.getEntityTypeFromObject(entity))) {
+      tier = "NoTier";
+    }
+
     Optional<List<TagLabel>> oEntityTags = Optional.ofNullable(entity.getTags());
 
     if (oEntityTags.isPresent()) {
       Optional<String> oEntityTier =
           getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
-      oEntityTier.ifPresentOrElse(
-          s -> entityMap.put("tier", s),
-          () -> {
-            if (!NON_TIER_ENTITIES.contains(entityType)) {
-              entityMap.put("tier", "NoTier");
-            }
-          });
-    } else if (!NON_TIER_ENTITIES.contains(entityType)) {
-      entityMap.put("tier", "NoTier");
+      if (oEntityTier.isPresent()) {
+        tier = oEntityTier.get();
+      }
     }
-
-    // Enrich with Description Stats
-    if (interfaces.contains(ColumnsEntityInterface.class)) {
-      entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
-      entityMap.put(
-          "numberOfColumnsWithDescription",
-          ((ColumnsEntityInterface) entity)
-              .getColumns().stream()
-                  .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
-                  .reduce(0, Integer::sum));
-      entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
-    } else {
-      entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
-    }
-
-    // Modify Custom Property key
-    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.get("extension"));
-    oCustomProperties.ifPresent(
-        o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
-
-    // Parse Followers:
-    entityMap.put("followers", parseFollowers(entity.getFollowers()));
-
-    return entityMap;
+    return tier;
   }
 
   private Optional<String> getEntityTier(List<String> entityTags) {
@@ -281,5 +411,16 @@ public class DataInsightsEntityEnricherProcessor
   @Override
   public StepStats getStats() {
     return stats;
+  }
+
+  @Getter
+  public static class TagAndTierSources {
+    private final Map<String, Integer> tagSources;
+    private final Map<String, Integer> tierSources;
+
+    public TagAndTierSources() {
+      this.tagSources = new HashMap<>();
+      this.tierSources = new HashMap<>();
+    }
   }
 }

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,7 +21,12 @@ from sqlalchemy.types import VARCHAR
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    DataType,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -306,13 +311,13 @@ class PostgresUnitTest(TestCase):
     def test_datatype(self):
         inspector = types.SimpleNamespace()
         inspector.get_columns = (
-            lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
+            lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         )
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
         result, _, _ = self.postgres_source.get_columns_and_constraints(
-            "public", "user", "postgres", inspector
+            "public", "user", "postgres", inspector, TableType.Regular
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])

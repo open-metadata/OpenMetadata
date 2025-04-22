@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,17 +15,20 @@ import math
 import traceback
 from typing import Any, Callable, Dict, List, Optional
 
+import pandas as pd
 import validators
 from cached_property import cached_property
 from packaging import version
 from tableau_api_lib import TableauServerConnection
-from tableau_api_lib.utils import extract_pages
+from tableau_api_lib.utils import extract_pages, flatten_dict_column
+from tableau_api_lib.utils.querying import get_views_dataframe
 
 from metadata.ingestion.source.dashboard.tableau import (
     TABLEAU_GET_VIEWS_PARAM_DICT,
     TABLEAU_GET_WORKBOOKS_PARAM_DICT,
 )
 from metadata.ingestion.source.dashboard.tableau.models import (
+    CustomSQLTablesResponse,
     DataSource,
     TableauChart,
     TableauDashboard,
@@ -35,6 +38,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 )
 from metadata.ingestion.source.dashboard.tableau.queries import (
     TABLEAU_DATASOURCES_QUERY,
+    TALEAU_GET_CUSTOM_SQL_QUERY,
 )
 from metadata.utils.logger import ometa_logger
 
@@ -80,6 +84,8 @@ class TableauClient:
         self.config = config
         self._client.sign_in().json()
         self.pagination_limit = pagination_limit
+        self.custom_sql_table_queries: Dict[str, List[str]] = {}
+        self.usage_metrics: Dict[str, int] = {}
 
     @cached_property
     def server_info(self) -> Callable:
@@ -109,6 +115,58 @@ class TableauClient:
             "Unable to fetch Dashboard Owners from tableau\n"
             "Please check if the user has permissions to access the Owner information"
         )
+
+    def get_all_workbook_usage_metrics(self) -> None:
+        """
+        Get the usage metrics for all workbook and store it in self.usage_metrics
+        """
+        try:
+            views_df = get_views_dataframe(self._client, all_fields=False)
+            if views_df.empty:
+                logger.debug("No views data found to process usage metrics.")
+                return
+
+            if "workbook" not in views_df.columns:
+                logger.debug("Expected 'workbook' column not found in views data.")
+                return
+
+            usage_views_df = flatten_dict_column(
+                df=views_df, keys=["id"], col_name="workbook"
+            )
+
+            if (
+                "workbook_id" not in usage_views_df.columns
+                or "usage_totalViewCount" not in usage_views_df.columns
+            ):
+                logger.debug(
+                    "Expected columns 'workbook_id' or 'usage_totalViewCount' not found after flattening."
+                )
+                return
+
+            usage_views_df = usage_views_df[["workbook_id", "usage_totalViewCount"]]
+            usage_views_df = (
+                usage_views_df.groupby("workbook_id", as_index=False)[
+                    "usage_totalViewCount"
+                ]
+                .apply(lambda x: pd.to_numeric(x, errors="coerce").astype(int).sum())
+                .reset_index()
+            )
+            self.usage_metrics.update(
+                usage_views_df.set_index("workbook_id")[
+                    "usage_totalViewCount"
+                ].to_dict()
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing workbook usage metrics: {exc}")
+
+    def get_workbook_view_count_by_id(self, workbook_id: str) -> Optional[int]:
+        """
+        Get a workbook view count by dashboard_id
+        """
+        if not self.usage_metrics:
+            self.get_all_workbook_usage_metrics()
+        return self.usage_metrics.get(workbook_id)
 
     def get_workbooks(self) -> List[TableauDashboard]:
         return [
@@ -271,6 +329,53 @@ class TableauClient:
             logger.debug(traceback.format_exc())
             logger.warning("Unable to fetch Data Sources")
         return None
+
+    def get_custom_sql_table_queries(self, dashboard_id: str) -> Optional[List[str]]:
+        """
+        Get custom SQL table queries for a specific dashboard/workbook ID
+        """
+        logger.debug(f"Getting custom SQL table queries for dashboard {dashboard_id}")
+
+        if dashboard_id in self.custom_sql_table_queries:
+            logger.debug(f"Found cached queries for dashboard {dashboard_id}")
+            return self.custom_sql_table_queries[dashboard_id]
+
+        return None
+
+    def cache_custom_sql_tables(self) -> None:
+        """
+        Fetch all custom SQL tables and cache their queries by workbook ID
+        """
+        try:
+            result = self._client.metadata_graphql_query(
+                query=TALEAU_GET_CUSTOM_SQL_QUERY
+            )
+            if not result or not (response_json := result.json()):
+                logger.debug("No result returned from GraphQL query")
+                return
+
+            response = CustomSQLTablesResponse(**response_json)
+            if not response.data:
+                logger.debug("No data found in GraphQL response")
+                return
+
+            for tables in response.data.values():
+                for table in tables:
+                    if not (table.query and table.downstreamWorkbooks):
+                        logger.debug(
+                            f"Skipping table {table} - missing query or workbooks"
+                        )
+                        continue
+
+                    query = table.query
+                    for workbook in table.downstreamWorkbooks:
+                        self.custom_sql_table_queries.setdefault(
+                            workbook.luid, []
+                        ).append(query)
+
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Unable to fetch Custom SQL Tables")
 
     def sign_out(self) -> None:
         self._client.sign_out()

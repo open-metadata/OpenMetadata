@@ -200,7 +200,8 @@ class JSONLogicSearchClassBase {
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE,
+          entityField: EntityFields.DATABASE_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -214,7 +215,8 @@ class JSONLogicSearchClassBase {
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.DATABASE_SCHEMA,
+          entityField: EntityFields.DATABASE_SCHEMA_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -240,6 +242,20 @@ class JSONLogicSearchClassBase {
     tierOptions?: Promise<AsyncFetchListValues>;
   }) => {
     return {
+      [EntityReferenceFields.SERVICE]: {
+        label: t('label.service'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: this.defaultSelectOperators,
+        fieldSettings: {
+          asyncFetch: advancedSearchClassBase.autocomplete({
+            searchIndex: SearchIndex.ALL,
+            entityField: EntityFields.SERVICE_NAME,
+            isCaseInsensitive: true,
+          }),
+          useAsyncSearch: true,
+        },
+      },
       [EntityReferenceFields.OWNERS]: {
         label: t('label.owner-plural'),
         type: 'select',
@@ -371,6 +387,10 @@ class JSONLogicSearchClassBase {
         showNot: false,
         valueLabel: t('label.criteria') + ':',
         renderButton: renderJSONLogicQueryBuilderButtons,
+        customFieldSelectProps: {
+          ...this.baseConfig.settings.customFieldSelectProps,
+          popupClassName: 'json-logic-field-select',
+        },
       },
     };
 

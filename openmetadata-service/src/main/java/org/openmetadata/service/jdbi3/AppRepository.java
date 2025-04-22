@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -187,7 +188,12 @@ public class AppRepository extends EntityRepository<App> {
 
   public ResultList<AppRunRecord> listAppRuns(App app, int limitParam, int offset) {
     return listAppExtensionById(
-        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public ResultList<AppRunRecord> listAppRuns(App app, int limitParam, int offset, UUID service) {
+    return listAppExtensionById(
+        app, limitParam, offset, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
   public AppRunRecord getLatestAppRuns(App app) {
@@ -233,10 +239,20 @@ public class AppRepository extends EntityRepository<App> {
       int offset,
       Class<T> clazz,
       AppExtension.ExtensionType extensionType) {
+    return listAppExtensionById(app, limitParam, offset, clazz, extensionType, null);
+  }
+
+  public <T> ResultList<T> listAppExtensionById(
+      App app,
+      int limitParam,
+      int offset,
+      Class<T> clazz,
+      AppExtension.ExtensionType extensionType,
+      UUID service) {
     int total =
         daoCollection
             .appExtensionTimeSeriesDao()
-            .listAppExtensionCount(app.getId().toString(), extensionType.toString());
+            .listAppExtensionCount(app.getId().toString(), extensionType.toString(), service);
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
@@ -244,7 +260,7 @@ public class AppRepository extends EntityRepository<App> {
           daoCollection
               .appExtensionTimeSeriesDao()
               .listAppExtension(
-                  app.getId().toString(), limitParam, offset, extensionType.toString());
+                  app.getId().toString(), limitParam, offset, extensionType.toString(), service);
       for (String json : jsons) {
         T entity = JsonUtils.readValue(json, clazz);
         entities.add(entity);
@@ -368,21 +384,29 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void cleanup(App app) {
+  protected void entitySpecificCleanup(App app) {
     // Remove the Pipelines for Application
     List<EntityReference> pipelineRef = getIngestionPipelines(app);
     pipelineRef.forEach(
         reference ->
             Entity.deleteEntity("admin", reference.getType(), reference.getId(), true, true));
-    super.cleanup(app);
   }
 
   @Override
-  public EntityUpdater getUpdater(App original, App updated, Operation operation) {
-    return new AppRepository.AppUpdater(original, updated, operation);
+  public EntityRepository<App>.EntityUpdater getUpdater(
+      App original, App updated, Operation operation, ChangeSource changeSource) {
+    return new AppUpdater(original, updated, operation);
   }
 
-  public void addEventSubscription(App app, EventSubscription eventSubscription) {
+  public App addEventSubscription(App app, EventSubscription eventSubscription) {
+    EntityReference existing =
+        listOrEmpty(app.getEventSubscriptions()).stream()
+            .filter(e -> e.getId().equals(eventSubscription.getId()))
+            .findFirst()
+            .orElse(null);
+    if (existing != null) {
+      return app;
+    }
     addRelationship(
         app.getId(),
         eventSubscription.getId(),
@@ -393,7 +417,39 @@ public class AppRepository extends EntityRepository<App> {
     newSubs.add(eventSubscription.getEntityReference());
     App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
     updated.setOpenMetadataServerConnection(null);
-    getUpdater(app, updated, EntityRepository.Operation.PATCH).update();
+    getUpdater(app, updated, Operation.PUT, null).update();
+    return updated;
+  }
+
+  public App deleteEventSubscription(App app, UUID eventSubscriptionId) {
+    deleteRelationship(
+        app.getId(),
+        Entity.APPLICATION,
+        eventSubscriptionId,
+        Entity.EVENT_SUBSCRIPTION,
+        Relationship.CONTAINS);
+    List<EntityReference> newSubs = new ArrayList<>(listOrEmpty(app.getEventSubscriptions()));
+    newSubs.removeIf(sub -> sub.getId().equals(eventSubscriptionId));
+    App updated = JsonUtils.deepCopy(app, App.class).withEventSubscriptions(newSubs);
+    updated.setOpenMetadataServerConnection(null);
+    getUpdater(app, updated, Operation.PUT, null).update();
+    return updated;
+  }
+
+  public void updateAppStatus(UUID appID, AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .update(
+            appID.toString(),
+            JsonUtils.pojoToJson(record),
+            record.getTimestamp(),
+            AppExtension.ExtensionType.STATUS.toString());
+  }
+
+  public void addAppStatus(AppRunRecord record) {
+    daoCollection
+        .appExtensionTimeSeriesDao()
+        .insert(JsonUtils.pojoToJson(record), AppExtension.ExtensionType.STATUS.toString());
   }
 
   public class AppUpdater extends EntityUpdater {

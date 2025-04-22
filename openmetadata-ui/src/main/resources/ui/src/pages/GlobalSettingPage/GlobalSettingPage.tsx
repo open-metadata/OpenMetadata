@@ -19,7 +19,6 @@ import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -39,7 +38,6 @@ const GlobalSettingPage = () => {
 
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-  const { loading } = useApplicationsProvider();
 
   const settingItems = useMemo(
     () =>
@@ -58,7 +56,7 @@ const GlobalSettingPage = () => {
 
           return false;
         }),
-    [permissions, isAdminUser, loading]
+    [permissions, isAdminUser]
   );
 
   const handleSettingItemClick = useCallback((category: string) => {
@@ -71,16 +69,17 @@ const GlobalSettingPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row className="page-container" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <PageHeader data={PAGE_HEADERS.SETTING} />
         </Col>
 
         <Col span={24}>
-          <Row gutter={[20, 20]}>
+          <Row className="setting-items-container" gutter={[20, 20]}>
             {settingItems.map((setting) => (
-              <Col key={setting?.key} span={6}>
+              <Col key={setting?.key} lg={8} md={12} sm={24}>
                 <SettingItemCard
+                  className="global-setting-card"
                   data={setting}
                   onClick={handleSettingItemClick}
                 />

@@ -22,6 +22,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../../../constants/Services.constant';
+import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import './object-field-template.less';
 
 const { Panel } = Collapse;
@@ -62,6 +63,12 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
       } as PropertyMap
     );
 
+    const {
+      properties: updatedNormalProperties,
+      additionalField: AdditionalField,
+      additionalFieldContent,
+    } = serviceUtilClassBase.getProperties(normalProperties);
+
     const fieldElement = (
       <Fragment>
         <Space className="w-full justify-between header-title-wrapper">
@@ -94,7 +101,13 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
             />
           )}
         </Space>
-        {normalProperties.map((element, index) => (
+
+        {AdditionalField &&
+          React.createElement(AdditionalField, {
+            data: additionalFieldContent,
+          })}
+
+        {updatedNormalProperties.map((element, index) => (
           <div
             className={classNames('property-wrapper', {
               'additional-fields': schema.additionalProperties,

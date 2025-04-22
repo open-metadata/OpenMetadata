@@ -14,6 +14,7 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.util.EntityUtil.encodeEntityFqn;
 
 import com.slack.api.model.block.Blocks;
 import com.slack.api.model.block.LayoutBlock;
@@ -77,14 +78,17 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return "~";
   }
 
+  @Override
   public String getEntityUrl(String prefix, String fqn, String additionalParams) {
+    String encodedFqn = encodeEntityFqn(fqn);
     return String.format(
         "<%s/%s/%s%s|%s>",
         EmailUtil.getOMBaseURL(),
         prefix,
-        fqn.trim().replaceAll(" ", "%20"),
+        encodedFqn, // Use encoded FQN in the URL
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
-        fqn.trim());
+        fqn.trim() // Display text remains unencoded
+        );
   }
 
   @Override

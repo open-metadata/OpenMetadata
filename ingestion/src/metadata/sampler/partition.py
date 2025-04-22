@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.sampler.models import TableConfig
+from metadata.utils.logger import sampler_logger
+
+logger = sampler_logger()
 
 
 def validate_athena_injected_partitioning(
@@ -164,8 +167,12 @@ def _handle_bigquery_partition(
                 partitionIntegerRangeEnd=10000,
             )
         # TODO: Allow External Hive Partitioning for profiler
-        raise TypeError(
-            f"Unsupported partition type {partition.intervalType}. Skipping table"
+        logger.info(
+            f"Unknown partition type {partition.intervalType}. Cannot infer partition. Partitionning "
+            "will be set to None. If partitionning is required for your table, you can set it "
+            "directly in the table config. More information can be found at "
+            "https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/"
+            "workflow#4.-updating-profiler-setting-at-the-table-level"
         )
 
     return None

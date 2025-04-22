@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Empty, Space, Tree } from 'antd';
+import { Button, Empty, Space, Tree, Typography } from 'antd';
 import Search from 'antd/lib/input/Search';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -29,7 +29,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
-import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import {
+  convertDomainsToTreeOptions,
+  isDomainExist,
+} from '../../../utils/DomainUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
 import { findItemByFqn } from '../../../utils/GlossaryUtils';
 import {
@@ -44,12 +47,18 @@ import {
   TreeListItem,
 } from './DomainSelectableTree.interface';
 
+import classNames from 'classnames';
+import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   onSubmit,
   value,
   visible,
   onCancel,
   isMultiple = false,
+  initialDomains,
+  showAllDomains = false,
 }) => {
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
@@ -58,41 +67,74 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const { activeDomain } = useDomainStore();
 
-  const handleSave = async () => {
-    setIsSubmitLoading(true);
-    if (isMultiple) {
+  const handleMyDomainsClick = async () => {
+    await onSubmit([]);
+  };
+  const handleMultiDomainSave = async () => {
+    const selectedFqns = selectedDomains
+      .map((domain) => domain.fullyQualifiedName)
+      .sort((a, b) => (a ?? '').localeCompare(b ?? ''));
+    const initialFqns = (value as string[]).sort((a, b) => a.localeCompare(b));
+
+    if (JSON.stringify(selectedFqns) !== JSON.stringify(initialFqns)) {
+      setIsSubmitLoading(true);
       const domains1 = selectedDomains.map((item) =>
         getEntityReferenceFromEntity<Domain>(item, EntityType.DOMAIN)
       );
       await onSubmit(domains1);
+      setIsSubmitLoading(false);
     } else {
+      onCancel();
+    }
+  };
+
+  const handleSingleDomainSave = async (domains?: Domain[]) => {
+    const availableDomains = domains ?? selectedDomains;
+    const selectedFqn = availableDomains[0]?.fullyQualifiedName;
+    const initialFqn = value?.[0];
+
+    if (selectedFqn !== initialFqn) {
+      setIsSubmitLoading(true);
       let retn: EntityReference[] = [];
-      if (selectedDomains.length > 0) {
+      if (availableDomains.length > 0) {
         const domain = getEntityReferenceFromEntity<Domain>(
-          selectedDomains[0],
+          availableDomains[0],
           EntityType.DOMAIN
         );
         retn = [domain];
       }
       await onSubmit(retn);
+      setIsSubmitLoading(false);
+    } else {
+      onCancel();
     }
-
-    setIsSubmitLoading(false);
   };
 
   const fetchAPI = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await listDomainHierarchy({ limit: 100 });
-      setTreeData(convertDomainsToTreeOptions(data.data, 0, isMultiple));
-      setDomains(data.data);
+
+      const combinedData = [...data.data];
+      initialDomains?.forEach((selectedDomain) => {
+        const exists = combinedData.some((domain: Domain) =>
+          isDomainExist(domain, selectedDomain.fullyQualifiedName ?? '')
+        );
+        if (!exists) {
+          combinedData.push(selectedDomain as unknown as Domain);
+        }
+      });
+
+      setTreeData(convertDomainsToTreeOptions(combinedData, 0, isMultiple));
+      setDomains(combinedData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [initialDomains]);
 
   const onSelect = (selectedKeys: React.Key[]) => {
     if (!isMultiple) {
@@ -104,6 +146,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       }
 
       setSelectedDomains(selectedData);
+      handleSingleDomainSave(selectedData);
     }
   };
 
@@ -120,13 +163,11 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
 
       setSelectedDomains(selectedData);
     } else {
-      setSelectedDomains([
-        findItemByFqn(
-          domains,
-          checked.checked as unknown as string,
-          false
-        ) as Domain,
-      ]);
+      const selected = checked.checked.map(
+        (item) => findItemByFqn(domains, item as string, false) as Domain
+      );
+
+      setSelectedDomains(selected);
     }
   };
 
@@ -207,27 +248,51 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
         onChange={(e) => onSearch(e.target.value)}
       />
 
+      {showAllDomains && (
+        <div
+          className={classNames(
+            'all-domain-container d-flex items-center p-xs border-bottom gap-2 cursor-pointer',
+            {
+              'selected-node':
+                activeDomain === DEFAULT_DOMAIN_VALUE &&
+                selectedDomains.length === 0,
+            }
+          )}
+          data-testid="all-domains-selector"
+          onClick={handleMyDomainsClick}>
+          <DomainIcon height={20} name="domain" width={20} />
+          <Typography.Text
+            className={classNames({
+              'font-semibold':
+                activeDomain === DEFAULT_DOMAIN_VALUE &&
+                selectedDomains.length === 0,
+            })}>
+            {t('label.all-domain-plural')}
+          </Typography.Text>
+        </div>
+      )}
+
       {treeContent}
 
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
-        <Button
-          className="update-btn"
-          data-testid="saveAssociatedTag"
-          htmlType="submit"
-          loading={isSubmitLoading}
-          size="small"
-          type="default"
-          onClick={() => handleSave()}>
-          {t('label.update')}
-        </Button>
-        <Button
-          data-testid="cancelAssociatedTag"
-          size="small"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Space>
+      {isMultiple ? (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            type="default"
+            onClick={handleMultiDomainSave}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            type="default"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      ) : null}
     </div>
   );
 };

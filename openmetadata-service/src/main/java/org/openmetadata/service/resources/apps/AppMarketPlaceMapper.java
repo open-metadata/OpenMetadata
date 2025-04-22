@@ -28,6 +28,7 @@ public class AppMarketPlaceMapper
             .withPrivacyPolicyUrl(create.getPrivacyPolicyUrl())
             .withClassName(create.getClassName())
             .withAppType(create.getAppType())
+            .withAgentType(create.getAgentType())
             .withScheduleType(create.getScheduleType())
             .withRuntime(create.getRuntime())
             .withAppConfiguration(create.getAppConfiguration())

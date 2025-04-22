@@ -7,8 +7,8 @@ slug: /connectors/dashboard/quicksight
   name="QuickSight"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Lineage"]
-  unavailableFeatures=["Owners", "Tags", "Datamodels", "Projects"]
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Datamodels"]
+  unavailableFeatures=["Owners", "Tags", "Projects"]
 / %}
 
 In this section, we provide guides and references to use the QuickSight connector.
@@ -17,6 +17,8 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
+- [Troubleshooting](/connectors/dashboard/quicksight)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/quicksight/yaml"} /%}
 ## Requirements
@@ -167,4 +169,4 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/dashboard/dashboard-lineage.md" /%}

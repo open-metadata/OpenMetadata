@@ -33,15 +33,22 @@ import { generateUUID } from './StringsUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.EXTENSION,
+  EntityReferenceFields.SERVICE,
+  EntityReferenceFields.DATABASE,
+  EntityReferenceFields.DATABASE_SCHEMA,
 ];
 
-const resolveFieldType = (
-  fields: Fields,
+export const resolveFieldType = (
+  fields: Fields | undefined,
   field: string
 ): string | undefined => {
+  if (!fields) {
+    return '';
+  }
+
   // Split the field into parts (e.g., "extension.expert")
   const fieldParts = field.split('.');
-  let currentField = fields[fieldParts[0]];
+  let currentField = fields?.[fieldParts[0]];
 
   // If the top-level field doesn't exist, return undefined
   if (!currentField) {
@@ -50,6 +57,19 @@ const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
+    // First check if a more specific path exists (e.g., "expert.name" as a direct subfield)
+    if (i === 1 && (currentField as FieldGroup)?.subfields) {
+      // Join the remaining parts and check if it exists as a single subfield
+      const remainingPath = fieldParts.slice(1).join('.');
+      const remainingField = (currentField as FieldGroup).subfields[
+        remainingPath
+      ];
+      if (remainingField?.type) {
+        return remainingField.type;
+      }
+    }
+
+    // If no specific path found, continue with normal traversal
     if (!(currentField as FieldGroup)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
@@ -94,7 +114,14 @@ export const getSelectEqualsNotEqualsProperties = (
     },
   };
 };
-
+export const READONLY_SETTINGS = {
+  immutableGroupsMode: true,
+  immutableFieldsMode: true,
+  immutableOpsMode: true,
+  immutableValuesMode: true,
+  canRegroup: false,
+  canRemove: false,
+};
 export const getSelectAnyInProperties = (
   parentPath: Array<string>,
   termObjects: Array<EsTerm>
@@ -233,7 +260,7 @@ export const getJsonTreePropertyFromQueryFilter = (
         };
       } else if (!isUndefined(curr.term)) {
         const [field, value] = Object.entries(curr.term)[0];
-        const fieldType = fields ? resolveFieldType(fields, field) : '';
+        const fieldType = resolveFieldType(fields, field);
         const op = getOperator(fieldType, false);
 
         return {
@@ -250,7 +277,7 @@ export const getJsonTreePropertyFromQueryFilter = (
       ) {
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
         const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
-        const fieldType = fields ? resolveFieldType(fields, key) : '';
+        const fieldType = resolveFieldType(fields, key);
         const op = getOperator(fieldType, true);
 
         return {
@@ -331,6 +358,15 @@ export const getJsonTreePropertyFromQueryFilter = (
             'not_like',
             Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]
               ?.value
+          ),
+        };
+      } else if (!isUndefined((curr.bool as EsBoolQuery)?.must)) {
+        return {
+          ...acc,
+          ...getJsonTreePropertyFromQueryFilter(
+            parentPath,
+            (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
+            fields
           ),
         };
       }
@@ -534,9 +570,15 @@ export const elasticsearchToJsonLogic = (
     if (field.includes('.')) {
       const [parentField, childField] = field.split('.');
 
-      return JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-        parentField as EntityReferenceFields
-      )
+      const shouldIgnoreSplit =
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        ) ||
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          field as EntityReferenceFields
+        );
+
+      return shouldIgnoreSplit
         ? { '==': [{ var: field }, value] }
         : {
             some: [

@@ -146,7 +146,7 @@ function PipelineActions({
       align="middle"
       className="pipeline-actions-container"
       data-tesid="pipeline-actions"
-      gutter={[12, 12]}
+      gutter={[8, 8]}
       justify="space-between"
       wrap={false}>
       {playPauseButton}

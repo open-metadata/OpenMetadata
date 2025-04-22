@@ -11,13 +11,33 @@
  *  limitations under the License.
  */
 @import (reference) url('../../../styles/variables.less');
+.chip-container {
+  width: 180px;
 
-.chip-tag-link {
-  display: flex;
-  color: @black;
-  gap: 4px;
-
-  &:hover {
-    color: @black;
+  .chip-tag-link {
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 20px;
+    color: @text-color;
+    &:hover {
+      color: @blue-9;
+      text-decoration: none;
+    }
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+
+  .chip-text {
+    color: @blue-9;
+    &:hover {
+      color: @blue-9;
+    }
+    &::after {
+      animation: none !important;
+      display: none !important;
+    }
+  }
+}
+.no-data-chip-placeholder {
+  color: @text-color-tertiary;
 }

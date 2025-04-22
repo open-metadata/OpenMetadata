@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * PipelineService Metadata Pipeline Configuration.
  */
 export interface PipelineServiceMetadataPipeline {
@@ -87,7 +85,7 @@ export interface LineageInformation {
 /**
  * Regex exclude pipelines.
  *
- * Regex to only fetch dashboards or charts that matches the pattern.
+ * Regex to only fetch entities that matches the pattern.
  */
 export interface FilterPattern {
     /**

@@ -1,0 +1,26 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/nifi/clientCertificateAuth.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Nifi Client Certificate Auth",
+    "description": "Configuration for connecting to Nifi Client Certificate Auth.",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.nifi.ClientCertificateAuth",
+    "type": "object",
+    "properties": {
+        "certificateAuthorityPath": {
+            "title": "Certificat Authority Path",
+            "description": "Path to the root CA certificate",
+            "type": "string"
+        },
+        "clientCertificatePath": {
+            "title": "Client Certificat",
+            "description": "Path to the client certificate",
+            "type": "string"
+        },
+        "clientkeyPath": {
+            "title": "Client Key",
+            "description": "Path to the client key",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

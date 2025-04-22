@@ -21,6 +21,7 @@ export enum GlobalSettingsMenuCategory {
   BOTS = 'bots',
   APPLICATIONS = 'apps',
   PERSONA = 'persona',
+  SEARCH = 'search',
 }
 
 export enum GlobalSettingOptions {
@@ -78,4 +79,10 @@ export enum GlobalSettingOptions {
   SEARCH_RBAC = 'search-rbac',
   LINEAGE_CONFIG = 'lineageConfig',
   OM_URL_CONFIG = 'om-url-config',
+  SEARCH_SETTINGS = 'search-settings',
+  DATA_ASSETS = 'dataAssets',
+  QUERY = 'query',
+  TEST_CASES = 'testCases',
+  TAGS = 'tags',
+  DOMAINS = 'domains',
 }

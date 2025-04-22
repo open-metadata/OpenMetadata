@@ -54,30 +54,47 @@ export class TableClass extends EntityClass {
     name: `pw-database-schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
+  columnsName = [
+    `user_id${uuid()}`,
+    `shop_id${uuid()}`,
+    `name${uuid()}`,
+    `first_name${uuid()}`,
+    `last_name${uuid()}`,
+    `email${uuid()}`,
+  ];
+  entityLinkColumnsName = [
+    this.columnsName[0],
+    this.columnsName[1],
+    this.columnsName[2],
+    `${this.columnsName[2]}.${this.columnsName[3]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}`,
+    this.columnsName[5],
+  ];
+
   children = [
     {
-      name: 'user_id',
+      name: this.columnsName[0],
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'Unique identifier for the user of your Shopify POS or your Shopify admin.',
     },
     {
-      name: 'shop_id',
+      name: this.columnsName[1],
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
     },
     {
-      name: 'name',
+      name: this.columnsName[2],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'Name of the staff member.',
       children: [
         {
-          name: 'first_name',
+          name: this.columnsName[3],
           dataType: 'STRUCT',
           dataLength: 100,
           dataTypeDisplay:
@@ -85,7 +102,7 @@ export class TableClass extends EntityClass {
           description: 'First name of the staff member.',
         },
         {
-          name: 'last_name',
+          name: this.columnsName[4],
           dataType: 'ARRAY',
           dataLength: 100,
           dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
@@ -93,7 +110,7 @@ export class TableClass extends EntityClass {
       ],
     },
     {
-      name: 'email',
+      name: this.columnsName[5],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
@@ -106,7 +123,7 @@ export class TableClass extends EntityClass {
     displayName: `pw table ${uuid()}`,
     description: 'description',
     columns: this.children,
-    tableType: 'View',
+    tableType: 'SecureView',
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 

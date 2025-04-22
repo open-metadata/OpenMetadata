@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,104 +10,122 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { TabsProps } from 'antd';
-import { Tabs } from 'antd';
-import React, { useRef, useState } from 'react';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import { sortTabs } from '../../../utils/CustomizePage/CustomizePageUtils';
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  EditOutlined,
+  MoreOutlined,
+} from '@ant-design/icons';
+import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { MenuInfo } from 'rc-menu/lib/interface';
+import React from 'react';
+import { useDrag, useDrop } from 'react-dnd';
+import { useTranslation } from 'react-i18next';
+import { Tab } from '../../../generated/system/ui/tab';
+import { getEntityName } from '../../../utils/EntityUtils';
+import './draggable-tabs.less';
 
-const type = 'DraggableTabNode';
-interface DraggableTabPaneProps extends React.HTMLAttributes<HTMLDivElement> {
-  index: React.Key;
-  moveNode: (dragIndex: React.Key, hoverIndex: React.Key) => void;
+type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
+
+interface TabItemProps {
+  item: Tab;
+  index: number;
+  moveTab?: (fromIndex: number, toIndex: number) => void;
+  onEdit?: (key: string) => void;
+  onRename?: (key: string) => void;
+  onRemove?: (targetKey: TargetKey) => void;
+  onItemClick?: (key: string) => void;
+  shouldHide?: boolean;
 }
 
-export const DraggableTabNode = ({
+export const TabItem = ({
+  item,
   index,
-  children,
-  moveNode,
-}: DraggableTabPaneProps) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [{ isOver, dropClassName }, drop] = useDrop({
-    accept: type,
-    collect: (monitor) => {
-      const { index: dragIndex } = monitor.getItem<{ index: string }>() || {};
-      if (dragIndex === index) {
-        return {};
-      }
-
-      return {
-        isOver: monitor.isOver(),
-        dropClassName: 'dropping',
-      };
-    },
-    drop: (item: { index: React.Key }) => {
-      moveNode(item.index, index);
-    },
-  });
-  const [, drag] = useDrag({
-    type,
+  moveTab,
+  onEdit,
+  onRename,
+  onRemove,
+  onItemClick,
+  shouldHide,
+}: TabItemProps) => {
+  const { t } = useTranslation();
+  const [{ isDragging }, drag] = useDrag({
+    type: 'TAB',
     item: { index },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
   });
-  drop(drag(ref));
 
-  return (
-    <div className={isOver ? dropClassName : ''} ref={ref}>
-      {children}
-    </div>
-  );
-};
+  const tabMenuItems: MenuProps['items'] = [
+    ...(item.editable
+      ? [
+          {
+            label: t('label.edit-widget-plural'),
+            key: 'edit',
+            icon: <CheckCircleOutlined />,
+          },
+        ]
+      : []),
+    {
+      label: t('label.rename'),
+      key: 'rename',
+      icon: <EditOutlined />,
+    },
+    {
+      label: shouldHide ? t('label.hide') : t('label.delete'),
+      key: 'delete',
+      icon: <CloseCircleOutlined />,
+    },
+  ];
 
-export const DraggableTabs: React.FC<
-  TabsProps & { onTabChange?: (newKeys: React.Key[]) => void }
-> = (props) => {
-  const { items = [] } = props;
-  const [order, setOrder] = useState<React.Key[]>([]);
+  const handleMenuClick = (menuInfo: MenuInfo, itemId: string) => {
+    switch (menuInfo.key) {
+      case 'edit':
+        onEdit?.(itemId);
 
-  const moveTabNode = (dragKey: React.Key, hoverKey: React.Key) => {
-    const newOrder = order.slice();
+        break;
+      case 'rename':
+        onRename?.(itemId);
 
-    items.forEach((item) => {
-      if (item.key && newOrder.indexOf(item.key) === -1) {
-        newOrder.push(item.key);
-      }
-    });
+        break;
+      case 'delete':
+        onRemove?.(itemId);
 
-    const dragIndex = newOrder.indexOf(dragKey);
-    const hoverIndex = newOrder.indexOf(hoverKey);
-
-    newOrder.splice(dragIndex, 1);
-    newOrder.splice(hoverIndex, 0, dragKey);
-
-    props.onTabChange?.(newOrder);
-    setOrder(newOrder);
+        break;
+    }
   };
 
-  const renderTabBar: TabsProps['renderTabBar'] = (
-    tabBarProps,
-    DefaultTabBar
-  ) => (
-    <DefaultTabBar {...tabBarProps}>
-      {(node) => (
-        <DraggableTabNode
-          index={node.key!}
-          key={node.key}
-          moveNode={moveTabNode}>
-          {node}
-        </DraggableTabNode>
-      )}
-    </DefaultTabBar>
-  );
-
-  const orderItems = sortTabs(items, order as string[]);
+  const [, drop] = useDrop({
+    accept: 'TAB',
+    hover: (draggedItem: { index: number }) => {
+      if (draggedItem.index !== index) {
+        moveTab?.(draggedItem.index, index);
+        draggedItem.index = index;
+      }
+    },
+  });
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <Tabs renderTabBar={renderTabBar} {...props} items={orderItems} />
-    </DndProvider>
+    <div
+      ref={(node) => drag(drop(node))}
+      style={{ opacity: isDragging ? 0.5 : 1 }}>
+      <Dropdown
+        menu={{
+          items: tabMenuItems,
+          onClick: (menuInfo) => handleMenuClick(menuInfo, item.id),
+        }}
+        trigger={['click']}>
+        <Button
+          className="draggable-tab-item"
+          data-testid={`tab-${item.displayName}`}
+          onClick={() => onItemClick?.(item.id)}>
+          <Space>
+            {getEntityName(item)}
+            <MoreOutlined />
+          </Space>
+        </Button>
+      </Dropdown>
+    </div>
   );
 };

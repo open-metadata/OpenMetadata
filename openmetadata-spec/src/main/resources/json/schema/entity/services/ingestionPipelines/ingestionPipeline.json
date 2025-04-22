@@ -206,6 +206,10 @@
       "description": "Change that led to this version of the entity.",
       "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -221,6 +225,10 @@
     "applicationType": {
       "description": "Type of the application when pipelineType is 'application'.",
       "type": "string"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "required": [

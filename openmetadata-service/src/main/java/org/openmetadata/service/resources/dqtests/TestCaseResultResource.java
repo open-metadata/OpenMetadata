@@ -304,7 +304,12 @@ public class TestCaseResultResource
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
-          String q)
+          String q,
+      @Parameter(
+              description = "raw elasticsearch query to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("queryString")
+          String queryString)
       throws IOException {
     if (latest.equals("true") && (testSuiteId == null && entityFQN == null)) {
       throw new IllegalArgumentException("latest=true requires testSuiteId");
@@ -345,6 +350,7 @@ public class TestCaseResultResource
         offset,
         new SearchSortFilter("timestamp", "desc", null, null),
         q,
+        queryString,
         authRequests,
         AuthorizationLogic.ANY);
   }

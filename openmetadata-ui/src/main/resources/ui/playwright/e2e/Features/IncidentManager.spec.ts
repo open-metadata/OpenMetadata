@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { get } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   getApiContext,
@@ -44,15 +46,14 @@ test.describe.configure({ mode: 'serial' });
 test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   test.beforeAll(async ({ browser }) => {
     // since we need to poll for the pipeline status, we need to increase the timeout
-    test.setTimeout(90000);
+    test.slow();
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
-    // Todo: Remove this patch once the issue is fixed #19140
-    await resetTokenFromBotPage(page, {
-      name: 'testsuite',
-      testId: 'bot-link-TestSuiteBot',
-    });
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+    }
 
     for (const user of users) {
       await user.create(apiContext);
@@ -172,9 +173,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
         await testCaseResponse;
 
-        const listUserResponse = page.waitForResponse('/api/v1/users?*');
+        await clickOutside(page);
+
         await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
-        listUserResponse;
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
@@ -199,8 +200,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         );
 
         await expect(
-          page.locator('[data-testid="assignee"] [data-testid="owner-link"]')
-        ).toContainText(assignee2.displayName);
+          page.locator(`[data-testid=${assignee2.displayName}]`)
+        ).toBeVisible();
       }
     );
 
@@ -418,11 +419,15 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const lineageResponse = page.waitForResponse(
       `/api/v1/lineage/getLineage?*fqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
+
+    await page.click('[data-testid="lineage"]');
+    await lineageResponse;
+
     const incidentCountResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*limit=0*`
     );
-    await page.click('[data-testid="lineage"]');
-    await lineageResponse;
+    const nodeFqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
     await incidentCountResponse;
 
     await page.waitForSelector("[role='dialog']", { state: 'visible' });

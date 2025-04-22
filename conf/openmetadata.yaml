@@ -26,6 +26,10 @@ server:
       bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
 
+  maxThreads: ${SERVER_MAX_THREADS:-50}
+  minThreads: ${SERVER_MIN_THREADS:-10}
+  idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
 # is strongly recommended to run https instead. Note that only
@@ -156,6 +160,11 @@ database:
   evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
   minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
 
+objectStorage:
+  enabled: false
+  provider: NOOP
+  maxFileSize: 5242880
+
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
@@ -168,6 +177,7 @@ authorizerConfiguration:
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
   principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
+  allowedDomains: ${AUTHORIZER_ALLOWED_DOMAINS:-[]}
   enforcePrincipalDomain: ${AUTHORIZER_ENFORCE_PRINCIPAL_DOMAIN:-false}
   enableSecureSocketConnection : ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}
   useRolesFromProvider: ${AUTHORIZER_USE_ROLES_FROM_PROVIDER:-false}
@@ -204,6 +214,7 @@ authenticationConfiguration:
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
+    maxAge: ${OIDC_MAX_AGE:-"0"}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -287,9 +298,19 @@ elasticsearch:
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
   batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
-  payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
+  payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
+  naturalLanguageSearch:
+    enabled: false
+    providerClass: ${NATURAL_LANGUAGE_SEARCH_PROVIDER_CLASS:-org.openmetadata.service.search.nlq.NoOpNLQService}
+    bedrock:
+      region: ${AWS_BEDROCK_REGION:-""}
+      modelId: ${AWS_BEDROCK_MODEL_ID:-""}
+      accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
+      secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
+      useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
+
 
 eventMonitoringConfiguration:
   eventMonitor: ${EVENT_MONITOR:-prometheus}  # Possible values are "prometheus", "cloudwatch"

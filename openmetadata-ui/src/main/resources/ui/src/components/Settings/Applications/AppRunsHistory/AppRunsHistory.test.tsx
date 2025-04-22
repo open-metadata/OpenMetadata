@@ -21,13 +21,16 @@ import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
-import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
+import {
+  mockApplicationData,
+  mockExternalApplicationData,
+} from '../../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
 const mockHandlePagingChange = jest.fn();
 const mockHandlePageChange = jest.fn();
 const mockHandlePageSizeChange = jest.fn();
-const mockGetApplicationRuns = jest.fn().mockReturnValue({
+let mockGetApplicationRuns = jest.fn().mockReturnValue({
   data: [mockApplicationData],
   paging: {
     offset: 0,
@@ -93,34 +96,40 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn().mockReturnValue('formatDateTime'),
+  formatDateTime: jest.fn().mockImplementation((timestamp) => {
+    // Return a fixed string for specific timestamps
+    if (timestamp === 1741037977960) {
+      return 'Mar 4, 2025, 3:08 AM';
+    }
+
+    return 'formatDateTime';
+  }),
   getEpochMillisForPastDays: jest.fn().mockReturnValue('startDay'),
+  getIntervalInMilliseconds: jest.fn().mockReturnValue('interval'),
+  formatDuration: jest.fn().mockReturnValue('formatDuration'),
 }));
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../../common/NextPrevious/NextPrevious', () =>
-  jest.fn().mockImplementation(({ pagingHandler }) => (
-    // passing currentPage value in pagingHandler
-    <button onClick={() => pagingHandler({ currentPage: 6 })}>
-      NextPrevious
-    </button>
-  ))
-);
-
-jest.mock('../../../common/StatusBadge/StatusBadge.component', () =>
-  jest.fn().mockReturnValue(<div>StatusBadge</div>)
-);
-
 jest.mock('../../../common/Table/Table', () => {
-  return jest.fn().mockImplementation(({ loading, ...rest }) => (
-    <div>
-      {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
-      Table
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ loading, customPaginationProps, ...rest }) => (
+      <div>
+        {loading ? <p>TableLoader</p> : <AntdTable {...rest} />}
+        {customPaginationProps && (
+          <button
+            onClick={() =>
+              customPaginationProps.pagingHandler({ currentPage: 6 })
+            }>
+            NextPrevious
+          </button>
+        )}
+        Table
+      </div>
+    ));
 });
 
 jest.mock('../AppLogsViewer/AppLogsViewer.component', () =>
@@ -164,7 +173,7 @@ const mockProps3 = {
   },
 };
 
-describe('AppRunsHistory component', () => {
+describe('AppRunsHistory', () => {
   it('should contain all necessary elements based on mockProps1', async () => {
     render(<AppRunsHistory {...mockProps1} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
@@ -178,8 +187,6 @@ describe('AppRunsHistory component', () => {
     act(() => {
       userEvent.click(screen.getByText('label.log-plural'));
     });
-
-    expect(screen.queryByText('--')).not.toBeInTheDocument();
 
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
 
@@ -222,6 +229,7 @@ describe('AppRunsHistory component', () => {
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
 
     userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
@@ -231,6 +239,7 @@ describe('AppRunsHistory component', () => {
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
       endTs: new Date('2024-02-05').valueOf(),
+      limit: 10,
     });
   });
 
@@ -301,5 +310,36 @@ describe('AppRunsHistory component', () => {
     });
 
     expect(screen.getByTestId('stop-modal')).toBeInTheDocument();
+  });
+
+  it('should render the table data for external app', async () => {
+    mockGetApplicationRuns = jest.fn().mockImplementation(() => ({
+      data: [
+        {
+          appId: '633f579c-512c-4b5f-864b-5664aa56b37f',
+          appName: 'CollateAIApplication',
+          extension: 'status',
+          status: 'success',
+          endTime: 1741038028746,
+          executionTime: 1741037977960,
+          startTime: 1741037977960,
+        },
+      ],
+      paging: {
+        offset: 0,
+        total: 1,
+      },
+    }));
+
+    render(
+      <AppRunsHistory appData={mockExternalApplicationData} jsonSchema={{}} />
+    );
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    // Verify timestamps are rendered
+    expect(screen.getByText('Mar 4, 2025, 3:08 AM')).toBeInTheDocument();
+
+    // Verify status is rendered
+    expect(screen.getByText('Success')).toBeInTheDocument();
   });
 });

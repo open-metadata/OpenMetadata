@@ -11,15 +11,21 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
+import classNames from 'classnames';
 import cronstrue from 'cronstrue/i18n';
 import { t } from 'i18next';
-import { capitalize, isUndefined } from 'lodash';
+import { capitalize, isUndefined, startCase } from 'lodash';
 import React from 'react';
+import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
+import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
 import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { PIPELINE_INGESTION_RUN_STATUS } from '../constants/pipeline.constants';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getEntityName, highlightSearchText } from './EntityUtils';
 import { getCurrentLocaleForConstrue } from './i18next/i18nextUtil';
 import { stringToHTML } from './StringsUtils';
@@ -35,23 +41,36 @@ export const renderNameField =
     );
 
 export const renderTypeField =
-  (searchText?: string) => (_: string, record: IngestionPipeline) =>
-    (
+  (searchText?: string) => (_: string, record: IngestionPipeline) => {
+    const typeText =
+      record.pipelineType === PipelineType.Dbt
+        ? record.pipelineType
+        : startCase(record.pipelineType);
+
+    return (
       <Typography.Text
         className="m-b-0 d-block break-word"
         data-testid="pipeline-type">
-        {stringToHTML(highlightSearchText(record.pipelineType, searchText))}
+        {stringToHTML(highlightSearchText(typeText, searchText))}
       </Typography.Text>
     );
+  };
 
-export const renderStatusField = (_: string, record: IngestionPipeline) => (
-  <Tag
-    className="ingestion-run-badge latest"
-    color={PIPELINE_INGESTION_RUN_STATUS[record.enabled ? 'success' : 'paused']}
-    data-testid="pipeline-active-status">
-    {record.enabled ? t('label.active-uppercase') : t('label.paused-uppercase')}
-  </Tag>
-);
+export const renderStatusField = (_: string, record: IngestionPipeline) => {
+  const statusIcon = record.enabled ? ActiveIcon : PausedIcon;
+
+  return (
+    <Tag
+      className={classNames(
+        'ingestion-run-badge latest pipeline-status',
+        record.enabled ? 'success' : 'paused'
+      )}
+      data-testid="pipeline-active-status">
+      <Icon component={statusIcon} />
+      {record.enabled ? t('label.active') : t('label.paused')}
+    </Tag>
+  );
+};
 
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {

@@ -19,3 +19,7 @@ export type ListParams = {
   after?: string;
   include?: Include;
 };
+
+export type ListParamsWithOffset = ListParams & {
+  offset?: number;
+};

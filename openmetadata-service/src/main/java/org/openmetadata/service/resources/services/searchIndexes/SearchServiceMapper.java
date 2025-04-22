@@ -9,6 +9,7 @@ public class SearchServiceMapper implements EntityMapper<SearchService, CreateSe
   public SearchService createToEntity(CreateSearchService create, String user) {
     return copy(new SearchService(), create, user)
         .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+        .withConnection(create.getConnection())
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

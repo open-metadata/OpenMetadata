@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,6 +38,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
@@ -221,7 +222,19 @@ class StoredProcedureLineageMixin(ABC):
                     query_by_procedure=procedure_and_query.query_by_procedure,
                     procedure=procedure_and_query.procedure,
                 ):
-                    queue.put(lineage)
+                    if lineage and lineage.right is not None:
+                        queue.put(
+                            Either(
+                                right=OMetaLineageRequest(
+                                    override_lineage=False,
+                                    lineage_request=lineage.right,
+                                    entity=StoredProcedure,
+                                    entity_fqn=procedure_and_query.procedure.fullyQualifiedName.root,
+                                )
+                            )
+                        )
+                    else:
+                        queue.put(lineage)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(
@@ -260,8 +273,11 @@ class StoredProcedureLineageMixin(ABC):
                 }
             }
         }
+        if self.source_config.incrementalLineageProcessing:
+            query.get("query").get("bool").get("must").append(
+                {"bool": {"should": [{"term": {"processedLineage": False}}]}}
+            )
         query_filter = json.dumps(query)
-
         logger.info("Processing Lineage for Stored Procedures")
         # First, get all the query history
         queries_dict = self.get_stored_procedure_queries_dict()
@@ -288,4 +304,6 @@ class StoredProcedureLineageMixin(ABC):
         logger.info("Processing Lineage for Stored Procedures")
         producer_fn = self.procedure_lineage_generator
         processor_fn = self.procedure_lineage_processor
-        yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
+        yield from self.generate_lineage_in_thread(
+            producer_fn, processor_fn, max_threads=self.source_config.threads
+        )

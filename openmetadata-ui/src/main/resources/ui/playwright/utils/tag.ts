@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
+import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
@@ -27,6 +28,7 @@ import {
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
+  uuid,
 } from './common';
 import { sidebarClick } from './sidebar';
 
@@ -35,6 +37,15 @@ export const TAG_INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5',
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
+
+export const NEW_TAG = {
+  name: `PlaywrightTag-${uuid()}`,
+  displayName: `PlaywrightTag-${uuid()}`,
+  renamedName: `PlaywrightTag-${uuid()}`,
+  description: 'This is the PlaywrightTag',
+  color: '#FF5733',
+  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
 };
 
 export const visitClassificationPage = async (
@@ -52,7 +63,10 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-  await page.waitForLoadState('networkidle');
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page
     .getByTestId('data-summary-container')
@@ -80,6 +94,11 @@ export const addAssetsToTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -137,6 +156,11 @@ export const removeAssetsFromTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -304,6 +328,11 @@ export const verifyTagPageUI = async (
   await tag.visitPage(page);
   await res;
 
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
   );
@@ -337,6 +366,12 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await page.getByTestId('edit-description').click();
 
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -437,3 +472,15 @@ export const LIMITED_USER_RULES: PolicyRulesType[] = [
     effect: 'deny',
   },
 ];
+
+export const fillTagForm = async (adminPage: Page, domain: Domain) => {
+  await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
+  await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+  await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
+  await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
+  await adminPage.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
+  await adminPage.click('[data-testid="add-domain"]');
+  await adminPage
+    .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
+    .click();
+};
