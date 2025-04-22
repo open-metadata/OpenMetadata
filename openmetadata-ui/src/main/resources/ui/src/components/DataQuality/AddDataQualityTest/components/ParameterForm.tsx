@@ -377,7 +377,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 ]);
 
                 const columns = table?.columns.map((column) => ({
-                  label: column.displayName ?? column.name,
+                  label: getEntityName(column),
                   value: column.name,
                   // Check if column.name is in the combined Set to determine if it should be disabled
                   disabled: selectedColumnsSet.has(column.name),
