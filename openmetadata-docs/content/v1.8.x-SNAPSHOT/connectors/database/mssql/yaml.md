@@ -23,7 +23,7 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 {% collateContent %}
-- [Reverse Metadata](https://docs.getcollate.io/connectors/ingestion/workflows/reverse-metadata)
+- [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
 {% /collateContent %}
 {% partial file="/v1.8/connectors/external-ingestion-deployment.md" /%}
 

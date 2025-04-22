@@ -23,7 +23,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 {% collateContent %}
-- [Reverse Metadata](https://docs.getcollate.io/connectors/ingestion/workflows/reverse-metadata)
+- [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
 {% /collateContent %}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
