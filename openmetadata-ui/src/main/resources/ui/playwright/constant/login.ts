@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 export const JWT_EXPIRY_TIME_MAP = {
-  '3 minutes': 180,
+  '2 minutes': 120,
   '1 hour': 3600,
   '2 hours': 7200,
   '3 hours': 10800,
