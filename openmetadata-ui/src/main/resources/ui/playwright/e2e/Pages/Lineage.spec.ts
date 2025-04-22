@@ -204,6 +204,8 @@ test('Verify column lineage between tables', async ({ browser }) => {
 });
 
 test('Verify column lineage between table and topic', async ({ browser }) => {
+  test.slow();
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
@@ -242,30 +244,28 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await visitLineageTab(page);
   await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
 
-  await test.step('Verify relation in platform lineage', async () => {
-    await sidebarClick(page, SidebarItem.LINEAGE);
-    const searchRes = page.waitForResponse('/api/v1/search/query?*');
+  // Verify relation in platform lineage
+  await sidebarClick(page, SidebarItem.LINEAGE);
+  const searchRes = page.waitForResponse('/api/v1/search/query?*');
 
-    await page.click('[data-testid="search-entity-select"]');
-    await page.keyboard.type(tableServiceFqn);
-    await searchRes;
+  await page.click('[data-testid="search-entity-select"]');
+  await page.keyboard.type(tableServiceFqn);
+  await searchRes;
 
-    await page.click(`[data-testid="node-suggestion-${tableServiceFqn}"]`);
+  await page.click(`[data-testid="node-suggestion-${tableServiceFqn}"]`);
 
-    await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('networkidle');
 
-    const tableServiceNode = page.locator(
-      `[data-testid="lineage-node-${tableServiceFqn}"]`
-    );
-    const topicServiceNode = page.locator(
-      `[data-testid="lineage-node-${topicServiceFqn}"]`
-    );
+  const tableServiceNode = page.locator(
+    `[data-testid="lineage-node-${tableServiceFqn}"]`
+  );
+  const topicServiceNode = page.locator(
+    `[data-testid="lineage-node-${topicServiceFqn}"]`
+  );
 
-    await expect(tableServiceNode).toBeVisible();
-    await expect(topicServiceNode).toBeVisible();
-  });
+  await expect(tableServiceNode).toBeVisible();
+  await expect(topicServiceNode).toBeVisible();
 
-  await redirectToHomePage(page);
   await table.visitEntityPage(page);
   await visitLineageTab(page);
   await page.click('[data-testid="edit-lineage"]');

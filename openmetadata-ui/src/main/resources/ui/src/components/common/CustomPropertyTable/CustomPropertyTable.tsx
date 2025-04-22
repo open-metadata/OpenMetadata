@@ -69,7 +69,6 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onUpdate,
     filterWidgets,
   } = useGenericContext<ExtentionEntities[T]>();
-
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(true);
@@ -195,7 +194,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           showErrorToast(error as AxiosError);
         }
       }
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.resource-permission-lowercase'),
@@ -211,12 +210,16 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Skeleton active />;
+    return (
+      <div className="p-lg border-default border-radius-sm">
+        <Skeleton active />
+      </div>
+    );
   }
 
   if (!hasPermission) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="flex-center">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </div>
     );
@@ -229,9 +232,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="h-full p-x-lg flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
-          className={className}
+          className={classNames(className)}
           placeholderText={
             <Transi18next
               i18nKey="message.no-custom-properties-entity"
@@ -311,7 +314,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
     if (newLook) {
       return (
-        <Card className="w-full new-header-border-card" title={header}>
+        <Card
+          className="w-full new-header-border-card no-scrollbar"
+          title={header}>
           {propertyList}
         </Card>
       );
@@ -326,27 +331,26 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (
-    <Row
-      className="custom-properties-card p-x"
-      data-testid="custom-properties-card"
-      gutter={[16, 16]}>
-      {dataSourceColumns.map((columns, colIndex) => (
-        <Col key={colIndex} span={8}>
-          {columns.map((record) => (
-            <div key={record.name} style={{ marginBottom: '16px' }}>
-              <PropertyValue
-                extension={extensionObject.extensionObject}
-                hasEditPermissions={hasEditAccess}
-                isRenderedInRightPanel={isRenderedInRightPanel}
-                isVersionView={isVersionView}
-                property={record}
-                versionDataKeys={extensionObject.addedKeysList}
-                onExtensionUpdate={onExtensionUpdate}
-              />
-            </div>
-          ))}
-        </Col>
-      ))}
-    </Row>
+    <div className="h-full custom-properties-card">
+      <Row data-testid="custom-properties-card" gutter={[16, 16]}>
+        {dataSourceColumns.map((columns, colIndex) => (
+          <Col key={colIndex} span={8}>
+            {columns.map((record) => (
+              <div key={record.name} style={{ marginBottom: '16px' }}>
+                <PropertyValue
+                  extension={extensionObject.extensionObject}
+                  hasEditPermissions={hasEditAccess}
+                  isRenderedInRightPanel={isRenderedInRightPanel}
+                  isVersionView={isVersionView}
+                  property={record}
+                  versionDataKeys={extensionObject.addedKeysList}
+                  onExtensionUpdate={onExtensionUpdate}
+                />
+              </div>
+            ))}
+          </Col>
+        ))}
+      </Row>
+    </div>
   ) : null;
 };

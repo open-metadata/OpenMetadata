@@ -17,6 +17,7 @@ Configure and schedule OpenLineage metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/pipeline/openlineage/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" /%}
 
@@ -275,5 +276,3 @@ openlineage_service_request = CreatePipelineServiceRequest(
 metadata.create_or_update(openlineage_service_request)
 
 ```
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

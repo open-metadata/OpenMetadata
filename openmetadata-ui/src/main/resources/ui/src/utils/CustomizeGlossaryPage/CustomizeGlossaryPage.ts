@@ -36,7 +36,7 @@ class CustomizeGlossaryPageClassBase {
       REFERENCES: 2,
       OWNER: 2,
       REVIEWER: 2,
-      TERMS_TABLE: 6,
+      TERMS_TABLE: 7.5,
       EMPTY_WIDGET_PLACEHOLDER: 3,
     };
   }
@@ -77,7 +77,7 @@ class CustomizeGlossaryPageClassBase {
           h:
             this.defaultHeights.DESCRIPTION +
             this.defaultHeights.TERMS_TABLE +
-            0.5,
+            0.3,
           i: DetailPageWidgetKeys.LEFT_PANEL,
           w: 6,
           x: 0,

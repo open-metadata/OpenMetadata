@@ -449,3 +449,43 @@ test.describe('User with Data Steward Roles', () => {
     await visitOwnProfilePage(dataStewardPage);
   });
 });
+
+test.describe('User Profile Feed Interactions', () => {
+  test('Should navigate to user profile from feed card avatar click', async ({
+    adminPage,
+  }) => {
+    await redirectToHomePage(adminPage);
+    const feedResponse = adminPage.waitForResponse(
+      '/api/v1/feed?type=Conversation'
+    );
+
+    await visitOwnProfilePage(adminPage);
+    await feedResponse;
+
+    await adminPage.waitForSelector('[data-testid="message-container"]');
+    const userDetailsResponse = adminPage.waitForResponse(
+      '/api/v1/users/name/*'
+    );
+    const userFeedResponse = adminPage.waitForResponse(
+      '/api/v1/feed?type=Conversation&filterType=OWNER_OR_FOLLOWS&userId=*'
+    );
+
+    const avatar = adminPage
+      .locator('[data-testid="message-container"]')
+      .first()
+      .locator('[data-testid="profile-avatar"]');
+
+    await avatar.hover();
+    await adminPage.waitForSelector('.ant-popover-card');
+    await adminPage.getByTestId('user-name').nth(1).click();
+
+    await userDetailsResponse;
+    await userFeedResponse;
+    const response = await userDetailsResponse;
+    const { fullyQualifiedName } = await response.json();
+
+    await expect(
+      adminPage.locator('[data-testid="user-display-name"]')
+    ).toHaveText(fullyQualifiedName);
+  });
+});

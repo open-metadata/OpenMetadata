@@ -416,7 +416,7 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className="m-b-0 d-block text-grey-muted break-word"
+                  className="m-b-0 d-block break-word"
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>

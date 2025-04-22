@@ -287,6 +287,7 @@ export const DatabaseSchemaTable = ({
   useEffect(() => {
     if (isCustomizationPage) {
       setSchemas(DATABASE_SCHEMAS_DUMMY_DATA);
+      setIsLoading(false);
 
       return;
     }
@@ -336,7 +337,7 @@ export const DatabaseSchemaTable = ({
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        emptyText: <ErrorPlaceHolder className="m-y-md border-none" />,
       }}
       pagination={false}
       rowKey="id"

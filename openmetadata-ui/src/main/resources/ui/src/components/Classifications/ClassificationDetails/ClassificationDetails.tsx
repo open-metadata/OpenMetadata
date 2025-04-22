@@ -383,9 +383,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="p-t-sm p-x-md" data-testid="tags-container">
+      <div className="h-full overflow-y-auto" data-testid="tags-container">
         {currentClassification && (
-          <Row className="p-l-lg" data-testid="header" wrap={false}>
+          <Row data-testid="header" wrap={false}>
             <Col flex="auto">
               <EntityHeaderTitle
                 badge={
@@ -415,10 +415,11 @@ const ClassificationDetails = forwardRef(
             </Col>
 
             <Col className="d-flex justify-end items-start" flex="270px">
-              <Space>
+              <Space size={12}>
                 {createPermission && (
                   <Tooltip title={addTagButtonToolTip}>
                     <Button
+                      className="h-10"
                       data-testid="add-new-tag-button"
                       disabled={isClassificationDisabled}
                       type="primary"
@@ -430,7 +431,7 @@ const ClassificationDetails = forwardRef(
                   </Tooltip>
                 )}
 
-                <ButtonGroup size="small">
+                <ButtonGroup className="spaced" size="small">
                   <Tooltip
                     title={t(
                       `label.${

@@ -10,6 +10,6 @@ public class DatabaseServiceMapper implements EntityMapper<DatabaseService, Crea
     return copy(new DatabaseService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection())
-        .withIngestionAgent(create.getIngestionAgent());
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

@@ -27,7 +27,7 @@ describe('GlossaryStatusBadge', () => {
     render(<GlossaryStatusBadge status={Status.Draft} />);
     const statusElement = screen.getByText('Draft');
 
-    expect(statusElement).toHaveClass('warning');
+    expect(statusElement).toHaveClass('pending');
   });
 
   it('renders the correct class based on rejected status', () => {
@@ -41,6 +41,6 @@ describe('GlossaryStatusBadge', () => {
     render(<GlossaryStatusBadge status={Status.Deprecated} />);
     const statusElement = screen.getByText('Deprecated');
 
-    expect(statusElement).toHaveClass('warning');
+    expect(statusElement).toHaveClass('deprecated');
   });
 });

@@ -256,11 +256,12 @@ const TagPage = () => {
 
   const onNameSave = async (obj: Tag) => {
     if (tagItem) {
-      const { displayName } = obj;
+      const { name, displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
 
       updatedDetails = {
         ...tagItem,
+        name: name?.trim(),
         displayName: displayName?.trim(),
       };
 
@@ -432,7 +433,7 @@ const TagPage = () => {
               className: 'tag-resizable-panel-container',
               children: (
                 <div className="tag-overview-tab">
-                  <Row className="p-md">
+                  <Row>
                     <Col span={24}>
                       <DescriptionV1
                         removeBlur
@@ -482,6 +483,7 @@ const TagPage = () => {
           <ResizablePanels
             className="tag-height-with-resizable-panel"
             firstPanel={{
+              wrapInCard: false,
               className: 'tag-resizable-panel-container',
               children: (
                 <AssetsTabs
@@ -509,6 +511,7 @@ const TagPage = () => {
             }}
             hideSecondPanel={!previewAsset}
             secondPanel={{
+              wrapInCard: false,
               children: previewAsset && (
                 <EntitySummaryPanel
                   entityDetails={previewAsset}
@@ -584,7 +587,7 @@ const TagPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={tagItem.name}>
-      <Row gutter={[0, 8]}>
+      <Row gutter={[0, 12]}>
         <Col span={24}>
           <Row
             className="data-classification"

@@ -214,6 +214,10 @@
 }
 
 .lineage-root {
+  border-radius: @border-radius-sm;
+  border: 1px solid @grey-15;
+  position: relative;
+
   .entity-panel-container {
     right: 80px;
     margin-top: 12px;
@@ -238,11 +242,11 @@
 }
 
 .full-screen-lineage {
-  top: -120px;
-  left: 0;
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  top: @om-navbar-height;
+  left: @sidebar-width;
+  width: calc(100% - @sidebar-width);
+  height: calc(100vh - @om-navbar-height);
 
   .lineage-card {
     height: calc(100vh - @om-navbar-height);

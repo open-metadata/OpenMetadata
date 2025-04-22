@@ -51,7 +51,7 @@ import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ServicePageData } from './ServiceDetailsPage';
+import { ServicePageData } from './ServiceDetailsPage.interface';
 
 interface ServiceMainTabContentProps {
   serviceName: string;
@@ -132,7 +132,7 @@ function ServiceMainTabContent({
   const handleDescriptionUpdate = useCallback(async (updatedHTML: string) => {
     try {
       await onDescriptionUpdate(updatedHTML);
-    } catch (e) {
+    } catch {
       // Error
     }
   }, []);
@@ -146,7 +146,7 @@ function ServiceMainTabContent({
         }
         const updatedData = {
           ...pageDataDetails,
-          displayName: entityData.displayName || undefined,
+          displayName: entityData.displayName ?? undefined,
         };
         const jsonPatch = compare(pageDataDetails, updatedData);
         const response = await callServicePatchAPI(
@@ -236,88 +236,87 @@ function ServiceMainTabContent({
   }, [data]);
 
   return (
-    <Row gutter={[0, 16]} wrap={false}>
+    <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
       <Col className="tab-content-height-with-resizable-panel" span={24}>
         <ResizablePanels
           firstPanel={{
-            className: 'entity-resizable-panel-container bg-white',
+            className: 'entity-resizable-panel-container',
             children: (
-              <div className="p-t-sm m-x-lg">
-                <Row gutter={[16, 16]}>
-                  <Col data-testid="description-container" span={24}>
-                    <DescriptionV1
-                      description={serviceDetails.description}
-                      entityName={serviceName}
-                      entityType={entityType}
-                      hasEditAccess={editDescriptionPermission}
-                      showActions={!serviceDetails.deleted}
-                      showCommentsIcon={false}
-                      onDescriptionUpdate={handleDescriptionUpdate}
-                    />
-                  </Col>
-                  <Col data-testid="table-container" span={24}>
-                    <Space
-                      className="w-full m-b-md"
-                      direction="vertical"
-                      size="large">
-                      {isServiceLoading ? (
-                        <Loader />
-                      ) : (
-                        <Table
-                          columns={tableColumn}
-                          customPaginationProps={{
-                            currentPage,
-                            isLoading: isServiceLoading,
-                            showPagination:
-                              !isUndefined(pagingInfo) &&
-                              pagingInfo.showPagination,
-                            pageSize: pagingInfo.pageSize,
-                            paging,
+              <Row gutter={[16, 16]}>
+                <Col data-testid="description-container" span={24}>
+                  <DescriptionV1
+                    description={serviceDetails.description}
+                    entityName={serviceName}
+                    entityType={entityType}
+                    hasEditAccess={editDescriptionPermission}
+                    showActions={!serviceDetails.deleted}
+                    showCommentsIcon={false}
+                    onDescriptionUpdate={handleDescriptionUpdate}
+                  />
+                </Col>
+                <Col data-testid="table-container" span={24}>
+                  <Space
+                    className="w-full m-b-md"
+                    direction="vertical"
+                    size="large">
+                    {isServiceLoading ? (
+                      <Loader />
+                    ) : (
+                      <Table
+                        columns={tableColumn}
+                        customPaginationProps={{
+                          currentPage,
+                          isLoading: isServiceLoading,
+                          showPagination:
+                            !isUndefined(pagingInfo) &&
+                            pagingInfo.showPagination,
+                          pageSize: pagingInfo.pageSize,
+                          paging,
 
-                            pagingHandler: pagingHandler,
-                            onShowSizeChange: pagingInfo.handlePageSizeChange,
-                          }}
-                          data-testid="service-children-table"
-                          dataSource={pageData}
-                          defaultVisibleColumns={
-                            DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
-                          }
-                          extraTableFilters={
-                            <>
-                              <span>
-                                <Switch
-                                  checked={showDeleted}
-                                  data-testid="show-deleted"
-                                  onClick={onShowDeletedChange}
-                                />
-                                <Typography.Text className="m-l-xs">
-                                  {t('label.deleted')}
-                                </Typography.Text>
-                              </span>
+                          pagingHandler: pagingHandler,
+                          onShowSizeChange: pagingInfo.handlePageSizeChange,
+                        }}
+                        data-testid="service-children-table"
+                        dataSource={pageData}
+                        defaultVisibleColumns={
+                          DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS
+                        }
+                        entityType={serviceCategory}
+                        extraTableFilters={
+                          <>
+                            <span>
+                              <Switch
+                                checked={showDeleted}
+                                data-testid="show-deleted"
+                                onClick={onShowDeletedChange}
+                              />
+                              <Typography.Text className="m-l-xs">
+                                {t('label.deleted')}
+                              </Typography.Text>
+                            </span>
 
-                              {entityType === EntityType.DATABASE_SERVICE &&
-                                getBulkEditButton(
-                                  servicePermission.EditAll &&
-                                    !serviceDetails.deleted,
-                                  handleEditTable
-                                )}
-                            </>
-                          }
-                          locale={{
-                            emptyText: <ErrorPlaceHolder className="m-y-md" />,
-                          }}
-                          pagination={false}
-                          rowKey="id"
-                          size="small"
-                          staticVisibleColumns={
-                            COMMON_STATIC_TABLE_VISIBLE_COLUMNS
-                          }
-                        />
-                      )}
-                    </Space>
-                  </Col>
-                </Row>
-              </div>
+                            {entityType === EntityType.DATABASE_SERVICE &&
+                              getBulkEditButton(
+                                servicePermission.EditAll &&
+                                  !serviceDetails.deleted,
+                                handleEditTable
+                              )}
+                          </>
+                        }
+                        locale={{
+                          emptyText: <ErrorPlaceHolder className="m-y-md" />,
+                        }}
+                        pagination={false}
+                        rowKey="id"
+                        size="small"
+                        staticVisibleColumns={
+                          COMMON_STATIC_TABLE_VISIBLE_COLUMNS
+                        }
+                      />
+                    )}
+                  </Space>
+                </Col>
+              </Row>
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
           }}
@@ -345,7 +344,7 @@ function ServiceMainTabContent({
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
             className:
-              'entity-resizable-right-panel-container entity-resizable-panel-container bg-white',
+              'entity-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
       </Col>

@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata-ingestion"
-version = "1.6.0.0.dev0"
+version = "1.7.0.0.dev0"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
     { name = "OpenMetadata Committers" }
 ]
 license = { file = "LICENSE" }
 description = "Ingestion Framework for OpenMetadata"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.urls]
 Homepage = "https://open-metadata.org/"

@@ -815,7 +815,8 @@ export interface ExecutorConfiguration {
      */
     corePoolSize?: number;
     /**
-     * The amount of time a Job gets locked before being retried.
+     * The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids
+     * jobs that takes too long to run being retried while running.
      */
     jobLockTimeInMillis?: number;
     /**
@@ -1407,6 +1408,10 @@ export interface OidcClientConfig {
      * Client ID.
      */
     id?: string;
+    /**
+     * Validity for the JWT Token created from SAML Response
+     */
+    maxAge?: string;
     /**
      * Max Clock Skew
      */

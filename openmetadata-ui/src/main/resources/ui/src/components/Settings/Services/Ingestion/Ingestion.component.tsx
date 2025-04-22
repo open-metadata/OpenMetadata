@@ -78,6 +78,10 @@ const Ingestion: React.FC<IngestionProps> = ({
     () => getTypeAndStatusMenuItems(),
     []
   );
+  const isDBService = useMemo(
+    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
+    [serviceCategory]
+  );
   const [statusFilters, setStatusFilters] =
     useState<Array<{ key: string; label: string }>>(statusMenuItems);
   const [typeFilters, setTypeFilters] =
@@ -88,8 +92,8 @@ const Ingestion: React.FC<IngestionProps> = ({
     [serviceCategory]
   );
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget),
-    [CollateAIAgentsWidget]
+    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
+    [CollateAIAgentsWidget, isDBService]
   );
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
@@ -150,9 +154,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
       return {
         label: (
-          <div
-            className="flex items-center gap-2"
-            data-testid={`${tabName}-sub-tab`}>
+          <div className="tab-label" data-testid={`${tabName}-sub-tab`}>
             <Icon height={14} width={14} />
             <Typography.Text>{label}</Typography.Text>
             {getCountBadge(
@@ -172,102 +174,97 @@ const Ingestion: React.FC<IngestionProps> = ({
   }
 
   return (
-    <Row
-      className="agents-tab"
-      data-testid="ingestion-details-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <Row justify="space-between">
-          <Col>
-            {isCollateAIWidgetSupported && (
-              <Radio.Group
-                buttonStyle="solid"
-                className="agents-sub-tabs-switch"
-                data-testid="agents-sub-tabs-switch"
-                optionType="button"
-                options={subTabOptions}
-                size="large"
-                value={subTab}
-                onChange={handleSubTabChange}
-              />
-            )}
-          </Col>
+    <div className="agents-tab" data-testid="ingestion-details-container">
+      <Row justify="space-between">
+        <Col>
+          {isCollateAIWidgetSupported && (
+            <Radio.Group
+              buttonStyle="solid"
+              className="agents-sub-tabs-switch"
+              data-testid="agents-sub-tabs-switch"
+              optionType="button"
+              options={subTabOptions}
+              size="large"
+              value={subTab}
+              onChange={handleSubTabChange}
+            />
+          )}
+        </Col>
 
-          <Col className="flex items-center gap-2">
-            <Tooltip
-              title={t('label.refresh-entity', {
-                entity: t('label.agent-plural'),
-              })}>
-              <Button
-                icon={<ReloadOutlined className="reload-button-icon" />}
-                size="large"
-                onClick={() => refreshAgentsList(subTab as ServiceAgentSubTabs)}
+        <Col className="flex items-center gap-2">
+          <Tooltip
+            title={t('label.refresh-entity', {
+              entity: t('label.agent-plural'),
+            })}>
+            <Button
+              className="reload-button"
+              icon={<ReloadOutlined className="reload-button-icon" />}
+              size="large"
+              onClick={() => refreshAgentsList(subTab as ServiceAgentSubTabs)}
+            />
+          </Tooltip>
+          {!isCollateSubTabSelected && (
+            <>
+              <SearchDropdown
+                hideCounts
+                label={t('label.status')}
+                options={statusFilters}
+                searchKey="status"
+                selectedKeys={statusFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleStatusFilterChange}
+                onSearch={handleStatusFilterSearch}
               />
-            </Tooltip>
-            {!isCollateSubTabSelected && (
-              <>
-                <SearchDropdown
-                  hideCounts
-                  label={t('label.status')}
-                  options={statusFilters}
-                  searchKey="status"
-                  selectedKeys={statusFilter ?? []}
-                  triggerButtonSize="large"
-                  onChange={handleStatusFilterChange}
-                  onSearch={handleStatusFilterSearch}
-                />
-                <SearchDropdown
-                  hideCounts
-                  label={t('label.type')}
-                  options={typeFilters}
-                  searchKey="status"
-                  selectedKeys={typeFilter ?? []}
-                  triggerButtonSize="large"
-                  onChange={handleTypeFilterChange}
-                  onSearch={handleTypeFilterSearch}
-                />
+              <SearchDropdown
+                hideCounts
+                label={t('label.type')}
+                options={typeFilters}
+                searchKey="status"
+                selectedKeys={typeFilter ?? []}
+                triggerButtonSize="large"
+                onChange={handleTypeFilterChange}
+                onSearch={handleTypeFilterSearch}
+              />
 
-                <div className="search-bar-container">
-                  <Searchbar
-                    removeMargin
-                    inputClassName="p-x-sm p-y-xs border-radius-xs"
-                    placeholder={t('label.search')}
-                    searchValue={searchText}
-                    typingInterval={500}
-                    onSearch={handleSearchChange}
-                  />
-                </div>
-              </>
-            )}
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        {isCollateSubTabSelected ? (
-          <CollateAIAgentsWidget
-            collateAgentPagingInfo={collateAgentPagingInfo}
-            collateAgentsList={collateAgentsList}
-            isCollateAgentLoading={isCollateAgentLoading}
-            serviceDetails={serviceDetails}
-            onCollateAgentPageChange={onCollateAgentPageChange}
-          />
-        ) : (
-          <MetadataAgentsWidget
-            airflowInformation={airflowInformation}
-            handleIngestionListUpdate={handleIngestionListUpdate}
-            ingestionPagingInfo={ingestionPagingInfo}
-            ingestionPipelineList={ingestionPipelineList}
-            isLoading={isLoading}
-            pipelineType={pipelineType}
-            searchText={searchText}
-            serviceDetails={serviceDetails}
-            serviceName={decodedServiceFQN}
-            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-            onPageChange={onPageChange}
-          />
-        )}
-      </Col>
-    </Row>
+              <div className="search-bar-container">
+                <Searchbar
+                  removeMargin
+                  inputClassName="p-x-sm p-y-xs border-radius-xs"
+                  placeholder={t('label.search')}
+                  searchValue={searchText}
+                  typingInterval={500}
+                  onSearch={handleSearchChange}
+                />
+              </div>
+            </>
+          )}
+        </Col>
+      </Row>
+
+      {isCollateSubTabSelected ? (
+        <CollateAIAgentsWidget
+          collateAgentPagingInfo={collateAgentPagingInfo}
+          collateAgentsList={collateAgentsList}
+          isCollateAgentLoading={isCollateAgentLoading}
+          serviceDetails={serviceDetails}
+          onCollateAgentPageChange={onCollateAgentPageChange}
+        />
+      ) : (
+        <MetadataAgentsWidget
+          airflowInformation={airflowInformation}
+          handleIngestionListUpdate={handleIngestionListUpdate}
+          ingestionPagingInfo={ingestionPagingInfo}
+          ingestionPipelineList={ingestionPipelineList}
+          isLoading={isLoading}
+          pipelineType={pipelineType}
+          searchText={searchText}
+          serviceDetails={serviceDetails}
+          serviceName={decodedServiceFQN}
+          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+          onPageChange={onPageChange}
+        />
+      )}
+    </div>
   );
 };
 

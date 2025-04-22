@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -65,6 +66,7 @@ import {
 } from '../../utils/CommonUtils';
 import containerDetailsClassBase from '../../utils/ContainerDetailsClassBase';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
@@ -91,6 +93,7 @@ const ContainerPage = () => {
   const [containerData, setContainerData] = useState<Container>();
   const [containerPermissions, setContainerPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -157,7 +160,7 @@ const ContainerPage = () => {
         await fetchContainerDetail(containerFQN);
         getEntityFeedCount();
       }
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.asset-lowercase'),
@@ -361,8 +364,7 @@ const ContainerPage = () => {
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -443,10 +445,6 @@ const ContainerPage = () => {
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
-    if (!containerData) {
-      return [];
-    }
-
     const tabs = containerDetailsClassBase.getContainerDetailPageTabs({
       isDataModelEmpty,
       decodedContainerName,
@@ -511,6 +509,15 @@ const ContainerPage = () => {
     fetchContainerChildren();
   }, [decodedContainerName]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], tab, PageType.Container),
+    [tabs[0], tab]
+  );
+
   // Rendering
   if (isLoading || loading) {
     return <Loader />;
@@ -558,7 +565,9 @@ const ContainerPage = () => {
           />
         </Col>
         <GenericProvider<Container>
+          customizedPage={customizedPage}
           data={containerData}
+          isTabExpanded={isTabExpanded}
           permissions={containerPermissions}
           type={EntityType.CONTAINER as CustomizeEntityType}
           onUpdate={handleContainerUpdate}>
@@ -568,6 +577,17 @@ const ContainerPage = () => {
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

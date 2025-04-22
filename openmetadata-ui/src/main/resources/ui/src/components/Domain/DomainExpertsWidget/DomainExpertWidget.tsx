@@ -10,18 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Tooltip, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { cloneDeep, includes, isEqual } from 'lodash';
 import { default as React, useMemo } from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -63,10 +62,7 @@ export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
   };
 
   const header = (
-    <div
-      className={`d-flex items-center ${
-        domain.experts && domain.experts.length > 0 ? 'm-b-xss' : ''
-      }`}>
+    <div className={`d-flex items-center gap-2 `}>
       <Typography.Text
         className={classNames({
           'text-sm font-medium': newLook,
@@ -81,18 +77,14 @@ export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
           popoverProps={{ placement: 'topLeft' }}
           selectedUsers={domain.experts ?? []}
           onUpdate={handleExpertsUpdate}>
-          <Tooltip
+          <EditIconButton
+            data-testid="edit-expert-button"
+            newLook={newLook}
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.expert-plural'),
-            })}>
-            <Button
-              className="cursor-pointer flex-center m-l-xss"
-              data-testid="edit-expert-button"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
-            />
-          </Tooltip>
+            })}
+          />
         </UserSelectableList>
       )}
     </div>

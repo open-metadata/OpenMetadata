@@ -42,7 +42,8 @@
         "Local",
         "Partitioned",
         "Foreign",
-        "Transient"
+        "Transient",
+        "Stream"
       ],
       "javaEnums": [
         {
@@ -77,6 +78,9 @@
         },
         {
           "name": "Transient"
+        },
+        {
+          "name": "Stream"
         }
       ]
     },

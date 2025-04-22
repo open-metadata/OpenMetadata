@@ -17,11 +17,7 @@ import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -29,6 +25,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -170,12 +167,10 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
         !isEmpty(relatedMetrics) &&
         permissions.EditAll &&
         !metricDetails.deleted && (
-          <EditIcon
-            className="cursor-pointer"
-            color={DE_ACTIVE_COLOR}
+          <EditIconButton
             data-testid="edit-related-metrics"
-            style={{ verticalAlign: 'middle' }}
-            width="14px"
+            newLook={newLook}
+            size="small"
             onClick={() => setIsEdit(true)}
           />
         )}

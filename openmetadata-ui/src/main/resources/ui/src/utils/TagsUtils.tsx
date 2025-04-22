@@ -15,7 +15,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
-import { omit } from 'lodash';
+import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
@@ -186,7 +186,7 @@ export const getDeleteIcon = (arg: {
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={16} />;
+  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
 };
 
 export const getUsageCountLink = (tagFQN: string) => {
@@ -225,7 +225,7 @@ export const getTagPlaceholder = (isGlossaryType: boolean): string =>
 
 export const tagRender = (customTagProps: CustomTagProps) => {
   const { label, onClose } = customTagProps;
-  const tagLabel = getTagDisplay(label as string);
+  const tagLabel = isString(label) ? getTagDisplay(label) : label;
 
   const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
     event.preventDefault();

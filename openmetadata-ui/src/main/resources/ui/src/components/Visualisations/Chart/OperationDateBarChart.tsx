@@ -37,6 +37,7 @@ import { CustomBarChartProps } from './Chart.interface';
 const OperationDateBarChart = ({
   chartCollection,
   name,
+  noDataPlaceholderText,
 }: CustomBarChartProps) => {
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
@@ -51,7 +52,10 @@ const OperationDateBarChart = ({
     return (
       <Row align="middle" className="h-full w-full" justify="center">
         <Col>
-          <ErrorPlaceHolder className="mt-0-important" />
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            placeholderText={noDataPlaceholderText}
+          />
         </Col>
       </Row>
     );

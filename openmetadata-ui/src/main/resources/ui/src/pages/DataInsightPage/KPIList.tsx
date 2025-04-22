@@ -78,7 +78,7 @@ const KPIList = () => {
       });
       setKpiList(response.data);
       setKpiPaging(response.paging);
-    } catch (err) {
+    } catch {
       setKpiList([]);
       setKpiPaging(pagingObject);
     } finally {
@@ -223,7 +223,10 @@ const KPIList = () => {
       viewKPIPermission ? (
         <EmptyGraphPlaceholder />
       ) : (
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        <ErrorPlaceHolder
+          className="border-none"
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
       ),
     [viewKPIPermission]
   );
@@ -231,8 +234,8 @@ const KPIList = () => {
   return (
     <>
       <Table
-        className="kpi-table"
         columns={columns}
+        containerClassName="kpi-table"
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,

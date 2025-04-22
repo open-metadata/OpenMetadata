@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,6 +13,9 @@
 import re
 import traceback
 from typing import Any, Iterable, List, Optional, Union
+
+from pydantic import EmailStr
+from pydantic_core import PydanticCustomError
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -48,6 +51,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -488,6 +492,7 @@ class PowerbiSource(DashboardServiceSource):
                     "name": table.name,
                     "displayName": table.name,
                     "description": table.description,
+                    "children": [],
                 }
                 child_columns = self._get_child_columns(table=table)
                 child_measures = self._get_child_measures(table=table)
@@ -534,6 +539,7 @@ class PowerbiSource(DashboardServiceSource):
                         serviceType=DashboardServiceType.PowerBI.value,
                         columns=self._get_column_info(dataset),
                         project=self.get_project_name(dashboard_details=dataset),
+                        owners=self.get_owner_ref(dashboard_details=dataset),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
@@ -938,4 +944,45 @@ class PowerbiSource(DashboardServiceSource):
             logger.warning(
                 f"Error fetching project name for {dashboard_details.id}: {exc}"
             )
+        return None
+
+    def get_owner_ref(  # pylint: disable=unused-argument, useless-return
+        self, dashboard_details: Any
+    ) -> Optional[EntityReferenceList]:
+        """
+        Method to process the dashboard owners
+        """
+        try:
+            owner_ref_list = []  # to assign multiple owners to entity if they exist
+            for owner in dashboard_details.users or []:
+                if owner.email:
+                    owner_ref = None
+                    try:
+                        owner_email = EmailStr._validate(owner.email)
+                        owner_ref = self.metadata.get_reference_by_email(
+                            owner_email.lower()
+                        )
+                    except PydanticCustomError:
+                        logger.warning(
+                            f"Could not fetch owner data for email: {owner.email}"
+                        )
+                        if owner.displayName:
+                            owner_ref = self.metadata.get_reference_by_name(
+                                name=owner.displayName
+                            )
+                    except Exception as err:
+                        logger.warning(
+                            f"Error processing current owner data in {dashboard_details.id}: {err}"
+                        )
+                    if owner_ref:
+                        owner_ref_list.append(owner_ref.root[0])
+            if len(owner_ref_list) > 0:
+                logger.debug(
+                    f"Successfully fetched owners data for {dashboard_details.id}"
+                )
+                return EntityReferenceList(root=owner_ref_list)
+            return None
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None

@@ -54,10 +54,16 @@ export const PersonaDetailsPage = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const location = useCustomLocation();
-  const activeKey = useMemo(
-    () => (location.hash?.replace('#', '') || 'users').split('.')[0],
-    [location]
-  );
+  const { activeKey, fullHash } = useMemo(() => {
+    const activeKey = (location.hash?.replace('#', '') || 'users').split(
+      '.'
+    )[0];
+
+    return {
+      activeKey,
+      fullHash: location.hash?.replace('#', ''),
+    };
+  }, [location.hash]);
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -161,11 +167,18 @@ export const PersonaDetailsPage = () => {
     history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
   };
 
-  const handleTabChange = (activeKey: string) => {
-    history.push({
-      hash: activeKey,
-    });
-  };
+  const handleTabClick = useCallback(
+    (key: string) => {
+      if (fullHash === key) {
+        return;
+      }
+
+      history.push({
+        hash: key,
+      });
+    },
+    [history, fullHash]
+  );
 
   const tabItems = useMemo(() => {
     return [
@@ -232,9 +245,13 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <DescriptionV1
+            newLook
             description={personaDetails.description}
             entityName={personaDetails.name}
             entityType={EntityType.PERSONA}
+            hasEditAccess={
+              entityPermission.EditAll || entityPermission.EditDescription
+            }
             showCommentsIcon={false}
             onDescriptionUpdate={handleDescriptionUpdate}
           />
@@ -242,6 +259,7 @@ export const PersonaDetailsPage = () => {
         <Col span={24}>
           <Tabs
             activeKey={activeKey}
+            className="tabs-new"
             items={tabItems}
             tabBarExtraContent={
               activeKey === 'users' && (
@@ -259,7 +277,7 @@ export const PersonaDetailsPage = () => {
                 </UserSelectableList>
               )
             }
-            onChange={handleTabChange}
+            onTabClick={handleTabClick}
           />
         </Col>
       </Row>

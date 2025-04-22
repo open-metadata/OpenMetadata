@@ -15,7 +15,6 @@ import { InfoCircleOutlined } from '@ant-design/icons';
 import { Col, Input, Row, Space, Tooltip } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
@@ -49,7 +48,6 @@ const ServiceConnectionDetails = ({
 }: Readonly<ServiceConnectionDetailsProps>) => {
   const [schema, setSchema] = useState<Record<string, any>>({});
   const [data, setData] = useState<ReactNode>();
-  const { t } = useTranslation();
 
   useEffect(() => {
     switch (serviceCategory.slice(0, -1)) {
@@ -158,9 +156,7 @@ const ServiceConnectionDetails = ({
               <Row>
                 <Col className="d-flex items-center" span={8}>
                   <Space size={0}>
-                    <p className="text-grey-muted m-0">
-                      {t('label.extra-info-key')}
-                    </p>
+                    <p className="text-grey-muted m-0">{extraInfo.headerKey}</p>
                     {extraInfo.description && (
                       <Tooltip
                         placement="bottom"
@@ -180,7 +176,7 @@ const ServiceConnectionDetails = ({
                     className="w-full border-none"
                     data-testid="input-field"
                     type="text"
-                    value={extraInfo.name}
+                    value={extraInfo.displayName ?? extraInfo.name}
                   />
                 </Col>
               </Row>

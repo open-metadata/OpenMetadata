@@ -253,7 +253,7 @@ const EditIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -281,7 +281,7 @@ const EditIngestionPage = () => {
           onUpdateIngestion={onEditIngestionSave}
         />
       </div>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -315,6 +315,8 @@ const EditIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.ingestion'),

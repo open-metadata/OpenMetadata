@@ -34,7 +34,7 @@ export interface CreatePipelineService {
     /**
      * The ingestion agent responsible for executing the ingestion pipeline.
      */
-    ingestionAgent?: EntityReference;
+    ingestionRunner?: EntityReference;
     /**
      * Life Cycle of the entity
      */
@@ -62,11 +62,13 @@ export interface CreatePipelineService {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: Connection;
+    config?: ConfigClass;
 }
 
 /**
  * Airflow Metadata Database Connection Config
+ *
+ * Wherescape Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -103,7 +105,7 @@ export interface PipelineConnection {
  *
  * Stitch Connection
  */
-export interface Connection {
+export interface ConfigClass {
     /**
      * Underlying database connection. See
      * https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for
@@ -140,8 +142,12 @@ export interface Connection {
      *
      * Custom pipeline service type
      */
-    type?:      PipelineServiceType;
-    awsConfig?: AWSCredentials;
+    type?: PipelineServiceType;
+    /**
+     * Underlying database connection
+     */
+    databaseConnection?: DatabaseConnectionClass;
+    awsConfig?:          AWSCredentials;
     /**
      * Airbyte API version.
      */
@@ -286,6 +292,10 @@ export interface Connection {
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
+    /**
+     * Number of runs to fetch from DBT cloud
+     */
+    numberOfRuns?: number;
     /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
@@ -441,7 +451,7 @@ export interface MetadataDatabaseConnection {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?: DatabaseFilterPatternObject;
+    databaseFilterPattern?: FilterPattern;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -467,7 +477,7 @@ export interface MetadataDatabaseConnection {
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
-    schemaFilterPattern?: SchemaFilterPatternObject;
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -555,32 +565,9 @@ export interface AuthConfigurationType {
  *
  * Regex to only include/exclude databases that matches the pattern.
  *
- * Regex to only include/exclude tables that matches the pattern.
- *
  * Regex to only include/exclude schemas that matches the pattern.
- */
-export interface DatabaseFilterPatternObject {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
- * Regex exclude pipelines.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
- *
- * Regex to only include/exclude schemas that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -672,29 +659,6 @@ export interface AwsCredentials {
 }
 
 /**
- * Regex to only include/exclude schemas that matches the pattern.
- *
- * Regex exclude pipelines.
- *
- * Regex to only fetch entities that matches the pattern.
- *
- * Regex to only include/exclude databases that matches the pattern.
- *
- * Regex to only include/exclude tables that matches the pattern.
- */
-export interface SchemaFilterPatternObject {
-    /**
-     * List of strings/regex patterns to match and exclude only database entities that match.
-     */
-    excludes?: string[];
-    /**
-     * List of strings/regex patterns to match and include only database entities that match.
-     */
-    includes?: string[];
-    [property: string]: any;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum Scheme {
@@ -757,6 +721,90 @@ export enum Type {
 export enum InitialConsumerOffsets {
     Earliest = "earliest",
     Latest = "latest",
+}
+
+/**
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ */
+export interface DatabaseConnectionClass {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Database of the data source. This is optional parameter, if you would like to restrict
+     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the databases.
+     */
+    database: string;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Host and port of the MSSQL service.
+     */
+    hostPort?: string;
+    /**
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     */
+    password?:                string;
+    sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     MssqlScheme;
+    supportsDatabase?:           boolean;
+    supportsDataDiff?:           boolean;
+    supportsDBTExtraction?:      boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: MssqlType;
+    /**
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     */
+    username?: string;
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum MssqlType {
+    Mssql = "Mssql",
 }
 
 /**
@@ -863,6 +911,7 @@ export enum PipelineServiceType {
     Spark = "Spark",
     Spline = "Spline",
     Stitch = "Stitch",
+    Wherescape = "Wherescape",
 }
 
 /**

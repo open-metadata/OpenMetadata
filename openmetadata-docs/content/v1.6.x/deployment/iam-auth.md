@@ -5,7 +5,7 @@ collate: false
 ---
 
 # Aws resources on RDS IAM Auth
-https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+[AWS Reference Doc](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html)
 
 # Requirements
 

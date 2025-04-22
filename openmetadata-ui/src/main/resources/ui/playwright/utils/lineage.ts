@@ -635,7 +635,10 @@ export const verifyExportLineageCSV = async (
   });
 };
 
-export const verifyExportLineagePNG = async (page: Page) => {
+export const verifyExportLineagePNG = async (
+  page: Page,
+  isPNGSelected?: boolean
+) => {
   await page.waitForSelector('[data-testid="lineage-export"]', {
     state: 'visible',
   });
@@ -651,11 +654,13 @@ export const verifyExportLineagePNG = async (page: Page) => {
     }
   );
 
-  await page.getByTestId('export-type-select').click();
-  await page.locator('.ant-select-item[title="PNG"]').click();
+  if (!isPNGSelected) {
+    await page.getByTestId('export-type-select').click();
+    await page.locator('.ant-select-item[title="PNG"]').click();
+  }
 
   await expect(
-    page.getByTestId('export-type-select').getByTitle('PNG')
+    page.getByTestId('export-type-select').getByText('PNGBeta')
   ).toBeVisible();
 
   const [download] = await Promise.all([

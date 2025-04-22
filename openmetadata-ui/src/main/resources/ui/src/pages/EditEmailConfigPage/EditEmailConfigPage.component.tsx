@@ -146,7 +146,7 @@ function EditEmailConfigPage() {
   }, []);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         {loading ? (
@@ -161,7 +161,7 @@ function EditEmailConfigPage() {
           />
         )}
       </div>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -180,6 +180,8 @@ function EditEmailConfigPage() {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.entity-configuration', {

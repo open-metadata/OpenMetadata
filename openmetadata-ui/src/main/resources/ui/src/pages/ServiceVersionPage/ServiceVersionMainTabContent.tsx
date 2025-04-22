@@ -28,7 +28,7 @@ import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
-import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';
 import { ServiceVersionMainTabContentProps } from './ServiceVersionMainTabContent.interface';
 
 function ServiceVersionMainTabContent({
@@ -59,7 +59,7 @@ function ServiceVersionMainTabContent({
   );
 
   return (
-    <Row gutter={[0, 16]} wrap={false}>
+    <Row className="h-full" gutter={[0, 16]} wrap={false}>
       <Col className="p-t-sm m-x-lg" flex="auto">
         <Row gutter={[16, 16]}>
           <Col data-testid="description-container" span={24}>
@@ -87,6 +87,7 @@ function ServiceVersionMainTabContent({
                 }}
                 data-testid="service-children-table"
                 dataSource={data}
+                entityType={entityType}
                 loading={isServiceLoading}
                 locale={{
                   emptyText: <ErrorPlaceHolder className="m-y-md" />,

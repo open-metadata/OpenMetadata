@@ -178,11 +178,14 @@ const AddKPIPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div
-            className="max-width-md w-9/10 service-form-container"
-            data-testid="add-kpi-container">
-            <TitleBreadcrumb className="my-4" titleLinks={ADD_KPI_BREADCRUMB} />
+          <div data-testid="add-kpi-container">
+            <TitleBreadcrumb
+              className="m-t-0 my-4"
+              titleLinks={ADD_KPI_BREADCRUMB}
+            />
             <Typography.Paragraph
               className="text-base"
               data-testid="form-title">
@@ -395,7 +398,7 @@ const AddKPIPage = () => {
             <Typography.Text>{t('message.add-kpi-message')}</Typography.Text>
           </div>
         ),
-        className: 'p-md p-t-xl content-resizable-panel-container bg-white',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

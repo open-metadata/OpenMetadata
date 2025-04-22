@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
+import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import {
   Avatar,
   Button,
@@ -60,8 +60,8 @@ import { OwnerType } from '../../../../enums/user.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../generated/entity/teams/team';
 import {
-  EntityReference as UserTeams,
   User,
+  EntityReference as UserTeams,
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
@@ -89,7 +89,6 @@ import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageBut
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -200,8 +199,6 @@ const TeamDetailsV1 = ({
     entity: t('label.role'),
   });
 
-  const addTeam = t('label.add-entity', { entity: t('label.team') });
-
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
     [currentTeam]
@@ -215,12 +212,16 @@ const TeamDetailsV1 = ({
     history.push({ search: Qs.stringify({ activeTab: key }) });
   };
 
-  const createTeamPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
-    [permissions]
-  );
+  const { createTeamPermission, editUserPermission } = useMemo(() => {
+    return {
+      createTeamPermission:
+        !isEmpty(permissions) &&
+        checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
+      editUserPermission:
+        checkPermission(Operation.EditAll, ResourceEntity.TEAM, permissions) ||
+        checkPermission(Operation.EditUsers, ResourceEntity.TEAM, permissions),
+    };
+  }, [permissions]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -249,7 +250,7 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important"
+        className="mt-0-important border-none"
         doc={doc}
         heading={heading}
         permission={permission}
@@ -295,7 +296,7 @@ const TeamDetailsV1 = ({
           };
         })
       );
-    } catch (error) {
+    } catch {
       setChildTeamList([]);
     }
   };
@@ -620,7 +621,7 @@ const TeamDetailsV1 = ({
   );
 
   const teamsTableRender = useMemo(() => {
-    let addUserButtonTitle = createTeamPermission
+    let addUserButtonTitle = editUserPermission
       ? t('label.add-entity', { entity: t('label.team') })
       : t('message.no-permission-for-action');
 
@@ -632,6 +633,7 @@ const TeamDetailsV1 = ({
 
     return currentTeam.childrenCount === 0 && !searchTerm ? (
       <ErrorPlaceHolder
+        className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>
@@ -654,7 +656,7 @@ const TeamDetailsV1 = ({
           <Button
             ghost
             data-testid="add-placeholder-button"
-            disabled={!createTeamPermission || isTeamDeleted}
+            disabled={!editUserPermission || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
             onClick={handleAddTeamButtonClick}>
@@ -663,57 +665,21 @@ const TeamDetailsV1 = ({
         </Tooltip>
       </ErrorPlaceHolder>
     ) : (
-      <Row
-        className="team-list-container"
-        gutter={[0, 16]}
-        justify="space-between">
-        <Col span={8}>
-          <Searchbar
-            removeMargin
-            placeholder={t('label.search-entity', {
-              entity: t('label.team'),
-            })}
-            searchValue={searchTerm}
-            typingInterval={500}
-            onSearch={handleTeamSearch}
-          />
-        </Col>
-        <Col>
-          <Space align="center">
-            <span>
-              <Switch
-                checked={showDeletedTeam}
-                data-testid="show-deleted"
-                onClick={onShowDeletedTeamChange}
-              />
-              <Typography.Text className="m-l-xs">
-                {t('label.deleted')}
-              </Typography.Text>
-            </span>
-
-            {createTeamPermission && !isTeamDeleted && (
-              <Button
-                data-testid="add-team"
-                type="primary"
-                onClick={handleAddTeamButtonClick}>
-                {addTeam}
-              </Button>
-            )}
-          </Space>
-        </Col>
-        <Col span={24}>
-          <TeamHierarchy
-            currentTeam={currentTeam}
-            data={childTeamList}
-            isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
-            searchTerm={searchTerm}
-            onTeamExpand={onTeamExpand}
-          />
-        </Col>
-      </Row>
+      <TeamHierarchy
+        createTeamPermission={createTeamPermission}
+        currentTeam={currentTeam}
+        data={childTeamList}
+        handleAddTeamButtonClick={handleAddTeamButtonClick}
+        handleTeamSearch={handleTeamSearch}
+        isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isTeamDeleted={isTeamDeleted}
+        searchTerm={searchTerm}
+        showDeletedTeam={showDeletedTeam}
+        onShowDeletedTeamChange={onShowDeletedTeamChange}
+        onTeamExpand={onTeamExpand}
+      />
     );
   }, [
-    addTeam,
     searchTerm,
     isTeamDeleted,
     currentTeam,
@@ -1148,6 +1114,14 @@ const TeamDetailsV1 = ({
             accordion
             bordered={false}
             className="header-collapse-custom-collapse"
+            expandIcon={({ isActive }) => (
+              <span
+                className={classNames('ant-collapse-arrow', {
+                  'arrow-icon-non-organization': !isOrganization,
+                })}>
+                {isActive ? <DownOutlined /> : <RightOutlined />}
+              </span>
+            )}
             expandIconPosition="end">
             <Collapse.Panel
               className={classNames('collapse-panel-container', {

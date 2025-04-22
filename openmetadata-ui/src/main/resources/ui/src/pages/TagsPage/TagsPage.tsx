@@ -545,9 +545,6 @@ const TagsPage = () => {
               className="w-full p-x-sm m-b-sm"
               direction="vertical"
               size="middle">
-              <Typography.Text className="text-sm font-semibold">
-                {t('label.classification-plural')}
-              </Typography.Text>
               {createClassificationPermission && (
                 <Button
                   block
@@ -713,6 +710,7 @@ const TagsPage = () => {
           minWidth: 280,
           flex: 0.13,
           children: leftPanelLayout,
+          title: t('label.classification-plural'),
         }}
         pageTitle={t('label.tag-plural')}
         secondPanel={{

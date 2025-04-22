@@ -141,8 +141,10 @@ export interface IngestionWorkflowFormProps {
 
 export type ExtraInfoType = {
   name: string;
+  displayName?: string;
   description?: string;
   href?: string;
   location?: string;
   type?: string;
+  headerKey?: string;
 };

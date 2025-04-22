@@ -11,21 +11,18 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { noop, uniqueId } from 'lodash';
+import { get, noop, uniqueId } from 'lodash';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import { PageType, Tab } from '../../generated/system/ui/page';
+import { Page, PageType, Tab } from '../../generated/system/ui/page';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import apiCollectionClassBase from '../APICollection/APICollectionClassBase';
 import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
-import {
-  getNewWidgetPlacement,
-  moveEmptyWidgetToTheEnd,
-} from '../CustomizableLandingPageUtils';
+import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -406,12 +403,50 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
   }
 };
 
+const calculateNewPosition = (
+  currentLayout: WidgetConfig[],
+  newWidget: { w: number; h: number },
+  maxCols = 8
+) => {
+  // Sort layout by y position to find last row
+  const sortedLayout = [...currentLayout].sort(
+    (a, b) => a.y + a.h - (b.y + b.h)
+  );
+
+  // Get the last widget
+  const lastWidget = sortedLayout[sortedLayout.length - 1];
+
+  if (!lastWidget) {
+    // If no widgets exist, start at 0,0
+    return { x: 0, y: 0 };
+  }
+
+  // Calculate next position
+  const lastRowY = lastWidget.y + lastWidget.h;
+  const lastRowWidgets = sortedLayout.filter(
+    (widget) => widget.y + widget.h === lastRowY
+  );
+
+  // Find the rightmost x position in the last row
+  const lastX = lastRowWidgets.reduce(
+    (maxX, widget) => Math.max(maxX, widget.x + widget.w),
+    0
+  );
+
+  // If there's room in the current row
+  if (lastX + newWidget.w <= maxCols) {
+    return { x: lastX, y: lastRowY - lastWidget.h };
+  }
+
+  // Otherwise, start a new row
+  return { x: 0, y: lastRowY };
+};
+
 export const getAddWidgetHandler =
   (
     newWidgetData: CommonWidgetType,
     placeholderWidgetKey: string,
     widgetWidth: number,
-    maxGridSize: number,
     pageType: PageType
   ) =>
   (currentLayout: Array<WidgetConfig>): WidgetConfig[] => {
@@ -429,33 +464,46 @@ export const getAddWidgetHandler =
     if (
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     ) {
+      const newPlacement = getNewWidgetPlacement(currentLayout, widgetWidth);
+
       return [
-        ...moveEmptyWidgetToTheEnd(currentLayout),
+        ...currentLayout.map((widget) =>
+          widget.i === placeholderWidgetKey
+            ? // Push down emptyWidget to 1 row
+              { ...widget, y: newPlacement.y + 1 }
+            : widget
+        ),
         {
-          w: widgetWidth,
-          h: widgetHeight,
           i: widgetFQN,
+          h: widgetHeight,
+          w: widgetWidth,
           static: false,
-          ...getNewWidgetPlacement(currentLayout, widgetWidth),
+          ...newPlacement,
         },
       ];
     } else {
-      return currentLayout.map((widget: WidgetConfig) => {
-        const widgetX =
-          widget.x + widgetWidth <= maxGridSize
-            ? widget.x
-            : maxGridSize - widgetWidth;
+      // To handle case of adding widget from top button instead of empty widget placeholder
+      const { x: widgetX, y: widgetY } = calculateNewPosition(
+        currentLayout.filter(
+          (widget) =>
+            widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+        ),
+        {
+          w: widgetWidth,
+          h: widgetHeight,
+        }
+      );
 
-        return widget.i === placeholderWidgetKey
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-              x: widgetX,
-            }
-          : widget;
-      });
+      return [
+        ...currentLayout,
+        {
+          i: widgetFQN,
+          h: widgetHeight,
+          w: widgetWidth,
+          x: widgetX,
+          y: widgetY,
+        },
+      ];
     }
   };
 
@@ -506,4 +554,104 @@ export const getTabLabelMapFromTabs = (
 
 export const asyncNoop = async () => {
   noop();
+};
+
+export const getLayoutFromCustomizedPage = (
+  pageType: PageType,
+  tab: EntityTabs,
+  customizedPage?: Page | null
+) => {
+  if (!customizedPage) {
+    return getDefaultWidgetForTab(pageType, tab);
+  }
+
+  if (customizedPage?.tabs?.length) {
+    return tab
+      ? customizedPage.tabs?.find((t: Tab) => t.id === tab)?.layout
+      : get(customizedPage, 'tabs.0.layout', []);
+  } else {
+    return getDefaultWidgetForTab(pageType, tab);
+  }
+};
+
+export const checkIfExpandViewSupported = (
+  firstTab: NonNullable<TabsProps['items']>[number],
+  activeTab: EntityTabs,
+  pageType: PageType
+) => {
+  switch (pageType) {
+    case PageType.Table:
+    case PageType.Topic:
+    case PageType.APIEndpoint:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.SCHEMA) ||
+        activeTab === EntityTabs.SCHEMA
+      );
+
+    case PageType.Glossary:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.TERMS) ||
+        activeTab === EntityTabs.TERMS
+      );
+    case PageType.GlossaryTerm:
+    case PageType.Metric:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
+        activeTab === EntityTabs.OVERVIEW
+      );
+    case PageType.Dashboard:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.DETAILS) ||
+        activeTab === EntityTabs.DETAILS
+      );
+    case PageType.DashboardDataModel:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.MODEL) ||
+        activeTab === EntityTabs.MODEL
+      );
+    case PageType.Container:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
+        activeTab === EntityTabs.CHILDREN
+      );
+    case PageType.Database:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.SCHEMAS) ||
+        activeTab === EntityTabs.SCHEMAS
+      );
+    case PageType.SearchIndex:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.FIELDS) ||
+        activeTab === EntityTabs.FIELDS
+      );
+    case PageType.DatabaseSchema:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.TABLE) ||
+        activeTab === EntityTabs.TABLE
+      );
+    case PageType.Pipeline:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.TASKS) ||
+        activeTab === EntityTabs.TASKS
+      );
+    case PageType.APICollection:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.API_ENDPOINT) ||
+        activeTab === EntityTabs.API_ENDPOINT
+      );
+
+    case PageType.StoredProcedure:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.CODE) ||
+        activeTab === EntityTabs.CODE
+      );
+
+    case PageType.MlModel:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
+        activeTab === EntityTabs.FEATURES
+      );
+    default:
+      return false;
+  }
 };

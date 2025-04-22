@@ -33,7 +33,11 @@ export interface QlikCloudConnection {
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?:       FilterPattern;
+    projectFilterPattern?: FilterPattern;
+    /**
+     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
+     */
+    spaceTypes?:                 SpaceType[];
     supportsMetadataExtraction?: boolean;
     /**
      * token to connect to Qlik Cloud.
@@ -65,6 +69,12 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+export enum SpaceType {
+    Managed = "Managed",
+    Personal = "Personal",
+    Shared = "Shared",
 }
 
 /**

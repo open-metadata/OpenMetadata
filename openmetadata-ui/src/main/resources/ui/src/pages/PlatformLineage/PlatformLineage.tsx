@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Divider, Row, Select } from 'antd';
+import { Col, Row, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -193,7 +193,6 @@ const PlatformLineage = () => {
           </Row>
         </Col>
         <Col span={24}>
-          <Divider className="m-0" />
           <div className="platform-lineage-container">{lineageElement}</div>
         </Col>
       </Row>

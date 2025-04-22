@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
+import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
@@ -60,6 +60,7 @@ import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TaskOperation } from '../../../constants/Feeds.constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
+  GLOSSARY_TERM_STATUS_OPTIONS,
   GLOSSARY_TERM_TABLE_COLUMNS_KEYS,
   STATIC_VISIBLE_COLUMNS,
 } from '../../../constants/Glossary.contant';
@@ -116,8 +117,8 @@ import {
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const { currentUser } = useApplicationStore();
-  const tableRef = useRef<HTMLDivElement>(null);
-  const [tableWidth, setTableWidth] = useState(0);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -150,17 +151,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
-  const statusOptions = useMemo(
-    () =>
-      Object.values(Status).map((status) => ({ value: status, label: status })),
-    []
-  );
-  const [statusDropdownSelection, setStatusDropdownSelections] = useState<
+  const [statusDropdownSelection, setStatusDropdownSelection] = useState<
     string[]
   >([Status.Approved, Status.Draft, Status.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
+  const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
   const fetchAllTerms = async () => {
     setIsTableLoading(true);
@@ -193,9 +190,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return;
     }
 
+    const entityType = isGlossary
+      ? EntityType.GLOSSARY
+      : EntityType.GLOSSARY_TERM;
+
     try {
       const { data } = await getAllFeeds(
-        `<#E::${EntityType.GLOSSARY}::${activeGlossary.fullyQualifiedName}>`,
+        `<#E::${entityType}::${activeGlossary.fullyQualifiedName}>`,
         undefined,
         ThreadType.Task,
         undefined,
@@ -239,8 +240,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [isGlossary, activeGlossary]);
 
   const tableColumnsWidth = useMemo(
-    () => glossaryTermTableColumnsWidth(tableWidth, permissions.Create),
-    [permissions.Create, tableWidth]
+    () => glossaryTermTableColumnsWidth(containerWidth, permissions.Create),
+    [permissions.Create, containerWidth]
   );
 
   const updateGlossaryTermStatus = (
@@ -347,6 +348,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <>
               {record.style?.iconURL && (
                 <img
+                  alt={record.name}
                   className="m-r-xss vertical-baseline"
                   data-testid="tag-icon"
                   height={12}
@@ -357,7 +359,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 className="cursor-pointer vertical-baseline"
                 data-testid={name}
                 style={{ color: record.style?.color }}
-                to={getGlossaryPath(record.fullyQualifiedName || record.name)}>
+                to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
                 {name}
               </Link>
             </>
@@ -380,42 +382,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
-      {
-        title: t('label.reviewer'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
-        width: tableColumnsWidth.reviewers,
-        render: (reviewers: EntityReference[]) => (
-          <OwnerLabel
-            owners={reviewers}
-            placeHolder={t('label.no-entity', {
-              entity: t('label.reviewer-plural'),
-            })}
-          />
-        ),
-      },
-      {
-        title: t('label.synonym-plural'),
-        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
-        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
-        width: tableColumnsWidth.synonyms,
-        render: (synonyms: string[]) => {
-          return isEmpty(synonyms) ? (
-            <div>{NO_DATA_PLACEHOLDER}</div>
-          ) : (
-            <div className="d-flex flex-wrap">
-              {synonyms.map((synonym: string) => (
-                <TagButton
-                  className="glossary-synonym-tag"
-                  key={synonym}
-                  label={synonym}
-                />
-              ))}
-            </div>
-          );
-        },
-      },
-      ...ownerTableObject<ModifiedGlossaryTerm>(),
       {
         title: t('label.status'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.STATUS,
@@ -454,6 +420,44 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         },
         onFilter: (value, record) => record.status === value,
       },
+      {
+        title: t('label.reviewer'),
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
+        width: tableColumnsWidth.reviewers,
+        render: (reviewers: EntityReference[]) => (
+          <OwnerLabel
+            isCompactView={false}
+            owners={reviewers}
+            placeHolder={t('label.no-entity', {
+              entity: t('label.reviewer-plural'),
+            })}
+            showLabel={false}
+          />
+        ),
+      },
+      {
+        title: t('label.synonym-plural'),
+        dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
+        key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
+        width: tableColumnsWidth.synonyms,
+        render: (synonyms: string[]) => {
+          return isEmpty(synonyms) ? (
+            <div>{NO_DATA_PLACEHOLDER}</div>
+          ) : (
+            <div className="d-flex flex-wrap">
+              {synonyms.map((synonym: string) => (
+                <TagButton
+                  className="glossary-synonym-tag"
+                  key={synonym}
+                  label={synonym}
+                />
+              ))}
+            </div>
+          );
+        },
+      },
+      ...ownerTableObject<ModifiedGlossaryTerm>(),
     ];
     if (permissions.Create) {
       data.push({
@@ -516,17 +520,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const handleCheckboxChange = useCallback(
     (key: string, checked: boolean) => {
-      const setCheckedList = setStatusDropdownSelections;
+      const setCheckedList = setStatusDropdownSelection;
 
-      const optionsToUse = statusOptions as { value: string }[];
+      const optionsToUse = GLOSSARY_TERM_STATUS_OPTIONS;
 
       if (key === 'all') {
         if (checked) {
           const newCheckedList = [
             'all',
-            ...optionsToUse.map((option) => {
-              return (option as { value: string }).value ?? '';
-            }),
+            ...optionsToUse.map((option) => option.value),
           ];
           setCheckedList(newCheckedList);
         } else {
@@ -550,7 +552,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
       }
     },
-    [columns, statusOptions, setStatusDropdownSelections]
+    [columns, setStatusDropdownSelection]
   );
 
   const handleStatusSelectionDropdownSave = () => {
@@ -559,7 +561,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const handleStatusSelectionDropdownCancel = () => {
-    setStatusDropdownSelections(selectedStatus);
+    setStatusDropdownSelection(selectedStatus);
     setIsStatusDropdownVisible(false);
   };
 
@@ -585,16 +587,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               <Checkbox.Group
                 className="glossary-col-sel-checkbox-group"
                 value={statusDropdownSelection}>
-                <Checkbox
-                  className="custom-glossary-col-sel-checkbox"
-                  key="all"
-                  value="all"
-                  onChange={(e) =>
-                    handleCheckboxChange('all', e.target.checked)
-                  }>
-                  <p className="glossary-dropdown-label">{t('label.all')}</p>
-                </Checkbox>
-                {statusOptions.map((option) => (
+                {GLOSSARY_TERM_STATUS_OPTIONS.map((option) => (
                   <div key={option.value}>
                     <Checkbox
                       className="custom-glossary-col-sel-checkbox"
@@ -602,7 +595,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                       onChange={(e) =>
                         handleCheckboxChange(option.value, e.target.checked)
                       }>
-                      <p className="glossary-dropdown-label">{option.label}</p>
+                      <p className="glossary-dropdown-label">{option.text}</p>
                     </Checkbox>
                   </div>
                 ))}
@@ -640,7 +633,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }),
     [
       statusDropdownSelection,
-      statusOptions,
       handleStatusSelectionDropdownSave,
       handleStatusSelectionDropdownCancel,
     ]
@@ -651,20 +643,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       <>
         <Dropdown
           className="custom-glossary-dropdown-menu status-dropdown"
-          getPopupContainer={(trigger) => {
-            const customContainer = trigger.closest(
-              '.custom-glossary-dropdown-menu.status-dropdown'
-            );
-
-            return customContainer as HTMLElement;
-          }}
           menu={statusDropdownMenu}
           open={isStatusDropdownVisible}
           trigger={['click']}
           onOpenChange={setIsStatusDropdownVisible}>
           <Button
-            className="custom-status-dropdown-btn"
-            data-testid="glossary-status-dropdown">
+            className="text-primary remove-button-background-hover"
+            data-testid="glossary-status-dropdown"
+            size="small"
+            type="text">
             <Space>
               {t('label.status')}
               <DownOutlined />
@@ -672,18 +659,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           </Button>
         </Dropdown>
         <Button
-          className="text-primary"
+          className="text-primary remove-button-background-hover"
           data-testid="expand-collapse-all-button"
           size="small"
           type="text"
           onClick={toggleExpandAll}>
           <Space align="center" size={4}>
-            {isAllExpanded ? (
-              <DownUpArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            ) : (
-              <UpDownArrowIcon color={DE_ACTIVE_COLOR} height="14px" />
-            )}
-
+            <Icon
+              className="text-primary"
+              component={isAllExpanded ? DownUpArrowIcon : UpDownArrowIcon}
+              height="14px"
+            />
             {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
           </Space>
         </Button>
@@ -825,33 +811,38 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
     setIsTableHovered(false);
+    setConfirmCheckboxChecked(false);
   }, []);
 
-  useEffect(() => {
-    if (tableRef.current) {
-      setTableWidth(tableRef.current.offsetWidth);
-    }
-  }, [tableRef.current]);
+  const hasReviewers = useMemo(() => {
+    return !isEmpty(activeGlossary.reviewers);
+  }, [movedGlossaryTerm, activeGlossary]);
 
-  if (termsLoading) {
-    return <Loader />;
-  }
+  useEffect(() => {
+    if (!tableContainerRef.current) {
+      return;
+    }
+    setContainerWidth(tableContainerRef.current.offsetWidth);
+  }, [tableContainerRef.current]);
 
   if (isEmpty(glossaryTerms)) {
     return (
-      <ErrorPlaceHolder
-        className="m-t-xlg"
-        doc={GLOSSARIES_DOCS}
-        heading={t('label.glossary-term')}
-        permission={permissions.Create}
-        placeholderText={t('message.no-glossary-term')}
-        type={
-          permissions.Create && glossaryTermStatus === Status.Approved
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
-        }
-        onClick={handleAddGlossaryTermClick}
-      />
+      // If there is no terms, the table container ref is not set, so we need to use a div to set the width
+      <div ref={tableContainerRef}>
+        <ErrorPlaceHolder
+          className="p-md p-b-lg"
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary-term')}
+          permission={permissions.Create}
+          placeholderText={t('message.no-glossary-term')}
+          type={
+            permissions.Create && glossaryTermStatus === Status.Approved
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+          }
+          onClick={handleAddGlossaryTermClick}
+        />
+      </div>
     );
   }
 
@@ -861,7 +852,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   return (
     <Row className={className} gutter={[0, 16]}>
-      <Col span={24}>
+      {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
+      <Col className="w-full" ref={tableContainerRef} span={24}>
         {glossaryTerms.length > 0 ? (
           <DndProvider backend={HTML5Backend}>
             <Table
@@ -876,11 +868,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               defaultVisibleColumns={DEFAULT_VISIBLE_COLUMNS}
               expandable={expandableConfig}
               extraTableFilters={extraTableFilters}
-              // Loading is set to true if the table is not loaded or the table width is not set,
-              // as we are using the table width to calculate the column width
-              loading={isTableLoading || !tableRef.current?.offsetWidth}
+              loading={isTableLoading || termsLoading}
               pagination={false}
-              ref={tableRef}
               rowKey="fullyQualifiedName"
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
@@ -898,11 +887,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           confirmLoading={isTableLoading}
           data-testid="confirmation-modal"
           maskClosable={false}
-          okText={t('label.confirm')}
+          okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
+          okText={t('label.move')}
           open={isModalOpen}
-          title={t('label.move-the-entity', {
-            entity: t('label.glossary-term'),
-          })}
+          title={
+            <>
+              <WarningOutlined className="m-r-xs warning-icon" />
+              {t('label.move-the-entity', {
+                entity: t('label.glossary-term'),
+              })}
+            </>
+          }
           onCancel={onDragConfirmationModalClose}
           onOk={handleChangeGlossaryTerm}>
           <Transi18next
@@ -918,6 +913,33 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 : t('label.term-lowercase'),
             }}
           />
+          {hasReviewers && (
+            <div className="m-t-md">
+              <Checkbox
+                checked={confirmCheckboxChecked}
+                className="text-grey-700"
+                data-testid="confirm-status-checkbox"
+                onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}>
+                <span>
+                  <Transi18next
+                    i18nKey="message.entity-transfer-confirmation-message"
+                    renderElement={<strong />}
+                    values={{
+                      from: movedGlossaryTerm?.from.name,
+                    }}
+                  />
+                  <span className="d-inline-block m-l-xss">
+                    <StatusBadge
+                      className="p-x-xs p-y-xss"
+                      dataTestId=""
+                      label={Status.InReview}
+                      status={StatusClass[Status.InReview]}
+                    />
+                  </span>
+                </span>
+              </Checkbox>
+            </div>
+          )}
         </Modal>
       </Col>
     </Row>

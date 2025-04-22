@@ -20,6 +20,7 @@
   .ant-typography {
     margin-bottom: 0;
   }
+
   .ant-btn {
     padding: 0px;
   }
@@ -53,6 +54,7 @@
     border: 1px solid #dde3ea;
     box-shadow: 1px 1px 3px rgb(0 0 0 / 12%);
     border-radius: 4px;
+
     .ant-dropdown-menu-item {
       padding: 5px 16px;
     }
@@ -86,6 +88,7 @@
     padding-left: 0px;
     padding-right: 0px;
   }
+
   .ant-dropdown-menu-item:hover {
     background-color: @white;
     color: inherit;
@@ -99,11 +102,13 @@
   background-color: @white;
   border-color: @grey-3;
 }
+
 .status-dropdown {
   .ant-dropdown-menu-item {
     padding-left: @padding-sm;
     padding-right: @padding-xs;
   }
+
   .ant-checkbox-wrapper {
     height: 33px;
   }
@@ -121,4 +126,45 @@
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.glossary-page-tabs {
+  .ant-tabs-tabpane {
+    height: @glossary-page-height;
+    overflow-y: auto;
+
+    .activity-feed-tab {
+      height: 100%;
+
+      .right-container,
+      .center-container {
+        height: 100%;
+      }
+    }
+  }
+}
+
+.glossary-term-page-tabs {
+  .ant-tabs-tabpane {
+    height: @glossary-term-page-height;
+    overflow-y: auto;
+  }
+
+  .activity-feed-tab {
+    height: 100%;
+
+    .right-container,
+    .center-container {
+      height: 100%;
+    }
+  }
+}
+
+.warning-icon {
+  background-color: @alert-warning-icon-bg-1;
+  border: 6px solid @alert-warning-icon-bg-2;
+  font-size: 20px;
+  border-radius: 50%;
+  padding: 8px;
+  color: #dc6803;
 }

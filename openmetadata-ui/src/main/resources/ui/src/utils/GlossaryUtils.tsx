@@ -134,10 +134,10 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
 
 export const StatusClass = {
   [Status.Approved]: StatusType.Success,
-  [Status.Draft]: StatusType.Warning,
+  [Status.Draft]: StatusType.Pending,
   [Status.Rejected]: StatusType.Failure,
-  [Status.Deprecated]: StatusType.Warning,
-  [Status.InReview]: StatusType.Running,
+  [Status.Deprecated]: StatusType.Deprecated,
+  [Status.InReview]: StatusType.InReview,
 };
 
 export const StatusFilters = Object.values(Status)
@@ -447,19 +447,16 @@ export const glossaryTermTableColumnsWidth = (
   tableWidth: number,
   havingCreatePermission: boolean
 ) => {
-  const fallbackWidth = 200;
-
   return {
-    name: calculatePercentageFromValue(tableWidth, 40) || fallbackWidth,
-    description:
-      calculatePercentageFromValue(
-        tableWidth,
-        havingCreatePermission ? 21 : 33
-      ) || fallbackWidth,
-    reviewers: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
-    synonyms: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
-    owners: calculatePercentageFromValue(tableWidth, 17) || fallbackWidth,
-    status: calculatePercentageFromValue(tableWidth, 33) || fallbackWidth,
+    name: calculatePercentageFromValue(tableWidth, 20),
+    description: calculatePercentageFromValue(
+      tableWidth,
+      havingCreatePermission ? 21 : 33
+    ),
+    reviewers: calculatePercentageFromValue(tableWidth, 33),
+    synonyms: calculatePercentageFromValue(tableWidth, 33),
+    owners: calculatePercentageFromValue(tableWidth, 17),
+    status: calculatePercentageFromValue(tableWidth, 20),
   };
 };
 

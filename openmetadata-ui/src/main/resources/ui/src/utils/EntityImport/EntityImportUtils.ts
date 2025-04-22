@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { DataAssetsHeaderProps } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { EntityType } from '../../enums/entity.enum';
 import {
   importEntityInCSVFormat,
   importServiceInCSVFormat,
 } from '../../rest/importExportAPI';
-import entityUtilClassBase from '../EntityUtilClassBase';
-import Fqn from '../Fqn';
+import { getEntityBreadcrumbs } from '../EntityUtils';
+import i18n from '../i18next/LocalUtil';
 
 type ParsedDataType<T> = Array<T>;
 
@@ -61,20 +61,20 @@ export const getImportedEntityType = (entityType: EntityType) => {
   }
 };
 
-export const getBulkEntityImportBreadcrumbList = (
+export const getBulkEntityBreadcrumbList = (
   entityType: EntityType,
-  fqn: string
-): TitleBreadcrumbProps['titleLinks'] => [
-  {
-    name: Fqn.split(fqn).pop(),
-    url: entityUtilClassBase.getEntityLink(entityType, fqn),
-  },
-  {
-    name: i18next.t('label.import'),
-    url: '',
-    activeTitle: true,
-  },
-];
+  entity: DataAssetsHeaderProps['dataAsset'],
+  isBulkEdit: boolean
+): TitleBreadcrumbProps['titleLinks'] => {
+  return [
+    ...getEntityBreadcrumbs(entity, entityType, true),
+    {
+      name: i18n.t(`label.${isBulkEdit ? 'bulk-edit' : 'import'}`),
+      url: '',
+      activeTitle: true,
+    },
+  ];
+};
 
 export const validateCsvString = async (
   csvData: string,

@@ -337,7 +337,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
+    PutResponse<T> response =
+        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -362,7 +363,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
+    PutResponse<T> response =
+        repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -543,6 +545,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
+            LOG.error("Encountered Exception while exporting.", e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
                 jobId, securityContext, e.getMessage());
           }
@@ -669,6 +672,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
+            LOG.error("Encountered Exception while importing.", e);
             WebsocketNotificationHandler.sendCsvImportFailedNotification(
                 jobId, securityContext, e.getMessage());
           }

@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Collapse, Row, Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -82,23 +83,15 @@ const SearchSettingsPage = () => {
     []
   );
 
-  const entityFields = useMemo(() => {
-    if (!searchConfig?.allowedFields) {
-      return [];
+  const fieldValueBoostOptions = useMemo(() => {
+    if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
+      return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
+        (field) => field.name
+      );
     }
 
-    return searchConfig.allowedFields.map((entityField) => ({
-      entityType: entityField.entityType,
-      fields: entityField.fields.map((field) => field.name),
-    }));
+    return [];
   }, [searchConfig]);
-
-  const entityOptions = useMemo(() => {
-    const allFields = entityFields.flatMap((entity) => entity.fields);
-    const uniqueFields = [...new Set(allFields)];
-
-    return uniqueFields;
-  }, [entityFields]);
 
   const fetchSearchConfig = async () => {
     try {
@@ -307,7 +300,7 @@ const SearchSettingsPage = () => {
       className="search-settings"
       mainContainerClassName="p-t-0"
       pageTitle={t('label.search')}>
-      <Row className="p-y-md settings-row" gutter={[0, 16]}>
+      <Row className="p-md settings-row m-0" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -315,7 +308,7 @@ const SearchSettingsPage = () => {
           <PageHeader data={PAGE_HEADERS.SEARCH_SETTINGS} />
         </Col>
       </Row>
-      <Row className="p-y-md settings-row" gutter={[0, 16]}>
+      <Row className="p-md settings-row m-x-0" gutter={[0, 16]}>
         <Col span={24}>
           <Typography.Title className="text-sm font-semibold" level={5}>
             {t('label.global-setting-plural')}
@@ -454,16 +447,15 @@ const SearchSettingsPage = () => {
         </Col>
       </Row>
 
-      <Row className="p-x-lg p-b-md" gutter={[16, 16]}>
+      <Row className="p-b-md m-x-0" gutter={[16, 16]}>
         {settingCategoryData?.map((data) => (
-          <Col key={data.key} span={8}>
+          <Col key={data.key} lg={8} md={12} sm={24}>
             <SettingItemCard data={data} onClick={handleViewDetailClick} />
           </Col>
         ))}
       </Row>
-
       <FieldValueBoostModal
-        entityOptions={entityOptions}
+        entityOptions={fieldValueBoostOptions ?? []}
         open={showFieldValueBoostModal}
         selectedBoost={selectedFieldValueBoost}
         onCancel={() => {

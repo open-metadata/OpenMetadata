@@ -42,6 +42,7 @@ import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -58,6 +59,7 @@ import {
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import {
@@ -82,8 +84,10 @@ const GlossaryTermsV1 = ({
   updateVote,
   refreshActiveGlossaryTerm,
   isVersionView,
+  isTabExpanded,
+  toggleTabExpanded,
 }: GlossaryTermsV1Props) => {
-  const { tab, version } = useParams<{ tab: string; version: string }>();
+  const { tab, version } = useParams<{ tab: EntityTabs; version: string }>();
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
   const assetTabRef = useRef<AssetsTabRef>(null);
@@ -146,7 +150,7 @@ const GlossaryTermsV1 = ({
         );
 
         setAssetCount(res.data.hits.total.value ?? 0);
-      } catch (error) {
+      } catch {
         setAssetCount(0);
       }
     }
@@ -218,7 +222,7 @@ const GlossaryTermsV1 = ({
               label: (
                 <div data-testid="assets">
                   {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
-                  <span className="p-l-xs ">
+                  <span className="p-l-xs">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>
@@ -341,19 +345,27 @@ const GlossaryTermsV1 = ({
     };
   }, [glossaryTerm, isVersionView]);
 
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(tabItems[0], activeTab, PageType.GlossaryTerm),
+    [tabItems[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <GenericProvider
+      customizedPage={customizedPage}
       data={updatedGlossaryTerm}
+      isTabExpanded={isTabExpanded}
       isVersionView={isVersionView}
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Row data-testid="glossary-term" gutter={[0, 8]}>
-        <Col className="p-x-md" span={24}>
+      <Row data-testid="glossary-term" gutter={[0, 12]}>
+        <Col span={24}>
           <GlossaryHeader
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
@@ -362,22 +374,26 @@ const GlossaryTermsV1 = ({
           />
         </Col>
 
-        <GenericProvider<GlossaryTerm>
-          data={updatedGlossaryTerm}
-          isVersionView={isVersionView}
-          permissions={permissions}
-          type={EntityType.GLOSSARY_TERM}
-          onUpdate={onTermUpdate}>
-          <Col span={24}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="tabs-new"
-              items={tabItems}
-              onChange={activeTabHandler}
-            />
-          </Col>
-        </GenericProvider>
+        <Col className="glossary-term-page-tabs" span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="tabs-new"
+            items={tabItems}
+            tabBarExtraContent={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  title={
+                    isTabExpanded ? t('label.collapse') : t('label.expand')
+                  }
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
+            onChange={activeTabHandler}
+          />
+        </Col>
       </Row>
       {glossaryTerm.fullyQualifiedName && assetModalVisible && (
         <AssetSelectionModal

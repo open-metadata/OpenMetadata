@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,12 +23,14 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../Customization/GenericTab/GenericTab';
@@ -42,6 +43,8 @@ const GlossaryDetails = ({
   updateVote,
   handleGlossaryDelete,
   isVersionView,
+  toggleTabExpanded,
+  isTabExpanded,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
@@ -142,28 +145,42 @@ const GlossaryDetails = ({
     getEntityFeedCount();
   }, [glossary.fullyQualifiedName]);
 
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Glossary),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <Row
-      className="glossary-details p-t-sm"
+      className="glossary-details"
       data-testid="glossary-details"
-      gutter={[0, 16]}>
-      <Col className={classNames('p-x-lg')} span={24}>
+      gutter={[0, 12]}>
+      <Col span={24}>
         <GlossaryHeader
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
         />
       </Col>
-      <Col className="p-x-lg" span={24}>
+      <Col className="glossary-page-tabs" span={24}>
         <Tabs
           activeKey={activeTab}
           className="tabs-new"
           data-testid="tabs"
           items={tabs}
+          tabBarExtraContent={
+            isExpandViewSupported && (
+              <AlignRightIconButton
+                className={isTabExpanded ? 'rotate-180' : ''}
+                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+                onClick={toggleTabExpanded}
+              />
+            )
+          }
           onChange={handleTabChange}
         />
       </Col>

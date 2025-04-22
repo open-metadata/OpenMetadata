@@ -11,7 +11,7 @@
       "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
     },
     "paging": {
-      "$ref": "./searchLineageResult.json/#/definitions/layerPaging"
+      "$ref": "./searchLineageResult.json#/definitions/layerPaging"
     }
   }
 }

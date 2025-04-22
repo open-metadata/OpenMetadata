@@ -214,6 +214,7 @@ authenticationConfiguration:
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
+    maxAge: ${OIDC_MAX_AGE:-"0"}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -308,6 +309,7 @@ elasticsearch:
       modelId: ${AWS_BEDROCK_MODEL_ID:-""}
       accessKey: ${AWS_BEDROCK_ACCESS_KEY:-""}
       secretKey: ${AWS_BEDROCK_SECRET_KEY:-""}
+      useIamRole: ${AWS_BEDROCK_USE_IAM:-"false"}
 
 
 eventMonitoringConfiguration:

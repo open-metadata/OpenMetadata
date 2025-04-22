@@ -27,6 +27,7 @@ import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
 import { getFeedCounts } from '../../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
@@ -37,6 +38,7 @@ import {
 } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -63,7 +65,7 @@ const DataModelDetails = ({
   const { customizedPage, isLoading } = useCustomPages(
     PageType.DashboardDataModel
   );
-
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
@@ -149,8 +151,7 @@ const DataModelDetails = ({
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -193,6 +194,20 @@ const DataModelDetails = ({
     editLineagePermission,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(
+        tabs[0],
+        activeTab,
+        PageType.DashboardDataModel
+      ),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -224,7 +239,9 @@ const DataModelDetails = ({
           />
         </Col>
         <GenericProvider<DashboardDataModel>
+          customizedPage={customizedPage}
           data={dataModelData}
+          isTabExpanded={isTabExpanded}
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={onUpdateDataModel}>
@@ -234,6 +251,17 @@ const DataModelDetails = ({
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={(activeKey: string) =>
                 handleTabChange(activeKey as EntityTabs)
               }

@@ -174,7 +174,7 @@ export const DomainLabelV2 = <
         <Card
           className="new-header-border-card"
           title={
-            <div className="d-flex items-center gap-2">
+            <div className="d-flex items-center gap-1">
               <Typography.Text className="text-sm font-medium">
                 {t('label.domain')}
               </Typography.Text>
