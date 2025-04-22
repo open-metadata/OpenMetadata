@@ -212,14 +212,6 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
-  DatabaseServiceType.SapERP,
-  DatabaseServiceType.BigTable,
-  DatabaseServiceType.SAS,
-  DatabaseServiceType.Synapse,
-  DatabaseServiceType.Teradata,
-  PipelineServiceType.Flink,
-  PipelineServiceType.Spline,
-  StorageServiceType.Gcs,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -425,18 +417,10 @@ export const SERVICE_TYPES_ENUM = {
 };
 
 export const BETA_SERVICES = [
-  DatabaseServiceType.BigTable,
-  DatabaseServiceType.SAS,
-  PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
-  PipelineServiceType.Flink,
   PipelineServiceType.Wherescape,
-  DatabaseServiceType.Teradata,
-  StorageServiceType.Gcs,
-  DatabaseServiceType.SapERP,
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
-  DatabaseServiceType.Synapse,
   DatabaseServiceType.Cockroach,
   SearchServiceType.OpenSearch,
 ];
