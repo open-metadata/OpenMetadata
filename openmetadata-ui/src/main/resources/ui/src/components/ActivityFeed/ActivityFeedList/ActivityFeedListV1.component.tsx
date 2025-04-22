@@ -80,7 +80,9 @@ const ActivityFeedListV1 = ({
     () =>
       entityThread.map((feed) => (
         <FeedPanelBodyV1
-          className="activity-feed-announcement"
+          className={`activity-feed-announcement ${
+            activeFeedId === feed.id ? 'announcement-active' : ''
+          }`}
           componentsVisibility={componentsVisibility}
           feed={feed}
           hidePopover={hidePopover}
@@ -129,7 +131,7 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-md" id="feedData">
+    <div className="feed-list-container p-md p-t-0" id="feedData">
       {feeds}
     </div>
   );

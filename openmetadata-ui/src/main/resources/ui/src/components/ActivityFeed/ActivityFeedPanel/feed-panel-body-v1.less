@@ -23,13 +23,19 @@
     margin-top: 20px;
     padding-top: 8px;
     border-radius: 8px;
-    border: 1px solid @blue-3;
+    border: 1px solid @blue-15;
     background: @announcement-background;
   }
-
   &:hover {
     color: inherit;
-    background-color: @grey-1;
+    background-color: @announcement-background !important;
+    &.announcement-active {
+      background-color: @announcement-background-dark !important;
+    }
+  }
+  &.announcement-active {
+    border: 1px solid @announcement-background-dark;
+    background: @announcement-background-dark;
   }
 }
 .activity-feed-card-new {

@@ -39,7 +39,6 @@ import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-clos
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as TaskFilterIcon } from '../../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
 import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 
@@ -854,7 +853,7 @@ export const ActivityFeedTab = ({
           </div>
         )}
         {isAnnouncementActiveTab && (
-          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task justify-between">
+          <div className="d-flex gap-4 p-t-lg p-b-0 p-x-lg d-flex justify-between">
             <div className="d-flex gap-4">
               <Dropdown
                 menu={{
@@ -863,9 +862,10 @@ export const ActivityFeedTab = ({
                 }}
                 overlayClassName="task-tab-custom-dropdown"
                 trigger={['click']}>
-                <TaskFilterIcon
-                  className="task-filter-icon cursor-pointer"
+                <Button
+                  className="feed-filter-icon"
                   data-testid="announcement-filter-icon"
+                  icon={<FilterIcon height={16} />}
                 />
               </Dropdown>
             </div>
