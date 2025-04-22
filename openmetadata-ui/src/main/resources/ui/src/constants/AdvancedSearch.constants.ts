@@ -14,6 +14,7 @@
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { t } from '../utils/i18n';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {

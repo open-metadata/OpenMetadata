@@ -218,7 +218,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        accessor: TABLE_COLUMNS_KEYS.NAME,
+
         fixed: 'left',
         width: 220,
         render: renderSchemaName,
@@ -255,7 +255,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
+
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (
@@ -279,7 +279,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        accessor: TABLE_COLUMNS_KEYS.TAGS,
+
         width: 300,
         filterIcon: columnFilterIcon,
         render: (tags: TagLabel[], record: Field, index: number) => (

@@ -15,6 +15,7 @@ import ButtonGroup from 'antd/lib/button/button-group';
 import classNames from 'classnames';
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domain.svg';
@@ -59,6 +60,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
     platformView,
     isPlatformLineage,
   } = useLineageProvider();
+  const { t } = useTranslation();
 
   const handleLayerClick = React.useCallback(
     (value: LineageLayer) => {

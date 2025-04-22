@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   CUSTOM_PROPERTIES_ICON_MAP,
@@ -48,7 +49,6 @@ import {
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
-import { t } from '../../../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -60,7 +60,7 @@ const AddCustomProperty = () => {
   const [form] = Form.useForm();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const navigate = useNavigate();
-
+  const { t } = useTranslation();
   const [typeDetail, setTypeDetail] = useState<Type>();
 
   const [propertyTypes, setPropertyTypes] = useState<Array<Type>>([]);

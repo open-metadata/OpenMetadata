@@ -43,7 +43,7 @@ describe('AddIngestionButton', () => {
       userEvent.click(addIngestionButton);
     });
 
-    expect(mockPush).toHaveBeenCalledTimes(0);
+    expect(mockNavigate).toHaveBeenCalledTimes(0);
 
     expect(screen.getByTestId('agent-item-metadata')).toBeInTheDocument();
     expect(screen.getByTestId('agent-item-profiler')).toBeInTheDocument();

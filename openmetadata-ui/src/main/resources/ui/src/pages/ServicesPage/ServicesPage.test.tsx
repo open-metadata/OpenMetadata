@@ -87,7 +87,7 @@ describe('ServicesPage', () => {
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/services/databases']}>
-          <Route component={ServicesPage} path="/services/:tab" />
+          <Route element={<ServicesPage />} path="/services/:tab" />
         </MemoryRouter>
       );
     });
@@ -99,7 +99,7 @@ describe('ServicesPage', () => {
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/services/databases?tab=pipelines']}>
-          <Route component={ServicesPage} path="/services/:tab" />
+          <Route element={<ServicesPage />} path="/services/:tab" />
         </MemoryRouter>
       );
     });
@@ -117,7 +117,7 @@ describe('ServicesPage', () => {
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/services/services']}>
-          <Route component={ServicesPage} path="/services/:tab" />
+          <Route element={<ServicesPage />} path="/services/:tab" />
         </MemoryRouter>
       );
     });

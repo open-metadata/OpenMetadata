@@ -44,12 +44,12 @@ export const getTreeDataForNavigationItems = (
         return {
           title: item.title,
           key: item.key ?? '',
-          icon: item.icon,
+          icon: item.icon as TreeDataNode['icon'],
           children: item.children?.map((i) => {
             return {
               title: i.title,
               key: i.key,
-              icon: i.icon,
+              icon: i.icon as TreeDataNode['icon'],
             };
           }),
         };
@@ -60,14 +60,14 @@ export const getTreeDataForNavigationItems = (
         return {
           title: item.title,
           key: item.id,
-          icon: sidebarItem?.icon,
+          icon: sidebarItem?.icon as TreeDataNode['icon'],
           children: item.children?.map((i) => {
             const sidebarItem = sidebarMap.get(i.id);
 
             return {
               title: i.title,
               key: i.id,
-              icon: sidebarItem?.icon,
+              icon: sidebarItem?.icon as TreeDataNode['icon'],
             };
           }),
         };

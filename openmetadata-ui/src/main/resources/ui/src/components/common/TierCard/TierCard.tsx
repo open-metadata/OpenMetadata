@@ -24,6 +24,7 @@ import {
 import { AxiosError } from 'axios';
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
@@ -46,7 +47,7 @@ const TierCard = ({
     []
   );
   const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
-
+  const { t } = useTranslation();
   const getTierData = async () => {
     setIsLoadingTierData(true);
     try {

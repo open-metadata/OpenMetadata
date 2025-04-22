@@ -18,13 +18,13 @@ import i18n from '../utils/i18next/LocalUtil';
 
 export const SCHEDULAR_OPTIONS = [
   {
-    title: t('label.schedule'),
-    description: t('message.schedule-description'),
+    title: i18n.t('label.schedule'),
+    description: i18n.t('message.schedule-description'),
     value: SchedularOptions.SCHEDULE,
   },
   {
-    title: t('label.on-demand'),
-    description: t('message.on-demand-description'),
+    title: i18n.t('label.on-demand'),
+    description: i18n.t('message.on-demand-description'),
     value: SchedularOptions.ON_DEMAND,
   },
 ];

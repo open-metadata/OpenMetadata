@@ -17,7 +17,7 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
@@ -95,7 +95,7 @@ describe('Test ChangeParentHierarchy modal component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitForElement(() => screen.getByText(mockedGlossaryTerms[1].name));
+    await waitFor(() => screen.getByText(mockedGlossaryTerms[1].name));
 
     await act(async () => {
       fireEvent.click(screen.getByText(mockedGlossaryTerms[1].name));

@@ -129,7 +129,7 @@ const PoliciesDetailPage = () => {
   }, [policyPermission]);
 
   const fetchPolicyPermission = useCallback(
-    async (fqn) => {
+    async (fqn: string) => {
       try {
         const response = await getEntityPermissionByFqn(
           ResourceEntity.POLICY,

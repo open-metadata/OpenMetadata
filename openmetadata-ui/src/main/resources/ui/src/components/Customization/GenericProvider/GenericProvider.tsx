@@ -13,6 +13,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty, once } from 'lodash';
 import {
+  createContext,
   useCallback,
   useContext,
   useEffect,
@@ -65,7 +66,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
-  React.createContext({} as GenericContextType<T>)
+  createContext({} as GenericContextType<T>)
 );
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({

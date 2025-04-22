@@ -148,7 +148,6 @@ const GithubStarCard = () => {
 
         <ButtonGroup className="github-action-button-group">
           <Link
-            component={Typography.Link}
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,
@@ -161,7 +160,6 @@ const GithubStarCard = () => {
           </Link>
 
           <Link
-            component={Typography.Link}
             target="_blank"
             to={{
               pathname: OMD_REPOSITORY_LINK,

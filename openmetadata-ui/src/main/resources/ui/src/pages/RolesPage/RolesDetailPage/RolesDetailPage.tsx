@@ -114,7 +114,7 @@ const RolesDetailPage = () => {
   }, [rolePermission]);
 
   const fetchRolePermission = useCallback(
-    async (fqn) => {
+    async (fqn: string) => {
       try {
         const response = await getEntityPermissionByFqn(
           ResourceEntity.ROLE,

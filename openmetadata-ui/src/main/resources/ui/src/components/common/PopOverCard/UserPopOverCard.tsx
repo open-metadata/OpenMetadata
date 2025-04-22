@@ -23,6 +23,7 @@ import React, {
   useEffect,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
@@ -47,6 +48,7 @@ export const UserTeams = React.memo(({ userName }: { userName: string }) => {
   const { userProfilePics } = useApplicationStore();
   const userData = userProfilePics[userName];
   const teams = getNonDeletedTeams(userData?.teams ?? []);
+  const { t } = useTranslation();
 
   return teams?.length ? (
     <div className="m-t-xs">
@@ -75,6 +77,7 @@ export const UserRoles = React.memo(({ userName }: { userName: string }) => {
   const userData = userProfilePics[userName];
   const roles = userData?.roles;
   const isAdmin = userData?.isAdmin;
+  const { t } = useTranslation();
 
   return roles?.length ? (
     <div className="m-t-xs">
@@ -119,7 +122,7 @@ export const PopoverContent = React.memo(
     });
     const { updateUserProfilePics } = useApplicationStore();
     const [loading, setLoading] = useState(false);
-
+    const { t } = useTranslation();
     const teamDetails = get(user, 'teams', null);
 
     const getUserWithAdditionalDetails = useCallback(async () => {

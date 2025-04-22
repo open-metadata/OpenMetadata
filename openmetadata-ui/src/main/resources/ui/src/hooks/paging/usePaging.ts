@@ -84,12 +84,16 @@ export const usePaging = (
         { addQueryPrefix: true }
       );
       // Update location state to persist pageSize for navigation
-      navigate({
-        state: {
-          pageSize: page,
+      navigate(
+        {
+          search: searchParams,
         },
-        search: searchParams,
-      });
+        {
+          state: {
+            pageSize: page,
+          },
+        }
+      );
     },
     [setPageSize, setCurrentPage, history, location]
   );
@@ -109,14 +113,18 @@ export const usePaging = (
       );
       setCurrentPage(page);
       if (cursorData) {
-        navigate({
-          state: {
-            cursorData,
-            currentPage: page,
-            pageSize,
+        navigate(
+          {
+            search: searchParams,
           },
-          search: searchParams,
-        });
+          {
+            state: {
+              cursorData,
+              currentPage: page,
+              pageSize,
+            },
+          }
+        );
       }
     },
     [setCurrentPage, history, location]

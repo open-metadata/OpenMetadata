@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Tree, Typography } from 'antd';
+import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
@@ -241,11 +241,11 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     [updateTreeData, searchQueryParam, defaultServiceType]
   );
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
-  const onNodeSelect = useCallback(
+  const onNodeSelect: TreeProps['onSelect'] = useCallback(
     (_, { node }) => {
       const filterField = node.data?.filterField;
       if (filterField) {

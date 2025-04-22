@@ -15,7 +15,7 @@ import { Button, Card, Form, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
@@ -56,7 +56,7 @@ const EditRulePage = () => {
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
 
-  const selectedRuleRef = React.useRef<Rule | undefined>(InitialData);
+  const selectedRuleRef = useRef<Rule | undefined>(InitialData);
 
   const breadcrumb = useMemo(
     () => [

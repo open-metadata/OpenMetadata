@@ -928,7 +928,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
-  const onLineageConfigUpdate = useCallback((config) => {
+  const onLineageConfigUpdate = useCallback((config: LineageConfig) => {
     setLineageConfig(config);
   }, []);
 
@@ -936,7 +936,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setIsDrawerOpen(false);
   }, []);
 
-  const onZoomUpdate = useCallback((value) => {
+  const onZoomUpdate = useCallback((value: number) => {
     setZoomValue(value);
   }, []);
 

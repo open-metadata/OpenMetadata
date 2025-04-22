@@ -180,7 +180,7 @@ describe('Add KPI page', () => {
     });
 
     // check for percentage type
-    await waitForElement(() => screen.getByText('Percentage'));
+    await waitFor(() => screen.getByText('Percentage'));
 
     await act(async () => {
       fireEvent.click(screen.getByText('Percentage'));
@@ -191,7 +191,7 @@ describe('Add KPI page', () => {
     ).toBeInTheDocument();
 
     // check for number type
-    await waitForElement(() => screen.getByText('Number'));
+    await waitFor(() => screen.getByText('Number'));
 
     await act(async () => {
       fireEvent.click(screen.getByText('Number'));

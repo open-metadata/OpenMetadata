@@ -14,7 +14,7 @@
 import { Button, Input, InputRef, Modal, Typography } from 'antd';
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Trans } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
@@ -30,7 +30,7 @@ const EntityDeleteModal = ({
   const deleteTextInputRef = useRef<InputRef>(null);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
-
+  const { t } = useTranslation();
   const handleOnChange = (e: ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value);
   };

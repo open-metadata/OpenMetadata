@@ -22,6 +22,7 @@ describe('TagRenderer', () => {
     onClose: mockOnClose,
     disabled: false,
     onMouseDown: jest.fn(),
+    isMaxTag: false,
   };
 
   beforeEach(() => {

@@ -32,6 +32,8 @@ import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
+  const { t } = useTranslation();
+
   return (
     <Space>
       {props ? (

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row } from 'antd';
+import { Button, Col, Row, TablePaginationConfig } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
-import { TableRowSelection } from 'antd/lib/table/interface';
+import { FilterValue, TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { isNil, map, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -177,7 +177,10 @@ export const IngestionPipelineList = ({
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
     useCallback(
-      (_pagination, filters) => {
+      (
+        _pagination: TablePaginationConfig,
+        filters: Record<string, FilterValue | null>
+      ) => {
         const pipelineType = filters.pipelineType as PipelineType[];
         setPipelineTypeFilter(pipelineType);
         fetchPipelines({

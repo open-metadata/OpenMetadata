@@ -60,7 +60,6 @@ import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { refreshPage } from '../../utils/CommonUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -270,7 +269,7 @@ const NavBar = ({
     };
   };
 
-  const handleKeyPress = useCallback((event) => {
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
       searchRef.current?.focus();
       event.preventDefault();
@@ -383,14 +382,14 @@ const NavBar = ({
     async (domain: EntityReference | EntityReference[]) => {
       updateActiveDomain(domain as EntityReference);
       setIsDomainDropdownOpen(false);
-      refreshPage();
+      navigate(0);
     },
     []
   );
 
-  const handleLanguageChange = useCallback(({ key }) => {
+  const handleLanguageChange = useCallback(({ key }: MenuInfo) => {
     i18next.changeLanguage(key);
-    refreshPage();
+    navigate(0);
   }, []);
 
   const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);

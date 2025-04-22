@@ -12,14 +12,15 @@
  */
 
 import { StepperStepType } from 'Models';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   {
-    name: t('label.detail-plural'),
+    name: i18n.t('label.detail-plural'),
     step: 1,
   },
-  { name: t('label.configure'), step: 2 },
-  { name: t('label.schedule'), step: 3 },
+  { name: i18n.t('label.configure'), step: 2 },
+  { name: i18n.t('label.schedule'), step: 3 },
 ];
 
 export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';

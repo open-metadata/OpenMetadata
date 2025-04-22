@@ -16,6 +16,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 
 import { isArray, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../../assets/svg/book.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
@@ -52,7 +53,7 @@ const RelatedTerms = () => {
     isVersionView,
     permissions,
   } = useGenericContext<GlossaryTerm>();
-
+  const { t } = useTranslation();
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
 

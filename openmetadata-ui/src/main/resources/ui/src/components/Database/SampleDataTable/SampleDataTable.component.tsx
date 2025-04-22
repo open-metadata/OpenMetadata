@@ -18,6 +18,7 @@ import classNames from 'classnames';
 
 import { isEmpty, lowerCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { AUTO_CLASSIFICATION_DOCS } from '../../../constants/docs.constants';
@@ -57,7 +58,7 @@ const SampleDataTable = ({
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
   const { currentUser, theme } = useApplicationStore();
-
+  const { t } = useTranslation();
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
@@ -100,7 +101,6 @@ const SampleDataTable = ({
         ),
         dataIndex: column,
         key: column,
-        accessor: column,
         width: 250,
         render: (data: SampleDataType) => <RowData data={data} />,
       };

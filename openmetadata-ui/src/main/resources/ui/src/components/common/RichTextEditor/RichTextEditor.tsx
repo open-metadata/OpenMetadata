@@ -34,7 +34,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
       readonly,
       className,
       style,
-      placeholder,
+      placeHolder,
       onTextChange,
     }: RichTextEditorProp,
     ref
@@ -58,7 +58,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     return (
       <div className={classNames(className)} style={style} data-testid="editor">
         <BlockEditor
-          placeholder={placeholder}
+          placeholder={placeHolder}
           ref={editorRef}
           autoFocus={autofocus}
           content={initialValue}

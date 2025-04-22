@@ -12,19 +12,20 @@
  */
 
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import i18n from '../utils/i18next/LocalUtil';
 
 export const TAG_CONSTANT = {
   labelType: LabelType.Manual,
   source: TagSource.Classification,
   state: State.Confirmed,
-  tagFQN: t('label.add'),
+  tagFQN: i18n.t('label.add'),
 };
 
 export const GLOSSARY_CONSTANT = {
   labelType: LabelType.Manual,
   source: TagSource.Glossary,
   state: State.Confirmed,
-  tagFQN: t('label.add'),
+  tagFQN: i18n.t('label.add'),
 };
 
 export enum TAG_START_WITH {

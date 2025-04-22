@@ -29,27 +29,33 @@ const EntityRouter = () => {
 
   return (
     <Routes>
+      <Route element={<EntityImportRouter />} path={ROUTES.ENTITY_IMPORT} />
       <Route
         element={<EntityImportRouter />}
-        path={[ROUTES.ENTITY_IMPORT, ROUTES.BULK_EDIT_ENTITY_WITH_FQN]}
+        path={ROUTES.BULK_EDIT_ENTITY_WITH_FQN}
       />
 
       <Route
         element={<EntityVersionPage />}
-        path={[
-          ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB,
-          ROUTES.ENTITY_VERSION_DETAILS,
-        ]}
+        path={ROUTES.ENTITY_VERSION_DETAILS_WITH_TAB}
       />
+      <Route
+        element={<EntityVersionPage />}
+        path={ROUTES.ENTITY_VERSION_DETAILS}
+      />
+
       {Component ? (
-        <Route
-          element={<Component />}
-          path={[
-            ROUTES.ENTITY_DETAILS,
-            ROUTES.ENTITY_DETAILS_WITH_TAB,
-            ROUTES.ENTITY_DETAILS_WITH_SUB_TAB,
-          ]}
-        />
+        <>
+          <Route element={<Component />} path={ROUTES.ENTITY_DETAILS} />
+          <Route
+            element={<Component />}
+            path={ROUTES.ENTITY_DETAILS_WITH_TAB}
+          />
+          <Route
+            element={<Component />}
+            path={ROUTES.ENTITY_DETAILS_WITH_SUB_TAB}
+          />
+        </>
       ) : (
         <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
       )}

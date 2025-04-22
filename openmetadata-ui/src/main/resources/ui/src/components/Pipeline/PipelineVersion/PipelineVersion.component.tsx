@@ -31,6 +31,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { t } from '../../../utils/i18n';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
@@ -138,7 +139,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
+
         width: 272,
         render: (tags) => (
           <TagsViewer
@@ -151,7 +152,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
+
         width: 272,
         render: (tags) => (
           <TagsViewer sizeCap={-1} tags={getFilterTags(tags || []).Glossary} />
@@ -308,7 +309,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.PIPELINE}
         versionHandler={versionHandler}
         versionList={versionList}

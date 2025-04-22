@@ -372,7 +372,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.MLMODEL}
         versionHandler={versionHandler}
         versionList={versionList}

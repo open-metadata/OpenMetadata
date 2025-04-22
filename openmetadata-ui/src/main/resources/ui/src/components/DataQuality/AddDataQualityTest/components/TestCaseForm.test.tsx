@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  findByRole,
-  render,
-  screen,
-  waitForElement,
-} from '@testing-library/react';
+import { findByRole, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { forwardRef } from 'react';
 import { act } from 'react-dom/test-utils';
@@ -157,7 +152,7 @@ describe('TestCaseForm', () => {
 
     expect(typeSelector).toBeInTheDocument();
 
-    await waitForElement(() =>
+    await waitFor(() =>
       screen.findByText('Column Value Lengths To Be Between')
     );
 
@@ -229,7 +224,7 @@ describe('TestCaseForm', () => {
 
     expect(column).toBeInTheDocument();
 
-    await waitForElement(() => screen.findByText('last_name'));
+    await waitFor(() => screen.findByText('last_name'));
 
     await act(async () => {
       userEvent.click(await screen.findByText('last_name'));
@@ -264,7 +259,7 @@ describe('TestCaseForm', () => {
 
     expect(typeSelector).toBeInTheDocument();
 
-    await waitForElement(() =>
+    await waitFor(() =>
       screen.findByText('Column Value Lengths To Be Between')
     );
 

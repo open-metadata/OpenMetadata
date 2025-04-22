@@ -249,7 +249,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.DASHBOARD_DATA_MODEL}
         versionHandler={versionHandler}
         versionList={versionList}

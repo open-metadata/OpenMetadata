@@ -16,9 +16,12 @@ import { DefaultOptionType } from 'antd/lib/select';
 
 import { isEmpty, isString } from 'lodash';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityReference } from '../../../generated/entity/type';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   FieldProp,
   FieldTypes,
@@ -27,9 +30,6 @@ import {
 } from '../../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
-
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 
@@ -42,6 +42,7 @@ const AddGlossaryTermForm = ({
   const { currentUser } = useApplicationStore();
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
+  const { t } = useTranslation();
 
   const ownersList = Array.isArray(selectedOwners)
     ? selectedOwners

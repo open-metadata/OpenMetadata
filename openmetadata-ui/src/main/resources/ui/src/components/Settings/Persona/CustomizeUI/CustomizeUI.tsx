@@ -12,7 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -37,7 +37,7 @@ export const CustomizeUI = () => {
     return { activeCat, fullHash: location.hash?.replace('#', '') };
   }, [location.hash]);
 
-  const [items, setItems] = React.useState(categories);
+  const [items, setItems] = useState(categories);
 
   const handleCustomizeItemClick = useCallback(
     (category: string) => {

@@ -177,7 +177,6 @@ const MetricListPage = () => {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
-        accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Metric, index: number) => (
           <TableTags<Metric>
@@ -197,7 +196,6 @@ const MetricListPage = () => {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'glossary',
-        accessor: 'tags',
         width: 300,
         render: (tags: TagLabel[], record: Metric, index: number) => (
           <TableTags<Metric>

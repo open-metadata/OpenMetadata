@@ -15,6 +15,7 @@ import classNames from 'classnames';
 
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import FormItemLabel from '../../common/Form/FormItemLabel';
@@ -29,6 +30,7 @@ export const DomainTypeWidget = ({
 }) => {
   const { data: domain, permissions, onUpdate } = useGenericContext<Domain>();
   const [editDomainType, setEditDomainType] = useState(false);
+  const { t } = useTranslation();
 
   const { editAllPermission } = useMemo(
     () => ({

@@ -85,7 +85,7 @@ export const NO_DATA = '-';
 export const STAR_OMD_USER = 'STAR_OMD_USER';
 
 export const TOUR_SEARCH_TERM = 'dim_a';
-export const ERROR500 = t('message.something-went-wrong');
+export const ERROR500 = i18n.t('message.something-went-wrong');
 
 export const PLACEHOLDER_ROUTE_INGESTION_TYPE = ':ingestionType';
 export const PLACEHOLDER_ROUTE_INGESTION_FQN = ':ingestionFQN';
@@ -305,7 +305,7 @@ export const SOCKET_EVENTS = {
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
-  '/database/': [t('message.in-this-database')],
+  '/database/': [i18n.t('message.in-this-database')],
 };
 
 export const NOTIFICATION_READ_TIMER = 2500;

@@ -15,8 +15,10 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, lowerCase } from 'lodash';
 import {
+  createContext,
   ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -40,10 +42,9 @@ import {
   ExportData,
 } from './EntityExportModalProvider.interface';
 
-const EntityExportModalContext =
-  React.createContext<EntityExportModalContextProps>(
-    {} as EntityExportModalContextProps
-  );
+const EntityExportModalContext = createContext<EntityExportModalContextProps>(
+  {} as EntityExportModalContextProps
+);
 
 export const EntityExportModalProvider = ({
   children,
@@ -327,4 +328,4 @@ export const EntityExportModalProvider = ({
 };
 
 export const useEntityExportModalProvider = () =>
-  React.useContext<EntityExportModalContextProps>(EntityExportModalContext);
+  useContext<EntityExportModalContextProps>(EntityExportModalContext);

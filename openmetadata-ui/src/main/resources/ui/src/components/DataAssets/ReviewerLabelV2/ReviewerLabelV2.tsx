@@ -13,6 +13,7 @@
 import { Card, Typography } from 'antd';
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -31,6 +32,7 @@ export const ReviewerLabelV2 = <
   }
 >() => {
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
+  const { t } = useTranslation();
 
   const hasEditReviewerAccess = useMemo(() => {
     return permissions.EditAll || permissions.EditReviewers;

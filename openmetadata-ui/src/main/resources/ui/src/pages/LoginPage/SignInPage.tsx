@@ -198,7 +198,6 @@ const SignInPage = () => {
                     data-testid="email"
                     label={t('label.email')}
                     name="email"
-                    requiredMark={false}
                     rules={[
                       { required: true },
                       {
@@ -215,7 +214,6 @@ const SignInPage = () => {
                     data-testid="password"
                     label={t('label.password')}
                     name="password"
-                    requiredMark={false}
                     rules={[{ required: true }]}>
                     <Input.Password
                       autoComplete="off"

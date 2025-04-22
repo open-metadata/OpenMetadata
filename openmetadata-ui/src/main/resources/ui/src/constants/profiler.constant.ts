@@ -35,6 +35,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../utils/date-time/DateTimeUtils';
+import { t } from '../utils/i18n';
 import i18n from '../utils/i18next/LocalUtil';
 import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 

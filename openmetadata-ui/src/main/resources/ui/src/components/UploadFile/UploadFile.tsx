@@ -15,6 +15,7 @@ import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
 
 import { FC, useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';
 import { Transi18next } from '../../utils/CommonUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -27,6 +28,7 @@ export const UploadFile: FC<UploadFileProps> = ({
   onCSVUploaded,
 }) => {
   const [uploading, setUploading] = useState(false);
+  const { t } = useTranslation();
 
   const handleUpload: UploadProps['customRequest'] = useCallback(
     (options) => {

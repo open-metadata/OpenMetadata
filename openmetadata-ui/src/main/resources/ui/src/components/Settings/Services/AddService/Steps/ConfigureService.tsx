@@ -12,7 +12,7 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-
+import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../../../constants/regex.constants';
 import {
   FieldProp,
@@ -27,7 +27,7 @@ const ConfigureService = ({
   onNext,
 }: ConfigureServiceProps) => {
   const [form] = Form.useForm();
-
+  const { t } = useTranslation();
   const formFields: FieldProp[] = [
     {
       name: 'name',

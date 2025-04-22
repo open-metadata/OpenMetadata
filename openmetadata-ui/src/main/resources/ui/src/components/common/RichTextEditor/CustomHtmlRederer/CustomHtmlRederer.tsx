@@ -40,6 +40,7 @@ import {
   MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   HTMLToken,
   OpenTagToken,
@@ -157,7 +158,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
               className="code-copy-message"
               data-copied="false"
               data-testid="copied-message">
-              {t('label.copied')}
+              {i18n.t('label.copied')}
             </span>
             <img
               className="code-copy-button"

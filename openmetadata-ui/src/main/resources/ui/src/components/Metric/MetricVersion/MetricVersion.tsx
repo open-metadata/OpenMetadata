@@ -219,7 +219,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.METRIC}
         versionHandler={versionHandler}
         versionList={versionList}

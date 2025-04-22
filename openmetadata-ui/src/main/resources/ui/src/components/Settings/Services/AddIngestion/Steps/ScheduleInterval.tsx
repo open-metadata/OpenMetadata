@@ -98,12 +98,11 @@ const ScheduleInterval = <T,>({
     ...getStateValue(initialCron, initialDefaultSchedule),
   };
   const [state, setState] = useState<StateValue>(initialValues);
-  const [selectedSchedular, setSelectedSchedular] =
-    React.useState<SchedularOptions>(
-      isEmpty(initialCron)
-        ? SchedularOptions.ON_DEMAND
-        : SchedularOptions.SCHEDULE
-    );
+  const [selectedSchedular, setSelectedSchedular] = useState<SchedularOptions>(
+    isEmpty(initialCron)
+      ? SchedularOptions.ON_DEMAND
+      : SchedularOptions.SCHEDULE
+  );
   const [form] = Form.useForm<StateValue>();
   const { cron: cronString, selectedPeriod, dow, dom } = state;
 

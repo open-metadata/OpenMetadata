@@ -32,7 +32,6 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -168,10 +167,9 @@ export const UserProfileIcon = () => {
   );
 
   const teamLabelRenderer = useCallback(
-    (item) => (
+    (item: EntityReference) => (
       <Link
         className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
-        component={Typography.Link}
         to={getTeamAndUserDetailsPath(item.name as string)}>
         {getEntityName(item)}
       </Link>
@@ -235,7 +233,7 @@ export const UserProfileIcon = () => {
           <div className="text-base-color d-flex items-center gap-2">
             <RoleIcon height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.role-plural')}
+              {t('label.role-plural')}
             </span>
           </div>
         ),
@@ -258,7 +256,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <IconStruct className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.inherited-role-plural')}
+              {t('label.inherited-role-plural')}
             </span>
           </div>
         ),
@@ -282,7 +280,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <PersonaIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.persona-plural')}
+              {t('label.persona-plural')}
             </span>
           </div>
         ),
@@ -305,7 +303,7 @@ export const UserProfileIcon = () => {
           <div className="d-flex items-center gap-2">
             <TeamIcon className="text-base-color" height={20} width={20} />
             <span className="font-medium text-grey-900">
-              {i18n.t('label.team-plural')}
+              {t('label.team-plural')}
             </span>
           </div>
         ),
@@ -323,7 +321,7 @@ export const UserProfileIcon = () => {
             type="text"
             onClick={onLogoutHandler}>
             <LogoutIcon height={20} width={20} />
-            {i18n.t('label.logout')}
+            {t('label.logout')}
           </Button>
         ),
         type: 'group',

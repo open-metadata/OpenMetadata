@@ -12,6 +12,7 @@
  */
 
 import {
+  createContext,
   FC,
   ReactNode,
   useCallback,
@@ -23,7 +24,7 @@ import { io, Socket } from 'socket.io-client';
 import { ROUTES } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 
-export const WebSocketContext = React.createContext<{ socket?: Socket }>({});
+export const WebSocketContext = createContext<{ socket?: Socket }>({});
 
 interface Props {
   children: ReactNode;

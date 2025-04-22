@@ -51,8 +51,7 @@ import { useTestCaseStore } from './useTestCase.store';
 const IncidentManagerDetailPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location =
-    useLocation<{ breadcrumbData: TitleBreadcrumbProps['titleLinks'] }>();
+  const location = useLocation();
 
   const { tab: activeTab = IncidentManagerTabs.TEST_CASE_RESULTS } =
     useRequiredParams<{ tab: EntityTabs }>();
