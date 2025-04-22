@@ -188,7 +188,7 @@ test.describe('Login flow should work properly', () => {
 
     await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
 
-    // Wait for token expiry
+    // Wait for token expiry, kept 61 instead 60 so that ensure refresh API done withing timeframe
     await page2.waitForTimeout(2 * 61 * 1000);
 
     await redirectToHomePage(page2);
