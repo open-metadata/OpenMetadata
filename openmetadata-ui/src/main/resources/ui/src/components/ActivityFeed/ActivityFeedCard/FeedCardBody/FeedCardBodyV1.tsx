@@ -206,7 +206,10 @@ const FeedCardBodyV1 = ({
             {isAnnouncement ? (
               <Row>
                 <Col className="mb-1" span={24}>
-                  <Typography.Text>{announcement.description}</Typography.Text>
+                  <RichTextEditorPreviewerV1
+                    className="text-wrap"
+                    markdown={announcement.description ?? ''}
+                  />
                 </Col>
               </Row>
             ) : (
@@ -219,14 +222,6 @@ const FeedCardBodyV1 = ({
                 </Col>
               </Row>
             )}
-            <Row>
-              <Col span={24}>
-                <RichTextEditorPreviewerV1
-                  className="text-wrap"
-                  markdown={announcement.description ?? ''}
-                />
-              </Col>
-            </Row>
           </>
         ) : (
           feedBodyRender

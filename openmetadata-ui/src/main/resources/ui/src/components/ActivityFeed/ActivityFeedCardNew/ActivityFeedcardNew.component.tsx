@@ -81,7 +81,7 @@ const ActivityFeedCardNew = ({
   }, [feed.about]);
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { selectedThread, postFeed } = useActivityFeedProvider();
+  const { postFeed } = useActivityFeedProvider();
   const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const { updateFeed } = useActivityFeedProvider();
@@ -290,6 +290,7 @@ const ActivityFeedCardNew = ({
               isForFeedTab={isForFeedTab}
               isPost={isPost}
               post={post}
+              updateAnnouncementThreads={updateAnnouncementThreads}
             />
           )}
         </Space>

@@ -182,7 +182,12 @@ const CommentCard = ({
         </div>
         {feedBodyRender}
 
-        <FeedCardFooterNew isPost feed={feed} post={post} />
+        <FeedCardFooterNew
+          isPost
+          feed={feed}
+          post={post}
+          updateAnnouncementThreads={updateAnnouncementThreads}
+        />
       </div>
 
       {isHovered && (
