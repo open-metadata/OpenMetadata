@@ -1,1 +1,0 @@
-- [Reverse Metadata](#reverse-metadata)

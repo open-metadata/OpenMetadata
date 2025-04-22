@@ -22,7 +22,9 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
-{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
+{% collateContent %}
+- [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
+{% /collateContent %}
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
