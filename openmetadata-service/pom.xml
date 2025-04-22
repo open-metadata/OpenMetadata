@@ -234,6 +234,16 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-server</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>io.github.maksymdolgykh.dropwizard</groupId>
       <artifactId>dropwizard-micrometer-jdbi</artifactId>
       <exclusions>
@@ -1003,7 +1013,7 @@
                 <name>Apache 2.0</name>
               </license>
             </info>
-            <descriptionFile>../openmetadata-docs/content/v1.6.x/main-concepts/metadata-standard/apis.md</descriptionFile>
+            <descriptionFile>../openmetadata-docs/content/v1.7.x/main-concepts/metadata-standard/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>
