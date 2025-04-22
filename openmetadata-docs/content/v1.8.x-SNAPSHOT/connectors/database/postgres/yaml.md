@@ -23,7 +23,9 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
-{% partial file="/v1.8/connectors/reverse-metadata-workflow-link.md" collate: true /%}
+{% collateContent %}
+- [Reverse Metadata](https://docs.getcollate.io/connectors/ingestion/workflows/reverse-metadata)
+{% /collateContent %}
 {% partial file="/v1.8/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements

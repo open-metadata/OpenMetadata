@@ -45,9 +45,9 @@ Here are examples of custom SQL queries for metadata changes:
 ALTER SCHEMA {database}.{schema} SET TAG {database}.{schema}.{tag_key} = '{tag_value}';
 ```
 
-The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
+The list of variables for custom SQL can be found [here](https://docs.getcollate.io/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](https://docs.getcollate.io/connectors/ingestion/workflows/reverse-metadata).
 
 ### Requirements for Reverse Metadata
 
@@ -69,4 +69,4 @@ GRANT OWNERSHIP ON TABLE DATABASE_NAME.SCHEMA_NAME.TABLE_NAME TO ROLE NEW_ROLE R
 GRANT IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
 
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](https://docs.getcollate.io/connectors/ingestion/workflows/reverse-metadata).
