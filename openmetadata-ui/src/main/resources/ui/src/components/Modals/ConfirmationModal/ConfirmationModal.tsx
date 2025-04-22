@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
+import './ConfirmationModal.less';
 
 /**
  * Modal to show confirmation on varios page
@@ -60,7 +61,9 @@ const ConfirmationModal = ({
             {cancelText}
           </Button>
           <Button
-            className={confirmButtonCss}
+            className={classNames(confirmButtonCss, {
+              'delete-button': confirmText === t('label.delete'),
+            })}
             danger={confirmText === t('label.delete')}
             data-testid={isLoading ? 'loading-button' : 'save-button'}
             key="save-btn"
