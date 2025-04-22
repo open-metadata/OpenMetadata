@@ -73,9 +73,9 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
       fields.getFieldList().add(Entity.FIELD_REVIEWERS);
     }
     try {
-      // First, check direct ownership
+      // First, check direct parent
       parentEntity = entityRepository.getParentEntity(entity, fields.toString());
-      // If not a direct owner, check for inherited ownership from parent entities
+      // If direct parent is not found, check for root-level parent
       if (parentEntity == null) {
         parentEntity = resolveRootParentEntity(entity, fields);
       }
