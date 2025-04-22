@@ -90,7 +90,7 @@ class BaseTableParameter:
         # path needs to include the database AND schema in some of the connectors
         if hasattr(db_service.connection.config, "supportsDatabase"):
             kwargs["path"] = f"/{database}"
-        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake}:
+        if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             kwargs["path"] = f"/{database}/{schema}"
         return url._replace(**kwargs).geturl()
 
