@@ -31,6 +31,6 @@ Here are examples of custom SQL queries for metadata changes:
 COMMENT ON COLUMN {database}.{schema}.{table}.{column} IS {description};
 ```
 
-The list of variables for custom SQL can be found [here](/v1.7/connectors/reverse-metadata-workflow-link.md#custom-sql-template).
+The list of variables for custom SQL can be found [here](/connectors/ingestion/workflows/reverse-metadata#custom-sql-template).
 
-For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/v1.7/connectors/reverse-metadata-workflow-link.md).
+For more details about reverse metadata ingestion, visit our [Reverse Metadata Documentation](/connectors/ingestion/workflows/reverse-metadata).
