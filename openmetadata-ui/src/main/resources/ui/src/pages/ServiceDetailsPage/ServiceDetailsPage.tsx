@@ -1369,7 +1369,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         entity: getEntityName(serviceDetails),
       })}>
       {isEmpty(serviceDetails) ? (
-        <ErrorPlaceHolder className="m-0">
+        <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
