@@ -94,6 +94,18 @@ Collate already simplifies capturing and managing metadata—tags, descriptions,
 
 This seamless, two-way metadata synchronization enables powerful governance use-cases—such as **automating data masking policies in Snowflake based on centrally managed tags**—and turns Collate into a single source of truth at the heart of your end-to-end automated governance strategy.
 
+### PNG & PDF Exports
+Support for exporting **Lineage** and **ER diagrams** in **PNG**, and **Data Quality**, **Data Insights**, and more in **PDF**!
+
+### Bulk Edit Action
+Enable **bulk editing** capabilities for **Database**, **Schema**, **Table**, and **Column** entities — allowing efficient management of multiple items simultaneously.
+
+### Recursive Import/Export
+You can now **import and export the entire entity hierarchy** with all related data, including **parent-child relationships** and **dependencies**!
+
+### Asynchronous Deletion
+Support for both **soft** and **hard deletion** operations across **all services**, **entities**, **glossary**, and **term entries** — improving overall performance.
+
 ## Breaking Changes
 
 ### Removing support for Python 3.8
