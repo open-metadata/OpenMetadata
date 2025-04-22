@@ -910,6 +910,7 @@ const AssetsTabs = forwardRef(
               </Typography.Text>
               <Button
                 danger
+                className="delete-button"
                 data-testid="delete-all-button"
                 loading={assetRemoving}
                 type="primary"
