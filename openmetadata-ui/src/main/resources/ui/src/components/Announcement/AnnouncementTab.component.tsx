@@ -19,8 +19,8 @@ import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as TaskCloseIcon } from '../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../assets/svg/ic-close-task.svg';
+import { ReactComponent as FilterIcon } from '../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as TaskOpenIcon } from '../../assets/svg/ic-open-task.svg';
-import { ReactComponent as TaskFilterIcon } from '../../assets/svg/ic-task-filter-button.svg';
 import { ReactComponent as TaskIcon } from '../../assets/svg/ic-task-new.svg';
 import '../../components/ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import '../../components/Announcement/announcement.less';
@@ -177,9 +177,9 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
         ...prev,
         data: {
           ...prev.data,
-          activeAnnouncementCount: res[0].activeAnnouncementCount ?? 0,
-          inactiveAnnouncementCount: res[0].inactiveAnnouncementCount ?? 0,
-          totalAnnouncementCount: res[0].totalAnnouncementCount ?? 0,
+          activeAnnouncementCount: res[0]?.activeAnnouncementCount ?? 0,
+          inactiveAnnouncementCount: res[0]?.inactiveAnnouncementCount ?? 0,
+          totalAnnouncementCount: res[0]?.totalAnnouncementCount ?? 0,
         },
       }));
     } catch (err) {
@@ -231,7 +231,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                     size="small"
                   />
                 ) : (
-                  countData.data.activeAnnouncementCount
+                  countData.data?.activeAnnouncementCount
                 )}
               </span>
             </span>
@@ -308,9 +308,10 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                 }}
                 overlayClassName="task-tab-custom-dropdown"
                 trigger={['click']}>
-                <TaskFilterIcon
-                  className="task-filter-icon cursor-pointer"
+                <Button
+                  className="feed-filter-icon"
                   data-testid="announcement-filter-icon"
+                  icon={<FilterIcon height={16} />}
                 />
               </Dropdown>
             </div>

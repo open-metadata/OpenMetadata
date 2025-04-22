@@ -58,10 +58,7 @@ import {
   SERVICE_INGESTION_PIPELINE_TYPES,
 } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  UIPermission,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
@@ -1087,9 +1084,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         ...prev,
         data: {
           ...prev.data,
-          activeAnnouncementCount: res[0].activeAnnouncementCount ?? 0,
-          inactiveAnnouncementCount: res[0].inactiveAnnouncementCount ?? 0,
-          totalAnnouncementCount: res[0].totalAnnouncementCount ?? 0,
+          activeAnnouncementCount: res[0]?.activeAnnouncementCount ?? 0,
+          inactiveAnnouncementCount: res[0]?.inactiveAnnouncementCount ?? 0,
+          totalAnnouncementCount: res[0]?.totalAnnouncementCount ?? 0,
         },
       }));
     } catch (error) {
@@ -1350,7 +1347,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           <AnnouncementTab
             entityType={entityType}
             fqn={decodedServiceFQN}
-            permissions={servicePermission as unknown as UIPermission}
+            permissions={servicePermission}
           />
         ),
       }

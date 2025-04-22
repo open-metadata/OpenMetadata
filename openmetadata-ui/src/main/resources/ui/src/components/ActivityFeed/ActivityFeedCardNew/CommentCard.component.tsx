@@ -98,7 +98,7 @@ const CommentCard = ({
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
     if (feed.type === ThreadType.Announcement) {
-      updatePost(feed.id, post.id, patch);
+      await updatePost(feed.id, post.id, patch);
       updateAnnouncementThreads && updateAnnouncementThreads();
     } else {
       updateFeed(feed.id, post.id, false, patch);

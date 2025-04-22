@@ -679,6 +679,9 @@ export const ActivityFeedTab = ({
             handlePanelResize={handlePanelResize}
             hidePopover={false}
             isFullWidth={isFullWidth}
+            updateAnnouncementThreads={
+              isAnnouncementActiveTab ? refetchAnnouncements : noop
+            }
             onAfterClose={handleAfterTaskClose}
             onUpdateEntityDetails={onUpdateEntityDetails}
           />
