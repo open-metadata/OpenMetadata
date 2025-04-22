@@ -15,7 +15,7 @@ import re
 import time
 import traceback
 from datetime import datetime
-from queue import Queue
+from multiprocessing import Queue
 from typing import Iterable, List, Optional, Union
 
 import networkx as nx
