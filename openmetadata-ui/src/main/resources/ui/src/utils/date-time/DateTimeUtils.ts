@@ -56,7 +56,7 @@ export const formatDateTimeLong = (timestamp?: number, format?: string) => {
   }
 
   return DateTime.fromMillis(toNumber(timestamp), { locale: 'en-US' }).toFormat(
-    format || DATE_TIME_WITH_OFFSET_FORMAT
+    format ?? DATE_TIME_WITH_OFFSET_FORMAT
   );
 };
 
@@ -236,15 +236,6 @@ export const calculateInterval = (
   }
 };
 
-const intervals: [string, number][] = [
-  ['Y', 933120000000], // 1000 * 60 * 60 * 24 * 30 * 360
-  ['M', 2592000000], // 1000 * 60 * 60 * 24 * 30
-  ['d', 86400000], // 1000 * 60 * 60 * 24
-  ['h', 3600000], // 1000 * 60 * 60
-  ['m', 60000], // 1000 * 60
-  ['s', 1000], // 1000
-];
-
 /**
  * Converts a given time in milliseconds to a human-readable format.
  *
@@ -252,23 +243,47 @@ const intervals: [string, number][] = [
  * @returns A human-readable string representation of the time duration.
  */
 export const convertMillisecondsToHumanReadableFormat = (
-  milliseconds: number,
-  length?: number
+  timestamp: number,
+  length?: number,
+  showMilliseconds = false
 ): string => {
-  if (milliseconds <= 0) {
+  if (timestamp <= 0 || (!showMilliseconds && timestamp < 1000)) {
     return '0s';
   }
 
+  const duration = Duration.fromMillis(timestamp);
   const result: string[] = [];
-  let remainingMilliseconds = milliseconds;
 
-  for (const [name, count] of intervals) {
-    if (remainingMilliseconds < count) {
-      continue; // Skip smaller units
-    }
-    const value = Math.floor(remainingMilliseconds / count);
-    remainingMilliseconds %= count;
-    result.push(`${value}${name}`);
+  // Extract each unit from the duration
+  const years = Math.floor(duration.as('years'));
+  const months = Math.floor(duration.as('months')) % 12;
+  const days = Math.floor(duration.as('days')) % 30;
+  const hours = Math.floor(duration.as('hours')) % 24;
+  const minutes = Math.floor(duration.as('minutes')) % 60;
+  const seconds = Math.floor(duration.as('seconds')) % 60;
+  const milliseconds = Math.floor(duration.as('milliseconds')) % 1000;
+
+  // Add non-zero units to the result
+  if (years > 0) {
+    result.push(`${years}Y`);
+  }
+  if (months > 0) {
+    result.push(`${months}M`);
+  }
+  if (days > 0) {
+    result.push(`${days}d`);
+  }
+  if (hours > 0) {
+    result.push(`${hours}h`);
+  }
+  if (minutes > 0) {
+    result.push(`${minutes}m`);
+  }
+  if (seconds > 0) {
+    result.push(`${seconds}s`);
+  }
+  if (showMilliseconds && milliseconds > 0) {
+    result.push(`${milliseconds}ms`);
   }
 
   if (length && result.length > length) {

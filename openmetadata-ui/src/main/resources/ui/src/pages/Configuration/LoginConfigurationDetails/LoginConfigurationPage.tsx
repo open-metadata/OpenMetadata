@@ -89,7 +89,7 @@ const LoginConfigurationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.login-configuration')}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row className="p-lg bg-white border-radius-sm" gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

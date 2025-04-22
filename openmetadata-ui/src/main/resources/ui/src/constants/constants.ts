@@ -56,6 +56,7 @@ export const PAGE_SIZE_LARGE = 50;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
@@ -370,7 +371,7 @@ export const ERROR_MESSAGE = {
 };
 
 export const ICON_DIMENSION = {
-  with: 14,
+  width: 14,
   height: 14,
   fontSize: 14,
 };
@@ -409,6 +410,7 @@ export const STATUS_LABEL = {
   [Status.Started]: 'Started',
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
+  [Status.Pending]: 'Pending',
 };
 
 export const serviceEntityTypes = [
@@ -429,3 +431,5 @@ export const INITIAL_TABLE_FILTERS = {
 
 export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
+
+export const BREADCRUMB_SEPARATOR = '/';

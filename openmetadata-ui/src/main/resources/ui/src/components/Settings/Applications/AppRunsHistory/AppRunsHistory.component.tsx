@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import validator from '@rjsf/validator-ajv8';
-import { Button, Col, Modal, Row, Space, Typography } from 'antd';
+import { Button, Modal, Space, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
@@ -54,7 +54,6 @@ import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -156,48 +155,41 @@ const AppRunsHistory = forwardRef(
     };
 
     const getActionButton = useCallback(
-      (record: AppRunRecordWithId, index: number) => {
-        if (
-          appData?.appType === AppType.Internal ||
-          (isExternalApp && index === 0)
-        ) {
-          return (
-            <>
-              <Button
-                className="p-0"
-                data-testid="logs"
-                disabled={showLogAction(record)}
-                size="small"
-                type="link"
-                onClick={() => handleRowExpandable(record.id)}>
-                {t('label.log-plural')}
-              </Button>
-              <Button
-                className="m-l-xs p-0"
-                data-testid="app-historical-config"
-                size="small"
-                type="link"
-                onClick={() => showAppRunConfig(record)}>
-                {t('label.config')}
-              </Button>
-              {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
-              {(record.status === Status.Running ||
-                record.status === Status.ActiveError) &&
-                Boolean(appData?.supportsInterrupt) && (
-                  <Button
-                    className="m-l-xs p-0"
-                    data-testid="stop-button"
-                    size="small"
-                    type="link"
-                    onClick={() => setIsStopModalOpen(true)}>
-                    {t('label.stop')}
-                  </Button>
-                )}
-            </>
-          );
-        } else {
-          return NO_DATA_PLACEHOLDER;
-        }
+      (record: AppRunRecordWithId) => {
+        return (
+          <>
+            <Button
+              className="p-0"
+              data-testid="logs"
+              disabled={showLogAction(record)}
+              size="small"
+              type="link"
+              onClick={() => handleRowExpandable(record.id)}>
+              {t('label.log-plural')}
+            </Button>
+            <Button
+              className="m-l-xs p-0"
+              data-testid="app-historical-config"
+              size="small"
+              type="link"
+              onClick={() => showAppRunConfig(record)}>
+              {t('label.config')}
+            </Button>
+            {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
+            {(record.status === Status.Running ||
+              record.status === Status.ActiveError) &&
+              Boolean(appData?.supportsInterrupt) && (
+                <Button
+                  className="m-l-xs p-0"
+                  data-testid="stop-button"
+                  size="small"
+                  type="link"
+                  onClick={() => setIsStopModalOpen(true)}>
+                  {t('label.stop')}
+                </Button>
+              )}
+          </>
+        );
       },
       [showLogAction, appData, isExternalApp, handleRowExpandable]
     );
@@ -209,8 +201,8 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'timestamp',
           key: 'timestamp',
           render: (_, record) => {
-            return isExternalApp && record.executionTime
-              ? formatDateTime(record.executionTime)
+            return isExternalApp
+              ? formatDateTime(record.startTime)
               : formatDateTime(record.timestamp);
           },
         },
@@ -228,12 +220,7 @@ const AppRunsHistory = forwardRef(
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
             if (isExternalApp && record.executionTime) {
-              const ms = getIntervalInMilliseconds(
-                record.executionTime,
-                record.endTime ?? Date.now()
-              );
-
-              return formatDuration(ms);
+              return formatDuration(record.executionTime);
             }
 
             if (record.startTime) {
@@ -242,7 +229,7 @@ const AppRunsHistory = forwardRef(
 
               return formatDuration(ms);
             } else {
-              return '-';
+              return NO_DATA_PLACEHOLDER;
             }
           },
         },
@@ -270,7 +257,7 @@ const AppRunsHistory = forwardRef(
           title: t('label.action-plural'),
           dataIndex: 'actions',
           key: 'actions',
-          render: (_, record, index) => getActionButton(record, index),
+          render: (_, record) => getActionButton(record),
         },
       ],
       [
@@ -296,6 +283,7 @@ const AppRunsHistory = forwardRef(
             const { data } = await getApplicationRuns(fqn, {
               startTs: startDay,
               endTs: currentTime,
+              limit: maxRecords ?? pageSize,
             });
 
             setAppRunsHistoryData(
@@ -394,47 +382,40 @@ const AppRunsHistory = forwardRef(
 
     return (
       <>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Table
-              bordered
-              columns={tableColumn}
-              data-testid="app-run-history-table"
-              dataSource={appRunsHistoryData}
-              expandable={{
-                expandedRowRender: (record) => (
-                  <AppLogsViewer
-                    data={record}
-                    scrollHeight={maxRecords !== 1 ? 200 : undefined}
-                  />
-                ),
-                showExpandColumn: false,
-                rowExpandable: (record) => !showLogAction(record),
-                expandedRowKeys,
-              }}
-              loading={isLoading}
-              locale={{
-                emptyText: <ErrorPlaceHolder className="m-y-md" />,
-              }}
-              pagination={false}
-              rowKey="id"
-              size="small"
-            />
-          </Col>
-          <Col span={24}>
-            {showPagination && paginationVisible && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handleAppHistoryPageChange}
-                onShowSizeChange={handlePageSizeChange}
+        <Table
+          columns={tableColumn}
+          customPaginationProps={{
+            isNumberBased: true,
+            showPagination: showPagination && paginationVisible,
+            currentPage,
+            isLoading,
+            pageSize,
+            paging,
+            pagingHandler: handleAppHistoryPageChange,
+            onShowSizeChange: handlePageSizeChange,
+          }}
+          data-testid="app-run-history-table"
+          dataSource={appRunsHistoryData}
+          expandable={{
+            expandedRowRender: (record) => (
+              <AppLogsViewer
+                data={record}
+                scrollHeight={maxRecords !== 1 ? 200 : undefined}
               />
-            )}
-          </Col>
-        </Row>
+            ),
+            showExpandColumn: false,
+            rowExpandable: (record) => !showLogAction(record),
+            expandedRowKeys,
+          }}
+          loading={isLoading}
+          locale={{
+            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+          }}
+          pagination={false}
+          rowKey="id"
+          size="small"
+        />
+
         {isStopModalOpen && (
           <StopScheduleModal
             appName={fqn}

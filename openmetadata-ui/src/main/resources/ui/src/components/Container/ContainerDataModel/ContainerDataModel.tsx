@@ -232,13 +232,12 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   );
 
   if (isEmpty(dataModel?.columns)) {
-    return <ErrorPlaceHolder />;
+    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
 
   return (
     <>
       <Table
-        bordered
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"

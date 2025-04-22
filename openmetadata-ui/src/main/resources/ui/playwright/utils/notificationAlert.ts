@@ -193,6 +193,9 @@ export const editSingleFilterAlert = async ({
   await page.getByTestId('connection-timeout-input').clear();
   await page.fill('[data-testid="connection-timeout-input"]', '26');
 
+  await page.getByTestId('read-timeout-input').clear();
+  await page.fill('[data-testid="read-timeout-input"]', '26');
+
   // Add owner GChat destination
   await page.click('[data-testid="add-destination-button"]');
   await addInternalDestination({

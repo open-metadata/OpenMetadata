@@ -36,12 +36,20 @@ import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import {
+  getTableColumnConfigSelections,
+  getTableExpandableConfig,
+  handleUpdateTableColumnSelections,
+} from '../../../utils/TableUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import Loader from '../Loader/Loader';
+import NextPrevious from '../NextPrevious/NextPrevious';
+import Searchbar from '../SearchBarComponent/SearchBar.component';
 import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
 import {
   TableColumnDropdownList,
@@ -49,12 +57,22 @@ import {
 } from './Table.interface';
 import './table.less';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
-const Table = <T extends object = any>(
-  { loading, ...rest }: TableComponentProps<T>,
+type TableProps<T extends Record<string, unknown>> = TableComponentProps<T>;
+
+const Table = <T extends Record<string, unknown>>(
+  {
+    loading,
+    searchProps,
+    customPaginationProps,
+    entityType,
+    defaultVisibleColumns,
+    ...rest
+  }: TableProps<T>,
   ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
+  const { type } = useGenericContext();
+  const { currentUser } = useApplicationStore();
   const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [dropdownColumnList, setDropdownColumnList] = useState<
@@ -62,9 +80,9 @@ const Table = <T extends object = any>(
   >([]);
   const [columnDropdownSelections, setColumnDropdownSelections] = useState<
     string[]
-  >(rest.defaultVisibleColumns ?? []);
+  >([]);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
-    () => ({ columns: propsColumns, minWidth: 150 }),
+    () => ({ columns: propsColumns, minWidth: 80 }),
     [propsColumns]
   );
 
@@ -73,11 +91,12 @@ const Table = <T extends object = any>(
     [loading]
   );
 
+  const entityKey = useMemo(() => type ?? entityType, [type, entityType]);
+
   // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
   const isFullViewTable = useMemo(
-    () =>
-      isEmpty(rest.staticVisibleColumns) && isEmpty(rest.defaultVisibleColumns),
-    [rest.staticVisibleColumns, rest.defaultVisibleColumns]
+    () => isEmpty(rest.staticVisibleColumns) && isEmpty(defaultVisibleColumns),
+    [rest.staticVisibleColumns, defaultVisibleColumns]
   );
 
   const handleMoveItem = useCallback(
@@ -90,11 +109,17 @@ const Table = <T extends object = any>(
 
   const handleColumnItemSelect = useCallback(
     (key: string, selected: boolean) => {
-      setColumnDropdownSelections((prev: string[]) => {
-        return selected ? [...prev, key] : prev.filter((item) => item !== key);
-      });
+      const updatedSelections = handleUpdateTableColumnSelections(
+        selected,
+        key,
+        columnDropdownSelections,
+        currentUser?.fullyQualifiedName ?? '',
+        entityKey
+      );
+
+      setColumnDropdownSelections(updatedSelections);
     },
-    [setColumnDropdownSelections]
+    [columnDropdownSelections, entityKey]
   );
 
   const handleBulkColumnAction = useCallback(() => {
@@ -172,6 +197,10 @@ const Table = <T extends object = any>(
       }
     : {};
 
+  const handleSearchAction = (value: string) => {
+    searchProps?.onSearch?.(value);
+  };
+
   useEffect(() => {
     if (!isFullViewTable) {
       setDropdownColumnList(
@@ -199,40 +228,78 @@ const Table = <T extends object = any>(
     rest.staticVisibleColumns,
   ]);
 
+  useEffect(() => {
+    const selections = getTableColumnConfigSelections(
+      currentUser?.fullyQualifiedName ?? '',
+      entityKey,
+      isFullViewTable,
+      defaultVisibleColumns
+    );
+
+    setColumnDropdownSelections(selections);
+  }, [entityKey, defaultVisibleColumns, isFullViewTable]);
+
   return (
-    <Row className="table-container" gutter={[0, 16]}>
-      {(rest.extraTableFilters || !isFullViewTable) && (
-        <Col
-          className={classNames(
-            'd-flex justify-end items-center gap-5',
-            rest.extraTableFiltersClassName
+    <Row className={classNames('table-container', rest.containerClassName)}>
+      <Col
+        className={classNames({
+          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
+        })}
+        span={24}>
+        <Row className="p-x-md">
+          {searchProps ? (
+            <Col span={12}>
+              <Searchbar
+                {...searchProps}
+                removeMargin
+                placeholder={searchProps?.placeholder ?? t('label.search')}
+                searchValue={searchProps?.value}
+                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                onSearch={handleSearchAction}
+              />
+            </Col>
+          ) : null}
+          {(rest.extraTableFilters || !isFullViewTable) && (
+            <Col
+              className={classNames(
+                'd-flex justify-end items-center gap-5',
+                rest.extraTableFiltersClassName
+              )}
+              span={searchProps ? 12 : 24}>
+              {rest.extraTableFilters}
+              {!isFullViewTable && (
+                <DndProvider backend={HTML5Backend}>
+                  <Dropdown
+                    className="custom-column-dropdown-menu text-primary"
+                    menu={menu}
+                    open={isDropdownVisible}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setIsDropdownVisible}>
+                    <Button
+                      className="remove-button-background-hover"
+                      data-testid="column-dropdown"
+                      icon={<Icon component={ColumnIcon} />}
+                      size="small"
+                      type="text">
+                      {t('label.column-plural')}
+                    </Button>
+                  </Dropdown>
+                </DndProvider>
+              )}
+            </Col>
           )}
-          span={24}>
-          {rest.extraTableFilters}
-          {!isFullViewTable && (
-            <DndProvider backend={HTML5Backend}>
-              <Dropdown
-                className="custom-column-dropdown-menu"
-                menu={menu}
-                open={isDropdownVisible}
-                placement="bottomRight"
-                trigger={['click']}
-                onOpenChange={setIsDropdownVisible}>
-                <Button
-                  data-testid="column-dropdown"
-                  icon={<Icon component={ColumnIcon} />}>
-                  {t('label.column-plural')}
-                </Button>
-              </Dropdown>
-            </DndProvider>
-          )}
-        </Col>
-      )}
+        </Row>
+      </Col>
+
       <Col span={24}>
         <AntdTable
           {...rest}
           columns={propsColumns}
-          expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
+          expandable={{
+            ...getTableExpandableConfig<T>(),
+            ...rest.expandable,
+          }}
           loading={{
             spinning: isLoading,
             indicator: <Loader />,
@@ -246,8 +313,13 @@ const Table = <T extends object = any>(
           {...resizingTableProps}
         />
       </Col>
+      {customPaginationProps && customPaginationProps.showPagination ? (
+        <Col span={24}>
+          <NextPrevious {...customPaginationProps} />
+        </Col>
+      ) : null}
     </Row>
   );
 };
 
-export default forwardRef<HTMLDivElement, TableComponentProps<any>>(Table);
+export default forwardRef<HTMLDivElement, TableProps<any>>(Table);

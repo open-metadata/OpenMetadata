@@ -24,6 +24,7 @@ import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.sv
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -80,25 +81,26 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
-import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
+  findColumnByEntityLink,
   getJoinsFromTableJoins,
   getTagsWithoutTier,
   getTierTags,
+  updateColumnInNestedStructure,
 } from '../../utils/TableUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import './table-details-page-v1.less';
 
 const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
@@ -124,6 +126,7 @@ const TableDetailsPageV1: React.FC = () => {
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const tableFqn = useMemo(
     () =>
@@ -154,13 +157,15 @@ const TableDetailsPageV1: React.FC = () => {
 
   const extraDropdownContent = useMemo(
     () =>
-      entityUtilClassBase.getManageExtraOptions(
-        EntityType.TABLE,
-        tableFqn,
-        tablePermissions,
-        tableDetails?.deleted ?? false
-      ),
-    [tablePermissions, tableFqn, tableDetails?.deleted]
+      tableDetails
+        ? entityUtilClassBase.getManageExtraOptions(
+            EntityType.TABLE,
+            tableFqn,
+            tablePermissions,
+            tableDetails
+          )
+        : [],
+    [tablePermissions, tableFqn, tableDetails]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
@@ -224,7 +229,7 @@ const TableDetailsPageV1: React.FC = () => {
         data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
         [];
       setDqFailureCount(updatedNodes.length);
-    } catch (error) {
+    } catch {
       setDqFailureCount(0);
     }
   };
@@ -255,7 +260,7 @@ const TableDetailsPageV1: React.FC = () => {
       } else {
         setDqFailureCount(failureCount);
       }
-    } catch (error) {
+    } catch {
       setTestCaseSummary(undefined);
     }
   };
@@ -270,7 +275,7 @@ const TableDetailsPageV1: React.FC = () => {
         entityId: tableDetails.id,
       });
       setQueryCount(response.paging.total);
-    } catch (error) {
+    } catch {
       setQueryCount(0);
     }
   };
@@ -320,7 +325,7 @@ const TableDetailsPageV1: React.FC = () => {
         );
 
         setTablePermissions(tablePermission);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.fetch-entity-permissions-error', {
             entity: t('label.resource-permission-lowercase'),
@@ -496,7 +501,7 @@ const TableDetailsPageV1: React.FC = () => {
       activeTab,
       deleted,
       tableDetails,
-      totalFeedCount: feedCount.totalCount,
+      feedCount,
       getEntityFeedCount,
       handleFeedCount,
       viewAllPermission,
@@ -539,6 +544,11 @@ const TableDetailsPageV1: React.FC = () => {
     testCaseSummary,
     isViewTableType,
   ]);
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
+    [tabs[0], activeTab]
+  );
 
   const onTierUpdate = useCallback(
     async (newTier?: Tag) => {
@@ -655,8 +665,7 @@ const TableDetailsPageV1: React.FC = () => {
   }, [version, tableFqn]);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -676,14 +685,11 @@ const TableDetailsPageV1: React.FC = () => {
           return;
         }
 
-        const activeCol = prev?.columns.find((column) => {
-          return (
-            EntityLink.getTableEntityLink(
-              prev.fullyQualifiedName ?? '',
-              column.name ?? ''
-            ) === suggestion.entityLink
-          );
-        });
+        const activeCol = findColumnByEntityLink(
+          prev.fullyQualifiedName ?? '',
+          prev.columns,
+          suggestion.entityLink
+        );
 
         if (!activeCol) {
           return {
@@ -693,18 +699,17 @@ const TableDetailsPageV1: React.FC = () => {
               : { tags: suggestion.tagLabels }),
           };
         } else {
-          const updatedColumns = prev.columns.map((column) => {
-            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
-              return {
-                ...column,
-                ...(suggestion.type === SuggestionType.SuggestDescription
-                  ? { description: suggestion.description }
-                  : { tags: suggestion.tagLabels }),
-              };
-            } else {
-              return column;
-            }
-          });
+          const update =
+            suggestion.type === SuggestionType.SuggestDescription
+              ? { description: suggestion.description }
+              : { tags: suggestion.tagLabels };
+
+          // Update the column in the nested structure
+          const updatedColumns = updateColumnInNestedStructure(
+            prev.columns,
+            activeCol.fullyQualifiedName ?? '',
+            update
+          );
 
           return {
             ...prev,
@@ -752,6 +757,10 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded((prev) => !prev);
+  };
+
   if (loading || isLoading) {
     return <Loader />;
   }
@@ -766,20 +775,21 @@ const TableDetailsPageV1: React.FC = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.table'),
       })}
       title="Table details">
       <GenericProvider<Table>
+        customizedPage={customizedPage}
         data={tableDetails}
+        isTabExpanded={isTabExpanded}
         isVersionView={false}
         permissions={tablePermissions}
         type={EntityType.TABLE}
         onUpdate={onTableUpdate}>
         <Row gutter={[0, 12]}>
           {/* Entity Heading */}
-          <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+          <Col data-testid="entity-page-header" span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -801,12 +811,23 @@ const TableDetailsPageV1: React.FC = () => {
             />
           </Col>
           {/* Entity Tabs */}
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={isTourOpen ? activeTabForTourDatasetPage : activeTab}
-              className="table-details-page-tabs entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

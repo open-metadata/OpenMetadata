@@ -24,7 +24,7 @@ import ItalicIcon from '../../../assets/svg/ic-format-italic.svg';
 import LinkIcon from '../../../assets/svg/ic-format-link.svg';
 import OrderedListIcon from '../../../assets/svg/ic-format-numbered-list.svg';
 import StrikeIcon from '../../../assets/svg/ic-format-strike.svg';
-import { BarMenuProps } from '../BlockEditor.interface';
+import { BarMenuProps, FileType } from '../BlockEditor.interface';
 import './bar-menu.less';
 
 const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
@@ -84,7 +84,19 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
       {
         name: 'image',
         icon: ImageIcon,
-        command: () => editor.chain().focus().setImage({ src: '' }).run(),
+        command: () =>
+          editor
+            .chain()
+            .focus()
+            .setFile({
+              url: '',
+              fileName: '',
+              fileSize: null,
+              mimeType: FileType.IMAGE,
+              type: FileType.IMAGE,
+              isImage: true,
+            })
+            .run(),
         isActive: () => editor.isActive('image'),
       },
       {

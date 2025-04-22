@@ -38,7 +38,7 @@ import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePictureNew from '../../common/ProfilePicture/ProfilePictureNew';
+import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import FeedCardBodyNew from '../ActivityFeedCard/FeedCardBody/FeedCardBodyNew';
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
@@ -108,14 +108,10 @@ const ActivityFeedCardNew = ({
     setIsEditPost(!isEditPost);
   };
 
-  const { isUserOrTeam, showEntityLink } = useMemo(() => {
+  const { isUserOrTeam } = useMemo(() => {
     return {
       entityCheck: !isUndefined(entityFQN) && !isUndefined(entityType),
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
-      showEntityLink: ![
-        CardStyle.EntityCreated,
-        CardStyle.EntityDeleted,
-      ].includes(feed.cardStyle ?? CardStyle.Default),
     };
   }, [entityFQN, entityType, feed.cardStyle]);
   const renderEntityLink = useMemo(() => {
@@ -143,7 +139,7 @@ const ActivityFeedCardNew = ({
           </Link>
         </UserPopOverCard>
       );
-    } else if (showEntityLink) {
+    } else {
       return (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <div
@@ -168,32 +164,8 @@ const ActivityFeedCardNew = ({
           </div>
         </EntityPopOverCard>
       );
-    } else {
-      return (
-        <div
-          className={classNames('break-word header-link d-flex', {
-            'items-start': showThread,
-            'items-center': !showThread,
-            ' m-t-xss':
-              showThread && feed.entityRef?.type === EntityType.CONTAINER,
-          })}>
-          {searchClassBase.getEntityIcon(entityType ?? '') && (
-            <span className="w-4 h-4 m-r-xss d-inline-flex align-middle">
-              {searchClassBase.getEntityIcon(entityType ?? '')}
-            </span>
-          )}
-          <Typography.Text
-            className={classNames('text-sm', {
-              'max-one-line': !showThread,
-            })}>
-            {feed?.entityRef
-              ? getEntityName(feed.entityRef)
-              : entityDisplayName(entityType, entityFQN)}
-          </Typography.Text>
-        </div>
-      );
     }
-  }, [feed.cardStyle, entityType, entityFQN, showEntityLink, isUserOrTeam]);
+  }, [feed.cardStyle, entityType, entityFQN, isUserOrTeam]);
   const feedHeaderText = getFeedHeaderTextFromCardStyle(
     feed.fieldOperation,
     feed.cardStyle,
@@ -237,12 +209,15 @@ const ActivityFeedCardNew = ({
               'items-start':
                 showThread && feed.entityRef?.type === EntityType.CONTAINER,
             })}>
-            <ProfilePictureNew
-              avatarType="outlined"
-              key={feed.id}
-              name={feed.createdBy ?? ''}
-              size={showThread ? 40 : 32}
-            />
+            <UserPopOverCard userName={feed.createdBy ?? ''}>
+              <div className="d-flex items-center">
+                <ProfilePicture
+                  key={feed.id}
+                  name={feed.createdBy ?? ''}
+                  width={showThread ? '40' : '32'}
+                />
+              </div>
+            </UserPopOverCard>
             <Space className="d-flex flex-col align-start gap-2" size={0}>
               <Space
                 className={classNames('d-flex align-center gap-2', {
@@ -341,12 +316,15 @@ const ActivityFeedCardNew = ({
           ) : (
             <div className="d-flex gap-2">
               <div>
-                <ProfilePictureNew
-                  avatarType="outlined"
-                  key={feed.id}
-                  name={getEntityName(currentUser)}
-                  size={32}
-                />
+                <UserPopOverCard userName={getEntityName(currentUser)}>
+                  <div className="d-flex items-center">
+                    <ProfilePicture
+                      key={feed.id}
+                      name={getEntityName(currentUser)}
+                      width="32"
+                    />
+                  </div>
+                </UserPopOverCard>
               </div>
 
               <Input

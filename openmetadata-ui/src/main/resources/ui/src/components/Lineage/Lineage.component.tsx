@@ -125,12 +125,13 @@ const Lineage = ({
     <Card
       className="lineage-card card-body-full w-auto border-none card-padding-0"
       data-testid="lineage-details">
-      {isFullScreen && (
+      {isFullScreen && breadcrumbs.length > 0 && (
         <TitleBreadcrumb className="p-md" titleLinks={breadcrumbs} />
       )}
       <div
         className="h-full relative lineage-container"
         data-testid="lineage-container"
+        id="lineage-container" // ID is required for export PNG functionality
         ref={reactFlowWrapper}>
         {entityLineage && (
           <>
@@ -193,10 +194,10 @@ const Lineage = ({
               onNodesChange={onNodesChange}
               onPaneClick={onPaneClick}>
               <Background gap={12} size={1} />
-              <MiniMap position="bottom-right" />
+              <MiniMap pannable zoomable position="bottom-right" />
 
               <Panel position="bottom-left">
-                <LineageLayers entityType={entityType} />
+                <LineageLayers entity={entity} entityType={entityType} />
               </Panel>
             </ReactFlow>
           </ReactFlowProvider>

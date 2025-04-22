@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import { TableProps } from 'antd/lib/table';
+import { NextPreviousProps } from '../NextPrevious/NextPrevious.interface';
+import { SearchBarProps } from '../SearchBarComponent/SearchBar.component';
 
 export interface TableComponentProps<T> extends TableProps<T> {
+  containerClassName?: string; // Applied to the table container
   resizableColumns?: boolean;
   /** Filter's in ReactNode that will be aligned with TableColumnFilter. Example: GlossaryTableFilter */
   extraTableFilters?: React.ReactNode;
@@ -21,6 +24,15 @@ export interface TableComponentProps<T> extends TableProps<T> {
   defaultVisibleColumns?: string[];
   /** Columns that will be statically visible in the Table and will not be Filtered */
   staticVisibleColumns?: string[];
+  searchProps?: SearchBarProps & {
+    onClear?: () => void;
+    value?: string;
+    searchDebounceTime?: number;
+  };
+  customPaginationProps?: NextPreviousProps & {
+    showPagination: boolean;
+  };
+  entityType?: string;
 }
 
 export interface TableColumnDropdownList {

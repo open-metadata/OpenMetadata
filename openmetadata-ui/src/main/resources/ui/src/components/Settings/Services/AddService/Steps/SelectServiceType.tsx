@@ -120,8 +120,8 @@ const SelectServiceType = ({
         <Row className="service-list-container" data-testid="select-service">
           {filteredConnectors.map((type) => (
             <Button
-              className={classNames('service-box p-xs d-block border', {
-                'border-primary': type === selectServiceType,
+              className={classNames('service-box', {
+                'selected-service': type === selectServiceType,
               })}
               data-testid={type}
               key={type}

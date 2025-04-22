@@ -728,9 +728,9 @@ body .list-option.rdw-option-active {
 }
 
 :root {
-  --ant-navbar-height: 64px;
+  --ant-navbar-height: 80px;
 }
 
 :root .extra-banner {
-  --ant-navbar-height: 128px;
+  --ant-navbar-height: 144px;
 }

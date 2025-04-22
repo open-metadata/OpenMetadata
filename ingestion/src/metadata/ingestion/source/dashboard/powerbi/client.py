@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,6 +14,7 @@ REST Auth & Client for PowerBi
 import json
 import math
 import traceback
+from copy import deepcopy
 from time import sleep
 from typing import List, Optional, Tuple
 
@@ -349,7 +350,13 @@ class PowerBiApiClient:
             api_url = f"/myorg/{admin}groups"
             entities_per_page = self.pagination_entity_per_page
             failed_indexes = []
-            params_data = GETGROUPS_DEFAULT_PARAMS
+            parsed_filter_query = None
+            if filter_pattern:
+                parsed_filter_query = self.create_filter_query(filter_pattern)
+                logger.debug(f"Filter query applied = {parsed_filter_query}")
+            params_data = deepcopy(GETGROUPS_DEFAULT_PARAMS)
+            if parsed_filter_query:
+                params_data["$filter"] = parsed_filter_query
             response = self.client.get(api_url, data=params_data)
             if (
                 not response
@@ -372,14 +379,18 @@ class PowerBiApiClient:
                     logger.warning(f"Error processing GetGroups response: {exc}")
                     count = 0
             indexes = math.ceil(count / entities_per_page)
+            logger.debug(
+                f"Total {count} workspaces found, Will run {indexes} iterations fetching"
+                f" maximum {entities_per_page} workspaces in a single iteration"
+            )
             workspaces = []
             for index in range(indexes):
                 params_data = {
                     "$top": str(entities_per_page),
                     "$skip": str(index * entities_per_page),
                 }
-                if filter_pattern:
-                    params_data["$filter"] = self.create_filter_query(filter_pattern)
+                if parsed_filter_query:
+                    params_data["$filter"] = parsed_filter_query
 
                 response = self.client.get(api_url, data=params_data)
                 if (

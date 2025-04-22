@@ -13,23 +13,21 @@
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
-import {
-  getBulkEditCSVExportEntityApi,
-  getBulkEntityEditBreadcrumbList,
-} from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEncodedFqn } from '../../utils/StringsUtils';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
 import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import Stepper from '../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
@@ -41,6 +39,7 @@ const BulkEditEntity = ({
   onEditComplete,
   dataSource,
   columns,
+  breadcrumbList,
   setGridRef,
   activeStep,
   handleBack,
@@ -52,19 +51,20 @@ const BulkEditEntity = ({
   onCSVReadComplete,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
+  const history = useHistory();
   const { fqn } = useFqn();
   const { entityType } = useParams<{ entityType: EntityType }>();
   const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
     useEntityExportModalProvider();
 
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => getBulkEntityEditBreadcrumbList(entityType, fqn),
-    [entityType, fqn]
-  );
+  const handleCancel = () => {
+    clearCSVExportData();
+    history.push(entityUtilClassBase.getEntityLink(entityType, fqn));
+  };
 
   useEffect(() => {
     triggerExportForBulkEdit({
-      name: fqn,
+      name: getEncodedFqn(fqn),
       onExport: getBulkEditCSVExportEntityApi(entityType),
       exportTypes: [ExportTypes.CSV],
     });
@@ -159,6 +159,12 @@ const BulkEditEntity = ({
           {activeStep > 0 && (
             <Col span={24}>
               <div className="float-right import-footer">
+                {activeStep === 1 && (
+                  <Button disabled={isValidating} onClick={handleCancel}>
+                    {t('label.cancel')}
+                  </Button>
+                )}
+
                 {activeStep > 1 && (
                   <Button disabled={isValidating} onClick={handleBack}>
                     {t('label.previous')}

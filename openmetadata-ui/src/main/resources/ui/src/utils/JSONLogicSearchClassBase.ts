@@ -201,6 +201,7 @@ class JSONLogicSearchClassBase {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
           entityField: EntityFields.DATABASE_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -215,6 +216,7 @@ class JSONLogicSearchClassBase {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: SearchIndex.TABLE,
           entityField: EntityFields.DATABASE_SCHEMA_NAME,
+          isCaseInsensitive: true,
         }),
         useAsyncSearch: true,
       },
@@ -249,6 +251,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.ALL,
             entityField: EntityFields.SERVICE_NAME,
+            isCaseInsensitive: true,
           }),
           useAsyncSearch: true,
         },
@@ -384,6 +387,10 @@ class JSONLogicSearchClassBase {
         showNot: false,
         valueLabel: t('label.criteria') + ':',
         renderButton: renderJSONLogicQueryBuilderButtons,
+        customFieldSelectProps: {
+          ...this.baseConfig.settings.customFieldSelectProps,
+          popupClassName: 'json-logic-field-select',
+        },
       },
     };
 

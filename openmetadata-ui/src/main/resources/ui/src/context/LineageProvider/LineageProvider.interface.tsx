@@ -47,6 +47,7 @@ export enum LineagePlatformView {
   None = 'None',
   Service = 'Service',
   Domain = 'Domain',
+  DataProduct = 'DataProduct',
 }
 
 export interface LineageContextType {

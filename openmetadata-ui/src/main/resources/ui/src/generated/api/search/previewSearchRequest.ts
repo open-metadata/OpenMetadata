@@ -293,8 +293,16 @@ export interface GlobalSettings {
  */
 export interface NlqConfiguration {
     entitySpecificInstructions?: EntitySpecificInstruction[];
-    examples?:                   Example[];
-    globalInstructions?:         PromptSection[];
+    examples?:                   QueryExample[];
+    /**
+     * Guidelines for querying custom properties in extension fields
+     */
+    extensionFieldGuidelines?: ExtensionFieldGuidelines;
+    globalInstructions?:       PromptSection[];
+    /**
+     * Configuration for including Elasticsearch mapping information in prompts
+     */
+    mappingConfiguration?: MappingConfiguration;
     /**
      * Base prompt template for the NLQ system. Use {{INSTRUCTIONS}} where entity-specific
      * instructions should appear.
@@ -307,8 +315,8 @@ export interface EntitySpecificInstruction {
     /**
      * Entity type this instruction applies to (e.g., 'table', 'dashboard')
      */
-    entityType?: string;
-    sections?:   PromptSection[];
+    entityType: string;
+    sections:   PromptSection[];
     [property: string]: any;
 }
 
@@ -328,7 +336,11 @@ export interface PromptSection {
     [property: string]: any;
 }
 
-export interface Example {
+export interface QueryExample {
+    /**
+     * Human-readable description of the example query
+     */
+    description?: string;
     /**
      * Entity types this example applies to (empty array = all types)
      */
@@ -341,6 +353,72 @@ export interface Example {
      * Natural language query example
      */
     query: string;
+    [property: string]: any;
+}
+
+/**
+ * Guidelines for querying custom properties in extension fields
+ */
+export interface ExtensionFieldGuidelines {
+    examples?: QueryExample[];
+    /**
+     * Title for the extension field guidelines section
+     */
+    header:   string;
+    sections: GuidelineSection[];
+    [property: string]: any;
+}
+
+export interface GuidelineSection {
+    guidelines: string[];
+    /**
+     * Section title (e.g., 'For EntityReference type custom properties')
+     */
+    title: string;
+    [property: string]: any;
+}
+
+/**
+ * Configuration for including Elasticsearch mapping information in prompts
+ */
+export interface MappingConfiguration {
+    /**
+     * Specific guidance for interpreting field patterns in the mapping
+     */
+    fieldInterpretations?: FieldInterpretation[];
+    /**
+     * Whether to include mapping information in the prompts
+     */
+    includeMappings?: boolean;
+    mappingSection?:  TitleSection;
+    [property: string]: any;
+}
+
+export interface FieldInterpretation {
+    /**
+     * How to interpret and query this field pattern
+     */
+    explanation: string;
+    /**
+     * Field pattern to match (e.g., 'tags.tagFQN')
+     */
+    pattern: string;
+    [property: string]: any;
+}
+
+export interface TitleSection {
+    /**
+     * Description text for the section
+     */
+    description?: string;
+    /**
+     * Position of this section in the prompt (lower numbers appear first)
+     */
+    order?: number;
+    /**
+     * Title for the section
+     */
+    title?: string;
     [property: string]: any;
 }
 

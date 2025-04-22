@@ -11,15 +11,31 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { once } from 'lodash';
-import React, { useContext, useMemo, useState } from 'react';
+import { isEmpty, once } from 'lodash';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
+import {
+  CustomizeEntityType,
+  ENTITY_PAGE_TYPE_MAP,
+} from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { CreateThread } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
+import { Page } from '../../../generated/system/ui/page';
+import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
+import { getLayoutFromCustomizedPage } from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -27,21 +43,25 @@ import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/Activity
 interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   children?: React.ReactNode;
   data: T;
-  type: EntityType;
+  type: CustomizeEntityType;
   onUpdate: (updatedData: T, key?: keyof T) => Promise<void>;
   isVersionView?: boolean;
   permissions: OperationPermission;
   currentVersionData?: T;
+  isTabExpanded?: boolean;
+  customizedPage?: Page | null;
 }
 
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   data: T;
-  type: EntityType;
+  type: CustomizeEntityType;
   onUpdate: (updatedData: T, key?: keyof T) => Promise<void>;
   isVersionView?: boolean;
   permissions: OperationPermission;
   currentVersionData?: T;
   onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
+  layout: WidgetConfig[];
+  filterWidgets?: (widgets: string[]) => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -56,27 +76,43 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   isVersionView,
   permissions,
   currentVersionData,
+  isTabExpanded = false,
+  customizedPage,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
-
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+  const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
+  const { tab } = useParams<{ tab: EntityTabs }>();
+  const expandedLayout = useRef<WidgetConfig[]>([]);
+  const [layout, setLayout] = useState<WidgetConfig[]>(
+    getLayoutFromCustomizedPage(pageType, tab, customizedPage)
+  );
+  const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
 
-  const onThreadPanelClose = () => {
+  useEffect(() => {
+    setLayout(getLayoutFromCustomizedPage(pageType, tab, customizedPage));
+  }, [customizedPage, tab, pageType]);
+
+  const onThreadPanelClose = useCallback(() => {
     setThreadLink('');
-  };
+  }, [setThreadLink]);
 
-  const onThreadLinkSelect = (link: string, threadType?: ThreadType) => {
-    setThreadLink(link);
-    if (threadType) {
-      setThreadType(threadType);
-    }
-  };
+  const onThreadLinkSelect = useCallback(
+    (link: string, threadType?: ThreadType) => {
+      setThreadLink(link);
+      if (threadType) {
+        setThreadType(threadType);
+      }
+    },
+    [setThreadLink, setThreadType]
+  );
 
+  // Create a thread
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
@@ -90,6 +126,60 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }
   };
 
+  // Filter the widgets we need to hide widgets which doesn't render anything
+  const filterWidgets = useCallback(
+    (widgets: string[]) => {
+      setFilteredKeys((prev) => [...prev, ...widgets]);
+    },
+    [setFilteredKeys]
+  );
+
+  // store the left side panel widget
+  const leftPanelWidget = useMemo(() => {
+    return layout?.find((widget) =>
+      widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+    );
+  }, [layout]);
+
+  // Handle the left side panel expand collapse
+  useEffect(() => {
+    setLayout((prev) => {
+      if (!prev || !leftPanelWidget) {
+        return prev;
+      }
+
+      if (isTabExpanded) {
+        const widget = leftPanelWidget;
+        widget.w = 8;
+
+        // Store the expanded layout
+        expandedLayout.current = prev;
+
+        return [widget];
+      } else {
+        const leftPanelWidget = expandedLayout.current.find((widget) =>
+          widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+        );
+
+        if (leftPanelWidget) {
+          leftPanelWidget.w = 6;
+        }
+
+        // Restore the collapsed layout
+        return isEmpty(expandedLayout.current) ? prev : expandedLayout.current;
+      }
+    });
+  }, [isTabExpanded, leftPanelWidget]);
+
+  const filteredLayout = useMemo(() => {
+    return layout?.filter((widget) => !filteredKeys.includes(widget.i));
+  }, [layout, filteredKeys]);
+
+  useEffect(() => {
+    // on unmount remove filterKeys
+    return () => setFilteredKeys([]);
+  }, [tab]);
+
   const values = useMemo(
     () => ({
       data,
@@ -99,6 +189,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       permissions,
       currentVersionData,
       onThreadLinkSelect,
+      layout: filteredLayout,
+      filterWidgets,
     }),
     [
       data,
@@ -108,6 +200,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       permissions,
       currentVersionData,
       onThreadLinkSelect,
+      filteredLayout,
+      filterWidgets,
     ]
   );
 

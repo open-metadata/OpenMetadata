@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Divider, Input, Popover, Select } from 'antd';
+import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isString } from 'lodash';
 import Qs from 'qs';
@@ -25,6 +25,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
+import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
+import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
@@ -80,6 +82,7 @@ export const GlobalSearchBar = () => {
         listHeight={300}
         popupClassName="global-search-select-menu"
         size="small"
+        suffixIcon={<DropDownIcon width={12} />}
         value={searchCriteria}
         onChange={updateSearchCriteria}>
         {searchClassBase.getGlobalSearchOptions().map(({ value, label }) => (
@@ -135,7 +138,6 @@ export const GlobalSearchBar = () => {
 
   const handleClear = () => {
     setSearchValue('');
-    searchHandler('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -180,16 +182,29 @@ export const GlobalSearchBar = () => {
       ref={searchContainerRef}>
       {isNLPEnabled && (
         <>
-          <Button
-            className={classNames('nlp-button', 'w-6', 'h-6', {
-              active: isNLPActive,
-            })}
-            data-testid="nlp-suggestions-button"
-            icon={<Icon component={IconSuggestionsBlue} />}
-            type="text"
-            onClick={() => setNLPActive(!isNLPActive)}
-          />
-          <Divider className="h-full m-r-0 m-l-md" type="vertical" />
+          <Tooltip
+            title={
+              isNLPActive
+                ? t('message.natural-language-search-active')
+                : t('label.use-natural-language-search')
+            }>
+            <Button
+              className={classNames('nav-search-button', 'w-6', 'h-6', {
+                active: isNLPActive,
+              })}
+              data-testid="nlp-suggestions-button"
+              icon={
+                <Icon
+                  component={
+                    isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue
+                  }
+                />
+              }
+              type="text"
+              onClick={() => setNLPActive(!isNLPActive)}
+            />
+          </Tooltip>
+          <Divider className="h-5" type="vertical" />
         </>
       )}
       <Popover
@@ -253,7 +268,7 @@ export const GlobalSearchBar = () => {
       </Popover>
 
       {entitiesSelect}
-
+      <Divider className="h-5 m-r-md" type="vertical" />
       {searchValue ? (
         <Icon
           alt="icon-cancel"
@@ -269,7 +284,7 @@ export const GlobalSearchBar = () => {
         <Icon
           alt="icon-search"
           className={classNames('align-middle', {
-            'text-grey-3': isSearchBlur,
+            'text-color': isSearchBlur,
             'text-primary': !isSearchBlur,
           })}
           component={IconSearch}

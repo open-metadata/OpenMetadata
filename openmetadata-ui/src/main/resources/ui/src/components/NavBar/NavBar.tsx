@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
-import { Alert, Badge, Button, Dropdown, InputRef, Typography } from 'antd';
+import {
+  Alert,
+  Badge,
+  Button,
+  Dropdown,
+  InputRef,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { Header } from 'antd/lib/layout/layout';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
@@ -32,7 +41,10 @@ import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
 import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
+import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
+import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
+  DEFAULT_DOMAIN_VALUE,
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
@@ -84,7 +96,13 @@ import popupAlertsCardsClassBase from './PopupAlertClassBase';
 
 const cookieStorage = new CookieStorage();
 
-const NavBar: React.FC = () => {
+const NavBar = ({
+  isSidebarCollapsed = true,
+  toggleSideBar,
+}: {
+  isSidebarCollapsed?: boolean;
+  toggleSideBar?: () => void;
+}) => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
@@ -387,11 +405,31 @@ const NavBar: React.FC = () => {
     <>
       <Header>
         <div className="navbar-container">
-          <GlobalSearchBar />
-
-          <div className="flex-center gap-5 nav-bar-side-items">
+          <div className="flex-center">
+            <Tooltip
+              placement="right"
+              title={
+                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
+              }>
+              <Button
+                className="mr-2 w-6 h-6 p-0 flex-center"
+                data-testid="sidebar-toggle"
+                icon={
+                  isSidebarCollapsed ? (
+                    <SidebarCollapsedIcon height={20} width={20} />
+                  ) : (
+                    <SidebarExpandedIcon height={20} width={20} />
+                  )
+                }
+                size="middle"
+                type="text"
+                onClick={toggleSideBar}
+              />
+            </Tooltip>
+            <GlobalSearchBar />
             <DomainSelectableList
               hasPermission
+              showAllDomains
               popoverProps={{
                 open: isDomainDropdownOpen,
                 onOpenChange: (open) => {
@@ -399,29 +437,35 @@ const NavBar: React.FC = () => {
                 },
               }}
               selectedDomain={activeDomainEntityRef}
+              wrapInButton={false}
               onCancel={() => setIsDomainDropdownOpen(false)}
               onUpdate={handleDomainChange}>
               <Button
-                className="flex-center gap-2 p-0 font-medium"
+                className={classNames(
+                  'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                  {
+                    'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                  }
+                )}
                 data-testid="domain-dropdown"
-                type="text"
                 onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
                 <DomainIcon
-                  className="d-flex text-base-color"
-                  height={24}
+                  className="d-flex"
+                  height={20}
                   name="domain"
-                  width={24}
+                  width={20}
                 />
-                <Typography.Text className="font-medium">
+                <Typography.Text ellipsis className="domain-text">
                   {activeDomainEntityRef
                     ? getEntityName(activeDomainEntityRef)
                     : activeDomain}
                 </Typography.Text>
-
-                <DropDownIcon width={20} />
+                <DropDownIcon width={12} />
               </Button>
             </DomainSelectableList>
+          </div>
 
+          <div className="flex-center gap-5 nav-bar-side-items">
             <Dropdown
               className="cursor-pointer"
               menu={{
@@ -430,11 +474,13 @@ const NavBar: React.FC = () => {
               }}
               placement="bottomRight"
               trigger={['click']}>
-              <Button className="flex-center gap-2 p-0 font-medium" type="text">
+              <Button
+                className="flex-center gap-2 p-x-xs font-medium"
+                type="text">
                 {upperCase(
                   (language || SupportedLocales.English).split('-')[0]
                 )}{' '}
-                <DropDownIcon width={20} />
+                <DropDownIcon width={12} />
               </Button>
             </Dropdown>
             <Dropdown
@@ -459,7 +505,7 @@ const NavBar: React.FC = () => {
               trigger={['click']}
               onOpenChange={handleBellClick}>
               <Button
-                className="flex-center p-sm"
+                className="flex-center"
                 icon={
                   <Badge
                     dot={hasTaskNotification || hasMentionNotification}
@@ -467,7 +513,6 @@ const NavBar: React.FC = () => {
                     <IconBell data-testid="task-notifications" width={20} />
                   </Badge>
                 }
-                size="large"
                 title={t('label.notification-plural')}
                 type="text"
               />
@@ -481,10 +526,9 @@ const NavBar: React.FC = () => {
               placement="bottomRight"
               trigger={['click']}>
               <Button
-                className="flex-center p-sm"
+                className="flex-center"
                 data-testid="help-icon"
                 icon={<Help width={20} />}
-                size="large"
                 title={t('label.need-help')}
                 type="text"
               />

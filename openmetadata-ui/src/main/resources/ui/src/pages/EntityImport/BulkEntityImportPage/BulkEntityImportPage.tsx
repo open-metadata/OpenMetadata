@@ -18,6 +18,7 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, {
   MutableRefObject,
   useCallback,
@@ -38,6 +39,7 @@ import Banner from '../../../components/common/Banner/Banner';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { DataAssetsHeaderProps } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import Stepper from '../../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { UploadFile } from '../../../components/UploadFile/UploadFile';
@@ -60,7 +62,7 @@ import {
 } from '../../../utils/CSV/CSV.utils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
-  getBulkEntityImportBreadcrumbList,
+  getBulkEntityBreadcrumbList,
   getImportedEntityType,
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
@@ -96,10 +98,29 @@ const BulkEntityImportPage = () => {
   const [gridRef, setGridRef] = useState<
     MutableRefObject<TypeComputedProps | null>
   >({ current: null });
+  const [entity, setEntity] = useState<DataAssetsHeaderProps['dataAsset']>();
+
+  const fetchEntityData = useCallback(async () => {
+    try {
+      const response = await entityUtilClassBase.getEntityByFqn(
+        entityType,
+        fqn
+      );
+      setEntity(response);
+    } catch (error) {
+      // not show error here
+    }
+  }, [entityType, fqn]);
 
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname),
     [location]
+  );
+
+  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      entity ? getBulkEntityBreadcrumbList(entityType, entity, isBulkEdit) : [],
+    [entityType, entity, isBulkEdit]
   );
 
   const importedEntityType = useMemo(
@@ -151,7 +172,8 @@ const BulkEntityImportPage = () => {
         const validationResponse = await validateCsvString(
           result,
           entityType,
-          fqn
+          fqn,
+          isBulkEdit
         );
 
         const jobData: CSVImportJobType = {
@@ -179,11 +201,6 @@ const BulkEntityImportPage = () => {
     [dataSource]
   );
 
-  const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => getBulkEntityImportBreadcrumbList(entityType, fqn),
-    [entityType, fqn]
-  );
-
   const handleBack = () => {
     if (activeStep === VALIDATION_STEP.UPDATE) {
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
@@ -209,6 +226,7 @@ const BulkEntityImportPage = () => {
         name: fqn,
         data: csvData,
         dryRun: activeStep === VALIDATION_STEP.EDIT_VALIDATE,
+        recursive: !isBulkEdit,
       });
 
       const jobData: CSVImportJobType = {
@@ -427,6 +445,10 @@ const BulkEntityImportPage = () => {
 
           handleImportWebsocketResponseWithActiveStep(importResults);
         }
+
+        if (websocketResponse.status === 'FAILED') {
+          setIsValidating(false);
+        }
       }
     },
     [
@@ -438,6 +460,10 @@ const BulkEntityImportPage = () => {
       handleActiveStepChange,
     ]
   );
+
+  useEffect(() => {
+    fetchEntityData();
+  }, [fetchEntityData]);
 
   useEffect(() => {
     if (socket) {
@@ -467,6 +493,7 @@ const BulkEntityImportPage = () => {
           <BulkEditEntity
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
+            breadcrumbList={breadcrumbList}
             columns={columns}
             dataSource={dataSource}
             handleBack={handleBack}
@@ -493,13 +520,15 @@ const BulkEntityImportPage = () => {
               {activeAsyncImportJob?.jobId && (
                 <Banner
                   className="border-radius"
-                  isLoading={!activeAsyncImportJob.error}
+                  isLoading={isEmpty(activeAsyncImportJob.error)}
                   message={
                     activeAsyncImportJob.error ??
                     activeAsyncImportJob.message ??
                     ''
                   }
-                  type={activeAsyncImportJob.error ? 'error' : 'success'}
+                  type={
+                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                  }
                 />
               )}
             </Col>

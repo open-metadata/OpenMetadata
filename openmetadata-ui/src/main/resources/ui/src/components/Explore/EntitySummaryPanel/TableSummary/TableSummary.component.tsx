@@ -13,6 +13,7 @@
 
 import { Col, Row, Typography } from 'antd';
 import { isUndefined } from 'lodash';
+import QueryString from 'qs';
 import {
   default as React,
   useCallback,
@@ -21,6 +22,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -28,38 +30,31 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { Table } from '../../../../generated/entity/data/table';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import './table-summary.less';
-import {
-  TableProfileDetails,
-  TableSummaryProps,
-} from './TableSummary.interface';
+import { TableSummaryProps } from './TableSummary.interface';
 
-function TableSummary({ entityDetails }: TableSummaryProps) {
+function TableSummary({ entityDetails: tableDetails }: TableSummaryProps) {
   const { t } = useTranslation();
   const location = useCustomLocation();
+  const history = useHistory();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
-
-  const [profileData, setProfileData] = useState<TableProfileDetails>();
 
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
 
-  const tableDetails: Table = useMemo(
-    () => ({ ...entityDetails, ...profileData }),
-    [entityDetails, profileData]
-  );
-
-  const viewProfilerPermission = useMemo(
-    () => tablePermissions.ViewDataProfile || tablePermissions.ViewAll,
+  // Since we are showing test cases summary in the table summary panel, we are using ViewTests permission
+  const viewTestCasesPermission = useMemo(
+    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
     [tablePermissions]
   );
 
@@ -79,19 +74,21 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     }
   };
 
-  const fetchProfilerData = useCallback(async () => {
-    try {
-      const { profile, tableConstraints } = await getLatestTableProfileByFqn(
-        tableDetails?.fullyQualifiedName ?? ''
-      );
-      setProfileData({ profile, tableConstraints });
-    } catch (error) {
-      // Error
-    }
-  }, [tableDetails]);
+  const handleDqRedirection = () => {
+    history.push({
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        tableDetails.fullyQualifiedName ?? '',
+        EntityTabs.PROFILER
+      ),
+      search: QueryString.stringify({
+        activeTab: TableProfilerTab.DATA_QUALITY,
+      }),
+    });
+  };
 
-  const profilerSummary = useMemo(() => {
-    if (!viewProfilerPermission) {
+  const testCasesSummary = useMemo(() => {
+    if (!viewTestCasesPermission) {
       return (
         <Typography.Text
           className="text-grey-body"
@@ -101,15 +98,19 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
       );
     }
 
-    return isUndefined(tableDetails.profile) ? (
+    return isUndefined(testSuiteSummary) ? (
       <Typography.Text
         className="text-sm no-data-chip-placeholder"
         data-testid="no-profiler-enabled-message">
-        {t('message.no-profiler-enabled-summary-message')}
+        {t('message.no-data-quality-enabled-summary-message')}
       </Typography.Text>
     ) : (
-      <div className="d-flex justify-between">
-        <div className="profiler-item green" data-testid="test-passed">
+      <div className="d-flex justify-between gap-3">
+        <div
+          className="profiler-item green"
+          data-testid="test-passed"
+          role="button"
+          onClick={handleDqRedirection}>
           <div className="text-xs">{`${t('label.test-plural')} ${t(
             'label.passed'
           )}`}</div>
@@ -119,7 +120,11 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
             {testSuiteSummary?.success ?? 0}
           </div>
         </div>
-        <div className="profiler-item amber" data-testid="test-aborted">
+        <div
+          className="profiler-item amber"
+          data-testid="test-aborted"
+          role="button"
+          onClick={handleDqRedirection}>
           <div className="text-xs">{`${t('label.test-plural')} ${t(
             'label.aborted'
           )}`}</div>
@@ -129,7 +134,11 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
             {testSuiteSummary?.aborted ?? 0}
           </div>
         </div>
-        <div className="profiler-item red" data-testid="test-failed">
+        <div
+          className="profiler-item red"
+          data-testid="test-failed"
+          role="button"
+          onClick={handleDqRedirection}>
           <div className="text-xs">{`${t('label.test-plural')} ${t(
             'label.failed'
           )}`}</div>
@@ -141,7 +150,7 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         </div>
       </div>
     );
-  }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
+  }, [tableDetails, testSuiteSummary, viewTestCasesPermission]);
 
   const init = useCallback(async () => {
     if (tableDetails.id && !isTourPage) {
@@ -150,14 +159,12 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         tableDetails.id
       );
       setTablePermissions(tablePermission);
-      const shouldFetchProfilerData =
+      const shouldFetchTestCaseData =
         !isTableDeleted &&
         tableDetails.service?.type === 'databaseService' &&
-        !isTourPage &&
-        tablePermission;
+        (tablePermission.ViewAll || tablePermission.ViewTests);
 
-      if (shouldFetchProfilerData) {
-        fetchProfilerData();
+      if (shouldFetchTestCaseData) {
         fetchAllTests();
       }
     } else {
@@ -167,7 +174,6 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
     tableDetails,
     isTourPage,
     isTableDeleted,
-    fetchProfilerData,
     fetchAllTests,
     getEntityPermission,
   ]);
@@ -182,10 +188,10 @@ function TableSummary({ entityDetails }: TableSummaryProps) {
         <Typography.Text
           className="summary-panel-section-title"
           data-testid="profiler-header">
-          {t('label.profiler-amp-data-quality')}
+          {t('label.data-quality')}
         </Typography.Text>
       </Col>
-      <Col span={24}>{profilerSummary}</Col>
+      <Col span={24}>{testCasesSummary}</Col>
     </Row>
   );
 }

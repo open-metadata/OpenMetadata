@@ -17,6 +17,9 @@ import documentationLinksClassBase from '../../../../../utils/DocumentationLinks
 
 const NoProfilerBanner = () => {
   const { t } = useTranslation();
+  const profilerDocsLink =
+    documentationLinksClassBase.getDocsURLS()
+      .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
 
   return (
     <div
@@ -27,7 +30,7 @@ const NoProfilerBanner = () => {
         {t('message.no-profiler-message')}
         <a
           data-testid="documentation-link"
-          href={`${documentationLinksClassBase.getDocsBaseURL()}how-to-guides/data-quality-observability/profiler/workflow`}
+          href={profilerDocsLink}
           rel="noreferrer"
           target="_blank"
           title="data quality observability profiler workflow">

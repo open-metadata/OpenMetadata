@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Button, Col, Divider, Row, Tooltip, Typography } from 'antd';
+import { Badge, Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
@@ -25,7 +25,6 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -42,7 +41,6 @@ const EntityHeaderTitle = ({
   className,
   showName = true,
   showOnlyDisplayName = false,
-  certification,
   excludeEntityService,
   isFollowing,
   isFollowingLoading,
@@ -81,6 +79,30 @@ const EntityHeaderTitle = ({
     [showOnlyDisplayName, displayName, name]
   );
 
+  const badges = useMemo(
+    () => (
+      <>
+        {isDisabled && (
+          <Badge
+            className="m-l-xs badge-grey"
+            count={t('label.disabled')}
+            data-testid="disabled"
+          />
+        )}
+        {deleted && (
+          <Col className="text-xs" flex="100px">
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              {t('label.deleted')}
+            </span>
+          </Col>
+        )}
+        {badge && <Col>{badge}</Col>}
+      </>
+    ),
+    [isDisabled, deleted, badge]
+  );
+
   const content = (
     <Row
       align="middle"
@@ -90,23 +112,28 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={`d-flex flex-col gap-2 ${
-          deleted || badge ? 'w-max-full-140' : 'entity-header-content'
-        }`}>
+        className={classNames('d-flex flex-col gap-1', {
+          'w-max-full-140': deleted || badge,
+        })}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <Tooltip placement="bottom" title={stringToHTML(displayName ?? name)}>
-            <Typography.Text
-              className={classNames(
-                'entity-header-name',
-                nameClassName,
-                'm-b-0 d-block display-sm font-semibold'
-              )}
-              data-testid="entity-header-display-name"
-              ellipsis={{ tooltip: true }}>
-              {stringToHTML(displayName ?? name)}
-            </Typography.Text>
-          </Tooltip>
+          <div className="d-flex items-center gap-2">
+            <Tooltip
+              placement="bottom"
+              title={stringToHTML(displayName ?? name)}>
+              <Typography.Text
+                ellipsis
+                className={classNames(
+                  'entity-header-name',
+                  nameClassName,
+                  'm-b-0 d-block display-xs font-semibold'
+                )}
+                data-testid="entity-header-display-name">
+                {stringToHTML(displayName ?? name)}
+              </Typography.Text>
+            </Tooltip>
+            {badges}
+          </div>
         ) : null}
 
         <div
@@ -114,16 +141,16 @@ const EntityHeaderTitle = ({
           data-testid="entity-header-title">
           <Tooltip placement="bottom" title={entityName}>
             <Typography.Text
+              ellipsis
               className={classNames(displayNameClassName, 'm-b-0', {
-                'display-sm entity-header-name font-semibold': !displayName,
+                'display-xs entity-header-name font-semibold': !displayName,
                 'text-md entity-header-display-name font-medium': displayName,
               })}
-              data-testid="entity-header-name"
-              ellipsis={{ tooltip: true }}>
+              data-testid="entity-header-name">
               {entityName}
               {openEntityInNewPage && (
                 <IconExternalLink
-                  className="anticon vertical-baseline m-l-xss"
+                  className="anticon vertical-middle m-l-xss"
                   height={14}
                   width={14}
                 />
@@ -133,7 +160,10 @@ const EntityHeaderTitle = ({
 
           <Tooltip
             placement="topRight"
-            title={copyTooltip ?? t('message.copy-to-clipboard')}>
+            title={
+              copyTooltip ??
+              t('label.copy-item', { item: t('label.url-uppercase') })
+            }>
             <Button
               className="remove-button-default-styling copy-button flex-center p-xss "
               icon={<Icon component={ShareIcon} />}
@@ -157,43 +187,21 @@ const EntityHeaderTitle = ({
                   loading={isFollowingLoading}
                   onClick={handleFollowingClick}>
                   <Typography.Text>
-                    {isFollowing ? 'Following' : 'Follow'}
+                    {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}
                   </Typography.Text>
                 </Button>
               </Tooltip>
             )}
         </div>
       </Col>
-      {certification && (
-        <Col className="text-xs">
-          <div className="d-flex items-center">
-            <Divider className="m-x-xs h-6 m-r-sm" type="vertical" />
-            <CertificationTag certification={certification} />
-          </div>
-        </Col>
-      )}
-      {isDisabled && (
-        <Badge
-          className="m-l-xs badge-grey"
-          count={t('label.disabled')}
-          data-testid="disabled"
-        />
-      )}
-      {deleted && (
-        <Col className="text-xs" flex="100px">
-          <span className="deleted-badge-button" data-testid="deleted-badge">
-            <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
-            {t('label.deleted')}
-          </span>
-        </Col>
-      )}
-      {badge && <Col>{badge}</Col>}
+
+      {isEmpty(displayName) ? badges : null}
     </Row>
   );
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block w-full"
+      className="no-underline d-inline-block w-40  "
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

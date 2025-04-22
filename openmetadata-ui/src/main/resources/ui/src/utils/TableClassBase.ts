@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Layout } from 'react-grid-layout';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET,
@@ -40,7 +39,7 @@ export interface TableDetailPageTabProps {
   queryCount: number;
   isTourOpen: boolean;
   activeTab: EntityTabs;
-  totalFeedCount: number;
+  feedCount: FeedCounts;
   isViewTableType: boolean;
   viewAllPermission: boolean;
   viewQueriesPermission: boolean;
@@ -74,15 +73,15 @@ class TableClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 1.5,
-      [DetailPageWidgetKeys.TABLE_SCHEMA]: 8,
-      [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: 1.5,
-      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1,
-      [DetailPageWidgetKeys.TAGS]: 1.5,
-      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 1.5,
+      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.TABLE_SCHEMA]: 8.5,
+      [DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES]: 2,
+      [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
+      [DetailPageWidgetKeys.TAGS]: 2,
+      [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
-      [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 1.5,
-      [DetailPageWidgetKeys.PARTITIONED_KEYS]: 1.5,
+      [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
+      [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
     };
   }
 
@@ -99,8 +98,8 @@ class TableClassBase {
       EntityTabs.SAMPLE_DATA,
       EntityTabs.TABLE_QUERIES,
       EntityTabs.PROFILER,
-      EntityTabs.INCIDENTS,
       EntityTabs.LINEAGE,
+      EntityTabs.DBT,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
@@ -112,27 +111,41 @@ class TableClassBase {
     }));
   }
 
-  public getDefaultLayout(tab?: EntityTabs): Layout[] {
+  public getDefaultLayout(tab?: EntityTabs): WidgetConfig[] {
     if (tab && tab !== EntityTabs.SCHEMA) {
       return [];
     }
 
     return [
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
-        i: DetailPageWidgetKeys.DESCRIPTION,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA] +
+          // Padding for left panel container
+          0.5,
+        i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
         y: 0,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA],
-        i: DetailPageWidgetKeys.TABLE_SCHEMA,
-        w: 6,
-        x: 0,
-        y: 0,
-        static: false,
+        children: [
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION],
+            i: DetailPageWidgetKeys.DESCRIPTION,
+            w: 1,
+            x: 0,
+            y: 0,
+            static: false,
+          },
+          {
+            h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_SCHEMA],
+            i: DetailPageWidgetKeys.TABLE_SCHEMA,
+            w: 1,
+            x: 0,
+            y: 1,
+            static: false,
+          },
+        ],
+        static: true,
       },
       {
         h: this.defaultWidgetHeight[
@@ -169,16 +182,24 @@ class TableClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS],
-        i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
         y: 4,
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
-        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.PARTITIONED_KEYS],
+        i: DetailPageWidgetKeys.PARTITIONED_KEYS,
+        w: 2,
+        x: 6,
+        y: 5,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS],
+        i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
         w: 2,
         x: 6,
         y: 6,

@@ -22,10 +22,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/ic-user-profile-edit.svg';
 
 import {
   PAGE_SIZE_LARGE,
@@ -39,6 +39,7 @@ import { handleSearchFilterOption } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
+import { TagRenderer } from '../../../../common/TagRenderer/TagRenderer';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
@@ -197,7 +198,7 @@ const UserProfileRoles = ({
           <RoleIcon height={16} />
         </div>
         <div className="d-flex justify-between w-full">
-          <Typography.Text className="user-profile-card-title">
+          <Typography.Text className="text-sm font-medium">
             {t('label.role-plural')}
           </Typography.Text>
           <Popover
@@ -231,7 +232,7 @@ const UserProfileRoles = ({
                     dropdownMatchSelectWidth={false}
                     filterOption={handleSearchFilterOption}
                     loading={isLoading}
-                    maxTagCount={4}
+                    maxTagCount={3}
                     maxTagPlaceholder={(omittedValues) => (
                       <span className="max-tag-text">
                         {t('label.plus-count-more', {
@@ -244,6 +245,7 @@ const UserProfileRoles = ({
                     options={useRolesOption}
                     popupClassName="roles-custom-dropdown-class"
                     ref={dropdownRef as any}
+                    tagRender={TagRenderer}
                     value={selectedRoles}
                     onChange={setSelectedRoles}
                     onDropdownVisibleChange={(open) => {

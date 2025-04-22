@@ -17,6 +17,7 @@ Configure and schedule MicroStrategy metadata and profiler workflows from the Op
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Troubleshooting](/connectors/dashboard/microstrategy/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/microstrategy/yaml"} /%}
 
@@ -73,5 +74,3 @@ If you're using demo account for Microstrategy, it will be needed to authenticat
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

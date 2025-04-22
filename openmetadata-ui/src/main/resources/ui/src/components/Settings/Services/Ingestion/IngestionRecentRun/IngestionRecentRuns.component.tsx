@@ -13,11 +13,16 @@
 
 import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
-import { isEmpty, isUndefined, upperFirst } from 'lodash';
+import { isEmpty, isNumber, isUndefined, upperFirst } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
-import { PipelineStatus } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { App } from '../../../../../generated/entity/applications/app';
+import { AppRunRecord } from '../../../../../generated/entity/applications/appRunRecord';
+import {
+  IngestionPipeline,
+  PipelineStatus,
+} from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import {
   formatDateTimeLong,
@@ -28,42 +33,45 @@ import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModa
 import './ingestion-recent-run.style.less';
 import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
 
-const queryParams = {
-  startTs: getEpochMillisForPastDays(1),
-  endTs: getCurrentMillis(),
-};
-
-export const IngestionRecentRuns = ({
+export const IngestionRecentRuns = <
+  T extends PipelineStatus | AppRunRecord,
+  U extends IngestionPipeline | App
+>({
   ingestion,
   classNames,
   appRuns,
   fetchStatus = true,
   pipelineIdToFetchStatus = '',
   handlePipelineIdToFetchStatus,
-}: Readonly<IngestionRecentRunsProps>) => {
+  isAppRunsLoading = false,
+}: Readonly<IngestionRecentRunsProps<T, U>>) => {
   const { t } = useTranslation();
-  const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState<PipelineStatus>();
+  const [recentRunStatus, setRecentRunStatus] = useState<T[]>([]);
+  const [loading, setLoading] = useState(fetchStatus);
+  const [selectedStatus, setSelectedStatus] = useState<T>();
 
   const fetchPipelineStatus = useCallback(async () => {
     setLoading(true);
     try {
-      if (fetchStatus && !isUndefined(ingestion?.fullyQualifiedName)) {
+      if (!isUndefined(ingestion?.fullyQualifiedName)) {
+        const ingestionPipeline = ingestion as IngestionPipeline;
+
+        const queryParams = {
+          startTs: getEpochMillisForPastDays(1),
+          endTs: getCurrentMillis(),
+        };
         const response = await getRunHistoryForPipeline(
-          ingestion?.fullyQualifiedName ?? '',
+          ingestionPipeline?.fullyQualifiedName ?? '',
           queryParams
         );
 
         const runs = response.data.splice(0, 5).reverse() ?? [];
 
         setRecentRunStatus(
-          runs.length === 0 && ingestion?.pipelineStatuses
-            ? [ingestion.pipelineStatuses]
-            : runs
+          (runs.length === 0 && ingestionPipeline?.pipelineStatuses
+            ? [ingestionPipeline.pipelineStatuses]
+            : runs) as T[]
         );
-      } else {
-        setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
       }
     } finally {
       setLoading(false);
@@ -71,8 +79,16 @@ export const IngestionRecentRuns = ({
   }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
 
   useEffect(() => {
-    fetchPipelineStatus();
-  }, [ingestion, ingestion?.fullyQualifiedName, appRuns]);
+    if (fetchStatus) {
+      fetchPipelineStatus();
+    }
+  }, [ingestion, ingestion?.fullyQualifiedName]);
+
+  useEffect(() => {
+    if (!isEmpty(appRuns)) {
+      setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
+    }
+  }, [appRuns]);
 
   useEffect(() => {
     // To fetch pipeline status on demand
@@ -83,14 +99,14 @@ export const IngestionRecentRuns = ({
     }
   }, [pipelineIdToFetchStatus]);
 
-  const handleRunStatusClick = (status: PipelineStatus) => {
+  const handleRunStatusClick = (status: T) => {
     setSelectedStatus(status);
   };
 
   const handleModalCancel = () => setSelectedStatus(undefined);
 
-  if (loading) {
-    return <Skeleton.Input size="small" />;
+  if (isAppRunsLoading || loading) {
+    return <Skeleton.Input active size="small" />;
   }
 
   return (
@@ -101,25 +117,35 @@ export const IngestionRecentRuns = ({
         </Typography.Text>
       ) : (
         recentRunStatus.map((r, i) => {
+          const pipelineState =
+            (r as PipelineStatus)?.pipelineState ?? (r as AppRunRecord)?.status;
+          const runId =
+            (r as PipelineStatus)?.runId ?? (r as AppRunRecord)?.appId;
+          const startDate =
+            (r as PipelineStatus)?.startDate ?? (r as AppRunRecord)?.startTime;
+          const endDate =
+            (r as PipelineStatus)?.endDate ?? (r as AppRunRecord)?.endTime;
+
           const status = (
             <Tag
               className={classNamesFunc(
                 'ingestion-run-badge',
-                r?.pipelineState ?? '',
+                pipelineState ?? '',
                 {
                   latest: i === recentRunStatus.length - 1,
                 }
               )}
               data-testid="pipeline-status"
-              key={`${r.runId}-status`}
+              key={`${runId}-status`}
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
-                ? upperFirst(r?.pipelineState)
+                ? upperFirst(pipelineState)
                 : ''}
             </Tag>
           );
 
-          const showTooltip = r?.endDate ?? r?.startDate ?? r?.timestamp;
+          const showTooltip =
+            isNumber(endDate) || isNumber(startDate) || isNumber(r?.timestamp);
 
           return showTooltip ? (
             <Popover
@@ -131,21 +157,20 @@ export const IngestionRecentRuns = ({
                       {formatDateTimeLong(r.timestamp)}
                     </p>
                   )}
-                  {r.startDate && (
+                  {startDate && (
                     <p>
                       {t('label.start-entity', { entity: t('label.date') })}:{' '}
-                      {formatDateTimeLong(r.startDate)}
+                      {formatDateTimeLong(startDate)}
                     </p>
                   )}
-                  {r.endDate && (
+                  {endDate && (
                     <p>
-                      {`${t('label.end-date')}:`}{' '}
-                      {formatDateTimeLong(r.endDate)}
+                      {`${t('label.end-date')}:`} {formatDateTimeLong(endDate)}
                     </p>
                   )}
                 </div>
               }
-              key={`${r.runId}-timestamp`}>
+              key={`${runId}-timestamp`}>
               {status}
             </Popover>
           ) : (

@@ -81,7 +81,7 @@ describe('Test TagsViewer Component', () => {
 
     const readButton = screen.getByTestId('read-button');
 
-    expect(readButton).toHaveTextContent('label.read-type');
+    expect(readButton).toHaveTextContent('label.plus-count-more');
   });
 
   it('Should render all tags on popover click', () => {
@@ -103,7 +103,7 @@ describe('Test TagsViewer Component', () => {
 
     const readButton = screen.getByTestId('read-button');
 
-    expect(readButton).toHaveTextContent('label.read-type');
+    expect(readButton).toHaveTextContent('label.plus-count-more');
 
     fireEvent.click(readButton);
 

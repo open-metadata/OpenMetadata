@@ -628,7 +628,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = get(null, tableId, getFields(FIELD_OWNERS), NON_DELETED, false);
+    Table table =
+        get(null, tableId, getFields(Set.of(FIELD_OWNERS, FIELD_TAGS)), NON_DELETED, false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -781,30 +782,121 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = (Table) entity;
     for (Column col : table.getColumns()) {
       if (col.getFullyQualifiedName().equals(columnFQN)) {
-        if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
-          List<TagLabel> tags = new ArrayList<>(col.getTags());
-          tags.addAll(suggestion.getTagLabels());
-          col.setTags(tags);
-        } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
-          col.setDescription(suggestion.getDescription());
-        } else {
-          throw new SuggestionException("Invalid suggestion Type");
+        applySuggestionToColumn(col, suggestion);
+      }
+      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
+        for (Column child : col.getChildren()) {
+          if (child.getFullyQualifiedName().equals(columnFQN)) {
+            applySuggestionToColumn(child, suggestion);
+          }
         }
       }
     }
     return table;
   }
 
+  public void applySuggestionToColumn(Column column, Suggestion suggestion) {
+    if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
+      List<TagLabel> tags = new ArrayList<>(column.getTags());
+      tags.addAll(suggestion.getTagLabels());
+      column.setTags(tags);
+    } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
+      column.setDescription(suggestion.getDescription());
+    } else {
+      throw new SuggestionException("Invalid suggestion Type");
+    }
+  }
+
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     // Validate table
     Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
+  /**
+   * Export columns for a table, handling nested column structure
+   *
+   * @param table The table whose columns are being exported
+   * @param csvFile The CSV file to add column records to
+   */
+  public void exportColumnsRecursively(Table table, CsvFile csvFile) {
+    if (table.getColumns() != null && !table.getColumns().isEmpty()) {
+      for (Column column : table.getColumns()) {
+        addColumnRecord(csvFile, column, table.getFullyQualifiedName());
+      }
+    }
+  }
+
+  private void addColumnRecord(CsvFile csvFile, Column column, String tableFqn) {
+    // Create a record with fields in the exact order matching headers in tableCsvDocumentation.json
+    List<String> recordList = new ArrayList<>();
+
+    // Basic entity fields
+    addField(recordList, getLocalColumnName(tableFqn, column.getFullyQualifiedName())); // name
+    addField(recordList, column.getDisplayName()); // displayName
+    addField(recordList, column.getDescription()); // description
+
+    // Fields that should be empty for columns
+    addField(recordList, ""); // owner (empty for columns)
+
+    // Column-specific fields that may have values
+    addTagLabels(recordList, column.getTags()); // tags
+    addGlossaryTerms(recordList, column.getTags()); // glossaryTerms
+
+    // More fields that should be empty for columns
+    addField(recordList, ""); // tiers (empty for columns)
+    addField(recordList, ""); // retentionPeriod (empty for columns)
+    addField(recordList, ""); // sourceUrl (empty for columns)
+    addField(recordList, ""); // domain (empty for columns)
+    addField(recordList, ""); // extension (empty for columns)
+
+    // Metadata fields - IMPORTANT: These need to be in the same position for all entity types
+    addField(recordList, "column"); // entityType
+    addField(recordList, column.getFullyQualifiedName()); // fullyQualifiedName
+
+    // Column data type fields - these should be added at the end
+    addField(recordList, column.getDataTypeDisplay()); // column.dataTypeDisplay
+
+    String dataTypeValue = column.getDataType() == null ? null : column.getDataType().value();
+    String arrayDataTypeValue =
+        column.getArrayDataType() == null ? null : column.getArrayDataType().value();
+
+    if (ColumnDataType.ARRAY.value().equals(dataTypeValue) && arrayDataTypeValue == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Column %s has dataType=ARRAY but missing arrayDataType",
+              column.getFullyQualifiedName()));
+    }
+
+    addField(recordList, dataTypeValue); // column.dataType
+    addField(recordList, arrayDataTypeValue);
+    addField(
+        recordList,
+        column.getDataLength() == null
+            ? null
+            : String.valueOf(column.getDataLength())); // column.dataLength
+
+    // Add directly to the CSV file without using HierarchyCSVImporter
+    // Since we've manually built the record in the correct order
+    List<List<String>> records = csvFile.getRecords();
+    if (records == null) {
+      records = new ArrayList<>();
+      csvFile.withRecords(records);
+    }
+    records.add(recordList);
+
+    // Process child columns recursively
+    if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+      for (Column childColumn : column.getChildren()) {
+        addColumnRecord(csvFile, childColumn, tableFqn);
+      }
+    }
+  }
+
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     // Validate table
     Table table =
         getByName(
@@ -1182,6 +1274,7 @@ public class TableRepository extends EntityRepository<Table> {
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
       // if schema definition changes make processed lineage false
       if (origTable.getProcessedLineage().booleanValue()
+          && origTable.getSchemaDefinition() != null
           && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
         updatedTable.setProcessedLineage(false);
       }
@@ -1286,7 +1379,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public static class TableCsv extends EntityCsv<Table> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TABLE);
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TABLE, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
 
     private final Table table;
@@ -1462,6 +1555,22 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
       return null;
+    }
+  }
+
+  private static void validateTableColumns(List<Column> columns) {
+    if (columns == null) return;
+
+    for (Column column : columns) {
+      if (column.getDataType() == ColumnDataType.VARCHAR) {
+        if (column.getDataLength() == null || column.getDataLength() <= 0) {
+          throw new IllegalArgumentException(
+              "Data length is mandatory for VARCHAR columns: " + column.getName());
+        }
+      }
+      if (column.getChildren() != null) {
+        validateTableColumns(column.getChildren());
+      }
     }
   }
 }

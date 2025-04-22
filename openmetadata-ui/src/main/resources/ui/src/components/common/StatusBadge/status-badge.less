@@ -14,41 +14,62 @@
 @import (reference) url('../../../styles/variables.less');
 
 .status-badge {
-  border-radius: 16px;
-  padding: 6px 12px;
+  border-radius: @border-radius-md;
+  padding: @padding-xss @padding-xs;
   text-align: center;
   max-width: fit-content;
   display: flex;
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
+  border: 1px solid;
+
   &.success {
     color: @green-10;
     background-color: @green-9;
+    border-color: @green-10;
   }
+
+  &.stopped,
   &.failure {
     color: @red-10;
     background-color: @red-9;
+    border-color: @red-10;
   }
-  &.warning {
+
+  &.pending {
     color: @yellow-11;
     background-color: @yellow-10;
+    border-color: @yellow-11;
   }
-  &.started,
+
   &.running {
-    color: @orange-2;
-    background-color: @orange-1;
+    color: @blue-9;
+    background-color: @blue-11;
+    border-color: @blue-9;
   }
-  &.stopped {
+
+  &.started,
+  &.inReview {
+    color: @blue-21;
+    background-color: @blue-22;
+    border-color: @blue-21;
+  }
+
+  &.deprecated {
     color: @grey-19;
     background-color: @grey-9;
+    border-color: @grey-19;
   }
-}
 
-.status-badge {
+  &.activeError {
+    color: @red-17;
+    background-color: @red-18;
+    border-color: @red-17;
+  }
+
   svg {
-    margin-top: 2px;
-    margin-bottom: -3px;
+    font-size: 12px;
   }
 }
 

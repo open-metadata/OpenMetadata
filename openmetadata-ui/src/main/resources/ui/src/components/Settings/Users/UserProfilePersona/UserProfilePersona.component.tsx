@@ -21,6 +21,7 @@ import { EntityReference, User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import Chip from '../../../common/Chip/Chip.component';
 import { PersonaSelectableList } from '../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import '../users.less';
@@ -77,7 +78,7 @@ const UserProfilePersonas = ({
           </div>
           <div className="d-flex justify-between w-full">
             <Typography.Text
-              className="user-profile-card-title"
+              className="text-sm font-medium"
               data-testid="persona-list">
               {t('label.default-persona')}
             </Typography.Text>
@@ -92,9 +93,9 @@ const UserProfilePersonas = ({
           </div>
         </div>
         <div className="user-profile-card-body d-flex justify-start gap-2">
-          {defaultPersona?.displayName ? (
+          {defaultPersona?.fullyQualifiedName || defaultPersona?.name ? (
             <Typography.Text className="default-persona-text  cursor-pointer">
-              {defaultPersona?.displayName}
+              {getEntityName(defaultPersona)}
             </Typography.Text>
           ) : (
             <Typography.Paragraph className="m-b-0 text-sm  no-default-persona-text">
@@ -122,7 +123,7 @@ const UserProfilePersonas = ({
         </div>
         <div className="d-flex justify-between w-full">
           <Typography.Text
-            className="user-profile-card-title"
+            className="text-sm font-medium"
             data-testid="persona-list">
             {t('label.persona')}
           </Typography.Text>

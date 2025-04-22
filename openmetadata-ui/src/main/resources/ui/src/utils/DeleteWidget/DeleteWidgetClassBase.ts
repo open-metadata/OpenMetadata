@@ -35,6 +35,8 @@ class DeleteWidgetClassBase {
       return `services/${entityType}s`;
     } else if (entityType === EntityType.GLOSSARY) {
       return `glossaries`;
+    } else if (entityType === EntityType.GLOSSARY_TERM) {
+      return `glossaryTerms`;
     } else if (entityType === EntityType.POLICY) {
       return 'policies';
     } else if (entityType === EntityType.KPI) {

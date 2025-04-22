@@ -30,6 +30,7 @@ import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
+  checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
@@ -39,6 +40,7 @@ import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { updateTierTag } from '../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -68,6 +70,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     FEED_COUNT_INITIAL_DATA
   );
   const { customizedPage, isLoading } = useCustomPages(PageType.APIEndpoint);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const {
     owners,
@@ -169,8 +172,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? onToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -230,18 +232,26 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     customizedPage,
   ]);
 
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.APIEndpoint),
+    [tabs[0], activeTab]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.api-endpoint'),
       })}>
       <Row gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -261,16 +271,29 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           />
         </Col>
         <GenericProvider<APIEndpoint>
+          customizedPage={customizedPage}
           data={apiEndpointDetails}
+          isTabExpanded={isTabExpanded}
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}
           onUpdate={onApiEndpointUpdate}>
           <Col span={24}>
             <Tabs
               activeKey={activeTab}
-              className="entity-details-page-tabs"
+              className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>

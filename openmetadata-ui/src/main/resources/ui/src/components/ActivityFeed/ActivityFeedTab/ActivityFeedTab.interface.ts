@@ -42,6 +42,7 @@ export interface ActivityFeedTabBasicProps {
   permissions?: OperationPermission;
   subTab?: ActivityFeedTabs;
   layoutType?: ActivityFeedLayoutType;
+  feedCount?: FeedCounts;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

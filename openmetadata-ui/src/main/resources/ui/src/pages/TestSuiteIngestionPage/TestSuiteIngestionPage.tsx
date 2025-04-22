@@ -124,11 +124,13 @@ const TestSuiteIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel m--t-sm"
+      className="content-height-with-resizable-panel no-right-panel-splitter"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <div>
             <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
             <div className="m-t-md">
               <TestSuiteIngestion
@@ -146,7 +148,7 @@ const TestSuiteIngestionPage = () => {
       })}
       secondPanel={{
         children: <RightPanel data={TEST_SUITE_INGESTION_PAGE_DATA} />,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

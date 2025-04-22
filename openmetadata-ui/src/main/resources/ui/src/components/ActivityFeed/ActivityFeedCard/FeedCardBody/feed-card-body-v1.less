@@ -70,6 +70,11 @@
   overflow-y: scroll;
   overflow-x: hidden;
   border: 0.5px solid #eaecf5;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .hide-thread.description.updated {

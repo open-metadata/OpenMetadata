@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,10 +30,11 @@ VERSIONS = {
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=5.3.0",
+    "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -64,6 +65,7 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
 }
 
 COMMONS = {
@@ -129,7 +131,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager==2.19.0",
+    "google-cloud-secret-manager>=2.19.0,<2.20.1",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -138,6 +140,7 @@ base_requirements = {
     "memory-profiler",
     "mypy_extensions>=0.4.3",
     VERSIONS["pydantic"],
+    VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
     "python-dateutil>=2.8.1",
     "PyYAML~=6.0",
@@ -328,7 +331,11 @@ plugins: Dict[str, Set[str]] = {
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11", "authlib>=1.3.1"},
-    "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
+    "sample-data": {
+        VERSIONS["avro"],
+        VERSIONS["grpc-tools"],
+        VERSIONS["sqlalchemy-bigquery"],
+    },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
     "sas": {},
     "singlestore": {VERSIONS["pymysql"]},
@@ -435,6 +442,24 @@ e2e_test = {
     "pytest-base-url",
 }
 
+# Define playwright_dependencies as a set of packages required for Playwright tests
+# These packages correspond to the ingestion connectors used in Playwright tests
+playwright_dependencies = {
+    *plugins["mysql"],
+    *plugins["bigquery"],
+    *plugins["kafka"],
+    *plugins["mlflow"],
+    *plugins["snowflake"],
+    *plugins["superset"],
+    *plugins["postgres"],
+    *plugins["redshift"],
+    *plugins["airflow"],
+    *plugins["datalake-s3"],
+    *plugins["dbt"],
+    *e2e_test
+    # Add other plugins as needed for Playwright tests
+}
+
 extended_testing = {
     "Faker",  # For Sample Data Generation
 }
@@ -464,6 +489,7 @@ setup(
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": filter_requirements({"airflow", "db2", "great-expectations"}),
+        "playwright": list(playwright_dependencies),
         "slim": filter_requirements(
             {
                 "airflow",

@@ -10,18 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -29,6 +25,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
@@ -37,10 +34,12 @@ import { RelatedMetricsForm } from './RelatedMetricsForm';
 
 interface RelatedMetricsProps {
   isInSummaryPanel?: boolean;
+  newLook?: boolean;
 }
 
 const RelatedMetrics: FC<RelatedMetricsProps> = ({
   isInSummaryPanel = false,
+  newLook = false,
 }) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -154,40 +153,41 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
     [onMetricUpdate, relatedMetrics]
   );
 
-  return (
-    <Row gutter={[0, 8]}>
-      <Col span={24}>
-        <Space className="w-full items-center">
-          <Typography.Text
-            className={classNames('right-panel-label', {
-              'font-normal': isUndefined(onMetricUpdate),
-            })}
-            data-testid="header-label">
-            {t('label.related-metric-plural')}
-          </Typography.Text>
-          {!isEdit &&
-            !isEmpty(relatedMetrics) &&
-            permissions.EditAll &&
-            !metricDetails.deleted && (
-              <EditIcon
-                className="cursor-pointer"
-                color={DE_ACTIVE_COLOR}
-                data-testid="edit-related-metrics"
-                style={{ verticalAlign: 'middle' }}
-                width="14px"
-                onClick={() => setIsEdit(true)}
-              />
-            )}
-        </Space>
-      </Col>
+  const header = (
+    <Space className="w-full items-center">
+      <Typography.Text
+        className={classNames({
+          'text-sm font-medium': newLook,
+          'right-panel-label': !newLook,
+        })}
+        data-testid="header-label">
+        {t('label.related-metric-plural')}
+      </Typography.Text>
+      {!isEdit &&
+        !isEmpty(relatedMetrics) &&
+        permissions.EditAll &&
+        !metricDetails.deleted && (
+          <EditIconButton
+            data-testid="edit-related-metrics"
+            newLook={newLook}
+            size="small"
+            onClick={() => setIsEdit(true)}
+          />
+        )}
+    </Space>
+  );
+
+  const content = (
+    <>
       {isEmpty(relatedMetrics) &&
         !isEdit &&
         permissions.EditAll &&
         !metricDetails.deleted && (
-          <Col data-testid="add-related-metrics-container">
-            <div onClick={() => setIsEdit(true)}>
-              <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-            </div>
+          <Col
+            className="m-t-xss"
+            data-testid="add-related-metrics-container"
+            onClick={() => setIsEdit(true)}>
+            <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
           </Col>
         )}
       <Col span={24}>
@@ -216,6 +216,21 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
           </>
         )}
       </Col>
+    </>
+  );
+
+  if (newLook) {
+    return (
+      <Card className="new-header-border-card" title={header}>
+        <Row gutter={[0, 8]}>{content}</Row>
+      </Card>
+    );
+  }
+
+  return (
+    <Row gutter={[0, 8]}>
+      <Col span={24}>{header}</Col>
+      {content}
     </Row>
   );
 };

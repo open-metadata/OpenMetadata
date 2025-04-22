@@ -15,6 +15,7 @@ import { Layout } from 'react-grid-layout';
 
 export interface WidgetConfig
   extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static' | 'isDraggable'> {
+  children?: WidgetConfig[];
   data?: {
     page: {
       layout: Array<WidgetConfig>;

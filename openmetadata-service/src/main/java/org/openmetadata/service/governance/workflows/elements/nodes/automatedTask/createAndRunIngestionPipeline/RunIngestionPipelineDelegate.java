@@ -10,6 +10,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -22,6 +23,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class RunIngestionPipelineDelegate implements JavaDelegate {
   private Expression inputNamespaceMapExpr;
   private Expression pipelineServiceClientExpr;
+  private Expression shouldRunExpr;
   private Expression waitForCompletionExpr;
   private Expression timeoutSecondsExpr;
 
@@ -32,18 +34,25 @@ public class RunIngestionPipelineDelegate implements JavaDelegate {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
 
+      boolean shouldRun = Boolean.parseBoolean((String) shouldRunExpr.getValue(execution));
+
       boolean waitForCompletion =
           Boolean.parseBoolean((String) waitForCompletionExpr.getValue(execution));
       long timeoutSeconds = Long.parseLong((String) timeoutSecondsExpr.getValue(execution));
 
-      PipelineServiceClientInterface pipelineServiceClient =
-          (PipelineServiceClientInterface) pipelineServiceClientExpr.getValue(execution);
+      boolean result = true;
 
-      UUID ingestionPipelineId = (UUID) varHandler.getNodeVariable(INGESTION_PIPELINE_ID_VARIABLE);
+      if (shouldRun) {
+        PipelineServiceClientInterface pipelineServiceClient =
+            (PipelineServiceClientInterface) pipelineServiceClientExpr.getValue(execution);
 
-      boolean result =
-          new RunIngestionPipelineImpl(pipelineServiceClient)
-              .execute(ingestionPipelineId, waitForCompletion, timeoutSeconds);
+        UUID ingestionPipelineId =
+            (UUID) varHandler.getNodeVariable(INGESTION_PIPELINE_ID_VARIABLE);
+
+        result =
+            new RunIngestionPipelineImpl(pipelineServiceClient)
+                .execute(ingestionPipelineId, waitForCompletion, timeoutSeconds);
+      }
 
       varHandler.setNodeVariable(RESULT_VARIABLE, getResultFromBoolean(result));
       if (!result) {
@@ -54,7 +63,7 @@ public class RunIngestionPipelineDelegate implements JavaDelegate {
           String.format(
               "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
           exc);
-      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, exc.toString());
+      varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }

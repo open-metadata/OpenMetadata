@@ -172,6 +172,7 @@ export const selectDataProduct = async (
 
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await checkDomainDisplayName(page, domain.displayName);
   await page.getByTestId('assets').click();
 };
@@ -635,4 +636,13 @@ export const addTagsAndGlossaryToDomain = async (
 
   // Add glossary term
   await addTagOrTerm('glossary', glossaryTermFqn);
+};
+
+/**
+ * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
+ */
+export const verifyActiveDomainIsDefault = async (page: Page) => {
+  await expect(page.getByTestId('domain-dropdown')).toContainText(
+    'All Domains'
+  );
 };

@@ -21,6 +21,7 @@ export interface importEntityInCSVFormatRequestParams {
   name: string;
   data: string;
   dryRun?: boolean;
+  recursive?: boolean;
 }
 
 export const importEntityInCSVFormat = async ({
@@ -28,6 +29,7 @@ export const importEntityInCSVFormat = async ({
   name,
   data,
   dryRun = true,
+  recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
     headers: { 'Content-type': 'text/plain' },
@@ -36,7 +38,9 @@ export const importEntityInCSVFormat = async ({
     string,
     AxiosResponse<CSVImportAsyncResponse>
   >(
-    `/${entityType}s/name/${getEncodedFqn(name)}/importAsync?dryRun=${dryRun}`,
+    `/${entityType}s/name/${getEncodedFqn(
+      name
+    )}/importAsync?dryRun=${dryRun}&recursive=${recursive}`,
     data,
     configOptions
   );
@@ -49,6 +53,7 @@ export const importServiceInCSVFormat = async ({
   name,
   data,
   dryRun = true,
+  recursive = false,
 }: importEntityInCSVFormatRequestParams) => {
   const configOptions = {
     headers: { 'Content-type': 'text/plain' },
@@ -59,7 +64,7 @@ export const importServiceInCSVFormat = async ({
   >(
     `services/${entityType}s/name/${getEncodedFqn(
       name
-    )}/importAsync?dryRun=${dryRun}`,
+    )}/importAsync?dryRun=${dryRun}&recursive=${recursive}`,
     data,
     configOptions
   );

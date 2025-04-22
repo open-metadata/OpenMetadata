@@ -159,7 +159,7 @@ public class TypeRepository extends EntityRepository<Type> {
     type.setCustomProperties(updatedProperties);
     type.setUpdatedBy(updatedBy);
     type.setUpdatedAt(System.currentTimeMillis());
-    return createOrUpdate(uriInfo, type);
+    return createOrUpdate(uriInfo, type, updatedBy);
   }
 
   private List<CustomProperty> getCustomProperties(Type type) {
@@ -264,6 +264,14 @@ public class TypeRepository extends EntityRepository<Type> {
     Set<String> uniqueColumns = new HashSet<>(columns);
     if (uniqueColumns.size() != columns.size()) {
       throw new IllegalArgumentException("Column names must be unique.");
+    }
+    if (columns.size() < tableConfig.getMinColumns()
+        || columns.size() > tableConfig.getMaxColumns()) {
+      throw new IllegalArgumentException(
+          "Custom Property table has invalid value columns size must be between "
+              + tableConfig.getMinColumns()
+              + " and "
+              + tableConfig.getMaxColumns());
     }
 
     try {

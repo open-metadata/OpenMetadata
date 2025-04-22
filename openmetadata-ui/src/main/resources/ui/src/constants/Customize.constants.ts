@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTabs } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { PageType } from '../generated/system/ui/page';
 
 export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.OVERVIEW]: 'label.overview',
@@ -57,3 +58,42 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.SCHEMAS]: 'label.schema-plural',
   [EntityTabs.ANNOUNCEMENT]: 'label.announcement',
 } as const;
+
+export type CustomizeEntityType =
+  | EntityType.TABLE
+  | EntityType.DASHBOARD
+  | EntityType.DATABASE
+  | EntityType.DATABASE_SCHEMA
+  | EntityType.TOPIC
+  | EntityType.PIPELINE
+  | EntityType.STORED_PROCEDURE
+  | EntityType.API_COLLECTION
+  | EntityType.API_ENDPOINT
+  | EntityType.SEARCH_INDEX
+  | EntityType.MLMODEL
+  | EntityType.DASHBOARD_DATA_MODEL
+  | EntityType.DOMAIN
+  | EntityType.GLOSSARY
+  | EntityType.GLOSSARY_TERM
+  | EntityType.CONTAINER
+  | EntityType.METRIC;
+
+export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
+  [EntityType.TABLE]: PageType.Table,
+  [EntityType.DASHBOARD]: PageType.Dashboard,
+  [EntityType.DATABASE]: PageType.Database,
+  [EntityType.DATABASE_SCHEMA]: PageType.DatabaseSchema,
+  [EntityType.TOPIC]: PageType.Topic,
+  [EntityType.PIPELINE]: PageType.Pipeline,
+  [EntityType.STORED_PROCEDURE]: PageType.StoredProcedure,
+  [EntityType.API_COLLECTION]: PageType.APICollection,
+  [EntityType.API_ENDPOINT]: PageType.APIEndpoint,
+  [EntityType.SEARCH_INDEX]: PageType.SearchIndex,
+  [EntityType.MLMODEL]: PageType.MlModel,
+  [EntityType.DASHBOARD_DATA_MODEL]: PageType.DashboardDataModel,
+  [EntityType.DOMAIN]: PageType.Domain,
+  [EntityType.GLOSSARY]: PageType.Glossary,
+  [EntityType.GLOSSARY_TERM]: PageType.GlossaryTerm,
+  [EntityType.CONTAINER]: PageType.Container,
+  [EntityType.METRIC]: PageType.Metric,
+};

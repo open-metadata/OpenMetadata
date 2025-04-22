@@ -17,27 +17,16 @@
   height: @entity-details-tab-height;
   overflow: hidden;
 }
+
 .reflex-container {
   .entity-resizable-panel-container {
     height: @entity-details-tab-height;
     overflow-y: scroll;
-  }
-  .entity-resizable-right-panel-container {
-    padding: 48px 8px 0 8px;
-  }
-}
+    scrollbar-width: none;
 
-.reflex-container {
-  .entity-summary-resizable-right-panel-container {
-    .summary-panel-container {
-      height: 100%;
+    &::-webkit-scrollbar {
+      display: none;
     }
-    .ant-drawer-content-wrapper {
-      padding-top: 30px;
-    }
-    z-index: 10;
-    overflow-y: auto;
-    padding: 48px 8px 0 8px;
   }
 }
 
@@ -45,61 +34,4 @@
 .content-height-with-resizable-panel {
   height: @page-height;
   overflow-y: hidden;
-
-  .content-resizable-panel-container {
-    height: @page-height;
-    overflow-y: scroll;
-  }
-}
-
-// resizable panel in explore page
-.explore-content-height-resizable-panel {
-  height: @explore-content-height-resizable-panel;
-  overflow-y: hidden;
-  .explore-resizable-panel-container {
-    height: @explore-content-height-resizable-panel;
-    overflow-y: scroll;
-  }
-}
-
-// resizable panel in domain page
-.domain-height-with-resizable-panel {
-  height: @domain-page-height;
-  overflow-y: hidden;
-
-  .domain-resizable-panel-container {
-    height: @domain-page-height;
-    overflow-y: scroll;
-  }
-}
-
-.glossary-height-with-resizable-panel {
-  height: @glossary-page-height;
-  overflow-y: hidden;
-
-  .glossary-resizable-panel-container {
-    height: @glossary-page-height;
-    overflow-y: scroll;
-  }
-}
-
-.glossary-term-height-with-resizable-panel {
-  height: @glossary-term-page-height;
-  overflow-y: hidden;
-
-  .glossary-term-resizable-panel-container {
-    height: @glossary-term-page-height;
-    overflow-y: scroll;
-  }
-}
-
-// resizable panel in tag page
-.tag-height-with-resizable-panel {
-  height: @tag-page-height;
-  overflow-y: hidden;
-
-  .tag-resizable-panel-container {
-    height: @tag-page-height;
-    overflow-y: scroll;
-  }
 }

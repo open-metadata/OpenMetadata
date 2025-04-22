@@ -100,7 +100,7 @@ test.describe('Login flow should work properly', () => {
     // Verify user profile
     await page.locator('[data-testid="dropdown-profile"]').click();
 
-    await expect(page.getByTestId('user-name')).toContainText(
+    await expect(page.getByTestId('nav-user-name')).toContainText(
       `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
     );
   });
@@ -140,7 +140,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test.skip('Refresh should work', async ({ browser }) => {
+  test.fixme('Refresh should work', async ({ browser }) => {
     const browserContext = await browser.newContext();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),
@@ -186,7 +186,7 @@ test.describe('Login flow should work properly', () => {
     await page1.waitForLoadState('networkidle');
     await clickOutside(page1);
 
-    await expect(page1.getByTestId('user-name')).toContainText(/admin/i);
+    await expect(page1.getByTestId('nav-user-name')).toContainText(/admin/i);
 
     // Wait for token expiry
     await page2.waitForTimeout(3 * 60 * 1000);
@@ -197,6 +197,6 @@ test.describe('Login flow should work properly', () => {
     await page2.waitForLoadState('networkidle');
     await clickOutside(page2);
 
-    await expect(page2.getByTestId('user-name')).toContainText(/admin/i);
+    await expect(page2.getByTestId('nav-user-name')).toContainText(/admin/i);
   });
 });

@@ -37,9 +37,14 @@ public class MigrationUtil {
         TestDefinition td = getTestDefinition(daoCollection, testCase);
         if (Objects.nonNull(td) && Objects.equals(td.getName(), TABLE_DIFF)) {
           LOG.debug("Adding caseSensitiveColumns=true table diff test case: {}", testCase.getId());
-          testCase
-              .getParameterValues()
-              .add(new TestCaseParameterValue().withName("caseSensitiveColumns").withValue("true"));
+          if (!hasCaseSensitiveColumnsParam(testCase.getParameterValues())) {
+            testCase
+                .getParameterValues()
+                .add(
+                    new TestCaseParameterValue()
+                        .withName("caseSensitiveColumns")
+                        .withValue("true"));
+          }
           daoCollection.testCaseDAO().update(testCase);
         }
       }
@@ -59,5 +64,11 @@ public class MigrationUtil {
       return null;
     }
     return dao.testDefinitionDAO().findEntityById(records.get(0).getId());
+  }
+
+  private static boolean hasCaseSensitiveColumnsParam(
+      List<TestCaseParameterValue> parameterValues) {
+    return parameterValues.stream()
+        .anyMatch(paramValue -> paramValue.getName().equals("caseSensitiveColumns"));
   }
 }

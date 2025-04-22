@@ -825,6 +825,10 @@ export interface TableProfilerConfig {
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
+    /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
     sampleDataCount?:    number;
@@ -924,6 +928,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    Stream = "Stream",
     Transient = "Transient",
     View = "View",
 }

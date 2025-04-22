@@ -33,7 +33,6 @@ describe('TeamImportResult component', () => {
     expect(
       await screen.findByTestId('import-result-table')
     ).toBeInTheDocument();
-    // header(1) + data(3)
     expect(row).toHaveLength(4);
   });
 

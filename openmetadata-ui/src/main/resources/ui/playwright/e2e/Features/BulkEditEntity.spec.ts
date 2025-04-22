@@ -146,6 +146,8 @@ test.describe('Bulk Edit Entity', () => {
             EntityDataClass.user1.responseData?.['displayName'],
             EntityDataClass.user2.responseData?.['displayName'],
           ],
+          retentionPeriod: undefined,
+          sourceUrl: undefined,
         },
         page,
         customPropertyRecord
@@ -159,11 +161,17 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
+
       await page.getByRole('button', { name: 'Update' }).click();
+
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
-
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
       await toastNotification(page, /details updated successfully/);
 
       await page.click('[data-testid="databases"]');
@@ -181,11 +189,21 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user1.responseData?.['displayName']);
+        page.getByRole('link', {
+          name: EntityDataClass.user1.responseData?.[
+            'displayName'
+          ][0].toUpperCase(),
+          exact: true,
+        })
+      ).toBeVisible();
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user2.responseData?.['displayName']);
+        page.getByRole('link', {
+          name: EntityDataClass.user2.responseData?.[
+            'displayName'
+          ][0].toUpperCase(),
+          exact: true,
+        })
+      ).toBeVisible();
 
       // Verify Tags
       await expect(
@@ -299,12 +317,15 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
         state: 'visible',
       });
-
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
       await page.getByRole('button', { name: 'Update' }).click();
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
-
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -318,11 +339,12 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user1.responseData?.['displayName']);
+        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
+      ).toBeVisible();
+
       await expect(
-        page.locator(`.ant-table-cell [data-testid="owner-label"]`)
-      ).toContainText(EntityDataClass.user2.responseData?.['displayName']);
+        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
+      ).toBeVisible();
 
       await page.getByTestId('column-display-name').click();
 
@@ -430,8 +452,13 @@ test.describe('Bulk Edit Entity', () => {
         processed: '2',
         failed: '0',
       });
-
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
       await page.getByRole('button', { name: 'Update' }).click();
+
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -458,15 +485,11 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page
-          .getByTestId('owner-label')
-          .getByTestId(`${EntityDataClass.user1.responseData?.['displayName']}`)
+        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
       ).toBeVisible();
 
       await expect(
-        page
-          .getByTestId('owner-label')
-          .getByTestId(`${EntityDataClass.user2.responseData?.['displayName']}`)
+        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Tags
@@ -552,11 +575,18 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
       await page.click('[type="button"] >> text="Update"', { force: true });
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
 
+      await page.waitForSelector('.message-banner-wrapper', {
+        state: 'detached',
+      });
+      await updateButtonResponse;
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
