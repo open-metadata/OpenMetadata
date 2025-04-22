@@ -93,7 +93,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
           default -> null;
         };
 
-    if (rootReference == null) return null;
+    if (rootReference == null || rootReference.getId() == null) return null;
     EntityRepository<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
     return rootRepository.get(null, rootReference.getId(), fields);
   }
