@@ -117,7 +117,7 @@ const EntityHeaderTitle = ({
         })}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
-          <div className="d-flex items-center gap-2">
+          <div className="d-flex items-center entity-header-title-container gap-2">
             <Tooltip
               placement="bottom"
               title={stringToHTML(displayName ?? name)}>

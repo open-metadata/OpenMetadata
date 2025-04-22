@@ -212,6 +212,14 @@ export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
+  DatabaseServiceType.SapERP,
+  DatabaseServiceType.BigTable,
+  DatabaseServiceType.SAS,
+  DatabaseServiceType.Synapse,
+  DatabaseServiceType.Teradata,
+  PipelineServiceType.Flink,
+  PipelineServiceType.Spline,
+  StorageServiceType.Gcs,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
