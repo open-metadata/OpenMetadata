@@ -593,7 +593,7 @@ const TagPage = () => {
             className="data-classification"
             data-testid="data-classification"
             gutter={[0, 12]}>
-            <Col className="p-x-md" flex="auto">
+            <Col className="p-x-md" span={15}>
               <EntityHeader
                 badge={
                   tagItem.disabled && (
@@ -616,7 +616,7 @@ const TagPage = () => {
               />
             </Col>
             {haveAssetEditPermission && (
-              <Col className="p-x-md">
+              <Col className="p-x-md flex justify-end" span={9}>
                 <div className="d-flex self-end">
                   {!isCertificationClassification && (
                     <Button

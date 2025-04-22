@@ -551,7 +551,7 @@ export const DataAssetsHeader = ({
             )}
           />
           <Row>
-            <Col flex="auto">
+            <Col span={15}>
               <EntityHeaderTitle
                 badge={alertBadge}
                 deleted={dataAsset?.deleted}
@@ -568,7 +568,7 @@ export const DataAssetsHeader = ({
                 serviceName={dataAssetServiceName}
               />
             </Col>
-            <Col className="flex items-center">
+            <Col className="flex items-center justify-end" span={9}>
               <Space className="">
                 <ButtonGroup
                   className="data-asset-button-group spaced"
