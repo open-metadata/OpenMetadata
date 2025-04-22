@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter, Switch } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import GlossaryRouter from './GlossaryRouter';
 
 jest.mock('../../pages/AddGlossary/AddGlossaryPage.component', () => {
@@ -62,9 +62,7 @@ describe('GlossaryRouter', () => {
           '/glossary/terms/versions/tab',
           '/glossary/terms/versions',
         ]}>
-        <Switch>
-          <GlossaryRouter />
-        </Switch>
+        <GlossaryRouter />
       </MemoryRouter>
     );
 
@@ -79,9 +77,7 @@ describe('GlossaryRouter', () => {
           '/glossary/testGlossary',
           '/glossary/testGlossary/action/import',
         ]}>
-        <Switch>
-          <GlossaryRouter />
-        </Switch>
+        <GlossaryRouter />
       </MemoryRouter>
     );
 
@@ -95,9 +91,7 @@ describe('GlossaryRouter', () => {
           '/glossary/testGlossary/tab',
           '/glossary/testGlossary/subtab',
         ]}>
-        <Switch>
-          <GlossaryRouter />
-        </Switch>
+        <GlossaryRouter />
       </MemoryRouter>
     );
 

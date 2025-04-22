@@ -124,7 +124,7 @@ describe('Test WorkflowArrayFieldTemplate Component', () => {
     );
 
     const placeholderText = screen.getByText(
-      t('message.filter-pattern-placeholder') as string
+      'message.filter-pattern-placeholder'
     );
 
     expect(placeholderText).toBeInTheDocument();

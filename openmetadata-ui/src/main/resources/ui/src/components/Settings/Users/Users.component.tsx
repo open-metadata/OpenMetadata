@@ -110,7 +110,7 @@ const Users = ({
   };
 
   const handleAssetClick = useCallback(
-    (asset: EntityDetailsObjectInterface) => {
+    (asset?: EntityDetailsObjectInterface) => {
       setPreviewAsset(asset);
     },
     []

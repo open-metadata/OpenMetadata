@@ -152,7 +152,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     }
   };
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
@@ -234,7 +234,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           }))}
           placeholder="Select a domain"
           popupClassName="domain-custom-dropdown-class"
-          ref={dropdownRef as any}
+          ref={dropdownRef}
           tagRender={TagRenderer}
           value={
             selectedDomains

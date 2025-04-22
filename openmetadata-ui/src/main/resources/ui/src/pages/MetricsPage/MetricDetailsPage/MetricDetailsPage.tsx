@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
@@ -234,7 +235,7 @@ const MetricDetailsPage = () => {
     }
   };
 
-  const updateMetricDetails = useCallback((data) => {
+  const updateMetricDetails = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Metric;
 
     setMetricDetails((data) => ({

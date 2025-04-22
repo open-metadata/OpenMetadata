@@ -21,6 +21,7 @@ import {
   Select,
   Typography,
 } from 'antd';
+import type { MenuInfo } from 'rc-menu/lib/interface';
 import { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
@@ -79,10 +80,13 @@ function AlertFormSourceItem({
     [resourcesOptions]
   );
 
-  const handleMenuItemClick: MenuItemProps['onClick'] = useCallback((info) => {
-    form.setFieldValue(['resources'], [info.key]);
-    setIsEditMode(true);
-  }, []);
+  const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
+    (info: MenuInfo) => {
+      form.setFieldValue(['resources'], [info.key]);
+      setIsEditMode(true);
+    },
+    []
+  );
 
   return (
     <FormCardSection

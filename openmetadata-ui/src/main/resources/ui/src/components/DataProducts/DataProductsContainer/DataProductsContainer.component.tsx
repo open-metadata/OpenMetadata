@@ -122,7 +122,7 @@ const DataProductsContainer = ({
         <Tag
           className="tag-chip tag-chip-content"
           key={`dp-tags-${product.fullyQualifiedName}`}
-          onClick={() => redirectLink(product.fullyQualifiedName)}>
+          onClick={() => redirectLink(product.fullyQualifiedName ?? '')}>
           <div className="d-flex w-full">
             <div className="d-flex items-center p-x-xs w-full gap-1">
               <DataProductIcon

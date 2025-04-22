@@ -172,7 +172,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   };
 
   const renderSchemaName = useCallback(
-    (_, record: Field) => (
+    (_: unknown, record: Field) => (
       <div className="d-inline-flex w-max-90 vertical-align-inherit">
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">

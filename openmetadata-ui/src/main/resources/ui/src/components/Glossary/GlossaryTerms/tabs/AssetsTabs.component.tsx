@@ -30,10 +30,11 @@ import { ItemType } from 'antd/es/menu/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
-import { isEmpty, isObject } from 'lodash';
+import { isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import {
   forwardRef,
+  ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -132,7 +133,6 @@ const AssetsTabs = forwardRef(
   ) => {
     const { theme } = useApplicationStore();
     const [assetRemoving, setAssetRemoving] = useState(false);
-    const [activeFilter, _] = useState<SearchIndex[]>([]);
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
@@ -219,7 +219,7 @@ const AssetsTabs = forwardRef(
 
     const fetchAssets = useCallback(
       async ({
-        index = activeFilter,
+        index = [SearchIndex.ALL],
         page = currentPage,
         queryFilter,
       }: {
@@ -248,11 +248,11 @@ const AssetsTabs = forwardRef(
           setIsLoading(false);
         }
       },
-      [activeFilter, currentPage, pageSize, searchValue, queryParam]
+      [currentPage, pageSize, searchValue, queryParam]
     );
 
     const hideNotification = () => {
-      notification.close('asset-tab-notification-key');
+      notification.destroy('asset-tab-notification-key');
     };
 
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
@@ -429,18 +429,7 @@ const AssetsTabs = forwardRef(
     }, [entityFqn]);
 
     const assetErrorPlaceHolder = useMemo(() => {
-      if (!isEmpty(activeFilter)) {
-        return (
-          <ErrorPlaceHolderNew
-            heading={t('label.asset')}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
-        );
-      } else if (
-        isObject(noDataPlaceholder) ||
-        searchValue ||
-        !permissions.Create
-      ) {
+      if (isObject(noDataPlaceholder) || searchValue || !permissions.Create) {
         return (
           <ErrorPlaceHolderNew
             className="p-lg "
@@ -520,7 +509,6 @@ const AssetsTabs = forwardRef(
         );
       }
     }, [
-      activeFilter,
       searchValue,
       noDataPlaceholder,
       permissions,
@@ -528,7 +516,7 @@ const AssetsTabs = forwardRef(
       isEntityDeleted,
     ]);
 
-    const renderDropdownContainer = useCallback((menus) => {
+    const renderDropdownContainer = useCallback((menus: ReactNode) => {
       return <div data-testid="manage-dropdown-list-container">{menus}</div>;
     }, []);
 
@@ -677,7 +665,6 @@ const AssetsTabs = forwardRef(
         )
       );
     }, [
-      activeFilter,
       activeEntity,
       isLoading,
       data,
@@ -722,18 +709,11 @@ const AssetsTabs = forwardRef(
       );
 
       fetchAssets({
-        index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+        index: [SearchIndex.ALL],
         page: currentPage,
         queryFilter: newFilter,
       });
-    }, [
-      activeFilter,
-      currentPage,
-      pageSize,
-      searchValue,
-      queryFilter,
-      quickFilterQuery,
-    ]);
+    }, [currentPage, pageSize, searchValue, queryFilter, quickFilterQuery]);
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
@@ -785,7 +765,7 @@ const AssetsTabs = forwardRef(
         // Hence need to manually trigger it for this case
         currentPage === 1 &&
           fetchAssets({
-            index: isEmpty(activeFilter) ? [SearchIndex.ALL] : activeFilter,
+            index: [SearchIndex.ALL],
             page: 1,
             queryFilter: newFilter,
           });

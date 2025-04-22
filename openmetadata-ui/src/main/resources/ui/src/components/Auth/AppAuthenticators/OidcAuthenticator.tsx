@@ -152,7 +152,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           {/* callback route to handle the auth flow after user has successfully provided their consent */}
           <Route
             element={
-              <>
+              (
                 <Callback
                   userManager={userManager}
                   onError={(error) => {
@@ -164,7 +164,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
                     onLoginSuccess(user as OidcUser);
                   }}
                 />
-              </>
+              ) as ReactNode
             }
             path={ROUTES.CALLBACK}
           />
@@ -192,7 +192,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
               <Navigate to={ROUTES.SIGNIN} />
             ) : (
               // render the authenticator component to handle the auth flow while user is signing in
-              <AppWithAuth />
+              ((<AppWithAuth />) as ReactNode)
             ))}
         </Routes>
 

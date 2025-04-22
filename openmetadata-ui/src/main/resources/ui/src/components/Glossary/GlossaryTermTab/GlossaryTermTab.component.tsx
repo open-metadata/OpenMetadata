@@ -18,6 +18,7 @@ import {
   Checkbox,
   Col,
   Dropdown,
+  MenuProps,
   Modal,
   Row,
   Space,
@@ -571,7 +572,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
 
-  const statusDropdownMenu = useMemo(
+  const statusDropdownMenu: MenuProps = useMemo(
     () => ({
       items: [
         {

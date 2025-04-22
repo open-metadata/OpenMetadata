@@ -21,7 +21,7 @@ import {
   TreeSelect,
   TreeSelectProps,
 } from 'antd';
-import { Key } from 'antd/lib/table/interface';
+import { SafeKey } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
@@ -74,7 +74,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const { t } = useTranslation();
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const expandableKeys = useRef<string[]>([]);
-  const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<SafeKey[]>([]);
   const [searchOptions, setSearchOptions] = useState<Glossary[] | null>(null);
 
   const form = Form.useFormInstance();

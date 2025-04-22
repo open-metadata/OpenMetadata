@@ -12,6 +12,7 @@
  */
 
 import { ReactNode } from 'react';
+
 import { AnalyticsProvider } from 'use-analytics';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAnalyticInstance } from '../../utils/WebAnalyticsUtils';

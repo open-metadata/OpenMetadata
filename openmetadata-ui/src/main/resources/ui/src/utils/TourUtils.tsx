@@ -30,7 +30,7 @@ export const getTourSteps = ({
   updateTourPage,
 }: ArgObject) => [
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-activity-feed"
@@ -45,7 +45,7 @@ export const getTourSteps = ({
     stepInteraction: false,
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-search-for-matching-dataset"
@@ -62,7 +62,7 @@ export const getTourSteps = ({
   },
   {
     beforePrev: clearSearchTerm,
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-type-search-term"
@@ -86,7 +86,7 @@ export const getTourSteps = ({
     beforePrev: () => {
       updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
     },
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-explore-summary-asset"
@@ -101,7 +101,7 @@ export const getTourSteps = ({
     stepInteraction: false,
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-click-on-link-to-view-more"
@@ -119,7 +119,7 @@ export const getTourSteps = ({
     beforePrev: () => {
       updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
     },
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-high-level-assets-information-step"
@@ -134,7 +134,7 @@ export const getTourSteps = ({
     selector: '[data-testid="entity-page-header"]',
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-owner-step"
@@ -149,7 +149,7 @@ export const getTourSteps = ({
     selector: '[data-testid="owner-label"]',
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-follow-step"
@@ -164,7 +164,7 @@ export const getTourSteps = ({
     selector: '[data-testid="entity-follow-button"]',
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-get-to-know-table-schema"
@@ -183,7 +183,7 @@ export const getTourSteps = ({
       updateActiveTab(EntityTabs.SCHEMA);
     },
     actionType: 'click',
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-click-on-entity-tab"
@@ -200,7 +200,7 @@ export const getTourSteps = ({
     },
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-look-at-sample-data"
@@ -221,7 +221,7 @@ export const getTourSteps = ({
       updateActiveTab(EntityTabs.PROFILER);
     },
     actionType: 'click',
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-click-on-entity-tab"
@@ -235,7 +235,7 @@ export const getTourSteps = ({
     selector: `[data-testid="${EntityTabs.PROFILER}"]`,
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-discover-data-assets-with-data-profile"
@@ -259,7 +259,7 @@ export const getTourSteps = ({
       updateActiveTab(EntityTabs.LINEAGE);
     },
     actionType: 'click',
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-click-on-entity-tab"
@@ -273,7 +273,7 @@ export const getTourSteps = ({
     selector: `[data-testid="${EntityTabs.LINEAGE}"]`,
   },
   {
-    content: () => (
+    content: (
       <p>
         <Transi18next
           i18nKey="message.tour-step-trace-path-across-tables"

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { LoginCallback } from '@okta/okta-react';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
@@ -24,21 +24,19 @@ import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
 import withSuspenseFallback from './withSuspenseFallback';
 
 const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LoginPage/SignInPage'))
+  lazy(() => import('../../pages/LoginPage/SignInPage'))
 );
 
 const ForgotPassword = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/ForgotPassword/ForgotPassword.component')
-  )
+  lazy(() => import('../../pages/ForgotPassword/ForgotPassword.component'))
 );
 
 const ResetPassword = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ResetPassword/ResetPassword.component'))
+  lazy(() => import('../../pages/ResetPassword/ResetPassword.component'))
 );
 
 const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/SignUp/BasicSignup.component'))
+  lazy(() => import('../../pages/SignUp/BasicSignup.component'))
 );
 
 export const UnAuthenticatedAppRouter = () => {
@@ -50,7 +48,7 @@ export const UnAuthenticatedAppRouter = () => {
     (authConfig.provider === AuthProvider.Basic ||
       authConfig.provider === AuthProvider.LDAP);
 
-  const callbackComponent = useMemo(() => {
+  const CallbackComponent = useMemo(() => {
     switch (authConfig?.provider) {
       case AuthProvider.Okta: {
         return LoginCallback;
@@ -72,8 +70,8 @@ export const UnAuthenticatedAppRouter = () => {
     <Routes>
       <Route element={<SigninPage />} path={ROUTES.SIGNIN} />
 
-      {callbackComponent && (
-        <Route element={<callbackComponent />} path={ROUTES.CALLBACK} />
+      {CallbackComponent && (
+        <Route element={<CallbackComponent />} path={ROUTES.CALLBACK} />
       )}
 
       {!isSigningUp && (

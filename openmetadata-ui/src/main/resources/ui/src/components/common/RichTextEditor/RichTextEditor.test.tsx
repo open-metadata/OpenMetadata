@@ -12,8 +12,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { EditorContentRef } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import RichTextEditor from './RichTextEditor';
+import { EditorContentRef } from './RichTextEditor.interface';
 
 jest.mock('../../BlockEditor/BlockEditor', () => {
   return jest.fn().mockImplementation(({ content, onChange, ref }: any) => {

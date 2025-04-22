@@ -158,7 +158,7 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
               className="code-copy-message"
               data-copied="false"
               data-testid="copied-message">
-              {i18n.t('label.copied')}
+              {i18n.t('label.copied').toString()}
             </span>
             <img
               className="code-copy-button"

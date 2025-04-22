@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import { Switch } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -33,20 +33,32 @@ const ClassificationRouter = () => {
   );
 
   return (
-    <Switch>
-      <AdminProtectedRoute
-        exact
-        component={TagsPage}
-        hasPermission={tagCategoryPermission}
-        path={[ROUTES.TAGS, ROUTES.TAG_DETAILS]}
+    <Routes>
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={tagCategoryPermission}>
+            <TagsPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TAGS}
       />
-      <AdminProtectedRoute
-        exact
-        component={ClassificationVersionPage}
-        hasPermission={tagCategoryPermission}
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={tagCategoryPermission}>
+            <TagsPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TAG_DETAILS}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={tagCategoryPermission}>
+            <ClassificationVersionPage />
+          </AdminProtectedRoute>
+        }
         path={ROUTES.TAG_VERSION}
       />
-    </Switch>
+    </Routes>
   );
 };
 

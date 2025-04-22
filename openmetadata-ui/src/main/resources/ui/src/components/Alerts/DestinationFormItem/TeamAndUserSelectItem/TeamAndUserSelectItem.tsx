@@ -25,6 +25,7 @@ import {
   Typography,
 } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
+import type { MenuInfo } from 'rc-menu/lib/interface';
 import {
   ReactNode,
   useCallback,
@@ -163,7 +164,7 @@ function TeamAndUserSelectItem({
   );
 
   const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
-    ({ key }) => {
+    ({ key }: MenuInfo) => {
       // Find out if clicked option is present in selected key
       const selectedKey = selectedOptions.find((option) => option === key);
 

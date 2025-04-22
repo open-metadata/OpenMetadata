@@ -53,6 +53,12 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
 
         return formatValueBasedOnContent(backendFormat);
       },
+      clearEditorContent() {
+        // editorRef.current?.editor?.setContent('');
+      },
+      setEditorContent(_content: string) {
+        // editorRef.current?.editor?.setContent(content);
+      },
     }));
 
     return (

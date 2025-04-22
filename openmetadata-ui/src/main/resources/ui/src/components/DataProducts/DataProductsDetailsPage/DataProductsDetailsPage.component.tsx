@@ -379,9 +379,12 @@ const DataProductsDetailsPage = ({
     navigate(path);
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handelExtensionUpdate = useCallback(
     async (updatedDataProduct: DataProduct) => {

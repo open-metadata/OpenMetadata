@@ -15,6 +15,7 @@ import '@inovua/reactdatagrid-community/index.css';
 import {
   TypeColumn,
   TypeComputedProps,
+  TypeEditInfo,
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
@@ -148,9 +149,9 @@ const BulkEntityImport = ({
   );
 
   const onEditComplete = useCallback(
-    ({ value, columnId, rowId }) => {
+    ({ value, columnId, rowId }: TypeEditInfo) => {
       const data = [...dataSource];
-      data[rowId][columnId] = value;
+      data[Number(rowId)][columnId] = value;
 
       setDataSource(data);
     },

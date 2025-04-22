@@ -154,7 +154,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Form
+        <Form<ProfilerConfig>
           focusOnFirstError
           noHtml5Validate
           className={classNames('rjsf no-header profiler-settings-form')}

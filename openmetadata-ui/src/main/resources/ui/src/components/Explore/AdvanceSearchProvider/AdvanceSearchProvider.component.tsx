@@ -10,6 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Config,
+  Field,
+  FieldGroup,
+  ImmutableTree,
+  JsonTree,
+  Utils as QbUtils,
+  ValueField,
+  ValueSource,
+} from '@react-awesome-query-builder/antd';
 import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
@@ -20,16 +30,6 @@ import {
   useMemo,
   useState,
 } from 'react';
-import {
-  Config,
-  Field,
-  FieldGroup,
-  ImmutableTree,
-  JsonTree,
-  Utils as QbUtils,
-  ValueField,
-  ValueSource,
-} from 'react-awesome-query-builder';
 import { useNavigate } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -116,7 +116,8 @@ export const AdvanceSearchProvider = ({
   const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
-    () => QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+    () =>
+      QbUtils.Validation.sanitizeTree(QbUtils.loadTree(emptyJsonTree), config),
     []
   );
 
@@ -138,7 +139,7 @@ export const AdvanceSearchProvider = ({
     try {
       const filter = JSON.parse(parsedSearch.queryFilter);
       const immutableTree = QbUtils.loadTree(filter as JsonTree);
-      if (QbUtils.isValidTree(immutableTree)) {
+      if (QbUtils.isValidTree(immutableTree, config)) {
         return filter as JsonTree;
       }
     } catch {
@@ -149,7 +150,7 @@ export const AdvanceSearchProvider = ({
   }, [parsedSearch]);
 
   const [showModal, setShowModal] = useState(false);
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
     jsonTree
       ? QbUtils.checkTree(QbUtils.loadTree(jsonTree), config)
       : defaultTree
@@ -173,7 +174,7 @@ export const AdvanceSearchProvider = ({
   }, [searchIndex, isExplorePage]);
 
   const handleChange = useCallback(
-    (nTree, nConfig) => {
+    (nTree: ImmutableTree, nConfig: Config) => {
       setConfig(nConfig);
       setTreeInternal(nTree);
     },

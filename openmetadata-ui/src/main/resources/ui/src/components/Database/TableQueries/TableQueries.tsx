@@ -584,11 +584,10 @@ const TableQueries: FC<TableQueriesProp> = ({
                         <span>
                           <label>{t('label.created-date')}</label>
                           <DatePicker.RangePicker
-                            allowClear
                             showNow
+                            allowClear={{ clearIcon: <CloseCircleOutlined /> }}
                             bordered={false}
                             className="p-t-0"
-                            clearIcon={<CloseCircleOutlined />}
                             data-testid="data-range-picker"
                             open={isClickedCalendar}
                             suffixIcon={null}

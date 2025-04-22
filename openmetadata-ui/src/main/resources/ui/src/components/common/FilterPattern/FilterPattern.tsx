@@ -14,6 +14,7 @@
 import { Checkbox, Col, Divider, Row, Select, Space, Typography } from 'antd';
 
 import { capitalize } from 'lodash';
+import { useTranslation } from 'react-i18next';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
@@ -28,6 +29,8 @@ const FilterPattern = ({
   includePatternExtraInfo,
   type,
 }: FilterPatternProps) => {
+  const { t } = useTranslation();
+
   return (
     <div data-testid="filter-pattern-container">
       <Row>

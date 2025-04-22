@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
 import { ROUTES } from '../../constants/constants';
@@ -229,14 +230,17 @@ const MlModelPage = () => {
     }
   };
 
-  const updateMlModelDetailsState = useCallback((data) => {
-    const updatedData = data as Mlmodel;
+  const updateMlModelDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Mlmodel;
 
-    setMlModelDetail((data) => ({
-      ...(data ?? updatedData),
-      version: updatedData.version,
-    }));
-  }, []);
+      setMlModelDetail((data) => ({
+        ...(data ?? updatedData),
+        version: updatedData.version,
+      }));
+    },
+    []
+  );
 
   const handleMlModelUpdate = useCallback(
     async (data: Mlmodel) => {

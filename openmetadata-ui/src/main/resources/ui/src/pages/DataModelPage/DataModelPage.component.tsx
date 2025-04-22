@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -259,14 +260,17 @@ const DataModelsPage = () => {
     }
   };
 
-  const updateDataModelDetailsState = useCallback((data) => {
-    const updatedData = data as DashboardDataModel;
+  const updateDataModelDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as DashboardDataModel;
 
-    setDataModelData((data) => ({
-      ...(data ?? updatedData),
-      version: updatedData.version,
-    }));
-  }, []);
+      setDataModelData((data) => ({
+        ...(data ?? updatedData),
+        version: updatedData.version,
+      }));
+    },
+    []
+  );
 
   useEffect(() => {
     if (hasViewPermission) {

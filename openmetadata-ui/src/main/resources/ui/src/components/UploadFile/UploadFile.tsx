@@ -13,7 +13,6 @@
 import { Space, Typography, UploadProps } from 'antd';
 import Dragger from 'antd/lib/upload/Dragger';
 import { AxiosError } from 'axios';
-
 import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ImportIcon } from '../../assets/svg/ic-drag-drop.svg';

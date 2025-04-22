@@ -10,19 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DefaultOptionType, RefSelectProps } from 'antd/lib/select';
-import { EntityReference } from '../../../generated/entity/type';
+import { DatePicker } from 'antd';
+import type { DateTime } from 'luxon';
+import luxonGenerateConfig from 'rc-picker/lib/generate/luxon';
 
-export interface DomainSelectableTreeProps {
-  value?: string[]; // array of fqn
-  onSubmit: (option: EntityReference[]) => Promise<void>;
-  visible: boolean;
-  onCancel: () => void;
-  isMultiple?: boolean;
-  initialDomains?: EntityReference[];
-  dropdownRef?: React.RefObject<RefSelectProps>;
-  handleDropdownChange?: (open: boolean) => void;
-  showAllDomains?: boolean;
-}
+const MyDatePicker = DatePicker.generatePicker<DateTime>(luxonGenerateConfig);
 
-export type TreeListItem = Omit<DefaultOptionType, 'label'>;
+export default MyDatePicker;

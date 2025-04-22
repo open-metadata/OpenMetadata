@@ -158,10 +158,10 @@ const AddGlossaryTermForm = ({
         form.setFieldValue('reviewers', reviewers);
       }
       if (style?.color) {
-        form.setFieldValue('color', style.color);
+        form.setFieldValue('style.color', style.color);
       }
       if (style?.iconURL) {
-        form.setFieldValue('iconURL', style.iconURL);
+        form.setFieldValue('style.iconURL', style.iconURL);
       }
 
       if (owners) {

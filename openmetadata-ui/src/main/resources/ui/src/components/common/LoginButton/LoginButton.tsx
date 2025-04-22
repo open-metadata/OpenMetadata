@@ -14,6 +14,7 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button } from 'antd';
 
+import { useTranslation } from 'react-i18next';
 import './login-button.style.less';
 
 interface LoginButtonProps {
@@ -27,6 +28,7 @@ const LoginButton = ({
   ssoBrandLogo,
   onClick,
 }: LoginButtonProps) => {
+  const { t } = useTranslation();
   const getImageElement = () => (
     <img
       alt={`${ssoBrandName} Logo`}

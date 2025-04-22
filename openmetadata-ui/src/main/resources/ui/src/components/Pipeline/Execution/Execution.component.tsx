@@ -26,6 +26,7 @@ import { RangePickerProps } from 'antd/lib/date-picker';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
+import { MenuInfo } from 'rc-menu/lib/interface';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as Calendar } from '../../../assets/svg/calendar.svg';
@@ -85,7 +86,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   };
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(
-    (event) => setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
+    (event: MenuInfo) =>
+      setStatus(MenuOptions[event.key as keyof typeof MenuOptions]),
     []
   );
 

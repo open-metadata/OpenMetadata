@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
-import { isUndefined } from 'lodash';
 import {
   FieldGroup,
   Fields,
   RenderSettings,
-} from 'react-awesome-query-builder';
+} from '@react-awesome-query-builder/antd';
+import { Button } from 'antd';
+import { isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import {
   EsBoolQuery,

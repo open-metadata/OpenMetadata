@@ -186,7 +186,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
     }
   }, 300);
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 

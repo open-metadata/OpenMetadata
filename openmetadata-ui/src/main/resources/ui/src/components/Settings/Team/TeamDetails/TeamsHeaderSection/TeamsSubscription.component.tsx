@@ -146,15 +146,8 @@ const TeamsSubscription = ({
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
-              color={DE_ACTIVE_COLOR}
               data-testid="edit-team-subscription"
-              icon={
-                <EditIcon
-                  color={DE_ACTIVE_COLOR}
-                  {...ICON_DIMENSION}
-                  width="12px"
-                />
-              }
+              icon={<EditIcon {...ICON_DIMENSION} width="12px" />}
               {...ICON_DIMENSION}
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
@@ -171,7 +164,6 @@ const TeamsSubscription = ({
             })}>
             <Button
               className="flex-center teams-info-email-edit-button p-0"
-              color={DE_ACTIVE_COLOR}
               data-testid="edit-team-subscription"
               icon={
                 <EditIcon

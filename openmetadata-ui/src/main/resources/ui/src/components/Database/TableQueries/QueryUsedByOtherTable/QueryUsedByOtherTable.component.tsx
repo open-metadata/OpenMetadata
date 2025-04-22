@@ -113,7 +113,7 @@ const QueryUsedByOtherTable = ({
 
   const handleOnChange = (
     _: string[],
-    options: DefaultOptionType | DefaultOptionType[]
+    options?: DefaultOptionType | DefaultOptionType[]
   ) => {
     if (isArray(options)) {
       onChange(options);

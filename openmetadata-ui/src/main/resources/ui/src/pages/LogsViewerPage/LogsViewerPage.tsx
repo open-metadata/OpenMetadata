@@ -12,6 +12,7 @@
  */
 
 import { DownloadOutlined } from '@ant-design/icons';
+import { LazyLog } from '@melloware/react-logviewer';
 import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
@@ -24,14 +25,12 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LazyLog } from 'react-lazylog';
 import { CopyToClipboardButton } from '../../components/common/CopyToClipboardButton/CopyToClipboardButton';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
-import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
 import {
@@ -61,11 +60,13 @@ import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './logs-viewer-page.style.less';
-import { LogViewerParams } from './LogsViewerPage.interfaces';
 import LogViewerPageSkeleton from './LogsViewerPageSkeleton.component';
 
 const LogsViewerPage = () => {
-  const { logEntityType } = useRequiredParams<LogViewerParams>();
+  const { logEntityType } = useRequiredParams<{
+    logEntityType: EntityType;
+    fqn: string;
+  }>();
   const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
@@ -79,7 +80,7 @@ const LogsViewerPage = () => {
   const [isLogsLoading, setIsLogsLoading] = useState(true);
 
   const isApplicationType = useMemo(
-    () => logEntityType === GlobalSettingOptions.APPLICATIONS,
+    () => logEntityType === EntityType.APPLICATION,
     [logEntityType]
   );
 

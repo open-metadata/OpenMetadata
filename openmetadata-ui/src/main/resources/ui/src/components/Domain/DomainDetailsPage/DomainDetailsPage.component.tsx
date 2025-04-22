@@ -423,7 +423,7 @@ const DomainDetailsPage = ({
   };
 
   const handleAssetClick = useCallback(
-    (asset: EntityDetailsObjectInterface) => {
+    (asset?: EntityDetailsObjectInterface) => {
       setPreviewAsset(asset);
     },
     []

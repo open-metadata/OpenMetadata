@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ColumnsType } from 'antd/lib/table';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -184,8 +184,10 @@ jest.mock('../../common/ListView/ListView.component', () => ({
           (column: ColumnsType[0], key: string) =>
             column.render && (
               <>
-                <div key={key}>{column.title}</div>
-                <div key={key}>{column.render(column.title, column, 1)}</div>
+                <div key={key}>{column.title as string}</div>
+                <div key={key}>
+                  {column.render(column.title, column, 1) as ReactNode}
+                </div>
               </>
             )
         )}

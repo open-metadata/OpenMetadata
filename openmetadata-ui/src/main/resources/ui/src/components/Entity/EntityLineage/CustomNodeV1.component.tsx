@@ -61,10 +61,10 @@ const CustomNodeV1 = (props: NodeProps) => {
   const [isTraced, setIsTraced] = useState<boolean>(false);
 
   const getActiveNode = useCallback(
-    (nodeId) => {
+    (nodeId: string) => {
       return nodes.find((item) => item.id === nodeId);
     },
-    [id, nodes]
+    [nodes]
   );
 
   const showDqTracing = useMemo(() => {

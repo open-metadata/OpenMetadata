@@ -218,7 +218,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
       )}
 
       <EntityVersionTimeLine
-        currentVersion={version}
+        currentVersion={version ?? ''}
         entityType={EntityType.API_ENDPOINT}
         versionHandler={versionHandler}
         versionList={versionList}

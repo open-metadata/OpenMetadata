@@ -15,7 +15,7 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import {
@@ -122,7 +122,7 @@ describe('EntityImport component', () => {
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 
@@ -193,7 +193,7 @@ describe('EntityImport component', () => {
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 
@@ -262,7 +262,7 @@ describe('EntityImport component', () => {
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 
@@ -318,7 +318,7 @@ describe('EntityImport component', () => {
 
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
-    const uploadDragger = await waitForElement(() =>
+    const uploadDragger = await waitFor(() =>
       screen.getByTestId('upload-file-widget')
     );
 

@@ -58,7 +58,10 @@ import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWid
 import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
 
-const ReactGridLayout = WidthProvider(RGL);
+// Create a properly typed ReactGridLayout component
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
+  ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 export type CustomizeTabWidgetProps = WidgetCommonProps;
 

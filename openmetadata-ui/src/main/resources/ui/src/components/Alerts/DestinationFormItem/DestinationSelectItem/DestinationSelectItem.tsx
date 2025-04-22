@@ -110,7 +110,7 @@ function DestinationSelectItem({
     [];
 
   const handleTabChange = useCallback(
-    (key) => {
+    (key: string) => {
       setActiveTab(key);
       setDestinationOptions(getFilteredDestinationOptions(key, selectedSource));
     },

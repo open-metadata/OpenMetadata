@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/es/menu/interface';
 import { AxiosError } from 'axios';
 import { Change, diffLines } from 'diff';
 import i18Next from 'i18next';
@@ -727,14 +726,14 @@ export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   },
 ];
 
-export const INCIDENT_TASK_ACTION_LIST: ItemType[] = [
+export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.re-assign'),
+    label: i18Next.t('label.re-assign') as string,
     key: TaskActionMode.RE_ASSIGN,
     icon: EditSuggestionIcon,
   },
   {
-    label: i18Next.t('label.resolve'),
+    label: i18Next.t('label.resolve') as string,
     key: TaskActionMode.RESOLVE,
     icon: CloseIcon,
   },

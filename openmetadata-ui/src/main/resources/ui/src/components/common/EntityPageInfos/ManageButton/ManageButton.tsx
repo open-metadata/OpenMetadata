@@ -113,7 +113,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     [editDisplayNamePermission, onEditDisplayName, deleted]
   );
 
-  const renderDropdownContainer = useCallback((menus) => {
+  const renderDropdownContainer = useCallback((menus: React.ReactNode) => {
     return <div data-testid="manage-dropdown-list-container">{menus}</div>;
   }, []);
 

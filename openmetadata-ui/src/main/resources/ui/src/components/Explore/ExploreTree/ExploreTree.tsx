@@ -35,6 +35,7 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
+import { DataNode } from 'antd/es/tree';
 import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
@@ -352,8 +353,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
-      titleRender={(node) => <ExploreTreeTitle node={node} />}
-      treeData={treeData}
+      titleRender={(node) => (
+        <ExploreTreeTitle node={node as ExploreTreeNode} />
+      )}
+      treeData={treeData as DataNode[]}
       onSelect={onNodeSelect}
     />
   );

@@ -203,7 +203,7 @@ const ExplorePageV1: FunctionComponent = () => {
     );
 
   const handleQuickFilterChange = useCallback(
-    (quickFilter) => {
+    (quickFilter?: QueryFilterInterface) => {
       navigate({
         search: Qs.stringify({
           ...parsedSearch,

@@ -12,14 +12,10 @@
  */
 
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import { ListValues, RenderSettings } from '@react-awesome-query-builder/antd';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import { isArray, isEmpty, toLower } from 'lodash';
 import React from 'react';
-import {
-  AsyncFetchListValues,
-  ListValues,
-  RenderSettings,
-} from 'react-awesome-query-builder';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -353,7 +349,7 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     }));
 };
 
-export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
+export const getTierOptions = async (): Promise<ListValues> => {
   try {
     const { data: tiers } = await getTags({
       parent: 'Tier',
@@ -365,7 +361,7 @@ export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
       value: tier.fullyQualifiedName,
     }));
 
-    return tierFields;
+    return tierFields as ListValues;
   } catch (error) {
     return [];
   }

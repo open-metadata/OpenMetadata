@@ -45,6 +45,7 @@ import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
+import { ItemType } from 'antd/lib/menu/interface';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
@@ -105,13 +106,12 @@ import {
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
-import ActivityFeedEditor, {
-  EditorContentRef,
-} from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
+import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -123,7 +123,7 @@ export const TaskTab = ({
   hasGlossaryReviewer,
   ...rest
 }: TaskTabProps) => {
-  const editorRef = useRef<EditorContentRef>();
+  const editorRef = useRef<EditorContentRef>(null);
   const navigate = useNavigate();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
@@ -421,7 +421,7 @@ export const TaskTab = ({
         // Added block for sonar code smell
       })
       .finally(() => {
-        editorRef.current?.clearEditorValue();
+        editorRef.current?.clearEditorContent();
       });
   };
 
@@ -667,7 +667,7 @@ export const TaskTab = ({
           icon={<DownOutlined />}
           loading={isActionLoading}
           menu={{
-            items: INCIDENT_TASK_ACTION_LIST,
+            items: INCIDENT_TASK_ACTION_LIST as ItemType[],
             selectable: true,
             selectedKeys: [taskAction.key],
             onClick: handleTaskMenuClick,

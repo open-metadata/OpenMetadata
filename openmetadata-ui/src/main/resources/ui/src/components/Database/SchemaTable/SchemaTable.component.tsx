@@ -515,7 +515,7 @@ const SchemaTable = () => {
         dataIndex: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         key: TABLE_COLUMNS_KEYS.DATA_QUALITY_TEST,
         width: 120,
-        render: (_, record) => {
+        render: (_: string, record: Column) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(
               getEntityColumnFQN(column.entityLink ?? ''),

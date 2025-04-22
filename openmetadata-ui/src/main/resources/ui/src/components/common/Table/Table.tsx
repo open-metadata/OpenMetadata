@@ -20,18 +20,20 @@ import {
   Table as AntdTable,
   Typography,
 } from 'antd';
-import { ColumnType } from 'antd/lib/table';
+import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
+import type { Reference } from 'rc-table';
 import {
   forwardRef,
-  Ref,
+  LegacyRef,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useAntdColumnResize } from 'react-antd-column-resize';
+import { Column } from 'react-antd-column-resize/dist/useAntdColumnResize/types';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -68,12 +70,12 @@ const Table = <T extends Record<string, unknown>>(
     defaultVisibleColumns,
     ...rest
   }: TableProps<T>,
-  ref: Ref<HTMLDivElement> | null | undefined
+  ref: LegacyRef<Reference> | null | undefined
 ) => {
   const { t } = useTranslation();
   const { type } = useGenericContext();
   const { currentUser } = useApplicationStore();
-  const [propsColumns, setPropsColumns] = useState<ColumnType<T>[]>([]);
+  const [propsColumns, setPropsColumns] = useState<ColumnsType<T>>([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [dropdownColumnList, setDropdownColumnList] = useState<
     TableColumnDropdownList[]
@@ -82,7 +84,7 @@ const Table = <T extends Record<string, unknown>>(
     string[]
   >([]);
   const { resizableColumns, components, tableWidth } = useAntdColumnResize(
-    () => ({ columns: propsColumns, minWidth: 80 }),
+    () => ({ columns: propsColumns as Column[], minWidth: 80 }),
     [propsColumns]
   );
 
@@ -295,7 +297,7 @@ const Table = <T extends Record<string, unknown>>(
       <Col span={24}>
         <AntdTable
           {...rest}
-          columns={propsColumns}
+          columns={propsColumns as unknown as ColumnType<T>[]}
           expandable={{
             ...getTableExpandableConfig<T>(),
             ...rest.expandable,
@@ -322,4 +324,5 @@ const Table = <T extends Record<string, unknown>>(
   );
 };
 
-export default forwardRef<HTMLDivElement, TableProps<any>>(Table);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default forwardRef<Reference, TableProps<any>>(Table);

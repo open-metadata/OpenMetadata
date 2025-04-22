@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
 import { ROUTES } from '../../constants/constants';
@@ -274,14 +275,17 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const updatePipelineDetailsState = useCallback((data) => {
-    const updatedData = data as Pipeline;
+  const updatePipelineDetailsState = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Pipeline;
 
-    setPipelineDetails((data) => ({
-      ...(data ?? updatedData),
-      version: updatedData.version,
-    }));
-  }, []);
+      setPipelineDetails((data) => ({
+        ...(data ?? updatedData),
+        version: updatedData.version,
+      }));
+    },
+    []
+  );
 
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {

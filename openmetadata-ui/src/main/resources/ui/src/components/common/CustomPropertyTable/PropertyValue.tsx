@@ -40,6 +40,7 @@ import {
 } from 'lodash';
 import moment, { Moment } from 'moment';
 import { CSSProperties, FC, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
@@ -104,6 +105,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     };
   }, [property, extension]);
 
+  const { t } = useTranslation();
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 

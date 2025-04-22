@@ -11,19 +11,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Col, Row } from 'antd';
+import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
-import RGL, { WidthProvider } from 'react-grid-layout';
+import {
+  ReactGridLayoutProps,
+  Responsive,
+  WidthProvider,
+} from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import './generic-tab.less';
-
-import { Col, Row } from 'antd';
-import { isUndefined } from 'lodash';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
-const ReactGridLayout = WidthProvider(RGL);
+import './generic-tab.less';
+
+const ReactGridLayout = WidthProvider(Responsive) as React.ComponentType<
+  ReactGridLayoutProps & { children?: React.ReactNode }
+>;
 
 interface GenericTabProps {
   layout: WidgetConfig[];

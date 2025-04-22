@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import ReactDataGrid from '@inovua/reactdatagrid-community';
+import { TypeEditInfo } from '@inovua/reactdatagrid-community/types';
 import { useCallback } from 'react';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
@@ -32,10 +33,10 @@ const TableTypePropertyEditTable = ({
   }));
 
   const onEditComplete = useCallback(
-    ({ value, columnId, rowId }) => {
+    ({ value, columnId, rowId }: TypeEditInfo) => {
       const data = [...dataSource];
 
-      data[rowId][columnId] = value;
+      data[Number(rowId)][columnId] = value;
 
       handleEditDataSource(data);
     },
