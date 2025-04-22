@@ -197,8 +197,9 @@ class RestSource(ApiServiceSource):
     ) -> Optional[RESTEndpoint]:
         try:
             endpoint = RESTEndpoint(**info)
-            endpoint.name = f"{path}/{method_type}"
-            endpoint.display_name = f"{path}"
+            path_clean_name = clean_uri(path)
+            endpoint.name = f"{path_clean_name}/{method_type}"
+            endpoint.display_name = f"{path_clean_name}"
             endpoint.url = self._generate_endpoint_url(collection, endpoint)
             return endpoint
         except Exception as err:
@@ -279,6 +280,18 @@ class RestSource(ApiServiceSource):
                 .get("schema", {})
                 .get("$ref", {})
             )
+            if not schema_ref:
+                logger.debug("Trying to parse response schema from schema property")
+                schema_ref = (
+                    info.get("responses", {})
+                    .get("200", {})
+                    .get("content", {})
+                    .get("application/json", {})
+                    .get("schema", {})
+                    .get("properties", {})
+                    .get("data", {})
+                    .get("$ref")
+                )
             if not schema_ref:
                 logger.debug("No response schema found for the endpoint")
                 return None
