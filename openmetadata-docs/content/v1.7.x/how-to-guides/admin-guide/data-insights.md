@@ -68,7 +68,7 @@ When configuring the Data Insights application:
 - Enable **Backfill Configuration**.
 
 {% image
-src="/images/v1.7/how-to-guides/admin-guide/data-insight6.png"
+src="/images/v1.7/how-to-guides/admin-guide/data-insights6.png"
 alt="Backfill Configuration"
 caption="Backfill Configuration"
 /%}
