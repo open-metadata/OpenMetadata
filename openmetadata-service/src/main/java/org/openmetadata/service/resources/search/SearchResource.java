@@ -597,7 +597,7 @@ public class SearchResource {
   }
 
   @PUT
-  @Path("/settings")
+  @Path("/cluster/settings")
   @Operation(
       operationId = "updateClusterSettings",
       summary = "Update cluster Settings",
