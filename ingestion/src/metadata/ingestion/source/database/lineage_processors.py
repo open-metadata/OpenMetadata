@@ -14,6 +14,7 @@ Mixin class with common Stored Procedures logic aimed at lineage.
 import re
 import time
 import traceback
+from copy import deepcopy
 from datetime import datetime
 from multiprocessing import Queue
 from typing import Iterable, List, Optional, Union
@@ -142,7 +143,7 @@ def procedure_lineage_processor(
             for lineage in _yield_procedure_lineage(
                 query_by_procedure=procedure_and_query.query_by_procedure,
                 procedure=procedure_and_query.procedure,
-                metadata=metadata,
+                metadata=deepcopy(metadata),
                 service_name=service_name,
                 dialect=dialect,
                 parsingTimeoutLimit=parsingTimeoutLimit,
@@ -255,9 +256,11 @@ def query_lineage_generator(
     """
 
     for table_query in table_queries or []:
-        if not _query_already_processed(metadata, table_query):
+        if not _query_already_processed(
+            metadata=deepcopy(metadata), table_query=table_query
+        ):
             lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
-                metadata,
+                metadata=deepcopy(metadata),
                 query=table_query.query,
                 service_name=table_query.serviceName,
                 database_name=table_query.databaseName,
@@ -301,14 +304,14 @@ def view_lineage_generator(
         for view in views:
             for lineage in get_view_lineage(
                 view=view,
-                metadata=metadata,
+                metadata=deepcopy(metadata),
                 service_name=serviceName,
                 connection_type=connectionType,
                 timeout_seconds=parsingTimeoutLimit,
             ):
                 if lineage.right is not None:
                     view_fqn = fqn.build(
-                        metadata=metadata,
+                        metadata=deepcopy(metadata),
                         entity_type=Table,
                         service_name=serviceName,
                         database_name=view.db_name,
