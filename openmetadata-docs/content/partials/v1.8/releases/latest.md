@@ -18,7 +18,22 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 The latest Release 1.7 of OpenMetadata and Collate delivers new features to accelerate the onboarding of both data services and users, taking discovery, automations, and customizations one step further.
 
-## Features
+# What's Changed
+
+## Breaking Changes
+
+### Removing support for Python 3.8
+
+Python 3.8 was [officially EOL on 2024-10-07](https://devguide.python.org/versions/). Some of our dependencies have already
+started removing support for higher versions, and are following suit to ensure we are using the latest and most stable
+versions of our dependencies.
+
+This means that for Release 1.7, the supported Python versions for the Ingestion Framework are 3.9, 3.10 and 3.11.
+
+We were already shipping our Docker images with Python 3.10, so this change should not affect you if you are using our Docker images.
+However, if you installed the `openmetadata-ingestion` package directly, please make sure to update your Python version to 3.9 or higher.
+
+# What's New
 
 ### Automate Metadata Onboarding Instantly with OpenMetadata AutoPilot
 
@@ -106,18 +121,6 @@ You can now **import and export the entire entity hierarchy** with all related d
 ### Asynchronous Deletion
 Support for both **soft** and **hard deletion** operations across **all services**, **entities**, **glossary**, and **term entries** — improving overall performance.
 
-## Breaking Changes
-
-### Removing support for Python 3.8
-
-Python 3.8 was [officially EOL on 2024-10-07](https://devguide.python.org/versions/). Some of our dependencies have already
-started removing support for higher versions, and are following suit to ensure we are using the latest and most stable
-versions of our dependencies.
-
-This means that for Release 1.7, the supported Python versions for the Ingestion Framework are 3.9, 3.10 and 3.11.
-
-We were already shipping our Docker images with Python 3.10, so this change should not affect you if you are using our Docker images.
-However, if you installed the `openmetadata-ingestion` package directly, please make sure to update your Python version to 3.9 or higher.
 
 ### Putting your Metadata Ingestion on AutoPilot
 
