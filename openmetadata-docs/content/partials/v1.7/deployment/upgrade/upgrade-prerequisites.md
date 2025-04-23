@@ -127,8 +127,6 @@ indices.query.bool.max_clause_count: 4096
 
 If you're using AWS, you can add this setting from the console as well
 
-![img.png](/images/v1.7/deployment/upgrade/opensearch-upgrade-170.png)
-
 {% image
 src="/images/v1.7/deployment/upgrade/opensearch-upgrade-170.png"
 alt="AWS OpenSearch Settings"
