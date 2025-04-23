@@ -20,10 +20,12 @@ import traceback
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union, cast
 
-from great_expectations.checkpoint.actions import ActionContext, ValidationAction
-from great_expectations.checkpoint.checkpoint import CheckpointResult
+from great_expectations.checkpoint import (
+    ActionContext,
+    CheckpointResult,
+    ValidationAction,
+)
 from great_expectations.core.batch import Batch
-from great_expectations.core.batch_spec import SqlAlchemyDatasourceBatchSpec
 from great_expectations.core.expectation_validation_result import (
     ExpectationSuiteValidationResultMeta,
 )
@@ -124,7 +126,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     @staticmethod
     def _get_checkpoint_batch_spec(
         meta: Union[ExpectationSuiteValidationResultMeta, dict]
-    ) -> SqlAlchemyDatasourceBatchSpec:
+    ):
         """Return run meta and check instance of data_asset
 
         Args:
