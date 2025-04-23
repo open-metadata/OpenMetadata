@@ -144,7 +144,6 @@ export const DataAssetSummaryPanel = ({
         dataAsset.id
       );
       setEntityPermissions(permissions);
-      fetchEntityBasedDetails();
     } else {
       setEntityPermissions(null);
     }
