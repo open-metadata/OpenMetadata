@@ -25,7 +25,9 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Troubleshooting](/connectors/database/snowflake/troubleshooting)
-{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
+{% collateContent %}
+- [Reverse Metadata](#reverse-metadata)
+{% /collateContent %}
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
 
@@ -149,6 +151,8 @@ GRANT APPLY TAG TO ROLE NEW_ROLE;
 
 Depending on your view ddl you can grant the relevant privileged as per above queries.
 
-{% partial file="/v1.7/connectors/database/snowflake/reverse-metadata.md" collate: true /%}
+{% collateContent %}
+{% partial file="/v1.7/connectors/database/snowflake/reverse-metadata.md" /%}
+{% /collateContent %}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
