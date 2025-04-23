@@ -63,7 +63,6 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   const [threads, setThreads] = useState<any[]>([]);
   const [selectedAnnouncementThread, setSelectedAnnouncementThread] =
     useState<Thread>();
-  const [showFeedEditor, setShowFeedEditor] = useState<boolean>(false);
   const { currentUser } = useApplicationStore();
   const [countData, setCountData] = useState<{
     loading: boolean;
@@ -152,14 +151,10 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   }, []);
 
   const onSave = (message: string) => {
-    postFeed(message, selectedAnnouncementThread?.id ?? '')
-      .then(() => {
-        setShowFeedEditor(false);
-      })
-      .catch(() => {
-        // ignore since error is displayed in toast in the parent promise.
-        // Added block for sonar code smell
-      });
+    postFeed(message, selectedAnnouncementThread?.id ?? '').catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+      // Added block for sonar code smell
+    });
   };
 
   const updateAnnouncementThreads = useCallback(() => {

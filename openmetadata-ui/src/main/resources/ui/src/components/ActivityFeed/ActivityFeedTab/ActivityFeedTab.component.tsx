@@ -15,7 +15,6 @@ import {
   Dropdown,
   Menu,
   Segmented,
-  Skeleton,
   Space,
   Tooltip,
   Typography,
@@ -541,25 +540,6 @@ export const ActivityFeedTab = ({
       setActiveThread();
     },
     [handleUpdateAnnouncementFilter, setActiveThread]
-  );
-
-  const handleActiveClick = useCallback(
-    () => handleFilterClick(AnnoucementStatus.Active),
-    [handleFilterClick]
-  );
-  const handleInactiveClick = useCallback(
-    () => handleFilterClick(AnnoucementStatus.Inactive),
-    [handleFilterClick]
-  );
-  const getElementWithCountLoader = useCallback(
-    (element: any) => {
-      if (countData.loading) {
-        return <Skeleton.Button active className="count-loader" size="small" />;
-      }
-
-      return element;
-    },
-    [countData.loading]
   );
 
   const getSelectedKey = () => {

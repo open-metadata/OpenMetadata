@@ -13,7 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import { getAnnouncements } from '../../rest/feedsAPI';
@@ -38,14 +38,19 @@ const mockGetAnnouncements = getAnnouncements as jest.Mock;
 interface AnnouncementTabProps {
   fqn: string;
   entityType: EntityType;
-  permissions: UIPermission;
+  permissions: OperationPermission;
 }
 
 describe('AnnouncementTab', () => {
   const defaultProps = {
     fqn: 'mysql_sample',
     entityType: 'databaseService',
-    permissions: { EditAll: true } as UIPermission,
+    permissions: {
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+    } as OperationPermission,
   } as AnnouncementTabProps;
 
   afterEach(() => {

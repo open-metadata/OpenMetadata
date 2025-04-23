@@ -45,6 +45,7 @@ const GlossaryDetails = ({
   isVersionView,
   toggleTabExpanded,
   isTabExpanded,
+  permissions,
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
