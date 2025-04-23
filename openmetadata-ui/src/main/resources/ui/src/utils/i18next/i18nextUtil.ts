@@ -32,6 +32,7 @@ import zhCN from '../../locale/languages/zh-cn.json';
 
 export enum SupportedLocales {
   English = 'en-US',
+  한국어 = 'ko-KR',
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
   日本語 = 'ja-JP',
@@ -60,6 +61,7 @@ export const getInitOptions = (): InitOptions => {
     supportedLngs: Object.values(SupportedLocales),
     resources: {
       'en-US': { translation: enUS },
+      'ko-KR': { translation: koKR },
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
       'ja-JP': { translation: jaJP },

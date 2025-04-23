@@ -752,6 +752,8 @@ site_menu:
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
     url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Data Insights
+    url: /how-to-guides/admin-guide/data-insights
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
     url: /how-to-guides/admin-guide/persona-landing-page-customization 
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
@@ -1050,6 +1052,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.10 Release
+    url: /releases/all-releases/#1.6.10-release
   - category: Releases / All Releases / 1.6.9 Release
     url: /releases/all-releases/#1.6.9-release
   - category: Releases / All Releases / 1.6.8 Release
