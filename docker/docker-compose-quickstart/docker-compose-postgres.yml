@@ -18,7 +18,7 @@ volumes:
 services:
   postgresql:
     container_name: openmetadata_postgresql
-    image: docker.getcollate.io/openmetadata/postgresql:1.6.10
+    image: docker.getcollate.io/openmetadata/postgresql:1.6.11
     restart: always
     command: "--work_mem=10MB"
     environment:
@@ -61,7 +61,7 @@ services:
 
   execute-migrate-all:
     container_name: execute_migrate_all
-    image: docker.getcollate.io/openmetadata/server:1.6.10
+    image: docker.getcollate.io/openmetadata/server:1.6.11
     command: "./bootstrap/openmetadata-ops.sh migrate"
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
@@ -275,7 +275,7 @@ services:
   openmetadata-server:
     container_name: openmetadata_server
     restart: always
-    image: docker.getcollate.io/openmetadata/server:1.6.10
+    image: docker.getcollate.io/openmetadata/server:1.6.11
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
       SERVER_PORT: ${SERVER_PORT:-8585}
@@ -483,7 +483,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
-    image: docker.getcollate.io/openmetadata/ingestion:1.6.10
+    image: docker.getcollate.io/openmetadata/ingestion:1.6.11
     depends_on:
       elasticsearch:
         condition: service_started
