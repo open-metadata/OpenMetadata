@@ -573,9 +573,9 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   }
 
   // Click on the sidebar item for Explore again
+  const queryResponse = page.waitForResponse('/api/v1/search/query?q=*');
   await sidebarClick(page, SidebarItem.EXPLORE);
-
-  await page.waitForResponse('/api/v1/search/query?q=*');
+  await queryResponse;
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
