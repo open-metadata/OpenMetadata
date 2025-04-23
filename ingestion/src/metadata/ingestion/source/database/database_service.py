@@ -96,48 +96,48 @@ class DatabaseServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
-        TopologyNode(
-            producer="get_services",
-            stages=[
-                NodeStage(
-                    type_=DatabaseService,
-                    context="database_service",
-                    processor="yield_create_request_database_service",
-                    overwrite=False,
-                    must_return=True,
-                    cache_entities=True,
-                ),
-            ],
-            children=["database"],
-            post_process=[
-                "yield_external_table_lineage",
-                "yield_table_constraints",
-            ],
-        )
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
+        producer="get_services",
+        stages=[
+            NodeStage(
+                type_=DatabaseService,
+                context="database_service",
+                processor="yield_create_request_database_service",
+                overwrite=False,
+                must_return=True,
+                cache_entities=True,
+            ),
+        ],
+        children=["database"],
+        post_process=[
+            "yield_external_table_lineage",
+            "yield_table_constraints",
+        ],
     )
-    database: Annotated[TopologyNode, Field(description="Database Node")] = (
-        TopologyNode(
-            producer="get_database_names",
-            stages=[
-                NodeStage(
-                    type_=OMetaTagAndClassification,
-                    context="tags",
-                    processor="yield_database_tag_details",
-                    nullable=True,
-                    store_all_in_context=True,
-                ),
-                NodeStage(
-                    type_=Database,
-                    context="database",
-                    processor="yield_database",
-                    consumer=["database_service"],
-                    cache_entities=True,
-                    use_cache=True,
-                ),
-            ],
-            children=["databaseSchema"],
-        )
+    database: Annotated[
+        TopologyNode, Field(description="Database Node")
+    ] = TopologyNode(
+        producer="get_database_names",
+        stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_database_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
+            NodeStage(
+                type_=Database,
+                context="database",
+                processor="yield_database",
+                consumer=["database_service"],
+                cache_entities=True,
+                use_cache=True,
+            ),
+        ],
+        children=["databaseSchema"],
     )
     databaseSchema: Annotated[
         TopologyNode, Field(description="Database Schema Node")
@@ -168,31 +168,31 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         threads=True,
     )
-    table: Annotated[TopologyNode, Field(description="Main table processing logic")] = (
-        TopologyNode(
-            producer="get_tables_name_and_type",
-            stages=[
-                NodeStage(
-                    type_=OMetaTagAndClassification,
-                    context="tags",
-                    processor="yield_table_tag_details",
-                    nullable=True,
-                    store_all_in_context=True,
-                ),
-                NodeStage(
-                    type_=Table,
-                    context="table",
-                    processor="yield_table",
-                    consumer=["database_service", "database", "database_schema"],
-                    use_cache=True,
-                ),
-                NodeStage(
-                    type_=OMetaLifeCycleData,
-                    processor="yield_life_cycle_data",
-                    nullable=True,
-                ),
-            ],
-        )
+    table: Annotated[
+        TopologyNode, Field(description="Main table processing logic")
+    ] = TopologyNode(
+        producer="get_tables_name_and_type",
+        stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_table_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
+            NodeStage(
+                type_=Table,
+                context="table",
+                processor="yield_table",
+                consumer=["database_service", "database", "database_schema"],
+                use_cache=True,
+            ),
+            NodeStage(
+                type_=OMetaLifeCycleData,
+                processor="yield_life_cycle_data",
+                nullable=True,
+            ),
+        ],
     )
     stored_procedure: Annotated[
         TopologyNode, Field(description="Stored Procedure Node")
