@@ -14,10 +14,10 @@ import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
 
@@ -117,7 +117,7 @@ const ActivityFeedListV1 = ({
         className="h-full p-x-md"
         data-testid="no-data-placeholder-container"
         id="feedData">
-        <ErrorPlaceHolder
+        <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
           <Typography.Paragraph
@@ -125,7 +125,7 @@ const ActivityFeedListV1 = ({
             style={{ marginBottom: '0' }}>
             {emptyPlaceholderText}
           </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        </ErrorPlaceHolderNew>
       </div>
     );
   }

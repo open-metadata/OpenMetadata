@@ -315,7 +315,8 @@ export const ActivityFeedTab = ({
       undefined,
       undefined
     );
-  }, [feedFilter, entityType, fqn, announcementFilter]);
+    fetchFeedsCount();
+  }, [feedFilter, entityType, fqn, announcementFilter, fetchFeedsCount]);
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
@@ -532,7 +533,15 @@ export const ActivityFeedTab = ({
       undefined,
       undefined
     );
-  }, [feedFilter, threadType, entityType, fqn, announcementFilter]);
+    fetchFeedsCount();
+  }, [
+    feedFilter,
+    threadType,
+    entityType,
+    fqn,
+    announcementFilter,
+    fetchFeedsCount,
+  ]);
 
   const handleFilterClick = useCallback(
     (status) => {
@@ -703,6 +712,14 @@ export const ActivityFeedTab = ({
       return (
         <Typography.Text className="placeholder-text m-t-0">
           {t('message.no-mentions')}
+        </Typography.Text>
+      );
+    }
+
+    if (isAnnouncementActiveTab) {
+      return (
+        <Typography.Text className="placeholder-text m-t-0">
+          {t('message.no-announcements')}
         </Typography.Text>
       );
     }

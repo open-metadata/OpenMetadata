@@ -181,7 +181,6 @@ function FeedCardFooter({
               shape="circle"
               size="small"
               type="text"
-              onClick={showReplies}
             />
           )}
           <Reactions

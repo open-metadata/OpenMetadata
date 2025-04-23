@@ -94,16 +94,19 @@ const ActivityFeedActions = ({
     []
   );
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (isAnnouncementTab && feed.type === ThreadType.Announcement) {
-      deleteAnnouncementFeed(feed.id, post.id, !isPost); // delete Announcement feed in Service page's Announcement Tab
+      await deleteAnnouncementFeed(feed.id, post.id, !isPost); // delete Announcement feed in Service page's Announcement Tab
     } else {
-      deleteFeed(feed.id, post.id, !isPost).catch(() => {
+      await deleteFeed(feed.id, post.id, !isPost).catch(() => {
         // ignore since error is displayed in toast in the parent promise.
       });
     }
 
     setShowDeleteDialog(false);
+    if (feed.type === ThreadType.Announcement) {
+      updateAnnouncementThreads?.();
+    }
     if (!isPost) {
       hideDrawer();
     }
