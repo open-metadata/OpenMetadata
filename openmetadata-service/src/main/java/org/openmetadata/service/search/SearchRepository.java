@@ -1161,6 +1161,10 @@ public class SearchRepository {
     return searchClient.aggregate(request);
   }
 
+  public Response updateClusterSettings(String jsonRequest) throws IOException {
+    return searchClient.updateClusterSettings(jsonRequest);
+  }
+
   public JsonObject aggregate(
       String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {

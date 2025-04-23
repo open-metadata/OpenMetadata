@@ -144,6 +144,7 @@ import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -1391,6 +1392,15 @@ public class OpenSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder);
     String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
     return Response.status(OK).entity(response).build();
+  }
+
+  @Override
+  public Response updateClusterSettings(String jsonRequest) throws IOException {
+    Request request = new Request("PUT", "/_cluster/settings");
+    request.setJsonEntity(jsonRequest);
+    return Response.ok()
+        .entity(client.getLowLevelClient().performRequest(request).getEntity())
+        .build();
   }
 
   @Override

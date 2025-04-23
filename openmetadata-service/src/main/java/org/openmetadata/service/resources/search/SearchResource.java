@@ -35,6 +35,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -63,9 +64,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @Collection(name = "search")
 public class SearchResource {
   private final SearchRepository searchRepository;
+  private final Authorizer authorizer;
 
   public SearchResource(Authorizer authorizer) {
     this.searchRepository = Entity.getSearchRepository();
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -570,8 +573,8 @@ public class SearchResource {
     return searchRepository.aggregate(aggregationRequest);
   }
 
-  @POST
-  @Path("/aggregate")
+  @PUT
+  @Path("/settings")
   @Operation(
       operationId = "aggregateSearchRequest",
       summary = "Get aggregated Search Request",
@@ -591,5 +594,27 @@ public class SearchResource {
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
     return searchRepository.aggregate(aggregationRequest);
+  }
+
+  @PUT
+  @Path("/settings")
+  @Operation(
+      operationId = "updateClusterSettings",
+      summary = "Update cluster Settings",
+      description = "Update Cluster Settings.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Table Aggregate API",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response updateClusterSettings(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid String settings)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return searchRepository.updateClusterSettings(settings);
   }
 }

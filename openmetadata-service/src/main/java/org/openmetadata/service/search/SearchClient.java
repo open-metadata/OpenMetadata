@@ -261,6 +261,8 @@ public interface SearchClient {
 
   Response aggregate(AggregationRequest request) throws IOException;
 
+  Response updateClusterSettings(String jsonRequest) throws IOException;
+
   JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
