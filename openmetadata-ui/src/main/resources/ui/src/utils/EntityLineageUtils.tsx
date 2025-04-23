@@ -788,6 +788,8 @@ export const createNodes = (
   nodesData: LineageEntityReference[],
   edgesData: EdgeDetails[],
   entityFqn: string,
+  incomingMap: Map<string, number>,
+  outgoingMap: Map<string, number>,
   isExpanded = false,
   hidden?: boolean
 ) => {
@@ -802,22 +804,16 @@ export const createNodes = (
         ? node.type
         : getNodeType(edgesData, node.id);
 
-    // Check if node has incoming and outgoing connections
-    const hasIncomers = edgesData.some(
-      (edge: EdgeDetails) => edge.toEntity.id === node.id
-    );
-    const hasOutgoers = edgesData.some(
-      (edge: EdgeDetails) => edge.fromEntity.id === node.id
-    );
+    const hasIncomers = incomingMap.has(node.id);
+    const hasOutgoers = outgoingMap.has(node.id);
 
-    // we are getting deleted as a string instead of boolean from API so need to handle it like this
     node.deleted = isDeleted(node.deleted);
 
     return {
       id: `${node.id}`,
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      type: type,
+      type,
       className: '',
       data: {
         node,
@@ -836,7 +832,7 @@ export const createNodes = (
   });
 };
 
-export const createEdges = (
+export const createEdgesAndEdgeMaps = (
   nodes: EntityReference[],
   edges: EdgeDetails[],
   entityFqn: string,
@@ -845,10 +841,19 @@ export const createEdges = (
   const lineageEdgesV1: Edge[] = [];
   const edgeIds = new Set<string>();
   const columnsHavingLineage = new Set<string>();
+  const incomingMap = new Map<string, number>();
+  const outgoingMap = new Map<string, number>();
 
   edges.forEach((edge) => {
-    const sourceType = nodes.find((n) => edge.fromEntity.id === n.id);
-    const targetType = nodes.find((n) => edge.toEntity.id === n.id);
+    const sourceId = edge.fromEntity.id;
+    const targetId = edge.toEntity.id;
+
+    // Update edge maps for fast lookup
+    outgoingMap.set(sourceId, (outgoingMap.get(sourceId) ?? 0) + 1);
+    incomingMap.set(targetId, (incomingMap.get(targetId) ?? 0) + 1);
+
+    const sourceType = nodes.find((n) => sourceId === n.id);
+    const targetType = nodes.find((n) => targetId === n.id);
 
     if (isUndefined(sourceType) || isUndefined(targetType)) {
       return;
@@ -857,32 +862,32 @@ export const createEdges = (
     if (!isUndefined(edge.columns)) {
       edge.columns?.forEach((e) => {
         const toColumn = e.toColumn ?? '';
-        if (toColumn && e.fromColumns && e.fromColumns.length > 0) {
+        if (toColumn && e.fromColumns?.length) {
           e.fromColumns.forEach((fromColumn) => {
             columnsHavingLineage.add(fromColumn);
             columnsHavingLineage.add(toColumn);
-            const encodedFromColumn = encodeLineageHandles(fromColumn);
-            const encodedToColumn = encodeLineageHandles(toColumn);
-            const edgeId = `column-${encodedFromColumn}-${encodedToColumn}-edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
+
+            const encodedFrom = encodeLineageHandles(fromColumn);
+            const encodedTo = encodeLineageHandles(toColumn);
+            const edgeId = `column-${encodedFrom}-${encodedTo}-edge-${sourceId}-${targetId}`;
 
             if (!edgeIds.has(edgeId)) {
               edgeIds.add(edgeId);
               lineageEdgesV1.push({
                 id: edgeId,
-                source: edge.fromEntity.id,
-                target: edge.toEntity.id,
-                targetHandle: encodedToColumn,
-                sourceHandle: encodedFromColumn,
+                source: sourceId,
+                target: targetId,
+                targetHandle: encodedTo,
+                sourceHandle: encodedFrom,
                 style: { strokeWidth: '2px' },
                 type: 'buttonedge',
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                },
+                markerEnd: { type: MarkerType.ArrowClosed },
                 data: {
                   edge,
                   isColumnLineage: true,
-                  targetHandle: encodedToColumn,
-                  sourceHandle: encodedFromColumn,
+                  targetHandle: encodedTo,
+                  sourceHandle: encodedFrom,
+                  dataTestId: `column-edge-${fromColumn}-${toColumn}`,
                 },
                 ...(hidden && { hidden }),
               });
@@ -892,25 +897,24 @@ export const createEdges = (
       });
     }
 
-    const edgeId = `edge-${edge.fromEntity.id}-${edge.toEntity.id}`;
+    const edgeId = `edge-${sourceId}-${targetId}`;
     if (!edgeIds.has(edgeId)) {
       edgeIds.add(edgeId);
       lineageEdgesV1.push({
         id: edgeId,
-        source: `${edge.fromEntity.id}`,
-        target: `${edge.toEntity.id}`,
+        source: sourceId,
+        target: targetId,
         type: 'buttonedge',
         animated: !isNil(edge.pipeline),
         style: { strokeWidth: '2px' },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
+        markerEnd: { type: MarkerType.ArrowClosed },
         data: {
           edge,
           isColumnLineage: false,
           isPipelineRootNode: !isNil(edge.pipeline)
             ? entityFqn === edge.pipeline?.fullyQualifiedName
             : false,
+          dataTestId: `edge-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`,
         },
       });
     }
@@ -919,6 +923,8 @@ export const createEdges = (
   return {
     edges: lineageEdgesV1,
     columnsHavingLineage: Array.from(columnsHavingLineage),
+    incomingMap,
+    outgoingMap,
   };
 };
 

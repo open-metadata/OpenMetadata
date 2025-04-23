@@ -80,6 +80,7 @@ export const CustomEdge = ({
     sourceHandle,
     targetHandle,
     isPipelineRootNode,
+    dataTestId,
   } = data || {};
 
   const offset = 4;
@@ -214,21 +215,6 @@ export const CustomEdge = ({
   const isSelectedEditMode = selected && isEditMode;
   const isSelected = selected;
 
-  // Create data-testid for testing (memoized to avoid recalculation)
-  const dataTestId = useMemo(() => {
-    if (!isColumnLineage) {
-      return `edge-${edge.fromEntity.fullyQualifiedName}-${edge.toEntity.fullyQualifiedName}`;
-    } else {
-      return `column-edge-${sourceHandle}-${targetHandle}`;
-    }
-  }, [
-    edge.fromEntity.fullyQualifiedName,
-    edge.toEntity.fullyQualifiedName,
-    isColumnLineage,
-    sourceHandle,
-    targetHandle,
-  ]);
-
   // Calculate pipeline status for styling
   const currentPipelineStatus = useMemo(() => {
     const isPipelineActiveNow = activeLayer.includes(
@@ -264,10 +250,7 @@ export const CustomEdge = ({
       : 'blinking-border';
   }, [currentPipelineStatus, isPipelineRootNode]);
 
-  // Compute UI elements only when needed - a major performance optimization
   const renderIcons = useMemo(() => {
-    // Skip rendering icons for non-selected edges when there are many edges
-    // This is a major performance improvement
     if (!selected && tracedNodes.length === 0 && tracedColumns.length === 0) {
       return null;
     }
@@ -350,7 +333,7 @@ export const CustomEdge = ({
     }
 
     // Delete column edge icon
-    if (!isColumnLineageAllowed && isSelectedEditMode && isSelected) {
+    if (!isColumnLineageAllowed && isSelectedEditMode) {
       icons.push(
         <LineageEdgeIcon
           key="delete-icon"

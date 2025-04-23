@@ -92,7 +92,7 @@ import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import {
   addLineageHandler,
   centerNodePosition,
-  createEdges,
+  createEdgesAndEdgeMaps,
   createNewEdge,
   createNodes,
   decodeLineageHandles,
@@ -249,18 +249,25 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         isEqual
       );
 
+      const {
+        edges: updatedEdges,
+        incomingMap,
+        outgoingMap,
+        columnsHavingLineage,
+      } = createEdgesAndEdgeMaps(
+        allNodes,
+        lineageData.edges ?? [],
+        decodedFqn,
+        isFirstTime ? true : undefined
+      );
+
       const initialNodes = createNodes(
         allNodes,
         lineageData.edges ?? [],
         decodedFqn,
+        incomingMap,
+        outgoingMap,
         activeLayer.includes(LineageLayer.ColumnLevelLineage),
-        isFirstTime ? true : undefined
-      );
-
-      const { edges: updatedEdges, columnsHavingLineage } = createEdges(
-        allNodes,
-        lineageData.edges ?? [],
-        decodedFqn,
         isFirstTime ? true : undefined
       );
 
@@ -383,6 +390,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       setLoading(true);
       setInit(false);
+
+      setNodes([]);
+      setEdges([]);
 
       try {
         const res = await getLineageDataByFQN({
@@ -1066,11 +1076,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               )
             );
 
-            const { edges: createdEdges, columnsHavingLineage } = createEdges(
-              allNodes,
-              allEdges,
-              decodedFqn
-            );
+            const { edges: createdEdges, columnsHavingLineage } =
+              createEdgesAndEdgeMaps(allNodes, allEdges, decodedFqn);
             setEdges(createdEdges);
             setColumnsHavingLineage(columnsHavingLineage);
 

@@ -112,12 +112,9 @@ const LineageSearchSelect = () => {
   useEffect(() => {
     if (isDropdownOpen && cachedOptions.length === 0) {
       setIsLoading(true);
-      // Use requestAnimationFrame for better performance
-      requestAnimationFrame(() => {
-        const options = generateNodeOptions();
-        setCachedOptions(options);
-        setIsLoading(false);
-      });
+      const options = generateNodeOptions();
+      setCachedOptions(options);
+      setIsLoading(false);
     }
   }, [isDropdownOpen, cachedOptions.length, generateNodeOptions]);
 
