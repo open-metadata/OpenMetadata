@@ -10,25 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FilterOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons';
 import { ColumnsType } from 'antd/lib/table';
+import classNames from 'classnames';
 import React from 'react';
+import { ReactComponent as FilterIcon } from '../assets/svg/ic-filter.svg';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { EntityReference } from '../generated/type/entityReference';
-import { useApplicationStore } from '../hooks/useApplicationStore';
 import i18n from './i18next/LocalUtil';
 
-export const columnFilterIcon = (filtered: boolean) => {
-  const { theme } = useApplicationStore.getState();
-
-  return (
-    <FilterOutlined
-      data-testid="tag-filter"
-      style={{ color: filtered ? theme?.primaryColor : undefined }}
-    />
-  );
-};
+export const columnFilterIcon = (filtered: boolean) => (
+  <Icon
+    className={classNames('filter-icon', {
+      'filter-icon-active': filtered,
+    })}
+    component={FilterIcon}
+    data-testid="filter-icon"
+  />
+);
 
 export const ownerTableObject = <
   T extends { owners?: EntityReference[] }
@@ -37,7 +37,7 @@ export const ownerTableObject = <
     title: i18n.t('label.owner-plural'),
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
-    width: 140,
+    width: 180,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
       <OwnerLabel

@@ -224,6 +224,7 @@ const ColumnProfileTable = () => {
         title: t('label.test-plural'),
         dataIndex: 'testCount',
         key: 'Tests',
+        width: 100,
         render: (_, record) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(
@@ -249,6 +250,7 @@ const ColumnProfileTable = () => {
         title: t('label.status'),
         dataIndex: 'dataQualityTest',
         key: 'dataQualityTest',
+        width: 150,
         render: (_, record) => {
           const testCounts = testCaseCounts.find((column) => {
             return isEqual(

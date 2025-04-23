@@ -41,7 +41,6 @@ interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const pageContainerStyles: CSSProperties = {
-  padding: 0,
   marginTop: 0,
   marginBottom: 0,
   marginLeft: 0,
@@ -95,7 +94,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     <Fragment>
       <DocumentTitle title={pageTitle} />
       <Row
-        className={className}
+        className={classNames('p-x-box', className)}
         data-testid="page-layout-v1"
         style={{ ...pageContainerStyles, ...pageContainerStyle }}
         wrap={false}>
@@ -109,10 +108,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
         )}
         <Col
           className={classNames(
-            `page-layout-v1-center page-layout-v1-vertical-scroll `,
+            `page-layout-v1-center page-layout-v1-vertical-scroll`,
             {
               'flex justify-center': center,
-              'p-t-sm': !alert,
             },
             mainContainerClassName
           )}
@@ -125,9 +123,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
                 <AlertBar message={alert.message} type={alert.type} />
               </Col>
             )}
-            <Col className={classNames({ 'p-t-sm': alert })} span={24}>
-              {children}
-            </Col>
+            <Col span={24}>{children}</Col>
           </Row>
         </Col>
         {rightPanel && (

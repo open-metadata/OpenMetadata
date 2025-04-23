@@ -98,7 +98,7 @@ const GlobalSettingCategoryPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
-      <Row className="page-container" gutter={[0, 20]}>
+      <Row gutter={[0, 20]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -117,7 +117,7 @@ const GlobalSettingCategoryPage = () => {
         <Col span={24}>
           <Row className={settingCategoryData?.key} gutter={[20, 20]}>
             {settingCategoryData?.items?.map((category) => (
-              <Col key={category?.key} span={8}>
+              <Col key={category?.key} lg={8} md={12} sm={24}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={category}

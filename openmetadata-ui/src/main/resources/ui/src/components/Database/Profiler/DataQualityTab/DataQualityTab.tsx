@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
+import { Button, Row, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -494,89 +494,86 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   }, [testCases]);
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <Table
-          className="test-case-table-container"
-          columns={columns}
-          {...(pagingData && showPagination
-            ? {
-                customPaginationProps: {
-                  ...pagingData,
-                  showPagination,
-                },
+    <>
+      <Table
+        columns={columns}
+        containerClassName="test-case-table-container"
+        {...(pagingData && showPagination
+          ? {
+              customPaginationProps: {
+                ...pagingData,
+                showPagination,
+              },
+            }
+          : {})}
+        data-testid="test-case-table"
+        dataSource={sortedData}
+        loading={isLoading}
+        locale={{
+          emptyText: (
+            <FilterTablePlaceHolder
+              placeholderText={
+                <Transi18next
+                  i18nKey="message.no-data-quality-test-case"
+                  renderElement={
+                    <a
+                      href={DATA_QUALITY_PROFILER_DOCS}
+                      rel="noreferrer"
+                      target="_blank"
+                      title="Data Quality Profiler Documentation"
+                    />
+                  }
+                  values={{
+                    explore: t('message.explore-our-guide-here'),
+                  }}
+                />
               }
-            : {})}
-          data-testid="test-case-table"
-          dataSource={sortedData}
-          loading={isLoading}
-          locale={{
-            emptyText: (
-              <FilterTablePlaceHolder
-                placeholderText={
-                  <Transi18next
-                    i18nKey="message.no-data-quality-test-case"
-                    renderElement={
-                      <a
-                        href={DATA_QUALITY_PROFILER_DOCS}
-                        rel="noreferrer"
-                        target="_blank"
-                        title="Data Quality Profiler Documentation"
-                      />
-                    }
-                    values={{
-                      explore: t('message.explore-our-guide-here'),
-                    }}
-                  />
-                }
-              />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          size="small"
-          onChange={handleTableChange}
-        />
-      </Col>
-      <Col>
-        <EditTestCaseModal
-          testCase={selectedTestCase?.data as TestCase}
-          visible={selectedTestCase?.action === 'UPDATE'}
-          onCancel={handleCancel}
-          onUpdate={onTestUpdate}
-        />
+            />
+          ),
+        }}
+        pagination={false}
+        rowKey="id"
+        scroll={{ x: true }}
+        size="small"
+        onChange={handleTableChange}
+      />
+      <EditTestCaseModal
+        testCase={selectedTestCase?.data as TestCase}
+        visible={selectedTestCase?.action === 'UPDATE'}
+        onCancel={handleCancel}
+        onUpdate={onTestUpdate}
+      />
 
-        {removeFromTestSuite ? (
-          <ConfirmationModal
-            bodyText={t(
-              'message.are-you-sure-you-want-to-remove-child-from-parent',
-              {
-                child: getEntityName(selectedTestCase?.data),
-                parent: getEntityName(removeFromTestSuite.testSuite),
-              }
-            )}
-            cancelText={t('label.cancel')}
-            confirmText={t('label.remove')}
-            header={t('label.remove-entity', { entity: t('label.test-case') })}
-            isLoading={isTestCaseRemovalLoading}
-            visible={selectedTestCase?.action === 'DELETE'}
-            onCancel={handleCancel}
-            onConfirm={handleConfirmClick}
-          />
-        ) : (
-          <DeleteWidgetModal
-            isRecursiveDelete
-            afterDeleteAction={afterDeleteAction}
-            allowSoftDelete={false}
-            entityId={selectedTestCase?.data?.id ?? ''}
-            entityName={getEntityName(selectedTestCase?.data)}
-            entityType={EntityType.TEST_CASE}
-            visible={selectedTestCase?.action === 'DELETE'}
-            onCancel={handleCancel}
-          />
-        )}
-      </Col>
-    </Row>
+      {removeFromTestSuite ? (
+        <ConfirmationModal
+          bodyText={t(
+            'message.are-you-sure-you-want-to-remove-child-from-parent',
+            {
+              child: getEntityName(selectedTestCase?.data),
+              parent: getEntityName(removeFromTestSuite.testSuite),
+            }
+          )}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.remove')}
+          header={t('label.remove-entity', { entity: t('label.test-case') })}
+          isLoading={isTestCaseRemovalLoading}
+          visible={selectedTestCase?.action === 'DELETE'}
+          onCancel={handleCancel}
+          onConfirm={handleConfirmClick}
+        />
+      ) : (
+        <DeleteWidgetModal
+          isRecursiveDelete
+          afterDeleteAction={afterDeleteAction}
+          allowSoftDelete={false}
+          entityId={selectedTestCase?.data?.id ?? ''}
+          entityName={getEntityName(selectedTestCase?.data)}
+          entityType={EntityType.TEST_CASE}
+          visible={selectedTestCase?.action === 'DELETE'}
+          onCancel={handleCancel}
+        />
+      )}
+    </>
   );
 };
 

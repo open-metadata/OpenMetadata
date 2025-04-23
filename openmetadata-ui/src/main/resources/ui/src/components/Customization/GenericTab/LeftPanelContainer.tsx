@@ -18,6 +18,7 @@ import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import './generic-tab.less';
 
+import { Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { getWidgetsFromKey } from '../../../utils/CustomizePage/CustomizePageUtils';
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
@@ -84,34 +85,38 @@ export const LeftPanelContainer = ({
   };
 
   const widgets = useMemo(() => {
-    return isEditView
-      ? getWidgetFromLayout(layout)
-      : layout?.map((widget: WidgetConfig) => {
-          return (
-            <div
-              className="overflow-auto-y"
-              data-grid={widget}
-              id={widget.i}
-              key={widget.i}>
-              {getWidgetsFromKey(type, widget)}
-            </div>
-          );
-        });
+    if (isEditView) {
+      return getWidgetFromLayout(layout);
+    }
+
+    return layout?.map((widget: WidgetConfig) => {
+      return (
+        <Col id={widget.i} key={widget.i} span={Math.round(widget.w * 24)}>
+          {getWidgetsFromKey(type, widget)}
+        </Col>
+      );
+    });
   }, [layout, type, isEditView]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
-  return (
-    <ReactGridLayout
-      autoSize
-      className="grid-container"
-      cols={1}
-      isResizable={isEditView}
-      margin={[0, 16]}
-      rowHeight={100}
-      onLayoutChange={onUpdate}>
-      {widgets}
-    </ReactGridLayout>
-  );
+  if (isEditView) {
+    return (
+      <ReactGridLayout
+        autoSize
+        className="grid-container"
+        cols={1}
+        containerPadding={[0, 16]}
+        isDraggable={isEditView}
+        isResizable={isEditView}
+        margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
+        rowHeight={100}
+        onLayoutChange={onUpdate}>
+        {widgets}
+      </ReactGridLayout>
+    );
+  }
+
+  return <Row gutter={[16, 16]}>{widgets}</Row>;
 };

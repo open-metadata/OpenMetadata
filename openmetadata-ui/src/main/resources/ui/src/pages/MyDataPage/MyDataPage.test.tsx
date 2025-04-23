@@ -68,7 +68,7 @@ jest.mock(
   }
 );
 
-let mockSelectedPersona: Record<string, string> = {
+let mockSelectedPersona: Record<string, string> | null = {
   fullyQualifiedName: mockPersonaName,
 };
 
@@ -262,7 +262,7 @@ describe('MyDataPage component', () => {
   });
 
   it('MyDataPage should render default widgets when there is no selected persona', async () => {
-    mockSelectedPersona = {};
+    mockSelectedPersona = null;
     await act(async () => {
       render(<MyDataPage />);
     });

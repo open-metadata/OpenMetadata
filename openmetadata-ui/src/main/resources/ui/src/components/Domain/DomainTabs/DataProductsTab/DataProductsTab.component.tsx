@@ -78,7 +78,7 @@ const DataProductsTab = forwardRef(
         if (data.length > 0) {
           setSelectedCard(data[0]);
         }
-      } catch (error) {
+      } catch {
         setDataProducts({
           data: [],
           paging: { total: 0 },
@@ -109,7 +109,6 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
-          className="m-t-xlg"
           heading={t('label.data-product')}
           permission={permissions.Create}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -120,11 +119,11 @@ const DataProductsTab = forwardRef(
 
     return (
       <ResizablePanels
-        className="domain-height-with-resizable-panel"
+        className="h-full domain-height-with-resizable-panel"
         firstPanel={{
           className: 'domain-resizable-panel-container',
           children: (
-            <div className="p-x-md p-y-md">
+            <>
               {dataProducts.data.map((dataProduct) => (
                 <ExploreSearchCard
                   className={classNames(
@@ -141,12 +140,13 @@ const DataProductsTab = forwardRef(
                   }}
                 />
               ))}
-            </div>
+            </>
           ),
           ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
         }}
         pageTitle={t('label.domain')}
         secondPanel={{
+          wrapInCard: false,
           children: selectedCard && (
             <EntitySummaryPanel
               entityDetails={{

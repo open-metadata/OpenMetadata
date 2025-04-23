@@ -266,10 +266,7 @@ export const TestSuites = () => {
   }
 
   return (
-    <Row
-      className="p-x-md"
-      data-testid="test-suite-container"
-      gutter={[16, 16]}>
+    <Row data-testid="test-suite-container" gutter={[16, 16]}>
       <Col span={24}>
         <Row justify="space-between">
           <Col>
@@ -348,6 +345,9 @@ export const TestSuites = () => {
             emptyText: <FilterTablePlaceHolder />,
           }}
           pagination={false}
+          scroll={{
+            x: true,
+          }}
           size="small"
         />
       </Col>

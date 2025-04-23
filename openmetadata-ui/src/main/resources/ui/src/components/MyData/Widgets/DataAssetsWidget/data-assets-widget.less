@@ -13,9 +13,18 @@
 @import (reference) url('../../../../styles/variables.less');
 
 .data-assets-explore-widget-container {
+  .ant-card-body {
+    overflow-y: hidden !important;
+    max-height: none !important;
+  }
   .data-assets-explore-widget-body {
     height: 265px;
     overflow-x: hidden;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
 
     .service-card.ant-card {
       height: 100%;
@@ -32,7 +41,8 @@
         flex-direction: column;
         text-align: center;
         align-items: center;
-        padding: 20px 0;
+        padding: 10px 0;
+        max-height: 100%;
 
         .data-asset-badge {
           width: max-content;

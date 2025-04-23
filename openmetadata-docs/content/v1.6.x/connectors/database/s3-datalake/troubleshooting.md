@@ -3,7 +3,7 @@ title: S3 Datalake Connector Troubleshooting
 slug: /connectors/database/s3-datalake/troubleshooting
 ---
 
-# Troubleshooting
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 Learn how to resolve the most common problems people encounter in the S3 Datalake connector.
 

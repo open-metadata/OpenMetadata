@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Row, Space, Switch, Tooltip } from 'antd';
+import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty, lowerCase } from 'lodash';
@@ -51,8 +51,8 @@ import Table from '../../../common/Table/Table';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
+import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
-
 const BotListV1 = ({
   showDeleted,
   handleAddBotClick,
@@ -127,7 +127,11 @@ const BotListV1 = ({
 
           return (
             <Link data-testid={`bot-link-${name}`} to={getBotsPath(fqn)}>
-              {stringToHTML(highlightSearchText(name, searchTerm))}
+              <Typography.Text
+                className="text-ellipsis bot-link"
+                ellipsis={{ tooltip: true }}>
+                {stringToHTML(highlightSearchText(name, searchTerm))}
+              </Typography.Text>
             </Link>
           );
         },
@@ -263,7 +267,7 @@ const BotListV1 = ({
       </Col>
     </Row>
   ) : (
-    <Row className="page-container" gutter={[0, 16]}>
+    <Row gutter={[0, 16]}>
       <Col span={24}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
       </Col>
@@ -309,7 +313,7 @@ const BotListV1 = ({
           onSearch={handleSearch}
         />
       </Col>
-      <Col span={24}>
+      <Col className="bot-list-v1-container" span={24}>
         <Table
           columns={columns}
           customPaginationProps={{

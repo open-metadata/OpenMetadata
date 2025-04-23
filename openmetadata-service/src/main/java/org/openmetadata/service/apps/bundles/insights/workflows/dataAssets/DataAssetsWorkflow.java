@@ -183,6 +183,7 @@ public class DataAssetsWorkflow {
     if (!dataAssetsConfig.getEnabled()) {
       return;
     }
+    LOG.info("[Data Insights] Processing Data Assets Insights.");
     initialize();
     Map<String, Object> contextData = new HashMap<>();
 

@@ -31,7 +31,10 @@ const FilterErrorPlaceHolder = ({
 
   return (
     <div
-      className={classNames(className, 'h-full flex-center mt-24')}
+      className={classNames(
+        className,
+        'h-full flex-center border-default border-radius-sm'
+      )}
       data-testid="search-error-placeholder">
       <Space align="center" direction="vertical" size={10}>
         <FilterPlaceHolderIcon

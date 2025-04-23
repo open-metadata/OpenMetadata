@@ -71,9 +71,10 @@ public class MigrationUtil {
 
   public static final String SERVICE_ENTITY_MIGRATION =
       "SELECT COUNT(*) FROM entity_relationship er JOIN %s f ON er.fromID = f.id JOIN %s t ON er.toID = t.id WHERE er.relation = 13 AND f.fqnHash LIKE '%s.%%' AND t.fqnHash LIKE '%s.%%'";
-  private static final String UPDATE_NULL_JSON =
+  private static final String UPDATE_NULL_JSON_MYSQL =
       "UPDATE entity_relationship SET json = :json WHERE json IS NULL AND relation = 13";
-
+  private static final String UPDATE_NULL_JSON_POSTGRESQL =
+      "UPDATE entity_relationship SET json = :json::jsonb WHERE json IS NULL AND relation = 13";
   private static final String UPDATE_NON_NULL_MYSQL_JSON =
       "UPDATE entity_relationship SET json = JSON_SET(json, '$.createdAt', IFNULL(CAST(json->>'$.createdAt' AS UNSIGNED), :currTime), '$.createdBy', IFNULL(JSON_UNQUOTE(json->>'$.createdBy'), 'admin'), '$.updatedAt', IFNULL(CAST(json->>'$.updatedAt' AS UNSIGNED), :currTime), '$.updatedBy', IFNULL(JSON_UNQUOTE(json->>'$.updatedBy'), 'admin')) WHERE "
           + "relation = 13 AND json IS NOT NULL AND (json->>'$.createdAt' IS NULL OR JSON_UNQUOTE(json->>'$.createdBy') IS NULL OR json->>'$.updatedAt' IS NULL OR JSON_UNQUOTE(json->>'$.updatedBy') IS NULL)";
@@ -91,9 +92,13 @@ public class MigrationUtil {
               .withUpdatedAt(currentTime)
               .withCreatedBy(ADMIN_USER_NAME)
               .withUpdatedBy(ADMIN_USER_NAME);
+      String updateSql =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? UPDATE_NULL_JSON_MYSQL
+              : UPDATE_NULL_JSON_POSTGRESQL;
       int result =
           handle
-              .createUpdate(UPDATE_NULL_JSON)
+              .createUpdate(updateSql)
               .bind("json", JsonUtils.pojoToJson(lineageDetails))
               .execute();
       if (result <= 0) {
@@ -244,7 +249,7 @@ public class MigrationUtil {
           }
         }
         workflowDefinition.withConfig(new WorkflowConfiguration());
-        repository.createOrUpdate(null, workflowDefinition);
+        repository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
       }
     } catch (Exception ex) {
       LOG.error("Error while updating workflow definitions", ex);
@@ -286,9 +291,9 @@ public class MigrationUtil {
         "assets_with_pii_bar",
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
-            .withxAxisField("tags.tagFQN")
-            .withIncludeXAxisFiled("pii.*")
-            .withGroupBy("tags.name.keyword"),
+            .withxAxisField("columns.tags.tagFQN")
+            .withIncludeXAxisFiled("PII.*")
+            .withGroupBy("columns.tags.name.keyword"),
         DataInsightCustomChart.ChartType.BAR_CHART);
 
     createChart(
@@ -325,8 +330,7 @@ public class MigrationUtil {
                 List.of(
                     new LineChartMetric()
                         .withFormula(
-                            "(count(q='tags.tagFQN: pii.sensitive OR tags.tagFQN:"
-                                + " pii.nonsensitive OR tags.tagFQN: pii.none')/count(k='id.keyword'))*100"))));
+                            "(count(q='columns.tags.tagFQN: pii.*')/count(k='id.keyword'))*100"))));
 
     createChart(
         "assets_with_tier",
@@ -559,7 +563,7 @@ public class MigrationUtil {
           if (rule.getName().equals("LineageBotRule-Allow")
               && !rule.getOperations().contains(MetadataOperation.EDIT_ALL)) {
             rule.getOperations().add(MetadataOperation.EDIT_ALL);
-            policyRepository.createOrUpdate(null, policy);
+            policyRepository.createOrUpdate(null, policy, ADMIN_USER_NAME);
           }
         }
       }

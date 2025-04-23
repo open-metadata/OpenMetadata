@@ -79,6 +79,9 @@ pre {
 .text-white {
   color: @white;
 }
+.text-blue {
+  color: @blue-9;
+}
 .text-black {
   color: @black;
 }
@@ -113,6 +116,18 @@ pre {
   &:hover {
     color: @text-color;
   }
+}
+
+.generate-text-grey-colors(@n, @i: 100) when (@i =< @n) {
+  &-@{i} {
+    color: ~'@{grey-@{i}}';
+  }
+
+  .generate-text-grey-colors(@n, (@i + 100));
+}
+
+.text-grey {
+  .generate-text-grey-colors(900);
 }
 
 .text-success {

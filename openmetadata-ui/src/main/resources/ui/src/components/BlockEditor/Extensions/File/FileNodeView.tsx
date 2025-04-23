@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { UPLOADED_ASSETS_URL } from '../../../../constants/BlockEditor.constants';
 import Loader from '../../../common/Loader/Loader';
 import { FileType } from '../../BlockEditor.interface';
 import imageClassBase from '../image/ImageClassBase';
@@ -54,6 +55,10 @@ const FileNodeView: FC<NodeViewProps> = ({
   const isAudio = mimeType?.startsWith(FileType.AUDIO);
   const isMedia = isVideo || isAudio;
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(false);
+
+  const isAssetsUrl = useMemo(() => {
+    return isValidSource && url?.includes(UPLOADED_ASSETS_URL);
+  }, [url, isValidSource]);
 
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
   const { imageSrc: mediaSrc, isLoading: isMediaLoading } =
@@ -146,18 +151,20 @@ const FileNodeView: FC<NodeViewProps> = ({
         <Popover
           align={{ targetOffset: [0, 16] }}
           content={
-            <PopoverContent
-              deleteNode={deleteNode}
-              fileType={fileType}
-              isUploading={isUploading}
-              isValidSource={isValidSource}
-              src={isMedia ? mediaSrc : url}
-              updateAttributes={({ src, ...rest }) =>
-                updateAttributes({ url: src, ...rest })
-              }
-              onPopupVisibleChange={(value) => setIsPopupVisible(value)}
-              onUploadingChange={noop}
-            />
+            isAssetsUrl ? null : (
+              <PopoverContent
+                deleteNode={deleteNode}
+                fileType={fileType}
+                isUploading={isUploading}
+                isValidSource={isValidSource}
+                src={isMedia ? mediaSrc : url}
+                updateAttributes={({ src, ...rest }) =>
+                  updateAttributes({ url: src, ...rest })
+                }
+                onPopupVisibleChange={(value) => setIsPopupVisible(value)}
+                onUploadingChange={noop}
+              />
+            )
           }
           destroyTooltipOnHide={{ keepParent: false }}
           open={isPopupVisible}
@@ -168,7 +175,7 @@ const FileNodeView: FC<NodeViewProps> = ({
           onOpenChange={handlePopoverVisibleChange}>
           <Spin
             indicator={<Loader size="small" />}
-            spinning={isMediaLoading || isFileLoading || isUploading}
+            spinning={isMediaLoading || isUploading}
             tip={isUploading ? t('label.uploading') : t('label.loading')}>
             {renderContent()}
           </Spin>

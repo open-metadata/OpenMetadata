@@ -12,7 +12,7 @@
     "number" : {
       "$comment" : "@om-field-type",
       "description": "A numeric type that includes integer or floating point numbers.",
-      "type" : "integer"
+      "type" : "number"
     },
     "string" : {
       "$comment" : "@om-field-type",

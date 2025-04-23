@@ -279,11 +279,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel no-right-panel-splitter"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <>
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <div className="m-t-md">
               {addIngestion ? (
@@ -315,7 +317,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                 </Row>
               )}
             </div>
-          </div>
+          </>
         ),
         minWidth: 700,
         flex: 0.6,
@@ -325,7 +327,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.4,
       }}

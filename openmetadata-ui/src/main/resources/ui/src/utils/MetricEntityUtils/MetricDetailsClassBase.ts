@@ -20,7 +20,7 @@ import {
   GridSizes,
   TAGS_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
-import { METRIC_DUMMY_DATA } from '../../constants/Metric.constnsts';
+import { METRIC_DUMMY_DATA } from '../../constants/Metric.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Metric } from '../../generated/entity/data/metric';
@@ -35,9 +35,7 @@ import {
 } from './MetricUtils';
 
 export interface MetricDetailPageTabProps {
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   activeTab: EntityTabs;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
@@ -62,7 +60,7 @@ class MetricDetailsClassBase {
 
   constructor() {
     this.defaultWidgetHeight = {
-      [DetailPageWidgetKeys.DESCRIPTION]: 2,
+      [DetailPageWidgetKeys.DESCRIPTION]: 4,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -100,7 +98,7 @@ class MetricDetailsClassBase {
 
     return [
       {
-        h: 6,
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] + 0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -171,7 +169,7 @@ class MetricDetailsClassBase {
       GLOSSARY_TERMS_WIDGET,
       {
         fullyQualifiedName: DetailPageWidgetKeys.RELATED_METRICS,
-        name: i18n.t('label.related-metrics'),
+        name: i18n.t('label.related-metric-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

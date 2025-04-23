@@ -55,7 +55,11 @@ import {
 } from '../../components/Lineage/Lineage.interface';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { ExportTypes } from '../../constants/Export.constants';
+import { ROUTES } from '../../constants/constants';
+import {
+  ExportTypes,
+  LINEAGE_EXPORT_SELECTOR,
+} from '../../constants/Export.constants';
 import {
   ELEMENT_DELETE_STATE,
   ZOOM_VALUE,
@@ -82,6 +86,7 @@ import {
   getPlatformLineage,
   updateLineageEdge,
 } from '../../rest/lineageAPI';
+import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import {
   addLineageHandler,
   centerNodePosition,
@@ -208,6 +213,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
     return searchData.layers as LineageLayer[] | undefined;
   }, [location.search]);
+
+  const isPlatformLineagePage = useMemo(() => {
+    return location.pathname === ROUTES.PLATFORM_LINEAGE;
+  }, [location]);
 
   const fetchDataQualityLineage = async (
     fqn: string,
@@ -425,6 +434,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onPlatformViewChange = useCallback((view: LineagePlatformView) => {
     setPlatformView(view);
+    if (view !== LineagePlatformView.None) {
+      setActiveLayer([]);
+    }
   }, []);
 
   const exportLineageData = useCallback(
@@ -440,16 +452,31 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const onExportClick = useCallback(() => {
-    if (decodedFqn) {
+    if (decodedFqn || isPlatformLineagePage) {
       showModal({
-        name: decodedFqn,
-        exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
-        documentSelector: '.react-flow__viewport',
-        viewport: getViewportForLineageExport(nodes),
+        ...(isPlatformLineagePage
+          ? {
+              name: `${t('label.lineage')}_${getCurrentISODate()}`,
+              exportTypes: [ExportTypes.PNG],
+            }
+          : {
+              name: decodedFqn,
+              exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
+            }),
+        title: t('label.lineage'),
+        documentSelector: LINEAGE_EXPORT_SELECTOR,
+        viewport: getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR),
         onExport: exportLineageData,
       });
     }
-  }, [entityType, decodedFqn, lineageConfig, queryFilter, nodes]);
+  }, [
+    entityType,
+    decodedFqn,
+    lineageConfig,
+    queryFilter,
+    nodes,
+    isPlatformLineagePage,
+  ]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: LineageDirection) => {
@@ -542,6 +569,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onUpdateLayerView = useCallback((layers: LineageLayer[]) => {
     setActiveLayer(layers);
+    if (
+      layers.includes(LineageLayer.ColumnLevelLineage) ||
+      layers.includes(LineageLayer.DataObservability)
+    ) {
+      setPlatformView(LineagePlatformView.None);
+    }
   }, []);
 
   const updateEntityData = useCallback(

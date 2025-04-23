@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
+import { verifyExportLineagePNG } from '../../utils/lineage';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({
@@ -27,7 +28,8 @@ test('Verify Platform Lineage View', async ({ page }) => {
   await sidebarClick(page, SidebarItem.LINEAGE);
   await lineageRes;
 
-  await expect(page.getByTestId('lineage-export')).not.toBeVisible();
+  // Verify PNG export
+  await verifyExportLineagePNG(page, true);
 
   await page.getByTestId('lineage-layer-btn').click();
 

@@ -90,6 +90,7 @@ function FollowingWidget({
         noDataPlaceholder={
           <div className="flex-center h-full">
             <ErrorPlaceHolder
+              className="border-none"
               icon={
                 <FollowingEmptyIcon
                   height={SIZE.X_SMALL}

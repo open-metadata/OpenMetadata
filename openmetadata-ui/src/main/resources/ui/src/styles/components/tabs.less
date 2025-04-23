@@ -18,6 +18,7 @@
 .ant-tabs.ant-tabs-top.h-full {
   .ant-tabs-content.ant-tabs-content-top {
     height: 100%;
+
     .ant-tabs-tabpane {
       height: 100%;
     }
@@ -42,14 +43,23 @@
 .ant-tabs.tabs-new {
   width: 100%;
 
+  .ant-btn.ant-btn-icon-only.tab-expand-icon {
+    padding: 0;
+    height: 20px;
+    width: 20px;
+    vertical-align: middle;
+    * {
+      font-size: 20px !important;
+    }
+  }
+
   .ant-tabs-nav {
     margin: 0;
     padding: 0 20px;
     height: 48px;
     background: @white;
     border-radius: 12px;
-    box-shadow: 0px 1px 2px 0px #0a0d120d;
-    border: 0.5px solid @blue-15;
+    border: 1px solid @blue-15;
 
     &::before {
       border-bottom: none;
@@ -74,6 +84,12 @@
         }
       }
     }
+  }
+
+  .ant-tabs-tabpane {
+    margin-top: @padding-sm;
+    border-radius: @border-radius-sm;
+    background-color: @white;
   }
 
   .ant-tabs-ink-bar {

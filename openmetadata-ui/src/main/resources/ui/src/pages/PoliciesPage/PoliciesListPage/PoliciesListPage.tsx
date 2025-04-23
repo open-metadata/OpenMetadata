@@ -136,7 +136,7 @@ const PoliciesListPage = () => {
           isEmpty(record?.description) ? (
             NO_DATA_PLACEHOLDER
           ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description || ''} />
+            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
           ),
       },
       {
@@ -275,7 +275,7 @@ const PoliciesListPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>
       <Row
-        className="policies-list-container page-container"
+        className="policies-list-container"
         data-testid="policies-list-container"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -297,8 +297,8 @@ const PoliciesListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            className="policies-list-table"
             columns={columns}
+            containerClassName="policies-list-table"
             customPaginationProps={{
               currentPage,
               isLoading,
@@ -314,6 +314,7 @@ const PoliciesListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.policy')}
                   permission={addPolicyPermission}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

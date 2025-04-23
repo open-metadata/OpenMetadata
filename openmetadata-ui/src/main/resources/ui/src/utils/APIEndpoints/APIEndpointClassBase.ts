@@ -36,9 +36,7 @@ import {
 
 export interface APIEndpointDetailPageTabProps {
   activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   apiEndpoint: APIEndpoint;
   fetchAPIEndpointDetails: () => void;
   getEntityFeedCount: () => Promise<void>;
@@ -99,7 +97,10 @@ class APIEndpointClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.API_SCHEMA] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -166,8 +167,8 @@ class APIEndpointClassBase {
     return [
       DESCRIPTION_WIDGET,
       {
-        fullyQualifiedName: DetailPageWidgetKeys.API_ENDPOINTS,
-        name: i18n.t('label.api-endpoint'),
+        fullyQualifiedName: DetailPageWidgetKeys.API_SCHEMA,
+        name: i18n.t('label.schema'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

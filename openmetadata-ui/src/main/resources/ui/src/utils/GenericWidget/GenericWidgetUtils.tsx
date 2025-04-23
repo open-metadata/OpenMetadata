@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { noop } from 'lodash';
 import React from 'react';
 import APIEndpointSchema from '../../components/APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { ExtensionTable } from '../../components/common/CustomPropertyTable/ExtensionTable';
@@ -24,9 +23,12 @@ import { DashboardChartTable } from '../../components/Dashboard/DashboardChartTa
 import ModelTab from '../../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import SchemaTable from '../../components/Database/SchemaTable/SchemaTable.component';
+import { StoredProcedureCodeCard } from '../../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
 import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
+import MlModelFeaturesList from '../../components/MlModel/MlModelDetail/MlModelFeaturesList';
+import { PipelineTaskTab } from '../../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
 import TagsViewer from '../../components/Tag/TagsViewer/TagsViewer';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import TopicSchemaFields from '../../components/Topic/TopicSchema/TopicSchema';
@@ -41,11 +43,13 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference, TagSource } from '../../generated/tests/testCase';
 import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
+import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
+import SearchIndexFieldsTab from '../../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
 import { FrequentlyJoinedTables } from '../../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import { PartitionedKeys } from '../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import TableConstraints from '../../pages/TableDetailsPageV1/TableConstraints/TableConstraints';
 import domainClassBase from '../Domain/DomainClassBase';
 import { renderReferenceElement } from '../GlossaryUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../PermissionsUtils';
 import tableClassBase from '../TableClassBase';
 
 export const WIDGET_COMPONENTS = {
@@ -127,14 +131,7 @@ export const WIDGET_COMPONENTS = {
     />
   ),
   [GlossaryTermDetailPageWidgetKeys.TERMS_TABLE]: () => (
-    <GlossaryTermTab
-      isGlossary
-      permissions={DEFAULT_ENTITY_PERMISSION}
-      refreshGlossaryTerms={noop}
-      termsLoading={false}
-      onAddGlossaryTerm={noop}
-      onEditGlossaryTerm={noop}
-    />
+    <GlossaryTermTab isGlossary />
   ),
   [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: () => <TableConstraints />,
   [DetailPageWidgetKeys.TOPIC_SCHEMA]: () => <TopicSchemaFields />,
@@ -142,7 +139,9 @@ export const WIDGET_COMPONENTS = {
   [DetailPageWidgetKeys.CONTAINER_CHILDREN]: () => (
     <ContainerChildren isReadOnly />
   ),
-  [DetailPageWidgetKeys.CHARTS_TABLE]: () => <DashboardChartTable />,
+  [DetailPageWidgetKeys.CHARTS_TABLE]: () => (
+    <DashboardChartTable isCustomizationPage />
+  ),
   [DetailPageWidgetKeys.EXPERTS]: () => (
     <OwnerLabel
       hasPermission={false}
@@ -154,5 +153,15 @@ export const WIDGET_COMPONENTS = {
   ),
   [DetailPageWidgetKeys.API_SCHEMA]: () => <APIEndpointSchema />,
   [DetailPageWidgetKeys.CONTAINER_SCHEMA]: () => <ContainerWidget />,
-  [DetailPageWidgetKeys.DATABASE_SCHEMA]: () => <DatabaseSchemaTable />,
+  [DetailPageWidgetKeys.DATABASE_SCHEMA]: () => (
+    <DatabaseSchemaTable isCustomizationPage />
+  ),
+  [DetailPageWidgetKeys.TABLES]: () => <SchemaTablesTab isCustomizationPage />,
+  [DetailPageWidgetKeys.ML_MODEL_FEATURES]: () => <MlModelFeaturesList />,
+  [DetailPageWidgetKeys.PIPELINE_TASKS]: () => <PipelineTaskTab />,
+  [DetailPageWidgetKeys.SEARCH_INDEX_FIELDS]: () => <SearchIndexFieldsTab />,
+  [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: () => (
+    <StoredProcedureCodeCard />
+  ),
+  [DetailPageWidgetKeys.PARTITIONED_KEYS]: () => <PartitionedKeys newLook />,
 } as const;

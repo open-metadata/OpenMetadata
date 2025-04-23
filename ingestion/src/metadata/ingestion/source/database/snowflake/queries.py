@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -143,6 +143,18 @@ from (
 where ROW_NUMBER = 1
 """
 
+SNOWFLAKE_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_STREAM_NAMES = """
+SHOW STREAMS IN SCHEMA "{schema}"
+"""
+
+SNOWFLAKE_GET_STREAM = """
+SHOW STREAMS LIKE '{stream_name}' IN SCHEMA "{schema}"
+"""
+
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
@@ -248,6 +260,10 @@ SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1
 
 SNOWFLAKE_TEST_GET_VIEWS = """
 SELECT TABLE_NAME FROM "{database_name}".information_schema.views LIMIT 1
+"""
+
+SNOWFLAKE_TEST_GET_STREAMS = """
+SHOW STREAMS IN DATABASE "{database_name}"
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
@@ -389,6 +405,19 @@ ORDER BY PROCEDURE_START_TIME DESC
 SNOWFLAKE_GET_TABLE_DDL = """
 SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
 """
+
+SNOWFLAKE_GET_VIEW_DEFINITION = """
+SELECT table_name "view_name",
+    table_schema "schema",
+    view_definition "view_def"
+FROM information_schema.views
+WHERE view_definition is not null
+"""
+
+SNOWFLAKE_GET_STREAM_DEFINITION = """
+SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
+"""
+
 SNOWFLAKE_QUERY_LOG_QUERY = """
     SELECT
         QUERY_ID,

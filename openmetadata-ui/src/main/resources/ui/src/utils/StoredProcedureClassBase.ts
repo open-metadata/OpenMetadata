@@ -36,9 +36,7 @@ import {
 
 export interface StoredProcedureDetailPageTabProps {
   activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   decodedStoredProcedureFQN: string;
   entityName: string;
   code: string;
@@ -69,7 +67,7 @@ class StoredProcedureClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: 8,
+      [DetailPageWidgetKeys.STORED_PROCEDURE_CODE]: 6,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -105,7 +103,10 @@ class StoredProcedureClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.STORED_PROCEDURE_CODE] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,

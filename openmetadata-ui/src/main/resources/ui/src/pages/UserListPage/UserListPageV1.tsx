@@ -349,7 +349,7 @@ const UserListPageV1 = () => {
   const errorPlaceHolder = useMemo(
     () => (
       <PageLayoutV1 pageTitle={t('label.user-plural')}>
-        <Row className="page-container">
+        <Row>
           <Col className="w-full d-flex justify-end">
             <span>
               <Switch
@@ -362,6 +362,7 @@ const UserListPageV1 = () => {
           </Col>
           <Col className="mt-24" span={24}>
             <ErrorPlaceHolder
+              className="border-none"
               heading={t('label.user')}
               permission={isAdminUser}
               type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -435,7 +436,7 @@ const UserListPageV1 = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.user-plural')}>
       <Row
-        className="user-listing p-b-md page-container"
+        className="user-listing p-b-md"
         data-testid="user-list-v1-component"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -465,7 +466,6 @@ const UserListPageV1 = () => {
 
         <Col span={24}>
           <Table
-            bordered
             className="user-list-table"
             columns={columns}
             customPaginationProps={{

@@ -523,7 +523,7 @@ const TestSuiteDetailsPage = () => {
         </Col>
 
         <Col span={24}>
-          <Tabs items={tabs} />
+          <Tabs className="tabs-new" items={tabs} />
         </Col>
         <Col span={24}>
           <Modal

@@ -43,6 +43,7 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
+import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
 
@@ -250,10 +251,10 @@ const IncidentManagerDetailPage = () => {
       <Row
         data-testid="incident-manager-details-page-container"
         gutter={[0, 12]}>
-        <Col className="p-x-lg" span={24}>
+        <Col span={24}>
           <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
         </Col>
-        <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
+        <Col data-testid="entity-page-header" span={24}>
           <Row gutter={16}>
             <Col span={23}>
               <EntityHeaderTitle
@@ -281,14 +282,14 @@ const IncidentManagerDetailPage = () => {
             </Col>
           </Row>
         </Col>
-        <Col className="p-x-lg">
+        <Col className="w-full">
           <IncidentManagerPageHeader
             fetchTaskCount={getEntityFeedCount}
             testCaseData={testCase}
             onOwnerUpdate={handleOwnerChange}
           />
         </Col>
-        <Col className="p-x-lg" span={24}>
+        <Col className="incident-manager-details-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}

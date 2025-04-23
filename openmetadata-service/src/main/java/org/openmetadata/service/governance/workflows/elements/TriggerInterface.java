@@ -19,10 +19,9 @@ public interface TriggerInterface {
     }
   }
 
-  private List<FlowableListener> getWorkflowInstanceListeners() {
+  default List<FlowableListener> getWorkflowInstanceListeners(List<String> events) {
     List<FlowableListener> listeners = new ArrayList<>();
 
-    List<String> events = List.of("start", "end");
     for (String event : events) {
       FlowableListener listener =
           new FlowableListenerBuilder()
@@ -33,5 +32,9 @@ public interface TriggerInterface {
     }
 
     return listeners;
+  }
+
+  private List<FlowableListener> getWorkflowInstanceListeners() {
+    return getWorkflowInstanceListeners(List.of("start", "end"));
   }
 }

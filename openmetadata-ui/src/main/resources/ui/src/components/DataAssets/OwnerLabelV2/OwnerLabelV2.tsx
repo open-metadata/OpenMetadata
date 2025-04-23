@@ -10,22 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Space, Tooltip, Typography } from 'antd';
+import { Card, Typography } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TagButton from '../../common/TagButton/TagButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 
+interface OwnerLabelV2Props {
+  dataTestId?: string;
+}
+
 export const OwnerLabelV2 = <
   T extends { owners?: EntityReference[]; id: string }
->() => {
+>(
+  props: OwnerLabelV2Props
+) => {
+  const { dataTestId = 'glossary-right-panel-owner-link' } = props;
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
 
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
@@ -37,9 +43,9 @@ export const OwnerLabelV2 = <
   return (
     <Card
       className="new-header-border-card"
-      data-testid="glossary-right-panel-owner-link"
+      data-testid={dataTestId}
       title={
-        <div className="d-flex items-center ">
+        <div className="d-flex items-center gap-2">
           <Typography.Text className="text-sm font-medium">
             {t('label.owner-plural')}
           </Typography.Text>
@@ -52,30 +58,25 @@ export const OwnerLabelV2 = <
                 multiple={{ user: true, team: false }}
                 owner={data.owners}
                 onUpdate={handleUpdatedOwner}>
-                <Tooltip
+                <EditIconButton
+                  newLook
+                  data-testid="edit-owner"
+                  size="small"
                   title={t('label.edit-entity', {
                     entity: t('label.owner-plural'),
-                  })}>
-                  <Button
-                    className="cursor-pointer flex-center m-l-xss"
-                    data-testid="edit-owner"
-                    icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-                    size="small"
-                    type="text"
-                  />
-                </Tooltip>
+                  })}
+                />
               </UserTeamSelectableList>
             )}
         </div>
       }>
-      <Space className="m-r-xss" size={4}>
-        {getOwnerVersionLabel(
-          data,
-          isVersionView ?? false,
-          TabSpecificField.OWNERS,
-          permissions.EditOwners || permissions.EditAll
-        )}
-      </Space>
+      {getOwnerVersionLabel(
+        data,
+        isVersionView ?? false,
+        TabSpecificField.OWNERS,
+        permissions.EditOwners || permissions.EditAll
+      )}
+
       {data.owners?.length === 0 &&
         (permissions.EditOwners || permissions.EditAll) && (
           <UserTeamSelectableList

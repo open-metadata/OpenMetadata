@@ -27,7 +27,10 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import {
   GlobalSettingOptions,
@@ -277,7 +280,7 @@ const NotificationListPage = () => {
                       className="flex flex-center"
                       data-testid={`alert-edit-${record.name}`}
                       disabled={record.provider === ProviderType.System}
-                      icon={<EditIcon height={16} />}
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                       type="text"
                     />
                   </Link>
@@ -305,7 +308,7 @@ const NotificationListPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.alert-plural')}>
-      <Row className="page-container" gutter={[0, 16]}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>

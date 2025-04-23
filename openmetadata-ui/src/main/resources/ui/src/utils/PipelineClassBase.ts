@@ -35,9 +35,7 @@ import {
 } from './PipelineDetailsUtils';
 
 export interface PipelineDetailPageTabProps {
-  feedCount: {
-    totalCount: number;
-  };
+  feedCount: FeedCounts;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   onExtensionUpdate: (updatedPipeline: Pipeline) => Promise<void>;
@@ -66,7 +64,7 @@ class PipelineClassBase {
   constructor() {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
-      [DetailPageWidgetKeys.PIPELINE_TASKS]: 8,
+      [DetailPageWidgetKeys.PIPELINE_TASKS]: 4,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -103,7 +101,10 @@ class PipelineClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.PIPELINE_TASKS] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -172,7 +173,7 @@ class PipelineClassBase {
       DESCRIPTION_WIDGET,
       {
         fullyQualifiedName: DetailPageWidgetKeys.PIPELINE_TASKS,
-        name: i18n.t('label.schema'),
+        name: i18n.t('label.task-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },

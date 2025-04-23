@@ -133,7 +133,7 @@ const RolesListPage = () => {
           isEmpty(record?.description) ? (
             NO_DATA_PLACEHOLDER
           ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description || ''} />
+            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
           ),
       },
       {
@@ -273,7 +273,7 @@ const RolesListPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural')}>
       <Row
-        className="roles-list-container page-container"
+        className="roles-list-container"
         data-testid="roles-list-container"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -295,8 +295,8 @@ const RolesListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            className="roles-list-table"
             columns={columns}
+            containerClassName="roles-list-table"
             customPaginationProps={{
               currentPage,
               isLoading,
@@ -312,6 +312,7 @@ const RolesListPage = () => {
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.role')}
                   permission={addRolePermission}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}

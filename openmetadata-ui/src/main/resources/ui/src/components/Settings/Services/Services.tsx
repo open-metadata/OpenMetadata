@@ -64,7 +64,6 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -272,7 +271,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
-          className="p-lg"
+          className="p-lg border-none"
           doc={CONNECTORS_DOCS}
           heading={servicesDisplayName[serviceName]}
           permission={addServicePermission}
@@ -284,7 +283,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
     return (
       <ErrorPlaceHolder
-        className="mt-24"
+        className="mt-24 border-none"
         type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
     );
@@ -304,6 +303,30 @@ const Services = ({ serviceName }: ServicesProps) => {
       value,
     }));
   }, [serviceName]);
+
+  const customPaginationTableProps = useMemo(
+    () => ({
+      showPagination,
+      currentPage,
+      isLoading,
+      isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
+      pageSize,
+      paging,
+      pagingHandler: handleServicePageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      showPagination,
+      currentPage,
+      isLoading,
+      searchTerm,
+      serviceTypeFilter,
+      pageSize,
+      paging,
+      handleServicePageChange,
+      handlePageSizeChange,
+    ]
+  );
 
   const columns: ColumnsType<ServicesType> = [
     {
@@ -447,7 +470,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   return (
     <Row
-      className="justify-center m-b-md"
+      className="justify-center"
       data-testid="services-container"
       gutter={[16, 16]}>
       <Col span={24}>
@@ -486,6 +509,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Col span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          customPaginationProps={customPaginationTableProps}
           deleted={deleted}
           handleDeletedSwitchChange={handleDeletedSwitchChange}
           searchProps={{
@@ -493,7 +517,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             search: searchTerm,
           }}
           tableProps={{
-            bordered: true,
             columns,
             dataSource: serviceDetails,
             rowKey: 'fullyQualifiedName',
@@ -506,19 +529,6 @@ const Services = ({ serviceName }: ServicesProps) => {
             onChange: handleTableChange,
           }}
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={isLoading}
-            isNumberBased={!isEmpty(searchTerm) || !isEmpty(serviceTypeFilter)}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleServicePageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );

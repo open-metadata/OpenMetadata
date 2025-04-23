@@ -40,14 +40,15 @@ export interface ContainerDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
-  feedCount: { totalCount: number };
+  feedCount: FeedCounts;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   tab: EntityTabs;
   deleted: boolean;
-  containerData: Container;
+  containerData?: Container;
   fetchContainerDetail: (containerFQN: string) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
+  childrenCount: number;
 }
 
 type ContainerWidgetKeys =
@@ -66,7 +67,7 @@ class ContainerDetailsClassBase {
     this.defaultWidgetHeight = {
       [DetailPageWidgetKeys.DESCRIPTION]: 2,
       [DetailPageWidgetKeys.CONTAINER_CHILDREN]: 8,
-      [DetailPageWidgetKeys.CONTAINER_SCHEMA]: 8,
+      [DetailPageWidgetKeys.CONTAINER_SCHEMA]: 5,
       [DetailPageWidgetKeys.DATA_PRODUCTS]: 1.2,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
@@ -116,7 +117,10 @@ class ContainerDetailsClassBase {
 
     return [
       {
-        h: 10.5,
+        h:
+          this.defaultWidgetHeight[DetailPageWidgetKeys.DESCRIPTION] +
+          this.defaultWidgetHeight[DetailPageWidgetKeys.CONTAINER_SCHEMA] +
+          0.5,
         i: DetailPageWidgetKeys.LEFT_PANEL,
         w: 6,
         x: 0,
@@ -183,6 +187,13 @@ class ContainerDetailsClassBase {
   public getCommonWidgetList() {
     return [
       DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.CONTAINER_SCHEMA,
+        name: i18n.t('label.schema'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
       {
         fullyQualifiedName: DetailPageWidgetKeys.CONTAINER_CHILDREN,
         name: i18n.t('label.children'),

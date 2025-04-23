@@ -214,6 +214,10 @@
 }
 
 .lineage-root {
+  border-radius: @border-radius-sm;
+  border: 1px solid @grey-15;
+  position: relative;
+
   .entity-panel-container {
     right: 80px;
     margin-top: 12px;
@@ -238,10 +242,10 @@
 }
 
 .full-screen-lineage {
+  position: fixed;
   top: @om-navbar-height;
   left: @sidebar-width;
-  position: fixed !important;
-  width: calc(100vw - @sidebar-width);
+  width: calc(100% - @sidebar-width);
   height: calc(100vh - @om-navbar-height);
 
   .lineage-card {
@@ -401,7 +405,7 @@
 
 .react-flow__panel.left.bottom,
 .react-flow__panel.right.bottom {
-  bottom: 8px;
+  bottom: 24px;
 }
 
 .react-flow__minimap {

@@ -261,7 +261,11 @@ const MlModelFeaturesList = () => {
       </Fragment>
     );
   } else {
-    return <ErrorPlaceHolder />;
+    return (
+      <ErrorPlaceHolder
+        placeholderText={t('message.no-features-data-available')}
+      />
+    );
   }
 };
 

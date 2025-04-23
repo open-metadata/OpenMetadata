@@ -10,6 +10,6 @@ public class MlModelServiceMapper implements EntityMapper<MlModelService, Create
     return copy(new MlModelService(), create, user)
         .withServiceType(create.getServiceType())
         .withConnection(create.getConnection())
-        .withIngestionAgent(create.getIngestionAgent());
+        .withIngestionRunner(create.getIngestionRunner());
   }
 }

@@ -31,8 +31,8 @@
         },
         "jobLockTimeInMillis": {
           "type": "integer",
-          "default": 300000,
-          "description": "The amount of time a Job gets locked before being retried."
+          "default": 1296000000,
+          "description": "The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids jobs that takes too long to run being retried while running."
         }
       },
       "additionalProperties": false

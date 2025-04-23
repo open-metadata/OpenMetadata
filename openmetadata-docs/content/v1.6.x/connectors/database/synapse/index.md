@@ -21,7 +21,7 @@ Configure and schedule Synapse metadata and profiler workflows from the OpenMeta
     - [Service Name](#service-name)
     - [Connection Options](#connection-options)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/database/synapse/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 
@@ -95,7 +95,5 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

@@ -27,13 +27,10 @@ import { Link } from 'react-router-dom';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs } from '../../../enums/entity.enum';
 import { ChangeDescription, Type } from '../../../generated/entity/type';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
@@ -72,45 +69,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     onUpdate,
     filterWidgets,
   } = useGenericContext<ExtentionEntities[T]>();
-
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
-    useState<boolean>(false);
-
-  const [typePermission, setTypePermission] = useState<OperationPermission>();
-
-  const fetchTypeDetail = async () => {
-    setEntityTypeDetailLoading(true);
-    try {
-      const res = await getTypeByFQN(entityType);
-
-      setEntityTypeDetail(res);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setEntityTypeDetailLoading(false);
-    }
-  };
-
-  const fetchResourcePermission = async (entityType: EntityType) => {
-    setEntityTypeDetailLoading(true);
-    try {
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.TYPE,
-        entityType
-      );
-
-      setTypePermission(permission);
-    } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: t('label.resource-permission-lowercase'),
-        })
-      );
-    } finally {
-      setEntityTypeDetailLoading(false);
-    }
-  };
+    useState<boolean>(true);
 
   const onExtensionUpdate = useCallback(
     async (updatedExtension: ExtentionEntities[T]) => {
@@ -202,32 +163,63 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }, [maxDataCap, entityTypeDetail?.customProperties]);
 
   useEffect(() => {
-    if (typePermission?.ViewAll || typePermission?.ViewBasic) {
-      fetchTypeDetail();
-    }
-  }, [typePermission]);
-
-  useEffect(() => {
     if (
       isRenderedInRightPanel &&
+      !entityTypeDetailLoading &&
       isEmpty(entityTypeDetail.customProperties) &&
       isUndefined(entityDetails?.extension)
     ) {
       filterWidgets?.([DetailPageWidgetKeys.CUSTOM_PROPERTIES]);
     }
-  }, [isRenderedInRightPanel, entityTypeDetail.customProperties]);
+  }, [
+    isRenderedInRightPanel,
+    entityTypeDetail.customProperties,
+    entityTypeDetailLoading,
+  ]);
+
+  const initCustomPropertyTable = useCallback(async () => {
+    setEntityTypeDetailLoading(true);
+    try {
+      const permission = await getEntityPermissionByFqn(
+        ResourceEntity.TYPE,
+        entityType
+      );
+
+      if (permission?.ViewAll || permission?.ViewBasic) {
+        try {
+          const res = await getTypeByFQN(entityType);
+
+          setEntityTypeDetail(res);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
+      }
+    } catch {
+      showErrorToast(
+        t('server.fetch-entity-permissions-error', {
+          entity: t('label.resource-permission-lowercase'),
+        })
+      );
+    } finally {
+      setEntityTypeDetailLoading(false);
+    }
+  }, [entityType]);
 
   useEffect(() => {
-    fetchResourcePermission(entityType);
+    initCustomPropertyTable();
   }, [entityType]);
 
   if (entityTypeDetailLoading) {
-    return <Skeleton active />;
+    return (
+      <div className="p-lg border-default border-radius-sm">
+        <Skeleton active />
+      </div>
+    );
   }
 
   if (!hasPermission) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="flex-center">
         <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
       </div>
     );
@@ -240,9 +232,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="flex-center tab-content-height">
+      <div className="h-full p-x-lg flex-center border-default border-radius-sm">
         <ErrorPlaceHolder
-          className={className}
+          className={classNames(className)}
           placeholderText={
             <Transi18next
               i18nKey="message.no-custom-properties-entity"
@@ -322,7 +314,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
     if (newLook) {
       return (
-        <Card className="w-full new-header-border-card" title={header}>
+        <Card
+          className="w-full new-header-border-card no-scrollbar"
+          title={header}>
           {propertyList}
         </Card>
       );
@@ -337,7 +331,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   return !isEmpty(entityTypeDetail.customProperties) ? (
-    <div className="custom-properties-card">
+    <div className="h-full custom-properties-card">
       <Row data-testid="custom-properties-card" gutter={[16, 16]}>
         {dataSourceColumns.map((columns, colIndex) => (
           <Col key={colIndex} span={8}>
