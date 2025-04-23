@@ -48,7 +48,13 @@ Once the connector is set up, configure a [metadata ingestion pipeline](/how-to-
 to import metadata into OpenMetadata on a regular schedule.
 
 - Navigate to **Settings > Services > Databases** and select the service you added.
-- Go to the **Ingestion** tab and click **Add Metadata Ingestion**.
+
+{% image
+  src="/images/v1.7/getting-started/add-ingestion0.png"
+  alt="Ingestion Navigation"
+  caption="Ingestion Navigation" /%}
+
+- Go to the **Agents** tab and click **Add Metadata Agent**.
 
 {% image
   src="/images/v1.7/getting-started/add-ingestion.png"
