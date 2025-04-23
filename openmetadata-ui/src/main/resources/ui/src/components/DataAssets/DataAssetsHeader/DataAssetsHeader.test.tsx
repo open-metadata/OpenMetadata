@@ -31,6 +31,7 @@ import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
+
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',
@@ -88,6 +89,20 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  ExtraInfoLabel: jest.fn().mockImplementation(({ label, value }) => (
+    <div>
+      {label && <span>{label}</span>}
+      <span>{value}</span>
+    </div>
+  )),
+  ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
+    const props = {
+      href,
+      ...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {}),
+    };
+
+    return <a {...props}>{value}</a>;
+  }),
 }));
 
 jest.mock('../../common/CertificationTag/CertificationTag', () => {
@@ -294,8 +309,6 @@ describe('DataAssetsHeader component', () => {
     expect(sourceUrlLink).toHaveAttribute('href', mockSourceUrl);
     expect(sourceUrlLink).toHaveAttribute('target', '_blank');
     expect(screen.getByText('label.view-in-service-type')).toBeInTheDocument();
-
-    ``;
   });
 
   it('should not render source URL button when sourceUrl is not present', () => {
