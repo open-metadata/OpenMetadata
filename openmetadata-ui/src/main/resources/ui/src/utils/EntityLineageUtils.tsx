@@ -114,7 +114,6 @@ export const getColumnSourceTargetHandles = (obj: {
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
-  reactFlowInstance.zoomTo(ZOOM_VALUE);
 };
 
 export const centerNodePosition = (
@@ -376,26 +375,23 @@ const getTracedNode = (
     return [];
   }
 
-  const tracedEdgeIds = edges
-    .filter((e) => {
-      const id = isIncomer ? e.target : e.source;
+  // Create a Set for O(1) lookups
+  const tracedEdgeIds = new Set<string>();
 
-      return id === node.id;
-    })
-    .map((e) => (isIncomer ? e.source : e.target));
+  // Process edges in a single pass
+  for (const e of edges) {
+    const id = isIncomer ? e.target : e.source;
+    if (id === node.id) {
+      const targetId = isIncomer ? e.source : e.target;
 
-  return nodes.filter((n) =>
-    tracedEdgeIds
-      .map((id) => {
-        const matches = /([\w-^]+)__([\w-]+)/.exec(id);
-        if (matches === null) {
-          return id;
-        }
+      // Handle compound IDs (extracting the base node ID)
+      const matches = /([\w-^]+)__([\w-]+)/.exec(targetId);
+      tracedEdgeIds.add(matches ? matches[1] : targetId);
+    }
+  }
 
-        return matches[1];
-      })
-      .includes(n.id)
-  );
+  // Filter nodes only once
+  return nodes.filter((n) => tracedEdgeIds.has(n.id));
 };
 
 export const getAllTracedNodes = (
@@ -405,31 +401,44 @@ export const getAllTracedNodes = (
   prevTraced = [] as Node[],
   isIncomer: boolean
 ) => {
-  const tracedNodes = getTracedNode(node, nodes, edges, isIncomer);
+  // Create a set to track visited node IDs for O(1) lookups
+  const visitedNodeIds = new Set<string>(prevTraced.map((n) => n.id));
+  const result: Node[] = [];
 
-  return tracedNodes.reduce((memo, tracedNode) => {
-    memo.push(tracedNode);
+  // Use a queue for breadth-first traversal (more efficient than recursion)
+  const queue: Node[] = [node];
 
-    if (prevTraced.findIndex((n) => n.id === tracedNode.id) === -1) {
-      prevTraced.push(tracedNode);
+  while (queue.length > 0) {
+    const currentNode = queue.shift()!;
 
-      getAllTracedNodes(
-        tracedNode,
-        nodes,
-        edges,
-        prevTraced,
-        isIncomer
-      ).forEach((foundNode) => {
-        memo.push(foundNode);
-
-        if (prevTraced.findIndex((n) => n.id === foundNode.id) === -1) {
-          prevTraced.push(foundNode);
-        }
-      });
+    // Skip the initial node as we only want connected nodes
+    if (currentNode !== node) {
+      result.push(currentNode);
     }
 
-    return memo;
-  }, [] as Node[]);
+    // Get all connected nodes in the specified direction
+    const connectedNodes = getTracedNode(currentNode, nodes, edges, isIncomer);
+
+    for (const connectedNode of connectedNodes) {
+      // Only process nodes we haven't visited yet
+      if (!visitedNodeIds.has(connectedNode.id)) {
+        visitedNodeIds.add(connectedNode.id);
+        queue.push(connectedNode);
+      }
+    }
+  }
+
+  // Update prevTraced by reference (to maintain original API behavior)
+  for (const nodeId of visitedNodeIds) {
+    if (!prevTraced.some((n) => n.id === nodeId)) {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node) {
+        prevTraced.push(node);
+      }
+    }
+  }
+
+  return result;
 };
 
 export const getClassifiedEdge = (edges: Edge[]) => {
@@ -481,27 +490,40 @@ export const getAllTracedEdges = (
   prevTraced = [] as string[],
   isIncomer: boolean
 ) => {
-  const tracedNodes = getTracedEdge(selectedColumn, edges, isIncomer);
+  // Use a Set for O(1) lookups and uniqueness
+  const visitedEdgeIds = new Set<string>(prevTraced);
+  const result: string[] = [];
 
-  return tracedNodes.reduce((memo, tracedNode) => {
-    memo.push(tracedNode);
+  // Use a queue for breadth-first traversal
+  const queue: string[] = [selectedColumn];
 
-    if (prevTraced.findIndex((n) => n === tracedNode) === -1) {
-      prevTraced.push(tracedNode);
+  while (queue.length > 0) {
+    const currentColumn = queue.shift()!;
 
-      getAllTracedEdges(tracedNode, edges, prevTraced, isIncomer).forEach(
-        (foundNode) => {
-          memo.push(foundNode);
-
-          if (prevTraced.findIndex((n) => n === foundNode) === -1) {
-            prevTraced.push(foundNode);
-          }
-        }
-      );
+    // Skip the initial column
+    if (currentColumn !== selectedColumn) {
+      result.push(currentColumn);
     }
 
-    return memo;
-  }, [] as string[]);
+    // Get directly connected edges
+    const connectedEdges = getTracedEdge(currentColumn, edges, isIncomer);
+
+    for (const connectedEdge of connectedEdges) {
+      if (!visitedEdgeIds.has(connectedEdge) && connectedEdge) {
+        visitedEdgeIds.add(connectedEdge);
+        queue.push(connectedEdge);
+      }
+    }
+  }
+
+  // Update prevTraced by reference to maintain API compatibility
+  for (const edgeId of visitedEdgeIds) {
+    if (!prevTraced.includes(edgeId)) {
+      prevTraced.push(edgeId);
+    }
+  }
+
+  return result;
 };
 
 export const getAllTracedColumnEdge = (column: string, columnEdge: Edge[]) => {
@@ -780,6 +802,14 @@ export const createNodes = (
         ? node.type
         : getNodeType(edgesData, node.id);
 
+    // Check if node has incoming and outgoing connections
+    const hasIncomers = edgesData.some(
+      (edge: EdgeDetails) => edge.toEntity.id === node.id
+    );
+    const hasOutgoers = edgesData.some(
+      (edge: EdgeDetails) => edge.fromEntity.id === node.id
+    );
+
     // we are getting deleted as a string instead of boolean from API so need to handle it like this
     node.deleted = isDeleted(node.deleted);
 
@@ -792,6 +822,8 @@ export const createNodes = (
       data: {
         node,
         isRootNode: entityFqn === node.fullyQualifiedName,
+        hasIncomers,
+        hasOutgoers,
       },
       width: NODE_WIDTH,
       height: isExpanded ? childrenHeight + 220 : NODE_HEIGHT,
@@ -1577,7 +1609,6 @@ const getEdgePath = (
 export const getEdgePathData = (
   source: string,
   target: string,
-  offset: number,
   edgePathData: EdgeAlignmentPathDataProps
 ) => {
   const { sourceX, sourceY, targetX, targetY } = getEdgePathAlignmentData(
@@ -1596,29 +1627,10 @@ export const getEdgePathData = (
     targetPosition,
   });
 
-  const [invisibleEdgePath] = getBezierPath({
-    sourceX: sourceX + offset,
-    sourceY: sourceY + offset,
-    sourcePosition,
-    targetX: targetX + offset,
-    targetY: targetY + offset,
-    targetPosition,
-  });
-  const [invisibleEdgePath1] = getBezierPath({
-    sourceX: sourceX - offset,
-    sourceY: sourceY - offset,
-    sourcePosition,
-    targetX: targetX - offset,
-    targetY: targetY - offset,
-    targetPosition,
-  });
-
   return {
     edgePath: getEdgePath(edgePath, source, target, edgePathData), // pass the initial data edgePathData, as edge modification will be done based on the initial data
     edgeCenterX,
     edgeCenterY,
-    invisibleEdgePath,
-    invisibleEdgePath1,
   };
 };
 

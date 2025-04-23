@@ -14,7 +14,7 @@ import { RightOutlined } from '@ant-design/icons';
 import { Select, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { ZOOM_TRANSITION_DURATION } from '../../../../constants/Lineage.constants';
@@ -38,8 +38,12 @@ const LineageSearchSelect = () => {
     isPlatformLineage,
     platformView,
   } = useLineageProvider();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [cachedOptions, setCachedOptions] = useState<DefaultOptionType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const nodeOptions = useMemo(() => {
+  // Only compute options when dropdown is open
+  const generateNodeOptions = useCallback(() => {
     const options: DefaultOptionType[] = [];
 
     nodes.forEach((nodeObj) => {
@@ -104,6 +108,28 @@ const LineageSearchSelect = () => {
     return options;
   }, [nodes]);
 
+  // Load options when dropdown is opened
+  useEffect(() => {
+    if (isDropdownOpen && cachedOptions.length === 0) {
+      setIsLoading(true);
+      // Use requestAnimationFrame for better performance
+      requestAnimationFrame(() => {
+        const options = generateNodeOptions();
+        setCachedOptions(options);
+        setIsLoading(false);
+      });
+    }
+  }, [isDropdownOpen, cachedOptions.length, generateNodeOptions]);
+
+  // Reset cached options when nodes change
+  useEffect(() => {
+    setCachedOptions([]);
+  }, [nodes]);
+
+  const handleDropdownVisibleChange = useCallback((open: boolean) => {
+    setIsDropdownOpen(open);
+  }, []);
+
   const onOptionSelect = useCallback(
     (value?: string) => {
       const selectedNode = nodes.find(
@@ -121,7 +147,7 @@ const LineageSearchSelect = () => {
         onColumnClick(value ?? '');
       }
     },
-    [onNodeClick, reactFlowInstance, onColumnClick]
+    [onNodeClick, reactFlowInstance, onColumnClick, nodes, zoomValue]
   );
 
   if (isPlatformLineage || platformView !== LineagePlatformView.None) {
@@ -137,14 +163,16 @@ const LineageSearchSelect = () => {
       })}
       data-testid="lineage-search"
       dropdownMatchSelectWidth={false}
+      loading={isLoading}
       optionFilterProp="dataLabel"
       optionLabelProp="dataLabel"
-      options={nodeOptions}
+      options={cachedOptions}
       placeholder={t('label.search-entity', {
         entity: t('label.lineage'),
       })}
       popupClassName="lineage-search-options-list"
       onChange={onOptionSelect}
+      onDropdownVisibleChange={handleDropdownVisibleChange}
     />
   );
 };
