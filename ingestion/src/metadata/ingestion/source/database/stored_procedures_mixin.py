@@ -15,6 +15,7 @@ import json
 import traceback
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from copy import deepcopy
 from typing import Dict, Iterable, List, Union
 
 from sqlalchemy.engine import Engine
@@ -161,7 +162,7 @@ class StoredProcedureLineageMixin(ABC):
             self.service_connection.type.value
         )
         args = (
-            self.metadata,
+            deepcopy(self.metadata),
             self.service_name,
             dialect,
             self.source_config.parsingTimeoutLimit,

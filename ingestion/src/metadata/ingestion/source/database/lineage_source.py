@@ -17,7 +17,7 @@ import os
 import time
 import traceback
 from abc import ABC
-from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from functools import partial
 from multiprocessing import Process, Queue
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
@@ -52,8 +52,8 @@ logger = ingestion_logger()
 
 CHUNK_SIZE = 200
 
-THREAD_TIMEOUT = 10 * 60
-PROCESS_TIMEOUT = 10 * 60
+THREAD_TIMEOUT = 60 * 60
+PROCESS_TIMEOUT = 60 * 60
 # Maximum number of processes to use for parallel processing
 MAX_PROCESSES = min(multiprocessing.cpu_count(), 8)  # Limit to 8 or available CPUs
 
@@ -257,7 +257,7 @@ class LineageSource(QueryParserSource, ABC):
         producer_fn = self.get_table_query
         processor_fn = query_lineage_generator
         args = (
-            self.metadata,
+            deepcopy(self.metadata),
             self.dialect,
             self.graph,
             self.source_config.parsingTimeoutLimit,
@@ -278,7 +278,7 @@ class LineageSource(QueryParserSource, ABC):
         )
         processor_fn = view_lineage_generator
         args = (
-            self.metadata,
+            deepcopy(self.metadata),
             self.config.serviceName,
             self.service_connection.type.value,
             self.source_config.parsingTimeoutLimit,
