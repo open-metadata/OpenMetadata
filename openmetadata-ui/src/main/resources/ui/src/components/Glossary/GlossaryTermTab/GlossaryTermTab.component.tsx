@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
+import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
@@ -157,6 +157,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
+  const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
   const fetchAllTerms = async () => {
     setIsTableLoading(true);
@@ -810,7 +811,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const onDragConfirmationModalClose = useCallback(() => {
     setIsModalOpen(false);
     setIsTableHovered(false);
+    setConfirmCheckboxChecked(false);
   }, []);
+
+  const hasReviewers = useMemo(() => {
+    return !isEmpty(activeGlossary.reviewers);
+  }, [movedGlossaryTerm, activeGlossary]);
 
   useEffect(() => {
     if (!tableContainerRef.current) {
@@ -824,7 +830,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // If there is no terms, the table container ref is not set, so we need to use a div to set the width
       <div ref={tableContainerRef}>
         <ErrorPlaceHolder
-          className="m-t-xlg p-md p-b-lg"
+          className="p-md p-b-lg"
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary-term')}
           permission={permissions.Create}
@@ -865,8 +871,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               loading={isTableLoading || termsLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
-              // Had to pass y: 'auto' to override default styling from Table component
-              scroll={{ y: 'auto' }}
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
               onHeaderRow={onTableHeader}
@@ -883,11 +887,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           confirmLoading={isTableLoading}
           data-testid="confirmation-modal"
           maskClosable={false}
-          okText={t('label.confirm')}
+          okButtonProps={{ disabled: hasReviewers && !confirmCheckboxChecked }}
+          okText={t('label.move')}
           open={isModalOpen}
-          title={t('label.move-the-entity', {
-            entity: t('label.glossary-term'),
-          })}
+          title={
+            <>
+              <WarningOutlined className="m-r-xs warning-icon" />
+              {t('label.move-the-entity', {
+                entity: t('label.glossary-term'),
+              })}
+            </>
+          }
           onCancel={onDragConfirmationModalClose}
           onOk={handleChangeGlossaryTerm}>
           <Transi18next
@@ -903,6 +913,33 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 : t('label.term-lowercase'),
             }}
           />
+          {hasReviewers && (
+            <div className="m-t-md">
+              <Checkbox
+                checked={confirmCheckboxChecked}
+                className="text-grey-700"
+                data-testid="confirm-status-checkbox"
+                onChange={(e) => setConfirmCheckboxChecked(e.target.checked)}>
+                <span>
+                  <Transi18next
+                    i18nKey="message.entity-transfer-confirmation-message"
+                    renderElement={<strong />}
+                    values={{
+                      from: movedGlossaryTerm?.from.name,
+                    }}
+                  />
+                  <span className="d-inline-block m-l-xss">
+                    <StatusBadge
+                      className="p-x-xs p-y-xss"
+                      dataTestId=""
+                      label={Status.InReview}
+                      status={StatusClass[Status.InReview]}
+                    />
+                  </span>
+                </span>
+              </Checkbox>
+            </div>
+          )}
         </Modal>
       </Col>
     </Row>

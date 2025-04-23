@@ -27,4 +27,5 @@ export interface StatusBadgeProps {
   label: string;
   status: StatusType;
   dataTestId?: string;
+  className?: string;
 }

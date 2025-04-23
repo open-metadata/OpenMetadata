@@ -121,6 +121,4 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
-
 {% partial file="/v1.6/connectors/database/related.md" /%}

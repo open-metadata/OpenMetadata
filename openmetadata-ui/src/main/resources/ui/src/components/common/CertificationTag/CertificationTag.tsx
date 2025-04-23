@@ -13,8 +13,10 @@
 import { Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagImageSrc, getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
 
@@ -29,12 +31,13 @@ const CertificationTag = ({
     const name = getEntityName(certification.tagLabel);
     const actualName = certification.tagLabel.name ?? '';
     const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
+    const tagLink = getClassificationTagPath(certification.tagLabel.tagFQN);
 
     return (
       <Tooltip
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
-        <div
+        <Link
           className={classNames({
             'certification-tag-with-name d-flex items-center gap-1': showName,
           })}
@@ -43,7 +46,8 @@ const CertificationTag = ({
             showName
               ? { backgroundColor: certification.tagLabel.style?.color + '33' } // to decrease opacity of the background color by 80%
               : {}
-          }>
+          }
+          to={tagLink}>
           <img
             alt={`certification: ${name}`}
             className="certification-img"
@@ -57,7 +61,7 @@ const CertificationTag = ({
               {name}
             </span>
           )}
-        </div>
+        </Link>
       </Tooltip>
     );
   }

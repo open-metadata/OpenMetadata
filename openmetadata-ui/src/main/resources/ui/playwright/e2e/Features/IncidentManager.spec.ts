@@ -18,6 +18,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   getApiContext,
@@ -172,6 +173,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
         await testCaseResponse;
 
+        await clickOutside(page);
+
         await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -197,8 +200,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         );
 
         await expect(
-          page.locator('[data-testid="assignee"] [data-testid="owner-link"]')
-        ).toContainText(assignee2.displayName);
+          page.locator(`[data-testid=${assignee2.displayName}]`)
+        ).toBeVisible();
       }
     );
 

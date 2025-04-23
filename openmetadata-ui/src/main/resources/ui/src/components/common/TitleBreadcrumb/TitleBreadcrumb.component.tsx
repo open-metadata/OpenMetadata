@@ -22,6 +22,7 @@ import React, {
 import { Link } from 'react-router-dom';
 import { BREADCRUMB_SEPARATOR } from '../../../constants/constants';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
+import './title-breadcrumb.less';
 import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
@@ -95,7 +96,9 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 
   return (
     <TitleBreadcrumbSkeleton loading={loading}>
-      <nav className={className} data-testid="breadcrumb">
+      <nav
+        className={classNames('breadcrumb-container', className)}
+        data-testid="breadcrumb">
         <ol className="rounded-4 text-sm font-regular d-flex flex-wrap">
           {titleLinks.map((link, index) => {
             const classes =

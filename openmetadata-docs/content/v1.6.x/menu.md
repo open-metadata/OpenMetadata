@@ -425,16 +425,18 @@ site_menu:
     url: /connectors/database/redshift/yaml
   - category: Connectors / Database / Redshift / Troubleshooting
     url: /connectors/database/redshift/troubleshooting
+  - category: Connectors / Database / S3 Datalake
+    url: /connectors/database/s3-datalake
+  - category: Connectors / Database / S3 Datalake / Run Externally
+    url: /connectors/database/s3-datalake/yaml
+  - category: Connectors / Database / S3 Datalake / Troubleshooting
+    url: /connectors/database/s3-datalake/troubleshooting
   - category: Connectors / Database / Salesforce
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
   - category: Connectors / Database / Salesforce / Troubleshooting
     url: /connectors/database/salesforce/troubleshooting
-  - category: Connectors / Database / SAP HANA
-    url: /connectors/database/sap-hana
-  - category: Connectors / Database / SAP HANA / Run Externally
-    url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAP ERP
     url: /connectors/database/sap-erp
   - category: Connectors / Database / SAP ERP / Run Externally
@@ -443,6 +445,10 @@ site_menu:
     url: /connectors/database/sap-erp/troubleshooting
   - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
     url: /connectors/database/sap-erp/setup-sap-apis
+  - category: Connectors / Database / SAP HANA
+    url: /connectors/database/sap-hana
+  - category: Connectors / Database / SAP HANA / Run Externally
+    url: /connectors/database/sap-hana/yaml
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -459,16 +465,14 @@ site_menu:
     url: /connectors/database/snowflake
   - category: Connectors / Database / Snowflake / Run Externally
     url: /connectors/database/snowflake/yaml
+  - category: Connectors / Database / Snowflake / Troubleshooting
+    url: /connectors/database/snowflake/troubleshooting
   - category: Connectors / Database / SQLite
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
-  - category: Connectors / Database / S3 Datalake
-    url: /connectors/database/s3-datalake
-  - category: Connectors / Database / S3 Datalake / Run Externally
-    url: /connectors/database/s3-datalake/yaml
-  - category: Connectors / Database / S3 Datalake / Troubleshooting
-    url: /connectors/database/s3-datalake/troubleshooting
+  - category: Connectors / Database / SQLite / Troubleshooting
+    url: /connectors/database/sqlite/troubleshooting
   - category: Connectors / Database / Teradata
     url: /connectors/database/teradata
   - category: Connectors / Database / Teradata / Run Externally
@@ -477,6 +481,8 @@ site_menu:
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
     url: /connectors/database/trino/yaml
+  - category: Connectors / Database / Trino / Troubleshooting
+    url: /connectors/database/trino/troubleshooting
   - category: Connectors / Database / Unity Catalog
     url: /connectors/database/unity-catalog
   - category: Connectors / Database / Unity Catalog / Run Externally
@@ -522,12 +528,6 @@ site_menu:
     url: /connectors/dashboard/microstrategy/yaml
   - category: Connectors / Dashboard / MicroStrategy / Troubleshooting
     url: /connectors/dashboard/microstrategy/troubleshooting
-  - category: Connectors / Dashboard / Sigma
-    url: /connectors/dashboard/sigma
-  - category: Connectors / Dashboard / Sigma / Run Externally
-    url: /connectors/dashboard/sigma/yaml
-  - category: Connectors / Dashboard / Sigma / Troubleshooting
-    url: /connectors/dashboard/sigma/troubleshooting
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -542,14 +542,6 @@ site_menu:
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
   - category: Connectors / Dashboard / PowerBI / Troubleshooting
     url: /connectors/dashboard/powerbi/troubleshooting
-  - category: Connectors / Dashboard / Qlik Sense
-    url: /connectors/dashboard/qliksense
-  - category: Connectors / Dashboard / Qlik Sense / Run Externally
-    url: /connectors/dashboard/qliksense/yaml
-  - category: Connectors / Dashboard / Qlik Sense / Export Certificates
-    url: /connectors/dashboard/qliksense/certificates
-  - category: Connectors / Dashboard / Qlik Sense / Troubleshooting
-    url: /connectors/dashboard/qliksense/troubleshooting
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
@@ -558,6 +550,14 @@ site_menu:
     url: /connectors/dashboard/qlikcloud/api_keys
   - category: Connectors / Dashboard / Qlik Cloud / Troubleshooting
     url: /connectors/dashboard/qlikcloud/troubleshooting
+  - category: Connectors / Dashboard / Qlik Sense
+    url: /connectors/dashboard/qliksense
+  - category: Connectors / Dashboard / Qlik Sense / Run Externally
+    url: /connectors/dashboard/qliksense/yaml
+  - category: Connectors / Dashboard / Qlik Sense / Export Certificates
+    url: /connectors/dashboard/qliksense/certificates
+  - category: Connectors / Dashboard / Qlik Sense / Troubleshooting
+    url: /connectors/dashboard/qliksense/troubleshooting
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
@@ -570,6 +570,12 @@ site_menu:
     url: /connectors/dashboard/redash/yaml
   - category: Connectors / Dashboard / Redash / Troubleshooting
     url: /connectors/dashboard/redash/troubleshooting
+  - category: Connectors / Dashboard / Sigma
+    url: /connectors/dashboard/sigma
+  - category: Connectors / Dashboard / Sigma / Run Externally
+    url: /connectors/dashboard/sigma/yaml
+  - category: Connectors / Dashboard / Sigma / Troubleshooting
+    url: /connectors/dashboard/sigma/troubleshooting
   - category: Connectors / Dashboard / Superset
     url: /connectors/dashboard/superset
   - category: Connectors / Dashboard / Superset / Run Externally
@@ -619,7 +625,7 @@ site_menu:
   - category: Connectors / Pipeline / Airflow / Run Externally
     url: /connectors/pipeline/airflow/yaml
   - category: Connectors / Pipeline / Airflow / Troubleshooting
-    url: /connectors/search/airflow/troubleshooting
+    url: /connectors/pipeline/airflow/troubleshooting
   - category: Connectors / Pipeline / Airflow / Lineage Backend
     url: /connectors/pipeline/airflow/lineage-backend
   - category: Connectors / Pipeline / Airflow / Lineage Operator
@@ -636,24 +642,18 @@ site_menu:
     url: /connectors/pipeline/dagster/yaml
   - category: Connectors / Pipeline / Dagster / Troubleshooting
     url: /connectors/pipeline/dagster/troubleshooting
-  - category: Connectors / Pipeline / dbt Cloud
-    url: /connectors/pipeline/dbtcloud
-  - category: Connectors / Pipeline / dbt Cloud / Run Externally
-    url: /connectors/pipeline/dbtcloud/yaml
-  - category: Connectors / Pipeline / dbt Cloud / Troubleshooting
-    url: /connectors/pipeline/dbtcloud/troubleshooting
-  - category: Connectors / Pipeline / KafkaConnect
-    url: /connectors/pipeline/kafkaconnect
-  - category: Connectors / Pipeline / KafkaConnect / Run Externally
-    url: /connectors/pipeline/kafkaconnect/yaml
-  - category: Connectors / Pipeline / KafkaConnect / Troubleshooting
-    url: /connectors/pipeline/kafkaconnect/troubleshooting
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
     url: /connectors/pipeline/databricks-pipeline/yaml
   - category: Connectors / Pipeline / Databricks Pipeline / Troubleshooting
     url: /connectors/pipeline/databricks-pipeline/troubleshooting
+  - category: Connectors / Pipeline / dbt Cloud
+    url: /connectors/pipeline/dbtcloud
+  - category: Connectors / Pipeline / dbt Cloud / Run Externally
+    url: /connectors/pipeline/dbtcloud/yaml
+  - category: Connectors / Pipeline / dbt Cloud / Troubleshooting
+    url: /connectors/pipeline/dbtcloud/troubleshooting
   - category: Connectors / Pipeline / Domo Pipeline
     url: /connectors/pipeline/domo-pipeline
   - category: Connectors / Pipeline / Domo Pipeline / Run Externally
@@ -666,12 +666,24 @@ site_menu:
     url: /connectors/pipeline/fivetran/yaml
   - category: Connectors / Pipeline / Fivetran / Troubleshooting
     url: /connectors/pipeline/fivetran/troubleshooting
+  - category: Connectors / Pipeline / Flink
+    url: /connectors/pipeline/flink
+  - category: Connectors / Pipeline / Flink / Run Externally
+    url: /connectors/pipeline/flink/yaml
+  - category: Connectors / Pipeline / Flink / Troubleshooting
+    url: /connectors/pipeline/flink/troubleshooting
   - category: Connectors / Pipeline / Glue Pipeline
     url: /connectors/pipeline/glue-pipeline
   - category: Connectors / Pipeline / Glue Pipeline / Run Externally
     url: /connectors/pipeline/glue-pipeline/yaml
   - category: Connectors / Pipeline / Glue Pipeline / Troubleshooting
     url: /connectors/pipeline/glue-pipeline/troubleshooting
+  - category: Connectors / Pipeline / KafkaConnect
+    url: /connectors/pipeline/kafkaconnect
+  - category: Connectors / Pipeline / KafkaConnect / Run Externally
+    url: /connectors/pipeline/kafkaconnect/yaml
+  - category: Connectors / Pipeline / KafkaConnect / Troubleshooting
+    url: /connectors/pipeline/kafkaconnect/troubleshooting
   - category: Connectors / Pipeline / Nifi
     url: /connectors/pipeline/nifi
   - category: Connectors / Pipeline / Nifi / Run Externally
@@ -680,20 +692,14 @@ site_menu:
     url: /connectors/pipeline/nifi/troubleshooting
   - category: Connectors / Pipeline / Openlineage
     url: /connectors/pipeline/openlineage
-  - category: Connectors / Pipeline / Troubleshooting
+  - category: Connectors / Pipeline / Openlineage / Troubleshooting
     url: /connectors/pipeline/openlineage/troubleshooting
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
     url: /connectors/pipeline/spline/yaml
-  - category: Connectors / Pipeline / Spline / troubleshooting
+  - category: Connectors / Pipeline / Spline / Troubleshooting
     url: /connectors/pipeline/spline/troubleshooting
-  - category: Connectors / Pipeline / Flink
-    url: /connectors/pipeline/flink
-  - category: Connectors / Pipeline / Flink / Run Externally
-    url: /connectors/pipeline/flink/yaml
-  - category: Connectors / Pipeline / Flink / Troubleshooting
-    url: /connectors/pipeline/flink/troubleshooting
 
   - category: Connectors / ML Model
     url: /connectors/ml-model
@@ -712,18 +718,18 @@ site_menu:
 
   - category: Connectors / Storage
     url: /connectors/storage
-  - category: Connectors / Storage / S3 Storage
-    url: /connectors/storage/s3
-  - category: Connectors / Storage / S3 Storage / Run Externally
-    url: /connectors/storage/s3/yaml
-  - category: Connectors / Storage / S3 Storage / Troubleshooting
-    url: /connectors/storage/s3/troubleshooting
   - category: Connectors / Storage / GCS
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
   - category: Connectors / Storage / GCS / Troubleshooting
     url: /connectors/storage/gcs/troubleshooting
+  - category: Connectors / Storage / S3 Storage
+    url: /connectors/storage/s3
+  - category: Connectors / Storage / S3 Storage / Run Externally
+    url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / S3 Storage / Troubleshooting
+    url: /connectors/storage/s3/troubleshooting
 
   - category: Connectors / Search
     url: /connectors/search
@@ -736,6 +742,12 @@ site_menu:
 
   - category: Connectors / Metadata
     url: /connectors/metadata
+  - category: Connectors / Metadata / Alation Sink
+    url: /connectors/metadata/alationsink
+  - category: Connectors / Metadata / Alation Sink / Run Externally
+    url: /connectors/metadata/alationsink/yaml
+  - category: Connectors / Metadata / Alation Sink / Troubleshooting
+    url: /connectors/metadata/alationsink/troubleshooting
   - category: Connectors / Metadata / Amundsen
     url: /connectors/metadata/amundsen
   - category: Connectors / Metadata / Amundsen / Run Externally
@@ -748,12 +760,6 @@ site_menu:
     url: /connectors/metadata/atlas/yaml
   - category: Connectors / Metadata / Atlas / Troubleshooting
     url: /connectors/metadata/atlas/troubleshooting
-  - category: Connectors / Metadata / Alation Sink
-    url: /connectors/metadata/alationsink
-  - category: Connectors / Metadata / Alation Sink / Run Externally
-    url: /connectors/metadata/alationsink/yaml
-  - category: Connectors / Metadata / Alation Sink / Troubleshooting
-    url: /connectors/metadata/alationsink/troubleshooting
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
@@ -877,6 +883,8 @@ site_menu:
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
     url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Data Insights
+    url: /how-to-guides/admin-guide/data-insights
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
     url: /how-to-guides/admin-guide/persona-landing-page-customization 
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
@@ -1066,14 +1074,14 @@ site_menu:
     url: /how-to-guides/data-governance/classification/assets
   - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
-    url: /how-to-guides/data-governance/classification/auto
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Workflow
-    url: /how-to-guides/data-governance/classification/auto/workflow
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / External Workflow
-    url: /how-to-guides/data-governance/classification/auto/external-workflow
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Auto PII Tagging
-    url: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow
+    url: /how-to-guides/data-governance/classification/auto-classification
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Workflow
+    url: /how-to-guides/data-governance/classification/auto-classification/workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / External Workflow
+    url: /how-to-guides/data-governance/classification/auto-classification/external-workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Auto PII Tagging
+    url: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
@@ -1095,6 +1103,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.9 Release
+    url: /releases/all-releases/#1.6.9-release
+  - category: Releases / All Releases / 1.6.8 Release
+    url: /releases/all-releases/#1.6.8-release
+  - category: Releases / All Releases / 1.6.7 Release
+    url: /releases/all-releases/#1.6.7-release
   - category: Releases / All Releases / 1.6.6 Release
     url: /releases/all-releases/#1.6.6-release
   - category: Releases / All Releases / 1.6.5 Release

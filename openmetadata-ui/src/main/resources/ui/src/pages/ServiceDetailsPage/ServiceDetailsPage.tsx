@@ -59,25 +59,11 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { AgentType, App } from '../../generated/entity/applications/app';
 import { Tag } from '../../generated/entity/classification/tag';
-import { APICollection } from '../../generated/entity/data/apiCollection';
-import { Container } from '../../generated/entity/data/container';
-import { Dashboard } from '../../generated/entity/data/dashboard';
-import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
-import { Database } from '../../generated/entity/data/database';
-import { Mlmodel } from '../../generated/entity/data/mlmodel';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
-import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
-import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
@@ -120,6 +106,7 @@ import {
 } from '../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
+import { removeAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
@@ -143,19 +130,8 @@ import {
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './service-details-page.less';
+import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
-
-export type ServicePageData =
-  | Database
-  | Topic
-  | Dashboard
-  | Mlmodel
-  | Pipeline
-  | Container
-  | DashboardDataModel
-  | SearchIndexEntity
-  | StoredProcedure
-  | APICollection;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -294,19 +270,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const extraDropdownContent = useMemo(
     () =>
       entityUtilClassBase.getManageExtraOptions(
-        serviceCategory === 'databaseServices'
-          ? EntityType.DATABASE_SERVICE
-          : EntityType.ALL,
+        getEntityTypeFromServiceCategory(serviceCategory),
         decodedServiceFQN,
         servicePermission,
-        serviceDetails?.deleted ?? false
+        serviceDetails
       ),
-    [
-      servicePermission,
-      decodedServiceFQN,
-      serviceCategory,
-      serviceDetails?.deleted,
-    ]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
+    // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
 
   const handleShowDeleted = useCallback(
@@ -993,16 +963,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, []);
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete
-        ? handleToggleDelete(version)
-        : history.push(
-            getSettingPath(
-              GlobalSettingsMenuCategory.SERVICES,
-              getServiceRouteFromServiceType(serviceCategory)
-            )
-          ),
-    [handleToggleDelete, serviceCategory]
+    (isSoftDelete?: boolean) => {
+      if (!isSoftDelete) {
+        removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
+        history.push(
+          getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(serviceCategory)
+          )
+        );
+      }
+    },
+    [serviceCategory, serviceDetails.fullyQualifiedName]
   );
 
   const handleRestoreService = useCallback(async () => {
@@ -1374,6 +1346,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
     isWorkflowStatusLoading,
   ]);
 
+  const afterAutoPilotAppTrigger = useCallback(() => {
+    removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
+    fetchWorkflowInstanceStates();
+  }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
+
+  useEffect(() => {
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1399,12 +1380,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
               afterDomainUpdateAction={afterDomainUpdateAction}
-              afterTriggerAction={fetchWorkflowInstanceStates}
+              afterTriggerAction={afterAutoPilotAppTrigger}
               dataAsset={serviceDetails}
               disableRunAgentsButton={disableRunAgentsButton}
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
-              isDayOneWorkflowStatusLoading={isWorkflowStatusLoading}
+              isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
               permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
@@ -1415,7 +1396,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             />
           </Col>
 
-          <Col span={24}>
+          <Col className="entity-details-page-tabs" span={24}>
             <Tabs
               activeKey={activeTab}
               className="tabs-new"

@@ -15,9 +15,9 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Alert, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { PLATFORM_INSIGHTS_CHART } from '../../constants/ServiceInsightsTab.constants';
 import { SystemChartType } from '../../enums/DataInsight.enum';
@@ -27,7 +27,10 @@ import {
   getCurrentDayStartGMTinMillis,
   getDayAgoStartGMTinMillis,
 } from '../../utils/date-time/DateTimeUtils';
+import { updateAutoPilotStatus } from '../../utils/LocalStorageUtils';
 import {
+  checkIfAutoPilotStatusIsDismissed,
+  filterDistributionChartItem,
   getPlatformInsightsChartDataFormattingMethod,
   getStatusIconFromStatusType,
 } from '../../utils/ServiceInsightsTabUtils';
@@ -88,10 +91,10 @@ const ServiceInsightsTab = ({
 
       const piiDistributionChart = chartsData[
         SystemChartType.PIIDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
       const tierDistributionChart = chartsData[
         SystemChartType.TierDistribution
-      ]?.results.filter((item) => item.term.includes(toLower(item.group)));
+      ]?.results.filter(filterDistributionChartItem);
 
       setChartsResults({
         platformInsightsChart,
@@ -143,9 +146,40 @@ const ServiceInsightsTab = ({
     workflowStatesData?.mainInstanceState?.status
   );
 
+  const showAutoPilotStatus = useMemo(() => {
+    const isDataPresent =
+      !isWorkflowStatusLoading && !isUndefined(workflowStatesData);
+    const isStatusDismissed = checkIfAutoPilotStatusIsDismissed(
+      serviceDetails.fullyQualifiedName,
+      workflowStatesData?.mainInstanceState?.status
+    );
+
+    return isDataPresent && !isStatusDismissed;
+  }, [
+    isWorkflowStatusLoading,
+    workflowStatesData,
+    serviceDetails.fullyQualifiedName,
+    workflowStatesData?.mainInstanceState?.status,
+  ]);
+
+  const onStatusBannerClose = useCallback(() => {
+    if (
+      serviceDetails.fullyQualifiedName &&
+      workflowStatesData?.mainInstanceState?.status
+    ) {
+      updateAutoPilotStatus({
+        serviceFQN: serviceDetails.fullyQualifiedName,
+        status: workflowStatesData?.mainInstanceState?.status,
+      });
+    }
+  }, [
+    serviceDetails.fullyQualifiedName,
+    workflowStatesData?.mainInstanceState?.status,
+  ]);
+
   return (
     <Row className="service-insights-tab" gutter={[16, 16]}>
-      {!isWorkflowStatusLoading && !isUndefined(workflowStatesData) && (
+      {showAutoPilotStatus && (
         <Alert
           closable
           showIcon
@@ -162,6 +196,7 @@ const ServiceInsightsTab = ({
             </div>
           }
           message={message}
+          onClose={onStatusBannerClose}
         />
       )}
       {arrayOfWidgets.map(

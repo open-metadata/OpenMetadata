@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import {
@@ -215,7 +216,11 @@ test.describe('Service Version pages', () => {
 
           await deleteResponse;
 
-          await toastNotification(page, /Delete operation initiated for/);
+          await toastNotification(
+            page,
+            /deleted successfully!/,
+            BIG_ENTITY_DELETE_TIMEOUT
+          );
 
           await page.reload();
 

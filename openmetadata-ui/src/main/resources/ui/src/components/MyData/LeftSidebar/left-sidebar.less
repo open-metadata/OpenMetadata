@@ -40,6 +40,11 @@
   display: flex;
   flex-direction: column;
 
+  .ant-menu-item,
+  .ant-menu-submenu {
+    color: @grey-600;
+  }
+
   &.ant-menu.ant-menu-vertical,
   &.ant-menu.ant-menu-inline {
     border: none;
@@ -60,8 +65,6 @@
       }
 
       .anticon {
-        color: inherit;
-
         svg {
           fill: transparent;
         }
@@ -109,6 +112,7 @@
 
         .left-panel-label {
           font-weight: 500;
+          color: inherit;
         }
       }
     }
@@ -142,8 +146,8 @@
       }
 
       .left-panel-label {
-        color: @text-color;
         font-weight: 500;
+        color: inherit;
       }
 
       a {
@@ -162,10 +166,6 @@
 
         svg {
           fill: transparent;
-        }
-
-        .anticon {
-          color: inherit;
         }
 
         a,
@@ -187,7 +187,6 @@
   .anticon {
     line-height: 0 !important;
     font-size: @left-sidebar-icon-size !important;
-    color: @grey-600;
 
     svg {
       fill: transparent;
@@ -256,10 +255,6 @@
         }
       }
     }
-
-    .anticon {
-      color: inherit;
-    }
   }
 
   .ant-menu-submenu {
@@ -279,10 +274,6 @@
         .ant-menu-submenu-arrow {
           color: @white;
         }
-      }
-
-      .anticon {
-        color: inherit;
       }
     }
   }
@@ -326,7 +317,6 @@
 
   .top-menu {
     flex-grow: 1;
-    margin-bottom: 16px; // Adds space between top and bottom menus
   }
 
   .bottom-menu {

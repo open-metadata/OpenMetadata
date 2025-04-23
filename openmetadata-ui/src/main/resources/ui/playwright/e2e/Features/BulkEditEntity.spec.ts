@@ -146,6 +146,8 @@ test.describe('Bulk Edit Entity', () => {
             EntityDataClass.user1.responseData?.['displayName'],
             EntityDataClass.user2.responseData?.['displayName'],
           ],
+          retentionPeriod: undefined,
+          sourceUrl: undefined,
         },
         page,
         customPropertyRecord
@@ -159,11 +161,17 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
+
       await page.getByRole('button', { name: 'Update' }).click();
+
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
-
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
       await toastNotification(page, /details updated successfully/);
 
       await page.click('[data-testid="databases"]');
@@ -309,12 +317,15 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
         state: 'visible',
       });
-
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
       await page.getByRole('button', { name: 'Update' }).click();
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
-
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -441,8 +452,13 @@ test.describe('Bulk Edit Entity', () => {
         processed: '2',
         failed: '0',
       });
-
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
       await page.getByRole('button', { name: 'Update' }).click();
+
+      await updateButtonResponse;
+      await page.waitForEvent('framenavigated');
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated
@@ -559,6 +575,9 @@ test.describe('Bulk Edit Entity', () => {
         failed: '0',
       });
 
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/tables/name/*/importAsync?*dryRun=false&recursive=false*`
+      );
       await page.click('[type="button"] >> text="Update"', { force: true });
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
@@ -567,7 +586,7 @@ test.describe('Bulk Edit Entity', () => {
       await page.waitForSelector('.message-banner-wrapper', {
         state: 'detached',
       });
-
+      await updateButtonResponse;
       await toastNotification(page, /details updated successfully/);
 
       // Verify Details updated

@@ -212,12 +212,16 @@ const TeamDetailsV1 = ({
     history.push({ search: Qs.stringify({ activeTab: key }) });
   };
 
-  const createTeamPermission = useMemo(
-    () =>
-      !isEmpty(permissions) &&
-      checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
-    [permissions]
-  );
+  const { createTeamPermission, editUserPermission } = useMemo(() => {
+    return {
+      createTeamPermission:
+        !isEmpty(permissions) &&
+        checkPermission(Operation.Create, ResourceEntity.TEAM, permissions),
+      editUserPermission:
+        checkPermission(Operation.EditAll, ResourceEntity.TEAM, permissions) ||
+        checkPermission(Operation.EditUsers, ResourceEntity.TEAM, permissions),
+    };
+  }, [permissions]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -246,7 +250,7 @@ const TeamDetailsV1 = ({
     }: PlaceholderProps) => (
       <ErrorPlaceHolder
         button={button}
-        className="mt-0-important"
+        className="mt-0-important border-none"
         doc={doc}
         heading={heading}
         permission={permission}
@@ -292,7 +296,7 @@ const TeamDetailsV1 = ({
           };
         })
       );
-    } catch (error) {
+    } catch {
       setChildTeamList([]);
     }
   };
@@ -617,7 +621,7 @@ const TeamDetailsV1 = ({
   );
 
   const teamsTableRender = useMemo(() => {
-    let addUserButtonTitle = createTeamPermission
+    let addUserButtonTitle = editUserPermission
       ? t('label.add-entity', { entity: t('label.team') })
       : t('message.no-permission-for-action');
 
@@ -629,6 +633,7 @@ const TeamDetailsV1 = ({
 
     return currentTeam.childrenCount === 0 && !searchTerm ? (
       <ErrorPlaceHolder
+        className="border-none"
         icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography.Paragraph style={{ marginBottom: '0' }}>
@@ -651,7 +656,7 @@ const TeamDetailsV1 = ({
           <Button
             ghost
             data-testid="add-placeholder-button"
-            disabled={!createTeamPermission || isTeamDeleted}
+            disabled={!editUserPermission || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
             onClick={handleAddTeamButtonClick}>

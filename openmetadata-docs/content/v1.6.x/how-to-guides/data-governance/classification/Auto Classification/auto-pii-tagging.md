@@ -1,6 +1,6 @@
 ---
 title: Auto PII Tagging
-slug: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
+slug: /how-to-guides/data-governance/classification/auto-classification/auto-pii-tagging
 ---
 
 # Auto PII Tagging
@@ -16,6 +16,12 @@ Auto PII tagging for Sensitive/NonSensitive at the column level is performed bas
     In that case, the `confidence` parameter lets you tune the minimum score required to tag a column as `PII.Sensitive`.
 
 Note that if a column is already tagged as `PII`, we will ignore its execution.
+
+{% note %}
+
+In OpenMetadata, the auto-classification feature primarily applies the PII classification, tagging data as either Sensitive or Non-Sensitive. The General classification, which includes tags like Address, Name, etc., is not available in the OpenMetadata. This functionality is present in the Collate.
+
+{% /note %}
 
 ## Troubleshooting
 

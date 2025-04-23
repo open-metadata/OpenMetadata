@@ -447,8 +447,15 @@ class LineageParser:
         if lr_sqlfluff:
             return lr_sqlfluff
 
-        lr_sqlparser = LineageRunner(query)
+        @timeout(seconds=timeout_seconds)
+        def get_sqlparser_lineage_runner(qry: str) -> LineageRunner:
+            lr_sqlparser = LineageRunner(qry)
+            lr_sqlparser.get_column_lineage()
+            return lr_sqlparser
+
+        lr_sqlparser = None
         try:
+            lr_sqlparser = get_sqlparser_lineage_runner(query)
             _ = len(lr_sqlparser.get_column_lineage()) + len(
                 set(lr_sqlparser.source_tables).union(
                     set(lr_sqlparser.target_tables).union(
@@ -456,10 +463,17 @@ class LineageParser:
                     )
                 )
             )
+        except TimeoutError:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlParser failed for the [{dialect.value}]. "
+                f"Parser has been running for more than {timeout_seconds} seconds."
+            )
+            return None
         except Exception:
             # if both runner have failed we return the usual one
             logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")
-            return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
+            return lr_sqlfluff if lr_sqlfluff else None
 
         self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
         logger.debug(

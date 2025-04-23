@@ -82,6 +82,4 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
-
 {% partial file="/v1.6/connectors/database/related.md" /%}

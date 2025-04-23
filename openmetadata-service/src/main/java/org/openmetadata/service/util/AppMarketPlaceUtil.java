@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_ROLE;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
@@ -76,9 +77,9 @@ public class AppMarketPlaceUtil {
             })
         .forEach(
             req -> {
-              AppMarketPlaceDefinition definition = mapper.createToEntity(req, "admin");
+              AppMarketPlaceDefinition definition = mapper.createToEntity(req, ADMIN_USER_NAME);
               appMarketRepository.setFullyQualifiedName(definition);
-              appMarketRepository.createOrUpdate(null, definition);
+              appMarketRepository.createOrUpdate(null, definition, ADMIN_USER_NAME);
             });
   }
 }

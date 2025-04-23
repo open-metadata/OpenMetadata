@@ -244,7 +244,7 @@ const TaskFeedCard = ({
                   )}>
                   {`${t('label.assignee-plural')}: `}
                 </Typography.Text>
-                <OwnerLabel className="p-t-05" owners={feed?.task?.assignees} />
+                <OwnerLabel owners={feed?.task?.assignees} />
               </div>
             </Col>
           ) : null}

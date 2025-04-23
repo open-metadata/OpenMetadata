@@ -47,7 +47,6 @@ import {
   handleUpdateTableColumnSelections,
 } from '../../../utils/TableUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import AppBadge from '../Badge/Badge.component';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
@@ -242,41 +241,31 @@ const Table = <T extends Record<string, unknown>>(
 
   return (
     <Row className={classNames('table-container', rest.containerClassName)}>
-      <Col span={24}>
-        <Row className="p-md">
-          <Col span={12}>
-            <div className="h-full d-flex items-center">
-              <div className="table-data-count-container">
-                <Typography.Text>{t('label.table-plural')}</Typography.Text>
-                <AppBadge
-                  className="total-count-badge"
-                  label={(
-                    customPaginationProps?.paging?.total ??
-                    (rest.dataSource ?? []).length
-                  ).toString()}
-                />
-              </div>
-
-              {searchProps ? (
-                <Searchbar
-                  {...searchProps}
-                  removeMargin
-                  containerClassName="m-l-xlg w-400"
-                  placeholder={searchProps?.placeholder ?? t('label.search')}
-                  searchValue={searchProps?.value}
-                  typingInterval={searchProps?.searchDebounceTime ?? 500}
-                  onSearch={handleSearchAction}
-                />
-              ) : null}
-            </div>
-          </Col>
+      <Col
+        className={classNames({
+          'p-y-md': searchProps ?? rest.extraTableFilters ?? !isFullViewTable,
+        })}
+        span={24}>
+        <Row className="p-x-md">
+          {searchProps ? (
+            <Col span={12}>
+              <Searchbar
+                {...searchProps}
+                removeMargin
+                placeholder={searchProps?.placeholder ?? t('label.search')}
+                searchValue={searchProps?.value}
+                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                onSearch={handleSearchAction}
+              />
+            </Col>
+          ) : null}
           {(rest.extraTableFilters || !isFullViewTable) && (
             <Col
               className={classNames(
                 'd-flex justify-end items-center gap-5',
                 rest.extraTableFiltersClassName
               )}
-              span={12}>
+              span={searchProps ? 12 : 24}>
               {rest.extraTableFilters}
               {!isFullViewTable && (
                 <DndProvider backend={HTML5Backend}>
@@ -322,11 +311,6 @@ const Table = <T extends Record<string, unknown>>(
           ref={ref}
           tableLayout="fixed"
           {...resizingTableProps}
-          scroll={{
-            y: 740,
-            x: resizingTableProps.scroll?.x ?? rest.scroll?.x,
-            ...rest.scroll,
-          }}
         />
       </Col>
       {customPaginationProps && customPaginationProps.showPagination ? (

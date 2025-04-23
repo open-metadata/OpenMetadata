@@ -61,6 +61,17 @@
       z-index: 1;
     }
   }
+
+  &.stacked-view {
+    position: relative;
+  }
+
+  &.is-compact-view {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
 }
 
 .owner-dropdown-container {
@@ -72,8 +83,9 @@
   max-height: 250px;
   overflow-y: auto;
 }
-.no-owner-text {
-  color: @grey-700;
+
+.ant-typography.no-owner-heading {
+  color: @blue-9;
 }
 
 .owner-count-avatar {

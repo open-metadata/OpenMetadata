@@ -57,5 +57,3 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

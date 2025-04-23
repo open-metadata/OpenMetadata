@@ -189,8 +189,9 @@ const EditUrlConfigurationPage = () => {
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
-        className:
-          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
+        className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.entity-configuration', {

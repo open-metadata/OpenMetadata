@@ -121,6 +121,8 @@ import {
   SearchServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
+import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
+import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -130,6 +132,7 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
@@ -140,6 +143,7 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -209,6 +213,34 @@ class ServiceUtilClassBase {
 
   filterUnsupportedServiceType(types: string[]) {
     return types.filter((type) => !this.unSupportedServices.includes(type));
+  }
+
+  private serviceDetails?: ServicesType;
+
+  public setEditServiceDetails(serviceDetails?: ServicesType) {
+    this.serviceDetails = serviceDetails;
+  }
+
+  public getEditServiceDetails() {
+    return this.serviceDetails;
+  }
+
+  public getAddWorkflowData(
+    connectionType: string,
+    serviceType: ServiceType,
+    serviceName?: string,
+    configData?: ConfigData
+  ) {
+    return {
+      name: getTestConnectionName(connectionType),
+      workflowType: WorkflowType.TestConnection,
+      request: {
+        connection: { config: configData as ConfigClass },
+        serviceType,
+        connectionType,
+        serviceName,
+      },
+    };
   }
 
   public getServiceConfigData(data: {

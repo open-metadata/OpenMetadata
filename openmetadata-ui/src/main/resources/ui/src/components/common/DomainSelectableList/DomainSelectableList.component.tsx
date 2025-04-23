@@ -60,6 +60,7 @@ const DomainSelectableList = ({
   multiple = false,
   onCancel,
   wrapInButton = true,
+  showAllDomains = false,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -95,14 +96,10 @@ const DomainSelectableList = ({
     [onUpdate, multiple]
   );
 
-  const handleCancel = useCallback(
-    (e) => {
-      e.stopPropagation();
-      setPopupVisible(false);
-      onCancel?.();
-    },
-    [onCancel]
-  );
+  const handleCancel = useCallback(() => {
+    setPopupVisible(false);
+    onCancel?.();
+  }, [onCancel]);
 
   const popoverContent = useMemo(() => {
     return (
@@ -112,6 +109,7 @@ const DomainSelectableList = ({
           <DomainSelectablTree
             initialDomains={initialDomains}
             isMultiple={multiple}
+            showAllDomains={showAllDomains}
             value={selectedDomainsList as string[]}
             visible={popupVisible || Boolean(popoverProps?.open)}
             onCancel={handleCancel}

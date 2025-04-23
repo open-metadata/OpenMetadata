@@ -65,6 +65,7 @@ import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
+  DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
@@ -365,6 +366,29 @@ export const getConnectionTimeoutField = () => (
             placeholder={`${t('label.connection-timeout')} (${t(
               'label.second-plural'
             )})`}
+            type="number"
+          />
+        </Form.Item>
+      </Col>
+    </Row>
+  </>
+);
+
+export const getReadTimeoutField = () => (
+  <>
+    <Row align="middle" className="mt-4">
+      <Col span={7}>{`${t('label.read-type', {
+        type: t('label.timeout'),
+      })} (${t('label.second-plural')})`}</Col>
+      <Col span={1}>:</Col>
+      <Col data-testid="read-timeout" span={16}>
+        <Form.Item name="readTimeout">
+          <Input
+            data-testid="read-timeout-input"
+            defaultValue={DEFAULT_READ_TIMEOUT}
+            placeholder={`${t('label.read-type', {
+              type: t('label.timeout'),
+            })} (${t('label.second-plural')})`}
             type="number"
           />
         </Form.Item>
@@ -1076,6 +1100,7 @@ export const handleAlertSave = async ({
         },
         category: d.category,
         timeout: data.timeout,
+        readTimeout: data.readTimeout,
       };
     });
     let alertDetails;
@@ -1107,7 +1132,7 @@ export const handleAlertSave = async ({
       alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
     } else {
       // Remove timeout from alert object since it's only for UI
-      const { timeout, ...finalData } = data;
+      const { timeout, readTimeout, ...finalData } = data;
 
       alertDetails = await createAlertAPI({
         ...finalData,
@@ -1399,6 +1424,7 @@ export const getModifiedAlertDataForForm = (
   return {
     ...alertData,
     timeout: alertData.destinations[0].timeout ?? 10,
+    readTimeout: alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
     destinations: alertData.destinations.map((destination) => {
       const isExternalDestination =
         destination.category === SubscriptionCategory.External;

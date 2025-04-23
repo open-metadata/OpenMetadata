@@ -612,6 +612,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         patch_request = PatchRequest(
             original_entity=original_entity,
             new_entity=original_entity.model_copy(update=create_request.__dict__),
+            override_metadata=self.source_config.overrideMetadata,
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn

@@ -86,7 +86,7 @@ const Users = ({
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
 
       setAssetCount(res.data.hits.total.value ?? 0);
-    } catch (error) {
+    } catch {
       setAssetCount(0);
     }
   };
@@ -345,7 +345,7 @@ const Users = ({
         <Col flex="auto">
           <Tabs
             activeKey={currentTab}
-            className="tabs-new"
+            className="tabs-new m-b-xs"
             data-testid="tabs"
             items={tabs.map((tab) => ({
               key: tab.key,

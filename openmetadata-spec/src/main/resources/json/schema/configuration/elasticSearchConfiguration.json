@@ -128,6 +128,11 @@
             "secretKey": {
               "description": "AWS secret key for Bedrock service authentication",
               "type": "string"
+            },
+            "useIamRole": {
+              "description": "Set to true to use IAM role based authentication instead of access/secret keys.",
+              "type": "boolean",
+              "default": false
             }
           },
           "additionalProperties": false

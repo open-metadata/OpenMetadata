@@ -279,10 +279,11 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel "
+      className="content-height-with-resizable-panel no-right-panel-splitter"
       firstPanel={{
-        className:
-          'content-resizable-panel-container max-width-md w-9/10 service-form-container',
+        className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
           <>
             <TitleBreadcrumb titleLinks={breadcrumb} />

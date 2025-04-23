@@ -50,6 +50,7 @@ import {
   elasticsearchToJsonLogic,
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
+  READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
@@ -178,6 +179,8 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           // eslint-disable-next-line no-console
           console.log(e);
         }
+      } else {
+        onChange(''); // Set empty string if outputEs is null, this happens when removing all the filters
       }
     }
   };
@@ -266,6 +269,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
                   <Builder {...props} />
                 </div>
               )}
+              settings={{
+                ...config.settings,
+                ...(props.readonly ? READONLY_SETTINGS : {}),
+              }}
               value={treeInternal}
               onChange={handleChange}
             />

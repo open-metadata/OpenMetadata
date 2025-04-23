@@ -42,7 +42,7 @@
     flex-direction: column;
     border: 1px solid @grey-15;
 
-    .full-width {
+    &.full-width {
       flex: 10;
       margin-right: 0px;
     }
@@ -399,7 +399,7 @@
       background: @blue-23;
       color: @blue-9;
       text-align: center;
-      border-radius: @size-sm;
+      border-radius: @size-xs;
       .ant-segmented-item-label {
         color: @blue-9;
       }
@@ -590,6 +590,10 @@
   padding: 4px 8px;
   margin-right: @margin-xs;
   border: 1px solid @grey-15;
+
+  .owner-team-icon {
+    font-size: 24px !important;
+  }
 }
 
 .owner-chip-text {
@@ -597,6 +601,7 @@
   font-style: normal;
   font-weight: 400;
   line-height: normal;
+  font-size: 14px !important;
   margin-left: @margin-xss;
 }
 

@@ -73,7 +73,7 @@ const MyDataPage = () => {
   const fetchDocument = async () => {
     try {
       setIsLoading(true);
-      if (!isEmpty(selectedPersona)) {
+      if (selectedPersona) {
         const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
         const docData = await getDocumentByFQN(pageFQN);
 
