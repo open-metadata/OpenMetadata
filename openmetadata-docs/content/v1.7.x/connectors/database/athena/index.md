@@ -24,7 +24,10 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
 - [Troubleshooting](/connectors/database/athena/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
-{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
+{% collateContent %}
+- [Reverse Metadata](#reverse-metadata)
+{% /collateContent %}
+
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
@@ -238,7 +241,9 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /stepsContainer %}
 
+{% collateContent %}
+{% partial file="/v1.7/connectors/database/athena/reverse-metadata.md" /%}
+{% /collateContent %}
 
-{% partial file="/v1.7/connectors/database/athena/reverse-metadata.md" collate: true  /%}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}
