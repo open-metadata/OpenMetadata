@@ -22,7 +22,7 @@
   &.activity-feed-announcement {
     margin-top: 20px;
     padding-top: 8px;
-    border-radius: 8px;
+    border-radius: @size-sm;
     border: 1px solid @blue-15;
     background: @announcement-background;
   }
@@ -31,10 +31,11 @@
     background-color: @announcement-background !important;
     &.announcement-active {
       background-color: @announcement-background-dark !important;
+      border: 1px solid @blue-16;
     }
   }
   &.announcement-active {
-    border: 1px solid @announcement-background-dark;
+    border: 1px solid @blue-16;
     background: @announcement-background-dark;
   }
 }

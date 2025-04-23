@@ -248,7 +248,7 @@ const ActivityFeedActions = ({
             onClick={onReply}
           />
         )}
-        {feed.type === ThreadType.Announcement && (
+        {feed.type === ThreadType.Announcement && !isPost && (
           <Popover
             destroyTooltipOnHide
             align={{ targetOffset: [0, -10] }}

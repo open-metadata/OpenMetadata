@@ -198,7 +198,8 @@ const ActivityFeedCardNew = ({
             showThread || isPost || isOpenInDrawer,
         },
         { 'activity-feed-reply-card': isPost },
-        { 'active-card is-active': isActive }
+        { 'active-card is-active': isActive },
+        { 'p-0': isAnnouncementTab }
       )}
       data-testid="feed-card-v2-sidebar">
       <Space align="start" className="w-full">
@@ -297,7 +298,7 @@ const ActivityFeedCardNew = ({
       </Space>
       {(showThread || isOpenInDrawer) && (
         <div className="activity-feed-comments-container d-flex flex-col">
-          {(showActivityFeedEditor || isOpenInDrawer) && (
+          {(showActivityFeedEditor || isOpenInDrawer || isAnnouncementTab) && (
             <Typography.Text className="activity-feed-comments-title m-b-md">
               {t('label.comment-plural')}
             </Typography.Text>

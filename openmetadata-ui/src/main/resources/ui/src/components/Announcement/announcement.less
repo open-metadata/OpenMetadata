@@ -70,16 +70,20 @@
   height: calc(100% - 10px);
 }
 .two-column-layout {
+  border: 1px solid @blue-15;
+  border-radius: @size-sm;
+  border-color: @blue-15;
+  background-color: @white;
   .left-column {
     height: @entity-details-tab-height;
-    border-right: @global-border;
     overflow-y: scroll;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid @blue-15;
   }
 
   .right-column {
     height: @entity-details-tab-height;
-    background-color: @white;
     overflow-y: scroll;
-    border-left: @global-border;
   }
 }

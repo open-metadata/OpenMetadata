@@ -15,7 +15,6 @@ import { Button, Col, Dropdown, Row, Skeleton, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as TaskCloseIcon } from '../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../assets/svg/ic-close-task.svg';
@@ -32,7 +31,6 @@ import {
   AnnoucementStatus,
   Post,
   Thread,
-  ThreadType,
 } from '../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -45,7 +43,6 @@ import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedListV1 from '../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1New from '../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New';
-import FeedPanelHeader from '../ActivityFeed/ActivityFeedPanel/FeedPanelHeader';
 import AddAnnouncementModal from '../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface AnnouncementTabProps {
@@ -299,7 +296,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
     <div className="two-column-layout">
       <Row gutter={[0, 16]} style={{ height: '100%' }}>
         <Col className="left-column" md={12} xs={24}>
-          <div className="d-flex p-sm p-x-lg justify-between activity-feed-task">
+          <div className="d-flex p-md p-x-lg p-b-0 justify-between d-flex">
             <div className="d-flex gap-4">
               <Dropdown
                 menu={{
@@ -315,15 +312,24 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                 />
               </Dropdown>
             </div>
-            <Tooltip title={t('message.no-permission-to-view')}>
+            {!permissions?.EditAll ? (
+              <Tooltip title={t('message.no-permission-to-view')}>
+                <Button
+                  data-testid="add-announcement-btn"
+                  disabled={!permissions?.EditAll}
+                  type="primary"
+                  onClick={handleOpenAnnouncementModal}>
+                  {t('label.add')}
+                </Button>
+              </Tooltip>
+            ) : (
               <Button
                 data-testid="add-announcement-btn"
-                disabled={!permissions?.EditAll}
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
                 {t('label.add')}
               </Button>
-            </Tooltip>
+            )}
           </div>
           <ActivityFeedListV1
             hidePopover
@@ -349,20 +355,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
         {selectedAnnouncementThread && (
           <Col className="right-column" md={12} xs={24}>
             <div id="feed-panel">
-              <div className="feed-explore-heading">
-                <FeedPanelHeader
-                  hideCloseIcon
-                  className="p-x-md"
-                  entityLink={selectedAnnouncementThread?.about}
-                  feed={selectedAnnouncementThread}
-                  threadType={
-                    selectedAnnouncementThread?.type ?? ThreadType.Conversation
-                  }
-                  onCancel={noop}
-                />
-              </div>
-
-              <div className="m-md">
+              <div>
                 <FeedPanelBodyV1New
                   isAnnouncementCard
                   isAnnouncementTab

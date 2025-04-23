@@ -131,7 +131,7 @@ const ActivityFeedListV1 = ({
   }
 
   return (
-    <div className="feed-list-container p-md p-t-0" id="feedData">
+    <div className="feed-list-container p-t-0" id="feedData">
       {feeds}
     </div>
   );
