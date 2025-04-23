@@ -16,8 +16,8 @@ Validate great expectation integration
 import logging
 import os
 from datetime import datetime, timedelta
-from unittest import TestCase
 import subprocess
+from unittest import TestCase
 import sys
 
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
@@ -87,7 +87,7 @@ class User(Base):
     signedup = Column(DateTime)
 
 
-class TestGreatExpectationIntegration(TestCase):
+class TestGreatExpectationIntegration1xx(TestCase):
     """Test great expectation integration"""
 
     engine = create_engine(
@@ -176,10 +176,11 @@ class TestGreatExpectationIntegration(TestCase):
         """
         Test great expectation integration
         """
-        self.install_gx_018x()
+        self.install_gx_1xx()
+        from metadata.great_expectations.action1xx import OpenMetadataValidationAction1xx
         import great_expectations as gx
 
-        self.assertTrue(gx.__version__.startswith("0.18."))
+        self.assertTrue(gx.__version__.startswith("1."))
 
         table_entity = self.metadata.get_by_name(
             entity=Table,
@@ -194,23 +195,53 @@ class TestGreatExpectationIntegration(TestCase):
             os.path.dirname(os.path.abspath(__file__)),
         )
         ometa_config = os.path.join(ge_folder, "great_expectations/ometa_config")
-        context = gx.get_context(project_root_dir=ge_folder)
-        checkpoint = context.get_checkpoint("sqlite")
-        # update our checkpoint file at runtime to dynamically pass the ometa config file
-        checkpoint.action_list[-1].update(
-            {
-                "name": "ometa_ingestion",
-                "action": {
-                    "module_name": "metadata.great_expectations.action",
-                    "class_name": "OpenMetadataValidationAction",
-                    "config_file_path": ometa_config,
-                    "database_service_name": "test_sqlite",
-                    "database_name": "default",
-                    "schema_name": "main",
-                },
-            }
+
+        context = gx.get_context()
+        conn_string = f"sqlite+pysqlite:///file:cachedb?mode=memory&cache=shared&check_same_thread=False"
+        data_source = context.data_sources.add_sqlite(
+            name="test_sqlite",
+            connection_string=conn_string, 
         )
-        # run the checkpoint
+
+        data_asset = data_source.add_table_asset(
+            name="users",
+            table_name="users",
+            schema_name="main"
+        )
+        batch_definition = data_asset.add_batch_definition_whole_table("batch definition")
+        batch = batch_definition.get_batch()
+        suite = context.suites.add(
+            gx.core.expectation_suite.ExpectationSuite(name="name")
+        )
+        suite.add_expectation(
+            gx.expectations.ExpectColumnValuesToNotBeNull(
+                column="name"
+            )
+        )
+
+        validation_definition = context.validation_definitions.add(
+            gx.core.validation_definition.ValidationDefinition(
+                name="validation definition",
+                data=batch_definition,
+                suite=suite,
+            )
+        )
+
+        action_list = [
+            OpenMetadataValidationAction1xx(
+                database_service_name="test_sqlite",
+                database_name="default",
+                table_name="users",
+                schema_name="main",
+                config_file_path=ometa_config,
+            )
+        ]
+
+        checkpoint = context.checkpoints.add(
+            gx.checkpoint.checkpoint.Checkpoint(
+                name="checkpoint", validation_definitions=[validation_definition], actions=action_list
+            )
+        )
         checkpoint.run()
 
         table_entity = self.metadata.get_by_name(
@@ -233,9 +264,8 @@ class TestGreatExpectationIntegration(TestCase):
 
         assert test_case_results
 
-
-    def install_gx_018x(self):
-        """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
+    def install_gx_1xx(self):
+        """Install GX 1.x.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"]
+            [sys.executable, "-m", "pip", "install", "great-expectations~=1.0"]
         )

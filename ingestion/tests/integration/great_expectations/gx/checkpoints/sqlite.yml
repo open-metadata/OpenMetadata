@@ -1,0 +1,39 @@
+name: sqlite
+config_version: 1.0
+template_name:
+module_name: great_expectations.checkpoint
+class_name: Checkpoint
+run_name_template: '%Y%m%d-%H%M%S-my-run-name-template'
+expectation_suite_name:
+batch_request: {}
+action_list:
+  - name: store_validation_result
+    action:
+      class_name: StoreValidationResultAction
+  - name: store_evaluation_params
+    action:
+      class_name: StoreEvaluationParametersAction
+  - name: update_data_docs
+    action:
+      class_name: UpdateDataDocsAction
+      site_names: []
+  - name: ometa_ingestion
+    action:
+      module_name: metadata.great_expectations.action
+      class_name: OpenMetadataValidationAction
+      config_file_path: ./ometa_config/
+      database_service_name: test_sqlite
+      database_name: default
+evaluation_parameters: {}
+runtime_configuration: {}
+validations:
+  - batch_request:
+      datasource_name: GEIntegrationTests
+      data_connector_name: default_configured_data_connector_name
+      data_asset_name: users
+      data_connector_query:
+        index: -1
+    expectation_suite_name: IntegrationTestExpectation
+profilers: []
+ge_cloud_id:
+expectation_suite_ge_cloud_id:

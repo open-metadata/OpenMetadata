@@ -13,14 +13,26 @@ Test suite for the action module implementation
 """
 
 import os
+import subprocess
+import sys
 from unittest import mock
 
+import great_expectations as gx
 from jinja2 import Environment
 from pytest import mark
 
-from metadata.great_expectations.action import OpenMetadataValidationAction
 from metadata.great_expectations.utils.ometa_config_handler import render_template
 
+
+def install_gx_018x():
+    """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
+
+    if not gx.__version__.startswith("0.18."):
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"]
+        )
+
+install_gx_018x()
 
 @mark.parametrize(
     "input,expected",
@@ -31,6 +43,8 @@ from metadata.great_expectations.utils.ometa_config_handler import render_templa
 )
 def test_get_table_entity(input, expected, mocked_ometa, mocked_ge_data_context):
     """Test get table entity"""
+    from metadata.great_expectations.action import OpenMetadataValidationAction
+    
     ometa_validation = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
         config_file_path="my/config/path",
@@ -52,6 +66,8 @@ def test_get_table_entity_database_service_name(
     input, expected, mocked_ometa, mocked_ge_data_context
 ):
     """Test get table entity"""
+    from metadata.great_expectations.action import OpenMetadataValidationAction
+    
     ometa_validation = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
         config_file_path="my/config/path",
