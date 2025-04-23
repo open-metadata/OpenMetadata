@@ -251,10 +251,6 @@ export const CustomEdge = ({
   }, [currentPipelineStatus, isPipelineRootNode]);
 
   const renderIcons = useMemo(() => {
-    if (!selected && tracedNodes.length === 0 && tracedColumns.length === 0) {
-      return null;
-    }
-
     const icons = [];
 
     // Pipeline lineage edge icon
