@@ -343,6 +343,12 @@ const TagPage = () => {
         setPreviewAsset(undefined);
       }
     } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.asset-plural'),
+        })
+      );
       setAssetCount(0);
     }
   };

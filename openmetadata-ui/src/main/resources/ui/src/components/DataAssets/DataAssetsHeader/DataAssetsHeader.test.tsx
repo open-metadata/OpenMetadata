@@ -21,7 +21,7 @@ import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
+import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
@@ -30,6 +30,7 @@ import { DatabaseServiceType } from '../../../generated/entity/services/database
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
+import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 const mockProps: DataAssetsHeaderProps = {
   dataAsset: {
     id: 'assets-id',

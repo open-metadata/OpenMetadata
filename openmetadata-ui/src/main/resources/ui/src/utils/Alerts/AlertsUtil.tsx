@@ -63,7 +63,6 @@ import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
   DEFAULT_READ_TIMEOUT,
   DESTINATION_DROPDOWN_TABS,
@@ -105,6 +104,7 @@ import {
   ModifiedEventSubscription,
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchData } from '../../rest/miscAPI';
+import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
