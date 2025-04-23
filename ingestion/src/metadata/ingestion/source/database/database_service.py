@@ -96,48 +96,48 @@ class DatabaseServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=DatabaseService,
-                context="database_service",
-                processor="yield_create_request_database_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=["database"],
-        post_process=[
-            "yield_external_table_lineage",
-            "yield_table_constraints",
-        ],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=DatabaseService,
+                    context="database_service",
+                    processor="yield_create_request_database_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=["database"],
+            post_process=[
+                "yield_external_table_lineage",
+                "yield_table_constraints",
+            ],
+        )
     )
-    database: Annotated[
-        TopologyNode, Field(description="Database Node")
-    ] = TopologyNode(
-        producer="get_database_names",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_database_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Database,
-                context="database",
-                processor="yield_database",
-                consumer=["database_service"],
-                cache_entities=True,
-                use_cache=True,
-            ),
-        ],
-        children=["databaseSchema"],
+    database: Annotated[TopologyNode, Field(description="Database Node")] = (
+        TopologyNode(
+            producer="get_database_names",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_database_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Database,
+                    context="database",
+                    processor="yield_database",
+                    consumer=["database_service"],
+                    cache_entities=True,
+                    use_cache=True,
+                ),
+            ],
+            children=["databaseSchema"],
+        )
     )
     databaseSchema: Annotated[
         TopologyNode, Field(description="Database Schema Node")
@@ -161,34 +161,38 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
+        post_process=[
+            "mark_schema_as_deleted",
+            "mark_tables_as_deleted",
+            "mark_stored_procedures_as_deleted",
+        ],
         threads=True,
     )
-    table: Annotated[
-        TopologyNode, Field(description="Main table processing logic")
-    ] = TopologyNode(
-        producer="get_tables_name_and_type",
-        stages=[
-            NodeStage(
-                type_=OMetaTagAndClassification,
-                context="tags",
-                processor="yield_table_tag_details",
-                nullable=True,
-                store_all_in_context=True,
-            ),
-            NodeStage(
-                type_=Table,
-                context="table",
-                processor="yield_table",
-                consumer=["database_service", "database", "database_schema"],
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=OMetaLifeCycleData,
-                processor="yield_life_cycle_data",
-                nullable=True,
-            ),
-        ],
+    table: Annotated[TopologyNode, Field(description="Main table processing logic")] = (
+        TopologyNode(
+            producer="get_tables_name_and_type",
+            stages=[
+                NodeStage(
+                    type_=OMetaTagAndClassification,
+                    context="tags",
+                    processor="yield_table_tag_details",
+                    nullable=True,
+                    store_all_in_context=True,
+                ),
+                NodeStage(
+                    type_=Table,
+                    context="table",
+                    processor="yield_table",
+                    consumer=["database_service", "database", "database_schema"],
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=OMetaLifeCycleData,
+                    processor="yield_life_cycle_data",
+                    nullable=True,
+                ),
+            ],
+        )
     )
     stored_procedure: Annotated[
         TopologyNode, Field(description="Stored Procedure Node")
@@ -539,6 +543,36 @@ class DatabaseServiceSource(
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return None
+
+    def mark_schema_as_deleted(self):
+        """
+        Use the current inspector to mark schema as deleted
+
+        It uses the same flag as table deletion `markDeletedTables`.
+        """
+        if not self.context.get().__dict__.get("database"):
+            raise ValueError(
+                "No Database found in the context. We cannot run the schema deletion."
+            )
+
+        if self.source_config.markDeletedTables:
+            logger.info(
+                f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
+                " for schema deletion"
+            )
+            schema_fqn_list = self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            )
+
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=DatabaseSchema,
+                entity_source_state=list(schema_fqn_list),
+                mark_deleted_entity=self.source_config.markDeletedTables,
+                params={
+                    "database": f"{self.context.get().database_service}.{self.context.get().database}"
+                },
+            )
 
     def mark_tables_as_deleted(self):
         """
