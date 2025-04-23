@@ -15,10 +15,10 @@ Validate great expectation integration
 
 import logging
 import os
-from datetime import datetime, timedelta
 import subprocess
-from unittest import TestCase
 import sys
+from datetime import datetime, timedelta
+from unittest import TestCase
 
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
@@ -177,8 +177,11 @@ class TestGreatExpectationIntegration1xx(TestCase):
         Test great expectation integration
         """
         self.install_gx_1xx()
-        from metadata.great_expectations.action1xx import OpenMetadataValidationAction1xx
         import great_expectations as gx
+
+        from metadata.great_expectations.action1xx import (
+            OpenMetadataValidationAction1xx,
+        )
 
         self.assertTrue(gx.__version__.startswith("1."))
 
@@ -200,23 +203,21 @@ class TestGreatExpectationIntegration1xx(TestCase):
         conn_string = f"sqlite+pysqlite:///file:cachedb?mode=memory&cache=shared&check_same_thread=False"
         data_source = context.data_sources.add_sqlite(
             name="test_sqlite",
-            connection_string=conn_string, 
+            connection_string=conn_string,
         )
 
         data_asset = data_source.add_table_asset(
-            name="users",
-            table_name="users",
-            schema_name="main"
+            name="users", table_name="users", schema_name="main"
         )
-        batch_definition = data_asset.add_batch_definition_whole_table("batch definition")
+        batch_definition = data_asset.add_batch_definition_whole_table(
+            "batch definition"
+        )
         batch = batch_definition.get_batch()
         suite = context.suites.add(
             gx.core.expectation_suite.ExpectationSuite(name="name")
         )
         suite.add_expectation(
-            gx.expectations.ExpectColumnValuesToNotBeNull(
-                column="name"
-            )
+            gx.expectations.ExpectColumnValuesToNotBeNull(column="name")
         )
 
         validation_definition = context.validation_definitions.add(
@@ -239,7 +240,9 @@ class TestGreatExpectationIntegration1xx(TestCase):
 
         checkpoint = context.checkpoints.add(
             gx.checkpoint.checkpoint.Checkpoint(
-                name="checkpoint", validation_definitions=[validation_definition], actions=action_list
+                name="checkpoint",
+                validation_definitions=[validation_definition],
+                actions=action_list,
             )
         )
         checkpoint.run()

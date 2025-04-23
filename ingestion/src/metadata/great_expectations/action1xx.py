@@ -20,23 +20,17 @@ import traceback
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union, cast
 
-from great_expectations.checkpoint.actions import ValidationAction
+from great_expectations.checkpoint.actions import ActionContext, ValidationAction
+from great_expectations.checkpoint.checkpoint import CheckpointResult
 from great_expectations.core.batch import Batch
-from great_expectations.core.batch_spec import (
-    SqlAlchemyDatasourceBatchSpec,
+from great_expectations.core.batch_spec import SqlAlchemyDatasourceBatchSpec
+from great_expectations.core.expectation_validation_result import (
+    ExpectationSuiteValidationResultMeta,
 )
-from great_expectations.core.expectation_validation_result import ExpectationSuiteValidationResultMeta
-
 from great_expectations.datasource.fluent import DataAsset
-
-
-from great_expectations.checkpoint.actions import ActionContext
-from metadata.generated.schema.type.basic import Timestamp
-
 from great_expectations.validator.validator import Validator
 from sqlalchemy.engine.base import Connection, Engine
 from sqlalchemy.engine.url import URL
-from great_expectations.checkpoint.checkpoint import CheckpointResult
 
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -52,6 +46,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
     create_ometa_connection_obj,
@@ -92,9 +87,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
     def run(  # pylint: disable=unused-argument
         self,
         checkpoint_result: CheckpointResult,
-        action_context: Union[
-            ActionContext, None
-        ],
+        action_context: Union[ActionContext, None],
     ):
         """main function to implement great expectation hook
 

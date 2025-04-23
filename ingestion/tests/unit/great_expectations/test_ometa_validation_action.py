@@ -32,7 +32,9 @@ def install_gx_018x():
             [sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"]
         )
 
+
 install_gx_018x()
+
 
 @mark.parametrize(
     "input,expected",
@@ -44,7 +46,7 @@ install_gx_018x()
 def test_get_table_entity(input, expected, mocked_ometa, mocked_ge_data_context):
     """Test get table entity"""
     from metadata.great_expectations.action import OpenMetadataValidationAction
-    
+
     ometa_validation = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
         config_file_path="my/config/path",
@@ -67,7 +69,7 @@ def test_get_table_entity_database_service_name(
 ):
     """Test get table entity"""
     from metadata.great_expectations.action import OpenMetadataValidationAction
-    
+
     ometa_validation = OpenMetadataValidationAction(
         data_context=mocked_ge_data_context,
         config_file_path="my/config/path",

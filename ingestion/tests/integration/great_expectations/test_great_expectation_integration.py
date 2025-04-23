@@ -15,10 +15,10 @@ Validate great expectation integration
 
 import logging
 import os
-from datetime import datetime, timedelta
-from unittest import TestCase
 import subprocess
 import sys
+from datetime import datetime, timedelta
+from unittest import TestCase
 
 from sqlalchemy import Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base
@@ -232,7 +232,6 @@ class TestGreatExpectationIntegration(TestCase):
         )
 
         assert test_case_results
-
 
     def install_gx_018x(self):
         """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
