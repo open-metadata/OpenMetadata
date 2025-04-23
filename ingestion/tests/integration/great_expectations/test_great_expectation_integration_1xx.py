@@ -194,7 +194,7 @@ class TestGreatExpectationIntegration1xx(TestCase):
         ge_folder = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
         )
-        ometa_config = os.path.join(ge_folder, "great_expectations/ometa_config")
+        ometa_config = os.path.join(ge_folder, "gx/ometa_config")
 
         context = gx.get_context()
         conn_string = f"sqlite+pysqlite:///file:cachedb?mode=memory&cache=shared&check_same_thread=False"

@@ -193,7 +193,7 @@ class TestGreatExpectationIntegration(TestCase):
         ge_folder = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
         )
-        ometa_config = os.path.join(ge_folder, "great_expectations/ometa_config")
+        ometa_config = os.path.join(ge_folder, "gx/ometa_config")
         context = gx.get_context(project_root_dir=ge_folder)
         checkpoint = context.get_checkpoint("sqlite")
         # update our checkpoint file at runtime to dynamically pass the ometa config file
