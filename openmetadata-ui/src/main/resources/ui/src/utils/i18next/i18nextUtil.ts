@@ -47,7 +47,6 @@ export enum SupportedLocales {
   Persian = 'pr-PR',
   Thai = 'th-TH',
   मराठी = 'mr-IN',
-  한국어 = 'ko-KR',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -76,7 +75,6 @@ export const getInitOptions = (): InitOptions => {
       'pr-PR': { translation: prPR },
       'th-TH': { translation: thTH },
       'mr-IN': { translation: mrIN },
-      'ko-KR': { translation: koKR },
     },
     fallbackLng: ['en-US'],
     detection: {
