@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Menu, MenuProps, MenuRef, Row } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { Button, Col, Menu, MenuProps, Row } from 'antd';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +36,7 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const navigate = useNavigate();
-  const menuRef = useRef<MenuRef>(null);
+  const menuRef = useRef<Menu>(null);
 
   const createGlossaryPermission = useMemo(
     () =>

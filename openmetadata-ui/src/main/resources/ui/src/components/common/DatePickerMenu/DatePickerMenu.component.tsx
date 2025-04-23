@@ -161,8 +161,9 @@ const DatePickerMenu = ({
           {
             label: (
               <MyDatePicker.RangePicker
-                allowClear={{ clearIcon: <CloseCircleOutlined /> }}
+                allowClear
                 bordered={false}
+                clearIcon={<CloseCircleOutlined />}
                 format={(value) => value.toUTC().toFormat('YYYY-MM-DD')}
                 open={isMenuOpen}
                 placement="bottomRight"

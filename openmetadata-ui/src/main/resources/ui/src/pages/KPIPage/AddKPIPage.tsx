@@ -14,7 +14,6 @@
 import {
   Button,
   Col,
-  DatePicker,
   Form,
   FormProps,
   Input,
@@ -32,6 +31,7 @@ import moment from 'moment';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import DatePicker from '../../components/common/DatePicker/DatePicker';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ADD_KPI_BREADCRUMB } from '../../constants/Breadcrumb.constants';

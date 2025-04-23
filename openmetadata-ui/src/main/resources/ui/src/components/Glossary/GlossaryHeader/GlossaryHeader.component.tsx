@@ -12,8 +12,8 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
 import ButtonGroup from 'antd/lib/button/button-group';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';

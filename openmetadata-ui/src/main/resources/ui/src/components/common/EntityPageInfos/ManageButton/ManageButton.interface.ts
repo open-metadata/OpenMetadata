@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';

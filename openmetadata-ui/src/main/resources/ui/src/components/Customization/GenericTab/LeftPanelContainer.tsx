@@ -14,11 +14,7 @@
 import { Col, Row } from 'antd';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
-import {
-  ReactGridLayoutProps,
-  Responsive,
-  WidthProvider,
-} from 'react-grid-layout';
+import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { PageType } from '../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -27,7 +23,7 @@ import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWid
 import { GenericWidget } from '../GenericWidget/GenericWidget';
 import './generic-tab.less';
 
-const ReactGridLayout = WidthProvider(Responsive) as React.ComponentType<
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
 

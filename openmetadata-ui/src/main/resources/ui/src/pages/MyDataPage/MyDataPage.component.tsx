@@ -14,11 +14,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ReactGridLayoutProps,
-  Responsive,
-  WidthProvider,
-} from 'react-grid-layout';
+import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import Loader from '../../components/common/Loader/Loader';
@@ -46,7 +42,7 @@ import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
 
-const ReactGridLayout = WidthProvider(Responsive) as React.ComponentType<
+const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
 

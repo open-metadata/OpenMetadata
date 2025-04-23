@@ -22,9 +22,9 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { useForm } from 'antd/lib/form/Form';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, toString } from 'lodash';

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Divider, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { Fragment, ReactNode } from 'react';

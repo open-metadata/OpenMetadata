@@ -12,17 +12,7 @@
  */
 
 import Icon, { CloseCircleOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  DatePicker,
-  Dropdown,
-  MenuProps,
-  Row,
-  Segmented,
-  Space,
-} from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
+import { Button, Col, Dropdown, MenuProps, Row, Segmented, Space } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isNaN, map } from 'lodash';
@@ -43,6 +33,9 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DatePicker, {
+  RangePickerProps,
+} from '../../common/DatePicker/DatePicker';
 import './execution.less';
 import ListView from './ListView/ListViewTab.component';
 import TreeViewTab from './TreeView/TreeViewTab.component';

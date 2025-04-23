@@ -29,7 +29,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';

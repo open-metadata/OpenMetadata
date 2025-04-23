@@ -12,7 +12,7 @@
  */
 import { CheckOutlined } from '@ant-design/icons';
 import { Button, Dropdown, Space, Tooltip, Typography } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { isEmpty } from 'lodash';
 import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';

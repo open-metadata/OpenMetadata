@@ -23,10 +23,9 @@ import {
 import { ColumnsType, ColumnType } from 'antd/es/table';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import type { Reference } from 'rc-table';
 import {
   forwardRef,
-  LegacyRef,
+  Ref,
   useCallback,
   useEffect,
   useMemo,
@@ -70,7 +69,7 @@ const Table = <T extends Record<string, unknown>>(
     defaultVisibleColumns,
     ...rest
   }: TableProps<T>,
-  ref: LegacyRef<Reference> | null | undefined
+  ref: Ref<HTMLDivElement> | null | undefined
 ) => {
   const { t } = useTranslation();
   const { type } = useGenericContext();
@@ -325,4 +324,4 @@ const Table = <T extends Record<string, unknown>>(
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default forwardRef<Reference, TableProps<any>>(Table);
+export default forwardRef<HTMLDivElement, TableProps<any>>(Table);

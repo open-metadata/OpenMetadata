@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Col, Menu, MenuProps, Row } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

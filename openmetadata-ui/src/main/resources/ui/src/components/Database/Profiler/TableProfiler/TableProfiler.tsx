@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Menu, MenuProps, Space } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';

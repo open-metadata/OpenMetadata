@@ -13,7 +13,7 @@
 
 import { RightOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Row, Space } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

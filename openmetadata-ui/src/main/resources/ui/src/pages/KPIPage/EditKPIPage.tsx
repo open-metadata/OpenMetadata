@@ -14,7 +14,6 @@
 import {
   Button,
   Col,
-  DatePicker,
   Form,
   FormProps,
   Input,
@@ -34,6 +33,7 @@ import moment from 'moment';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import MyDatePicker from '../../components/common/DatePicker/DatePicker';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -378,7 +378,7 @@ const EditKPIPage = () => {
                         }),
                       },
                     ]}>
-                    <DatePicker
+                    <MyDatePicker
                       className="w-full"
                       data-testid="start-date"
                       disabledDate={getDisabledDates}
@@ -399,7 +399,7 @@ const EditKPIPage = () => {
                         }),
                       },
                     ]}>
-                    <DatePicker
+                    <MyDatePicker
                       className="w-full"
                       data-testid="end-date"
                       disabledDate={getDisabledDates}

@@ -13,6 +13,7 @@
 
 import { removeSession } from '@analytics/session-utils';
 import { Auth0Provider } from '@auth0/auth0-react';
+import { OidcConfiguration } from '@axa-fr/react-oidc';
 import {
   Configuration,
   IPublicClientApplication,
@@ -154,7 +155,8 @@ export const AuthProvider = ({
   const authenticatorRef = useRef<AuthenticatorRef>(null);
 
   const userConfig = useMemo(
-    () => (authConfig ? getUserManagerConfig(authConfig) : {}),
+    () =>
+      authConfig ? getUserManagerConfig(authConfig) : ({} as OidcConfiguration),
     [authConfig]
   );
 

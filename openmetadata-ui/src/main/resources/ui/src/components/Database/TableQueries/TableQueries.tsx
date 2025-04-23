@@ -16,8 +16,7 @@ import {
   SortAscendingOutlined,
   SortDescendingOutlined,
 } from '@ant-design/icons';
-import { Button, Col, DatePicker, Row, Space, Tooltip, Typography } from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
+import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -63,6 +62,9 @@ import {
 } from '../../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DatePicker, {
+  RangePickerProps,
+} from '../../common/DatePicker/DatePicker';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -584,10 +586,11 @@ const TableQueries: FC<TableQueriesProp> = ({
                         <span>
                           <label>{t('label.created-date')}</label>
                           <DatePicker.RangePicker
+                            allowClear
                             showNow
-                            allowClear={{ clearIcon: <CloseCircleOutlined /> }}
                             bordered={false}
                             className="p-t-0"
+                            clearIcon={<CloseCircleOutlined />}
                             data-testid="data-range-picker"
                             open={isClickedCalendar}
                             suffixIcon={null}

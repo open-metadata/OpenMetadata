@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DatePicker } from 'antd';
-import type { DateTime } from 'luxon';
+import generatePicker, {
+  RangePickerBaseProps as BaseRangePickerProps,
+} from 'antd/lib/date-picker/generatePicker';
+import { DateTime } from 'luxon';
 import luxonGenerateConfig from 'rc-picker/lib/generate/luxon';
 
-const MyDatePicker = DatePicker.generatePicker<DateTime>(luxonGenerateConfig);
+const DatePicker = generatePicker<DateTime>(luxonGenerateConfig);
 
-export default MyDatePicker;
+type RangePickerProps = BaseRangePickerProps<DateTime>;
+
+export default DatePicker;
+
+export type { RangePickerProps };

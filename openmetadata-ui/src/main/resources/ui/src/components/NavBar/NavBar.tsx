@@ -27,14 +27,7 @@ import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
 import { startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import {
-  KeyboardEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
@@ -276,15 +269,12 @@ const NavBar = ({
     };
   };
 
-  const handleKeyPress = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (isCommandKeyPress(event) && event.key === Keys.K) {
-        searchRef.current?.focus();
-        event.preventDefault();
-      }
-    },
-    []
-  );
+  const handleKeyPress = useCallback((event: KeyboardEvent) => {
+    if (isCommandKeyPress(event) && event.key === Keys.K) {
+      searchRef.current?.focus();
+      event.preventDefault();
+    }
+  }, []);
 
   useEffect(() => {
     if (shouldRequestPermission()) {

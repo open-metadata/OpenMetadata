@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Button, Dropdown, Typography } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusOutlined } from '../../../assets/svg/plus-outlined.svg';
 import './collapse-header.less';

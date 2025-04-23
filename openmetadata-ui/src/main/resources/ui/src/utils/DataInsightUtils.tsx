@@ -12,9 +12,6 @@
  */
 
 import { Card, Typography } from 'antd';
-import { RangePickerProps } from 'antd/lib/date-picker';
-
-import dayjs from 'dayjs';
 import {
   first,
   get,
@@ -30,6 +27,7 @@ import {
   toNumber,
   uniqBy,
 } from 'lodash';
+import { DateTime } from 'luxon';
 import {
   CartesianGrid,
   LegendProps,
@@ -40,6 +38,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { RangePickerProps } from '../components/common/DatePicker/DatePicker';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -408,7 +407,7 @@ export const getWebChartSummary = (
 
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   // Can not select days before today
-  return current && current.isBefore(dayjs().subtract(1, 'day'));
+  return current && current.diff(DateTime.now()).days < 1;
 };
 
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {

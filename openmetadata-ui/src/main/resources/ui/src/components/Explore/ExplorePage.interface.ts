@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ItemType } from 'antd/es/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';

@@ -45,7 +45,7 @@ import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import { ItemType } from 'antd/lib/menu/interface';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,

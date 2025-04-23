@@ -559,7 +559,11 @@ class AdvancedSearchClassBase {
         values: !search
           ? resolvedTierOptions
           : resolvedTierOptions.filter((tier) =>
-              tier.title?.toLowerCase()?.includes(toLower(search))
+              tier.title
+                ?.toLowerCase()
+                ?.includes(
+                  toLower(Array.isArray(search) ? search.join(',') : search)
+                )
             ),
         hasMore: false,
       } as AsyncFetchListValuesResult;

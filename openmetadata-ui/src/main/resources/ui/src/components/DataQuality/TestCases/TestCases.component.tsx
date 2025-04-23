@@ -22,8 +22,8 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { ItemType } from 'antd/es/menu/interface';
 import { useForm } from 'antd/lib/form/Form';
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import {

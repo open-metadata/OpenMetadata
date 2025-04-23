@@ -16,7 +16,6 @@ import {
   Button,
   Card,
   Col,
-  DatePicker,
   Form,
   Input,
   Row,
@@ -28,7 +27,6 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-
 import {
   isArray,
   isEmpty,
@@ -68,6 +66,7 @@ import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import DatePicker from '../DatePicker/DatePicker';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';

@@ -147,7 +147,7 @@ class JSONLogicSearchClassBase {
   }) => {
     return (search) => {
       return searchData(
-        search ?? '',
+        Array.isArray(search) ? search.join(',') : search ?? '',
         1,
         PAGE_SIZE_BASE,
         '',

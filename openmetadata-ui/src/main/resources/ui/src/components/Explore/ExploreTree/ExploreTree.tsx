@@ -110,7 +110,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   }, [location.search]);
 
   const onLoadData = useCallback(
-    async (treeNode: ExploreTreeNode) => {
+    async (treeNode: ExploreTreeNode): Promise<void> => {
       try {
         if (treeNode.children) {
           return;
@@ -253,14 +253,17 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         onFieldValueSelect(filterField);
       } else if (node.isLeaf) {
         const filterField = [
-          getQuickFilterObject(EntityFields.ENTITY_TYPE, node.data?.entityType),
+          getQuickFilterObject(
+            EntityFields.ENTITY_TYPE,
+            node.data?.entityType ?? ''
+          ),
         ];
         onFieldValueSelect(filterField);
       } else if (node.data?.childEntities) {
         onFieldValueSelect([
           getQuickFilterObjectForEntities(
             EntityFields.ENTITY_TYPE,
-            node.data?.childEntities
+            node.data?.childEntities as EntityType[]
           ),
         ]);
       }
