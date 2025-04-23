@@ -25,11 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -40,21 +36,25 @@ import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/p
 import './table-summary.less';
 import { TableSummaryProps } from './TableSummary.interface';
 
-function TableSummary({ entityDetails: tableDetails }: TableSummaryProps) {
+function TableSummary({
+  entityDetails: tableDetails,
+  permissions,
+}: Readonly<TableSummaryProps>) {
   const { t } = useTranslation();
   const location = useCustomLocation();
   const history = useHistory();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
-  const { getEntityPermission } = usePermissionProvider();
 
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
+  useEffect(() => {
+    setTablePermissions(permissions as OperationPermission);
+  }, [permissions]);
   // Since we are showing test cases summary in the table summary panel, we are using ViewTests permission
   const viewTestCasesPermission = useMemo(
-    () => tablePermissions.ViewAll || tablePermissions.ViewTests,
+    () => tablePermissions?.ViewAll || tablePermissions?.ViewTests,
     [tablePermissions]
   );
 
@@ -154,15 +154,10 @@ function TableSummary({ entityDetails: tableDetails }: TableSummaryProps) {
 
   const init = useCallback(async () => {
     if (tableDetails.id && !isTourPage) {
-      const tablePermission = await getEntityPermission(
-        ResourceEntity.TABLE,
-        tableDetails.id
-      );
-      setTablePermissions(tablePermission);
       const shouldFetchTestCaseData =
         !isTableDeleted &&
         tableDetails.service?.type === 'databaseService' &&
-        (tablePermission.ViewAll || tablePermission.ViewTests);
+        (tablePermissions?.ViewAll || tablePermissions?.ViewTests);
 
       if (shouldFetchTestCaseData) {
         fetchAllTests();
@@ -175,7 +170,7 @@ function TableSummary({ entityDetails: tableDetails }: TableSummaryProps) {
     isTourPage,
     isTableDeleted,
     fetchAllTests,
-    getEntityPermission,
+    tablePermissions,
   ]);
 
   useEffect(() => {

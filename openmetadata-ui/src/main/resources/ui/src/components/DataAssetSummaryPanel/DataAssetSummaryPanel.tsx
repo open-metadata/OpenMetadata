@@ -220,7 +220,10 @@ export const DataAssetSummaryPanel = ({
             </Row>
 
             {entityType === EntityType.TABLE && (
-              <TableSummary entityDetails={dataAsset as Table} />
+              <TableSummary
+                entityDetails={dataAsset as Table}
+                permissions={entityPermissions}
+              />
             )}
 
             <SummaryTagsDescription
