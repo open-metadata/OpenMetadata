@@ -233,4 +233,4 @@ We bring new connectors in each release, continuously expanding our coverage. Th
 
 And in Collate, we are bringing a new Pipeline connector: **Wherescape**.
 
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.9-release...1.7.0-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.10-release...1.7.0-release)
