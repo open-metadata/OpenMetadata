@@ -39,6 +39,7 @@ services:
 
   elasticsearch:
     container_name: openmetadata_elasticsearch
+    restart: unless-stopped
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
     environment:
       - discovery.type=single-node
@@ -274,7 +275,7 @@ services:
 
   openmetadata-server:
     container_name: openmetadata_server
-    restart: always
+    restart: unless-stopped
     image: docker.getcollate.io/openmetadata/server:1.7.0-SNAPSHOT
     environment:
       OPENMETADATA_CLUSTER_NAME: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
@@ -486,6 +487,7 @@ services:
 
   ingestion:
     container_name: openmetadata_ingestion
+    restart: unless-stopped
     image: docker.getcollate.io/openmetadata/ingestion:1.7.0-SNAPSHOT
     depends_on:
       elasticsearch:
