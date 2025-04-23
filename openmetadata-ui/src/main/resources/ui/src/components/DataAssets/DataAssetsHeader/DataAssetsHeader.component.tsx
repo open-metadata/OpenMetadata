@@ -188,48 +188,33 @@ export const DataAssetsHeader = ({
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchDQFailureCount = async () => {
-    if (!tableClassBase.getAlertEnableStatus()) {
+    if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
       setDqFailureCount(0);
 
       return;
     }
 
+    // Todo: Remove this once we have support for count in API
     try {
-      if (isDqAlertSupported) {
-        await fetchDQFailureCountWithAlerts();
-      } else {
-        await fetchDQFailureCountWithoutAlerts();
-      }
+      const data = await getDataQualityLineage(
+        dataAsset.fullyQualifiedName ?? '',
+        {
+          upstreamDepth: 1,
+        }
+      );
+
+      const updatedNodes =
+        data.nodes?.filter(
+          (node) => node?.fullyQualifiedName !== dataAsset?.fullyQualifiedName
+        ) ?? [];
+      setDqFailureCount(updatedNodes.length);
     } catch {
       setDqFailureCount(0);
     }
   };
 
-  const fetchDQFailureCountWithAlerts = async () => {
-    // Todo: Remove this once we have support for count in API
-    const data = await getDataQualityLineage(
-      dataAsset.fullyQualifiedName ?? '',
-      {
-        upstreamDepth: 1,
-      }
-    );
-
-    const updatedNodes =
-      data.nodes?.filter(
-        (node) => node?.fullyQualifiedName !== dataAsset?.fullyQualifiedName
-      ) ?? [];
-    setDqFailureCount(updatedNodes.length);
-  };
-
-  const fetchDQFailureCountWithoutAlerts = async () => {
-    // Default implementation when alerts are not supported
-    setDqFailureCount(0);
-  };
-
   const alertBadge = useMemo(() => {
-    return tableClassBase.getAlertEnableStatus() &&
-      dqFailureCount > 0 &&
-      isDqAlertSupported ? (
+    const renderAlertBadgeWithDq = () => (
       <Space size={8}>
         {badge}
         <Tooltip placement="right" title={t('label.check-upstream-failure')}>
@@ -249,9 +234,16 @@ export const DataAssetsHeader = ({
           </Link>
         </Tooltip>
       </Space>
-    ) : (
-      badge
     );
+    if (
+      isDqAlertSupported &&
+      tableClassBase.getAlertEnableStatus() &&
+      dqFailureCount > 0
+    ) {
+      return renderAlertBadgeWithDq();
+    }
+
+    return badge;
   }, [dqFailureCount, dataAsset?.fullyQualifiedName, entityType, badge]);
 
   const fetchActiveAnnouncement = async () => {
