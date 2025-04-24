@@ -17,7 +17,6 @@ import os
 import time
 import traceback
 from abc import ABC
-from copy import deepcopy
 from functools import partial
 from multiprocessing import Process, Queue
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
@@ -257,7 +256,7 @@ class LineageSource(QueryParserSource, ABC):
         producer_fn = self.get_table_query
         processor_fn = query_lineage_generator
         args = (
-            deepcopy(self.metadata),
+            self.metadata,
             self.dialect,
             self.graph,
             self.source_config.parsingTimeoutLimit,
@@ -278,7 +277,7 @@ class LineageSource(QueryParserSource, ABC):
         )
         processor_fn = view_lineage_generator
         args = (
-            deepcopy(self.metadata),
+            self.metadata,
             self.config.serviceName,
             self.service_connection.type.value,
             self.source_config.parsingTimeoutLimit,
