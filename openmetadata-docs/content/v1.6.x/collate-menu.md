@@ -693,9 +693,14 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
   - category: Connectors / Troubleshooting
     url: /connectors/troubleshooting
+
+  - category: Collate AI
+    url: /collateai
+
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
 
   - category: How-to Guides
     url: /how-to-guides
@@ -1030,6 +1035,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.9 Release
+    url: /releases/all-releases/#1.6.9-release
   - category: Releases / All Releases / 1.6.8 Release
     url: /releases/all-releases/#1.6.8-release
   - category: Releases / All Releases / 1.6.7 Release
@@ -2163,9 +2170,4 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
-
-  - category: Collate AI
-    url: /collateai
-  - category: Collate AI / How to Use Collate AI
-    url: /collateai/how-to-use-collate-ai
 ---

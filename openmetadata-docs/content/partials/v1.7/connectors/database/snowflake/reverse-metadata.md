@@ -34,6 +34,17 @@ CREATE MASKING POLICY SENSITIVE_DATA AS (VAL STRING) RETURNS STRING -> CASE WHEN
 ALTER TAG PII SET MASKING POLICY SENSITIVE_DATA;
 ```
 
+### Owner Management
+
+OpenMetadata does not support owner management for Snowflake, as Snowflake assigns ownership to roles rather than individual users.
+To work around this limitation, you can grant ownership to a specific role and then assign that role to the desired user.
+
+```sql
+-- Grant ownership on table to the role
+GRANT OWNERSHIP ON TABLE DATABASE_NAME.SCHEMA_NAME.TABLE_NAME TO ROLE NEW_ROLE REVOKE CURRENT GRANTS;
+```
+
+
 ### Custom SQL Template
 
 Snowflake supports custom SQL templates for metadata changes. The template is interpreted using python f-strings.
