@@ -14,6 +14,7 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.schema.entity.app.AppLogRecord;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -272,6 +273,36 @@ public class AppRepository extends EntityRepository<App> {
     }
   }
 
+  public ResultList<AppLogRecord> listAppLogByRunId(
+      App app, int limitParam, int offset, String runId) {
+    int total =
+        daoCollection
+            .appExtensionTimeSeriesDao()
+            .listExtensionByRunId(
+                app.getId().toString(), AppExtension.ExtensionType.LOG.toString(), runId);
+    List<AppLogRecord> entities = new ArrayList<>();
+    if (limitParam > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      List<String> jsons =
+          daoCollection
+              .appExtensionTimeSeriesDao()
+              .listAppExtensionsByRunId(
+                  app.getId().toString(),
+                  limitParam,
+                  offset,
+                  AppExtension.ExtensionType.LOG.toString(),
+                  runId);
+      for (String json : jsons) {
+        AppLogRecord entity = JsonUtils.readValue(json, AppLogRecord.class);
+        entities.add(entity);
+      }
+      return new ResultList<>(entities, offset, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return new ResultList<>(entities, null, total);
+    }
+  }
+
   public <T> ResultList<T> listAppExtensionAfterTimeByName(
       App app,
       long startTime,
@@ -450,6 +481,23 @@ public class AppRepository extends EntityRepository<App> {
     daoCollection
         .appExtensionTimeSeriesDao()
         .insert(JsonUtils.pojoToJson(record), AppExtension.ExtensionType.STATUS.toString());
+  }
+
+  public void addAppLogEntry(AppLogRecord appLogRecord) {
+    try {
+      JsonUtils.validateJsonSchema(appLogRecord, AppLogRecord.class);
+      daoCollection
+          .appExtensionTimeSeriesDao()
+          .insert(JsonUtils.pojoToJson(appLogRecord), AppExtension.ExtensionType.LOG.toString());
+    } catch (Exception e) {
+      // Logging should never block the application
+      LOG.error("Failed to add app log entry", e);
+    }
+  }
+
+  public ResultList<AppLogRecord> listAppLogs(
+      App installation, String runId, int limitParam, int offset) {
+    return listAppLogByRunId(installation, limitParam, offset, runId);
   }
 
   public class AppUpdater extends EntityUpdater {

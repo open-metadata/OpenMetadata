@@ -3,7 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Retention Configuration",
   "type": "object",
-  "description": "Configure retention policies for each entity.",
+  "description": "Configure retention policy for ephemeral objects in OpenMetadata. These are not metadata entities but represent changes in the system that are used for tracking changes or statuses of processes. It is recommended to keep these records for a limited time to avoid unnecessary storage usage.",
   "properties": {
     "changeEventRetentionPeriod": {
       "title": "Change Event Retention Period (days)",
@@ -11,8 +11,15 @@
       "type": "integer",
       "default": 7,
       "minimum": 1
+    },
+    "appRecordsRetentionPeriod": {
+      "title": "App Records Retention Period (days)",
+      "description": "Enter the retention period for app records (logs and statuses) in days (e.g., 7 for one week, 30 for one month).",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1
     }
   },
-  "required": ["changeEventRetentionPeriod"],
+  "required": ["changeEventRetentionPeriod", "appRecordsRetentionPeriod"],
   "additionalProperties": false
 }

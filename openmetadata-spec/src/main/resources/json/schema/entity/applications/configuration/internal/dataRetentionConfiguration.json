@@ -10,10 +10,14 @@
       "type": "integer",
       "default": 7,
       "minimum": 1
+    },
+    "appRecordsRetentionPeriod": {
+      "title": "App Records Retention Period (days)",
+      "description": "Enter the retention period for app records (logs and statuses) in days (e.g., 7 for one week, 30 for one month).",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1
     }
   },
-  "required": [
-    "changeEventRetentionPeriod"
-  ],
   "additionalProperties": false
 }

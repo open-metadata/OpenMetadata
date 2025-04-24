@@ -36,5 +36,6 @@ export interface AppExtension {
 export enum ExtensionType {
     Custom = "custom",
     Limits = "limits",
+    Log = "log",
     Status = "status",
 }

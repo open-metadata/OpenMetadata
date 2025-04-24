@@ -4,11 +4,13 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.app.App;
@@ -16,6 +18,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 import org.openmetadata.schema.system.EntityStats;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.apps.AbstractNativeApplication;
@@ -28,6 +31,8 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataRetention extends AbstractNativeApplication {
   private static final int BATCH_SIZE = 10_000;
+  private static final String APP_RECORDS = "appRecords";
+  private static final long DAY_MILLIS = 1_000 * 60 * 60 * 24;
 
   private DataRetentionConfiguration dataRetentionConfiguration;
   private final CollectionDAO.EventSubscriptionDAO eventSubscriptionDAO;
@@ -48,7 +53,7 @@ public class DataRetention extends AbstractNativeApplication {
     this.dataRetentionConfiguration =
         JsonUtils.convertValue(app.getAppConfiguration(), DataRetentionConfiguration.class);
     if (CommonUtil.nullOrEmpty(this.dataRetentionConfiguration)) {
-      LOG.warn("No retention policy configuration provided. Cleanup tasks will not run.");
+      logger.warn("No retention policy configuration provided. Cleanup tasks will not run.");
     }
   }
 
@@ -97,14 +102,48 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.warn("DataRetentionConfiguration is null. Skipping cleanup.");
       return;
     }
-    int retentionPeriod = config.getChangeEventRetentionPeriod();
-    LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
-    cleanChangeEvents(retentionPeriod);
+
+    int changeEventRetentionPeriod = config.getChangeEventRetentionPeriod();
+    logger.info(
+        String.format(
+            "Starting cleanup for change events with retention period: %s days.",
+            changeEventRetentionPeriod));
+    cleanChangeEvents(changeEventRetentionPeriod);
+    int appRecordsRetentionPeriod = config.getAppRecordsRetentionPeriod();
+    logger.info(
+        String.format(
+            "Starting cleanup for app records with retention period: %s days.",
+            appRecordsRetentionPeriod));
+    cleanAppRecords(appRecordsRetentionPeriod);
+  }
+
+  private void cleanAppRecords(int appLogRetentionPeriod) {
+    long end = System.currentTimeMillis() - (appLogRetentionPeriod * DAY_MILLIS);
+    StepStats stepStats = new StepStats().withFailedRecords(0).withSuccessRecords(0);
+    retentionStats.getEntityStats().getAdditionalProperties().put(APP_RECORDS, stepStats);
+    int result;
+    do {
+      Pair<Long, Long> range =
+          collectionDAO.appExtensionTimeSeriesDao().getBatchToDelete(BATCH_SIZE, end);
+      result =
+          collectionDAO
+              .appExtensionTimeSeriesDao()
+              .cleanTimeseriesBatch(range.getLeft(), range.getRight());
+      stepStats.setSuccessRecords(stepStats.getSuccessRecords() + result);
+      stepStats.setTotalRecords(stepStats.getSuccessRecords());
+      if (result < 0) {
+        logger.info(
+            String.format(
+                "Cleaned %s app logs for range %s to %s",
+                result, range.getLeft(), range.getRight()));
+      }
+    } while (result > 0);
   }
 
   @Transaction
   private void cleanChangeEvents(int retentionPeriod) {
-    LOG.info("Initiating change events cleanup: Retention = {} days.", retentionPeriod);
+    logger.info(
+        String.format("Initiating change events cleanup: Retention = %d days.", retentionPeriod));
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
     executeWithStatsTracking(
@@ -182,6 +221,14 @@ public class DataRetention extends AbstractNativeApplication {
     if (failureDetails != null) {
       appRecord.setFailureContext(
           new FailureContext().withAdditionalProperty("failure", failureDetails));
+    } else {
+      appRecord.setFailureContext(
+          new FailureContext()
+              .withFailure(
+                  new IndexingError()
+                      .withReason(error.getClass().getName())
+                      .withStackTrace(Arrays.toString(error.getStackTrace()))
+                      .withMessage(error.getMessage())));
     }
 
     if (WebSocketManager.getInstance() != null) {

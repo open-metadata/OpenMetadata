@@ -48,6 +48,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
+import org.openmetadata.schema.entity.app.AppLogRecord;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
@@ -299,6 +300,52 @@ public class AppResource extends EntityResource<App, AppRepository> {
       return ingestionPipelineRepository
           .listExternalAppStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
           .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
+    }
+    throw new IllegalArgumentException("App does not have a scheduled deployment");
+  }
+
+  @GET
+  @Path("/name/{name}/runs/{runId}/logs")
+  @Operation(
+      operationId = "listAppLogs",
+      summary = "List App Run Logs",
+      description =
+          "Get a list of applications Run Record."
+              + " Use cursor-based pagination to limit the number "
+              + "entries in the list using `offset` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Installed Applications Runs",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = AppRunList.class)))
+      })
+  public ResultList<AppLogRecord> listAppLogs(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Run Id of the App", schema = @Schema(type = "string"))
+          @PathParam("runId")
+          String runId,
+      @Parameter(description = "Limit records. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(0)
+          @Max(1000)
+          int limitParam,
+      @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
+          @DefaultValue("0")
+          @QueryParam("offset")
+          @Min(0)
+          @Max(1000)
+          int offset) {
+    App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    if (installation.getAppType().equals(AppType.Internal)) {
+      return repository.listAppLogs(installation, runId, limitParam, offset);
     }
     throw new IllegalArgumentException("App does not have a scheduled deployment");
   }

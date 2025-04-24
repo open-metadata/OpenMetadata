@@ -12,7 +12,8 @@
       "enum": [
         "status",
         "limits",
-        "custom"
+        "custom",
+        "log"
       ]
     }
   },
