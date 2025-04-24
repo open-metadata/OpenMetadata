@@ -83,13 +83,6 @@ const ActivityFeedCardV2 = ({
   const onUpdate = (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
-    // if (isAnnouncementTab) {
-    //   // update post in announcement tab
-    //   updatePost(feed.id, post.id, patch);
-    //   updateAnnouncementThreads && updateAnnouncementThreads();
-    // } else {
-    //   updateFeed(feed.id, post.id, !isPost, patch);
-    // }
     updateFeed(feed.id, post.id, !isPost, patch);
     setIsEditPost(!isEditPost);
   };

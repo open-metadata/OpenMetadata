@@ -543,282 +543,263 @@ export const DataAssetsHeader = ({
   ]);
 
   return (
-    <>
-      <Row
-        className="data-assets-header-container"
-        data-testid="data-assets-header"
-        gutter={[0, 20]}>
-        <Col
-          className={classNames('d-flex flex-col gap-3 ', {
-            'p-l-xs': isCustomizedView,
-          })}
-          span={24}>
-          <TitleBreadcrumb
-            loading={isBreadcrumbLoading}
-            titleLinks={breadcrumbs.map((link) =>
-              isCustomizedView ? { ...link, url: '', noLink: true } : link
-            )}
-          />
-          <Row>
-            <Col flex="auto">
-              <EntityHeaderTitle
-                badge={alertBadge}
-                deleted={dataAsset?.deleted}
-                displayName={dataAsset.displayName}
-                entityType={entityType}
-                excludeEntityService={excludeEntityService}
-                followers={followers}
-                handleFollowingClick={handleFollowingClick}
-                icon={icon}
-                isCustomizedView={isCustomizedView}
-                isFollowing={isFollowing}
-                isFollowingLoading={isFollowingLoading}
-                name={dataAsset?.name}
-                serviceName={dataAssetServiceName}
-              />
-            </Col>
-            <Col className="flex items-center">
-              <Space className="">
-                <ButtonGroup
-                  className="data-asset-button-group spaced"
-                  data-testid="asset-header-btn-group"
-                  size="small">
-                  {triggerAutoPilotApplicationButton}
-                  {onUpdateVote && (
-                    <Voting
-                      disabled={deleted}
-                      voteStatus={voteStatus}
-                      votes={votes}
-                      onUpdateVote={handleVoteChange}
-                    />
-                  )}
-                  {!excludeEntityService && (openTaskCount ?? 0) > 0 && (
-                    <Tooltip title={t('label.open-task-plural')}>
-                      <Button
-                        icon={<Icon component={TaskOpenIcon} />}
-                        onClick={handleOpenTaskClick}>
-                        <Typography.Text>{openTaskCount}</Typography.Text>
-                      </Button>
-                    </Tooltip>
-                  )}
-
-                  <Tooltip title={t('label.version-plural-history')}>
+    <Row
+      className="data-assets-header-container"
+      data-testid="data-assets-header"
+      gutter={[0, 20]}>
+      <Col
+        className={classNames('d-flex flex-col gap-3 ', {
+          'p-l-xs': isCustomizedView,
+        })}
+        span={24}>
+        <TitleBreadcrumb
+          loading={isBreadcrumbLoading}
+          titleLinks={breadcrumbs.map((link) =>
+            isCustomizedView ? { ...link, url: '', noLink: true } : link
+          )}
+        />
+        <Row>
+          <Col flex="auto">
+            <EntityHeaderTitle
+              badge={alertBadge}
+              deleted={dataAsset?.deleted}
+              displayName={dataAsset.displayName}
+              entityType={entityType}
+              excludeEntityService={excludeEntityService}
+              followers={followers}
+              handleFollowingClick={handleFollowingClick}
+              icon={icon}
+              isCustomizedView={isCustomizedView}
+              isFollowing={isFollowing}
+              isFollowingLoading={isFollowingLoading}
+              name={dataAsset?.name}
+              serviceName={dataAssetServiceName}
+            />
+          </Col>
+          <Col className="flex items-center">
+            <Space className="">
+              <ButtonGroup
+                className="data-asset-button-group spaced"
+                data-testid="asset-header-btn-group"
+                size="small">
+                {triggerAutoPilotApplicationButton}
+                {onUpdateVote && (
+                  <Voting
+                    disabled={deleted}
+                    voteStatus={voteStatus}
+                    votes={votes}
+                    onUpdateVote={handleVoteChange}
+                  />
+                )}
+                {!excludeEntityService && (openTaskCount ?? 0) > 0 && (
+                  <Tooltip title={t('label.open-task-plural')}>
                     <Button
-                      className="version-button"
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={onVersionClick}>
-                      <Typography.Text>{version}</Typography.Text>
+                      icon={<Icon component={TaskOpenIcon} />}
+                      onClick={handleOpenTaskClick}>
+                      <Typography.Text>{openTaskCount}</Typography.Text>
                     </Button>
                   </Tooltip>
+                )}
 
-                  {(dataAsset as Table).sourceUrl && (
-                    <Tooltip placement="bottom" title={t('label.source-url')}>
-                      <Typography.Link
-                        className="cursor-pointer source-url-link"
-                        href={(dataAsset as Table).sourceUrl}
-                        target="_blank">
-                        <Button
-                          className="source-url-button cursor-pointer font-semibold"
-                          data-testid="source-url-button"
-                          icon={
-                            <Icon
-                              className="flex-center"
-                              component={LinkIcon}
-                            />
-                          }>
-                          {t('label.view-in-service-type', {
-                            serviceType: (dataAsset as Table).serviceType,
-                          })}
-                        </Button>
-                      </Typography.Link>
-                    </Tooltip>
-                  )}
-                  <ManageButton
-                    isAsyncDelete
-                    afterDeleteAction={afterDeleteAction}
-                    allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
-                    canDelete={permissions.Delete}
-                    deleted={dataAsset.deleted}
-                    displayName={getEntityName(dataAsset)}
-                    editDisplayNamePermission={
-                      permissions?.EditAll || permissions?.EditDisplayName
-                    }
-                    entityFQN={dataAsset.fullyQualifiedName}
-                    entityId={dataAsset.id}
-                    entityName={dataAsset.name}
-                    entityType={entityType}
-                    extraDropdownContent={extraDropdownContent}
-                    isRecursiveDelete={isRecursiveDelete}
-                    // onAnnouncementClick={
-                    //   permissions?.EditAll
-                    //     ? handleOpenAnnouncementDrawer
-                    //     : undefined
-                    // }
-                    onEditDisplayName={onDisplayNameUpdate}
-                    onProfilerSettingUpdate={onProfilerSettingUpdate}
-                    onRestoreEntity={onRestoreDataAsset}
-                  />
-                </ButtonGroup>
-              </Space>
-            </Col>
-          </Row>
-        </Col>
+                <Tooltip title={t('label.version-plural-history')}>
+                  <Button
+                    className="version-button"
+                    data-testid="version-button"
+                    icon={<Icon component={VersionIcon} />}
+                    onClick={onVersionClick}>
+                    <Typography.Text>{version}</Typography.Text>
+                  </Button>
+                </Tooltip>
 
-        <Col span={24}>
-          <div
-            className={classNames('data-asset-header-metadata ', {
-              'data-asset-header-less-items': showCompressedExtraInfoItems,
-            })}>
-            {showDomain && (
-              <>
-                <DomainLabel
-                  headerLayout
-                  afterDomainUpdateAction={afterDomainUpdateAction}
-                  domain={(dataAsset as EntitiesWithDomainField).domain}
-                  entityFqn={dataAsset.fullyQualifiedName ?? ''}
-                  entityId={dataAsset.id ?? ''}
-                  entityType={entityType}
-                  hasPermission={editDomainPermission}
-                  textClassName="render-domain-lebel-style"
-                />
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-              </>
-            )}
-            <OwnerLabel
-              hasPermission={editOwnerPermission}
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={dataAsset?.owners}
-              onUpdate={onOwnerUpdate}
-            />
-            <Divider className="self-center vertical-divider" type="vertical" />
-            {tierSuggestionRender ?? (
-              <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
-                <Space
-                  className="d-flex tier-container align-start"
-                  data-testid="header-tier-container">
-                  {tier ? (
-                    <div className="d-flex flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier ">
-                          {t('label.tier')}
-                        </span>
-
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-
-                      <TagsV1
-                        startWith={TAG_START_WITH.SOURCE_ICON}
-                        tag={tier}
-                        tagProps={{
-                          'data-testid': 'Tier',
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center flex-col gap-2">
-                      <div className="tier-heading-container d-flex items-center gap-1">
-                        <span className="entity-no-tier">
-                          {t('label.tier')}
-                        </span>
-                        {editTierPermission && (
-                          <EditIconButton
-                            newLook
-                            data-testid="edit-tier"
-                            size="small"
-                            title={t('label.edit-entity', {
-                              entity: t('label.tier'),
-                            })}
-                          />
-                        )}
-                      </div>
-                      <span
-                        className="font-medium no-tier-text text-sm"
-                        data-testid="Tier">
-                        {t('label.no-entity', {
-                          entity: t('label.tier'),
+                {(dataAsset as Table).sourceUrl && (
+                  <Tooltip placement="bottom" title={t('label.source-url')}>
+                    <Typography.Link
+                      className="cursor-pointer source-url-link"
+                      href={(dataAsset as Table).sourceUrl}
+                      target="_blank">
+                      <Button
+                        className="source-url-button cursor-pointer font-semibold"
+                        data-testid="source-url-button"
+                        icon={
+                          <Icon className="flex-center" component={LinkIcon} />
+                        }>
+                        {t('label.view-in-service-type', {
+                          serviceType: (dataAsset as Table).serviceType,
                         })}
-                      </span>
-                    </div>
-                  )}
-                </Space>
-              </TierCard>
-            )}
-
-            {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <RetentionPeriod
-                  hasPermission={permissions.EditAll && !dataAsset.deleted}
-                  retentionPeriod={(dataAsset as Table).retentionPeriod}
-                  onUpdate={onUpdateRetentionPeriod}
-                />
-              </>
-            )}
-
-            {entityType === EntityType.METRIC && onMetricUpdate && (
-              <MetricHeaderInfo
-                metricDetails={dataAsset}
-                metricPermissions={permissions}
-                onUpdateMetricDetails={onMetricUpdate}
-              />
-            )}
-
-            {(dataAsset as Table)?.certification && (
-              <>
-                <Divider
-                  className="self-center vertical-divider"
-                  type="vertical"
-                />
-                <ExtraInfoLabel
-                  label={t('label.certification')}
-                  value={
-                    <CertificationTag
-                      showName
-                      certification={(dataAsset as Table).certification!}
-                    />
+                      </Button>
+                    </Typography.Link>
+                  </Tooltip>
+                )}
+                <ManageButton
+                  isAsyncDelete
+                  afterDeleteAction={afterDeleteAction}
+                  allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
+                  canDelete={permissions.Delete}
+                  deleted={dataAsset.deleted}
+                  displayName={getEntityName(dataAsset)}
+                  editDisplayNamePermission={
+                    permissions?.EditAll || permissions?.EditDisplayName
                   }
+                  entityFQN={dataAsset.fullyQualifiedName}
+                  entityId={dataAsset.id}
+                  entityName={dataAsset.name}
+                  entityType={entityType}
+                  extraDropdownContent={extraDropdownContent}
+                  isRecursiveDelete={isRecursiveDelete}
+                  // onAnnouncementClick={
+                  //   permissions?.EditAll
+                  //     ? handleOpenAnnouncementDrawer
+                  //     : undefined
+                  // }
+                  onEditDisplayName={onDisplayNameUpdate}
+                  onProfilerSettingUpdate={onProfilerSettingUpdate}
+                  onRestoreEntity={onRestoreDataAsset}
                 />
-              </>
-            )}
-            {extraInfo}
-          </div>
-          <div className="mt-2">
-            {activeAnnouncement && (
-              <AnnouncementCard
-                announcement={activeAnnouncement}
-                onClick={handleOpenAnnouncementsTab}
-              />
-            )}
-          </div>
-        </Col>
-      </Row>
+              </ButtonGroup>
+            </Space>
+          </Col>
+        </Row>
+      </Col>
 
-      {/* {isAnnouncementDrawerOpen && (
-        <AnnouncementDrawer
-          createPermission={permissions?.EditAll}
-          entityFQN={dataAsset.fullyQualifiedName ?? ''}
-          entityType={entityType}
-          open={isAnnouncementDrawerOpen}
-          onClose={handleCloseAnnouncementDrawer}
-        />
-      )} */}
-    </>
+      <Col span={24}>
+        <div
+          className={classNames('data-asset-header-metadata ', {
+            'data-asset-header-less-items': showCompressedExtraInfoItems,
+          })}>
+          {showDomain && (
+            <>
+              <DomainLabel
+                headerLayout
+                afterDomainUpdateAction={afterDomainUpdateAction}
+                domain={(dataAsset as EntitiesWithDomainField).domain}
+                entityFqn={dataAsset.fullyQualifiedName ?? ''}
+                entityId={dataAsset.id ?? ''}
+                entityType={entityType}
+                hasPermission={editDomainPermission}
+                textClassName="render-domain-lebel-style"
+              />
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+            </>
+          )}
+          <OwnerLabel
+            hasPermission={editOwnerPermission}
+            isCompactView={false}
+            maxVisibleOwners={4}
+            owners={dataAsset?.owners}
+            onUpdate={onOwnerUpdate}
+          />
+          <Divider className="self-center vertical-divider" type="vertical" />
+          {tierSuggestionRender ?? (
+            <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
+              <Space
+                className="d-flex tier-container align-start"
+                data-testid="header-tier-container">
+                {tier ? (
+                  <div className="d-flex flex-col gap-2">
+                    <div className="tier-heading-container d-flex items-center gap-1">
+                      <span className="entity-no-tier ">{t('label.tier')}</span>
+
+                      {editTierPermission && (
+                        <EditIconButton
+                          newLook
+                          data-testid="edit-tier"
+                          size="small"
+                          title={t('label.edit-entity', {
+                            entity: t('label.tier'),
+                          })}
+                        />
+                      )}
+                    </div>
+
+                    <TagsV1
+                      startWith={TAG_START_WITH.SOURCE_ICON}
+                      tag={tier}
+                      tagProps={{
+                        'data-testid': 'Tier',
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center flex-col gap-2">
+                    <div className="tier-heading-container d-flex items-center gap-1">
+                      <span className="entity-no-tier">{t('label.tier')}</span>
+                      {editTierPermission && (
+                        <EditIconButton
+                          newLook
+                          data-testid="edit-tier"
+                          size="small"
+                          title={t('label.edit-entity', {
+                            entity: t('label.tier'),
+                          })}
+                        />
+                      )}
+                    </div>
+                    <span
+                      className="font-medium no-tier-text text-sm"
+                      data-testid="Tier">
+                      {t('label.no-entity', {
+                        entity: t('label.tier'),
+                      })}
+                    </span>
+                  </div>
+                )}
+              </Space>
+            </TierCard>
+          )}
+
+          {entityType === EntityType.TABLE && onUpdateRetentionPeriod && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <RetentionPeriod
+                hasPermission={permissions.EditAll && !dataAsset.deleted}
+                retentionPeriod={(dataAsset as Table).retentionPeriod}
+                onUpdate={onUpdateRetentionPeriod}
+              />
+            </>
+          )}
+
+          {entityType === EntityType.METRIC && onMetricUpdate && (
+            <MetricHeaderInfo
+              metricDetails={dataAsset}
+              metricPermissions={permissions}
+              onUpdateMetricDetails={onMetricUpdate}
+            />
+          )}
+
+          {(dataAsset as Table)?.certification && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.certification')}
+                value={
+                  <CertificationTag
+                    showName
+                    certification={(dataAsset as Table).certification!}
+                  />
+                }
+              />
+            </>
+          )}
+          {extraInfo}
+        </div>
+        <div className="mt-2">
+          {activeAnnouncement && (
+            <AnnouncementCard
+              announcement={activeAnnouncement}
+              onClick={handleOpenAnnouncementsTab}
+            />
+          )}
+        </div>
+      </Col>
+    </Row>
   );
 };
