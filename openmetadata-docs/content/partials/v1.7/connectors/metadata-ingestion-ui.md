@@ -16,7 +16,7 @@ Once a Service is created, it can be used to configure your ingestion workflows.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.5/connectors/visit-services-page.png"
+  src="/images/v1.7/connectors/visit-services-page.png"
   alt="Visit Services Page"
   caption="Select your Service Type and Add a New Service" /%}
 
@@ -35,7 +35,7 @@ Click on _Add New Service_ to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.5/connectors/create-new-service.png"
+  src="/images/v1.7/connectors/create-new-service.png"
   alt="Create a new Service"
   caption="Add a new Service from the Services page" /%}
 

@@ -24,7 +24,7 @@ To enable debug logging for any ingestion workflow in OpenMetadata:
    Choose the specific service for which you want to enable debug logging.
 
 {% image
-  src="/images/v1.7/connectors/debug/debug1.png"
+  src="/images/v1.8/connectors/debug/debug1.png"
   alt="Select a Service"
   caption="Select a Service"
 /%}
@@ -33,7 +33,7 @@ To enable debug logging for any ingestion workflow in OpenMetadata:
 Go to the **Ingestion tab** and click the three-dot menu on the right-hand side of the ingestion type, and select Edit.
 
 {% image
-  src="/images/v1.7/connectors/debug/debug2.png"
+  src="/images/v1.8/connectors/debug/debug2.png"
   alt="Access Agents Tab"
   caption="Access Agents Tab"
 /%}
@@ -42,7 +42,7 @@ Go to the **Ingestion tab** and click the three-dot menu on the right-hand side 
    In the configuration dialog, enable the **Debug Log** option and click **Next**.
 
 {% image
-  src="/images/v1.7/connectors/debug/debug3.png"
+  src="/images/v1.8/connectors/debug/debug3.png"
   alt="Enable Debug Logging"
   caption="Enable Debug Logging"
 /%}
@@ -51,7 +51,7 @@ Go to the **Ingestion tab** and click the three-dot menu on the right-hand side 
    Configure the schedule if needed and click **Submit** to apply the changes.
 
 {% image
-  src="/images/v1.7/connectors/debug/debug4.png"
+  src="/images/v1.8/connectors/debug/debug4.png"
   alt="Schedule and Submit"
   caption="Schedule and Submit"
 /%}
