@@ -349,6 +349,7 @@ export class EntityClass {
       },
       isForActivityFeedTab
     );
+    await replyAnnouncement(page);
     await deleteAnnouncement(page);
   }
 

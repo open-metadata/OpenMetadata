@@ -807,10 +807,6 @@ const announcementForm = async (
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   await page.click('#announcement-submit');
-  await page.click('.Toastify__close-button');
-
-  await page.click('[data-testid="announcement-close"]');
-  await page.click('[data-testid="alert-icon-close"]');
 };
 
 export const createAnnouncement = async (
@@ -849,9 +845,11 @@ export const createAnnouncement = async (
   const feedDataCard = page
     .locator('#feedData')
     .getByTestId('activity-feed-card-v2');
-  const activeTextLocator = page.getByTestId('active-announcement');
 
-  await activeTextLocator.click();
+  await page.getByTestId('announcement-filter-icon').click();
+  const activeAnnouncementsOption = page.getByTestId('active-announcements');
+
+  await activeAnnouncementsOption.click();
 
   await expect(feedDataCard).toBeVisible();
   await expect(feedDataCard).toContainText(data.title);
@@ -881,6 +879,11 @@ export const createAnnouncement = async (
 export const replyAnnouncement = async (page: Page) => {
   await page.click('[data-testid="activity-feed-card-v2"]');
 
+  await expect(page.locator('.comments-input-field')).toBeVisible();
+
+  await page.locator('.comments-input-field').scrollIntoViewIfNeeded();
+  await page.locator('.comments-input-field').click();
+
   await expect(page.locator('.ql-editor')).toBeVisible();
 
   const sendButtonIsDisabled = await page
@@ -907,10 +910,12 @@ export const replyAnnouncement = async (page: Page) => {
     'Reply message edited'
   );
 
-  await page.click('[data-testid="save-button"]');
+  await page.click('[data-testid="send-button"]');
 
   await expect(
-    page.locator('#feed-panel [data-testid="viewer-container"]')
+    page.locator(
+      '#feed-panel [data-testid="feed-replies"] [data-testid="viewer-container"]'
+    )
   ).toHaveText('Reply message edited');
 };
 
@@ -967,9 +972,13 @@ export const createInactiveAnnouncement = async (
   await announcementForm(page, { ...data, startDate, endDate });
 
   await page.reload();
-  const inactiveTextLocator = page.getByTestId('inactive-announcements');
+  await page.getByTestId('announcement-filter-icon').click();
+  const inactiveAnnouncementsOption = page.getByTestId(
+    'inactive-announcements'
+  );
 
-  await inactiveTextLocator.click();
+  await inactiveAnnouncementsOption.click();
+
   const feedDataCard = page
     .locator('#feedData')
     .getByTestId('activity-feed-card-v2');
