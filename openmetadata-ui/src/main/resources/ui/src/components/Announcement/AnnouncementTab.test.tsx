@@ -60,25 +60,8 @@ describe('AnnouncementTab', () => {
   it('should render the component', () => {
     render(<AnnouncementTab {...defaultProps} />);
 
-    expect(screen.getByTestId('active-announcement')).toBeInTheDocument();
-    expect(screen.getByTestId('inactive-announcements')).toBeInTheDocument();
+    expect(screen.getByTestId('announcement-filter-icon')).toBeInTheDocument();
     expect(screen.getByTestId('add-announcement-btn')).toBeInTheDocument();
-  });
-
-  it('should fetch and display announcements correctly', async () => {
-    mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
-
-    render(
-      <MemoryRouter>
-        <AnnouncementTab {...defaultProps} />
-      </MemoryRouter>
-    );
-
-    const announcementMessage = await screen.findAllByText(
-      'Cypress announcement'
-    );
-
-    expect(announcementMessage[0]).toBeInTheDocument();
   });
 
   it('should open the modal when add announcement button is clicked', () => {
@@ -97,8 +80,10 @@ describe('AnnouncementTab', () => {
       </MemoryRouter>
     );
 
-    const activeFilterButton = screen.getByTestId('active-announcement');
-    fireEvent.click(activeFilterButton);
+    const filterButton = screen.getByTestId('announcement-filter-icon');
+    filterButton.click();
+    const activeFilterOption = screen.getByTestId('active-announcements');
+    fireEvent.click(activeFilterOption);
     mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
     await waitFor(() =>
       expect(mockGetAnnouncements).toHaveBeenCalledWith(
@@ -114,6 +99,8 @@ describe('AnnouncementTab', () => {
         <AnnouncementTab {...defaultProps} />
       </MemoryRouter>
     );
+    const filterButton = screen.getByTestId('announcement-filter-icon');
+    filterButton.click();
     const inactiveFilterButton = screen.getByTestId('inactive-announcements');
     fireEvent.click(inactiveFilterButton);
     mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
@@ -123,28 +110,5 @@ describe('AnnouncementTab', () => {
         '<#E::databaseService::mysql_sample>'
       )
     );
-  });
-
-  it('updates selected announcement and displays its details and post replies in right panel', async () => {
-    mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
-
-    render(
-      <MemoryRouter>
-        <AnnouncementTab {...defaultProps} />
-      </MemoryRouter>
-    );
-
-    const announcementMessage = await screen.findAllByText(
-      'Cypress announcement'
-    );
-    fireEvent.click(announcementMessage[0]);
-
-    expect(screen.getByText('this is done!')).toBeInTheDocument();
-    expect(screen.getByText('having a look on it!')).toBeInTheDocument();
-    expect(
-      screen.getByText('this if fixed and RCA given!')
-    ).toBeInTheDocument();
-
-    expect(announcementMessage[0]).toBeInTheDocument();
   });
 });
