@@ -284,7 +284,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         servicePermission,
         serviceDetails
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
+    // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
 
   const handleShowDeleted = useCallback(
@@ -1388,6 +1389,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     removeAutoPilotStatus(serviceDetails.fullyQualifiedName ?? '');
     fetchWorkflowInstanceStates();
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
+
+  useEffect(() => {
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
 
   if (isLoading) {
     return <Loader />;

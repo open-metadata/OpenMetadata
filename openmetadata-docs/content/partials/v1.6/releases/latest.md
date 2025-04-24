@@ -1,7 +1,7 @@
-# 1.6.8 Release 🎉
+# 1.6.10 Release 🎉
 
 {% note noteType="Tip" %}
-**Apr 8th, 2025**
+**Apr 22nd, 2025**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,24 +10,14 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.6.8!
+Learn how to upgrade your OpenMetadata instance to 1.6.10!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.8-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.10-release).
 
-- Added support for Wherescape connector.
-- PowerBI owners ingestion for assets, improved filter query performance.
-- REST connector enhancements.
-- Implement column validation in lineage patch api.
-- Fixed tableau ingestion for null upstream table queries.
-- Fixed public schema lieage for postgres.
-- Fixed PowerBI filter query.
-- Fixed IncidentManager date filtering and update table column title.
-- Fixed dbt cloud latest run execution.
-- Fixed Unpinned google-cloud-secret-manager version in ingestion dependencies.
-- Fixed update query to fix domain asset update.
-- Fixed DQ for local webserver.
-- Fixed placeholder issue for empty metrics.
+- Introduced the ability to use a subset of permissions when adding or deleting users in teams—more granular control for team management.
+- Added an optional mechanism to fetch response schema directly from the schema property of API endpoints—enhancing flexibility for API integrations.
+- Fixed an issue with double slashes in API endpoint names for cleaner, consistent paths.
 
-**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.7-release...1.6.8-release)
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.6.9-release...1.6.10-release)

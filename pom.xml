@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.6.0-SNAPSHOT</version>
+  <version>1.8.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -107,7 +107,7 @@
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.34</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.23</elasticsearch.version>
+    <elasticsearch.version>7.17.24</elasticsearch.version>
     <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
@@ -154,6 +154,7 @@
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
+    <jetty-server.version>9.4.57.v20241219</jetty-server.version>
   </properties>
 
   <dependencyManagement>
@@ -207,6 +208,21 @@
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-server</artifactId>
+        <version>${jetty-server.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -221,6 +237,10 @@
           <exclusion>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -569,7 +589,7 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
         <!-- 9.x required for Dropwizard 2.1.x -->
-        <version>9.4.56.v20240826</version>
+        <version>${jetty-server.version}</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->

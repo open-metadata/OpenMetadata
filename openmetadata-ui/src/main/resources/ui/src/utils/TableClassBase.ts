@@ -98,8 +98,8 @@ class TableClassBase {
       EntityTabs.SAMPLE_DATA,
       EntityTabs.TABLE_QUERIES,
       EntityTabs.PROFILER,
-      EntityTabs.INCIDENTS,
       EntityTabs.LINEAGE,
+      EntityTabs.DBT,
       EntityTabs.VIEW_DEFINITION,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({

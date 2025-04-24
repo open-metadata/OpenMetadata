@@ -50,6 +50,7 @@ import {
   elasticsearchToJsonLogic,
   getJsonTreeFromQueryFilter,
   jsonLogicToElasticsearch,
+  READONLY_SETTINGS,
 } from '../../../../../../utils/QueryBuilderUtils';
 import { getExplorePath } from '../../../../../../utils/RouterUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
@@ -268,6 +269,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
                   <Builder {...props} />
                 </div>
               )}
+              settings={{
+                ...config.settings,
+                ...(props.readonly ? READONLY_SETTINGS : {}),
+              }}
               value={treeInternal}
               onChange={handleChange}
             />

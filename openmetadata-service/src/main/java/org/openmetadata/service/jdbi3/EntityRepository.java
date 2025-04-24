@@ -54,6 +54,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -138,7 +139,6 @@ import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
@@ -1098,6 +1098,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated, updatedBy);
   }
 
+  @Transaction
+  public final PutResponse<T> createOrUpdateForImport(
+      UriInfo uriInfo, T updated, String updatedBy) {
+    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
+    if (original == null) { // If an original entity does not exist then create it, else update
+      return new PutResponse<>(
+          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
+    }
+    return updateForImport(uriInfo, original, updated, updatedBy);
+  }
+
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     if (supportsSearch) {
@@ -1139,6 +1150,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
     entityUpdater.update();
+    EventType change =
+        entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
+    setInheritedFields(updated, new Fields(allowedFields));
+    if (change == ENTITY_UPDATED) {
+      updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
+    }
+    return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
+  }
+
+  @Transaction
+  public final PutResponse<T> updateForImport(
+      UriInfo uriInfo, T original, T updated, String updatedBy) {
+    // Get all the fields in the original entity that can be updated during PUT operation
+    setFieldsInternal(original, putFields);
+    updated.setUpdatedBy(updatedBy);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    // If the entity state is soft-deleted, recursively undelete the entity and it's children
+    if (Boolean.TRUE.equals(original.getDeleted())) {
+      restoreEntity(updated.getUpdatedBy(), entityType, original.getId());
+    }
+
+    // Update the attributes and relationships of an entity
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
+    entityUpdater.updateForImport();
     EventType change =
         entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
     setInheritedFields(updated, new Fields(allowedFields));
@@ -2491,6 +2526,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return owners;
     }
+    // Check if owners are inherited. If so, ignore the validation
+    if (owners.stream().allMatch(owner -> owner.getInherited() != null && owner.getInherited())) {
+      return owners;
+    }
+
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
     if (nullOrEmpty(refs)) {
@@ -2989,9 +3029,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
       postUpdate(original, updated);
     }
 
+    @Transaction
+    public final void updateForImport() {
+      boolean consolidateChanges = consolidateChanges(original, updated, operation);
+      incrementalChangeForImport();
+      if (consolidateChanges) {
+        revertForImport();
+      }
+      // Now updated from previous/original to updated one
+      changeDescription = new ChangeDescription();
+      updateInternalForImport();
+      storeUpdate();
+      postUpdate(original, updated);
+    }
+
     private void incrementalChange() {
       changeDescription = new ChangeDescription();
       updateInternal(false);
+      incrementalChangeDescription = changeDescription;
+      incrementalChangeDescription.setPreviousVersion(original.getVersion());
+      updated.setIncrementalChangeDescription(incrementalChangeDescription);
+    }
+
+    private void incrementalChangeForImport() {
+      changeDescription = new ChangeDescription();
+      updateInternalForImport(false);
       incrementalChangeDescription = changeDescription;
       incrementalChangeDescription.setPreviousVersion(original.getVersion());
       updated.setIncrementalChangeDescription(incrementalChangeDescription);
@@ -3064,12 +3126,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    @Transaction
+    private void revertForImport() {
+      // Revert from current version to previous version to go back to the previous version
+      // set changeDescription to null
+      T updatedOld = updated;
+      previous = getPreviousVersion(original);
+      if (previous != null) {
+        LOG.debug(
+            "In session change consolidation. Reverting to previous version {}",
+            previous.getVersion());
+        changeDescription = new ChangeDescription();
+        updated = previous;
+        updateInternalForImport(true);
+        LOG.info(
+            "In session change consolidation. Reverting to previous version {} completed",
+            previous.getVersion());
+
+        // Now go from original to updated
+        updated = updatedOld;
+        updateInternalForImport();
+
+        // Finally, go from previous to the latest updated entity to consolidate changes
+        original = previous;
+        entityChanged = false;
+      }
+    }
+
     /**
      * Compare original and updated entities and perform updates. Update the entity version and track changes.
      */
     @Transaction
     private void updateInternal() {
       updateInternal(false);
+    }
+
+    @Transaction
+    private void updateInternalForImport() {
+      updateInternalForImport(false);
     }
 
     /**
@@ -3087,6 +3181,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateOwners();
         updateExtension();
         updateTags(
+            updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
+        updateDomain();
+        updateDataProducts();
+        updateExperts();
+        updateReviewers();
+        updateStyle();
+        updateLifeCycle();
+        updateCertification();
+        entitySpecificUpdate(consolidatingChanges);
+        updateChangeSummary();
+      }
+    }
+
+    @Transaction
+    private void updateInternalForImport(boolean consolidatingChanges) {
+      if (operation.isDelete()) { // Soft DELETE Operation
+        updateDeleted();
+      } else { // PUT or PATCH operations
+        updated.setId(original.getId());
+        updateDeleted();
+        updateDescription();
+        updateDisplayName();
+        updateOwnersForImport();
+        updateExtension();
+        updateTagsForImport(
             updated.getFullyQualifiedName(), FIELD_TAGS, original.getTags(), updated.getTags());
         updateDomain();
         updateDataProducts();
@@ -3166,6 +3285,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
+    private void updateOwnersForImport() {
+      List<EntityReference> origOwners = getEntityReferences(original.getOwners());
+      List<EntityReference> updatedOwners = getEntityReferences(updated.getOwners());
+      List<EntityReference> addedOwners = new ArrayList<>();
+      List<EntityReference> removedOwners = new ArrayList<>();
+      if (recordListChange(
+          FIELD_OWNERS,
+          origOwners,
+          updatedOwners,
+          addedOwners,
+          removedOwners,
+          entityReferenceMatch)) {
+        // Update owner for all PATCH operations. For PUT operations, ownership can't be removed
+        EntityRepository.this.updateOwners(original, origOwners, updatedOwners);
+        updated.setOwners(updatedOwners);
+      } else {
+        updated.setOwners(origOwners); // Restore original owner
+      }
+    }
+
     protected void updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
       // Remove current entity tags in the database. It will be added back later from the merged tag
@@ -3187,6 +3326,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityUtil.mergeTags(updatedTags, origTags);
         checkMutuallyExclusive(updatedTags);
       }
+
+      List<TagLabel> addedTags = new ArrayList<>();
+      List<TagLabel> deletedTags = new ArrayList<>();
+      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      updatedTags.sort(compareTagLabel);
+      applyTags(updatedTags, fqn);
+    }
+
+    protected void updateTagsForImport(
+        String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      // Remove current entity tags in the database. It will be added back later from the merged tag
+      // list.
+      origTags = listOrEmpty(origTags);
+      // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
+      // its empty.
+      updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
+      if (origTags.isEmpty() && updatedTags.isEmpty()) {
+        return; // Nothing to update
+      }
+
+      // Remove current entity tags in the database. It will be added back later from the merged tag
+      // list.
+      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
@@ -4132,40 +4294,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return Collections.emptyMap();
     }
 
-    // Fetch tags from DAO
-    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tags =
-        daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs);
-
-    List<String> tagFQNs =
-        tags.stream()
-            .distinct()
-            .map(CollectionDAO.TagUsageDAO.TagLabelWithFQNHash::getTagFQN)
-            .toList();
-    Map<String, TagLabel> tagFQNLabelMap =
-        EntityUtil.toTagLabels(TagLabelUtil.getTags(tagFQNs).toArray(new Tag[0])).stream()
-            .collect(Collectors.toMap(TagLabel::getTagFQN, Function.identity()));
-
-    // Map from targetFQNHash to targetFQN
-    Map<String, String> fqnHashToFqnMap =
-        entityFQNs.stream().collect(Collectors.toMap(FullyQualifiedName::buildHash, fqn -> fqn));
-
-    // Map to hold targetFQN to list of TagLabel
-    Map<String, List<TagLabel>> tagsMap = new HashMap<>();
-    for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagWithHash : tags) {
-      String targetFQNHash = tagWithHash.getTargetFQNHash();
-      String targetFQN = fqnHashToFqnMap.get(targetFQNHash);
-
-      if (targetFQN != null) {
-        TagLabel tagLabel = tagFQNLabelMap.get(tagWithHash.getTagFQN());
-        if (tagLabel != null) {
-          tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagLabel);
-        } else {
-          LOG.warn("Missing TagLabel for TagFQN in batch Fetch Tags: {}", tagWithHash.getTagFQN());
-        }
-      }
-    }
-
-    return tagsMap;
+    Map<String, List<TagLabel>> targetHashToTagLabel =
+        populateTagLabel(listOrEmpty(daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs)));
+    return entityFQNs.stream()
+        .collect(
+            Collectors.toMap(
+                Function.identity(),
+                fqn -> {
+                  String targetFQNHash = FullyQualifiedName.buildHash(fqn);
+                  return Optional.ofNullable(targetHashToTagLabel.get(targetFQNHash))
+                      .filter(list -> !list.isEmpty())
+                      .orElseGet(ArrayList::new);
+                }));
   }
 
   private Map<UUID, EntityReference> batchFetchDomain(List<T> entities) {

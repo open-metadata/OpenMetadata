@@ -131,7 +131,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 1
+        return 2
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -165,7 +165,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                     SystemProfile(
                         timestamp=Timestamp(root=0),
                         operation=DmlOperationType.INSERT,
-                        rowsAffected=2,
+                        rowsAffected=1000,
                     ),
                     SystemProfile(
                         timestamp=Timestamp(root=1),

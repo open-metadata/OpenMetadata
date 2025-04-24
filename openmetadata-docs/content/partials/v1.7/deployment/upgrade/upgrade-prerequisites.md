@@ -115,3 +115,19 @@ This means that for Release 1.7, the supported Python versions for the Ingestion
 
 We were already shipping our Docker images with Python 3.10, so this change should not affect you if you are using our Docker images.
 However, if you installed the `openmetadata-ingestion` package directly, please make sure to update your Python version to 3.9 or higher.
+
+### OpenSearch Settings Update
+
+OpenSearch has a different default value of `max_clause_count` than Elasticsearch. This means that if you are using OpenSearch, 
+you will need to update the `max_clause_count` setting in your OpenSearch configuration:
+
+```shell
+indices.query.bool.max_clause_count: 4096
+```
+
+If you're using AWS, you can add this setting from the console as well
+
+{% image
+src="/images/v1.7/deployment/upgrade/opensearch-upgrade-170.png"
+alt="AWS OpenSearch Settings"
+caption="AWS OpenSearch Settings" /%}

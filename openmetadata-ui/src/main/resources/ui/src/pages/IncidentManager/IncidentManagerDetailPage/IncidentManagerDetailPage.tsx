@@ -282,7 +282,7 @@ const IncidentManagerDetailPage = () => {
             </Col>
           </Row>
         </Col>
-        <Col>
+        <Col className="w-full">
           <IncidentManagerPageHeader
             fetchTaskCount={getEntityFeedCount}
             testCaseData={testCase}

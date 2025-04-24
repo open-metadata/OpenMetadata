@@ -66,10 +66,6 @@ p {
   box-shadow: none;
 }
 
-.overflow-y-auto {
-  overflow-y: auto;
-}
-
 .overflow-hidden {
   overflow: hidden;
 }
@@ -639,7 +635,8 @@ a[href].link-text-grey,
   }
 
   /* Lineage tab panel styling */
-  [id*='rc-tabs-'][id*='-panel-lineage'] {
+  [id*='rc-tabs-'][id*='-panel-lineage'],
+  [id*='rc-tabs-'][id*='-panel-erDiagram'] {
     background-color: @grey-9;
   }
 }

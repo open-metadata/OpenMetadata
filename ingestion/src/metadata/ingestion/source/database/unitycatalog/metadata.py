@@ -72,7 +72,6 @@ from metadata.ingestion.source.database.unitycatalog.models import (
     ForeignConstrains,
     Type,
 )
-from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
@@ -97,7 +96,6 @@ class UnitycatalogSource(
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
             self.config.serviceConnection.root.config
@@ -345,19 +343,6 @@ class UnitycatalogSource(
                 owners=self.get_owner_ref(table_name),
             )
             yield Either(right=table_request)
-
-            if table_type == TableType.View or table.view_definition:
-                self.context.get_global().table_views.append(
-                    TableView(
-                        table_name=table_name,
-                        schema_name=schema_name,
-                        db_name=db_name,
-                        view_definition=(
-                            f'CREATE VIEW "{db_name}"."{schema_name}"'
-                            f'."{table_name}" AS {table.view_definition}'
-                        ),
-                    )
-                )
 
             self.register_record(table_request=table_request)
         except Exception as exc:

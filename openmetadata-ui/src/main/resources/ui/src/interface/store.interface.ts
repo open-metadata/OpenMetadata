@@ -53,7 +53,7 @@ export interface ApplicationStore
   setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
-  selectedPersona: EntityReference;
+  selectedPersona?: EntityReference;
   authConfig?: AuthenticationConfigurationWithScope;
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';

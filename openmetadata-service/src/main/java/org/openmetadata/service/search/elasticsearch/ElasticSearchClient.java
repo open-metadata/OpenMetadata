@@ -13,7 +13,6 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
-import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
@@ -83,6 +82,7 @@ import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.sort.FieldSortBuilder;
@@ -139,7 +139,9 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -879,9 +881,10 @@ public class ElasticSearchClient implements SearchClient {
         String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
         XContentParser parser = createXContentParser(transformedQuery);
         SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+        searchSourceBuilder.from(request.getFrom());
+        searchSourceBuilder.size(request.getSize());
         ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
         sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
-
         LOG.debug("Transformed NLQ query: {}", transformedQuery);
         es.org.elasticsearch.action.search.SearchRequest searchRequest =
             new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
@@ -1320,28 +1323,49 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response aggregate(String index, String fieldName, String value, String query)
-      throws IOException {
+  public Response aggregate(AggregationRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    buildSearchSourceFilter(query, searchSourceBuilder);
-    searchSourceBuilder
-        .aggregation(
-            AggregationBuilders.terms(fieldName)
-                .field(fieldName)
-                .size(MAX_AGGREGATE_SIZE)
-                .includeExclude(new IncludeExclude(value.toLowerCase(), null))
-                .order(BucketOrder.key(true)))
-        .size(0);
-    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    String response =
-        client
-            .search(
-                new es.org.elasticsearch.action.search.SearchRequest(
-                        Entity.getSearchRepository().getIndexOrAliasName(index))
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT)
-            .toString();
-    return Response.status(OK).entity(response).build();
+    buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
+
+    String aggregationField = request.getFieldName();
+    if (aggregationField == null || aggregationField.isBlank()) {
+      throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
+    }
+
+    int bucketSize = request.getSize();
+    String includeValue = request.getFieldValue().toLowerCase();
+
+    TermsAggregationBuilder termsAgg =
+        AggregationBuilders.terms(aggregationField)
+            .field(aggregationField)
+            .size(bucketSize)
+            .includeExclude(new IncludeExclude(includeValue, null))
+            .order(BucketOrder.key(true));
+
+    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
+      request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
+
+      List<String> topHitFields = request.getSourceFields();
+
+      TopHitsAggregationBuilder topHitsAgg =
+          AggregationBuilders.topHits("top")
+              .size(request.getTopHits().getSize())
+              .fetchSource(topHitFields.toArray(new String[0]), null)
+              .trackScores(false);
+
+      termsAgg.subAggregation(topHitsAgg);
+    }
+
+    searchSourceBuilder.aggregation(termsAgg).size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    SearchResponse searchResponse =
+        client.search(
+            new es.org.elasticsearch.action.search.SearchRequest(
+                    Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
+                .source(searchSourceBuilder),
+            RequestOptions.DEFAULT);
+
+    return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
   }
 
   @Override
