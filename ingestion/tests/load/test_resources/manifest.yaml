@@ -1,0 +1,19 @@
+# Description: This file contains the manifest for the test resources.
+# You can add as a key of a resource any metric available in `summaries/all__summaries.csv` file.
+# times should be expressed in milliseconds (e.g. 1000ms = 1s)
+
+/api/v1/dataQuality/testCases/testCaseResults/[fqn]/30_days:
+  type: GET
+  99%: 1000
+
+/api/v1/dataQuality/testCases/testCaseResults/[fqn]/60_days:
+  type: GET
+  99%: 1000
+
+/api/v1/dataQuality/testCases/testCaseResults/[fqn]/180_days:
+  type: GET
+  99%: 1000
+
+/api/v1/dataQuality/testCases?limit=10:
+  type: GET
+  99%: 6000
