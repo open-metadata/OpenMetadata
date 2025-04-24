@@ -268,7 +268,7 @@ public class AuthenticationCodeFlowHandler {
         addStateAndNonceParameters(client, req, params);
 
         // This is always used to prompt the user to login
-        if (!nullOrEmpty(maxAge)) {
+        if (!nullOrEmpty(promptType)) {
           params.put(OidcConfiguration.PROMPT, promptType);
         }
 
