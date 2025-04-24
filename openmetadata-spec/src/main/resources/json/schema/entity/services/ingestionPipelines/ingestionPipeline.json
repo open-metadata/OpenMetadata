@@ -121,6 +121,11 @@
         "email": {
           "description": "Email to notify workflow status.",
           "$ref": "../../../type/basic.json#/definitions/email"
+        },
+        "raiseOnError": {
+          "description": "Mark the DAG as failed if the tasks fail",
+          "type": "boolean",
+          "default": true
         }
       },
       "additionalProperties": false

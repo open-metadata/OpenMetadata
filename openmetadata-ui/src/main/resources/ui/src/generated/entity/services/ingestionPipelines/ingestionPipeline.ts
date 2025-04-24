@@ -142,6 +142,10 @@ export interface AirflowConfig {
      */
     pipelineTimezone?: string;
     /**
+     * Mark the DAG as failed if the tasks fail
+     */
+    raiseOnError?: boolean;
+    /**
      * Retry pipeline in case of failure.
      */
     retries?: number;
@@ -1247,6 +1251,10 @@ export interface Pipeline {
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
+    /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
     /**
      * List of operations to be performed on the service
      */
