@@ -70,6 +70,10 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     resolveEntity();
     if (entity == null) {
       return null;
+    } else if (Entity.DATA_PRODUCT.equals(entityRepository.getEntityType())) {
+      if (entity.getDomain() != null) {
+        entity.getOwners().add(entity.getDomain());
+      }
     } else if (Entity.USER.equals(entityRepository.getEntityType())) {
       return List.of(entity.getEntityReference()); // Owner for a user is same as the user
     }
