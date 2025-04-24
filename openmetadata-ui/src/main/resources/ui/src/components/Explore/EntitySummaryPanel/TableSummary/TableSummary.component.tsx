@@ -157,25 +157,18 @@ function TableSummary({
       const shouldFetchTestCaseData =
         !isTableDeleted &&
         tableDetails.service?.type === 'databaseService' &&
-        (tablePermissions?.ViewAll || tablePermissions?.ViewTests);
-
+        (permissions?.ViewAll || permissions?.ViewTests);
       if (shouldFetchTestCaseData) {
         fetchAllTests();
       }
     } else {
       setTablePermissions(mockTablePermission as OperationPermission);
     }
-  }, [
-    tableDetails,
-    isTourPage,
-    isTableDeleted,
-    fetchAllTests,
-    tablePermissions,
-  ]);
+  }, [tableDetails, isTourPage, isTableDeleted, fetchAllTests, permissions]);
 
   useEffect(() => {
     init();
-  }, [tableDetails.id]);
+  }, [tableDetails.id, permissions]);
 
   return (
     <Row className="p-md border-radius-card summary-panel-card" gutter={[0, 8]}>
