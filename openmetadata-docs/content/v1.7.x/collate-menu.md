@@ -1049,6 +1049,8 @@ site_menu:
   - category: Enable Security / Saml / Azure
     url: /security/saml/azure
 
+  - category: Releases
+    url: /releases
   - category: Releases / Latest Release
     url: /releases/latest-release
   - category: Releases / Supported Releases
