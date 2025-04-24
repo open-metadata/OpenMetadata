@@ -43,7 +43,6 @@ def mask_literals_with_sqlparse(query: str, parser: LineageRunner):
     try:
         parsed_statements = parser._parsed_result
 
-
         def mask_token(token):
             # Mask all literals: strings, numbers, or other literal values
             if token.ttype in (
