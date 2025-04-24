@@ -528,6 +528,42 @@ class OpenMetadata(
         """
         raw_version = self.client.get("/system/version")["version"]
         return raw_version is not None
+    
+    def __getstate__(self):
+        """Called when pickling the object, returns the state without the unpicklable objects."""
+        state = self.__dict__.copy()
+        # Remove objects that might contain thread locks
+        if '_auth_provider' in state:
+            del state['_auth_provider']
+        if 'client' in state:
+            del state['client']
+        if 'secrets_manager_client' in state:
+            del state['secrets_manager_client']
+        return state
+    
+    def __setstate__(self, state):
+        """Called when unpickling the object, restores the state."""
+        self.__dict__.update(state)
+        # Restore the auth provider and client
+        self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
+        
+        get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
+        
+        client_config: ClientConfig = ClientConfig(
+            base_url=self.config.hostPort,
+            api_version=self.config.apiVersion,
+            auth_header="Authorization",
+            extra_headers=self.config.extraHeaders,
+            auth_token=self._auth_provider.get_access_token,
+            verify=get_verify_ssl(self.config.sslConfig),
+        )
+        self.client = REST(client_config)
+        
+        # Restore the secrets manager client
+        self.secrets_manager_client = SecretsManagerFactory(
+            self.config.secretsManagerProvider,
+            self.config.secretsManagerLoader,
+        ).get_secrets_manager()
 
     def close(self):
         """

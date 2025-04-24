@@ -74,6 +74,14 @@ class ExecutionTimeTrackerContextMap(metaclass=Singleton):
         """Removes the information of a given thread."""
         thread_id = thread_id or threading.get_ident()
         return self.map.get(thread_id, []).pop()
+        
+    def __getstate__(self):
+        """Called when pickling the object, returns the state without thread-specific objects."""
+        return self.__dict__.copy()
+        
+    def __setstate__(self, state):
+        """Called when unpickling the object."""
+        self.__dict__.update(state)
 
 
 class ExecutionTimeTrackerState(metaclass=Singleton):
@@ -186,6 +194,14 @@ class ExecutionTimeTracker(metaclass=Singleton):
 
             if context.stored:
                 self.state.add(context, elapsed)
+                
+    def __getstate__(self):
+        """Called when pickling the object."""
+        return self.__dict__.copy()
+        
+    def __setstate__(self, state):
+        """Called when unpickling the object."""
+        self.__dict__.update(state)
 
 
 def calculate_execution_time(context: Optional[str] = None, store: bool = True):
