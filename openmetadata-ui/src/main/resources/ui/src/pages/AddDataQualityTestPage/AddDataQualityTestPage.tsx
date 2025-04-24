@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Loader from '../../components/common/Loader/Loader';
 import AddDataQualityTestV1 from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1';
 import { TabSpecificField } from '../../enums/entity.enum';

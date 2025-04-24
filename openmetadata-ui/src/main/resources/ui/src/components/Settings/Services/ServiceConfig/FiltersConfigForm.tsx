@@ -14,7 +14,7 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SERVICE_CONNECTION_UI_SCHEMA } from '../../../../constants/ServiceConnection.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';

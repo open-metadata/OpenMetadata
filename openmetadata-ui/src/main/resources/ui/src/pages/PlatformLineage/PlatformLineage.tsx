@@ -14,9 +14,9 @@ import { Col, Row, Select } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
@@ -41,12 +41,13 @@ import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineageUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
 
 const PlatformLineage = () => {
   const { t } = useTranslation();
-  const history = useHistory();
-  const { entityType } = useParams<{ entityType: EntityType }>();
+  const navigate = useNavigate();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [loading, setLoading] = useState(false);
@@ -96,7 +97,7 @@ const PlatformLineage = () => {
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
-      history.push(
+      navigate(
         `/lineage/${(value as SourceType).entityType}/${
           value.fullyQualifiedName
         }`

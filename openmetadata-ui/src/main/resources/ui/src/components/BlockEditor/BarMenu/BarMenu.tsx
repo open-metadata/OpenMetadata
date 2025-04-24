@@ -12,7 +12,7 @@
  */
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
-import React, { FC, Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
 import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
 import UnorderedListIcon from '../../../assets/svg/ic-format-bullet-list.svg';

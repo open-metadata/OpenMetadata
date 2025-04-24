@@ -12,14 +12,7 @@
  */
 import { Button, Empty, Select, Space, Tree } from 'antd';
 import { AxiosError } from 'axios';
-import React, {
-  FC,
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
@@ -159,7 +152,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     }
   };
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
@@ -241,7 +234,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           }))}
           placeholder="Select a domain"
           popupClassName="domain-custom-dropdown-class"
-          ref={dropdownRef as any}
+          ref={dropdownRef}
           tagRender={TagRenderer}
           value={
             selectedDomains

@@ -13,7 +13,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Editor } from '@tiptap/react';
-import React from 'react';
 import BubbleMenu from './BubbleMenu';
 
 const mockIsActive = jest.fn();

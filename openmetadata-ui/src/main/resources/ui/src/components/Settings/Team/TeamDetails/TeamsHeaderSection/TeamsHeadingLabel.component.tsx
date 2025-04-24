@@ -17,7 +17,7 @@ import {
 } from '@ant-design/icons';
 import { Button, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../../../constants/constants';

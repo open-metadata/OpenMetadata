@@ -12,7 +12,6 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
 import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
@@ -72,12 +71,6 @@ jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
 const mockLocationPathname = '/mock-path';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    history: {
-      push: jest.fn(),
-    },
-    replace: jest.fn(),
-  })),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
   })),

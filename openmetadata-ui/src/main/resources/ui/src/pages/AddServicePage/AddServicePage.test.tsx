@@ -25,10 +25,7 @@ const mockParam = {
   serviceCategory: 'databaseServices',
 };
 
-const mockPush = jest.fn();
-const mockHistory = {
-  push: mockPush,
-};
+const mockNavigate = jest.fn();
 
 const mockSetInlineAlertDetails = jest.fn();
 
@@ -54,7 +51,7 @@ jest.mock('../../hoc/withPageLayout', () => ({
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useHistory: jest.fn().mockImplementation(() => mockHistory),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useParams: jest.fn().mockImplementation(() => mockParam),
 }));
 
@@ -224,7 +221,7 @@ describe('AddServicePage', () => {
     expect(getServiceRouteFromServiceType).toHaveBeenCalledWith(
       ServiceCategory.DATABASE_SERVICES
     );
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalled();
   });
 
   it('should show error when trying to proceed without selecting service type', async () => {
@@ -308,7 +305,7 @@ describe('AddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith('/service/details/path');
+    expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
   });
 
   it('should handle back navigation in connection configuration', async () => {

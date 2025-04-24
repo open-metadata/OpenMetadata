@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -109,7 +108,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest
     .fn()
     .mockImplementation(() => ({ fqn: 'fqn', tab: 'fields' })),
-  useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => {

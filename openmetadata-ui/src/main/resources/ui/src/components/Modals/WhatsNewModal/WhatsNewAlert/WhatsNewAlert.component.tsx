@@ -12,7 +12,7 @@
  */
 import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';

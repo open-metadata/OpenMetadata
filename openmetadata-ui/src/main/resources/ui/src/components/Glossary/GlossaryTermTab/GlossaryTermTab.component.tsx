@@ -18,6 +18,7 @@ import {
   Checkbox,
   Col,
   Dropdown,
+  MenuProps,
   Modal,
   Row,
   Space,
@@ -29,13 +30,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -577,7 +572,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
 
-  const statusDropdownMenu = useMemo(
+  const statusDropdownMenu: MenuProps = useMemo(
     () => ({
       items: [
         {

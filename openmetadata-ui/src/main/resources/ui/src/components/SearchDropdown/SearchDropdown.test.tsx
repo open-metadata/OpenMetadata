@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import SearchDropdown from './SearchDropdown';
 import { SearchDropdownProps } from './SearchDropdown.interface';
 

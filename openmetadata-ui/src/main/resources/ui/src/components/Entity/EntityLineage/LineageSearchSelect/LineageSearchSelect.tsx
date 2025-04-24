@@ -14,7 +14,7 @@ import { RightOutlined } from '@ant-design/icons';
 import { Select, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import { ZOOM_TRANSITION_DURATION } from '../../../../constants/Lineage.constants';

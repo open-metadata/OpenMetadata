@@ -15,13 +15,7 @@ import { Button, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
 import { PAGE_SIZE_BASE } from '../../constants/constants';

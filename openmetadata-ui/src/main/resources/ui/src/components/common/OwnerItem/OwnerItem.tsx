@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { EntityReference } from '../../../generated/entity/data/table';

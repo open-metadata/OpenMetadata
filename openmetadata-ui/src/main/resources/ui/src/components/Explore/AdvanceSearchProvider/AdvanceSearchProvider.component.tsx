@@ -10,15 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isEqual, isNil, isString } from 'lodash';
-import Qs from 'qs';
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
 import {
   Config,
   Field,
@@ -28,8 +19,18 @@ import {
   Utils as QbUtils,
   ValueField,
   ValueSource,
-} from 'react-awesome-query-builder';
-import { useHistory, useParams } from 'react-router-dom';
+} from '@react-awesome-query-builder/antd';
+import { isEmpty, isEqual, isNil, isString } from 'lodash';
+import Qs from 'qs';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useNavigate } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -42,6 +43,7 @@ import {
 } from '../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
@@ -51,7 +53,7 @@ import {
   SearchOutputType,
 } from './AdvanceSearchProvider.interface';
 
-const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
+const AdvancedSearchContext = createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
 );
 
@@ -80,8 +82,8 @@ export const AdvanceSearchProvider = ({
   const tabsInfo = searchClassBase.getTabsInfo();
   const tierOptions = useMemo(getTierOptions, []);
   const location = useCustomLocation();
-  const history = useHistory();
-  const { tab } = useParams<UrlParams>();
+  const navigate = useNavigate();
+  const { tab } = useRequiredParams<UrlParams>();
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -114,7 +116,8 @@ export const AdvanceSearchProvider = ({
   const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
-    () => QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+    () =>
+      QbUtils.Validation.sanitizeTree(QbUtils.loadTree(emptyJsonTree), config),
     []
   );
 
@@ -136,7 +139,7 @@ export const AdvanceSearchProvider = ({
     try {
       const filter = JSON.parse(parsedSearch.queryFilter);
       const immutableTree = QbUtils.loadTree(filter as JsonTree);
-      if (QbUtils.isValidTree(immutableTree)) {
+      if (QbUtils.isValidTree(immutableTree, config)) {
         return filter as JsonTree;
       }
     } catch {
@@ -147,7 +150,7 @@ export const AdvanceSearchProvider = ({
   }, [parsedSearch]);
 
   const [showModal, setShowModal] = useState(false);
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
     jsonTree
       ? QbUtils.checkTree(QbUtils.loadTree(jsonTree), config)
       : defaultTree
@@ -171,7 +174,7 @@ export const AdvanceSearchProvider = ({
   }, [searchIndex, isExplorePage]);
 
   const handleChange = useCallback(
-    (nTree, nConfig) => {
+    (nTree: ImmutableTree, nConfig: Config) => {
       setConfig(nConfig);
       setTreeInternal(nTree);
     },
@@ -180,7 +183,7 @@ export const AdvanceSearchProvider = ({
 
   const handleTreeUpdate = useCallback(
     (tree?: ImmutableTree) => {
-      history.push({
+      navigate({
         pathname: location.pathname,
         search: Qs.stringify({
           ...parsedSearch,
@@ -189,7 +192,7 @@ export const AdvanceSearchProvider = ({
         }),
       });
     },
-    [history, parsedSearch, location.pathname]
+    [navigate, parsedSearch, location.pathname]
   );
 
   const toggleModal = (show: boolean) => {
@@ -206,7 +209,7 @@ export const AdvanceSearchProvider = ({
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
     setSQLQuery('');
-    history.push({
+    navigate({
       pathname: location.pathname,
       search: Qs.stringify({
         quickFilter: undefined,
@@ -214,7 +217,7 @@ export const AdvanceSearchProvider = ({
         page: 1,
       }),
     });
-  }, [history, location.pathname]);
+  }, [navigate, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
     const subfields: Record<string, Field> = {};

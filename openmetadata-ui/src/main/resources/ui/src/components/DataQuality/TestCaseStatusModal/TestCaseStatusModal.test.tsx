@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { TestCaseStatusModal } from './TestCaseStatusModal.component';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';

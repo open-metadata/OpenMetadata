@@ -12,9 +12,9 @@
  */
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import React, { FC, useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { importGlossaryInCSVFormat } from '../../../rest/glossaryAPI';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -31,7 +31,7 @@ interface Props {
 
 const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   const { t } = useTranslation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const breadcrumbList: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => [
@@ -49,7 +49,7 @@ const ImportGlossary: FC<Props> = ({ glossaryName }) => {
   );
 
   const handleGlossaryRedirection = () => {
-    history.push(getGlossaryPath(glossaryName));
+    navigate(getGlossaryPath(glossaryName));
   };
 
   const handleImportCsv = async (data: string, dryRun = true) => {

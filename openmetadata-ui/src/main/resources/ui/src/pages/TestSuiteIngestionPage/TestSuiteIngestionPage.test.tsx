@@ -54,14 +54,7 @@ jest.mock('../../hooks/useFqn', () => {
     }),
   };
 });
-const mockUseHistory = {
-  goBack: jest.fn(),
-};
-jest.mock('react-router-dom', () => {
-  return {
-    useHistory: jest.fn().mockImplementation(() => mockUseHistory),
-  };
-});
+
 jest.mock('../../rest/testAPI', () => {
   return {
     getTestSuiteByName: jest

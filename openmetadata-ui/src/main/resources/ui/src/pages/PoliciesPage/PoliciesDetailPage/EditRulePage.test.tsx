@@ -12,16 +12,12 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { getPolicyByName } from '../../../rest/rolesAPIV1';
 import { POLICY_DATA } from '../PoliciesData.mock';
 import EditRulePage from './EditRulePage';
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockReturnValue({
-    push: jest.fn(),
-  }),
   useParams: jest.fn().mockReturnValue({ fqn: 'data-consumer' }),
 }));
 

@@ -11,15 +11,13 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
-import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React from 'react';
 import {
   FieldGroup,
   Fields,
   RenderSettings,
-} from 'react-awesome-query-builder';
+} from '@react-awesome-query-builder/antd';
+import { Button } from 'antd';
+import { isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import {
   EsBoolQuery,
@@ -29,6 +27,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { t } from './i18next/LocalUtil';
 import { generateUUID } from './StringsUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [

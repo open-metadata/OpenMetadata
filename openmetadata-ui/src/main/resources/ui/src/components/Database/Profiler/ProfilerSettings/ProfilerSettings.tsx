@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
@@ -154,7 +154,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Form
+        <Form<ProfilerConfig>
           focusOnFirstError
           noHtml5Validate
           className={classNames('rjsf no-header profiler-settings-form')}

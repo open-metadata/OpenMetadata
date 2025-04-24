@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
@@ -81,7 +80,6 @@ jest.mock('../../hooks/useApplicationStore', () => {
 const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => {
   return {
-    useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),
     useParams: jest.fn().mockImplementation(() => ({ fqn: 'testSuiteFQN' })),
     useLocation: jest.fn().mockImplementation(() => ({
       pathname: mockLocationPathname,

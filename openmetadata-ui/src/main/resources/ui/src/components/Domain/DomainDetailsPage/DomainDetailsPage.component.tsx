@@ -28,15 +28,9 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, toString } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -102,6 +96,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -125,9 +120,9 @@ const DomainDetailsPage = ({
   const { t } = useTranslation();
   const [form] = useForm();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { tab: activeTab, version } =
-    useParams<{ tab: EntityTabs; version: string }>();
+    useRequiredParams<{ tab: EntityTabs; version: string }>();
   const { fqn: domainFqn } = useFqn();
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
@@ -293,7 +288,7 @@ const DomainDetailsPage = ({
 
       try {
         const res = await addDataProducts(data as CreateDataProduct);
-        history.push(
+        navigate(
           getEntityDetailsPath(
             EntityType.DATA_PRODUCT,
             res.fullyQualifiedName ?? ''
@@ -324,7 +319,7 @@ const DomainDetailsPage = ({
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(domainFqn, toString(domain.version));
 
-    history.push(path);
+    navigate(path);
   };
 
   const fetchDataProducts = async () => {
@@ -385,7 +380,7 @@ const DomainDetailsPage = ({
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(getDomainDetailsPath(domainFqn, activeKey));
+      navigate(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
 
@@ -427,9 +422,12 @@ const DomainDetailsPage = ({
     activeTab !== 'assets' && handleTabChange('assets');
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handleCloseDataProductModal = useCallback(
     () => setShowAddDataProductModal(false),

@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons';
 import { Alert, Button, Modal, Progress, Space, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExclamationIcon } from '../../../assets/svg/ic-exclamation-circle.svg';

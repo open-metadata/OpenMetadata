@@ -14,7 +14,7 @@
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { Change } from 'diff';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
 import {

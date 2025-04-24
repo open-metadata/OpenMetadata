@@ -17,10 +17,9 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';
 import AsyncSelectList from './AsyncSelectList';
 
@@ -140,7 +139,7 @@ describe('Test AsyncSelect List Component', () => {
     });
 
     // wait for list to render, checked with item having in the list
-    await waitForElement(() => screen.findByTestId('tag-tags-6'));
+    await waitFor(() => screen.findByTestId('tag-tags-6'));
 
     const item = screen.queryByText('tags-6');
 
@@ -166,7 +165,7 @@ describe('Test AsyncSelect List Component', () => {
     });
 
     // wait for list to render, checked with item having in the list
-    await waitForElement(() => screen.findByTestId('tag-tags-0'));
+    await waitFor(() => screen.findByTestId('tag-tags-0'));
 
     const filteredItem = screen.queryByText('tags-1');
 
@@ -191,7 +190,7 @@ describe('Test AsyncSelect List Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitForElement(() => screen.getByTestId('tag-tags-0'));
+    await waitFor(() => screen.getByTestId('tag-tags-0'));
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('tag-tags-0'));
@@ -217,7 +216,7 @@ describe('Test AsyncSelect List Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitForElement(() => screen.getByTestId('tag-tags-0'));
+    await waitFor(() => screen.getByTestId('tag-tags-0'));
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('tag-tags-0'));
@@ -248,7 +247,7 @@ describe('Test AsyncSelect List Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitForElement(() => screen.getByTestId('tag-tags-0'));
+    await waitFor(() => screen.getByTestId('tag-tags-0'));
 
     expect(screen.getByTestId('tag-tags-0')).toHaveClass('option-class');
   });

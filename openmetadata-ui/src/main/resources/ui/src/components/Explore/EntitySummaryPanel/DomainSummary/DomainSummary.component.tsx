@@ -12,7 +12,7 @@
  */
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { get } from 'lodash';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';

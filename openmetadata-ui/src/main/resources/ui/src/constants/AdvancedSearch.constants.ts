@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { t } from 'i18next';
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
+import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { t } from '../utils/i18n';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {

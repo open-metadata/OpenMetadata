@@ -17,9 +17,9 @@ import { compare } from 'fast-json-patch';
 import { isEqual, isUndefined, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
@@ -88,7 +88,7 @@ const IncidentManager = ({
   tableDetails,
 }: IncidentManagerProps) => {
   const location = useCustomLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const searchParams = useMemo(() => {
     const param = location.search;
@@ -361,7 +361,7 @@ const IncidentManager = ({
     ) {
       fetchTestCaseIncidents(filters);
       if (searchParams) {
-        history.replace({
+        navigate({
           search: QueryString.stringify(filters),
         });
       }

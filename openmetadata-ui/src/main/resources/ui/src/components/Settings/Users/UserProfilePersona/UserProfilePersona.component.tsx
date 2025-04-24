@@ -12,7 +12,7 @@
  */
 
 import { Divider, Typography } from 'antd';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';

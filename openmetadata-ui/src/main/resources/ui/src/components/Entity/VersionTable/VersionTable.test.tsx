@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { mockVersionTableProps } from '../../../mocks/VersionTable.mock';
 import VersionTable from './VersionTable.component';
 

@@ -12,9 +12,9 @@
  */
 import { Button, Col, Form, Input, Row } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -42,7 +42,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const { Item } = Form;
 const EditUrlConfigurationPage = () => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [form] = Form.useForm<OpenMetadataBaseURLConfiguration>();
   const [activeField, setActiveField] = useState<string>('');
@@ -92,7 +92,7 @@ const EditUrlConfigurationPage = () => {
     []
   );
 
-  const handleGoBack = () => history.goBack();
+  const handleGoBack = () => navigate(-1);
 
   const handleSubmit = async (
     configValues: OpenMetadataBaseURLConfiguration

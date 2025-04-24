@@ -12,9 +12,10 @@
  */
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
-import { t } from 'i18next';
+
 import { cloneDeep, includes, isEqual } from 'lodash';
-import { default as React, useMemo } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -32,6 +33,7 @@ export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
     onUpdate,
     isVersionView,
   } = useGenericContext<Domain>();
+  const { t } = useTranslation();
 
   const { editOwnerPermission, editAllPermission } = useMemo(
     () => ({

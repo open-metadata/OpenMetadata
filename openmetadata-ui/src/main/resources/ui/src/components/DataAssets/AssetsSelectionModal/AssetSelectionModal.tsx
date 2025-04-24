@@ -33,7 +33,6 @@ import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
-  default as React,
   UIEventHandler,
   useCallback,
   useEffect,

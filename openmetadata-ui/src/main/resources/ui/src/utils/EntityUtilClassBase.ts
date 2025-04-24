@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { FC } from 'react';
 import DataProductsPage from '../components/DataProducts/DataProductsPage/DataProductsPage.component';

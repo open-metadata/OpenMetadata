@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { LabelType, State, TagSource } from '../../generated/type/tagLabel';
 import TagsInput from './TagsInput.component';

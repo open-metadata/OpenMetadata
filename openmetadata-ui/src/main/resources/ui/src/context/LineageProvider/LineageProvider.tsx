@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
-import React, {
+import {
   createContext,
   DragEvent,
   useCallback,
@@ -928,7 +928,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
-  const onLineageConfigUpdate = useCallback((config) => {
+  const onLineageConfigUpdate = useCallback((config: LineageConfig) => {
     setLineageConfig(config);
   }, []);
 
@@ -936,7 +936,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setIsDrawerOpen(false);
   }, []);
 
-  const onZoomUpdate = useCallback((value) => {
+  const onZoomUpdate = useCallback((value: number) => {
     setZoomValue(value);
   }, []);
 

@@ -38,7 +38,6 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-  useHistory: jest.fn(),
 }));
 
 jest.mock('../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2', () => {

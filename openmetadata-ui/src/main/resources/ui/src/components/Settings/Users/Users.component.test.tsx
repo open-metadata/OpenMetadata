@@ -13,7 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React, { ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';

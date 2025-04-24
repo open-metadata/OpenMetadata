@@ -72,12 +72,10 @@ jest.mock(
     ))
 );
 
-const mockPush = jest.fn();
+const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
 
 const mockGetSettingsConfigFromConfigType = jest.fn().mockResolvedValue({
@@ -163,7 +161,7 @@ describe('EditEmailConfigPage', () => {
     expect(mockShowSuccessToast).toHaveBeenCalledWith(UPDATE_ENTITY_SUCCESS);
 
     // called in cancel and submit both actions
-    expect(mockPush).toHaveBeenCalledTimes(2);
+    expect(mockNavigate).toHaveBeenCalledTimes(2);
   });
 
   it('errors check', async () => {

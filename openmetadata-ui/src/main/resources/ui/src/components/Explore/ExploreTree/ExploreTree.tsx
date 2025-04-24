@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Tree, Typography } from 'antd';
+import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
@@ -36,12 +35,14 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
+import { DataNode } from 'antd/es/tree';
 import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
@@ -80,7 +81,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { t } = useTranslation();
-  const { tab } = useParams<UrlParams>();
+  const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
 
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
@@ -109,7 +110,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   }, [location.search]);
 
   const onLoadData = useCallback(
-    async (treeNode: ExploreTreeNode) => {
+    async (treeNode: ExploreTreeNode): Promise<void> => {
       try {
         if (treeNode.children) {
           return;
@@ -241,25 +242,28 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     [updateTreeData, searchQueryParam, defaultServiceType]
   );
 
-  const switcherIcon = useCallback(({ expanded }) => {
+  const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
-  const onNodeSelect = useCallback(
+  const onNodeSelect: TreeProps['onSelect'] = useCallback(
     (_, { node }) => {
       const filterField = node.data?.filterField;
       if (filterField) {
         onFieldValueSelect(filterField);
       } else if (node.isLeaf) {
         const filterField = [
-          getQuickFilterObject(EntityFields.ENTITY_TYPE, node.data?.entityType),
+          getQuickFilterObject(
+            EntityFields.ENTITY_TYPE,
+            node.data?.entityType ?? ''
+          ),
         ];
         onFieldValueSelect(filterField);
       } else if (node.data?.childEntities) {
         onFieldValueSelect([
           getQuickFilterObjectForEntities(
             EntityFields.ENTITY_TYPE,
-            node.data?.childEntities
+            node.data?.childEntities as EntityType[]
           ),
         ]);
       }
@@ -352,8 +356,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
-      titleRender={(node) => <ExploreTreeTitle node={node} />}
-      treeData={treeData}
+      titleRender={(node) => (
+        <ExploreTreeTitle node={node as ExploreTreeNode} />
+      )}
+      treeData={treeData as DataNode[]}
       onSelect={onNodeSelect}
     />
   );

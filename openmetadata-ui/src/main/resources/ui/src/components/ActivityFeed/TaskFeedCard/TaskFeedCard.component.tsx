@@ -14,9 +14,9 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, lowerCase, noop } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
@@ -62,7 +62,7 @@ const TaskFeedCard = ({
   isActive,
   hidePopover = false,
 }: TaskFeedCardProps) => {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { showDrawer, setActiveThread } = useActivityFeedProvider();
   const [showActions, setShowActions] = useState(false);
@@ -112,9 +112,7 @@ const TaskFeedCard = ({
   };
 
   const handleTaskLinkClick = () => {
-    history.push({
-      pathname: getTaskDetailPath(feed),
-    });
+    navigate(getTaskDetailPath(feed));
     setActiveThread(feed);
   };
 

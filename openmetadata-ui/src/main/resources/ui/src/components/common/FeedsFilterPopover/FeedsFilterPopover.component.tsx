@@ -19,7 +19,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { FeedFilter } from '../../../enums/mydata.enum';
