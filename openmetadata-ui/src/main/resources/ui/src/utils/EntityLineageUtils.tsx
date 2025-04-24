@@ -729,20 +729,6 @@ export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   return { hasUpstream, hasDownstream };
 };
 
-const removeDuplicateNodes = (nodesData: EntityReference[]) => {
-  const uniqueNodesMap = new Map<string, EntityReference>();
-  nodesData.forEach((node) => {
-    // Check if the node is not null before adding it to the map
-    if (node?.fullyQualifiedName) {
-      uniqueNodesMap.set(node.fullyQualifiedName, node);
-    }
-  });
-
-  const uniqueNodesArray = Array.from(uniqueNodesMap.values());
-
-  return uniqueNodesArray;
-};
-
 const getNodeType = (
   edgesData: EdgeDetails[],
   id: string
@@ -793,21 +779,39 @@ export const createNodes = (
   isExpanded = false,
   hidden?: boolean
 ) => {
-  const uniqueNodesData = removeDuplicateNodes(nodesData).sort((a, b) =>
+  const uniqueNodesMap = new Map<string, LineageEntityReference>();
+  nodesData.forEach((node) => {
+    if (node?.fullyQualifiedName) {
+      uniqueNodesMap.set(node.fullyQualifiedName, node);
+    }
+  });
+
+  // Convert to array and sort once
+  const uniqueNodesData = Array.from(uniqueNodesMap.values()).sort((a, b) =>
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
+  const { upstreamNodes, downstreamNodes } = getUpstreamDownstreamNodesEdges(
+    edgesData ?? [],
+    uniqueNodesData,
+    entityFqn
+  );
+
+  const upstreamNodeIds = new Set(upstreamNodes.map((node) => node.id));
+  const downstreamNodeIds = new Set(downstreamNodes.map((node) => node.id));
+
   return uniqueNodesData.map((node) => {
-    const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
+    // Mark deleted nodes
+    node.deleted = isDeleted(node.deleted);
+
     const type =
       node.type === EntityLineageNodeType.LOAD_MORE
         ? node.type
         : getNodeType(edgesData, node.id);
 
-    const hasIncomers = incomingMap.has(node.id);
-    const hasOutgoers = outgoingMap.has(node.id);
-
-    node.deleted = isDeleted(node.deleted);
+    const nodeHeight = isExpanded
+      ? getEntityChildrenAndLabel(node as SourceType).childrenHeight + 220
+      : NODE_HEIGHT;
 
     return {
       id: `${node.id}`,
@@ -818,15 +822,14 @@ export const createNodes = (
       data: {
         node,
         isRootNode: entityFqn === node.fullyQualifiedName,
-        hasIncomers,
-        hasOutgoers,
+        hasIncomers: incomingMap.has(node.id),
+        hasOutgoers: outgoingMap.has(node.id),
+        isUpstreamNode: upstreamNodeIds.has(node.id),
+        isDownstreamNode: downstreamNodeIds.has(node.id),
       },
       width: NODE_WIDTH,
-      height: isExpanded ? childrenHeight + 220 : NODE_HEIGHT,
-      position: {
-        x: 0,
-        y: 0,
-      },
+      height: nodeHeight,
+      position: { x: 0, y: 0 },
       ...(hidden && { hidden }),
     };
   });
@@ -887,7 +890,7 @@ export const createEdgesAndEdgeMaps = (
                   isColumnLineage: true,
                   targetHandle: encodedTo,
                   sourceHandle: encodedFrom,
-                  dataTestId: `column-edge-${fromColumn}-${toColumn}`,
+                  dataTestId: `column-edge-${encodedFrom}-${encodedTo}`,
                 },
                 ...(hidden && { hidden }),
               });
