@@ -154,6 +154,18 @@ def _array_sys_data_type_repr(col_type):
     )
 
 
+def get_system_data_type(col_type):
+    """
+    Get the system data type for the column type
+    """
+    if isinstance(col_type, String):
+        return "string"
+    if str(col_type) == "ARRAY":
+        return _array_sys_data_type_repr(col_type)
+
+    return str(col_type)
+
+
 def get_columns(bq_schema):
     """
     get_columns method overwritten to include tag details
@@ -170,11 +182,7 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": (
-                _array_sys_data_type_repr(col_type)
-                if str(col_type) == "ARRAY"
-                else str(col_type)
-            ),
+            "system_data_type": get_system_data_type(col_type),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
