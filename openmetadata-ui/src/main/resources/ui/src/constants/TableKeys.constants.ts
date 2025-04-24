@@ -13,6 +13,7 @@
 export const TABLE_COLUMNS_KEYS = {
   NAME: 'name',
   TAGS: 'tags',
+  DOMAIN: 'domain',
   OWNERS: 'owners',
   GLOSSARY: 'glossary',
   DATA_TYPE: 'dataType',
@@ -22,6 +23,7 @@ export const TABLE_COLUMNS_KEYS = {
   DESCRIPTION: 'description',
   DISPLAY_NAME: 'displayName',
   SERVICE_TYPE: 'serviceType',
+  DATA_PRODUCTS: 'dataProducts',
   USAGE_SUMMARY: 'usageSummary',
   DATA_MODEL_TYPE: 'dataModelType',
   SCHEDULE_INTERVAL: 'scheduleInterval',
@@ -107,6 +109,12 @@ export const DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS = [
   TABLE_COLUMNS_KEYS.OWNERS,
   TABLE_COLUMNS_KEYS.DESCRIPTION,
   TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+];
+
+export const DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS = [
+  TABLE_COLUMNS_KEYS.OWNERS,
+  TABLE_COLUMNS_KEYS.DESCRIPTION,
+  TABLE_COLUMNS_KEYS.TAGS,
 ];
 
 export const DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS = [
