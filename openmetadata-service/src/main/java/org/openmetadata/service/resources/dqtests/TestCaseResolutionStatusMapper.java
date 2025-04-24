@@ -23,6 +23,7 @@ public class TestCaseResolutionStatusMapper
         .withTestCaseResolutionStatusDetails(create.getTestCaseResolutionStatusDetails())
         .withUpdatedBy(userEntity.getEntityReference())
         .withUpdatedAt(System.currentTimeMillis())
-        .withTestCaseReference(testCaseEntity.getEntityReference());
+        .withTestCaseReference(testCaseEntity.getEntityReference())
+        .withSeverity(create.getSeverity());
   }
 }

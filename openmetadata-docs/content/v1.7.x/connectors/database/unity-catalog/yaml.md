@@ -20,7 +20,9 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 - [Query Usage](#query-usage)
 - [Lineage](#lineage)
 - [dbt Integration](#dbt-integration)
-{% partial file="/v1.7/connectors/reverse-metadata-workflow-link.md" collate: true /%}
+{% collateContent %}
+- [Reverse Metadata](/connectors/ingestion/workflows/reverse-metadata)
+{% /collateContent %}
 
 {% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 

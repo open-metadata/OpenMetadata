@@ -275,7 +275,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         servicePermission,
         serviceDetails
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
+    // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
 
   const handleShowDeleted = useCallback(
