@@ -26,9 +26,10 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
-    "google-cloud-storage": "google-cloud-storage==1.43.0",
-    "gcsfs": "gcsfs>=2023.10.0",
-    "great-expectations": "great-expectations==0.18.14",
+    "google-cloud-storage": "google-cloud-storage>=1.43.0",
+    "gcsfs": "gcsfs>=2023.1.0",
+    "great-expectations": "great-expectations~=0.18.0",
+    "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
@@ -251,6 +252,7 @@ plugins: Dict[str, Set[str]] = {
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
+    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],

@@ -693,9 +693,14 @@ site_menu:
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
   - category: Connectors / Troubleshooting
     url: /connectors/troubleshooting
+
+  - category: Collate AI
+    url: /collateai
+
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
 
   - category: How-to Guides
     url: /how-to-guides
@@ -732,6 +737,8 @@ site_menu:
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
     url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Data Insights
+    url: /how-to-guides/admin-guide/data-insights
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
     url: /how-to-guides/admin-guide/persona-landing-page-customization 
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
@@ -1020,14 +1027,16 @@ site_menu:
   - category: Enable Security / Saml / Azure
     url: /security/saml/azure
 
-  - category: Releases
-    url: /releases
   - category: Releases / Latest Release
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.9 Release
+    url: /releases/all-releases/#1.6.9-release
+  - category: Releases / All Releases / 1.6.8 Release
+    url: /releases/all-releases/#1.6.8-release
   - category: Releases / All Releases / 1.6.7 Release
     url: /releases/all-releases/#1.6.7-release
   - category: Releases / All Releases / 1.6.6 Release
@@ -2159,9 +2168,4 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
-
-  - category: Collate AI
-    url: /collateai
-  - category: Collate AI / How to Use Collate AI
-    url: /collateai/how-to-use-collate-ai
 ---

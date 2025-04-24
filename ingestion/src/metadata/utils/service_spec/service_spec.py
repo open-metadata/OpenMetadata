@@ -52,6 +52,7 @@ class BaseSpec(BaseModel):
     lineage_source_class: Optional[str] = None
     usage_source_class: Optional[str] = None
     sampler_class: Optional[str] = None
+    data_diff: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
