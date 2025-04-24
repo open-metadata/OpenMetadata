@@ -49,6 +49,10 @@ jest.mock('../../components/common/BrandImage/BrandImage', () => {
   return jest.fn().mockReturnValue(<p>testBrandLogo</p>);
 });
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
+  return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
+});
+
 describe('Test SignInPage Component', () => {
   afterEach(() => {
     jest.clearAllMocks();

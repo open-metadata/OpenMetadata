@@ -63,7 +63,7 @@ public record ContainerIndex(Container container) implements ColumnIndex {
     doc.put("column_suggest", columnSuggest);
     doc.put("serviceType", container.getServiceType());
     doc.put("fullPath", container.getFullPath());
-    doc.put("lineage", SearchIndex.getLineageData(container.getEntityReference()));
+    doc.put("upstreamLineage", SearchIndex.getLineageData(container.getEntityReference()));
     doc.put("service", getEntityWithDisplayName(container.getService()));
     return doc;
   }

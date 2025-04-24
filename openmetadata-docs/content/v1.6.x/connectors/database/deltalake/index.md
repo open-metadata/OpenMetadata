@@ -4,31 +4,32 @@ slug: /connectors/database/deltalake
 ---
 
 {% connectorDetailsHeader
-name="DeltaLake"
+name="Delta Lake"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "dbt"]
-unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "Sample Data"]
 / %}
 
 
-In this section, we provide guides and references to use the Deltalake connector.
+In this section, we provide guides and references to use the Delta Lake connector.
 
-Configure and schedule Deltalake metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Delta Lake metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/deltalake/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/deltalake/yaml"} /%}
 
 
 ## Requirements
 
-Deltalake requires to run with Python 3.8, 3.9 or 3.10. We do not yet support the Delta connector
+Delta Lake requires to run with Python 3.8, 3.9 or 3.10. We do not yet support the Delta connector
 for Python 3.11
 
-The DeltaLake connector is able to extract the information from a **metastore** or directly from the **storage**.
+The Delta Lake connector is able to extract the information from a **metastore** or directly from the **storage**.
 
 If extracting directly from the storage, some extra requirements are needed depending on the storage
 
@@ -189,7 +190,5 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

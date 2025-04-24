@@ -58,41 +58,7 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export enum EdgeTypeEnum {
-  UP_STREAM = 'upstream',
-  DOWN_STREAM = 'downstream',
-  NO_STREAM = '',
-}
-
-export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
-  handleFullScreenViewClick?: () => void;
-  onExitFullScreenViewClick?: () => void;
-  deleted: boolean | undefined;
-  hasEditAccess: boolean | undefined;
-  onExpandColumnClick?: () => void;
-  onOptionSelect?: (value?: string) => void;
-  onLineageConfigUpdate?: (config: LineageConfig) => void;
-}
-
-export interface LeafNodes {
-  upStreamNode: Array<string>;
-  downStreamNode: Array<string>;
-}
-
-export interface EntityReferenceChild extends EntityReference {
-  /**
-   * Children of this entity, if any.
-   */
-  children?: EntityReferenceChild[];
-  parents?: EntityReferenceChild[];
-  pageIndex?: number;
-  edgeType?: EdgeTypeEnum;
-}
-
-export interface NodeIndexMap {
-  upstream: number[];
-  downstream: number[];
-}
+export type ControlProps = HTMLAttributes<HTMLDivElement>;
 
 export interface LineageConfig {
   upstreamDepth: number;

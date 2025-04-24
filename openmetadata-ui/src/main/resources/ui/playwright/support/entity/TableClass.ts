@@ -14,6 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -53,45 +54,63 @@ export class TableClass extends EntityClass {
     name: `pw-database-schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
+  columnsName = [
+    `user_id${uuid()}`,
+    `shop_id${uuid()}`,
+    `name${uuid()}`,
+    `first_name${uuid()}`,
+    `last_name${uuid()}`,
+    `email${uuid()}`,
+  ];
+  entityLinkColumnsName = [
+    this.columnsName[0],
+    this.columnsName[1],
+    this.columnsName[2],
+    `${this.columnsName[2]}.${this.columnsName[3]}`,
+    `${this.columnsName[2]}.${this.columnsName[4]}`,
+    this.columnsName[5],
+  ];
+
   children = [
     {
-      name: 'user_id',
+      name: this.columnsName[0],
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'Unique identifier for the user of your Shopify POS or your Shopify admin.',
     },
     {
-      name: 'shop_id',
+      name: this.columnsName[1],
       dataType: 'NUMERIC',
       dataTypeDisplay: 'numeric',
       description:
         'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
     },
     {
-      name: 'name',
+      name: this.columnsName[2],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
       description: 'Name of the staff member.',
       children: [
         {
-          name: 'first_name',
-          dataType: 'VARCHAR',
+          name: this.columnsName[3],
+          dataType: 'STRUCT',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay:
+            'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
           description: 'First name of the staff member.',
         },
         {
-          name: 'last_name',
-          dataType: 'VARCHAR',
+          name: this.columnsName[4],
+          dataType: 'ARRAY',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
         },
       ],
     },
     {
-      name: 'email',
+      name: this.columnsName[5],
       dataType: 'VARCHAR',
       dataLength: 100,
       dataTypeDisplay: 'varchar',
@@ -104,6 +123,7 @@ export class TableClass extends EntityClass {
     displayName: `pw table ${uuid()}`,
     description: 'description',
     columns: this.children,
+    tableType: 'SecureView',
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
@@ -120,12 +140,14 @@ export class TableClass extends EntityClass {
   queryResponseData: ResponseDataType[] = [];
   additionalEntityTableResponseData: ResponseDataType[] = [];
 
-  constructor(name?: string) {
+  constructor(name?: string, tableType?: string) {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
     this.serviceCategory = SERVICE_TYPE.Database;
+    this.serviceType = ServiceTypes.DATABASE_SERVICES;
     this.type = 'Table';
     this.childrenTabId = 'schema';
+    this.entity.tableType = tableType ?? this.entity.tableType;
     this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
   }
 
@@ -234,11 +256,10 @@ export class TableClass extends EntityClass {
     }
 
     const testSuiteData = await apiContext
-      .post('/api/v1/dataQuality/testSuites/executable', {
+      .post('/api/v1/dataQuality/testSuites/basic', {
         data: {
           name: `pw-test-suite-${uuid()}`,
-          executableEntityReference:
-            this.entityResponseData?.['fullyQualifiedName'],
+          basicEntityReference: this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
           ...testSuite,
         },

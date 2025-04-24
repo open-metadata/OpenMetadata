@@ -28,6 +28,7 @@ import {
   findExpandableKeys,
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
+  glossaryTermTableColumnsWidth,
 } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
@@ -223,7 +224,7 @@ describe('Glossary Utils', () => {
   });
 });
 
-describe('findAndUpdateNested', () => {
+describe('Glossary Utils - findAndUpdateNested', () => {
   it('should add new term to the correct parent', () => {
     const terms: ModifiedGlossary[] = [
       {
@@ -263,6 +264,7 @@ describe('findAndUpdateNested', () => {
 
     const updatedTerms = findAndUpdateNested(terms, newTerm);
 
+    expect(updatedTerms[0].childrenCount).toBe(1);
     expect(updatedTerms[0].children).toHaveLength(1);
     expect(updatedTerms?.[0].children?.[0]).toEqual(newTerm);
   });
@@ -310,14 +312,11 @@ describe('findAndUpdateNested', () => {
 
     const updatedTerms = findAndUpdateNested(terms, newTerm);
 
-    expect(
-      updatedTerms?.[0].children && updatedTerms?.[0].children[0].children
-    ).toHaveLength(1);
-    expect(
-      updatedTerms?.[0].children &&
-        updatedTerms?.[0].children[0].children &&
-        updatedTerms?.[0].children[0].children[0]
-    ).toEqual(newTerm);
+    const modifiedTerms = updatedTerms[0].children?.[0].children ?? [];
+
+    expect(modifiedTerms).toHaveLength(1);
+    expect(updatedTerms[0].children?.[0].childrenCount).toBe(1);
+    expect(modifiedTerms[0]).toEqual(newTerm);
   });
 
   it('should not modify terms if parent is not found', () => {
@@ -353,5 +352,33 @@ describe('findAndUpdateNested', () => {
     const updatedTerms = findAndUpdateNested(terms, newTerm);
 
     expect(updatedTerms).toEqual(terms);
+  });
+});
+
+describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
+  it('should return columnsWidth object based on Table width', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, true);
+
+    expect(columnWidthObject).toEqual({
+      description: 210,
+      name: 200,
+      owners: 170,
+      reviewers: 330,
+      status: 200,
+      synonyms: 330,
+    });
+  });
+
+  it('should return columnsWidth object based on Table width when not having create permission', () => {
+    const columnWidthObject = glossaryTermTableColumnsWidth(1000, false);
+
+    expect(columnWidthObject).toEqual({
+      description: 330,
+      name: 200,
+      owners: 170,
+      reviewers: 330,
+      status: 200,
+      synonyms: 330,
+    });
   });
 });

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,9 +15,40 @@ OpenMetadata utils tests
 from unittest import TestCase
 
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.headers import render_query_header
-from metadata.ingestion.ometa.utils import format_name, get_entity_type, model_str
+from metadata.ingestion.ometa.utils import (
+    build_entity_reference,
+    format_name,
+    get_entity_type,
+    model_str,
+)
+
+MOCK_TABLE = Table(
+    id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
+    name="customers",
+    description="description\nwith new line",
+    tableType="Regular",
+    columns=[
+        Column(
+            name="customer_id",
+            dataType="INT",
+        ),
+        Column(
+            name="first_name",
+            dataType="STRING",
+        ),
+        Column(
+            name="last_name",
+            dataType="STRING",
+        ),
+    ],
+    databaseSchema=EntityReference(
+        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
+    ),
+)
 
 
 class OMetaUtilsTest(TestCase):
@@ -57,3 +88,9 @@ class OMetaUtilsTest(TestCase):
             render_query_header("0.0.1")
             == '/* {"app": "OpenMetadata", "version": "0.0.1"} */'
         )
+
+    def test_build_entity_reference(self) -> None:
+        """Check we're building the right class"""
+        res = build_entity_reference(MOCK_TABLE)
+        self.assertEqual(res.type, "table")
+        self.assertEqual(res.id, MOCK_TABLE.id)

@@ -6,6 +6,9 @@ import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    AutoClassificationConfigType,
+)
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseMetadataConfigType,
 )
@@ -87,6 +90,29 @@ def profiler_config(db_service, workflow_config, sink_config):
 
 
 @pytest.fixture(scope="module")
+def classifier_config(db_service, workflow_config, sink_config):
+    return {
+        "source": {
+            "type": db_service.connection.config.type.value.lower(),
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": AutoClassificationConfigType.AutoClassification.value,
+                    "storeSampleData": True,
+                    "enableAutoClassification": True,
+                }
+            },
+        },
+        "processor": {
+            "type": "orm-profiler",
+            "config": {},
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+
+
+@pytest.fixture(scope="module")
 def run_workflow():
     def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
@@ -127,8 +153,13 @@ def unmask_password(create_service_request):
     """
 
     def patch_password(service: DatabaseService):
-        service.connection.config.authType.password = (
-            create_service_request.connection.config.authType.password
+        if hasattr(service.connection.config, "authType"):
+            service.connection.config.authType.password = (
+                create_service_request.connection.config.authType.password
+            )
+            return service
+        service.connection.config.password = (
+            create_service_request.connection.config.password
         )
         return service
 

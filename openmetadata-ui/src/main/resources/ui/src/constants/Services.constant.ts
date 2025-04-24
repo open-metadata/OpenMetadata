@@ -24,6 +24,7 @@ import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
 import cassandra from '../assets/img/service-icon-cassandra.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import cockroach from '../assets/img/service-icon-cockroach.png';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
@@ -100,7 +101,10 @@ import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
+import {
+  ServiceCategory,
+  ServiceNestedConnectionFields,
+} from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
@@ -114,6 +118,7 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
+import { SERVICE_FILTER_PATTERN_FIELDS } from './ServiceConnection.constants';
 
 export const MYSQL = mysql;
 export const SQLITE = sqlite;
@@ -202,11 +207,11 @@ export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
+export const COCKROACH = cockroach;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
   MetadataServiceType.OpenMetadata,
-  SearchServiceType.OpenSearch,
 ];
 
 export const arrServiceTypes: Array<ServiceTypes> = [
@@ -296,21 +301,28 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   'ui:order': [
     'name',
     'displayName',
-    'databaseFilterPattern',
-    'schemaFilterPattern',
-    'tableFilterPattern',
-    'classificationFilterPattern',
+    ...SERVICE_FILTER_PATTERN_FIELDS,
     'enableDebugLog',
     '*',
   ],
 };
 
+export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
+  incremental: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
+};
+
 export const COMMON_UI_SCHEMA = {
   ...DEF_UI_SCHEMA,
-  connection: {
+  [ServiceNestedConnectionFields.CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
-  metastoreConnection: {
+  [ServiceNestedConnectionFields.METASTORE_CONNECTION]: {
+    ...DEF_UI_SCHEMA,
+  },
+  [ServiceNestedConnectionFields.DATABASE_CONNECTION]: {
     ...DEF_UI_SCHEMA,
   },
 };
@@ -341,6 +353,23 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
       entity: i18n.t('label.detail-plural'),
     }),
     step: 3,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 4,
+  },
+];
+
+export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
+  {
+    name: i18n.t('label.connection-entity', {
+      entity: i18n.t('label.detail-plural'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18n.t('label.set-default-filters'),
+    step: 2,
   },
 ];
 
@@ -393,12 +422,15 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   PipelineServiceType.OpenLineage,
   PipelineServiceType.Flink,
+  PipelineServiceType.Wherescape,
   DatabaseServiceType.Teradata,
   StorageServiceType.Gcs,
   DatabaseServiceType.SapERP,
   DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Synapse,
+  DatabaseServiceType.Cockroach,
+  SearchServiceType.OpenSearch,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -436,12 +468,14 @@ export const ADVANCED_PROPERTIES = [
   'useStatistics',
   'confidence',
   'samplingMethodType',
+  'randomizedSample',
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
   'sslConfig',
   'sslMode',
   'schemaRegistrySSL',
+  'consumerConfigSSL',
   'verify',
 ];
 

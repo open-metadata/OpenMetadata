@@ -21,7 +21,12 @@ import {
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
-import { clickOutside, descriptionBox, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
+} from './common';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -107,16 +112,9 @@ export const setValueForProperty = async (data: {
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await page
-        .locator(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        )
-        .isVisible();
-      await page
-        .locator(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        )
-        .fill(value);
+      await page.locator(descriptionBox).isVisible();
+      await page.click(descriptionBox);
+      await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
 
       break;
@@ -282,6 +280,10 @@ export const validateValueForProperty = async (data: {
     await expect(
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
+  } else if (propertyType === 'markdown') {
+    await expect(
+      container.locator(descriptionBoxReadOnly).last()
+    ).toContainText(value.replace(/\*|_/gi, ''));
   } else if (
     ![
       'entityReference',
@@ -681,7 +683,7 @@ export const addCustomPropertiesForEntity = async ({
 
   // Description
 
-  await page.fill(descriptionBox, customPropertyData.description);
+  await page.locator(descriptionBox).fill(customPropertyData.description);
 
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/name/*?fields=customProperties'
@@ -692,6 +694,10 @@ export const addCustomPropertiesForEntity = async ({
   const response = await createPropertyPromise;
 
   expect(response.status()).toBe(200);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   await expect(
     page.getByRole('row', { name: new RegExp(propertyName, 'i') })

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A `Table` entity organizes data in rows and columns and is defined in a `Database Schema`.
  */
 export interface Table {
@@ -89,6 +87,10 @@ export interface Table {
      */
     id: string;
     /**
+     * Change that lead to this version of the entity.
+     */
+    incrementalChangeDescription?: ChangeDescription;
+    /**
      * Details of other tables this table is frequently joined with.
      */
     joins?: TableJoins;
@@ -112,6 +114,10 @@ export interface Table {
      * Owners of this table.
      */
     owners?: EntityReference[];
+    /**
+     * Processed lineage for the table
+     */
+    processedLineage?: boolean;
     /**
      * Latest Data profile for a table.
      */
@@ -295,6 +301,7 @@ export interface Style {
  * Description of the change.
  */
 export interface ChangeDescription {
+    changeSummary?: { [key: string]: ChangeSummary };
     /**
      * Names of fields added during the version changes.
      */
@@ -311,6 +318,29 @@ export interface ChangeDescription {
      * When a change did not result in change, this could be same as the current version.
      */
     previousVersion?: number;
+}
+
+export interface ChangeSummary {
+    changedAt?: number;
+    /**
+     * Name of the user or bot who made this change
+     */
+    changedBy?:    string;
+    changeSource?: ChangeSource;
+    [property: string]: any;
+}
+
+/**
+ * The source of the change. This will change based on the context of the change (example:
+ * manual vs programmatic)
+ */
+export enum ChangeSource {
+    Automated = "Automated",
+    Derived = "Derived",
+    Ingested = "Ingested",
+    Manual = "Manual",
+    Propagated = "Propagated",
+    Suggested = "Suggested",
 }
 
 export interface FieldChange {
@@ -456,6 +486,8 @@ export enum DataType {
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -1003,7 +1035,9 @@ export enum DatabaseServiceType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",
@@ -1062,6 +1096,7 @@ export interface TableConstraint {
 }
 
 export enum ConstraintType {
+    ClusterKey = "CLUSTER_KEY",
     DistKey = "DIST_KEY",
     ForeignKey = "FOREIGN_KEY",
     PrimaryKey = "PRIMARY_KEY",
@@ -1153,6 +1188,10 @@ export interface TableProfilerConfig {
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
     /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
+    /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
     sampleDataCount?:    number;
@@ -1236,6 +1275,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    Stream = "Stream",
     Transient = "Transient",
     View = "View",
 }

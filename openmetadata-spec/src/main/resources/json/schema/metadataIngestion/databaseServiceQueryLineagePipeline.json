@@ -105,6 +105,18 @@
       "items": {
         "type": "string"
       }
+    },
+    "enableTempTableLineage": {
+      "title": "Enable Temp Table Lineage",
+      "description": "Handle Lineage for Snowflake Temporary and Transient Tables. ",
+      "type": "boolean",
+      "default": false
+    },
+    "incrementalLineageProcessing": {
+      "title": "Incremental Lineage Processing",
+      "description": "Set the 'Incremental Lineage Processing' toggle to control whether to process lineage incrementally.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

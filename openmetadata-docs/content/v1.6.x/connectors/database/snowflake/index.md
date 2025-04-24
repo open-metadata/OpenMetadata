@@ -7,7 +7,7 @@ slug: /connectors/database/snowflake
 name="Snowflake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags", "Sample Data"]
 unavailableFeatures=["Owners"]
 / %}
 
@@ -24,6 +24,7 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/snowflake/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/snowflake/yaml"} /%}
 
@@ -59,13 +60,18 @@ GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL EXTERNAL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL DYNAMIC TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+
+-- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role, 
+-- optional but required for usage, lineage and stored procedure ingestion
+GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
 ```
 
 {% note %}
 If running any of:
   - Incremental Extraction
   - Ingesting Tags
-  - Usage Workflow
+  - Ingesting Stored Procedures
+  - Lineage & Usage Workflow
 
 The following Grant is needed
 {% /note %}
@@ -74,24 +80,11 @@ The following Grant is needed
 
 - **Ingesting Tags**: Openmetadata fetches the information by querying `snowflake.account_usage.tag_references`.
 
-- **Usage Workflow**: Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
-
-In order to be able to query those tables, the user should be either granted the `ACCOUNTADMIN` role or a role with the `IMPORTED PRIVILEGES` grant on the `SNOWFLAKE` database:
-
-```sql
--- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
-GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
-```
+- **Lineage & Usage Workflow**: Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
 
 You can find more information about the `account_usage` schema [here](https://docs.snowflake.com/en/sql-reference/account-usage).
 
-Regarding Stored Procedures:
-1. Snowflake only allows the grant of `USAGE` or `OWNERSHIP`
-2. A user can only see the definition of the procedure in 2 situations:
-   1. If it has the `OWNERSHIP` grant,
-   2. If it has the `USAGE` grant and the procedure is created with `EXECUTE AS CALLER`.
-
-Make sure to add the `GRANT <USAGE|OWNERSHIP> ON PROCEDURE <NAME>(<SIGNATURE>) to NEW_ROLE`, e.g., `GRANT USAGE ON PROCEDURE CLEAN_DATA(varchar, varchar) to NEW_ROLE`.
+- **Ingesting Stored Procedures**: Openmetadata fetches the information by querying `snowflake.account_usage.procedures` & `snowflake.account_usage.functions`.
 
 ## Metadata Ingestion
 
@@ -122,6 +115,9 @@ Make sure to add the `GRANT <USAGE|OWNERSHIP> ON PROCEDURE <NAME>(<SIGNATURE>) t
 - **Include Temporary and Transient Tables**: 
 Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By default, it will skip the `TRANSIENT` and `TEMPORARY` tables.
 - **Client Session Keep Alive**: Optional Configuration to keep the session active in case the ingestion job runs for longer duration.
+- **Account Usage Schema Name**: Full name of account usage schema, used in case your used do not have direct access to `SNOWFLAKE.ACCOUNT_USAGE` schema. In such case you can replicate tables `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS` to a custom schema let's say `CUSTOM_DB.CUSTOM_SCHEMA` and provide the same name in this field.
+
+When using this field make sure you have all these tables available within your custom schema  `QUERY_HISTORY`, `TAG_REFERENCES`, `PROCEDURES`, `FUNCTIONS`.
 
 {% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
@@ -134,8 +130,6 @@ Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By d
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Incomplete Column Level for Views
 

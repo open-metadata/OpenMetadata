@@ -13,7 +13,6 @@
 
 import { EntityTags } from 'Models';
 import { ReactElement } from 'react';
-import { ThreadType } from '../../../generated/api/feed/createThread';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
 
@@ -24,6 +23,9 @@ export type TagsContainerV2Props = {
   entityType?: string;
   entityFqn?: string;
   tagType: TagSource;
+  columnData?: {
+    fqn: string;
+  };
   showHeader?: boolean;
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;
@@ -31,7 +33,8 @@ export type TagsContainerV2Props = {
   displayType?: DisplayType;
   layoutType?: LayoutType;
   onSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
   defaultState?: State;
   defaultLabelType?: LabelType;
+  newLook?: boolean;
+  sizeCap?: number;
 };

@@ -7,7 +7,7 @@ slug: /connectors/metadata/amundsen
 name="Amundsen"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=[]
+availableFeatures=["Metadata"]
 unavailableFeatures=[]
 / %}
 
@@ -46,5 +46,3 @@ unavailableFeatures=[]
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}

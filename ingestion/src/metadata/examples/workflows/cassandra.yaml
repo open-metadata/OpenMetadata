@@ -13,6 +13,11 @@ source:
         #   token: <Token String>
         #   requestTimeout: <Timeout in seconds>
         #   connectTimeout: <Timeout in seconds>
+      # sslMode: allow
+      # sslConfig:
+      #   caCertificate: "CA certificate content"
+      #   sslCertificate: "SSL certificate content"
+      #   sslKey: "SSL key content"
       hostPort: localhost:9042
   sourceConfig:
     config:

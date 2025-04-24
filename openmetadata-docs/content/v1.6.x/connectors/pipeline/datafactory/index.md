@@ -1,11 +1,11 @@
 ---
-title: Data Factory
+title: Azure Data Factory
 slug: /connectors/pipeline/datafactory
 collate: true
 ---
 
 {% connectorDetailsHeader
-name="DataFactory"
+name="Azure Data Factory"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
@@ -13,9 +13,9 @@ unavailableFeatures=["Owners", "Tags"]
 / %}
 
 
-In this section, we provide guides and references to use the Azure DataFactory connector.
+In this section, we provide guides and references to use the Azure Data Factory connector.
 
-Configure and schedule Azure DataFactory metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule Azure Data Factory metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
     - [Data Factory Versions](#data-factory-versions)
@@ -23,7 +23,7 @@ Configure and schedule Azure DataFactory metadata and profiler workflows from th
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting](/connectors/pipeline/datafactory/troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/datafactory/yaml"} /%}
@@ -120,9 +120,6 @@ Steps to retrieve and display the lineage information for a Data Factory service
 2. Ingest Data Factory Service Metadata: Finally, Ingest your DData Factory service.
 
 By successfully completing these steps, the lineage information for the service will be displayed.
-
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a Data Factory service, follow these steps to diagnose the issue.

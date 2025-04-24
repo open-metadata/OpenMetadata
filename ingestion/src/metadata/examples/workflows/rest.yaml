@@ -1,14 +1,18 @@
 source:
   type: rest
-  serviceName: openapi_rest
+  serviceName: petstore_data
   serviceConnection:
     config:
       type: Rest
-      openAPISchemaURL: https://docs.open-metadata.org/swagger.json
+      openAPISchemaURL: https://petstore3.swagger.io/api/v3/openapi.json
+      docURL: https://petstore3.swagger.io/
       # token: <jwt_token>
   sourceConfig:
     config:
       type: ApiMetadata
+      # apiCollectionFilterPattern:
+      #   includes:
+      #   - ^pet
 sink:
   type: metadata-rest
   config: {}

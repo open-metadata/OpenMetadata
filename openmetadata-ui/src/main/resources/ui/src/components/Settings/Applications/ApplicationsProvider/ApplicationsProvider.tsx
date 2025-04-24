@@ -24,13 +24,14 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { App } from '../../../../generated/entity/applications/app';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getApplicationList } from '../../../../rest/applicationAPI';
+import Loader from '../../../common/Loader/Loader';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<App[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName } = useApplicationStore();
 
@@ -54,16 +55,18 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isEmpty(permissions)) {
       fetchApplicationList();
+    } else {
+      setLoading(false);
     }
-  }, [permissions]);
+  }, []);
 
   const appContext = useMemo(() => {
-    return { applications, loading };
-  }, [applications, loading]);
+    return { applications };
+  }, [applications]);
 
   return (
     <ApplicationsContext.Provider value={appContext}>
-      {children}
+      {loading ? <Loader /> : children}
     </ApplicationsContext.Provider>
   );
 };

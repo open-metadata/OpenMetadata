@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -198,6 +198,9 @@ class DashboardServiceTopology(ServiceTopology):
     )
 
 
+from metadata.utils.helpers import retry_with_docker_host
+
+
 # pylint: disable=too-many-public-methods
 class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     """
@@ -216,6 +219,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: Set = set()
     datamodel_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -248,7 +252,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     @abstractmethod
     def yield_dashboard_lineage_details(
-        self, dashboard_details: Any, db_service_name: str
+        self,
+        dashboard_details: Any,
+        db_service_name: Optional[str] = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources
@@ -368,6 +374,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 yield lineage
 
         db_service_names = self.get_db_service_names()
+        if not db_service_names:
+            yield from self.yield_dashboard_lineage_details(dashboard_details) or []
         for db_service_name in db_service_names or []:
             yield from self.yield_dashboard_lineage_details(
                 dashboard_details, db_service_name
@@ -604,6 +612,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         patch_request = PatchRequest(
             original_entity=original_entity,
             new_entity=original_entity.model_copy(update=create_request.__dict__),
+            override_metadata=self.source_config.overrideMetadata,
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn

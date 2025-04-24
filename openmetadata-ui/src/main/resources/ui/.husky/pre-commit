@@ -13,6 +13,6 @@ else
     echo "No changes in JSON schema files. Skipping TypeScript generation."
 fi
 
-
 cd openmetadata-ui/src/main/resources/ui
+yarn generate:app-docs
 yarn pre-commit

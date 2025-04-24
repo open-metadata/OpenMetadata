@@ -45,7 +45,8 @@ export const searchAndClickOnOption = async (
 
 export const selectNullOption = async (
   page: Page,
-  filter: { key: string; label: string; value?: string }
+  filter: { key: string; label: string; value?: string },
+  clearFilter = true
 ) => {
   const queryFilter = JSON.stringify({
     query: {
@@ -101,7 +102,9 @@ export const selectNullOption = async (
 
   expect(isQueryFilterPresent).toBeTruthy();
 
-  await page.click(`[data-testid="clear-filters"]`);
+  if (clearFilter) {
+    await page.click(`[data-testid="clear-filters"]`);
+  }
 };
 
 export const checkCheckboxStatus = async (

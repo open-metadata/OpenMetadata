@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -185,6 +186,36 @@ class RuleEvaluatorTest {
     // Tag `tag4` is not present
     assertFalse(evaluateExpression("matchAnyTag('tag4')"));
     assertTrue(evaluateExpression("!matchAnyTag('tag4')"));
+  }
+
+  @Test
+  void test_matchAnyCertification() {
+    // Certification is not Present
+    assertFalse(evaluateExpression("!matchAnyCertification('Certification.Gold')"));
+    assertFalse(
+        evaluateExpression("!matchAnyCertification('Certification.Gold', 'Certification.Silver')"));
+    assertFalse(evaluateExpression("matchAnyCertification('Certification.Bronze')"));
+
+    table.withCertification(
+        new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+
+    // Certification is present
+    assertTrue(
+        evaluateExpression("matchAnyCertification('Certification.Gold', 'Certification.Silver')"));
+    assertFalse(
+        evaluateExpression("!matchAnyCertification('Certification.Gold', 'Certification.Silver')"));
+    assertTrue(evaluateExpression("matchAnyCertification('Certification.Gold')"));
+    assertFalse(evaluateExpression("!matchAnyCertification('Certification.Gold')"));
+
+    // Certification is different
+    assertFalse(
+        evaluateExpression(
+            "matchAnyCertification('Certification.Bronze', 'Certification.Silver')"));
+    assertTrue(
+        evaluateExpression(
+            "!matchAnyCertification('Certification.Bronze', 'Certification.Silver')"));
+    assertFalse(evaluateExpression("matchAnyCertification('Certification.Bronze')"));
+    assertTrue(evaluateExpression("!matchAnyCertification('Certification.Bronze')"));
   }
 
   @Test

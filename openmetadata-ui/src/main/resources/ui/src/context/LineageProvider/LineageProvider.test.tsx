@@ -14,8 +14,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { useEffect } from 'react';
 import { Edge } from 'reactflow';
-import { EdgeTypeEnum } from '../../components/Entity/EntityLineage/EntityLineage.interface';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,
@@ -45,7 +46,8 @@ const DummyChildrenComponent = () => {
   const {
     loadChildNodesHandler,
     onEdgeClick,
-    updateEntityType,
+    onColumnClick,
+    updateEntityData,
     onLineageEditClick,
   } = useLineageProvider();
 
@@ -77,11 +79,16 @@ const DummyChildrenComponent = () => {
 
   const handleButtonClick = () => {
     // Trigger the loadChildNodesHandler method when the button is clicked
-    loadChildNodesHandler(nodeData, EdgeTypeEnum.DOWN_STREAM);
+    loadChildNodesHandler(nodeData, LineageDirection.Downstream);
   };
 
   useEffect(() => {
-    updateEntityType(EntityType.TABLE);
+    updateEntityData(EntityType.TABLE, {
+      id: 'table1',
+      name: 'table1',
+      type: 'table',
+      fullyQualifiedName: 'table1',
+    } as SourceType);
   }, []);
 
   return (
@@ -93,6 +100,11 @@ const DummyChildrenComponent = () => {
         data-testid="edge-click"
         onClick={() => onEdgeClick(MOCK_EDGE as Edge)}>
         On Edge Click
+      </button>
+      <button
+        data-testid="column-click"
+        onClick={() => onColumnClick('column')}>
+        On Column Click
       </button>
       <button data-testid="openConfirmationModal">
         Close Confirmation Modal
@@ -181,12 +193,16 @@ describe('LineageProvider', () => {
       );
     });
 
-    expect(getLineageDataByFQN).toHaveBeenCalledWith(
-      'table1',
-      'table',
-      { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
-      ''
-    );
+    expect(getLineageDataByFQN).toHaveBeenCalledWith({
+      entityType: 'table',
+      fqn: 'table1',
+      config: {
+        downstreamDepth: 1,
+        nodesPerLayer: 50,
+        upstreamDepth: 1,
+      },
+      queryFilter: '',
+    });
     expect(getDataQualityLineage).toHaveBeenCalledWith(
       'table1',
       { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
@@ -244,5 +260,27 @@ describe('LineageProvider', () => {
     const edgeDrawer = screen.getByText('Edge Info Drawer');
 
     expect(edgeDrawer).toBeInTheDocument();
+  });
+
+  it('should close the drawer if open, on column click', async () => {
+    await act(async () => {
+      render(
+        <LineageProvider>
+          <DummyChildrenComponent />
+        </LineageProvider>
+      );
+    });
+
+    const edgeClick = screen.getByTestId('edge-click');
+    fireEvent.click(edgeClick);
+
+    const edgeDrawer = screen.getByText('Edge Info Drawer');
+
+    expect(edgeDrawer).toBeInTheDocument();
+
+    const columnClick = screen.getByTestId('column-click');
+    fireEvent.click(columnClick);
+
+    expect(edgeDrawer).not.toBeInTheDocument();
   });
 });

@@ -73,7 +73,7 @@ import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.scheduled.PipelineServiceStatusJobHandler;
+import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
@@ -85,6 +85,10 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.EnumCleanupHandler;
+import org.openmetadata.service.jobs.GenericBackgroundWorker;
+import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.migration.Migration;
@@ -163,6 +167,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
+    Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
     initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
@@ -234,6 +239,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
     environment.lifecycle().manage(new ManagedShutdown());
+
+    JobHandlerRegistry registry = new JobHandlerRegistry();
+    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    environment
+        .lifecycle()
+        .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
     // Register Event publishers
     registerEventPublisher(catalogConfig);
 
@@ -252,14 +264,21 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Asset Servlet Registration
     registerAssetServlet(catalogConfig.getWebConfiguration(), environment);
 
-    // Handle Pipeline Service Client Status job
-    PipelineServiceStatusJobHandler pipelineServiceStatusJobHandler =
-        PipelineServiceStatusJobHandler.create(
-            catalogConfig.getPipelineServiceClientConfiguration(), catalogConfig.getClusterName());
-    pipelineServiceStatusJobHandler.addPipelineServiceStatusJob();
+    // Handle Services Jobs
+    registerHealthCheckJobs(catalogConfig);
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+  }
+
+  private void registerHealthCheckJobs(OpenMetadataApplicationConfig catalogConfig) {
+    ServicesStatusJobHandler healthCheckStatusHandler =
+        ServicesStatusJobHandler.create(
+            catalogConfig.getEventMonitorConfiguration(),
+            catalogConfig.getPipelineServiceClientConfiguration(),
+            catalogConfig.getClusterName());
+    healthCheckStatusHandler.addPipelineServiceStatusJob();
+    healthCheckStatusHandler.addDatabaseAndSearchStatusJobs();
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {
@@ -454,8 +473,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
-            conf.getPipelineServiceClientConfiguration(),
-            conf.getAuthenticationConfiguration(),
+            conf,
             false);
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();

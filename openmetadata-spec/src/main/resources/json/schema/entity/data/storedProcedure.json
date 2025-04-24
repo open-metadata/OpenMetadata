@@ -6,7 +6,9 @@
   "description": "A `StoredProcedure` entity that contains the set of code statements with an assigned name  and is defined in a `Database Schema`.\"",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.StoredProcedure",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "definitions": {
     "storedProcedureType": {
       "javaType": "org.openmetadata.schema.type.StoredProcedureType",
@@ -16,7 +18,8 @@
       "enum": [
         "StoredProcedure",
         "UDF",
-        "StoredPackage"
+        "StoredPackage",
+        "Function"
       ],
       "javaEnums": [
         {
@@ -27,6 +30,9 @@
         },
         {
           "name": "StoredPackage"
+        },
+        {
+          "name": "Function"
         }
       ]
     },
@@ -123,6 +129,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "databaseSchema": {
       "description": "Reference to Database Schema that contains this stored procedure.",
       "$ref": "../../type/entityReference.json"
@@ -193,6 +203,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "processedLineage": {
+      "description": "Processed lineage for the stored procedure",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

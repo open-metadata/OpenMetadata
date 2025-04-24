@@ -7,7 +7,7 @@ slug: /connectors/database/doris/yaml
 name="Doris"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -66,8 +66,6 @@ This is a sample config for Doris:
 **username**: Specify the User to connect to Doris. It should have enough privileges to read all the metadata.
 
 {% /codeInfo %}
-
-{% codeInfo srNumber=2 %}
 
 {% codeInfo srNumber=2 %}
 

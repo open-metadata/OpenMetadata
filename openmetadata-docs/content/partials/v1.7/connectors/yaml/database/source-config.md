@@ -10,10 +10,12 @@
       # includeOwners: false
       # includeStoredProcedures: true
       # includeDDL: true
+      # overrideMetadata: false
       # queryLogDuration: 1
       # queryParsingTimeoutLimit: 300
       # useFqnForFiltering: false
-      # threads: 4
+      # threads: 1
+      # databaseMetadataConfigType: ()
       # incremental:
       #   enabled: true
       #   lookbackDays: 7

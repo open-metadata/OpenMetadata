@@ -7,7 +7,7 @@ slug: /connectors/database/db2
 name="DB2"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -33,9 +33,11 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Troubleshooting](/connectors/database/db2/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
 
@@ -97,6 +99,21 @@ If you are using DB2 for IBM i:
 - In Host and Port you should not add the Port Number.
 {% /note %}
 
+{% note %}
+If you have a **db2jcc_license_cisuz.jar** file, it will not work with **ibm_db**. This file is a **Db2 Connect** license for the Java Driver.  
+For **non-Java drivers**, such as the Python Client used in OpenMetadata ingestion, a **Db2 Connect** client-side license is required, typically named **db2con*.lic**.  
+
+The **db2jcc_license_cisuz.jar** is specifically for Java-based clients, whereas OpenMetadata ingestion operates with a Python Client, making the `.jar` file incompatible.  
+ 
+For activating a **non-Java license** for Db2 Connect **Application Server Edition**, **Advanced Application Server Edition**, **Enterprise Edition**, or **Trial**, follow these steps:  
+- Download the **license activation kit** from IBM Passport Advantage: [IBM PPA](https://www.ibm.com/software/passportadvantage/pao_customer.html).  
+- Unzip the package and locate the **non-Java license file** (e.g., `db2consv_ee.lic`).  
+- Apply the `.lic` file to activate the license.
+
+For further reference, check this IBM post: [Everything About Db2 Connect Licensing](https://community.ibm.com/community/user/datamanagement/blogs/shilu-mathai2/2023/05/05/everything-about-db2-connect-licensing).  
+
+{% /note %}
+
 {% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
@@ -109,7 +126,4 @@ If you are using DB2 for IBM i:
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
-
 {% partial file="/v1.6/connectors/database/related.md" /%}
-

@@ -8,7 +8,8 @@
         "actions": [
           {
             "rollover": {
-              "min_primary_shard_size": "50gb"
+              "min_primary_shard_size": "10gb",
+              "min_index_age": "{{halfRetention}}d"
             }
           }
         ],
@@ -16,7 +17,7 @@
           {
             "state_name": "warm",
             "conditions": {
-              "min_index_age": "30d"
+              "min_index_age": "{{halfRetention}}d"
             }
           }
         ]
@@ -39,7 +40,7 @@
           {
             "state_name": "delete",
             "conditions": {
-              "min_index_age": "90d"
+              "min_index_age": "{{retention}}d"
             }
           }
         ]
@@ -54,7 +55,7 @@
       }
     ],
     "ism_template": {
-      "index_patterns": ["di-data-assets"],
+      "index_patterns": ["di-data-assets-*"],
       "priority": 500
     }
   }

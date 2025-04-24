@@ -138,8 +138,16 @@ After running the ingestion workflow with dbt you can see the created user or te
 
 
 
-{% note %}
+## Overriding the existing table Owners
 
-If a table already has a owner linked to it, owner from the dbt will not update the current owner.
+To establish a unified and reliable system for owners, a single source of truth is necessary. It either is directly OpenMetadata, if individuals want to go there and keep updating, or if they prefer to keep it centralized in dbt, then we can always rely on that directly.
 
-{% /note %}
+When the `Update Owners` toggle is enabled during the configuration of dbt ingestion, existing owners of tables will be overwritten with the dbt owners.
+
+If toggle is disabled during the configuration of dbt ingestion, dbt owners will only be updated for tables in OpenMetadata that currently have no owners. Existing owners will remain unchanged and will not be overwritten with dbt owners.
+
+{% image
+  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-update-owners.webp"
+  alt="update-dbt-owners"
+  caption="Update dbt Owners"
+ /%}

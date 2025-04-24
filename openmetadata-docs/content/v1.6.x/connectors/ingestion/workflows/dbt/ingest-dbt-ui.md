@@ -6,6 +6,13 @@ slug: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
 # Configure dbt workflow from OpenMetadata UI
 Learn how to configure the dbt workflow from the UI to ingest dbt data from your data sources.
 
+{% note %}
+
+- OpenMetadata supports both **dbt Core** and **dbt Cloud** for databases. After metadata ingestion, OpenMetadata extracts model information from dbt and integrates it accordingly.  
+- Additionally, **dbt Cloud** supports executing models directly. OpenMetadata enables ingestion of these executions as a **Pipeline Service** for enhanced tracking and visibility.
+
+{% /note %}
+
 ## UI Configuration
 
 Once the metadata ingestion runs correctly and we are able to explore the service Entities, we can add the dbt information.

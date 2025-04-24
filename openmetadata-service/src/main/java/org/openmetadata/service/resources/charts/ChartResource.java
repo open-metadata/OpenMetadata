@@ -61,7 +61,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/charts")
@@ -74,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
+  private final ChartMapper mapper = new ChartMapper();
   static final String FIELDS = "owners,followers,tags,domain,dataProducts,sourceHash,dashboards";
 
   @Override
@@ -300,7 +300,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateChart create) {
-    Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
+    Chart chart = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, chart);
   }
 
@@ -379,7 +379,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateChart create) {
-    Chart chart = getChart(create, securityContext.getUserPrincipal().getName());
+    Chart chart = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, chart);
   }
 
@@ -448,6 +448,28 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteChartAsync",
+      summary = "Asynchronously delete a chart by Id",
+      description = "Asynchronously delete a chart by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the chart", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
   @DELETE
@@ -522,15 +544,5 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Chart getChart(CreateChart create, String user) {
-    return repository
-        .copy(new Chart(), create, user)
-        .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
-        .withChartType(create.getChartType())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash())
-        .withDashboards(getEntityReferences(Entity.DASHBOARD, create.getDashboards()));
   }
 }

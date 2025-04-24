@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/mlmod
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/sklearnType*. Default: `Sklearn`.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`type`**: Service Type. Refer to *[#/definitions/sklearnType](#definitions/sklearnType)*. Default: `"Sklearn"`.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`sklearnType`** *(string)*: Service type. Must be one of: `['Sklearn']`. Default: `Sklearn`.
+- **`sklearnType`** *(string)*: Service type. Must be one of: `["Sklearn"]`. Default: `"Sklearn"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

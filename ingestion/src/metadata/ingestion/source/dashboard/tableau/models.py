@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -84,13 +84,31 @@ def transform_tags(raw: Union[Dict[str, Any], List[TableauTag]]) -> List[Tableau
     return tags
 
 
+class TableauWorkbook(BaseModel):
+    """
+    Model for downstream workbook information
+    """
+
+    luid: Optional[str] = None
+    name: Optional[str] = None
+
+
 class CustomSQLTable(TableauBaseModel):
     """
     GraphQL API CustomSQLTable schema
     https://help.tableau.com/current/api/metadata_api/en-us/reference/customsqltable.doc.html
     """
 
+    downstreamWorkbooks: Optional[List[TableauWorkbook]] = None
     query: Optional[str] = None
+
+
+class CustomSQLTablesResponse(BaseModel):
+    """
+    Model for the custom SQL tables response
+    """
+
+    data: Dict[str, List[CustomSQLTable]]
 
 
 class UpstreamColumn(BaseModel):
@@ -125,6 +143,14 @@ class UpstreamTable(BaseModel):
     columns: Optional[List[UpstreamTableColumn]] = None
     database: Optional[TableauDatabase] = None
     referencedByQueries: Optional[List[CustomSQLTable]] = None
+
+    @validator("referencedByQueries", pre=True)
+    @classmethod
+    def filter_none_queries(cls, v):
+        """Filter out CustomSQLTable items where query==None."""
+        if v is None:
+            return None
+        return [item for item in v if item.get("query") is not None]
 
 
 class DataSource(BaseModel):
@@ -173,6 +199,7 @@ class TableauDashboard(TableauBaseModel):
     webpageUrl: Optional[str] = None
     charts: Optional[List[TableauChart]] = None
     dataModels: List[DataSource] = []
+    custom_sql_queries: Optional[List[str]] = None
 
 
 class TableAndQuery(BaseModel):

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,6 +17,9 @@ from typing import Optional, cast
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -38,6 +41,7 @@ from metadata.profiler.source.metadata import ProfilerSourceAndEntity
 from metadata.sampler.config import get_config_for_table
 from metadata.sampler.models import SampleConfig, SampleData, SamplerResponse
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.bigquery_utils import copy_service_config
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import import_sampler_class
 
@@ -133,6 +137,9 @@ class SamplerProcessor(Processor):
         Returns:
             DatabaseService.__config__
         """
+        if isinstance(config.source.serviceConnection.root.config, BigQueryConnection):
+            return copy_service_config(config, database.name.root)
+
         config_copy = deepcopy(
             config.source.serviceConnection.root.config  # type: ignore
         )

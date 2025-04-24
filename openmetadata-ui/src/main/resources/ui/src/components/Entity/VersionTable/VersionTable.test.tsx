@@ -20,21 +20,23 @@ jest.mock('../../common/ErrorWithPlaceholder/FilterTablePlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>FilterTablePlaceHolder</div>)
 );
 
-jest.mock('../../common/SearchBarComponent/SearchBar.component', () =>
-  jest.fn().mockImplementation(() => <div>SearchBar</div>)
-);
-
 jest.mock('../../Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (
       <div data-testid="rich-text-editor-previewer">{markdown}</div>
     ))
 );
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: '',
+  }));
+});
 
 describe('VersionTable component', () => {
   it('VersionTable should show column display names along with name if present', () => {

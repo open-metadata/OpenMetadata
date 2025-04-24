@@ -20,7 +20,7 @@
 }
 
 .ant-btn-reaction.ant-btn-sm {
-  padding: 0 8px;
+  padding: 4px 6px;
 }
 
 .ant-popover-feed-reactions {
@@ -29,7 +29,11 @@
     display: flex;
     gap: 8px;
   }
-
+  .ant-btn-reaction {
+    background: transparent;
+    border: 1px solid #75757533;
+    padding: 4px 6px;
+  }
   .ant-btn-reaction,
   .ant-btn-popover-reaction {
     height: auto;
@@ -46,6 +50,7 @@
 
   .ant-btn-reaction:hover {
     color: @primary-color;
+    background-color: transparent;
     border-color: @primary-color;
   }
 }
@@ -53,4 +58,16 @@
 .ant-btn.ant-btn-reaction.ant-btn-isReacted {
   color: @primary-color;
   border-color: @primary-color;
+  background-color: transparent;
+  padding: 4px 6px;
+  &:hover {
+    background-color: transparent;
+  }
+}
+.ant-btn-round.ant-btn-sm {
+  background-color: transparent;
+  padding: 4px 6px !important;
+  &:hover {
+    background-color: transparent;
+  }
 }

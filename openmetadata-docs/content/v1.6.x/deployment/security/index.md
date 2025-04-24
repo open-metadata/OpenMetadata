@@ -78,3 +78,26 @@ OpenMetadata currently does not support the simultaneous use of multiple authent
     Configure Keycloak SSO to access the UI and APIs
   {%/inlineCallout%}
 {%/inlineCalloutContainer%}
+
+
+#
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon=""
+    bold="Configuration Reference Parameters"
+    href="/deployment/security/configuration-parameters" %}
+    Check Parameters Reference
+  {% /inlineCallout %}
+
+
+
+  {% inlineCallout
+    color="violet-70"
+    icon=""
+    bold="Enable JWT Tokens"
+    href="/deployment/security/enable-jwt-tokens" %}
+    Check Enable JWT Tokens Reference
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

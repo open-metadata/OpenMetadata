@@ -17,7 +17,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -80,9 +79,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   public Response addTestCaseResult(
-      String updatedBy, UriInfo uriInfo, String fqn, CreateTestCaseResult createTestCaseResult) {
+      String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "", Include.ALL);
-    TestCaseResult testCaseResult = getTestCaseResult(createTestCaseResult, testCase);
     if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
       testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
@@ -223,7 +221,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     updated.setTestCaseStatus(testCaseResult.getTestCaseStatus());
 
     EntityRepository.EntityUpdater entityUpdater =
-        testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH);
+        testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
     entityUpdater.update();
     updateTestSuiteSummary(updated);
   }
@@ -259,7 +257,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                         .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
           }
           EntityRepository.EntityUpdater entityUpdater =
-              testSuiteRepository.getUpdater(original, testSuite, EntityRepository.Operation.PATCH);
+              testSuiteRepository.getUpdater(
+                  original, testSuite, EntityRepository.Operation.PATCH, null);
           entityUpdater.update();
         }
       }
@@ -298,25 +297,5 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     return testCaseResultResults.getData().stream()
         .anyMatch(
             testCaseResult -> testCaseResult.getTestCaseStatus().equals(TestCaseStatus.Failed));
-  }
-
-  private TestCaseResult getTestCaseResult(
-      CreateTestCaseResult createTestCaseResults, TestCase testCase) {
-    RestUtil.validateTimestampMilliseconds(createTestCaseResults.getTimestamp());
-    return new TestCaseResult()
-        .withId(UUID.randomUUID())
-        .withTestCaseFQN(testCase.getFullyQualifiedName())
-        .withTimestamp(createTestCaseResults.getTimestamp())
-        .withTestCaseStatus(createTestCaseResults.getTestCaseStatus())
-        .withResult(createTestCaseResults.getResult())
-        .withSampleData(createTestCaseResults.getSampleData())
-        .withTestResultValue(createTestCaseResults.getTestResultValue())
-        .withPassedRows(createTestCaseResults.getPassedRows())
-        .withFailedRows(createTestCaseResults.getFailedRows())
-        .withPassedRowsPercentage(createTestCaseResults.getPassedRowsPercentage())
-        .withFailedRowsPercentage(createTestCaseResults.getFailedRowsPercentage())
-        .withIncidentId(createTestCaseResults.getIncidentId())
-        .withMaxBound(createTestCaseResults.getMaxBound())
-        .withMinBound(createTestCaseResults.getMinBound());
   }
 }

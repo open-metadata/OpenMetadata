@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
- * This schema defines Event Publisher Job Error Schema.
+/**
+ * This schema defines Event Publisher Job Error Schema. Additional properties exist for
+ * backward compatibility. Don't use it.
  */
 export interface IndexingError {
     errorSource?:      ErrorSource;
@@ -25,6 +24,7 @@ export interface IndexingError {
     stackTrace?:       string;
     submittedCount?:   number;
     successCount?:     number;
+    [property: string]: any;
 }
 
 export enum ErrorSource {

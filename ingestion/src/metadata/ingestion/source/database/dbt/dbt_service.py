@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,7 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
-from dbt_artifacts_parser.parser import (
+from collate_dbt_artifacts_parser.parser import (
     parse_catalog,
     parse_manifest,
     parse_run_results,
@@ -120,6 +120,11 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DataModelLink,
                 processor="process_dbt_descriptions",
+                nullable=True,
+            ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_owners",
                 nullable=True,
             ),
         ],
@@ -291,6 +296,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
         """
         Method to process DBT descriptions using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_owners(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT owners using patch APIs
         """
 
     def get_dbt_tests(self) -> dict:

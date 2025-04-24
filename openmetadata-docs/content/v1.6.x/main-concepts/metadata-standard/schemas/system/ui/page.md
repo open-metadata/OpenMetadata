@@ -9,15 +9,17 @@ slug: /main-concepts/metadata-standard/schemas/system/ui/page
 
 ## Properties
 
-- **`entityType`**: Entity Type. Must be one of: `['Page']`. Default: `Page`.
-- **`pageType`**: Refer to *#/definitions/pageType*.
+- **`entityType`**: Entity Type. Must be one of: `["Page"]`. Default: `"Page"`.
+- **`pageType`**: Refer to *[#/definitions/pageType](#definitions/pageType)*.
 - **`layout`** *(object)*: Configuration for the Knowledge Panel.
-- **`persona`**: Persona this page belongs to. Refer to *../../type/entityReference.json*.
-- **`domain`**: Domain this page belongs to. Refer to *../../type/entityReference.json*.
-- **`knowledgePanels`**: KnowledgePanels that are part of this Page. Refer to *../../type/entityReferenceList.json*.
+- **`tabs`** *(array)*: Tabs included in this page. Default: `[]`.
+  - **Items**: Refer to *[tab.json](#b.json)*.
+- **`persona`**: Persona this page belongs to. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
+- **`domain`**: Domain this page belongs to. Refer to *[../../type/entityReference.json](#/../type/entityReference.json)*.
+- **`knowledgePanels`**: KnowledgePanels that are part of this Page. Refer to *[../../type/entityReferenceList.json](#/../type/entityReferenceList.json)*.
 ## Definitions
 
-- **`pageType`** *(string)*: This schema defines the type used for describing different types of pages. Must be one of: `['LandingPage', 'TableLandingPage', 'StoredProcedureLandingPage', 'DatabaseLandingPage', 'DatabaseSchemaLandingPage', 'TopicLandingPage', 'PipelineLandingPage', 'DashboardLandingPage', 'DashboardDataModelLandingPage', 'ContainerLandingPage', 'SearchIndexLandingPage', 'GlossaryLandingPage', 'GlossaryTermLandingPage', 'DomainLandingPage']`.
+- **`pageType`** *(string)*: This schema defines the type used for describing different types of pages. Must be one of: `["LandingPage", "Table", "StoredProcedure", "Database", "DatabaseSchema", "Topic", "Pipeline", "Dashboard", "DashboardDataModel", "Container", "SearchIndex", "Glossary", "GlossaryTerm", "Domain"]`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

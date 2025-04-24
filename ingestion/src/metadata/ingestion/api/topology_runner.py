@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -418,9 +418,9 @@ class TopologyRunnerMixin(Generic[C]):
             if not entity:
                 # Safe access to Entity Request name
                 raise MissingExpectedEntityAckException(
-                    f"Missing ack back from [{stage.type_.__name__}: {entity_fqn}] - "
-                    "Possible causes are changes in the server Fernet key or mismatched JSON Schemas "
-                    "for the service connection."
+                    f"We are trying to create a [{stage.type_.__name__}] with FQN [{entity_fqn}],"
+                    " but we got no Entity back from the API. Checking for errors in the OpenMetadata Sink could help"
+                    " validate if the Entity was properly created or not."
                 )
 
         self.context.get().update_context_name(stage=stage, right=right)

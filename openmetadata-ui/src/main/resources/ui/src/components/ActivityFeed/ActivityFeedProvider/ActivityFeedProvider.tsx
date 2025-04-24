@@ -19,15 +19,11 @@ import React, {
   ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
@@ -38,7 +34,6 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
@@ -53,11 +48,7 @@ import {
   updateThread,
 } from '../../../rest/feedsAPI';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
-import { getUsers } from '../../../rest/userAPI';
-import {
-  getEntityFeedLink,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
@@ -80,15 +71,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [entityPaging, setEntityPaging] = useState<Paging>({} as Paging);
   const [focusReplyEditor, setFocusReplyEditor] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
-  const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
   const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
     TestCaseResolutionStatus[]
   >([]);
-  const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
-    []
-  );
+
   const { currentUser } = useApplicationStore();
 
   const fetchTestCaseResolution = useCallback(async (id: string) => {
@@ -118,23 +106,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           setLoading(false);
         }
       );
-    }
-  }, []);
-
-  const getFeedDataById = useCallback(async (id) => {
-    try {
-      setIsDrawerLoading(true);
-      const res = await getFeedById(id);
-      setSelectedThread(res.data);
-    } catch (err) {
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.message-plural-lowercase'),
-        })
-      );
-    } finally {
-      setIsDrawerLoading(false);
     }
   }, []);
 
@@ -416,9 +387,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
   const showDrawer = useCallback((thread: Thread) => {
     setIsDrawerOpen(true);
-    getFeedDataById(thread.id).catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-    });
+    setActiveThread(thread);
   }, []);
 
   const hideDrawer = useCallback(() => {
@@ -432,27 +401,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     },
     [setTestCaseResolutionStatus]
   );
-  const fetchInitialAssign = useCallback(async () => {
-    try {
-      const { data } = await getUsers({
-        limit: PAGE_SIZE_MEDIUM,
-
-        isBot: false,
-      });
-      const filterData = getEntityReferenceListFromEntities(
-        data,
-        EntityType.USER
-      );
-      setInitialAssignees(filterData);
-    } catch (error) {
-      setInitialAssignees([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    // fetch users once and store in state
-    fetchInitialAssign();
-  }, []);
 
   const activityFeedContextValues = useMemo(() => {
     return {
@@ -460,7 +408,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       selectedThread,
       isDrawerOpen,
       loading,
-      isDrawerLoading,
       focusReplyEditor,
       refreshActivityFeed,
       deleteFeed,
@@ -478,14 +425,12 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       testCaseResolutionStatus,
       fetchUpdatedThread,
       updateTestCaseIncidentStatus,
-      initialAssignees,
     };
   }, [
     entityThread,
     selectedThread,
     isDrawerOpen,
     loading,
-    isDrawerLoading,
     focusReplyEditor,
     refreshActivityFeed,
     deleteFeed,
@@ -504,7 +449,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     testCaseResolutionStatus,
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
-    initialAssignees,
   ]);
 
   return (

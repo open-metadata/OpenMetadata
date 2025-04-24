@@ -21,8 +21,10 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
+  descriptionBoxReadOnly,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -33,6 +35,7 @@ import { settingClick } from '../../utils/sidebar';
 import {
   addTeamOwnerToEntity,
   addUserInTeam,
+  checkTeamTabCount,
   createTeam,
   hardDeleteTeam,
   searchTeam,
@@ -112,7 +115,7 @@ test.describe('Teams Page', () => {
 
   test('Teams Page Flow', async ({ page }) => {
     await test.step('Create a new team', async () => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await checkTeamTabCount(page);
       await page.waitForLoadState('networkidle');
 
       await page.waitForSelector('[data-testid="add-team"]');
@@ -261,8 +264,7 @@ test.describe('Teams Page', () => {
       await page.locator('[data-testid="saveAssociatedTag"]').click();
       await patchTeamResponse;
 
-      // Validate the updated display name
-      await expect(page.locator('[data-testid="team-heading"]')).toHaveText(
+      await expect(page.getByTestId('team-heading')).toHaveText(
         teamDetails.updatedName
       );
 
@@ -303,7 +305,9 @@ test.describe('Teams Page', () => {
 
       // Validating the updated description
       await expect(
-        page.locator('[data-testid="asset-description-container"] p')
+        page.locator(
+          `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
+        )
       ).toContainText(updatedDescription);
     });
 
@@ -338,9 +342,9 @@ test.describe('Teams Page', () => {
       await fetchOrganizationResponse;
 
       // Check if the table does not contain the team name
-      await expect(page.locator('table')).not.toContainText(
-        teamDetails?.displayName ?? ''
-      );
+      await expect(
+        page.getByRole('cell', { name: teamDetails?.displayName ?? '' })
+      ).not.toBeVisible();
 
       // Click on the show deleted button
       await page.locator('[data-testid="show-deleted"]').click();
@@ -393,7 +397,7 @@ test.describe('Teams Page', () => {
       'true'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });
@@ -419,7 +423,7 @@ test.describe('Teams Page', () => {
       'false'
     );
 
-    await page.click('body'); // Equivalent to clicking outside
+    await clickOutside(page);
 
     await hardDeleteTeam(page);
   });

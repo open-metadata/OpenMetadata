@@ -16,4 +16,7 @@
       #   excludes:
       #     - pipeline3
       #     - pipeline4
+      # includeOwners: true # false
+      # overrideLineage: false # true
+      # overrideMetadata: false # true
 ```

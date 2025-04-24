@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { SidebarItem } from '../constant/sidebar';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
 import { SubDomain } from '../support/domain/SubDomain';
@@ -27,8 +28,10 @@ import {
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
+  redirectToHomePage,
 } from './common';
 import { addOwner } from './entity';
+import { sidebarClick } from './sidebar';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
@@ -113,13 +116,45 @@ export const selectSubDomain = async (
   domain: Domain['data'],
   subDomain: SubDomain['data']
 ) => {
-  await page
-    .getByRole('menuitem', { name: domain.displayName })
-    .locator('span')
-    .click();
+  const menuItem = page.getByRole('menuitem', { name: domain.displayName });
+  const isSelected = await menuItem.evaluate((element) => {
+    return element.classList.contains('ant-menu-item-selected');
+  });
+
+  if (!isSelected) {
+    const subDomainRes = page.waitForResponse(
+      '/api/v1/search/query?*&from=0&size=50&index=domain_search_index'
+    );
+    await menuItem.click();
+    await subDomainRes;
+  }
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  const res = page.waitForResponse(
+    '/api/v1/search/query?*&index=data_product_search_index'
+  );
   await page.getByTestId(subDomain.name).click();
+  await res;
+};
+
+export const selectDataProductFromTab = async (
+  page: Page,
+  dataProduct: DataProduct['data']
+) => {
+  const dpRes = page.waitForResponse(
+    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index'
+  );
+  await page.getByText('Data Products').click();
+
+  await dpRes;
+
+  const dpDataRes = page.waitForResponse('/api/v1/dataProducts/name/*');
+
+  await page
+    .getByTestId(`explore-card-${dataProduct.name}`)
+    .getByTestId('entity-link')
+    .click();
+  await dpDataRes;
 };
 
 export const selectDataProduct = async (
@@ -132,15 +167,12 @@ export const selectDataProduct = async (
     .locator('span')
     .click();
 
-  await page.getByText('Data Products').click();
-  await page
-    .getByTestId(`explore-card-${dataProduct.name}`)
-    .getByTestId('entity-link')
-    .click();
+  await selectDataProductFromTab(page, dataProduct);
 };
 
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await checkDomainDisplayName(page, domain.displayName);
   await page.getByTestId('assets').click();
 };
@@ -151,7 +183,7 @@ const fillCommonFormItems = async (
 ) => {
   await page.locator('[data-testid="name"]').fill(entity.name);
   await page.locator('[data-testid="display-name"]').fill(entity.displayName);
-  await page.fill(descriptionBox, entity.description);
+  await page.locator(descriptionBox).fill(entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
       page,
@@ -280,10 +312,13 @@ export const createSubDomain = async (
 
 export const addAssetsToDomain = async (
   page: Page,
-  domain: Domain['data'],
-  assets: EntityClass[]
+  domain: Domain,
+  assets: EntityClass[],
+  navigateToAssetsTab = true
 ) => {
-  await goToAssetsTab(page, domain);
+  if (navigateToAssetsTab) {
+    await goToAssetsTab(page, domain.data);
+  }
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
@@ -309,13 +344,27 @@ export const addAssetsToDomain = async (
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
-  const assetsAddRes = page.waitForResponse(
-    `/api/v1/domains/${encodeURIComponent(
-      domain.fullyQualifiedName ?? ''
-    )}/assets/add`
-  );
+  const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);
+  const searchRes = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    const queryParams = new URLSearchParams(url.search);
+    const queryFilter = queryParams.get('query_filter');
+
+    return (
+      response
+        .url()
+        .includes('/api/v1/search/query?q=**&index=all&from=0&size=15') &&
+      queryFilter !== null &&
+      queryFilter !== ''
+    );
+  });
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
+
+  await searchRes;
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
 
   await checkAssetsCount(page, assets.length);
 };
@@ -357,7 +406,7 @@ export const addServicesToDomain = async (
 
 export const addAssetsToDataProduct = async (
   page: Page,
-  dataProduct: DataProduct['data'],
+  dataProductFqn: string,
   assets: EntityClass[]
 ) => {
   await page.getByTestId('assets').click();
@@ -383,9 +432,7 @@ export const addAssetsToDataProduct = async (
   }
 
   const assetsAddRes = page.waitForResponse(
-    `/api/v1/dataProducts/${encodeURIComponent(
-      dataProduct.fullyQualifiedName ?? ''
-    )}/assets/add`
+    `/api/v1/dataProducts/*/assets/add`
   );
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
@@ -457,4 +504,145 @@ export const createDataProduct = async (
   const saveRes = page.waitForResponse('/api/v1/dataProducts');
   await page.getByTestId('save-data-product').click();
   await saveRes;
+};
+
+export const verifyDataProductAssetsAfterDelete = async (
+  page: Page,
+  {
+    domain,
+    dataProduct1,
+    dataProduct2,
+    assets,
+    subDomain,
+  }: {
+    domain: Domain;
+    dataProduct1: DataProduct;
+    dataProduct2: DataProduct;
+    assets: EntityClass[];
+    subDomain?: SubDomain;
+  }
+) => {
+  const { apiContext } = await getApiContext(page);
+  const newDataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
+
+  await test.step('Add assets to DataProduct Sales', async () => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    if (subDomain) {
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await selectDataProductFromTab(page, dataProduct1.data);
+    } else {
+      await selectDataProduct(page, domain.data, dataProduct1.data);
+    }
+    await addAssetsToDataProduct(
+      page,
+      dataProduct1.responseData.fullyQualifiedName ?? '',
+      assets.slice(0, 2)
+    );
+  });
+
+  await test.step('Add assets to DataProduct Finance', async () => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    if (subDomain) {
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await selectDataProductFromTab(page, dataProduct2.data);
+    } else {
+      await selectDataProduct(page, domain.data, dataProduct2.data);
+    }
+    await addAssetsToDataProduct(
+      page,
+      dataProduct2.responseData.fullyQualifiedName ?? '',
+      [assets[2]]
+    );
+  });
+
+  await test.step(
+    'Remove Data Product Sales and Create the same again',
+    async () => {
+      // Remove sales data product
+      await dataProduct1.delete(apiContext);
+
+      // Create sales data product again
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      if (subDomain) {
+        await selectSubDomain(page, domain.data, subDomain.data);
+      } else {
+        await selectDomain(page, domain.data);
+      }
+
+      await createDataProduct(page, newDataProduct1.data);
+    }
+  );
+
+  await test.step(
+    'Verify assets are not present in the newly created data product',
+    async () => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      if (subDomain) {
+        await selectSubDomain(page, domain.data, subDomain.data);
+        await selectDataProductFromTab(page, newDataProduct1.data);
+      } else {
+        await selectDataProduct(page, domain.data, newDataProduct1.data);
+      }
+      await checkAssetsCount(page, 0);
+    }
+  );
+};
+
+export const addTagsAndGlossaryToDomain = async (
+  page: Page,
+  {
+    tagFqn,
+    glossaryTermFqn,
+    isDomain = true,
+  }: {
+    tagFqn: string;
+    glossaryTermFqn: string;
+    isDomain?: boolean;
+  }
+) => {
+  const addTagOrTerm = async (
+    containerType: 'tags' | 'glossary',
+    value: string
+  ) => {
+    const container = `[data-testid="${containerType}-container"]`;
+
+    // Click add button
+    await page.locator(`${container} [data-testid="add-tag"]`).click();
+
+    // Fill and select tag/term
+    const input = page.locator(`${container} #tagsForm_tags`);
+    await input.click();
+    await input.fill(value);
+    await page.getByTestId(`tag-${value}`).click();
+
+    // Save and wait for response
+    const updateResponse = page.waitForResponse(
+      (response) =>
+        response
+          .url()
+          .includes(`/api/v1/${isDomain ? 'domains' : 'dataProducts'}/`) &&
+        response.request().method() === 'PATCH'
+    );
+    await page.getByTestId('saveAssociatedTag').click();
+    await updateResponse;
+  };
+
+  // Add tag
+  await addTagOrTerm('tags', tagFqn);
+
+  // Add glossary term
+  await addTagOrTerm('glossary', glossaryTermFqn);
+};
+
+/**
+ * Verifies if the active domain is set to All Domains (DEFAULT_DOMAIN_VALUE)
+ */
+export const verifyActiveDomainIsDefault = async (page: Page) => {
+  await expect(page.getByTestId('domain-dropdown')).toContainText(
+    'All Domains'
+  );
 };

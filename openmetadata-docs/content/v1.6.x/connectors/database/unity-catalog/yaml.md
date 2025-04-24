@@ -7,7 +7,7 @@ slug: /connectors/database/unity-catalog/yaml
 name="Unity Catalog"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Sample Data"]
 unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -171,9 +171,7 @@ source:
 
 {% partial file="/v1.6/connectors/yaml/query-usage.md" variables={connector: "unitycatalog"} /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "unitycatalog"} /%}
 
 ## dbt Integration
 

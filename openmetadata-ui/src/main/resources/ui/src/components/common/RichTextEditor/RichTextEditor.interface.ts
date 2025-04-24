@@ -34,19 +34,11 @@ export type EditorType = 'markdown' | 'wysiwyg';
 export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   autofocus?: boolean;
   initialValue?: string;
-  placeHolder?: string;
-  previewStyle?: PreviewStyle;
-  editorType?: EditorType;
-  previewHighlight?: boolean;
-  extendedAutolinks?: boolean;
-  hideModeSwitch?: boolean;
-  useCommandShortcut?: boolean;
   readonly?: boolean;
-  height?: string;
   onTextChange?: (value: string) => void;
+  placeHolder?: string;
 }
 
 export interface EditorContentRef {
   getEditorContent: () => string;
-  clearEditorContent: () => void;
 }

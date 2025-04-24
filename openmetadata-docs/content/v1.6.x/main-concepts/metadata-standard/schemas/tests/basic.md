@@ -9,29 +9,45 @@ slug: /main-concepts/metadata-standard/schemas/tests/basic
 
 ## Definitions
 
+- **`columnTestSummaryDefinition`** *(object)*: Schema to capture test case execution summary at the column level.
+  - **`success`** *(integer)*: Number of test cases that passed.
+  - **`failed`** *(integer)*: Number of test cases that failed.
+  - **`aborted`** *(integer)*: Number of test cases that aborted.
+  - **`queued`** *(integer)*: Number of test cases that are queued for execution.
+  - **`total`** *(integer)*: Total number of test cases.
+  - **`entityLink`**: Refer to *[../type/basic.json#/definitions/entityLink](#/type/basic.json#/definitions/entityLink)*.
 - **`testSummary`** *(object)*: Schema to capture test case execution summary.
   - **`success`** *(integer)*: Number of test cases that passed.
   - **`failed`** *(integer)*: Number of test cases that failed.
   - **`aborted`** *(integer)*: Number of test cases that aborted.
+  - **`queued`** *(integer)*: Number of test cases that are queued for execution.
   - **`total`** *(integer)*: Total number of test cases.
+  - **`columnTestSummary`** *(array)*
+    - **Items**: Refer to *[#/definitions/columnTestSummaryDefinition](#definitions/columnTestSummaryDefinition)*.
 - **`testResultValue`** *(object)*: Schema to capture test case result values.
   - **`name`** *(string)*: name of the value.
   - **`value`** *(string)*: test result value.
-- **`testCaseStatus`** *(string)*: Status of Test Case run. Must be one of: `['Success', 'Failed', 'Aborted']`.
-- **`testCaseResult`** *(object)*: Schema to capture test case result. Cannot contain additional properties.
-  - **`timestamp`**: Data one which test case result is taken. Refer to *../type/basic.json#/definitions/timestamp*.
-  - **`testCaseStatus`**: Status of Test Case run. Refer to *#/definitions/testCaseStatus*.
+  - **`predictedValue`** *(string)*: predicted value.
+- **`testCaseStatus`** *(string)*: Status of Test Case run. Must be one of: `["Success", "Failed", "Aborted", "Queued"]`.
+- **`testCaseResult`** *(object)*: Schema to capture test case result.
+  - **`id`**: Unique identifier of this failure instance. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
+  - **`testCaseFQN`**: Fully qualified name of the test case. Refer to *[../type/basic.json#/definitions/fullyQualifiedEntityName](#/type/basic.json#/definitions/fullyQualifiedEntityName)*.
+  - **`timestamp`**: Data one which test case result is taken. Refer to *[../type/basic.json#/definitions/timestamp](#/type/basic.json#/definitions/timestamp)*.
+  - **`testCaseStatus`**: Status of Test Case run. Refer to *[#/definitions/testCaseStatus](#definitions/testCaseStatus)*.
   - **`result`** *(string)*: Details of test case results.
   - **`sampleData`** *(string)*: sample data to capture rows/columns that didn't match the expressed testcase.
   - **`testResultValue`** *(array)*
-    - **Items**: Refer to *#/definitions/testResultValue*.
-  - **`testCaseFailureStatus`** *(object)*: Schema to capture test case result.
-    - **`testCaseFailureStatusType`** *(string)*: Status of Test Case Acknowledgement. Must be one of: `['Ack', 'New', 'Resolved']`.
-    - **`testCaseFailureReason`** *(string)*: Reason of Test Case resolution. Must be one of: `['FalsePositive', 'MissingData', 'Duplicates', 'OutOfBounds', 'Other']`.
-    - **`testCaseFailureComment`** *(string)*: Test case failure resolution comment.
-    - **`updatedBy`** *(string)*: User who updated the test case failure status.
-    - **`updatedAt`**: Time when test case failure status was updated. Refer to *../type/basic.json#/definitions/timestamp*.
-- **`testSuiteExecutionFrequency`** *(string)*: How often the test case should run. Must be one of: `['Hourly', 'Daily', 'Weekly']`.
+    - **Items**: Refer to *[#/definitions/testResultValue](#definitions/testResultValue)*.
+  - **`passedRows`** *(integer)*: Number of rows that passed.
+  - **`failedRows`** *(integer)*: Number of rows that failed.
+  - **`passedRowsPercentage`** *(number)*: Percentage of rows that passed.
+  - **`failedRowsPercentage`** *(number)*: Percentage of rows that failed.
+  - **`incidentId`**: Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
+  - **`maxBound`** *(number)*: Upper bound limit for the test case result as defined in the test definition.
+  - **`minBound`** *(number)*: Lower bound limit for the test case result as defined in the test definition.
+  - **`testCase`**: Test case that this result is for. Refer to *[../type/entityReference.json](#/type/entityReference.json)*.
+  - **`testDefinition`**: Test definition that this result is for. Refer to *[../type/entityReference.json](#/type/entityReference.json)*.
+- **`testSuiteExecutionFrequency`** *(string)*: How often the test case should run. Must be one of: `["Hourly", "Daily", "Weekly"]`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

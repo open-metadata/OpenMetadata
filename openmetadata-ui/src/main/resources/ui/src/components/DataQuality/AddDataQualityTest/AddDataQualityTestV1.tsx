@@ -26,7 +26,6 @@ import {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
-import { getEntityDetailsPath } from '../../../constants/constants';
 import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
@@ -37,6 +36,7 @@ import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
 import { OwnerType } from '../../../enums/user.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
+import { CreateTestSuite } from '../../../generated/api/tests/createTestSuite';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -50,6 +50,7 @@ import {
   getEntityBreadcrumbs,
   getEntityName,
 } from '../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
@@ -127,9 +128,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   };
 
   const createTestSuite = async () => {
-    const testSuite = {
+    const testSuite: CreateTestSuite = {
       name: `${table.fullyQualifiedName}.testSuite`,
-      executableEntityReference: table.fullyQualifiedName,
+      basicEntityReference: table.fullyQualifiedName,
       owners,
     };
     const response = await createExecutableTestSuite(testSuite);
@@ -278,11 +279,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel no-right-panel-splitter"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: (
-          <div className="max-width-md w-9/10 service-form-container">
+          <>
             <TitleBreadcrumb titleLinks={breadcrumb} />
             <div className="m-t-md">
               {addIngestion ? (
@@ -314,7 +317,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                 </Row>
               )}
             </div>
-          </div>
+          </>
         ),
         minWidth: 700,
         flex: 0.6,
@@ -324,7 +327,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl content-resizable-panel-container',
+        className: 'content-resizable-panel-container',
         minWidth: 400,
         flex: 0.4,
       }}

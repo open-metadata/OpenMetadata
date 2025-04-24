@@ -7,7 +7,7 @@ slug: /connectors/database/gcs-datalake
 name="GCS Datalake"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Sample Data"]
 unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
 / %}
 
@@ -18,6 +18,7 @@ Configure and schedule GCS Datalake metadata and profiler workflows from the Ope
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
+- [Troubleshooting](/connectors/database/gcs-datalake/troubleshooting)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/gcs-datalake/yaml"} /%}
 
@@ -76,7 +77,5 @@ We support two ways of authenticating to GCS:
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

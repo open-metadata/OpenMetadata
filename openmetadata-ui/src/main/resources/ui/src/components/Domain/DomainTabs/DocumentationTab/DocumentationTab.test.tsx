@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_DOMAIN } from '../../../../mocks/Domains.mock';
+import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import DocumentationTab from './DocumentationTab.component';
 
 // Mock the onUpdate function
@@ -23,6 +24,7 @@ const defaultProps = {
   domain: MOCK_DOMAIN,
   onUpdate: mockOnUpdate,
   isVersionsView: false,
+  permissions: MOCK_PERMISSIONS,
 };
 
 jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
@@ -33,8 +35,14 @@ jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
   jest.fn().mockReturnValue(<>ProfilePicture</>)
 );
 
-jest.mock('../../../../utils/PermissionsUtils', () => ({
-  checkPermission: jest.fn().mockReturnValue(true),
+jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockReturnValue({
+    data: MOCK_DOMAIN,
+    permissions: {
+      ViewAll: true,
+      EditAll: true,
+    },
+  }),
 }));
 
 describe('DocumentationTab', () => {

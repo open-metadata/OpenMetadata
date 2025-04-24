@@ -9,12 +9,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 
 ## Properties
 
-- **`type`**: Custom pipeline service type. Refer to *#/definitions/customPipelineType*. Default: `CustomPipeline`.
+- **`type`**: Custom pipeline service type. Refer to *[#/definitions/customPipelineType](#definitions/customPipelineType)*. Default: `"CustomPipeline"`.
 - **`sourcePythonClass`** *(string)*: Source Python Class Name to instantiated by the ingestion workflow.
-- **`connectionOptions`**: Refer to *../connectionBasicType.json#/definitions/connectionOptions*.
+- **`connectionOptions`**: Refer to *[../connectionBasicType.json#/definitions/connectionOptions](#/connectionBasicType.json#/definitions/connectionOptions)*.
 ## Definitions
 
-- **`customPipelineType`** *(string)*: Custom pipeline service type. Must be one of: `['CustomPipeline']`. Default: `CustomPipeline`.
+- **`customPipelineType`** *(string)*: Custom pipeline service type. Must be one of: `["CustomPipeline"]`. Default: `"CustomPipeline"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

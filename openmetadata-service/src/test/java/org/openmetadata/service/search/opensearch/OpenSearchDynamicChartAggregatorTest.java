@@ -27,8 +27,8 @@ import os.org.opensearch.common.xcontent.ContextParser;
 import os.org.opensearch.common.xcontent.DeprecationHandler;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
 import os.org.opensearch.common.xcontent.NamedXContentRegistry;
-import os.org.opensearch.common.xcontent.XContentFactory;
 import os.org.opensearch.common.xcontent.XContentParser;
+import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.common.xcontent.json.JsonXContent;
 import os.org.opensearch.plugins.spi.NamedXContentProvider;
 import os.org.opensearch.search.aggregations.Aggregation;
@@ -60,29 +60,27 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
   private boolean compareRequest(String expectedJsonReq, Map<String, Object> chartDetails)
       throws IOException {
-    XContentParser parser =
-        XContentFactory.xContent(expectedJsonReq)
+
+    try (XContentParser parser =
+        XContentType.JSON
+            .xContent()
             .createParser(
-                OpenSearchClient.X_CONTENT_REGISTRY,
-                LoggingDeprecationHandler.INSTANCE,
-                expectedJsonReq);
-    SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+                OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, expectedJsonReq)) {
+      SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+      SearchRequest expectedSearchRequest =
+          new SearchRequest().source(searchSourceBuilder).indices("di-data-assets-*");
+      DataInsightCustomChart chart =
+          new DataInsightCustomChart().withName("random_chart_name").withChartDetails(chartDetails);
+      OpenSearchDynamicChartAggregatorInterface aggregator =
+          OpenSearchDynamicChartAggregatorFactory.getAggregator(chart);
 
-    // Create a SearchRequest and set the SearchSourceBuilder
-    SearchRequest expectedSearchRequest =
-        new SearchRequest().source(searchSourceBuilder).indices("di-data-assets-*");
-    expectedSearchRequest.source(searchSourceBuilder);
-    DataInsightCustomChart chart =
-        new DataInsightCustomChart().withName("random_chart_name").withChartDetails(chartDetails);
-    OpenSearchDynamicChartAggregatorInterface aggregator =
-        OpenSearchDynamicChartAggregatorFactory.getAggregator(chart);
-    List<FormulaHolder> formulas = new ArrayList<>();
-    Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
-        new HashMap<>();
-    SearchRequest searchRequest =
-        aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder);
-
-    return expectedSearchRequest.equals(searchRequest);
+      List<FormulaHolder> formulas = new ArrayList<>();
+      Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
+          new HashMap<>();
+      SearchRequest searchRequest =
+          aggregator.prepareSearchRequest(chart, START, END, formulas, metricFormulaHolder);
+      return expectedSearchRequest.equals(searchRequest);
+    }
   }
 
   @Test

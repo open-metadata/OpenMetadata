@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     PipelineStatus,
     Task,
 )
+from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
 
@@ -83,6 +84,7 @@ class OMetaPipelineMixin:
             sourceUrl=pipeline.sourceUrl,
             concurrency=pipeline.concurrency,
             pipelineLocation=pipeline.pipelineLocation,
+            state=pipeline.state,
             startDate=pipeline.startDate,
             service=pipeline.service.fullyQualifiedName,
             tasks=all_tasks,
@@ -110,6 +112,7 @@ class OMetaPipelineMixin:
             sourceUrl=pipeline.sourceUrl,
             concurrency=pipeline.concurrency,
             pipelineLocation=pipeline.pipelineLocation,
+            state=pipeline.state,
             startDate=pipeline.startDate,
             service=pipeline.service.fullyQualifiedName,
             tasks=[task for task in pipeline.tasks if task.name in task_ids],
@@ -118,3 +121,18 @@ class OMetaPipelineMixin:
         )
 
         return self.create_or_update(updated_pipeline)
+
+    def publish_pipeline_usage(
+        self, pipeline: Pipeline, pipeline_usage_request: UsageRequest
+    ) -> None:
+        """
+        POST usage details for a Pipeline
+
+        :param pipeline: Pipeline Entity to update
+        :param pipeline_usage_request: Usage data to add
+        """
+        resp = self.client.put(
+            f"/usage/pipeline/{pipeline.id.root}",
+            data=pipeline_usage_request.model_dump_json(),
+        )
+        logger.debug("Published pipeline usage %s", resp)

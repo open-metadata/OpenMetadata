@@ -110,8 +110,7 @@ const TagPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
+
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -210,9 +209,6 @@ const TagPage = () => {
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
-        setIsDescriptionEditable(false);
-      } else {
-        setIsDescriptionEditable(false);
       }
     }
   };
@@ -260,11 +256,12 @@ const TagPage = () => {
 
   const onNameSave = async (obj: Tag) => {
     if (tagItem) {
-      const { displayName } = obj;
+      const { name, displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
 
       updatedDetails = {
         ...tagItem,
+        name: name?.trim(),
         displayName: displayName?.trim(),
       };
 
@@ -436,20 +433,16 @@ const TagPage = () => {
               className: 'tag-resizable-panel-container',
               children: (
                 <div className="tag-overview-tab">
-                  <Row className="p-md">
+                  <Row>
                     <Col span={24}>
                       <DescriptionV1
                         removeBlur
                         description={tagItem?.description}
-                        entityFqn={tagItem?.fullyQualifiedName}
                         entityName={getEntityName(tagItem)}
                         entityType={EntityType.TAG}
                         hasEditAccess={editDescriptionPermission}
-                        isEdit={isDescriptionEditable}
                         showActions={!tagItem?.deleted}
                         showCommentsIcon={false}
-                        onCancel={() => setIsDescriptionEditable(false)}
-                        onDescriptionEdit={() => setIsDescriptionEditable(true)}
                         onDescriptionUpdate={onDescriptionUpdate}
                       />
                     </Col>
@@ -490,6 +483,7 @@ const TagPage = () => {
           <ResizablePanels
             className="tag-height-with-resizable-panel"
             firstPanel={{
+              wrapInCard: false,
               className: 'tag-resizable-panel-container',
               children: (
                 <AssetsTabs
@@ -517,6 +511,7 @@ const TagPage = () => {
             }}
             hideSecondPanel={!previewAsset}
             secondPanel={{
+              wrapInCard: false,
               children: previewAsset && (
                 <EntitySummaryPanel
                   entityDetails={previewAsset}
@@ -540,7 +535,6 @@ const TagPage = () => {
     assetCount,
     assetTabRef,
     handleAssetSave,
-    isDescriptionEditable,
     editTagsPermission,
     editDescriptionPermission,
   ]);
@@ -593,7 +587,7 @@ const TagPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={tagItem.name}>
-      <Row gutter={[0, 8]}>
+      <Row gutter={[0, 12]}>
         <Col span={24}>
           <Row
             className="data-classification"
@@ -672,7 +666,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tag-tabs"
+            className="tabs-new"
             items={tabItems}
             onChange={activeTabHandler}
           />

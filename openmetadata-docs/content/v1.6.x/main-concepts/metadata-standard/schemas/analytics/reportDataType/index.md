@@ -5,4 +5,13 @@ slug: /main-concepts/metadata-standard/schemas/analytics/reportdatatype
 
 # ReportDataType
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**WebAnalyticEntityViewReportData**](/main-concepts/metadata-standard/schemas/analytics/reportdatatype/webanalyticentityviewreportdata)
+- [**WebAnalyticUserActivityReportData**](/main-concepts/metadata-standard/schemas/analytics/reportdatatype/webanalyticuseractivityreportdata)
+- [**EntityReportData**](/main-concepts/metadata-standard/schemas/analytics/reportdatatype/entityreportdata)
+- [**AggregatedCostAnalysisReportData**](/main-concepts/metadata-standard/schemas/analytics/reportdatatype/aggregatedcostanalysisreportdata)
+- [**RawCostAnalysisReportData**](/main-concepts/metadata-standard/schemas/analytics/reportdatatype/rawcostanalysisreportdata)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

@@ -15,7 +15,7 @@ import React from 'react';
 import { SuggestionType } from '../../../generated/entity/feed/suggestion';
 import { mockEntityPermissions } from '../../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import {
-  aproveRejectAllSuggestions,
+  approveRejectAllSuggestions,
   getSuggestionsList,
   updateSuggestionStatus,
 } from '../../../rest/suggestionsAPI';
@@ -45,7 +45,7 @@ jest.mock('../../../hooks/useFqn', () => ({
 
 jest.mock('../../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve()),
-  aproveRejectAllSuggestions: jest.fn(),
+  approveRejectAllSuggestions: jest.fn(),
   updateSuggestionStatus: jest.fn(),
 }));
 
@@ -65,7 +65,10 @@ describe('SuggestionsProvider', () => {
       );
     });
 
-    expect(getSuggestionsList).toHaveBeenCalled();
+    expect(getSuggestionsList).toHaveBeenCalledWith({
+      entityFQN: 'mockFQN',
+      limit: 10,
+    });
   });
 
   it('calls approveRejectAllSuggestions when button is clicked', () => {
@@ -81,7 +84,7 @@ describe('SuggestionsProvider', () => {
     const acceptAllBtn = screen.getByText('Accept All');
     fireEvent.click(acceptAllBtn);
 
-    expect(aproveRejectAllSuggestions).toHaveBeenCalledWith(
+    expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
       '1',
       'mockFQN',
       SuggestionType.SuggestDescription,
@@ -102,7 +105,7 @@ describe('SuggestionsProvider', () => {
     const rejectAll = screen.getByText('Reject All');
     fireEvent.click(rejectAll);
 
-    expect(aproveRejectAllSuggestions).toHaveBeenCalledWith(
+    expect(approveRejectAllSuggestions).toHaveBeenCalledWith(
       '1',
       'mockFQN',
       SuggestionType.SuggestDescription,
@@ -153,21 +156,11 @@ function TestComponent() {
   return (
     <>
       <button
-        onClick={() =>
-          acceptRejectAllSuggestions(
-            SuggestionType.SuggestDescription,
-            SuggestionAction.Accept
-          )
-        }>
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Accept)}>
         Accept All
       </button>
       <button
-        onClick={() =>
-          acceptRejectAllSuggestions(
-            SuggestionType.SuggestDescription,
-            SuggestionAction.Reject
-          )
-        }>
+        onClick={() => acceptRejectAllSuggestions(SuggestionAction.Reject)}>
         Reject All
       </button>
       <button

@@ -57,9 +57,7 @@ import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_PERMISSION_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertDeleted;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -754,17 +752,20 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsBot(true)
         .withIsAdmin(false);
 
-    change = getChangeDescription(user, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "roles", listOf(role2));
-    fieldDeleted(change, "teams", listOf(ORG_TEAM.getEntityReference()));
-    fieldAdded(change, "teams", teams1);
-    fieldAdded(change, "timezone", timezone1);
-    fieldAdded(change, "displayName", "displayName1");
-    fieldAdded(change, "profile", profile1);
+    fieldAdded(change, "teams", listOf(team3));
+
+    fieldDeleted(change, "roles", listOf(role1));
+    fieldDeleted(change, "teams", listOf(team2));
+    fieldDeleted(change, "personas", List.of(DATA_SCIENTIST.getEntityReference()));
+
+    fieldUpdated(change, "displayName", "displayName", "displayName1");
+    fieldUpdated(change, "profile", profile, profile1);
+    fieldUpdated(change, "timezone", timezone, timezone1);
     fieldUpdated(change, "isBot", false, true);
-    fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
-    fieldAdded(change, "personas", List.of(DATA_ENGINEER.getEntityReference()));
-    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
     // Remove the attributes - Consolidating changes from this patch with previous results in no
@@ -780,11 +781,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withPersonas(null)
         .withIsBot(null)
         .withIsAdmin(false);
-
-    // Note non-empty display field is not deleted. When teams are deleted, Organization is added
-    // back as default team.
-    change = getChangeDescription(user, REVERT);
-    patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, REVERT, change);
   }
 
   @Test
@@ -1319,9 +1315,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // removed
     json = JsonUtils.pojoToJson(user);
     user.withProfile(null);
-    change = getChangeDescription(user, CHANGE_CONSOLIDATED);
-    fieldDeleted(change, "profile", PROFILE);
-    patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(user, MINOR_UPDATE);
+    fieldDeleted(change, "profile", profile1);
+    patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Test Service Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnection {
@@ -24,6 +22,10 @@ export interface TestServiceConnection {
      * Type of the connection to test such as Snowflake, MySQL, Looker, etc.
      */
     connectionType?: string;
+    /**
+     * Optional value of the ingestion runner name responsible for running the test
+     */
+    ingestionRunner?: string;
     /**
      * Secrets Manager Provider to use for fetching secrets.
      */
@@ -129,6 +131,8 @@ export interface TestServiceConnectionConnection {
  *
  * MongoDB Connection Config
  *
+ * Cassandra Connection Config
+ *
  * Couchbase Connection Config
  *
  * Greenplum Database Connection Config
@@ -148,6 +152,8 @@ export interface TestServiceConnectionConnection {
  * Synapse Database Connection Config
  *
  * Exasol Database Connection Config
+ *
+ * Cockroach Database Connection Config
  *
  * Looker Connection Config
  *
@@ -192,6 +198,8 @@ export interface TestServiceConnectionConnection {
  * OpenMetadata yet.
  *
  * Airflow Metadata Database Connection Config
+ *
+ * Wherescape Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
  *
@@ -260,12 +268,20 @@ export interface TestServiceConnectionConnection {
  *
  * ElasticSearch Connection.
  *
- * OpenSearch Connection.
+ * OpenSearch Connection Config
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  */
 export interface ConfigClass {
+    /**
+     * Regex to only fetch api collections with names matching the pattern.
+     */
+    apiCollectionFilterPattern?: FilterPattern;
+    /**
+     * Documentation URL for the schema.
+     */
+    docURL?: string;
     /**
      * Open API Schema URL.
      */
@@ -307,6 +323,8 @@ export interface ConfigClass {
      *
      * ElasticSearch Type
      *
+     * OpenSearch Type
+     *
      * Custom search service type
      */
     type?: RESTType;
@@ -316,11 +334,19 @@ export interface ConfigClass {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Cost per TiB for BigQuery usage
+     */
+    costPerTB?: number;
+    /**
      * GCP Credentials
      *
      * Azure Credentials
      */
     credentials?: GCPCredentials;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
     /**
      * BigQuery APIs URL.
      *
@@ -365,6 +391,9 @@ export interface ConfigClass {
      * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
      * host when using the `mongodb+srv` scheme.
      *
+     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
+     * host when using the `cassandra+srv` scheme.
+     *
      * Host and port of the Doris service.
      *
      * Host and port of the Teradata service.
@@ -372,6 +401,8 @@ export interface ConfigClass {
      * Host and Port of the SAP ERP instance.
      *
      * Host and port of the Azure Synapse service.
+     *
+     * Host and port of the Cockrooach service.
      *
      * URL to the Looker instance.
      *
@@ -425,18 +456,21 @@ export interface ConfigClass {
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      *
      * Mongo connection scheme options.
      *
      * Couchbase driver scheme options.
-     *
-     * Http/Https connection scheme
      */
-    scheme?:                string;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
-    supportsDBTExtraction?: boolean;
+    scheme?:                                ConfigScheme;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
@@ -448,6 +482,10 @@ export interface ConfigClass {
      * Supports Usage Extraction.
      */
     supportsUsageExtraction?: boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Taxonomy location used to fetch policy tags
      */
@@ -499,6 +537,9 @@ export interface ConfigClass {
      *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
      */
     database?: string;
     /**
@@ -587,8 +628,6 @@ export interface ConfigClass {
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
-     *
-     * OpenSearch Password for Login
      */
     password?: string;
     /**
@@ -653,6 +692,9 @@ export interface ConfigClass {
      * Username to connect to MongoDB. This user should have privileges to read all the metadata
      * in MongoDB.
      *
+     * Username to connect to Cassandra. This user should have privileges to read all the
+     * metadata in Cassandra.
+     *
      * Username to connect to Couchbase. This user should have privileges to read all the
      * metadata in Couchbase.
      *
@@ -673,6 +715,9 @@ export interface ConfigClass {
      * Username to connect to Exasol. This user should have privileges to read all the metadata
      * in Exasol.
      *
+     * Username to connect to Cockroach. This user should have privileges to read all the
+     * metadata in Cockroach.
+     *
      * Username to connect to Metabase. This user should have privileges to read all the
      * metadata in Metabase.
      *
@@ -689,8 +734,6 @@ export interface ConfigClass {
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
      * metadata in Atlas.
-     *
-     * OpenSearch Username for Login
      */
     username?: string;
     /**
@@ -741,7 +784,19 @@ export interface ConfigClass {
     /**
      * Databricks compute resources URL.
      */
-    httpPath?:                      string;
+    httpPath?: string;
+    /**
+     * Table name to fetch the query history.
+     */
+    queryHistoryTable?: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?:               string;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -850,10 +905,22 @@ export interface ConfigClass {
      */
     account?: string;
     /**
+     * Full name of the schema where the account usage data is stored.
+     */
+    accountUsageSchema?: string;
+    /**
      * Optional configuration for ingestion to keep the client session active in case the
      * ingestion process runs for longer durations.
      */
     clientSessionKeepAlive?: boolean;
+    /**
+     * Cost of credit for the Snowflake account.
+     */
+    creditCost?: number;
+    /**
+     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     */
+    includeStreams?: boolean;
     /**
      * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
      * TRANSIENT tables.
@@ -943,7 +1010,7 @@ export interface ConfigClass {
      *
      * Choose between mysql and postgres connection for alation database
      */
-    connection?: ConnectionObject;
+    connection?: ConfigConnection;
     /**
      * Couchbase connection Bucket options.
      */
@@ -1029,6 +1096,10 @@ export interface ConfigClass {
      */
     tls?: SSLTLSSettings;
     /**
+     * Regex exclude or include charts that matches the pattern.
+     */
+    chartFilterPattern?: FilterPattern;
+    /**
      * User's Client Secret.
      *
      * clientSecret for PowerBI.
@@ -1037,10 +1108,22 @@ export interface ConfigClass {
      */
     clientSecret?: string;
     /**
+     * Regex to exclude or include dashboards that matches the pattern.
+     */
+    dashboardFilterPattern?: FilterPattern;
+    /**
+     * Regex exclude or include data models that matches the pattern.
+     */
+    dataModelFilterPattern?: FilterPattern;
+    /**
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
     gitCredentials?: GitHubCredentials;
+    /**
+     * Regex to exclude or include projects that matches the pattern.
+     */
+    projectFilterPattern?: FilterPattern;
     /**
      * Authority URI for the PowerBI service.
      */
@@ -1077,6 +1160,8 @@ export interface ConfigClass {
      * Tableau API version.
      *
      * Sigma API version.
+     *
+     * Airbyte API version.
      *
      * OpenMetadata server API version to use.
      */
@@ -1161,6 +1246,10 @@ export interface ConfigClass {
      */
     projectName?: string;
     /**
+     * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
+     */
+    spaceTypes?: SpaceType[];
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -1178,6 +1267,11 @@ export interface ConfigClass {
      * Confluent Redpanda Consumer Config
      */
     consumerConfig?: { [key: string]: any };
+    /**
+     * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+     * connection.
+     */
+    consumerConfigSSL?: ConsumerConfigSSLClass;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -1201,7 +1295,7 @@ export interface ConfigClass {
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
      */
-    schemaRegistrySSL?: SchemaRegistrySSLClass;
+    schemaRegistrySSL?: ConsumerConfigSSLClass;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -1220,9 +1314,21 @@ export interface ConfigClass {
      */
     securityProtocol?: KafkaSecurityProtocol;
     /**
+     * Regex to only fetch topics that matches the pattern.
+     */
+    topicFilterPattern?: FilterPattern;
+    /**
      * Pipeline Service Number Of Status
      */
     numberOfStatus?: number;
+    /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: FilterPattern;
+    /**
+     * Underlying database connection
+     */
+    databaseConnection?: DatabaseConnectionClass;
     /**
      * Fivetran API Secret.
      */
@@ -1301,6 +1407,10 @@ export interface ConfigClass {
      */
     jobIds?: string[];
     /**
+     * Number of runs to fetch from DBT cloud
+     */
+    numberOfRuns?: number;
+    /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
     projectIds?: string[];
@@ -1320,6 +1430,10 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Regex to only fetch MlModels with names matching the pattern.
+     */
+    mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
      * mysql+pymysql://mlflow:password@localhost:3307/experiments
@@ -1508,25 +1622,17 @@ export interface ConfigClass {
      */
     bucketNames?: string[];
     /**
+     * Regex to only fetch containers that matches the pattern.
+     */
+    containerFilterPattern?: FilterPattern;
+    /**
      * Connection Timeout in Seconds
      */
     connectionTimeoutSecs?: number;
     /**
-     * Keep Alive Timeout in Seconds
+     * Regex to only fetch search indexes that matches the pattern.
      */
-    keepAliveTimeoutSecs?: number;
-    /**
-     * Socket Timeout in Seconds
-     */
-    socketTimeoutSecs?: number;
-    /**
-     * Truststore Password
-     */
-    truststorePassword?: string;
-    /**
-     * Truststore Path
-     */
-    truststorePath?: string;
+    searchIndexFilterPattern?: FilterPattern;
 }
 
 /**
@@ -1543,6 +1649,46 @@ export interface UsernamePasswordAuthentication {
      * KafkaConnect user to authenticate to the API.
      */
     username?: string;
+}
+
+/**
+ * Regex to only fetch api collections with names matching the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude databases that matches the pattern.
+ *
+ * Regex to only include/exclude schemas that matches the pattern.
+ *
+ * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex exclude or include charts that matches the pattern.
+ *
+ * Regex to exclude or include dashboards that matches the pattern.
+ *
+ * Regex exclude or include data models that matches the pattern.
+ *
+ * Regex to exclude or include projects that matches the pattern.
+ *
+ * Regex to only fetch topics that matches the pattern.
+ *
+ * Regex exclude pipelines.
+ *
+ * Regex to only fetch MlModels with names matching the pattern.
+ *
+ * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to only fetch search indexes that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
 }
 
 /**
@@ -1599,6 +1745,8 @@ export enum AuthProvider {
  *
  * Azure Database Connection Config
  *
+ * Configuration for connecting to DataStax Astra DB in the cloud.
+ *
  * Types of methods used to authenticate to the tableau instance
  *
  * Basic Auth Credentials
@@ -1612,6 +1760,8 @@ export enum AuthProvider {
  * Basic Auth Configuration for ElasticSearch
  *
  * SSL Certificates By Path
+ *
+ * AWS credentials configs.
  */
 export interface AuthConfigurationType {
     /**
@@ -1628,6 +1778,10 @@ export interface AuthConfigurationType {
      * JWT to connect to source.
      */
     jwt?: string;
+    /**
+     * Configuration for connecting to DataStax Astra DB in the cloud.
+     */
+    cloudConfig?: DataStaxAstraDBConfiguration;
     /**
      * Username to access the service.
      *
@@ -1658,6 +1812,46 @@ export interface AuthConfigurationType {
      * Private Key Path
      */
     privateKeyPath?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
+     * Role
+     */
+    assumeRoleArn?: string;
+    /**
+     * An identifier for the assumed role session. Use the role session name to uniquely
+     * identify a session when the same role is assumed by different principals or for different
+     * reasons. Required Field in case of Assume Role
+     */
+    assumeRoleSessionName?: string;
+    /**
+     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
+     * Role
+     */
+    assumeRoleSourceIdentity?: string;
+    /**
+     * AWS Access key ID.
+     */
+    awsAccessKeyId?: string;
+    /**
+     * AWS Region
+     */
+    awsRegion?: string;
+    /**
+     * AWS Secret Access Key.
+     */
+    awsSecretAccessKey?: string;
+    /**
+     * AWS Session Token.
+     */
+    awsSessionToken?: string;
+    /**
+     * EndPoint URL for the AWS
+     */
+    endPointURL?: string;
+    /**
+     * The name of a profile to use with the boto session.
+     */
+    profileName?: string;
 }
 
 /**
@@ -1738,6 +1932,30 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Configuration for connecting to DataStax Astra DB in the cloud.
+ */
+export interface DataStaxAstraDBConfiguration {
+    /**
+     * Timeout in seconds for establishing new connections to Cassandra.
+     */
+    connectTimeout?: number;
+    /**
+     * Timeout in seconds for individual Cassandra requests.
+     */
+    requestTimeout?: number;
+    /**
+     * File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax
+     * Astra DB.
+     */
+    secureConnectBundle?: string;
+    /**
+     * The Astra DB application token used for authentication.
+     */
+    token?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1987,7 +2205,7 @@ export interface SSLCertificatesByPath {
  * Qlik Authentication Certificate File Path
  */
 export interface QlikCertificatesBy {
-    sslConfig?: SchemaRegistrySSLClass;
+    sslConfig?: ConsumerConfigSSLClass;
     /**
      * Client Certificate
      */
@@ -2008,6 +2226,9 @@ export interface QlikCertificatesBy {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -2015,7 +2236,7 @@ export interface QlikCertificatesBy {
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface SchemaRegistrySSLClass {
+export interface ConsumerConfigSSLClass {
     /**
      * The CA certificate used for SSL validation.
      */
@@ -2239,6 +2460,8 @@ export interface SecurityConfigClass {
  * Pass the raw credential values provided by GCP
  *
  * Pass the path of file containing the GCP credentials info
+ *
+ * Use the application default credentials
  */
 export interface GCPCredentialsConfiguration {
     /**
@@ -2281,6 +2504,8 @@ export interface GCPCredentialsConfiguration {
     tokenUri?: string;
     /**
      * Google Cloud Platform account type.
+     *
+     * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
     /**
@@ -2355,11 +2580,11 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Matillion Auth Configuration
  *
- * Matillion ETL Auth Config
+ * Matillion ETL Auth Config.
  *
  * Choose between mysql and postgres connection for alation database
  */
-export interface ConnectionObject {
+export interface ConfigConnection {
     /**
      * Database of the data source.
      *
@@ -2444,11 +2669,19 @@ export interface ConnectionObject {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
     /**
      * SQLAlchemy driver scheme options.
      */
@@ -2463,6 +2696,10 @@ export interface ConnectionObject {
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
     /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
      * Service Type
      */
     type?: ConnectionType;
@@ -2472,11 +2709,14 @@ export interface ConnectionObject {
      */
     databaseName?: string;
     /**
+     * Regex exclude pipelines.
+     */
+    pipelineFilterPattern?: FilterPattern;
+    /**
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?:                  string;
     supportsViewLineageExtraction?: boolean;
-    [property: string]: any;
 }
 
 /**
@@ -2602,6 +2842,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
+ *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
  *
@@ -2714,6 +2957,90 @@ export interface GCPCredentials {
 }
 
 /**
+ * Underlying database connection
+ *
+ * Mssql Database Connection Config
+ */
+export interface DatabaseConnectionClass {
+    connectionArguments?: { [key: string]: any };
+    connectionOptions?:   { [key: string]: string };
+    /**
+     * Database of the data source. This is optional parameter, if you would like to restrict
+     * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
+     * attempts to scan all the databases.
+     */
+    database: string;
+    /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * ODBC driver version in case of pyodbc connection.
+     */
+    driver?: string;
+    /**
+     * Host and port of the MSSQL service.
+     */
+    hostPort?: string;
+    /**
+     * Ingest data from all databases in Mssql. You can use databaseFilterPattern on top of this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
+     * Password to connect to MSSQL.
+     */
+    password?:                string;
+    sampleDataStorageConfig?: SampleDataStorageConfig;
+    /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
+     * SQLAlchemy driver scheme options.
+     */
+    scheme?:                     MssqlScheme;
+    supportsDatabase?:           boolean;
+    supportsDataDiff?:           boolean;
+    supportsDBTExtraction?:      boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
+    supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
+    /**
+     * Service Type
+     */
+    type?: MssqlType;
+    /**
+     * Username to connect to MSSQL. This user should have privileges to read all the metadata
+     * in MsSQL.
+     */
+    username?: string;
+}
+
+/**
+ * SQLAlchemy driver scheme options.
+ */
+export enum MssqlScheme {
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+}
+
+/**
+ * Service Type
+ *
+ * Service type.
+ */
+export enum MssqlType {
+    Mssql = "Mssql",
+}
+
+/**
  * Configuration for Sink Component in the OpenMetadata Ingestion Framework.
  */
 export interface ElasticsSearch {
@@ -2813,6 +3140,10 @@ export interface HiveMetastoreConnectionDetails {
      */
     database?: string;
     /**
+     * Regex to only include/exclude databases that matches the pattern.
+     */
+    databaseFilterPattern?: FilterPattern;
+    /**
      * Host and port of the source service.
      *
      * Host and port of the MySQL service.
@@ -2825,13 +3156,17 @@ export interface HiveMetastoreConnectionDetails {
     ingestAllDatabases?:      boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
+     * Regex to only include/exclude schemas that matches the pattern.
+     */
+    schemaFilterPattern?: FilterPattern;
+    /**
      * SQLAlchemy driver scheme options.
      */
     scheme?: HiveMetastoreConnectionDetailsScheme;
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  SchemaRegistrySSLClass;
+    sslConfig?:                  ConsumerConfigSSLClass;
     sslMode?:                    SSLMode;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
@@ -2841,6 +3176,10 @@ export interface HiveMetastoreConnectionDetails {
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
     supportsUsageExtraction?:    boolean;
+    /**
+     * Regex to only include/exclude tables that matches the pattern.
+     */
+    tableFilterPattern?: FilterPattern;
     /**
      * Service Type
      */
@@ -2888,9 +3227,9 @@ export enum HiveMetastoreConnectionDetailsType {
 /**
  * We support username/password or client certificate authentication
  *
- * username/password auth
+ * Configuration for connecting to Nifi Basic Auth.
  *
- * client certificate auth
+ * Configuration for connecting to Nifi Client Certificate Auth.
  */
 export interface NifiCredentialsConfiguration {
     /**
@@ -3039,6 +3378,53 @@ export enum SaslMechanismType {
 }
 
 /**
+ * SQLAlchemy driver scheme options.
+ *
+ * Mongo connection scheme options.
+ *
+ * Couchbase driver scheme options.
+ */
+export enum ConfigScheme {
+    AwsathenaREST = "awsathena+rest",
+    Bigquery = "bigquery",
+    ClickhouseHTTP = "clickhouse+http",
+    ClickhouseNative = "clickhouse+native",
+    CockroachdbPsycopg2 = "cockroachdb+psycopg2",
+    Couchbase = "couchbase",
+    DatabricksConnector = "databricks+connector",
+    Db2IBMDB = "db2+ibm_db",
+    Doris = "doris",
+    Druid = "druid",
+    ExaWebsocket = "exa+websocket",
+    Hana = "hana",
+    Hive = "hive",
+    HiveHTTP = "hive+http",
+    HiveHTTPS = "hive+https",
+    Ibmi = "ibmi",
+    Impala = "impala",
+    Impala4 = "impala4",
+    Mongodb = "mongodb",
+    MongodbSrv = "mongodb+srv",
+    MssqlPymssql = "mssql+pymssql",
+    MssqlPyodbc = "mssql+pyodbc",
+    MssqlPytds = "mssql+pytds",
+    MysqlPymysql = "mysql+pymysql",
+    OracleCxOracle = "oracle+cx_oracle",
+    PgspiderPsycopg2 = "pgspider+psycopg2",
+    Pinot = "pinot",
+    PinotHTTP = "pinot+http",
+    PinotHTTPS = "pinot+https",
+    PostgresqlPsycopg2 = "postgresql+psycopg2",
+    Presto = "presto",
+    RedshiftPsycopg2 = "redshift+psycopg2",
+    Snowflake = "snowflake",
+    SqlitePysqlite = "sqlite+pysqlite",
+    Teradatasql = "teradatasql",
+    Trino = "trino",
+    VerticaVerticaPython = "vertica+vertica_python",
+}
+
+/**
  * Recreate Indexes with updated Language
  *
  * This schema defines the language options available for search index mappings.
@@ -3105,10 +3491,19 @@ export enum KafkaSecurityProtocol {
     SaslSSL = "SASL_SSL",
 }
 
+export enum SpaceType {
+    Managed = "Managed",
+    Personal = "Personal",
+    Shared = "Shared",
+}
+
 /**
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
+ * connection.
  *
  * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
  * connection.
@@ -3268,6 +3663,8 @@ export enum TransactionMode {
  *
  * ElasticSearch service type
  *
+ * OpenSearch Type
+ *
  * OpenSearch service type
  *
  * Custom search service type
@@ -3284,7 +3681,9 @@ export enum RESTType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
@@ -3372,6 +3771,7 @@ export enum RESTType {
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
     Vertica = "Vertica",
+    Wherescape = "Wherescape",
 }
 
 /**

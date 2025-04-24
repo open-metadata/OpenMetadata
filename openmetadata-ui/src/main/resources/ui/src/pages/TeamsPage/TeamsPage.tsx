@@ -65,8 +65,6 @@ const TeamsPage = () => {
 
   const [showDeletedTeam, setShowDeletedTeam] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
-  const [isDescriptionEditable, setIsDescriptionEditable] =
-    useState<boolean>(false);
 
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -85,10 +83,6 @@ const TeamsPage = () => {
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
     [entityPermissions]
   );
-
-  const descriptionHandler = (value: boolean) => {
-    setIsDescriptionEditable(value);
-  };
 
   const handleAddTeam = (value: boolean) => {
     setIsAddingTeam(value);
@@ -208,7 +202,7 @@ const TeamsPage = () => {
         );
         const total = res?.data?.hits?.total.value ?? 0;
         setAssets(total);
-      } catch (error) {
+      } catch {
         // Error
       }
     }
@@ -288,8 +282,8 @@ const TeamsPage = () => {
 
       const res = await createTeam(teamData);
       if (res) {
-        fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
+        await fetchTeamBasicDetails(selectedTeam.name, true);
         loadAdvancedDetails();
       }
     } catch (error) {
@@ -432,11 +426,7 @@ const TeamsPage = () => {
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        descriptionHandler(false);
       }
-    } else {
-      descriptionHandler(false);
     }
   };
 
@@ -503,11 +493,21 @@ const TeamsPage = () => {
   }
 
   if (!hasViewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   if (isEmpty(selectedTeam)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
   }
 
   return (
@@ -517,13 +517,11 @@ const TeamsPage = () => {
         assetsCount={assets}
         childTeams={childTeams}
         currentTeam={selectedTeam}
-        descriptionHandler={descriptionHandler}
         entityPermissions={entityPermissions}
         handleAddTeam={handleAddTeam}
         handleAddUser={addUsersToTeam}
         handleJoinTeamClick={handleJoinTeamClick}
         handleLeaveTeamClick={handleLeaveTeamClick}
-        isDescriptionEditable={isDescriptionEditable}
         isFetchingAdvancedDetails={isFetchingAdvancedDetails}
         isFetchingAllTeamAdvancedDetails={isFetchAllTeamAdvancedDetails}
         isTeamMemberLoading={isDataLoading}

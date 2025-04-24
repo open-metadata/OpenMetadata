@@ -5,4 +5,10 @@ slug: /main-concepts/metadata-standard/schemas/security/ssl
 
 # Ssl
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**ValidateSSLClientConfig**](/main-concepts/metadata-standard/schemas/security/ssl/validatesslclientconfig)
+- [**VerifySSLConfig**](/main-concepts/metadata-standard/schemas/security/ssl/verifysslconfig)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

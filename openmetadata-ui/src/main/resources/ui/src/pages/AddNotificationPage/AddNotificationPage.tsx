@@ -13,6 +13,7 @@
  */
 import {
   Button,
+  Card,
   Col,
   Divider,
   Form,
@@ -47,6 +48,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -60,6 +62,7 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -71,10 +74,10 @@ import {
 } from '../AddObservabilityPage/AddObservabilityPage.interface';
 
 const AddNotificationPage = () => {
-  const { t } = useTranslation();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
+  const { t } = useTranslation();
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
@@ -223,9 +226,10 @@ const AddNotificationPage = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        allowScroll: true,
         children: (
-          <div className="steps-form-container">
-            <Row className="page-container" gutter={[16, 16]}>
+          <Card className="steps-form-container">
+            <Row gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
               </Col>
@@ -269,12 +273,10 @@ const AddNotificationPage = () => {
                           label={t('label.description')}
                           labelCol={{ span: 24 }}
                           name="description"
-                          trigger="onTextChange"
-                          valuePropName="initialValue">
+                          trigger="onTextChange">
                           <RichTextEditor
                             data-testid="description"
-                            height="200px"
-                            initialValue=""
+                            initialValue={alert?.description}
                           />
                         </Form.Item>
                       </Col>
@@ -344,12 +346,16 @@ const AddNotificationPage = () => {
                 </Form>
               </Col>
             </Row>
-          </div>
+          </Card>
         ),
         minWidth: 700,
         flex: 0.7,
+
+        wrapInCard: false,
       }}
-      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      pageTitle={t('label.add-entity', {
+        entity: t('label.notification-alert'),
+      })}
       secondPanel={{
         children: <></>,
         minWidth: 0,
@@ -359,4 +365,8 @@ const AddNotificationPage = () => {
   );
 };
 
-export default AddNotificationPage;
+export default withPageLayout(
+  i18n.t('label.add-entity', {
+    entity: i18n.t('label.notification-alert'),
+  })
+)(AddNotificationPage);

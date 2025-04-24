@@ -9,21 +9,24 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/NifiType*. Default: `Nifi`.
-- **`hostPort`** *(string)*: Pipeline Service Management/UI URI.
+- **`type`**: Service Type. Refer to *[#/definitions/NifiType](#definitions/NifiType)*. Default: `"Nifi"`.
+- **`hostPort`** *(string, format: uri)*: Pipeline Service Management/UI URI.
 - **`nifiConfig`**: We support username/password or client certificate authentication.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+  - **One of**
+    - : Refer to *[#/definitions/basicAuthentication](#definitions/basicAuthentication)*.
+    - : Refer to *[#/definitions/clientCertificateAuthentication](#definitions/clientCertificateAuthentication)*.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`NifiType`** *(string)*: Service type. Must be one of: `['Nifi']`. Default: `Nifi`.
+- **`NifiType`** *(string)*: Service type. Must be one of: `["Nifi"]`. Default: `"Nifi"`.
 - **`basicAuthentication`** *(object)*: username/password auth. Cannot contain additional properties.
   - **`username`** *(string)*: Nifi user to authenticate to the API.
-  - **`password`** *(string)*: Nifi password to authenticate to the API.
-  - **`verifySSL`** *(boolean)*: Boolean marking if we need to verify the SSL certs for Nifi. False by default. Default: `False`.
+  - **`password`** *(string, format: password)*: Nifi password to authenticate to the API.
+  - **`verifySSL`** *(boolean)*: Boolean marking if we need to verify the SSL certs for Nifi. False by default. Default: `false`.
 - **`clientCertificateAuthentication`** *(object)*: client certificate auth. Cannot contain additional properties.
   - **`certificateAuthorityPath`** *(string)*: Path to the root CA certificate.
   - **`clientCertificatePath`** *(string)*: Path to the client certificate.
   - **`clientkeyPath`** *(string)*: Path to the client key.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

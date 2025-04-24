@@ -7,8 +7,8 @@ slug: /connectors/pipeline/glue-pipeline/yaml
 name="Glue"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Pipelines", "Pipeline Status"]
-unavailableFeatures=["Owners", "Tags", "Lineage"]
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+unavailableFeatures=["Owners", "Tags"]
 / %}
 
 In this section, we provide guides and references to use the Glue connector.
@@ -63,42 +63,7 @@ This is a sample config for Glue:
 
 #### Source Configuration - Service Connection
 
-{% codeInfo srNumber=1 %}
-
-
-**awsAccessKeyId**: Enter your secure access key ID for your Glue connection. The specified key ID should be
-  authorized to read all databases you want to include in the metadata ingestion workflow.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=2 %}
-
-**awsSecretAccessKey**: Enter the Secret Access Key (the passcode key pair to the key ID from above).
-
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=3 %}
-
-**awsRegion**: Enter the location of the amazon cluster that your data and account are associated with.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=4 %}
-
-**awsSessionToken**: The AWS session token is an optional parameter. If you want, enter the details of your temporary
-  session token.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=5 %}
-
-**endPointURL**: Your Glue connector will automatically determine the AWS Glue endpoint URL based on the region. You
-  may override this behavior by entering a value to the endpoint URL.
-
-
-{% /codeInfo %}
-
+{% partial file="/v1.6/connectors/yaml/common/aws-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
 
@@ -119,21 +84,8 @@ source:
       type: GluePipeline
       awsConfig:
 ```
-```yaml {% srNumber=1 %}
-        awsAccessKeyId: KEY
-```
-```yaml {% srNumber=2 %}
-        awsSecretAccessKey: SECRET
-```
-```yaml {% srNumber=3 %}
-        awsRegion: us-east-2
-```
-```yaml {% srNumber=4 %}
-        # awsSessionToken: TOKEN
-```
-```yaml {% srNumber=5 %}
-        # endPointURL: https://glue.us-east-2.amazonaws.com/
-```
+
+{% partial file="/v1.6/connectors/yaml/common/aws-config.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
 

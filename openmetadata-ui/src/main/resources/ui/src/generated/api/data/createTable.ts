@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema corresponding to a table that belongs to a database
  */
 export interface CreateTable {
@@ -219,6 +217,8 @@ export enum DataType {
     Lowcardinality = "LOWCARDINALITY",
     Macaddr = "MACADDR",
     Map = "MAP",
+    MeasureHidden = "MEASURE HIDDEN",
+    MeasureVisible = "MEASURE VISIBLE",
     Mediumblob = "MEDIUMBLOB",
     Mediumtext = "MEDIUMTEXT",
     Money = "MONEY",
@@ -735,6 +735,7 @@ export interface TableConstraint {
 }
 
 export enum ConstraintType {
+    ClusterKey = "CLUSTER_KEY",
     DistKey = "DIST_KEY",
     ForeignKey = "FOREIGN_KEY",
     PrimaryKey = "PRIMARY_KEY",
@@ -823,6 +824,10 @@ export interface TableProfilerConfig {
      */
     profileSample?:     number;
     profileSampleType?: ProfileSampleType;
+    /**
+     * Whether to randomize the sample data or not.
+     */
+    randomizedSample?: boolean;
     /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
@@ -923,6 +928,7 @@ export enum TableType {
     Partitioned = "Partitioned",
     Regular = "Regular",
     SecureView = "SecureView",
+    Stream = "Stream",
     Transient = "Transient",
     View = "View",
 }

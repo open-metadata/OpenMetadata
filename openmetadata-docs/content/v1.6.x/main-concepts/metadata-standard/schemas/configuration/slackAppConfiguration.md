@@ -11,8 +11,7 @@ slug: /main-concepts/metadata-standard/schemas/configuration/slackappconfigurati
 
 - **`clientId`** *(string)*: Client Id of the Application.
 - **`clientSecret`** *(string)*: Client Secret of the Application.
-- **`signingCertificate`** *(string)*: Signing Certificate of the Application.
-- **`scopes`** *(string)*: Scopes to Request in OAuth.
+- **`signingSecret`** *(string)*: Signing Secret of the Application. Confirm that each request comes from Slack by verifying its unique signature.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

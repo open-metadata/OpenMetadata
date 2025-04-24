@@ -28,6 +28,19 @@ jest.mock(
   })
 );
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock('../../components/ExploreV1/ExploreV1.component', () => {
   return jest.fn().mockReturnValue(<p>ExploreV1</p>);
 });

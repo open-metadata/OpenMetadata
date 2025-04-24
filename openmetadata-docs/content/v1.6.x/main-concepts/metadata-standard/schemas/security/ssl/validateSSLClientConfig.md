@@ -9,7 +9,9 @@ slug: /main-concepts/metadata-standard/schemas/security/ssl/validatesslclientcon
 
 ## Properties
 
-- **`caCertificate`** *(string)*: CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.
+- **`caCertificate`** *(string, format: password)*: The CA certificate used for SSL validation.
+- **`sslCertificate`** *(string, format: password)*: The SSL certificate used for client authentication.
+- **`sslKey`** *(string, format: password)*: The private key associated with the SSL certificate.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

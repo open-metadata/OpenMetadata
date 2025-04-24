@@ -65,7 +65,9 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
-    TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getExecutableEntityReference(), doc);
+    if (testSuite.getBasicEntityReference() != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getBasicEntityReference(), doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

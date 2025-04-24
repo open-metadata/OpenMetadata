@@ -35,7 +35,7 @@ public final class CatalogExceptionMessage {
   public static final String PASSWORD_INVALID_FORMAT =
       "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.";
   public static final String MAX_FAILED_LOGIN_ATTEMPT =
-      "Failed Login Attempts Exceeded. Please try after some time.";
+      "Failed Login Attempts Exceeded. Use Forgot Password or retry after some time.";
 
   public static final String INCORRECT_OLD_PASSWORD = "INCORRECT_OLD_PASSWORD";
 
@@ -391,5 +391,10 @@ public final class CatalogExceptionMessage {
             .map(Object::toString)
             .collect(Collectors.joining(", "));
     return "query param " + key + " must be one of [" + enumValues + "]";
+  }
+
+  public static String duplicateGlossaryTerm(String termName, String glossaryName) {
+    return String.format(
+        "A term with the name '%s' already exists in '%s' glossary.", termName, glossaryName);
   }
 }

@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
+import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
@@ -22,10 +23,12 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
+  descriptionBox,
   getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
+  uuid,
 } from './common';
 import { sidebarClick } from './sidebar';
 
@@ -36,25 +39,42 @@ export const TAG_INVALID_NAMES = {
   WITH_SPECIAL_CHARS: '!@#$%^&*()',
 };
 
+export const NEW_TAG = {
+  name: `PlaywrightTag-${uuid()}`,
+  displayName: `PlaywrightTag-${uuid()}`,
+  renamedName: `PlaywrightTag-${uuid()}`,
+  description: 'This is the PlaywrightTag',
+  color: '#FF5733',
+  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
+};
+
 export const visitClassificationPage = async (
   page: Page,
-  classificationName: string
+  classificationName: string,
+  classificationDisplayName: string
 ) => {
   await redirectToHomePage(page);
   const classificationResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
-  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
+  const fetchTags = page.waitForResponse(
+    `/api/v1/tags?*parent=${classificationName}**`
+  );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await page
-    .locator(`[data-testid="side-panel-classification"]`)
-    .filter({ hasText: classificationName })
+    .getByTestId('data-summary-container')
+    .getByText(classificationDisplayName)
     .click();
 
   await expect(page.locator('.activeCategory')).toContainText(
-    classificationName
+    classificationDisplayName
   );
 
   await fetchTags;
@@ -74,6 +94,11 @@ export const addAssetsToTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   const initialFetchResponse = page.waitForResponse(
@@ -131,6 +156,11 @@ export const removeAssetsFromTag = async (
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page.getByTestId('assets').click();
   for (const asset of assets) {
@@ -298,6 +328,11 @@ export const verifyTagPageUI = async (
   await tag.visitPage(page);
   await res;
 
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await expect(page.getByTestId('entity-header-name')).toContainText(
     tag.data.name
   );
@@ -331,13 +366,19 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
+
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
+
   await page.getByTestId('edit-description').click();
 
   await expect(page.getByRole('dialog')).toBeVisible();
 
-  await page.locator('.toastui-editor-pseudo-clipboard').clear();
+  await page.locator(descriptionBox).clear();
   await page
-    .locator('.toastui-editor-pseudo-clipboard')
+    .locator(descriptionBox)
     .fill(`This is updated test description for tag ${tag.data.name}.`);
 
   const editDescription = page.waitForResponse(`/api/v1/tags/*`);
@@ -350,7 +391,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
 };
 
 export const verifyCertificationTagPageUI = async (page: Page) => {
-  await visitClassificationPage(page, 'Certification');
+  await visitClassificationPage(page, 'Certification', 'Certification');
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId('Gold').click();
   await res;
@@ -431,3 +472,15 @@ export const LIMITED_USER_RULES: PolicyRulesType[] = [
     effect: 'deny',
   },
 ];
+
+export const fillTagForm = async (adminPage: Page, domain: Domain) => {
+  await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
+  await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+  await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
+  await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
+  await adminPage.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
+  await adminPage.click('[data-testid="add-domain"]');
+  await adminPage
+    .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
+    .click();
+};

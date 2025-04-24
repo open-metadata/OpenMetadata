@@ -9,15 +9,16 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/dashb
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/modeType*. Default: `Mode`.
-- **`hostPort`** *(string)*: URL for the mode instance. Default: `https://app.mode.com`.
+- **`type`**: Service Type. Refer to *[#/definitions/modeType](#definitions/modeType)*. Default: `"Mode"`.
+- **`hostPort`** *(string, format: uri)*: URL for the mode instance. Default: `"https://app.mode.com"`.
 - **`accessToken`** *(string)*: Access Token for Mode Dashboard.
-- **`accessTokenPassword`** *(string)*: Access Token Password for Mode Dashboard.
+- **`accessTokenPassword`** *(string, format: password)*: Access Token Password for Mode Dashboard.
 - **`workspaceName`** *(string)*: Mode Workspace Name.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`filterQueryParam`** *(string)*: Filter query parameter for some of the Mode API calls.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`modeType`** *(string)*: Mode service type. Must be one of: `['Mode']`. Default: `Mode`.
+- **`modeType`** *(string)*: Mode service type. Must be one of: `["Mode"]`. Default: `"Mode"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

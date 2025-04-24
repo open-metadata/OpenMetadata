@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -203,6 +203,11 @@ REDSHIFT_GET_SCHEMA_COLUMN_INFO = textwrap.dedent(
             """
 )
 
+REDSHIFT_EXTERNAL_TABLE_LOCATION = """
+  SELECT schemaname, tablename, location
+    FROM svv_external_tables
+    where redshift_database_name='{database_name}'
+"""
 
 REDSHIFT_PARTITION_DETAILS = """
   select "schema", "table", diststyle
@@ -328,7 +333,7 @@ Q_HISTORY as (
         pid as query_session_id,
         starttime as query_start_time,
         endtime as query_end_time,
-        b.usename as query_user_name
+        cast(b.usename as varchar) as query_user_name
     from STL_QUERY q
     join pg_catalog.pg_user b
       on b.usesysid = q.userid

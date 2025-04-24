@@ -27,16 +27,15 @@ import {
   JsonTree,
   Utils as QbUtils,
   ValueField,
+  ValueSource,
 } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import {
-  emptyJsonTree,
-  TEXT_FIELD_OPERATORS,
-} from '../../../constants/AdvancedSearch.constants';
+import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
+import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import {
   getTierOptions,
   getTreeConfig,
@@ -225,12 +224,13 @@ export const AdvanceSearchProvider = ({
 
       Object.entries(res).forEach(([_, fields]) => {
         if (Array.isArray(fields) && fields.length > 0) {
-          fields.forEach((field: { name: string; type: string }) => {
+          fields.forEach((field) => {
             if (field.name && field.type) {
-              subfields[field.name] = {
-                type: 'text',
-                valueSources: ['value'],
-                operators: TEXT_FIELD_OPERATORS,
+              const { subfieldsKey, dataObject } =
+                advancedSearchClassBase.getCustomPropertiesSubFields(field);
+              subfields[subfieldsKey] = {
+                ...dataObject,
+                valueSources: dataObject.valueSources as ValueSource[],
               };
             }
           });

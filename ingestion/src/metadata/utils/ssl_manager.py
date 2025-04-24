@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,8 @@ import os
 import tempfile
 import traceback
 from functools import singledispatch, singledispatchmethod
-from typing import Optional, Union, cast
+from ssl import CERT_REQUIRED, SSLContext
+from typing import List, Optional, Union, cast
 
 from pydantic import SecretStr
 
@@ -26,6 +27,9 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikSenseConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
+    CassandraConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
@@ -55,6 +59,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.matillionCon
     MatillionConnection,
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
+from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
@@ -66,7 +71,9 @@ logger = utils_logger()
 class SSLManager:
     "SSL Manager to manage SSL certificates for service connections"
 
-    def __init__(self, ca=None, key=None, cert=None):
+    def __init__(
+        self, ca=None, key=None, cert=None, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
         self.temp_files = []
         self.ca_file_path = None
         self.cert_file_path = None
@@ -77,6 +84,14 @@ class SSLManager:
             self.cert_file_path = self.create_temp_file(cert)
         if key:
             self.key_file_path = self.create_temp_file(key)
+        if args:
+            for arg in args:
+                if arg:
+                    setattr(self, f"{arg}", self.create_temp_file(arg))
+        if kwargs:
+            for dict_key, value in kwargs.items():
+                if value:
+                    setattr(self, f"{dict_key}", self.create_temp_file(value))
 
     def create_temp_file(self, content: SecretStr):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -197,8 +212,15 @@ class SSLManager:
         return connection
 
     @setup_ssl.register(KafkaConnection)
-    def _(self, connection):
+    def _(self, connection) -> KafkaConnection:
         connection = cast(KafkaConnection, connection)
+        if connection.consumerConfigSSL:
+            connection.consumerConfig = {
+                **connection.consumerConfig,
+                "ssl.ca.location": getattr(self, "ca_consumer_config", None),
+                "ssl.key.location": getattr(self, "key_consumer_config", None),
+                "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
+            }
         connection.schemaRegistryConfig["ssl.ca.location"] = self.ca_file_path
         connection.schemaRegistryConfig["ssl.key.location"] = self.key_file_path
         connection.schemaRegistryConfig[
@@ -206,9 +228,30 @@ class SSLManager:
         ] = self.cert_file_path
         return connection
 
+    @setup_ssl.register(CassandraConnection)
+    def _(self, connection):
+        connection = cast(CassandraConnection, connection)
+
+        ssl_context = None
+        if connection.sslMode != SslMode.disable:
+            ssl_context = SSLContext()
+            ssl_context.load_verify_locations(cafile=self.ca_file_path)
+            ssl_context.verify_mode = CERT_REQUIRED
+            ssl_context.load_cert_chain(
+                certfile=self.cert_file_path, keyfile=self.key_file_path
+            )
+
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        connection.connectionArguments.root["ssl_context"] = ssl_context
+        return connection
+
 
 @singledispatch
-def check_ssl_and_init(_) -> Optional[SSLManager]:
+def check_ssl_and_init(
+    _, *args, **kwargs  # pylint: disable=unused-argument
+) -> Optional[Union[SSLManager, List[SSLManager]]]:
     return None
 
 
@@ -274,6 +317,38 @@ def _(connection):
     return None
 
 
+@check_ssl_and_init.register(KafkaConnection)
+def _(connection, *args, **kwargs):
+
+    service_connection: KafkaConnection = cast(KafkaConnection, connection)
+    ssl_consumer_config: Optional[
+        verifySSLConfig.SslConfig
+    ] = service_connection.consumerConfigSSL
+    ssl_schema_registry: Optional[
+        verifySSLConfig.SslConfig
+    ] = service_connection.schemaRegistrySSL
+
+    ssl_consumer_config_dict = {}
+
+    if ssl_consumer_config:
+        ssl_consumer_config_dict = {
+            "ca_consumer_config": ssl_consumer_config.root.caCertificate,
+            "cert_consumer_config": ssl_consumer_config.root.sslCertificate,
+            "key_consumer_config": ssl_consumer_config.root.sslKey,
+        }
+    ssl_schema_registry_dict = {}
+
+    if ssl_schema_registry:
+        ssl_schema_registry_dict = {
+            "ca_schema_registry": ssl_schema_registry.root.caCertificate,
+            "cert_schema_registry": ssl_schema_registry.root.sslCertificate,
+            "key_schema_registry": ssl_schema_registry.root.sslKey,
+        }
+    if ssl_consumer_config_dict or ssl_schema_registry_dict:
+        return SSLManager(**ssl_consumer_config_dict, **ssl_schema_registry_dict)
+    return None
+
+
 @check_ssl_and_init.register(PostgresConnection)
 @check_ssl_and_init.register(RedshiftConnection)
 @check_ssl_and_init.register(GreenplumConnection)
@@ -285,6 +360,17 @@ def _(connection):
     if connection.sslMode:
         return SSLManager(
             ca=connection.sslConfig.root.caCertificate if connection.sslConfig else None
+        )
+    return None
+
+
+@check_ssl_and_init.register(CassandraConnection)
+def _(connection):
+    service_connection = cast(CassandraConnection, connection)
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
+        return SSLManager(
+            ca=ssl.root.caCertificate, cert=ssl.root.sslCertificate, key=ssl.root.sslKey
         )
     return None
 

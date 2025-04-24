@@ -1,0 +1,17 @@
+<svg viewBox="0 0 89 89" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M0 28C0 12.536 12.536 0 28 0H61C76.464 0 89 12.536 89 28V61C89 76.464 76.464 89 61 89H28C12.536 89 0 76.464 0 61V28Z" fill="#FDF2FA"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M59.4803 43.0611L57.0402 45.5303C56.7473 45.8232 56.2725 45.8232 55.9796 45.5303L53.5099 43.0607C53.217 42.7678 53.217 42.2929 53.5099 42C53.8028 41.7071 54.2777 41.7071 54.5705 42L55.7599 43.1893V36H57.2599V43.1893L58.4196 42.0005C58.7125 41.7076 59.1874 41.7076 59.4803 42.0005C59.7732 42.2934 59.7732 42.7682 59.4803 43.0611Z" fill="#992F7B"/>
+<circle cx="56.5" cy="33.5" r="2.75" stroke="#992F7B" stroke-width="1.5"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M49.0611 30.5205L51.5303 32.9605C51.8232 33.2534 51.8232 33.7283 51.5303 34.0212L49.0607 36.4908C48.7678 36.7837 48.2929 36.7837 48 36.4908C47.7071 36.198 47.7071 35.7231 48 35.4302L49.1893 34.2408H36V32.7408H49.1893L48.0005 31.5811C47.7076 31.2882 47.7076 30.8133 48.0005 30.5205C48.2934 30.2276 48.7682 30.2276 49.0611 30.5205Z" fill="#992F7B"/>
+<circle cx="33.5" cy="33.5" r="2.75" transform="rotate(-90 33.5 33.5)" stroke="#992F7B" stroke-width="1.5"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M50.6889 53.4795L48.2197 51.0395C47.9268 50.7466 47.9268 50.2717 48.2197 49.9788L50.6893 47.5092C50.9822 47.2163 51.4571 47.2163 51.75 47.5092C52.0429 47.802 52.0429 48.2769 51.75 48.5698L50.5607 49.7592H54.75V51.2592H50.5607L51.7495 52.4189C52.0424 52.7118 52.0424 53.1867 51.7495 53.4795C51.4566 53.7724 50.9818 53.7724 50.6889 53.4795Z" fill="#992F7B"/>
+<circle cx="57.5" cy="50.5" r="2.75" transform="rotate(90 57.5 50.5)" stroke="#992F7B" stroke-width="1.5"/>
+<path d="M50 44.6842V44C50 42.8954 49.1046 42 48 42H33C31.8954 42 31 42.8954 31 44V57C31 58.1046 31.8954 59 33 59H48C49.1046 59 50 58.1046 50 57V55.4211" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M31 50.5H46.5" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M40.5 53.5V54.75V56" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M44 53.5V54.75V56" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M47 53.5V54.75V56" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M40.5 45V46.25V47.5" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M44 45V46.25V47.5" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M47 45V46.25V47.5" stroke="#992F7B" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -90,6 +91,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
 public class TableResource extends EntityResource<Table, TableRepository> {
+  private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
       "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
@@ -367,7 +369,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = getTable(create, securityContext.getUserPrincipal().getName());
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, table);
   }
 
@@ -391,7 +393,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTable create) {
-    Table table = getTable(create, securityContext.getUserPrincipal().getName());
+    Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table);
   }
 
@@ -419,8 +421,14 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+          JsonPatch patch,
+      @Parameter(
+              description =
+                  "Optional source of the change. If the change is made by a user use 'Manual'.",
+              schema = @Schema(implementation = ChangeSource.class))
+          @QueryParam("changeSource")
+          ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource);
   }
 
   @PATCH
@@ -448,8 +456,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                       examples = {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
-          JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+          JsonPatch patch,
+      @Parameter(
+              description = "Context of the change",
+              schema = @Schema(implementation = ChangeSource.class))
+          @QueryParam("changeSource")
+          ChangeSource changeSource) {
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource);
   }
 
   @GET
@@ -473,7 +486,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return exportCsvInternalAsync(securityContext, name);
+    return exportCsvInternalAsync(securityContext, name, false);
   }
 
   @GET
@@ -498,7 +511,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @PathParam("name")
           String name)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, false);
   }
 
   @PUT
@@ -531,7 +544,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           boolean dryRun,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, false);
   }
 
   @PUT
@@ -563,7 +576,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           @QueryParam("dryRun")
           boolean dryRun,
       String csv) {
-    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
   }
 
   @DELETE
@@ -591,6 +604,33 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteTableAsync",
+      summary = "Asynchronously delete a table by Id",
+      description = "Asynchronously delete a table by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @QueryParam("recursive")
+          @DefaultValue("false")
+          boolean recursive,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -1132,8 +1172,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   @Path("/{id}/customMetric")
   @Operation(
       operationId = "addCustomMetric",
-      summary = "Add column custom metrics",
-      description = "Add column custom metrics.",
+      summary = "Add custom metrics",
+      description = "Add custom metrics. For columns, add columnName.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1152,7 +1192,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_DATA_PROFILE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    CustomMetric customMetric = getCustomMetric(securityContext, createCustomMetric);
+    CustomMetric customMetric =
+        mapper.createCustomMetricToEntity(
+            createCustomMetric, securityContext.getUserPrincipal().getName());
     Table table = repository.addCustomMetric(id, customMetric);
     return addHref(uriInfo, table);
   }
@@ -1311,45 +1353,5 @@ public class TableResource extends EntityResource<Table, TableRepository> {
 
     return Entity.getSearchRepository()
         .searchEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-  }
-
-  public static Table validateNewTable(Table table) {
-    table.setId(UUID.randomUUID());
-    DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
-    DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
-    DatabaseUtil.validateColumns(table.getColumns());
-    return table;
-  }
-
-  private Table getTable(CreateTable create, String user) {
-    return validateNewTable(
-            repository
-                .copy(new Table(), create, user)
-                .withColumns(create.getColumns())
-                .withSourceUrl(create.getSourceUrl())
-                .withLocationPath(create.getLocationPath())
-                .withTableConstraints(create.getTableConstraints())
-                .withTablePartition(create.getTablePartition())
-                .withTableType(create.getTableType())
-                .withFileFormat(create.getFileFormat())
-                .withSchemaDefinition(create.getSchemaDefinition())
-                .withTableProfilerConfig(create.getTableProfilerConfig())
-                .withDatabaseSchema(
-                    getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
-        .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
-  }
-
-  private CustomMetric getCustomMetric(SecurityContext securityContext, CreateCustomMetric create) {
-    return new CustomMetric()
-        .withId(UUID.randomUUID())
-        .withDescription(create.getDescription())
-        .withName(create.getName())
-        .withColumnName(create.getColumnName())
-        .withOwners(create.getOwners())
-        .withExpression(create.getExpression())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
   }
 }

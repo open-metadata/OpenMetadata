@@ -11,7 +11,9 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtpipeline
 
 - **`type`**: Pipeline type. Refer to *#/definitions/dbtConfigType*. Default: `DBT`.
 - **`dbtConfigSource`**: Available sources to fetch DBT catalog and manifest files.
+- **`searchAcrossDatabases`** *(boolean)*: Optional configuration to search across databases for tables or not. Default: `False`.
 - **`dbtUpdateDescriptions`** *(boolean)*: Optional configuration to update the description from DBT or not. Default: `False`.
+- **`dbtUpdateOwners`** *(boolean)*: Optional configuration to update the owners from DBT or not. Default: `False`.
 - **`includeTags`** *(boolean)*: Optional configuration to toggle the tags ingestion. Default: `True`.
 - **`dbtClassificationName`** *(string)*: Custom OpenMetadata Classification name for dbt tags. Default: `dbtTags`.
 - **`schemaFilterPattern`**: Regex to only fetch tables or databases that matches the pattern. Refer to *../type/filterPattern.json#/definitions/filterPattern*.
@@ -22,5 +24,4 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtpipeline
 
 - **`dbtConfigType`** *(string)*: DBT Config Pipeline type. Must be one of: `['DBT']`. Default: `DBT`.
 
-
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

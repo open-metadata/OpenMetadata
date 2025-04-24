@@ -18,12 +18,16 @@ import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREF
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
+import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
@@ -31,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
@@ -45,7 +50,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -56,7 +62,6 @@ public class SettingsCache {
           .maximumSize(1000)
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new SettingsLoader());
-  protected static SystemRepository systemRepository;
 
   private SettingsCache() {
     // Private constructor for singleton
@@ -65,7 +70,6 @@ public class SettingsCache {
   // Expected to be called only once from the DefaultAuthorizer
   public static void initialize(OpenMetadataApplicationConfig config) {
     if (!initialized) {
-      systemRepository = Entity.getSystemRepository();
       initialized = true;
       createDefaultConfiguration(config);
     }
@@ -73,18 +77,34 @@ public class SettingsCache {
 
   private static void createDefaultConfiguration(OpenMetadataApplicationConfig applicationConfig) {
     // Initialise Email Setting
-    Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
+    Settings storedSettings =
+        Entity.getSystemRepository().getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
+      SmtpSettings emailConfig =
+          applicationConfig.getOperationalApplicationConfigProvider().getEmailSettings();
+
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
-      systemRepository.createNewSetting(setting);
+      Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    // Initialise OM base url setting
+    Settings storedOpenMetadataBaseUrlConfiguration =
+        Entity.getSystemRepository()
+            .getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
+    if (storedOpenMetadataBaseUrlConfiguration == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(
+                  applicationConfig.getOperationalApplicationConfigProvider().getServerUrl());
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
     // Initialise Theme Setting
     Settings storedCustomUiThemeConf =
-        systemRepository.getConfigWithKey(CUSTOM_UI_THEME_PREFERENCE.toString());
+        Entity.getSystemRepository().getConfigWithKey(CUSTOM_UI_THEME_PREFERENCE.toString());
     if (storedCustomUiThemeConf == null) {
       // Only in case a config doesn't exist in DB we insert it
       Settings setting =
@@ -104,12 +124,13 @@ public class SettingsCache {
                               .withErrorColor("")
                               .withWarningColor("")
                               .withInfoColor("")));
-      systemRepository.createNewSetting(setting);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
     // Initialise Login Configuration
     // Initialise Logo Setting
-    Settings storedLoginConf = systemRepository.getConfigWithKey(LOGIN_CONFIGURATION.toString());
+    Settings storedLoginConf =
+        Entity.getSystemRepository().getConfigWithKey(LOGIN_CONFIGURATION.toString());
     if (storedLoginConf == null) {
       // Only in case a config doesn't exist in DB we insert it
       Settings setting =
@@ -118,25 +139,36 @@ public class SettingsCache {
               .withConfigValue(
                   new LoginConfiguration()
                       .withMaxLoginFailAttempts(3)
-                      .withAccessBlockTime(600)
+                      .withAccessBlockTime(30)
                       .withJwtTokenExpiryTime(3600));
-      systemRepository.createNewSetting(setting);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
-    // Initialise Rbac Settings
-    Settings storedRbacSettings = systemRepository.getConfigWithKey(SEARCH_SETTINGS.toString());
-    if (storedRbacSettings == null) {
-      // Only in case a config doesn't exist in DB we insert it
-      Settings setting =
-          new Settings()
-              .withConfigType(SEARCH_SETTINGS)
-              .withConfigValue(new SearchSettings().withEnableAccessControl(false));
-      systemRepository.createNewSetting(setting);
+    // Initialise Search Settings
+    Settings storedSearchSettings =
+        Entity.getSystemRepository().getConfigWithKey(SEARCH_SETTINGS.toString());
+    if (storedSearchSettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/searchSettings/searchSettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(SEARCH_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, SearchSettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
+      }
     }
 
     // Initialise Certification Settings
     Settings certificationSettings =
-        systemRepository.getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
+        Entity.getSystemRepository().getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
     if (certificationSettings == null) {
       Settings setting =
           new Settings()
@@ -145,11 +177,12 @@ public class SettingsCache {
                   new AssetCertificationSettings()
                       .withAllowedClassification("Certification")
                       .withValidityPeriod("P30D"));
-      systemRepository.createNewSetting(setting);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
     // Initialise Workflow Settings
-    Settings workflowSettings = systemRepository.getConfigWithKey(WORKFLOW_SETTINGS.toString());
+    Settings workflowSettings =
+        Entity.getSystemRepository().getConfigWithKey(WORKFLOW_SETTINGS.toString());
     if (workflowSettings == null) {
       Settings setting =
           new Settings()
@@ -158,10 +191,11 @@ public class SettingsCache {
                   new WorkflowSettings()
                       .withExecutorConfiguration(new ExecutorConfiguration())
                       .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration()));
-      systemRepository.createNewSetting(setting);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
-    Settings lineageSettings = systemRepository.getConfigWithKey(LINEAGE_SETTINGS.toString());
+    Settings lineageSettings =
+        Entity.getSystemRepository().getConfigWithKey(LINEAGE_SETTINGS.toString());
     if (lineageSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
       Settings setting =
@@ -172,7 +206,7 @@ public class SettingsCache {
                       .withDownstreamDepth(2)
                       .withUpstreamDepth(2)
                       .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
-      systemRepository.createNewSetting(setting);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
   }
 
@@ -183,6 +217,17 @@ public class SettingsCache {
     } catch (Exception ex) {
       LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
       throw new EntityNotFoundException("Setting not found");
+    }
+  }
+
+  public static <T> T getSettingOrDefault(
+      SettingsType settingName, T defaultValue, Class<T> clazz) {
+    try {
+      String json = JsonUtils.pojoToJson(CACHE.get(settingName.toString()).getConfigValue());
+      return JsonUtils.readValue(json, clazz);
+    } catch (Exception ex) {
+      LOG.error("Failed to fetch Settings . Setting {}", settingName, ex);
+      return defaultValue;
     }
   }
 
@@ -199,37 +244,55 @@ public class SettingsCache {
     }
   }
 
+  private static SmtpSettings getDefaultSmtpSettings() {
+    return new SmtpSettings()
+        .withPassword(StringUtils.EMPTY)
+        .withEmailingEntity("OpenMetadata")
+        .withSupportUrl("https://slack.open-metadata.org")
+        .withEnableSmtpServer(Boolean.FALSE)
+        .withTransportationStrategy(SmtpSettings.TransportationStrategy.SMTP_TLS)
+        .withTemplates(SmtpSettings.Templates.OPENMETADATA);
+  }
+
   static class SettingsLoader extends CacheLoader<String, Settings> {
     @Override
     public @NonNull Settings load(@CheckForNull String settingsName) {
       Settings fetchedSettings;
       switch (SettingsType.fromValue(settingsName)) {
         case EMAIL_CONFIGURATION -> {
-          fetchedSettings = systemRepository.getEmailConfigInternal();
+          fetchedSettings = Entity.getSystemRepository().getEmailConfigInternal();
+          if (fetchedSettings == null) {
+            return new Settings()
+                .withConfigType(EMAIL_CONFIGURATION)
+                .withConfigValue(getDefaultSmtpSettings());
+          }
           LOG.info("Loaded Email Setting");
+        }
+        case OPEN_METADATA_BASE_URL_CONFIGURATION -> {
+          fetchedSettings = Entity.getSystemRepository().getOMBaseUrlConfigInternal();
         }
         case SLACK_APP_CONFIGURATION -> {
           // Only if available
-          fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
+          fetchedSettings = Entity.getSystemRepository().getSlackApplicationConfigInternal();
           LOG.info("Loaded Slack Application Configuration");
         }
         case SLACK_BOT -> {
           // Only if available
-          fetchedSettings = systemRepository.getSlackbotConfigInternal();
+          fetchedSettings = Entity.getSystemRepository().getSlackbotConfigInternal();
           LOG.info("Loaded Slack Bot Configuration");
         }
         case SLACK_INSTALLER -> {
           // Only if available
-          fetchedSettings = systemRepository.getSlackInstallerConfigInternal();
+          fetchedSettings = Entity.getSystemRepository().getSlackInstallerConfigInternal();
           LOG.info("Loaded Slack Installer Configuration");
         }
         case SLACK_STATE -> {
           // Only if available
-          fetchedSettings = systemRepository.getSlackStateConfigInternal();
+          fetchedSettings = Entity.getSystemRepository().getSlackStateConfigInternal();
           LOG.info("Loaded Slack state Configuration");
         }
         default -> {
-          fetchedSettings = systemRepository.getConfigWithKey(settingsName);
+          fetchedSettings = Entity.getSystemRepository().getConfigWithKey(settingsName);
           LOG.info("Loaded Setting {}", fetchedSettings.getConfigType());
         }
       }

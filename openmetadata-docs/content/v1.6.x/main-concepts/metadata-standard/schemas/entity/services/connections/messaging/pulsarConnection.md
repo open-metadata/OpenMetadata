@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messa
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/pulsarType*. Default: `Pulsar`.
-- **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
+- **`type`**: Service Type. Refer to *[#/definitions/pulsarType](#definitions/pulsarType)*. Default: `"Pulsar"`.
+- **`supportsMetadataExtraction`**: Refer to *[../connectionBasicType.json#/definitions/supportsMetadataExtraction](#/connectionBasicType.json#/definitions/supportsMetadataExtraction)*.
 ## Definitions
 
-- **`pulsarType`** *(string)*: Pulsar service type. Must be one of: `['Pulsar']`. Default: `Pulsar`.
+- **`pulsarType`** *(string)*: Pulsar service type. Must be one of: `["Pulsar"]`. Default: `"Pulsar"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

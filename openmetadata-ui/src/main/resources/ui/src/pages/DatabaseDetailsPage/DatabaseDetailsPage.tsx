@@ -15,7 +15,6 @@ import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -26,32 +25,18 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import Loader from '../../components/common/Loader/Loader';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getEntityDetailsPath,
-  getExplorePath,
-  getVersionPath,
-  ROUTES,
-} from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -64,11 +49,12 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
+import { PageType } from '../../generated/system/ui/uiCustomization';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -78,57 +64,52 @@ import {
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
-import { postThread } from '../../rest/feedsAPI';
+import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
 import {
-  getEntityMissingError,
-  getFeedCounts,
-  sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../utils/CustomizePage/CustomizePageUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
+import databaseClassBase from '../../utils/Database/DatabaseClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
+import {
+  getEntityDetailsPath,
+  getExplorePath,
+  getVersionPath,
+} from '../../utils/RouterUtils';
+import { getTierTags } from '../../utils/TableUtils';
+import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
+
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { withinPageSearch } =
     useLocationSearch<{ withinPageSearch: string }>();
-
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab } = useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
-
+  const { customizedPage, isLoading: loading } = useCustomPages(
+    PageType.Database
+  );
   const [database, setDatabase] = useState<Database>({} as Database);
   const [serviceType, setServiceType] = useState<string>();
-
-  const [databaseName, setDatabaseName] = useState<string>(
-    decodedDatabaseFQN.split(FQN_SEPARATOR_CHAR).slice(-1).pop() ?? ''
-  );
   const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
     useState<boolean>(true);
-  const [isEdit, setIsEdit] = useState(false);
-  const [description, setDescription] = useState('');
-  const [databaseId, setDatabaseId] = useState('');
-
   const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
-
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-
-  const [threadLink, setThreadLink] = useState<string>('');
-
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
   const history = useHistory();
   const isMounting = useRef(true);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const { version: currentVersion, deleted } = useMemo(
     () => database,
@@ -136,7 +117,6 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const tier = getTierTags(database?.tags ?? []);
-  const tags = getTagsWithoutTier(database?.tags ?? []);
 
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -146,9 +126,10 @@ const DatabaseDetails: FunctionComponent = () => {
       entityUtilClassBase.getManageExtraOptions(
         EntityType.DATABASE,
         decodedDatabaseFQN,
-        databasePermission
+        databasePermission,
+        database
       ),
-    [decodedDatabaseFQN, databasePermission]
+    [decodedDatabaseFQN, databasePermission, database]
   );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
@@ -158,19 +139,11 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN
       );
       setDatabasePermission(response);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const onThreadLinkSelect = (link: string) => {
-    setThreadLink(link);
-  };
-
-  const onThreadPanelClose = () => {
-    setThreadLink('');
   };
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -209,11 +182,8 @@ const DatabaseDetails: FunctionComponent = () => {
     })
       .then((res) => {
         if (res) {
-          const { description, id, name, serviceType } = res;
+          const { serviceType } = res;
           setDatabase(res);
-          setDescription(description ?? '');
-          setDatabaseId(id ?? '');
-          setDatabaseName(name);
           setServiceType(serviceType);
         }
       })
@@ -231,45 +201,13 @@ const DatabaseDetails: FunctionComponent = () => {
       });
   };
 
-  const onCancel = () => {
-    setIsEdit(false);
-  };
-
   const saveUpdatedDatabaseData = (updatedData: Database) => {
     let jsonPatch: Operation[] = [];
     if (database) {
       jsonPatch = compare(database, updatedData);
     }
 
-    return patchDatabaseDetails(databaseId, jsonPatch);
-  };
-
-  const onDescriptionUpdate = async (updatedHTML: string) => {
-    if (description !== updatedHTML && database) {
-      const updatedDatabaseDetails = {
-        ...database,
-        description: updatedHTML,
-      };
-      try {
-        const response = await saveUpdatedDatabaseData(updatedDatabaseDetails);
-        if (response) {
-          setDatabase(response);
-          setDescription(updatedHTML);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsEdit(false);
-      }
-    } else {
-      setIsEdit(false);
-    }
-  };
-
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
+    return patchDatabaseDetails(database.id ?? '', jsonPatch);
   };
 
   const activeTabHandler = (key: string) => {
@@ -284,20 +222,11 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const settingsUpdateHandler = async (
-    data: Database,
-    key?: keyof Database
-  ) => {
+  const settingsUpdateHandler = async (data: Database) => {
     try {
       const res = await saveUpdatedDatabaseData(data);
 
-      setDatabase(() => {
-        if (key === 'tags') {
-          return { ...res, tags: sortTagsCaseInsensitive(res.tags ?? []) };
-        }
-
-        return res;
-      });
+      setDatabase(res);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -320,19 +249,6 @@ const DatabaseDetails: FunctionComponent = () => {
     [database, database?.owners, settingsUpdateHandler]
   );
 
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation-lowercase'),
-        })
-      );
-    }
-  };
-
   useEffect(() => {
     getEntityFeedCount();
   }, []);
@@ -344,7 +260,7 @@ const DatabaseDetails: FunctionComponent = () => {
           search: withinPageSearch,
           isPersistFilters: false,
           extraParameters: {
-            quickFilter: getQueryFilterForDatabase(serviceType, databaseName),
+            quickFilter: getQueryFilterForDatabase(serviceType, database.name),
           },
         })
       );
@@ -355,6 +271,8 @@ const DatabaseDetails: FunctionComponent = () => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
       getDetailsByFQN();
       fetchDatabaseSchemaCount();
+    } else {
+      setIsDatabaseDetailsLoading(false);
     }
   }, [databasePermission, decodedDatabaseFQN]);
 
@@ -393,37 +311,6 @@ const DatabaseDetails: FunctionComponent = () => {
     return settingsUpdateHandler(updatedTableDetails);
   };
 
-  /**
-   * Formulates updated tags and updates table entity data for API call
-   * @param selectedTags
-   */
-  const onTagUpdate = async (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags) {
-      const updatedTags = [...(tier ? [tier] : []), ...selectedTags];
-      const updatedTable = { ...database, tags: updatedTags };
-      await settingsUpdateHandler(updatedTable as Database, 'tags');
-    }
-  };
-
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    if (selectedTags) {
-      const prevTags =
-        tags?.filter((tag) =>
-          selectedTags
-            .map((selTag) => selTag.tagFQN)
-            .includes(tag?.tagFQN as string)
-        ) || [];
-      const newTags = createTagObject(
-        selectedTags.filter((tag) => {
-          return !prevTags
-            ?.map((prevTag) => prevTag.tagFQN)
-            .includes(tag.tagFQN);
-        })
-      );
-      await onTagUpdate([...prevTags, ...newTags]);
-    }
-  };
-
   const handleToggleDelete = (version?: number) => {
     setDatabase((prev) => {
       if (!prev) {
@@ -440,7 +327,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const handleRestoreDatabase = useCallback(async () => {
     try {
-      const { version: newVersion } = await restoreDatabase(databaseId);
+      const { version: newVersion } = await restoreDatabase(database.id ?? '');
       showSuccessToast(
         t('message.restore-entities-success', {
           entity: t('label.database'),
@@ -456,7 +343,7 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
     }
-  }, [databaseId]);
+  }, [database.id]);
 
   const versionHandler = useCallback(() => {
     currentVersion &&
@@ -470,23 +357,8 @@ const DatabaseDetails: FunctionComponent = () => {
       );
   }, [currentVersion, decodedDatabaseFQN]);
 
-  const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    viewAllPermission,
-  } = useMemo(
+  const { editCustomAttributePermission, viewAllPermission } = useMemo(
     () => ({
-      editTagsPermission:
-        (databasePermission.EditTags || databasePermission.EditAll) &&
-        !database.deleted,
-      editGlossaryTermsPermission:
-        (databasePermission.EditGlossaryTerms || databasePermission.EditAll) &&
-        !database.deleted,
-      editDescriptionPermission:
-        (databasePermission.EditDescription || databasePermission.EditAll) &&
-        !database.deleted,
       editCustomAttributePermission:
         (databasePermission.EditAll || databasePermission.EditCustomFields) &&
         !database.deleted,
@@ -496,8 +368,7 @@ const DatabaseDetails: FunctionComponent = () => {
   );
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.push('/'),
+    (isSoftDelete?: boolean) => !isSoftDelete && history.push('/'),
     []
   );
 
@@ -510,150 +381,39 @@ const DatabaseDetails: FunctionComponent = () => {
     }));
   }, []);
 
-  const tabs = useMemo(
-    () => [
-      {
-        label: (
-          <TabsLabel
-            count={schemaInstanceCount}
-            id={EntityTabs.SCHEMA}
-            isActive={activeTab === EntityTabs.SCHEMA}
-            name={t('label.schema-plural')}
-          />
-        ),
-        key: EntityTabs.SCHEMA,
-        children: (
-          <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height-with-resizable-panel" span={24}>
-              <ResizablePanels
-                firstPanel={{
-                  className: 'entity-resizable-panel-container',
-                  children: (
-                    <div className="p-t-sm m-x-lg">
-                      <Row gutter={[16, 16]}>
-                        <Col data-testid="description-container" span={24}>
-                          <DescriptionV1
-                            description={description}
-                            entityFqn={decodedDatabaseFQN}
-                            entityName={getEntityName(database)}
-                            entityType={EntityType.DATABASE}
-                            hasEditAccess={editDescriptionPermission}
-                            isDescriptionExpanded={isEmpty(database)}
-                            isEdit={isEdit}
-                            showActions={!database.deleted}
-                            onCancel={onCancel}
-                            onDescriptionEdit={onDescriptionEdit}
-                            onDescriptionUpdate={onDescriptionUpdate}
-                            onThreadLinkSelect={onThreadLinkSelect}
-                          />
-                        </Col>
-                        <Col span={24}>
-                          <DatabaseSchemaTable isDatabaseDeleted={deleted} />
-                        </Col>
-                      </Row>
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
-                }}
-                secondPanel={{
-                  children: (
-                    <div data-testid="entity-right-panel">
-                      <EntityRightPanel<EntityType.DATABASE>
-                        customProperties={database}
-                        dataProducts={database?.dataProducts ?? []}
-                        domain={database?.domain}
-                        editCustomAttributePermission={
-                          editCustomAttributePermission
-                        }
-                        editGlossaryTermsPermission={
-                          editGlossaryTermsPermission
-                        }
-                        editTagPermission={editTagsPermission}
-                        entityFQN={decodedDatabaseFQN}
-                        entityId={database?.id ?? ''}
-                        entityType={EntityType.DATABASE}
-                        selectedTags={tags}
-                        viewAllPermission={viewAllPermission}
-                        onExtensionUpdate={settingsUpdateHandler}
-                        onTagSelectionChange={handleTagSelection}
-                        onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                    </div>
-                  ),
-                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
-                  className:
-                    'entity-resizable-right-panel-container entity-resizable-panel-container',
-                }}
-              />
-            </Col>
-          </Row>
-        ),
-      },
-      {
-        label: (
-          <TabsLabel
-            count={feedCount.totalCount}
-            id={EntityTabs.ACTIVITY_FEED}
-            isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-            name={t('label.activity-feed-plural')}
-          />
-        ),
-        key: EntityTabs.ACTIVITY_FEED,
-        children: (
-          <ActivityFeedTab
-            refetchFeed
-            entityFeedTotalCount={feedCount.totalCount}
-            entityType={EntityType.DATABASE}
-            fqn={database?.fullyQualifiedName ?? ''}
-            onFeedUpdate={getEntityFeedCount}
-            onUpdateEntityDetails={getDetailsByFQN}
-            onUpdateFeedCount={handleFeedCount}
-          />
-        ),
-      },
+  const tabs = useMemo(() => {
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: database && (
-          <div className="m-sm">
-            <CustomPropertyTable<EntityType.DATABASE>
-              entityDetails={database}
-              entityType={EntityType.DATABASE}
-              handleExtensionUpdate={settingsUpdateHandler}
-              hasEditAccess={editCustomAttributePermission}
-              hasPermission={viewAllPermission}
-              isVersionView={false}
-            />
-          </div>
-        ),
-      },
-    ],
-    [
-      tags,
-      isEdit,
-      database,
-      description,
-      databaseName,
-      decodedDatabaseFQN,
+    const tabs = databaseClassBase.getDatabaseDetailPageTabs({
       activeTab,
-      databasePermission,
-      schemaInstanceCount,
-      feedCount.totalCount,
-      editTagsPermission,
-      editGlossaryTermsPermission,
-      editDescriptionPermission,
-      editCustomAttributePermission,
+      database,
       viewAllPermission,
-      deleted,
+      schemaInstanceCount,
+      feedCount,
       handleFeedCount,
-    ]
-  );
+      getEntityFeedCount,
+      deleted: database.deleted ?? false,
+      editCustomAttributePermission,
+      getDetailsByFQN,
+      labelMap: tabLabelMap,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.SCHEMAS
+    );
+  }, [
+    activeTab,
+    database,
+    schemaInstanceCount,
+    feedCount.totalCount,
+    editCustomAttributePermission,
+    viewAllPermission,
+    deleted,
+    handleFeedCount,
+    customizedPage?.tabs,
+  ]);
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {
@@ -672,7 +432,16 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  if (isLoading || isDatabaseDetailsLoading) {
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Database),
+    [tabs[0], activeTab]
+  );
+
+  if (isLoading || isDatabaseDetailsLoading || loading) {
     return <Loader />;
   }
 
@@ -682,7 +451,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
   return (
     <PageLayoutV1
-      className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(database),
       })}>
@@ -692,7 +460,7 @@ const DatabaseDetails: FunctionComponent = () => {
         </ErrorPlaceHolder>
       ) : (
         <Row gutter={[0, 12]}>
-          <Col className="p-x-lg" span={24}>
+          <Col span={24}>
             <DataAssetsHeader
               isRecursiveDelete
               afterDeleteAction={afterDeleteAction}
@@ -711,27 +479,35 @@ const DatabaseDetails: FunctionComponent = () => {
               onVersionClick={versionHandler}
             />
           </Col>
-          <Col span={24}>
-            <Tabs
-              activeKey={activeTab ?? EntityTabs.SCHEMA}
-              className="entity-details-page-tabs"
-              data-testid="tabs"
-              items={tabs}
-              onChange={activeTabHandler}
-            />
-          </Col>
+          <GenericProvider<Database>
+            customizedPage={customizedPage}
+            data={database}
+            isTabExpanded={isTabExpanded}
+            permissions={databasePermission}
+            type={EntityType.DATABASE}
+            onUpdate={settingsUpdateHandler}>
+            <Col className="entity-details-page-tabs" span={24}>
+              <Tabs
+                activeKey={activeTab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                onChange={activeTabHandler}
+              />
+            </Col>
+          </GenericProvider>
 
-          {threadLink ? (
-            <ActivityThreadPanel
-              createThread={createThread}
-              deletePostHandler={deleteFeed}
-              open={Boolean(threadLink)}
-              postFeedHandler={postFeed}
-              threadLink={threadLink}
-              updateThreadHandler={updateFeed}
-              onCancel={onThreadPanelClose}
-            />
-          ) : null}
           {updateProfilerSetting && (
             <ProfilerSettings
               entityId={database.id ?? ''}

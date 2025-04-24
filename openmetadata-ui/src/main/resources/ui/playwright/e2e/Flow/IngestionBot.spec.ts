@@ -57,7 +57,7 @@ const test = base.extend<{
       // Set a new value for a key in localStorage
       localStorage.setItem(
         'om-session',
-        JSON.stringify({ state: { oidcIdToken: token } })
+        JSON.stringify({ oidcIdToken: token })
       );
     }, tokenData.config.JWTToken);
 
@@ -114,13 +114,13 @@ test.describe('Ingestion Bot ', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain1.data);
-      await addAssetsToDomain(page, domain1.data, domainAsset1);
+      await addAssetsToDomain(page, domain1, domainAsset1);
 
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain2.data);
-      await addAssetsToDomain(page, domain2.data, domainAsset2);
+      await addAssetsToDomain(page, domain2, domainAsset2);
     });
 
     await test.step(
@@ -185,9 +185,9 @@ test.describe('Ingestion Bot ', () => {
         });
 
         // check if service has domain or not
-        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
-          domain1.data.displayName
-        );
+        await expect(
+          ingestionBotPage.getByTestId('domain-link').first()
+        ).toHaveText(domain1.data.displayName);
       }
     );
 

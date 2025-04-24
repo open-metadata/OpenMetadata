@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@ from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
 from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
@@ -36,10 +36,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.common_pg_mappings import (
+    INTERVAL_TYPE_MAP,
+    RELKIND_MAP,
+    ischema_names,
 )
 from metadata.ingestion.source.database.greenplum.queries import (
     GREENPLUM_GET_DB_NAMES,
@@ -64,41 +68,6 @@ from metadata.utils.sqlalchemy_utils import (
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 logger = ingestion_logger()
-
-
-INTERVAL_TYPE_MAP = {
-    "list": PartitionIntervalTypes.COLUMN_VALUE,
-    "hash": PartitionIntervalTypes.COLUMN_VALUE,
-    "range": PartitionIntervalTypes.TIME_UNIT,
-}
-
-RELKIND_MAP = {
-    "r": TableType.Regular,
-    "p": TableType.Partitioned,
-    "f": TableType.Foreign,
-}
-
-GEOMETRY = create_sqlalchemy_type("GEOMETRY")
-POINT = create_sqlalchemy_type("POINT")
-POLYGON = create_sqlalchemy_type("POLYGON")
-
-ischema_names.update(
-    {
-        "geometry": GEOMETRY,
-        "point": POINT,
-        "polygon": POLYGON,
-        "box": create_sqlalchemy_type("BOX"),
-        "circle": create_sqlalchemy_type("CIRCLE"),
-        "line": create_sqlalchemy_type("LINE"),
-        "lseg": create_sqlalchemy_type("LSEG"),
-        "path": create_sqlalchemy_type("PATH"),
-        "pg_lsn": create_sqlalchemy_type("PG_LSN"),
-        "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
-        "tsquery": create_sqlalchemy_type("TSQUERY"),
-        "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
-        "xml": create_sqlalchemy_type("XML"),
-    }
-)
 
 
 PGDialect.get_all_table_comments = get_all_table_comments

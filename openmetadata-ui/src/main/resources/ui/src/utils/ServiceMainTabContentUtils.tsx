@@ -18,15 +18,15 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
-import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
 import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
@@ -36,6 +36,7 @@ import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
 import { getLinkForFqn } from './ServiceUtils';
+import { ownerTableObject } from './TableColumn.util';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
@@ -48,8 +49,8 @@ export const getServiceMainTabColumns = (
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
-    dataIndex: 'name',
-    key: 'name',
+    dataIndex: TABLE_COLUMNS_KEYS.NAME,
+    key: TABLE_COLUMNS_KEYS.NAME,
     width: 280,
     render: (_, record: ServicePageData) => (
       <DisplayName
@@ -65,11 +66,12 @@ export const getServiceMainTabColumns = (
   },
   {
     title: t('label.description'),
-    dataIndex: 'description',
-    key: 'description',
+    dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+    width: 300,
     render: (description: ServicePageData['description']) =>
       !isUndefined(description) && description.trim() ? (
-        <RichTextEditorPreviewer markdown={description} />
+        <RichTextEditorPreviewerNew markdown={description} />
       ) : (
         <span className="text-grey-muted">
           {t('label.no-entity', {
@@ -82,8 +84,9 @@ export const getServiceMainTabColumns = (
     ? [
         {
           title: t('label.schedule-interval'),
-          dataIndex: 'scheduleInterval',
-          key: 'scheduleInterval',
+          dataIndex: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
+          key: TABLE_COLUMNS_KEYS.SCHEDULE_INTERVAL,
+          width: 200,
           render: (scheduleInterval: Pipeline['scheduleInterval']) =>
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
@@ -93,22 +96,12 @@ export const getServiceMainTabColumns = (
         },
       ]
     : []),
-  {
-    title: t('label.owner-plural'),
-    dataIndex: 'owners',
-    key: 'owners',
-    render: (owners: ServicePageData['owners']) =>
-      !isUndefined(owners) && owners.length > 0 ? (
-        <OwnerLabel owners={owners} />
-      ) : (
-        <Typography.Text data-testid="no-owner-text">--</Typography.Text>
-      ),
-  },
+  ...ownerTableObject<ServicePageData>(),
   {
     title: t('label.tag-plural'),
-    dataIndex: 'tags',
+    dataIndex: TABLE_COLUMNS_KEYS.TAGS,
     width: 200,
-    key: 'tags',
+    key: TABLE_COLUMNS_KEYS.TAGS,
     render: (_, record: ServicePageData) => (
       <TagsViewer tags={record.tags ?? []} />
     ),
@@ -117,8 +110,9 @@ export const getServiceMainTabColumns = (
     ? [
         {
           title: t('label.usage'),
-          dataIndex: 'usageSummary',
-          key: 'usageSummary',
+          dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+          key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
+          width: 200,
           render: (usageSummary: Database['usageSummary']) => (
             <Typography.Text>
               {getUsagePercentile(

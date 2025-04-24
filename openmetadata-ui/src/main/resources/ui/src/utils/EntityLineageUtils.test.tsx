@@ -11,24 +11,18 @@
  *  limitations under the License.
  */
 
-import { Edge } from 'reactflow';
-import { EdgeTypeEnum } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import { Edge, Node } from 'reactflow';
 import { EdgeDetails } from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
-import {
-  MOCK_CHILD_MAP,
-  MOCK_LINEAGE_DATA_NEW,
-  MOCK_NODES_AND_EDGES,
-  MOCK_PAGINATED_CHILD_MAP,
-} from '../mocks/Lineage.mock';
+import { LineageDirection } from '../generated/api/lineage/lineageDirection';
+import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
   addLineageHandler,
   createNewEdge,
   getAllTracedEdges,
-  getChildMap,
   getColumnFunctionValue,
   getColumnLineageData,
   getColumnSourceTargetHandles,
@@ -37,11 +31,11 @@ import {
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
-  getPaginatedChildMap,
+  getNodesBoundsReactFlow,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
+  getViewportForBoundsReactFlow,
 } from './EntityLineageUtils';
-
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
 }));
@@ -143,19 +137,19 @@ describe('Test EntityLineageUtils utility', () => {
         fromEntity: {
           id: 'sourceId',
           type: 'table',
-          fqn: 'sourceFqn',
+          fullyQualifiedName: 'sourceFqn',
         },
         toEntity: {
           id: 'targetId',
           type: 'table',
-          fqn: 'targetFqn',
+          fullyQualifiedName: 'targetFqn',
         },
         sqlQuery: '',
       },
     });
     expect(result.edge.fromEntity.type).toBe('table');
-    expect(result.edge.toEntity.fqn).toBe('targetFqn');
-    expect(result.edge.fromEntity.fqn).toBe('sourceFqn');
+    expect(result.edge.toEntity.fullyQualifiedName).toBe('targetFqn');
+    expect(result.edge.fromEntity.fullyQualifiedName).toBe('sourceFqn');
     expect(result.edge.toEntity.type).toBe('table');
   });
 
@@ -226,7 +220,7 @@ describe('Test EntityLineageUtils utility', () => {
       { id: '2', source: '1', target: '3' },
       { id: '3', source: '2', target: '3' },
     ];
-    const direction = EdgeTypeEnum.DOWN_STREAM;
+    const direction = LineageDirection.Downstream;
 
     const result = getConnectedNodesEdges(
       selectedNode,
@@ -274,7 +268,7 @@ describe('Test EntityLineageUtils utility', () => {
       { id: '2', source: '1', target: '3' },
       { id: '3', source: '2', target: '3' },
     ];
-    const direction = EdgeTypeEnum.UP_STREAM;
+    const direction = LineageDirection.Upstream;
 
     const result = getConnectedNodesEdges(
       selectedNode,
@@ -316,12 +310,12 @@ describe('Test EntityLineageUtils utility', () => {
       fromEntity: {
         id: 'source',
         type: 'table',
-        fqn: 'sourceFqn',
+        fullyQualifiedName: 'sourceFqn',
       },
       toEntity: {
         id: 'target',
         type: 'table',
-        fqn: 'targetFqn',
+        fullyQualifiedName: 'targetFqn',
       },
       columns: [],
     };
@@ -353,25 +347,6 @@ describe('Test EntityLineageUtils utility', () => {
         toColumn: 'shopId',
       },
     ]);
-  });
-
-  it('getChildMap should return valid map object', () => {
-    const { map, exportResult } = getChildMap(
-      MOCK_LINEAGE_DATA_NEW,
-      's3_storage_sample.departments.media.movies'
-    );
-
-    expect(map).toEqual(MOCK_CHILD_MAP);
-    expect(exportResult).toEqual(
-      `Name,Display Name,Fully Qualified Name,Entity Type,Direction,Owner,Domain,Tags,Tier,Glossary Terms,Level
-"engineering","Engineering department","s3_storage_sample.departments.engineering","container","downstream","","","","","","1"`
-    );
-  });
-
-  it('getPaginatedChildMap should return valid map object', () => {
-    expect(
-      getPaginatedChildMap(MOCK_LINEAGE_DATA_NEW, MOCK_CHILD_MAP, {}, 50)
-    ).toEqual(MOCK_PAGINATED_CHILD_MAP);
   });
 
   // generate test for getColumnSourceTargetHandles
@@ -490,16 +465,16 @@ describe('Test EntityLineageUtils utility', () => {
   describe('getUpstreamDownstreamNodesEdges', () => {
     const edges = [
       {
-        fromEntity: { fqn: 'node1', type: 'table', id: '1' },
-        toEntity: { fqn: 'node2', type: 'table', id: '2' },
+        fromEntity: { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+        toEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
       },
       {
-        fromEntity: { fqn: 'node2', type: 'table', id: '2' },
-        toEntity: { fqn: 'node3', type: 'table', id: '3' },
+        fromEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
+        toEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
       },
       {
-        fromEntity: { fqn: 'node3', type: 'table', id: '3' },
-        toEntity: { fqn: 'node4', type: 'table', id: '4' },
+        fromEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+        toEntity: { fullyQualifiedName: 'node4', type: 'table', id: '4' },
       },
     ];
 
@@ -526,18 +501,18 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result.downstreamEdges).toEqual([
         {
-          fromEntity: { fqn: 'node2', type: 'table', id: '2' },
-          toEntity: { fqn: 'node3', type: 'table', id: '3' },
+          fromEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
+          toEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
         },
         {
-          fromEntity: { fqn: 'node3', type: 'table', id: '3' },
-          toEntity: { fqn: 'node4', type: 'table', id: '4' },
+          fromEntity: { fullyQualifiedName: 'node3', type: 'table', id: '3' },
+          toEntity: { fullyQualifiedName: 'node4', type: 'table', id: '4' },
         },
       ]);
       expect(result.upstreamEdges).toEqual([
         {
-          fromEntity: { fqn: 'node1', type: 'table', id: '1' },
-          toEntity: { fqn: 'node2', type: 'table', id: '2' },
+          fromEntity: { fullyQualifiedName: 'node1', type: 'table', id: '1' },
+          toEntity: { fullyQualifiedName: 'node2', type: 'table', id: '2' },
         },
       ]);
       expect(result.downstreamNodes).toEqual([
@@ -677,6 +652,273 @@ describe('Test EntityLineageUtils utility', () => {
       const result = getColumnFunctionValue(columns, sourceFqn, targetFqn);
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('getNodesBoundsReactFlow', () => {
+    it('should return correct bounds for single node', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: 100, y: 200 },
+          width: 50,
+          height: 30,
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: 100,
+        yMin: 200,
+        xMax: 150, // x + width
+        yMax: 230, // y + height
+      });
+    });
+
+    it('should return correct bounds for multiple nodes', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: 100, y: 200 },
+          width: 50,
+          height: 30,
+          type: 'default',
+        } as Node,
+        {
+          id: '2',
+          position: { x: 0, y: 0 },
+          width: 40,
+          height: 20,
+          type: 'default',
+        } as Node,
+        {
+          id: '3',
+          position: { x: 200, y: 300 },
+          width: 60,
+          height: 40,
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: 0,
+        yMin: 0,
+        xMax: 260, // rightmost x (200) + width (60)
+        yMax: 340, // bottom y (300) + height (40)
+      });
+    });
+
+    it('should handle nodes without width and height', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: 100, y: 200 },
+          type: 'default',
+        } as Node,
+        {
+          id: '2',
+          position: { x: 200, y: 300 },
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: 100,
+        yMin: 200,
+        xMax: 200,
+        yMax: 300,
+      });
+    });
+
+    it('should return Infinity bounds for empty nodes array', () => {
+      const nodes: Node[] = [];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: Infinity,
+        yMin: Infinity,
+        xMax: -Infinity,
+        yMax: -Infinity,
+      });
+    });
+
+    it('should handle negative coordinates', () => {
+      const nodes: Node[] = [
+        {
+          id: '1',
+          position: { x: -100, y: -200 },
+          width: 50,
+          height: 30,
+          type: 'default',
+        } as Node,
+        {
+          id: '2',
+          position: { x: 100, y: 200 },
+          width: 40,
+          height: 20,
+          type: 'default',
+        } as Node,
+      ];
+
+      const bounds = getNodesBoundsReactFlow(nodes);
+
+      expect(bounds).toEqual({
+        xMin: -100,
+        yMin: -200,
+        xMax: 140, // rightmost x (100) + width (40)
+        yMax: 220, // bottom y (200) + height (20)
+      });
+    });
+  });
+
+  describe('getViewportForBoundsReactFlow', () => {
+    it('should calculate viewport for square bounds', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 100,
+        yMax: 100,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: 0,
+        y: 0,
+        zoom: 2,
+      });
+    });
+
+    it('should handle rectangular bounds with scale factor', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 200,
+        yMax: 100,
+      };
+      const imageWidth = 400;
+      const imageHeight = 300;
+      const scaleFactor = 0.5;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight,
+        scaleFactor
+      );
+
+      expect(viewport).toEqual({
+        x: 100,
+        y: 100,
+        zoom: 1,
+      });
+    });
+
+    it('should handle negative coordinates', () => {
+      const bounds = {
+        xMin: -100,
+        yMin: -100,
+        xMax: 100,
+        yMax: 100,
+      };
+      const imageWidth = 400;
+      const imageHeight = 400;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: 200,
+        y: 200,
+        zoom: 2,
+      });
+    });
+
+    it('should handle different aspect ratios', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 400,
+        yMax: 200,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: 0,
+        y: 50,
+        zoom: 0.5,
+      });
+    });
+
+    it('should handle zero dimensions', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 0,
+        yMax: 0,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight
+      );
+
+      expect(viewport).toEqual({
+        x: NaN,
+        y: NaN,
+        zoom: Infinity,
+      });
+    });
+
+    it('should handle custom scale factor', () => {
+      const bounds = {
+        xMin: 0,
+        yMin: 0,
+        xMax: 100,
+        yMax: 100,
+      };
+      const imageWidth = 200;
+      const imageHeight = 200;
+      const scaleFactor = 2;
+
+      const viewport = getViewportForBoundsReactFlow(
+        bounds,
+        imageWidth,
+        imageHeight,
+        scaleFactor
+      );
+
+      expect(viewport).toEqual({
+        x: -100,
+        y: -100,
+        zoom: 4,
+      });
     });
   });
 });

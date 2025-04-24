@@ -111,8 +111,8 @@ export const TestCases = () => {
 
     return params as TestCaseSearchParams;
   }, [location.search]);
-  const { searchValue = '' } = params;
 
+  const { searchValue = '' } = params;
   const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
@@ -254,7 +254,7 @@ export const TestCases = () => {
       });
 
       setTierOptions(options);
-    } catch (error) {
+    } catch {
       setTierOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -286,7 +286,7 @@ export const TestCases = () => {
         });
 
       setTagOptions(options);
-    } catch (error) {
+    } catch {
       setTagOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -324,7 +324,7 @@ export const TestCases = () => {
         };
       });
       setTableOptions(options);
-    } catch (error) {
+    } catch {
       setTableOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -362,7 +362,7 @@ export const TestCases = () => {
         };
       });
       setServiceOptions(options);
-    } catch (error) {
+    } catch {
       setServiceOptions([]);
     } finally {
       setIsOptionsLoading(false);
@@ -416,7 +416,6 @@ export const TestCases = () => {
       key: filter,
       label: startCase(name),
       value: filter,
-      onClick: handleMenuClick,
     }));
   }, []);
 
@@ -471,11 +470,16 @@ export const TestCases = () => {
   );
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
   }
 
   return (
-    <Row className="p-x-md" data-testid="test-case-container" gutter={[16, 16]}>
+    <Row data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
         <Form<TestCaseSearchParams>
           form={form}
@@ -497,6 +501,7 @@ export const TestCases = () => {
                 menu={{
                   items: filterMenu,
                   selectedKeys: selectedFilter,
+                  onClick: handleMenuClick,
                 }}
                 trigger={['click']}>
                 <Button
@@ -641,6 +646,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <SummaryPanel
+          showAdditionalSummary
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />

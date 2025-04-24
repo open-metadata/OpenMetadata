@@ -33,70 +33,32 @@ Security requirements for your **production** environment:
 - The Keycloak use Realms as the primary form of organization, we can't use the realm "master" for new clients (apps), only for administration, so change for your specific realm or create a new.
 - In this example we are used an existing one called "Data-sec".
 
-{% image src="/images/v1.6/deployment/security/keycloak/2-change-realm.png" alt="change-realm" /%}
+{% image src="/images/v1.6/deployment/security/keycloak/keycloak-step-2.png" alt="change-realm" /%}
 
-### Step 3: Create OpenMetadata as a new Client
-- Click on `Clients` in the menu.
-- Click on `Create` button.
-- Enter the Client ID and Protocol as the image.
-- Click on `Save` button.
+## Create Server Credentials
 
-{% image src="/images/v1.6/deployment/security/keycloak/3-add-client.png" alt="add-client" /%}
+## Choose Your Authentication Flow
 
-### Step 4: Edit settings of the client
-- Change "Access Type" value from "public" to "confidential".
-- Change "implicit flow" and "service accounts" to enabled.
+After creating the account, choose the authentication flow you want to use:
 
-{% image src="/images/v1.6/deployment/security/keycloak/4-edit-settings-client.png" alt="edit-settings-client" /%}
-
-- At the bottom of the same settings page, change the configurations to the openmetadata address.
-- The image below shows different possibilities, such as running locally or with a custom domain.
-
-{% image src="/images/v1.6/deployment/security/keycloak/5-edit-settings-url.png" alt="edit-settings-url.png" /%}
-
-- Click on `Save` button.
+- [Implicit Flow](/deployment/security/keycloak/implicit-flow) (Public)
+- [Auth Code Flow](/deployment/security/keycloak/auth-code-flow) (Confidential)
 
 {% note %}
 
-Note: Scopes `openid`, `email` & `profile` are required to fetch the user details so you will have to add these scopes in your client.
+- **SPA (Single Page Application):**  
+  This type is designed for implicit flows. In this case, providing both the client ID and client secret will result in a failure because the implicit flow only requires the client ID for authentication.
 
-{% /note %}
+- **Web:**  
+  This type is intended for confidential clients. If you select this option, you must provide both the client ID and client secret. Simply passing the client ID will cause the authorization process to fail, as the Authorization Code flow requires both credentials for successful authentication.
+  The [OIDC Authorization Code Flow](/deployment/security/oidc) is used in this case, where the client secret is required to securely exchange the authorization code for tokens.
 
-### Step 5: Where to Find the Credentials
 
-- Navigate to the `Credentials` tab.
-- You will find your Client `Secret` related to the Client id "open-metadata"
+### Recommendation:
 
-{% image src="/images/v1.6/deployment/security/keycloak/6-client-credentials.png" alt="client-credentials" /%}
+- Use the **Web** type for confidential clients that require both a client ID and secret.
+- Use the **SPA** type for applications using implicit flows where only a client ID is needed.
 
-After the applying these steps, the users in your realm are able to login in the openmetadata, as a suggestion create a user called "admin-user". Now you can update the configuration of your deployment:
-
-{% inlineCalloutContainer %}
-  {% inlineCallout
-    color="violet-70"
-    icon="celebration"
-    bold="Docker Security"
-    href="/deployment/security/keycloak/docker" %}
-    Configure Keycloak SSO for your Docker Deployment.
-  {% /inlineCallout %}
-  {% inlineCallout
-    color="violet-70"
-    icon="storage"
-    bold="Bare Metal Security"
-    href="/deployment/security/keycloak/bare-metal" %}
-    Configure Keycloak SSO for your Bare Metal Deployment.
-  {% /inlineCallout %}
-  {% inlineCallout
-    color="violet-70"
-    icon="fit_screen"
-    bold="Kubernetes Security"
-    href="/deployment/security/keycloak/kubernetes" %}
-    Configure Keycloak SSO for your Kubernetes Deployment.
-  {% /inlineCallout %}
-{% /inlineCalloutContainer %}
-
-{% note %}
-A dockerized demo for showing how this SSO works with OpenMetadata can be found [here](https://github.com/open-metadata/openmetadata-demo/tree/main/keycloak-sso).
 {% /note %}
 
 {% partial file="/v1.6/deployment/configure-ingestion.md" /%}

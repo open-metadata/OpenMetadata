@@ -7,7 +7,7 @@ slug: /connectors/database/sqlite/yaml
 name="SQLite"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt", "Sample Data"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
@@ -164,9 +164,7 @@ source:
 
 {% partial file="/v1.6/connectors/yaml/data-quality.md" /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "sqlite"} /%}
 
 ## dbt Integration
 

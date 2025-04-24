@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
-import { GlobalSettingOptions } from '../../constant/settings';
+import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import { assignDomain, removeDomain, updateDomain } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -56,6 +56,7 @@ import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 export class EntityClass {
   type = '';
   serviceCategory?: GlobalSettingOptions;
+  serviceType?: ServiceTypes;
   childrenTabId?: string;
   childrenSelectorId?: string;
   endpoint: EntityTypeEndpoint;
@@ -123,7 +124,7 @@ export class EntityClass {
   ) {
     await assignDomain(page, domain1);
     await updateDomain(page, domain2);
-    await removeDomain(page);
+    await removeDomain(page, domain2);
   }
 
   async owner(
@@ -207,7 +208,7 @@ export class EntityClass {
     await removeTag(page, [tag1]);
 
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.Tags')
       .getByTestId('tags-container')
       .getByTestId('Add')
       .isVisible();
@@ -264,7 +265,7 @@ export class EntityClass {
     await removeGlossaryTerm(page, [glossaryTerm1, glossaryTerm2]);
 
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId('Add')
       .isVisible();

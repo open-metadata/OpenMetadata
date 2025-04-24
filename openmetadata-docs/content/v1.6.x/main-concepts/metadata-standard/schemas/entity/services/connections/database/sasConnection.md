@@ -9,15 +9,28 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/sasType*. Default: `SAS`.
+- **`type`**: Service Type. Refer to *[#/definitions/sasType](#definitions/sasType)*. Default: `"SAS"`.
 - **`username`** *(string)*: Username to connect to SAS Viya.
-- **`password`** *(string)*: Password to connect to SAS Viya.
-- **`serverHost`** *(string)*: Hostname of SAS Viya deployment.
-- **`filter`** *(string)*: A filter expression specifying items for import. For more information [see](https://developer.sas.com/apis/rest/DataManagement/#catalog-search)
-
+- **`password`** *(string, format: password)*: Password to connect to SAS Viya.
+- **`serverHost`** *(string, format: uri)*: Hostname of SAS Viya deployment.
+- **`datatables`** *(boolean)*: Enable datatables for ingestion. Default: `true`.
+- **`dataTablesCustomFilter`**: Custom filter for datatables.
+  - **One of**
+    - *object*: Don't include custom filter when ingesting metadata for datatables.
+    - *string*: Include custom filter when ingesting metadata for datatables.
+- **`reports`** *(boolean)*: Enable report for ingestion. Default: `false`.
+- **`reportsCustomFilter`**: Custom filter for reports.
+  - **One of**
+    - *object*: Don't include custom filter when ingesting metadata for reports.
+    - *string*: Include custom filter when ingesting metadata for reports.
+- **`dataflows`** *(boolean)*: Enable dataflow for ingestion. Default: `false`.
+- **`dataflowsCustomFilter`**: Custom filter for dataflows.
+  - **One of**
+    - *object*: Don't include custom filter when ingesting metadata for dataflows.
+    - *string*: Include custom filter when ingesting metadata for dataflows.
 ## Definitions
 
-- **`sasType`** *(string)*: Service type. Must be one of: `['SAS']`. Default: `SAS`.
+- **`sasType`** *(string)*: Service type. Must be one of: `["SAS"]`. Default: `"SAS"`.
 
 
-Documentation file automatically generated at 2023-12-06 13:47:02.454513.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

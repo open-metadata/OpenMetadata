@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -709,6 +709,7 @@ class SampleDataSource(
         db = CreateDatabaseRequest(
             name=self.mysql_database["name"],
             service=self.mysql_database_service.fullyQualifiedName,
+            sourceUrl=self.mysql_database.get("sourceUrl"),
         )
 
         yield Either(right=db)
@@ -726,6 +727,7 @@ class SampleDataSource(
         schema = CreateDatabaseSchemaRequest(
             name=self.mysql_database_schema["name"],
             database=database_object.fullyQualifiedName,
+            sourceUrl=self.mysql_database_schema.get("sourceUrl"),
         )
         yield Either(right=schema)
 
@@ -749,6 +751,7 @@ class SampleDataSource(
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
+                sourceUrl=table.get("sourceUrl"),
             )
             yield Either(right=table_request)
 
@@ -759,6 +762,7 @@ class SampleDataSource(
             name=self.glue_database["name"],
             description=self.glue_database["description"],
             service=self.glue_database_service.fullyQualifiedName,
+            sourceUrl=self.glue_database.get("sourceUrl"),
         )
 
         yield Either(right=db)
@@ -777,6 +781,7 @@ class SampleDataSource(
             name=self.glue_database_schema["name"],
             description=self.glue_database_schema["description"],
             database=database_object.fullyQualifiedName,
+            sourceUrl=self.glue_database_schema.get("sourceUrl"),
         )
         yield Either(right=schema)
 
@@ -800,6 +805,7 @@ class SampleDataSource(
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
+                sourceUrl=table.get("sourceUrl"),
             )
             yield Either(right=table_request)
 
@@ -823,6 +829,7 @@ class SampleDataSource(
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
+                sourceUrl=table.get("sourceUrl"),
             )
             yield Either(right=table_request)
 
@@ -853,6 +860,7 @@ class SampleDataSource(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
             database=database_object.fullyQualifiedName,
+            sourceUrl=self.database_schema.get("sourceUrl"),
         )
         yield Either(right=schema)
 
@@ -881,6 +889,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tags=table["tags"],
                 schemaDefinition=table.get("schemaDefinition"),
+                sourceUrl=table.get("sourceUrl"),
             )
 
             yield Either(right=table_and_db)
@@ -953,6 +962,7 @@ class SampleDataSource(
             name=self.database_schema["name"],
             description=self.database_schema["description"],
             database=database_object.fullyQualifiedName,
+            sourceUrl=self.database_schema.get("sourceUrl"),
         )
         yield Either(right=schema)
 
@@ -980,6 +990,7 @@ class SampleDataSource(
                 ),
                 databaseSchema=database_schema_object.fullyQualifiedName,
                 tags=stored_procedure["tags"],
+                sourceUrl=stored_procedure.get("sourceUrl"),
             )
 
             yield Either(right=stored_procedure)
@@ -1548,9 +1559,7 @@ class SampleDataSource(
                     test_suite=CreateTestSuiteRequest(
                         name=test_suite["testSuiteName"],
                         description=test_suite["testSuiteDescription"],
-                        executableEntityReference=test_suite[
-                            "executableEntityReference"
-                        ],
+                        basicEntityReference=test_suite["executableEntityReference"],
                     )
                 )
             )

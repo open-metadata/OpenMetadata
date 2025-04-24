@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,7 +22,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
 
@@ -35,18 +34,6 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
     """
 
     filters: str
-
-    def _init_super(
-        self,
-        config: WorkflowSource,
-        metadata: OpenMetadata,
-    ):
-        super().__init__(config, metadata, False)
-
-    # pylint: disable=super-init-not-called
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        self._init_super(config=config, metadata=metadata)
-        self.client = DatabricksClient(self.service_connection)
 
     @classmethod
     def create(
@@ -61,7 +48,16 @@ class DatabricksQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata)
 
-    def prepare(self):
+    def get_sql_statement(self, start_time, end_time):
         """
-        By default, there's nothing to prepare
+        returns sql statement to fetch query logs.
+
+        Override if we have specific parameters
         """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            filters=self.get_filters(),
+            result_limit=self.source_config.resultLimit,
+            query_history=self.service_connection.queryHistoryTable,
+        )

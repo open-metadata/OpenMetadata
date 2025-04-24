@@ -42,4 +42,8 @@ to the server certificate file.
 
 Find more information on how to troubleshoot SSL issues [here](/deployment/security/enable-ssl/ssl-troubleshooting).
 
+**ingestionPipelineFQN**
+
+Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline.
+
 {% /codeInfo %}

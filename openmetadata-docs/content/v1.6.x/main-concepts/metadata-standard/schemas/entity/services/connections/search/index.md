@@ -5,4 +5,12 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/searc
 
 # Search
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**OpenSearchConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/search/opensearchconnection)
+- [**CustomSearchConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/search/customsearchconnection)
+- [**ElasticSearchConnection**](/main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearchconnection)
+- [**ElasticSearch**](/main-concepts/metadata-standard/schemas/entity/services/connections/search/elasticsearch)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

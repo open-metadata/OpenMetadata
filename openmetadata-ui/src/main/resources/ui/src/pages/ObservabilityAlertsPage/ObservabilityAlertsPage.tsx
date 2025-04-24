@@ -20,12 +20,16 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { NO_DATA_PLACEHOLDER, ROUTES } from '../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+  ROUTES,
+} from '../../constants/constants';
 import { ALERTS_DOCS } from '../../constants/docs.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -141,7 +145,7 @@ const ObservabilityAlertsPage = () => {
         setAlerts(alertsList);
         handlePagingChange(paging);
         fetchAllAlertsPermission(alertsList);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert-plural') })
         );
@@ -221,7 +225,7 @@ const ObservabilityAlertsPage = () => {
               })}
             </Typography.Text>
           ) : (
-            description
+            <RichTextEditorPreviewerNew markdown={description} />
           ),
       },
       {
@@ -256,7 +260,7 @@ const ObservabilityAlertsPage = () => {
                     <Button
                       className="flex flex-center"
                       data-testid={`alert-edit-${record.name}`}
-                      icon={<EditIcon width={16} />}
+                      icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
                       type="text"
                     />
                   </Link>
@@ -291,8 +295,8 @@ const ObservabilityAlertsPage = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={t('label.alert-plural')}>
-      <Row className="p-x-lg p-t-md" gutter={[0, 16]}>
+    <PageLayoutV1 pageTitle={t('label.observability-alert')}>
+      <Row gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={pageHeaderData} />
@@ -311,15 +315,23 @@ const ObservabilityAlertsPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
             columns={columns}
+            customPaginationProps={{
+              currentPage,
+              isLoading: loading,
+              showPagination,
+              pageSize,
+              paging,
+              pagingHandler: onPageChange,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             dataSource={alerts}
             loading={loading}
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
                   permission
-                  className="p-y-md"
+                  className="p-y-md border-none"
                   doc={ALERTS_DOCS}
                   heading={t('label.alert')}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -333,17 +345,6 @@ const ObservabilityAlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              isLoading={loading}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={onPageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-
           <DeleteWidgetModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}

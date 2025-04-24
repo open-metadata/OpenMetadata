@@ -1,15 +1,15 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Iceberg source helpers.
+Cassandra source helpers.
 """
 from __future__ import annotations
 
@@ -57,6 +57,7 @@ class CassandraColumnParser:
         data_type = None
         array_data_type = None
         raw_data_type = ""
+
         for letter in field.type:
             if letter == "<":
                 if raw_data_type in ("", "frozen"):
@@ -71,12 +72,10 @@ class CassandraColumnParser:
                     array_data_type = cls.datatype_mapping.get(
                         raw_data_type.lower(), DataType.UNKNOWN
                     )
-                raw_data_type = ""
-                if data_type != DataType.ARRAY:
-                    break
 
-            elif letter != ">":
-                raw_data_type += letter
+                raw_data_type = ""
+                if data_type != DataType.ARRAY or array_data_type:
+                    break
 
             elif letter == ">":
                 if not array_data_type and data_type:
@@ -84,18 +83,18 @@ class CassandraColumnParser:
                         raw_data_type.lower(), DataType.UNKNOWN
                     )
                     break
-        else:
-            if not data_type:
-                data_type = cls.datatype_mapping.get(
-                    field.type.lower(), DataType.UNKNOWN
-                )
+
+            else:
+                raw_data_type += letter
+
+        if not data_type:
+            data_type = cls.datatype_mapping.get(field.type.lower(), DataType.UNKNOWN)
 
         column_def = {
             "name": field.column_name,
             "dataTypeDisplay": field.type,
             "dataType": data_type,
+            "arrayDataType": array_data_type,
         }
-        if array_data_type:
-            column_def["arrayDataType"] = array_data_type
 
         return Column(**column_def)

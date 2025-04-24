@@ -42,6 +42,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
+  private final StoredProcedureMapper mapper = new StoredProcedureMapper();
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
   static final String FIELDS = "owners,tags,followers,extension,domain,sourceHash";
 
@@ -271,7 +272,7 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, storedProcedure);
   }
 
@@ -353,7 +354,7 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, storedProcedure);
   }
 
@@ -478,6 +479,36 @@ public class StoredProcedureResource
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteStoredProcedureAsync",
+      summary = "Asynchronously delete a StoredProcedure by Id",
+      description = "Asynchronously delete a StoredProcedure by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "StoredProcedure for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Database schema Id", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteDBSchemaByFQN",
@@ -526,15 +557,5 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private StoredProcedure getStoredProcedure(CreateStoredProcedure create, String user) {
-    return repository
-        .copy(new StoredProcedure(), create, user)
-        .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withStoredProcedureCode(create.getStoredProcedureCode())
-        .withStoredProcedureType(create.getStoredProcedureType())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
   }
 }

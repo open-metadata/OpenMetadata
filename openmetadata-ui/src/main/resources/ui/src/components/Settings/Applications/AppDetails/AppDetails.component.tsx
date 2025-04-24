@@ -19,7 +19,6 @@ import {
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import {
   Button,
   Col,
@@ -33,7 +32,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, noop } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -45,7 +44,6 @@ import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
-import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
   ScheduleTimeline,
@@ -67,12 +65,12 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import ApplicationConfiguration from '../ApplicationConfiguration/ApplicationConfiguration';
 import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import AppSchedule from '../AppSchedule/AppSchedule.component';
@@ -97,7 +95,6 @@ const AppDetails = () => {
     isSaveLoading: false,
   });
   const { getResourceLimit } = useLimitStore();
-  const UiSchema = applicationsClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
@@ -339,22 +336,12 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.CONFIGURATION,
               children: (
-                <div className="m-auto max-width-md w-9/10 p-lg p-y-0">
-                  <FormBuilder
-                    hideCancelButton
-                    useSelectWidget
-                    cancelText={t('label.back')}
-                    formData={appData.appConfiguration}
-                    isLoading={loadingState.isSaveLoading}
-                    okText={t('label.submit')}
-                    schema={jsonSchema}
-                    serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-                    uiSchema={UiSchema}
-                    validator={validator}
-                    onCancel={noop}
-                    onSubmit={onConfigSave}
-                  />
-                </div>
+                <ApplicationConfiguration
+                  appData={appData}
+                  isLoading={loadingState.isSaveLoading}
+                  jsonSchema={jsonSchema}
+                  onConfigSave={onConfigSave}
+                />
               ),
             },
           ]
@@ -374,10 +361,11 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.SCHEDULE,
               children: (
-                <div className="p-lg">
+                <div className="h-full bg-white p-lg border-default border-radius-sm">
                   {appData && (
                     <AppSchedule
                       appData={appData}
+                      jsonSchema={jsonSchema as RJSFSchema}
                       loading={{
                         isRunLoading: loadingState.isRunLoading,
                         isDeployLoading: loadingState.isDeployLoading,
@@ -404,9 +392,10 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.RECENT_RUNS,
               children: (
-                <div className="p-lg">
-                  <AppRunsHistory appData={appData} />
-                </div>
+                <AppRunsHistory
+                  appData={appData}
+                  jsonSchema={jsonSchema as RJSFSchema}
+                />
               ),
             },
           ]
@@ -439,7 +428,7 @@ const AppDetails = () => {
     <PageLayoutV1
       className="app-details-page-layout"
       pageTitle={t('label.application-plural')}>
-      <Row className="page-container">
+      <Row>
         <Col className="d-flex" flex="auto">
           <Button
             className="p-0"
@@ -485,8 +474,8 @@ const AppDetails = () => {
         </Col>
       </Row>
       <Row>
-        <Col className="page-container" span={24}>
-          <Space className="app-details-header w-full m-t-md" size={24}>
+        <Col span={24}>
+          <Space className="app-details-header w-full" size={24}>
             <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
 
             <div className="w-full">
@@ -528,10 +517,10 @@ const AppDetails = () => {
             </div>
           </Space>
         </Col>
-        <Col className="p-0" span={24}>
+        <Col className="app-details-page-tabs" span={24}>
           <Tabs
             destroyInactiveTabPane
-            className="app-details-page-tabs entity-details-page-tabs"
+            className="tabs-new"
             data-testid="tabs"
             items={tabs}
           />

@@ -7,7 +7,7 @@ slug: /connectors/database/azuresql
 name="AzureSQL"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Sample Data"]
 unavailableFeatures=["Stored Procedures", "Owners", "Tags"]
 / %}
 
@@ -20,7 +20,8 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
     - [Service Name](#service-name)
     - [Connection Options](#connection-options)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
-- [Troubleshooting](#troubleshooting)
+- [Data Lineage](/how-to-guides/data-lineage/workflow)
+- [Troubleshooting](/connectors/database/azuresql/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 
@@ -94,7 +95,5 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 {% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.6/connectors/database/related.md" /%}

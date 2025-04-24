@@ -16,8 +16,6 @@ package org.openmetadata.service.resources.events.subscription;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
-import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
-import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +27,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -79,7 +78,6 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -103,11 +101,12 @@ import org.quartz.SchedulerException;
         "The `Events` are changes to metadata and are sent when entities are created, modified, or updated. External systems can subscribe to events using event subscription API over Webhooks, Slack, or Microsoft Teams.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "events/subscriptions")
+@Collection(name = "events/subscriptions", order = 7) // needs to initialize before applications
 public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
   public static final String FIELDS = "owners,filteringRules";
+  private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
     super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
@@ -132,6 +131,7 @@ public class EventSubscriptionResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     try {
+      EventSubscriptionScheduler.initialize(config);
       EventsSubscriptionRegistry.initialize(
           listOrEmpty(EventSubscriptionResource.getNotificationsFilterDescriptors()),
           listOrEmpty(EventSubscriptionResource.getObservabilityFilterDescriptors()));
@@ -144,19 +144,18 @@ public class EventSubscriptionResource
   }
 
   private void initializeEventSubscriptions() {
-    try {
-      CollectionDAO daoCollection = repository.getDaoCollection();
-      List<String> listAllEventsSubscriptions =
-          daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions();
-      List<EventSubscription> eventSubList =
-          JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
-      for (EventSubscription subscription : eventSubList) {
-        EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
-      }
-    } catch (Exception ex) {
-      // Starting application should not fail
-      LOG.warn("Exception during initializeEventSubscriptions", ex);
-    }
+    CollectionDAO daoCollection = repository.getDaoCollection();
+    daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+        .map(obj -> JsonUtils.readValue(obj, EventSubscription.class))
+        .forEach(
+            subscription -> {
+              try {
+                EventSubscriptionScheduler.getInstance()
+                    .addSubscriptionPublisher(subscription, true);
+              } catch (Exception ex) {
+                LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
+              }
+            });
   }
 
   @GET
@@ -294,12 +293,17 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription request)
-      throws SchedulerException {
+      throws SchedulerException,
+          ClassNotFoundException,
+          InvocationTargetException,
+          NoSuchMethodException,
+          InstantiationException,
+          IllegalAccessException {
     EventSubscription eventSub =
-        getEventSubscription(request, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
     Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
     return response;
   }
 
@@ -323,7 +327,7 @@ public class EventSubscriptionResource
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription create) {
     EventSubscription eventSub =
-        getEventSubscription(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, eventSub);
     EventSubscriptionScheduler.getInstance()
         .updateEventSubscription((EventSubscription) response.getEntity());
@@ -474,10 +478,44 @@ public class EventSubscriptionResource
           @PathParam("id")
           UUID id)
       throws SchedulerException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
     EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return delete(uriInfo, securityContext, id, true, true);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Valid
+  @Operation(
+      operationId = "deleteEventSubscriptionAsync",
+      summary = "Asynchronously delete an Event Subscription by Id",
+      description = "Asynchronously delete an Event Subscription",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Entity events",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscription.class))),
+        @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
+      })
+  public Response deleteEventSubscriptionAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id)
+      throws SchedulerException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
+    EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
+    return deleteByIdAsync(uriInfo, securityContext, id, true, true);
   }
 
   @DELETE
@@ -497,6 +535,8 @@ public class EventSubscriptionResource
           @PathParam("name")
           String name)
       throws SchedulerException {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription eventSubscription =
         repository.getByName(null, name, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
@@ -534,8 +574,6 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-
-    authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
     return EventSubscriptionScheduler.getInstance()
         .getStatusForEventSubscription(sub.getId(), destinationId);
@@ -588,32 +626,14 @@ public class EventSubscriptionResource
       @Parameter(description = "AlertType", schema = @Schema(type = "string"))
           @PathParam("alertType")
           CreateEventSubscription.AlertType alertType) {
-
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     if (alertType.equals(NOTIFICATION)) {
       return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
     } else {
       return new ResultList<>(EventsSubscriptionRegistry.listObservabilityDescriptors());
     }
-  }
-
-  @GET
-  @Path("/validation/condition/{expression}")
-  @Operation(
-      operationId = "validateCondition",
-      summary = "Validate a given condition",
-      description = "Validate a given condition expression used in filtering rules.",
-      responses = {
-        @ApiResponse(responseCode = "204", description = "No value is returned"),
-        @ApiResponse(responseCode = "400", description = "Invalid expression")
-      })
-  public void validateCondition(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Expression to validate", schema = @Schema(type = "string"))
-          @PathParam("expression")
-          String expression) {
-    authorizer.authorizeAdmin(securityContext);
-    AlertUtil.validateExpression(expression, Boolean.class);
   }
 
   @GET
@@ -638,6 +658,9 @@ public class EventSubscriptionResource
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return Response.ok()
         .entity(EventSubscriptionScheduler.getInstance().checkIfPublisherPublishedAllEvents(id))
         .build();
@@ -1314,6 +1337,39 @@ public class EventSubscriptionResource
     return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
   }
 
+  @PUT
+  @Path("name/{eventSubscriptionName}/syncOffset")
+  @Valid
+  @Operation(
+      operationId = "syncOffsetForEventSubscriptionByName",
+      summary = "Sync Offset for a specific Event Subscription by its name",
+      description = "Sync Offset for a specific Event Subscription by its name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Returns the destinations for the Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionDestination.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Event Subscription with the name {fqn} is not found")
+      })
+  public Response syncOffsetForEventSubscription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return Response.status(Response.Status.OK)
+        .entity(repository.syncEventSubscriptionOffset(name))
+        .build();
+  }
+
   @POST
   @Path("/testDestination")
   @Operation(
@@ -1352,36 +1408,6 @@ public class EventSubscriptionResource
             });
 
     return Response.ok(resultDestinations).build();
-  }
-
-  private EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
-    return repository
-        .copy(new EventSubscription(), create, user)
-        .withAlertType(create.getAlertType())
-        .withTrigger(create.getTrigger())
-        .withEnabled(create.getEnabled())
-        .withBatchSize(create.getBatchSize())
-        .withFilteringRules(
-            validateAndBuildFilteringConditions(
-                create.getResources(), create.getAlertType(), create.getInput()))
-        .withDestinations(encryptWebhookSecretKey(getSubscriptions(create.getDestinations())))
-        .withProvider(create.getProvider())
-        .withRetries(create.getRetries())
-        .withPollInterval(create.getPollInterval())
-        .withInput(create.getInput());
-  }
-
-  private List<SubscriptionDestination> getSubscriptions(
-      List<SubscriptionDestination> subscriptions) {
-    List<SubscriptionDestination> result = new ArrayList<>();
-    subscriptions.forEach(
-        subscription -> {
-          if (nullOrEmpty(subscription.getId())) {
-            subscription.withId(UUID.randomUUID());
-          }
-          result.add(subscription);
-        });
-    return result;
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()

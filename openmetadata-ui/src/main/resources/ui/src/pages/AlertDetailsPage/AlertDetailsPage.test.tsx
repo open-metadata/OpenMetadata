@@ -23,7 +23,6 @@ import {
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import * as AlertsAPIs from '../../rest/alertsAPI';
 import * as ObservabilityAPIs from '../../rest/observabilityAPI';
-import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import AlertDetailsPage from './AlertDetailsPage';
 
 const mockPush = jest.fn();
@@ -85,6 +84,19 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock(
   '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails',
   () => jest.fn().mockImplementation(() => <div>AlertConfigDetails</div>)
@@ -124,14 +136,12 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest
-    .fn()
-    .mockImplementation(({ firstPanel }) => <div>{firstPanel.children}</div>)
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
+  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
@@ -176,22 +186,6 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByText('label.configuration')).toBeInTheDocument();
     expect(screen.getByText('label.recent-event-plural')).toBeInTheDocument();
     expect(screen.getByText('DeleteWidgetModal')).toBeInTheDocument();
-  });
-
-  it('should not render the description if alert description is not present', async () => {
-    (getObservabilityAlertByFQN as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({
-        ...mockAlertDetails,
-        description: undefined,
-      })
-    );
-    await act(async () => {
-      render(<AlertDetailsPage isNotificationAlert />, {
-        wrapper: MemoryRouter,
-      });
-    });
-
-    expect(screen.queryByText('RichTextEditorPreviewer')).toBeNull();
   });
 
   it('should render the description if alert description is present', async () => {

@@ -76,6 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "apiServices")
 public class APIServiceResource
     extends ServiceEntityResource<ApiService, APIServiceRepository, ApiConnection> {
+  private final APIServiceMapper mapper = new APIServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/apiServices/";
   static final String FIELDS = "pipelines,owners,tags,domain";
 
@@ -345,7 +346,8 @@ public class APIServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateApiService create) {
-    ApiService service = getService(create, securityContext.getUserPrincipal().getName());
+    ApiService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
@@ -370,7 +372,8 @@ public class APIServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateApiService update) {
-    ApiService service = getService(update, securityContext.getUserPrincipal().getName());
+    ApiService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (ApiService) response.getEntity());
     return response;
@@ -461,6 +464,36 @@ public class APIServiceResource
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteAPIServiceAsync",
+      summary = "Asynchronously delete an API service",
+      description = "Asynchronously delete an API services.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "API service for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the API service", schema = @Schema(type = "string"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteAPIServiceByFQN",
@@ -511,13 +544,6 @@ public class APIServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private ApiService getService(CreateApiService create, String user) {
-    return repository
-        .copy(new ApiService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

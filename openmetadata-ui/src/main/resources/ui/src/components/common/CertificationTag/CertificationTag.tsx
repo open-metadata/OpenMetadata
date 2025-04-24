@@ -11,33 +11,57 @@
  *  limitations under the License.
  */
 import { Tag, Tooltip } from 'antd';
+import classNames from 'classnames';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagImageSrc, getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
 
 const CertificationTag = ({
   certification,
+  showName = false,
 }: {
   certification: AssetCertification;
+  showName?: boolean;
 }) => {
   if (certification.tagLabel.style?.iconURL) {
     const name = getEntityName(certification.tagLabel);
+    const actualName = certification.tagLabel.name ?? '';
     const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
+    const tagLink = getClassificationTagPath(certification.tagLabel.tagFQN);
 
     return (
       <Tooltip
-        className="cursor-pointer"
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
-        <div data-testid={`certification-${certification.tagLabel.tagFQN}`}>
+        <Link
+          className={classNames({
+            'certification-tag-with-name d-flex items-center gap-1': showName,
+          })}
+          data-testid={`certification-${certification.tagLabel.tagFQN}`}
+          style={
+            showName
+              ? { backgroundColor: certification.tagLabel.style?.color + '33' } // to decrease opacity of the background color by 80%
+              : {}
+          }
+          to={tagLink}>
           <img
             alt={`certification: ${name}`}
             className="certification-img"
             src={tagSrc}
           />
-        </div>
+          {showName && (
+            <span
+              className={classNames('text-sm font-medium', {
+                [`${actualName.toLowerCase()}`]: Boolean(actualName),
+              })}>
+              {name}
+            </span>
+          )}
+        </Link>
       </Tooltip>
     );
   }

@@ -88,6 +88,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -151,10 +155,15 @@
         "sampleDataStorageConfig": {
           "title": "Storage Config for Sample Data",
           "$ref": "../services/connections/connectionBasicType.json#/definitions/sampleDataStorageConfig"
+        },
+        "randomizedSample": {
+          "description": "Whether to randomize the sample data or not.",
+          "type": "boolean",
+          "default": true
         }
       }
     }
   },
-  "required": ["name", "database", "service"],
+  "required": ["id", "name", "database", "service"],
   "additionalProperties": false
 }

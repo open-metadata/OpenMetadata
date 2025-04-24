@@ -60,7 +60,6 @@ import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToC
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
 import { CreateUserProps } from './CreateUser.interface';
 
@@ -195,6 +194,21 @@ const CreateUser = ({
     onSave(userProfile);
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+      },
+    }),
+    []
+  );
+
   useEffect(() => {
     generateRandomPassword();
   }, []);
@@ -272,13 +286,8 @@ const CreateUser = ({
           </Select>
         </Form.Item>
       )}
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        trigger="onTextChange"
-        valuePropName="initialValue">
-        <RichTextEditor />
-      </Form.Item>
+
+      {getField(descriptionField)}
 
       {!forceBot && (
         <>
@@ -430,19 +439,21 @@ const CreateUser = ({
         </>
       )}
 
-      <div className="m-t-xs">
-        {getField(domainsField)}
-        {selectedDomain && selectedDomain.length > 0 && (
-          <DomainLabel
-            multiple
-            domain={selectedDomain}
-            entityFqn=""
-            entityId=""
-            entityType={EntityType.USER}
-            hasPermission={false}
-          />
-        )}
-      </div>
+      {!isBot && (
+        <div className="m-t-xs">
+          {getField(domainsField)}
+          {selectedDomain && selectedDomain.length > 0 && (
+            <DomainLabel
+              multiple
+              domain={selectedDomain}
+              entityFqn=""
+              entityId=""
+              entityType={EntityType.USER}
+              hasPermission={false}
+            />
+          )}
+        </div>
+      )}
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}

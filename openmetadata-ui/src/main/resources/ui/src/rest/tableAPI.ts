@@ -232,3 +232,34 @@ export const updateTablesVotes = async (id: string, data: QueryVote) => {
 
   return response.data;
 };
+
+export const exportTableDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
+  const res = await APIClient.get(`tables/name/${fqn}/exportAsync`, {
+    params,
+  });
+
+  return res.data;
+};
+
+export const importTableInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/tables/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
+};

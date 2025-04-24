@@ -26,7 +26,7 @@
     based on Open Metadata Standards/APIs, supporting connectors to a wide range of data services,
     OpenMetadata enables end-to-end metadata management, giving you the freedom to unlock the value of your data assets.
   </description>
-  <version>1.6.0-SNAPSHOT</version>
+  <version>1.8.0-SNAPSHOT</version>
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
@@ -76,7 +76,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
-    <slf4j.version>1.7.36</slf4j.version>
+    <slf4j.version>2.0.4</slf4j.version>
     <jackson.version>2.17.2</jackson.version>
     <dropwizard.version>2.1.11</dropwizard.version>
     <dropwizard-jdbi3.version>2.1.6</dropwizard-jdbi3.version>
@@ -106,22 +106,20 @@
     <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.34</lombok.version>
-    <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
-    <elasticsearch.version>7.17.23</elasticsearch.version>
-    <opensearch.version>2.5.0</opensearch.version>
+    <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
+    <elasticsearch.version>7.17.24</elasticsearch.version>
+    <opensearch.version>2.6.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
 
     <httpclient.version>4.5.14</httpclient.version>
     <spring.version>6.1.14</spring.version>
     <log4j.version>2.21.0</log4j.version>
-    <!-- Upgrading jupiter version causes test failures -->
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>1.7.3</dropwizard-health.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
-    <!--   sonar   -Dsonar.login=XXX  -->
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
     <sonar.organization>open-metadata</sonar.organization>
@@ -132,7 +130,6 @@
     <sonar.skip>false</sonar.skip>
     <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
     <testng.version>7.6.1</testng.version>
-    <!-- Micrometer upgrade to 3.x requires Dropwizard > 3.x -->
     <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
     <json-schema-validator.version>1.5.2</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
@@ -152,11 +149,12 @@
     <slack.version>1.29.2</slack.version>
     <spotless.version>2.41.1</spotless.version>
     <picocli.version>4.7.6</picocli.version>
-    <logback-core.version>1.2.13</logback-core.version>
-    <logback-classic.version>1.2.13</logback-classic.version>
+    <logback-core.version>1.3.15</logback-core.version>
+    <logback-classic.version>1.3.15</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
     <json-patch.version>1.13</json-patch.version>
+    <jetty-server.version>9.4.57.v20241219</jetty-server.version>
   </properties>
 
   <dependencyManagement>
@@ -210,6 +208,21 @@
             <groupId>org.slf4j</groupId>
             <artifactId>log4j-over-slf4j</artifactId>
           </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-server</artifactId>
+        <version>${jetty-server.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -224,6 +237,10 @@
           <exclusion>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -263,6 +280,11 @@
         <version>${logback-classic.version}</version>
       </dependency>
       <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-access</artifactId>
+        <version>${logback-classic.version}</version>
+      </dependency>
+      <dependency>
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-json-logging</artifactId>
         <version>${dropwizard.version}</version>
@@ -277,6 +299,12 @@
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-jdbi3</artifactId>
         <version>${dropwizard-jdbi3.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.tomcat</groupId>
+            <artifactId>tomcat-jdbc</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>org.jdbi</groupId>
@@ -384,11 +412,43 @@
         <groupId>io.github.maksymdolgykh.dropwizard</groupId>
         <artifactId>dropwizard-micrometer-core</artifactId>
         <version>${dropwizard-micrometer.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>io.github.maksymdolgykh.dropwizard</groupId>
         <artifactId>dropwizard-micrometer-jdbi</artifactId>
         <version>${dropwizard-micrometer.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-access</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <!-- API, java.xml.bind module -->
       <dependency>
@@ -529,7 +589,7 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
         <!-- 9.x required for Dropwizard 2.1.x -->
-        <version>9.4.56.v20240826</version>
+        <version>${jetty-server.version}</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
@@ -550,6 +610,12 @@
         <groupId>com.jayway.jsonpath</groupId>
         <artifactId>json-path</artifactId>
         <version>${jsonpath.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
     <dependency>
       <groupId>com.github.java-json-tools</groupId>
@@ -560,6 +626,12 @@
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
         <version>1.17.2</version>
+        <exclusions>
+          <exclusion>
+            <groupId>net.minidev</groupId>
+            <artifactId>json-smart</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
       <dependency>
         <groupId>com.azure</groupId>
@@ -567,6 +639,24 @@
         <version>1.14.0</version>
       </dependency>
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
+      <!-- Enforce consistent snakeyaml version -->
+      <dependency>
+        <groupId>org.yaml</groupId>
+        <artifactId>snakeyaml</artifactId>
+        <version>${snakeyaml.version}</version>
+      </dependency>
+      <!-- Enforce consistent jackson-dataformat-yaml version -->
+      <dependency>
+        <groupId>com.fasterxml.jackson.dataformat</groupId>
+        <artifactId>jackson-dataformat-yaml</artifactId>
+        <version>2.17.2</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -835,6 +925,13 @@
           <configuration>
             <source>17</source>
             <target>17</target>
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+              </path>
+            </annotationProcessorPaths>
           </configuration>
         </plugin>
         <plugin>

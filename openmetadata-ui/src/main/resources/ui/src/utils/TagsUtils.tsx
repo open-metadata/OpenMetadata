@@ -15,15 +15,14 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
-import { omit } from 'lodash';
+import { isString, omit } from 'lodash';
 import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
-import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { getExplorePath } from '../constants/constants';
 import {
   ResourceEntity,
   UIPermission,
@@ -47,6 +46,7 @@ import {
 } from '../rest/tagAPI';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
+import { getExplorePath } from './RouterUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -163,7 +163,7 @@ export const getTagDisplay = (tag?: string) => {
 export const getTagTooltip = (fqn: string, description?: string) => (
   <div className="text-left p-xss">
     <div className="m-b-xs">
-      <RichTextEditorPreviewer
+      <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={`**${fqn}**\n${description ?? ''}`}
         textVariant="white"
@@ -186,7 +186,7 @@ export const getDeleteIcon = (arg: {
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={16} />;
+  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
 };
 
 export const getUsageCountLink = (tagFQN: string) => {
@@ -225,7 +225,7 @@ export const getTagPlaceholder = (isGlossaryType: boolean): string =>
 
 export const tagRender = (customTagProps: CustomTagProps) => {
   const { label, onClose } = customTagProps;
-  const tagLabel = getTagDisplay(label as string);
+  const tagLabel = isString(label) ? getTagDisplay(label) : label;
 
   const onPreventMouseDown = (event: React.MouseEvent<HTMLSpanElement>) => {
     event.preventDefault();

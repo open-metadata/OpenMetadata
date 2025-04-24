@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -38,7 +39,10 @@ export class PipelineClass extends EntityClass {
     },
   };
 
-  children = [{ name: 'snowflake_task' }];
+  children = [
+    { name: 'snowflake_task', displayName: 'Snowflake Task' },
+    { name: 'presto_task', displayName: 'Presto Task' },
+  ];
 
   entity = {
     name: this.pipelineName,
@@ -59,6 +63,7 @@ export class PipelineClass extends EntityClass {
     this.childrenTabId = 'tasks';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Pipeline;
+    this.serviceType = ServiceTypes.PIPELINE_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
