@@ -13,17 +13,16 @@
 @import (reference) url('../../../styles/variables.less');
 
 .entity-header-title {
+  flex: 1;
   .ant-typography-ellipsis.entity-header-name {
     margin-bottom: 0px;
     display: block;
     color: @grey-900;
+    min-width: 0;
   }
   .ant-typography-ellipsis.entity-header-display-name {
     font-size: 16px;
     color: @grey-700;
-  }
-  .entity-header-title-container {
-    max-width: 75%;
   }
 }
 

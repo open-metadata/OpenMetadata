@@ -112,12 +112,9 @@ const EntityHeaderTitle = ({
       wrap={false}>
       {icon && <Col className="flex-center">{icon}</Col>}
       <Col
-        className={classNames(
-          'd-flex flex-col entity-header-title-container gap-1',
-          {
-            'w-max-full-140': deleted || badge,
-          }
-        )}>
+        className={classNames('d-flex flex-col gap-1 w-min-0 ', {
+          'w-max-full-200': deleted || badge,
+        })}>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <div className="d-flex items-center gap-2">
