@@ -41,7 +41,7 @@ def mask_literals_with_sqlparse(query: str, parser: LineageRunner):
     logger = get_logger()
 
     try:
-        parsed = parser._parsed_result
+        parsed_statements = parser._parsed_result
 
 
         def mask_token(token):
