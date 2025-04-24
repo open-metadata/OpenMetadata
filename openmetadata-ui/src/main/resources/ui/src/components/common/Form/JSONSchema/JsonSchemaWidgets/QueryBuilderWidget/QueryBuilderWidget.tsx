@@ -35,6 +35,10 @@ import {
   Query,
   Utils as QbUtils,
 } from 'react-awesome-query-builder';
+import {
+  EntityFields,
+  EntityReferenceFields,
+} from '../../../../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import {
@@ -42,6 +46,7 @@ import {
   QueryFieldInterface,
 } from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getEmptyJsonTree } from '../../../../../../utils/AdvancedSearchUtils';
 import {
   elasticSearchFormat,
   elasticSearchFormatForJSONLogic,
@@ -225,6 +230,16 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           console.log(e);
         }
       }
+    } else {
+      const emptyJsonTree = getEmptyJsonTree(
+        outputType === SearchOutputType.JSONLogic
+          ? EntityReferenceFields.OWNERS
+          : EntityFields.OWNERS
+      );
+      onTreeUpdate(
+        QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+        config
+      );
     }
     setInitDone(true);
   }, [config, value, outputType]);
