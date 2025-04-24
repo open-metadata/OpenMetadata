@@ -828,9 +828,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   if (isEmpty(glossaryTerms)) {
     return (
       // If there is no terms, the table container ref is not set, so we need to use a div to set the width
-      <div ref={tableContainerRef}>
+      <div className="h-full" ref={tableContainerRef}>
         <ErrorPlaceHolder
-          className="p-md p-b-lg"
+          className="p-md p-b-lg border-none"
           doc={GLOSSARIES_DOCS}
           heading={t('label.glossary-term')}
           permission={permissions.Create}
