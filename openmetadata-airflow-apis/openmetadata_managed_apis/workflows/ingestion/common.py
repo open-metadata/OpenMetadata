@@ -37,6 +37,7 @@ from metadata.generated.schema.metadataIngestion.application import (
 from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.workflow.base import BaseWorkflow
 
 # pylint: disable=ungrouped-imports
 try:
@@ -192,7 +193,22 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
     )
 
 
-def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
+def execute_workflow(
+    workflow: BaseWorkflow, ingestion_pipeline: IngestionPipeline
+) -> None:
+    """
+    Execute the workflow and handle the status
+    """
+    workflow.execute()
+    if ingestion_pipeline.airflowConfig.raiseOnError:
+        workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+def metadata_ingestion_workflow(
+    workflow_config: OpenMetadataWorkflowConfig, ingestion_pipeline: IngestionPipeline
+):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -208,11 +224,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = MetadataWorkflow.create(config)
-
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    execute_workflow(workflow, ingestion_pipeline)
 
 
 def build_workflow_config_property(
@@ -371,7 +383,10 @@ def build_dag(
         CustomPythonOperator(
             task_id=task_name,
             python_callable=workflow_fn,
-            op_kwargs={"workflow_config": workflow_config},
+            op_kwargs={
+                "workflow_config": workflow_config,
+                "ingestion_pipeline": ingestion_pipeline,
+            },
             # There's no need to retry if we have had an error. Wait until the next schedule or manual rerun.
             retries=ingestion_pipeline.airflowConfig.retries or 0,
             # each DAG will call its own OpenMetadataWorkflowConfig
