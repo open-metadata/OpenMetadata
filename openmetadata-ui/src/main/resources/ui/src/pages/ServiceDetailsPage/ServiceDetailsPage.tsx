@@ -275,7 +275,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         servicePermission,
         serviceDetails
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails]
+    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
+    // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
 
   const handleShowDeleted = useCallback(
@@ -1369,7 +1370,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         entity: getEntityName(serviceDetails),
       })}>
       {isEmpty(serviceDetails) ? (
-        <ErrorPlaceHolder className="m-0">
+        <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
