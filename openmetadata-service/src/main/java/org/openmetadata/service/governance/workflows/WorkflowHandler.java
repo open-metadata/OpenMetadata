@@ -129,8 +129,6 @@ public class WorkflowHandler {
         .getSqlSessionFactory()
         .getConfiguration()
         .addMapper(SqlMapper.class);
-
-    unlockJobsOnStartup();
   }
 
   public static void initialize(OpenMetadataApplicationConfig config) {
