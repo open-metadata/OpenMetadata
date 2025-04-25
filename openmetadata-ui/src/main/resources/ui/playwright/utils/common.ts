@@ -212,6 +212,83 @@ export const removeDomain = async (
   await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
 };
 
+export const assignDataProduct = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  },
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'KnowledgePanel.DataProducts'
+) => {
+  await page
+    .getByTestId(parentId)
+    .getByTestId('data-products-container')
+    .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
+    .click();
+
+  const searchDataProduct = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+
+  await page
+    .locator('input[id*="rc_select"]:not([readonly])')
+    .fill(dataProduct.displayName);
+  await searchDataProduct;
+  await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(
+    page
+      .getByTestId(parentId)
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).toBeVisible();
+};
+
+export const removeDataProduct = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  dataProduct: {
+    name: string;
+    displayName: string;
+    fullyQualifiedName?: string;
+  }
+) => {
+  await page
+    .getByTestId('KnowledgePanel.DataProducts')
+    .getByTestId('data-products-container')
+    .getByTestId('edit-button')
+    .click();
+
+  await page
+    .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
+    .getByTestId('remove-tags')
+    .locator('svg')
+    .click();
+
+  const searchDataProduct = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+  await searchDataProduct;
+
+  await expect(
+    page
+      .getByTestId('KnowledgePanel.DataProducts')
+      .getByTestId('data-products-list')
+      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+  ).not.toBeVisible();
+};
+
 export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
   await redirectToHomePage(page);
   const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');

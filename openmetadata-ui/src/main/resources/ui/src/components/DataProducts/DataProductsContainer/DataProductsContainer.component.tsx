@@ -193,7 +193,10 @@ const DataProductsContainer = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col className="m-t-xss" onClick={handleAddClick}>
+        <Col
+          className="m-t-xss"
+          data-testid="add-data-product"
+          onClick={handleAddClick}>
           <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
         </Col>
       ) : null,

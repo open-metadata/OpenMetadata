@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { Glossary } from '../glossary/Glossary';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
@@ -86,6 +87,9 @@ export class EntityDataClass {
   static readonly pipelineService = new PipelineServiceClass();
   static readonly searchIndexService = new SearchIndexServiceClass();
   static readonly storageService = new StorageServiceClass();
+  static readonly dataProduct1 = new DataProduct(this.domain1);
+  static readonly dataProduct2 = new DataProduct(this.domain1);
+  static readonly dataProduct3 = new DataProduct(this.domain2);
 
   static async preRequisitesForTests(
     apiContext: APIRequestContext,
@@ -192,6 +196,9 @@ export class EntityDataClass {
       await Promise.allSettled([
         this.glossaryTerm1.create(apiContext),
         this.glossaryTerm2.create(apiContext),
+        this.dataProduct1.create(apiContext),
+        this.dataProduct2.create(apiContext),
+        this.dataProduct3.create(apiContext),
       ]);
     }
   }
@@ -217,6 +224,9 @@ export class EntityDataClass {
             this.team2.delete(apiContext),
             this.tierTag1.delete(apiContext),
             this.tierTag2.delete(apiContext),
+            this.dataProduct1.delete(apiContext),
+            this.dataProduct2.delete(apiContext),
+            this.dataProduct3.delete(apiContext),
           ]
         : [];
 

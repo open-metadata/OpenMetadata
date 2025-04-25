@@ -13,7 +13,13 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
-import { assignDomain, removeDomain, updateDomain } from '../../utils/common';
+import {
+  assignDataProduct,
+  assignDomain,
+  removeDataProduct,
+  removeDomain,
+  updateDomain,
+} from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
@@ -49,6 +55,7 @@ import {
   upVote,
   validateFollowedEntityToWidget,
 } from '../../utils/entity';
+import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
@@ -120,10 +127,17 @@ export class EntityClass {
   async domain(
     page: Page,
     domain1: Domain['responseData'],
-    domain2: Domain['responseData']
+    domain2: Domain['responseData'],
+    dataProduct1: DataProduct['responseData'],
+    dataProduct2: DataProduct['responseData'],
+    dataProduct3: DataProduct['responseData']
   ) {
     await assignDomain(page, domain1);
+    await assignDataProduct(page, domain1, dataProduct1);
+    await assignDataProduct(page, domain1, dataProduct2, 'Edit');
     await updateDomain(page, domain2);
+    await assignDataProduct(page, domain2, dataProduct3);
+    await removeDataProduct(page, domain2, dataProduct3);
     await removeDomain(page, domain2);
   }
 
