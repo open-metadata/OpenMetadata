@@ -144,7 +144,6 @@ export const DataAssetSummaryPanel = ({
         dataAsset.id
       );
       setEntityPermissions(permissions);
-      fetchEntityBasedDetails();
     } else {
       setEntityPermissions(null);
     }
@@ -220,7 +219,10 @@ export const DataAssetSummaryPanel = ({
             </Row>
 
             {entityType === EntityType.TABLE && (
-              <TableSummary entityDetails={dataAsset as Table} />
+              <TableSummary
+                entityDetails={dataAsset as Table}
+                permissions={entityPermissions}
+              />
             )}
 
             <SummaryTagsDescription

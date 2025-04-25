@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Table } from '../../../../generated/entity/data/table';
 
 export interface TableSummaryProps {
   entityDetails: Table;
+  permissions: OperationPermission | null;
 }
 
 export interface TableProfileDetails {
