@@ -31,6 +31,7 @@ import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRig
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS,
@@ -308,6 +309,7 @@ function ServiceMainTabContent({
                         }}
                         pagination={false}
                         rowKey="id"
+                        scroll={TABLE_SCROLL_VALUE}
                         size="small"
                         staticVisibleColumns={
                           COMMON_STATIC_TABLE_VISIBLE_COLUMNS
