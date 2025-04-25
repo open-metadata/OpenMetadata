@@ -362,6 +362,7 @@ export const AuthProvider = ({
         if (err?.response?.status === 404) {
           if (!authConfig?.enableSelfSignup) {
             resetUserDetails();
+            showErrorToast(err);
             history.push(ROUTES.UNAUTHORISED);
           } else {
             setNewUserProfile(user.profile);
