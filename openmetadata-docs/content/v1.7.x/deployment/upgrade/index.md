@@ -6,7 +6,7 @@ collate: false
 
 # Upgrade OpenMetadata
 
-In this guide, you will find all the necessary information to safely upgrade your OpenMetadata instance to 1.3.x.
+In this guide, you will find all the necessary information to safely upgrade your OpenMetadata instance to 1.7.x.
 
 {% partial file="/v1.7/deployment/upgrade/upgrade-prerequisites.md" /%}
 
