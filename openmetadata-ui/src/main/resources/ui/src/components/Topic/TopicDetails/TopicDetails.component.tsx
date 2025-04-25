@@ -293,6 +293,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           entityType={EntityType.TOPIC}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={topicPermissions}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTopic}
           onUpdateFeedCount={handleFeedCount}

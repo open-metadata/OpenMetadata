@@ -85,7 +85,8 @@ export interface EventPublisherJob {
 /**
  * Failure for the job
  *
- * This schema defines Event Publisher Job Error Schema.
+ * This schema defines Event Publisher Job Error Schema. Additional properties exist for
+ * backward compatibility. Don't use it.
  */
 export interface IndexingAppError {
     errorSource?:      ErrorSource;
@@ -97,6 +98,7 @@ export interface IndexingAppError {
     stackTrace?:       string;
     submittedCount?:   number;
     successCount?:     number;
+    [property: string]: any;
 }
 
 export enum ErrorSource {

@@ -29,6 +29,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import AnnouncementTab from '../../components/Announcement/AnnouncementTab.component';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -49,6 +50,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
@@ -74,6 +76,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getApplicationList } from '../../rest/applicationAPI';
@@ -83,6 +86,7 @@ import {
   ListDataModelParams,
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
+import { getFeedCount } from '../../rest/feedsAPI';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
@@ -212,6 +216,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [statusFilter, setStatusFilter] = useState<
     Array<{ key: string; label: string }>
   >([]);
+  const [countData, setCountData] = useState<{
+    loading: boolean;
+    data: FeedCounts;
+  }>({
+    loading: false,
+    data: FEED_COUNT_INITIAL_DATA,
+  });
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
   const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
 
@@ -1064,6 +1075,32 @@ const ServiceDetailsPage: FunctionComponent = () => {
     typeFilter,
   ]);
 
+  const fetchAnnouncementCount = useCallback(async () => {
+    setCountData((prev) => ({ ...prev, loading: true }));
+    try {
+      const res = await getFeedCount(
+        getEntityFeedLink(entityType, decodedServiceFQN)
+      );
+      setCountData((prev) => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          activeAnnouncementCount: res[0]?.activeAnnouncementCount ?? 0,
+          inactiveAnnouncementCount: res[0]?.inactiveAnnouncementCount ?? 0,
+          totalAnnouncementCount: res[0]?.totalAnnouncementCount ?? 0,
+        },
+      }));
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.entity-feed-count-error'));
+    } finally {
+      setCountData((prev) => ({ ...prev, loading: false }));
+    }
+  }, [entityType, decodedServiceFQN]);
+
+  useEffect(() => {
+    fetchAnnouncementCount();
+  }, [fetchAnnouncementCount]);
+
   useEffect(() => {
     if (isCollateAIWidgetSupported) {
       fetchCollateAgentsList({
@@ -1302,6 +1339,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
         isHidden: !servicePermission.EditAll,
         key: EntityTabs.CONNECTION,
         children: testConnectionTab,
+      },
+      {
+        name: t('label.announcement-plural'),
+        key: EntityTabs.ANNOUNCEMENT,
+        count: countData.data.totalAnnouncementCount,
+        children: (
+          <AnnouncementTab
+            entityType={entityType}
+            fqn={decodedServiceFQN}
+            permissions={servicePermission}
+          />
+        ),
       }
     );
 
@@ -1310,7 +1359,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       .map((tab) => ({
         label: (
           <TabsLabel
-            count={tab.count}
+            count={tab.count as number}
             id={tab.key}
             isActive={activeTab === tab.key}
             name={tab.name}
@@ -1342,6 +1391,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     testConnectionTab,
     activeTab,
     isMetadataService,
+    countData,
     workflowStatesData,
     isWorkflowStatusLoading,
   ]);

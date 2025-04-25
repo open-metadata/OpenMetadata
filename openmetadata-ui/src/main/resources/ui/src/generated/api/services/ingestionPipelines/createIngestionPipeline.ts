@@ -688,6 +688,10 @@ export interface Pipeline {
      */
     markDeletedApiCollections?: boolean;
     /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
+    /**
      * List of operations to be performed on the service
      */
     operations?: Operation[];
