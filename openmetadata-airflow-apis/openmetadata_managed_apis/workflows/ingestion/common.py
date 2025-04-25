@@ -200,7 +200,7 @@ def execute_workflow(
     Execute the workflow and handle the status
     """
     workflow.execute()
-    if workflow_config.raiseOnError:
+    if workflow_config.workflowConfig.raiseOnError:
         workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
