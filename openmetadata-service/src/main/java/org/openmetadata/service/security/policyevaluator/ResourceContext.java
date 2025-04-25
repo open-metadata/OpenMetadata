@@ -1,8 +1,10 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import com.google.common.annotations.VisibleForTesting;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -70,12 +72,20 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     resolveEntity();
     if (entity == null) {
       return null;
-    } else if (Entity.DATA_PRODUCT.equals(entityRepository.getEntityType())) {
-      if (entity.getDomain() != null) {
-        entity.getOwners().add(entity.getDomain());
-      }
     } else if (Entity.USER.equals(entityRepository.getEntityType())) {
       return List.of(entity.getEntityReference()); // Owner for a user is same as the user
+    } else if (Entity.DATA_PRODUCT.equals(entityRepository.getEntityType())) {
+      // For data product, we need to combine the owners of the data product and the domain
+      List<EntityReference> combinedOwners = new ArrayList<>(entity.getOwners());
+      Optional.ofNullable(entity.getDomain())
+          .map(
+              domainRef ->
+                  (EntityInterface)
+                      Entity.getEntity(
+                          domainRef.getType(), domainRef.getId(), "owners", Include.ALL))
+          .map(EntityInterface::getOwners)
+          .ifPresent(combinedOwners::addAll);
+      return combinedOwners;
     }
     return entity.getOwners();
   }
