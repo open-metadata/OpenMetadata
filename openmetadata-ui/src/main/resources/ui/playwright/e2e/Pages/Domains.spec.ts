@@ -716,7 +716,7 @@ test.describe('Domains Rbac', () => {
         await expect(
           userPage.getByTestId('permission-error-placeholder')
         ).toHaveText(
-          "You don't have access, please check with the admin to get permissions"
+          'You don’t have access, please check with the admin to get permissions'
         );
       }
 
@@ -739,6 +739,16 @@ test.describe('Domains Rbac', () => {
 test.describe('Data Consumer Domain Ownership', () => {
   test.slow(true);
 
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
+  const tag = new TagClass({
+    classification: classification.data.name,
+  });
+  const glossary = new Glossary();
+  const glossaryTerm = new GlossaryTerm(glossary);
+
   let testResources: {
     dataConsumerUser: UserClass;
     domainForTest: Domain;
@@ -748,6 +758,10 @@ test.describe('Data Consumer Domain Ownership', () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
+    await classification.create(apiContext);
+    await tag.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
 
     testResources = await setupDomainOwnershipTest(apiContext);
 
@@ -756,7 +770,10 @@ test.describe('Data Consumer Domain Ownership', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-
+    await tag.delete(apiContext);
+    await glossary.delete(apiContext);
+    await glossaryTerm.delete(apiContext);
+    await classification.delete(apiContext);
     await testResources.cleanup(apiContext);
 
     await afterAction();
@@ -808,6 +825,12 @@ test.describe('Data Consumer Domain Ownership', () => {
         await expect(
           dataConsumerPage.getByTestId('manage-button')
         ).toBeVisible();
+
+        await addTagsAndGlossaryToDomain(dataConsumerPage, {
+          tagFqn: tag.responseData.fullyQualifiedName,
+          glossaryTermFqn: glossaryTerm.responseData.fullyQualifiedName,
+          isDomain: false,
+        });
       }
     );
 
