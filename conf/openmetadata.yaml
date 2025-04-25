@@ -215,6 +215,7 @@ authenticationConfiguration:
     tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-"0"}
+    prompt: ${OIDC_PROMPT_TYPE:-"consent"}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:

@@ -81,6 +81,10 @@
     "maxAge": {
       "description": "Validity for the JWT Token created from SAML Response",
       "type": "string"
+    },
+    "prompt": {
+      "description": "Prompt whether login/consent",
+      "type": "string"
     }
   },
   "additionalProperties": false
