@@ -53,7 +53,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
-import software.amazon.awssdk.services.rds.endpoints.internal.Value;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
 
