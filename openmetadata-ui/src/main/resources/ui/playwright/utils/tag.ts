@@ -173,6 +173,7 @@ export const removeAssetsFromTag = async (
   await page.getByTestId('delete-all-button').click();
   await assetsRemoveRes;
 
+  await page.waitForLoadState('networkidle');
   await checkAssetsCount(page, 0);
 };
 
