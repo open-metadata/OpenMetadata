@@ -39,15 +39,11 @@ import {
   getEntityExtraInfoLength,
 } from './DataAssetsHeader.utils';
 
-jest.mock(
-  '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
-  () => ({
-    ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => {
-      value;
-    }),
-    ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
-  })
-);
+jest.mock('./DataAssetsHeader.utils', () => ({
+  ...jest.requireActual('./DataAssetsHeader.utils'),
+  ExtraInfoLabel: jest.fn().mockImplementation(({ value }) => value),
+  ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
+}));
 jest.mock('./EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue([
