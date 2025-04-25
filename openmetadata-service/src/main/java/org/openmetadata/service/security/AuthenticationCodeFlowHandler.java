@@ -129,6 +129,7 @@ public class AuthenticationCodeFlowHandler {
   private final String principalDomain;
   private final int tokenValidity;
   private final String maxAge;
+  private final String promptType;
 
   public AuthenticationCodeFlowHandler(
       AuthenticationConfiguration authenticationConfiguration,
@@ -155,6 +156,7 @@ public class AuthenticationCodeFlowHandler {
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
+    this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -266,10 +268,8 @@ public class AuthenticationCodeFlowHandler {
         addStateAndNonceParameters(client, req, params);
 
         // This is always used to prompt the user to login
-        if (client instanceof GoogleOidcClient) {
-          params.put(OidcConfiguration.PROMPT, "consent");
-        } else {
-          params.put(OidcConfiguration.PROMPT, "login");
+        if (!nullOrEmpty(promptType)) {
+          params.put(OidcConfiguration.PROMPT, promptType);
         }
 
         if (!nullOrEmpty(maxAge)) {
