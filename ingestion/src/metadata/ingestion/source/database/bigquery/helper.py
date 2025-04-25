@@ -14,6 +14,7 @@ Source connection helper
 """
 import re
 import traceback
+from copy import deepcopy
 from typing import Any, List, Tuple
 
 from pydantic import BaseModel
@@ -54,24 +55,25 @@ def get_inspector_details(
     """
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
+    new_service_connection = deepcopy(service_connection)
     kwargs = {}
-    if isinstance(service_connection.credentials.gcpConfig, GcpCredentialsValues):
-        service_connection.credentials.gcpConfig.projectId = SingleProjectId(
+    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
+        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(
             database_name
         )
-        if service_connection.credentials.gcpImpersonateServiceAccount:
+        if new_service_connection.credentials.gcpImpersonateServiceAccount:
             kwargs[
                 "impersonate_service_account"
             ] = (
-                service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+                new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
             )
 
             kwargs[
                 "lifetime"
-            ] = service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+            ] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
     client = get_bigquery_client(project_id=database_name, **kwargs)
-    engine = get_connection(service_connection)
+    engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 
     return InspectorWrapper(client=client, engine=engine, inspector=inspector)
