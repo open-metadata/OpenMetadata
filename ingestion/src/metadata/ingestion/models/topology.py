@@ -304,12 +304,12 @@ class TopologyContextManager:
         self.contexts.setdefault(
             thread_id, self.contexts[parent_thread_id].model_copy(deep=True)
         )
-        
+
     def __getstate__(self):
         """Called when pickling the object."""
         state = self.__dict__.copy()
         return state
-        
+
     def __setstate__(self, state):
         """Called when unpickling the object."""
         self.__dict__.update(state)

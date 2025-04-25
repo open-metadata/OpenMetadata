@@ -74,11 +74,11 @@ class ExecutionTimeTrackerContextMap(metaclass=Singleton):
         """Removes the information of a given thread."""
         thread_id = thread_id or threading.get_ident()
         return self.map.get(thread_id, []).pop()
-        
+
     def __getstate__(self):
         """Called when pickling the object, returns the state without thread-specific objects."""
         return self.__dict__.copy()
-        
+
     def __setstate__(self, state):
         """Called when unpickling the object."""
         self.__dict__.update(state)
@@ -96,15 +96,15 @@ class ExecutionTimeTrackerState(metaclass=Singleton):
         """Updates the State."""
         with self.lock:
             self.state[context.name] = self.state.get(context.name, 0) + elapsed
-            
+
     def __getstate__(self):
         """Called when pickling the object, returns the state without the lock."""
         state = self.__dict__.copy()
         # Don't pickle the lock
-        if 'lock' in state:
-            del state['lock']
+        if "lock" in state:
+            del state["lock"]
         return state
-        
+
     def __setstate__(self, state):
         """Called when unpickling the object, restores the lock."""
         self.__dict__.update(state)
@@ -194,11 +194,11 @@ class ExecutionTimeTracker(metaclass=Singleton):
 
             if context.stored:
                 self.state.add(context, elapsed)
-                
+
     def __getstate__(self):
         """Called when pickling the object."""
         return self.__dict__.copy()
-        
+
     def __setstate__(self, state):
         """Called when unpickling the object."""
         self.__dict__.update(state)

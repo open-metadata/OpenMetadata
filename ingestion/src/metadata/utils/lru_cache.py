@@ -82,10 +82,10 @@ class LRUCache(Generic[T]):
         """Called when pickling the object, returns the state without the lock."""
         state = self.__dict__.copy()
         # Don't pickle the lock
-        if 'lock' in state:
-            del state['lock']
+        if "lock" in state:
+            del state["lock"]
         return state
-        
+
     def __setstate__(self, state):
         """Called when unpickling the object, restores the lock."""
         self.__dict__.update(state)
