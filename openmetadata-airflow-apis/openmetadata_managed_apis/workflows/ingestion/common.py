@@ -194,21 +194,19 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
 
 def execute_workflow(
-    workflow: BaseWorkflow, ingestion_pipeline: IngestionPipeline
+    workflow: BaseWorkflow, workflow_config: OpenMetadataWorkflowConfig
 ) -> None:
     """
     Execute the workflow and handle the status
     """
     workflow.execute()
-    if ingestion_pipeline.airflowConfig.raiseOnError:
+    if workflow_config.raiseOnError:
         workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
 
 
-def metadata_ingestion_workflow(
-    workflow_config: OpenMetadataWorkflowConfig, ingestion_pipeline: IngestionPipeline
-):
+def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -224,7 +222,7 @@ def metadata_ingestion_workflow(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = MetadataWorkflow.create(config)
-    execute_workflow(workflow, ingestion_pipeline)
+    execute_workflow(workflow, workflow_config)
 
 
 def build_workflow_config_property(
@@ -237,6 +235,7 @@ def build_workflow_config_property(
     """
     return WorkflowConfig(
         loggerLevel=ingestion_pipeline.loggerLevel or LogLevels.INFO,
+        raiseOnError=ingestion_pipeline.raiseOnError,
         openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
     )
 
@@ -385,7 +384,6 @@ def build_dag(
             python_callable=workflow_fn,
             op_kwargs={
                 "workflow_config": workflow_config,
-                "ingestion_pipeline": ingestion_pipeline,
             },
             # There's no need to retry if we have had an error. Wait until the next schedule or manual rerun.
             retries=ingestion_pipeline.airflowConfig.retries or 0,

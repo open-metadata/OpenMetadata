@@ -35,7 +35,7 @@ from metadata.workflow.profiler import ProfilerWorkflow
 
 
 def profiler_workflow(
-    workflow_config: OpenMetadataWorkflowConfig, ingestion_pipeline: IngestionPipeline
+    workflow_config: OpenMetadataWorkflowConfig,
 ):
     """
     Task that creates and runs the profiler workflow.
@@ -52,7 +52,7 @@ def profiler_workflow(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = ProfilerWorkflow.create(config)
-    execute_workflow(workflow, ingestion_pipeline)
+    execute_workflow(workflow, workflow_config)
 
 
 def build_profiler_workflow_config(

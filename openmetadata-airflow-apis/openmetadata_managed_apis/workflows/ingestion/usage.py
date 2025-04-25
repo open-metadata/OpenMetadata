@@ -36,7 +36,7 @@ from metadata.workflow.usage import UsageWorkflow
 
 
 def usage_workflow(
-    workflow_config: OpenMetadataWorkflowConfig, ingestion_pipeline: IngestionPipeline
+    workflow_config: OpenMetadataWorkflowConfig,
 ):
     """
     Task that creates and runs the ingestion workflow.
@@ -53,7 +53,7 @@ def usage_workflow(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = UsageWorkflow.create(config)
-    execute_workflow(workflow, ingestion_pipeline)
+    execute_workflow(workflow, workflow_config)
 
 
 def build_usage_config_from_file(

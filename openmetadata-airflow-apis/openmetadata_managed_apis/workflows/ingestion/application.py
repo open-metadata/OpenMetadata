@@ -39,7 +39,6 @@ from metadata.workflow.application import ApplicationWorkflow
 
 def application_workflow(
     workflow_config: OpenMetadataApplicationConfig,
-    ingestion_pipeline: IngestionPipeline,
 ):
     """
     Task that creates and runs the ingestion workflow.
@@ -56,7 +55,7 @@ def application_workflow(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = ApplicationWorkflow.create(config)
-    execute_workflow(workflow, ingestion_pipeline)
+    execute_workflow(workflow, workflow_config)
 
 
 def build_application_workflow_config(

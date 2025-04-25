@@ -121,11 +121,6 @@
         "email": {
           "description": "Email to notify workflow status.",
           "$ref": "../../../type/basic.json#/definitions/email"
-        },
-        "raiseOnError": {
-          "description": "Mark the DAG as failed if the tasks fail",
-          "type": "boolean",
-          "default": true
         }
       },
       "additionalProperties": false
@@ -180,6 +175,11 @@
     "loggerLevel": {
       "description": "Set the logging level for the workflow.",
       "$ref": "../../../metadataIngestion/workflow.json#/definitions/logLevels"
+    },
+    "raiseOnError": {
+      "description": "Control if we want to flag the workflow as failed if we encounter any processing errors.",
+      "type": "boolean",
+      "default": true
     },
     "deployed": {
       "description": "Indicates if the workflow has been successfully deployed to Airflow.",

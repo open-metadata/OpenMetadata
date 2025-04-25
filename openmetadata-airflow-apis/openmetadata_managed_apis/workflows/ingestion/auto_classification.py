@@ -35,7 +35,7 @@ from metadata.workflow.classification import AutoClassificationWorkflow
 
 
 def auto_classification_workflow(
-    workflow_config: OpenMetadataWorkflowConfig, ingestion_pipeline: IngestionPipeline
+    workflow_config: OpenMetadataWorkflowConfig,
 ):
     """
     Task that creates and runs the auto classification workflow.
@@ -52,7 +52,7 @@ def auto_classification_workflow(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = AutoClassificationWorkflow.create(config)
-    execute_workflow(workflow, ingestion_pipeline)
+    execute_workflow(workflow, workflow_config)
 
 
 def build_auto_classification_workflow_config(

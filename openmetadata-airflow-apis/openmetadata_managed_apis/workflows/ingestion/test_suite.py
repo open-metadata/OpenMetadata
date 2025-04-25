@@ -35,7 +35,7 @@ from metadata.workflow.data_quality import TestSuiteWorkflow
 
 
 def test_suite_workflow(
-    workflow_config: OpenMetadataWorkflowConfig, ingestion_pipeline: IngestionPipeline
+    workflow_config: OpenMetadataWorkflowConfig,
 ):
     """
     Task that creates and runs the test suite workflow.
@@ -52,7 +52,7 @@ def test_suite_workflow(
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = TestSuiteWorkflow.create(config)
-    execute_workflow(workflow, ingestion_pipeline)
+    execute_workflow(workflow, workflow_config)
 
 
 def build_test_suite_workflow_config(

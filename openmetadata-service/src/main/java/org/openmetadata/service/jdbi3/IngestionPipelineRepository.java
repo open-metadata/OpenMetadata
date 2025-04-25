@@ -53,6 +53,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
+import software.amazon.awssdk.services.rds.endpoints.internal.Value;
 
 public class IngestionPipelineRepository extends EntityRepository<IngestionPipeline> {
 
@@ -337,6 +338,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
+      updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
     }
 
     private void updateSourceConfig() {
@@ -366,6 +368,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateDeployed(Boolean origDeployed, Boolean updatedDeployed) {
       if (updatedDeployed != null && !origDeployed.equals(updatedDeployed)) {
         recordChange("deployed", origDeployed, updatedDeployed);
+      }
+    }
+
+    private void updateRaiseOnError(Boolean origRaiseOnError, Boolean updatedRaiseOnError) {
+      if (updatedRaiseOnError != null && !origRaiseOnError.equals(updatedRaiseOnError)) {
+        recordChange("raiseOnError", origRaiseOnError, updatedRaiseOnError);
       }
     }
 
