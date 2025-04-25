@@ -14,6 +14,7 @@ import classNames from 'classnames';
 import React, { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
+import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
@@ -38,21 +39,56 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
 }) => {
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
+  const isTeam = owner?.type === OwnerType.TEAM; // Assuming 'type' indicates if the owner is a team
 
   const inheritedIcon = owner?.inherited ? (
     <InheritIcon className="inherit-icon cursor-pointer" width={8} />
   ) : null;
+  if (isCompactView) {
+    return (
+      <div className={classNames('owner-avatar-container is-compact-view')}>
+        <div className="owner-avatar-icon d-flex">
+          <OwnerAvatar
+            avatarSize={avatarSize}
+            inheritedIcon={inheritedIcon}
+            isCompactView={isCompactView}
+            owner={owner}
+          />
+        </div>
+        <Link
+          className={classNames(
+            'no-underline font-medium text-xs text-primary',
+            className
+          )}
+          data-testid="owner-link"
+          to={ownerPath}>
+          <span data-testid={getEntityName(owner)}>
+            {ownerDisplayName ?? displayName}
+          </span>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div
-      className={classNames('owner-avatar-container', {
-        'is-compact-view': isCompactView,
-        'stacked-view': !isCompactView,
-      })}
+      className={classNames('owner-avatar-container stacked-view')}
       style={{
-        zIndex: !isCompactView ? index + 1 : undefined, // Lower index items will be underneath
+        zIndex: index + 1,
       }}>
-      {!isCompactView ? (
+      {isTeam ? (
+        <Link
+          className="d-flex no-underline"
+          data-testid="owner-link"
+          to={ownerPath}>
+          <OwnerAvatar
+            avatarSize={avatarSize}
+            inheritedIcon={inheritedIcon}
+            isCompactView={isCompactView}
+            owner={owner}
+          />
+        </Link>
+      ) : (
         <UserPopOverCard userName={owner.name ?? ''}>
           <Link
             className="d-flex no-underline"
@@ -66,28 +102,6 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             />
           </Link>
         </UserPopOverCard>
-      ) : (
-        <>
-          <div className="owner-avatar-icon d-flex">
-            <OwnerAvatar
-              avatarSize={avatarSize}
-              inheritedIcon={inheritedIcon}
-              isCompactView={isCompactView}
-              owner={owner}
-            />
-          </div>
-          <Link
-            className={classNames(
-              'no-underline font-medium text-xs text-primary',
-              className
-            )}
-            data-testid="owner-link"
-            to={ownerPath}>
-            <span data-testid={getEntityName(owner)}>
-              {ownerDisplayName ?? displayName}
-            </span>
-          </Link>
-        </>
       )}
     </div>
   );

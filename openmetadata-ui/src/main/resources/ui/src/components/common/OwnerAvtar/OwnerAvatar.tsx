@@ -35,7 +35,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   const displayName = getEntityName(owner);
 
   return owner.type === OwnerType.TEAM ? (
-    <div className="d-flex gap-2 items-center">
+    <div className="d-flex gap-2 w-max-full items-center">
       <Icon
         className="owner-team-icon"
         component={IconTeamsGrey}
@@ -43,7 +43,9 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
         style={{ fontSize: isCompactView ? '16px' : `${avatarSize}px` }}
       />
       {!isCompactView && (
-        <Typography.Text className=" text-sm">{displayName}</Typography.Text>
+        <Typography.Text className="text-sm" ellipsis={{ tooltip: true }}>
+          {displayName}
+        </Typography.Text>
       )}
     </div>
   ) : (
