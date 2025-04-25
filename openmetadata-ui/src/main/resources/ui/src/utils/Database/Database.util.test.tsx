@@ -42,10 +42,6 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../TableColumn.util', () => ({
-  ownerTableObject: jest.fn(),
-}));
-
 describe('Database Util', () => {
   describe('getQueryFilterForDatabase', () => {
     it('should return the correct query filter', () => {
