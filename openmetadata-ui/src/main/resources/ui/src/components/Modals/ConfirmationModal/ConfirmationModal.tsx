@@ -61,9 +61,7 @@ const ConfirmationModal = ({
             {cancelText}
           </Button>
           <Button
-            className={classNames(confirmButtonCss, {
-              'delete-button': confirmText === t('label.delete'),
-            })}
+            className={confirmButtonCss}
             danger={confirmText === t('label.delete')}
             data-testid={isLoading ? 'loading-button' : 'save-button'}
             key="save-btn"
