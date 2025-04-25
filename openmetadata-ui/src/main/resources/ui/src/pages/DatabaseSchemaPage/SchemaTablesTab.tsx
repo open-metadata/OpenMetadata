@@ -31,6 +31,11 @@ import {
   PAGE_SIZE,
 } from '../../constants/constants';
 import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
+import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import {
+  COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
+  DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS,
+} from '../../constants/TableKeys.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -45,9 +50,16 @@ import {
   patchTableDetails,
   TableListParams,
 } from '../../rest/tableAPI';
+import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  dataProductTableObject,
+  domainTableObject,
+  ownerTableObject,
+  tagTableObject,
+} from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
@@ -132,6 +144,7 @@ function SchemaTablesTab({
       try {
         const res = await getTableList({
           ...params,
+          fields: commonTableFields,
           databaseSchema: decodedDatabaseSchemaFQN,
           limit: pageSize,
           include: tableFilters.showDeletedTables
@@ -173,7 +186,7 @@ function SchemaTablesTab({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 500,
+        width: 300,
         render: (_, record: Table) => {
           return (
             <DisplayName
@@ -195,6 +208,7 @@ function SchemaTablesTab({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
+        width: 400,
         render: (text: string) =>
           text?.trim() ? (
             <RichTextEditorPreviewerNew markdown={text} />
@@ -202,6 +216,10 @@ function SchemaTablesTab({
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
       },
+      ...ownerTableObject<Table>(),
+      ...domainTableObject<Table>(),
+      ...dataProductTableObject<Table>(),
+      ...tagTableObject<Table>(),
     ],
     [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
@@ -260,6 +278,7 @@ function SchemaTablesTab({
       }}
       data-testid="databaseSchema-tables"
       dataSource={tableData}
+      defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_TABLE_VISIBLE_COLUMNS}
       extraTableFilters={
         !isVersionView && (
           <>
@@ -292,7 +311,9 @@ function SchemaTablesTab({
       }}
       pagination={false}
       rowKey="id"
+      scroll={TABLE_SCROLL_VALUE}
       size="small"
+      staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />
   );
 }
