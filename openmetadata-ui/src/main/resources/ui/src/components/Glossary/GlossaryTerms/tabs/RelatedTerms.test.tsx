@@ -29,6 +29,10 @@ jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 
+jest.mock('../../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
 describe('RelatedTerms', () => {
   it('should render the component', () => {
     const { container } = render(<RelatedTerms />);

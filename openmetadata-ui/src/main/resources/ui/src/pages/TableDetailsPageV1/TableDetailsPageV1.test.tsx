@@ -210,6 +210,10 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
 }));
 
+jest.mock('../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
     render(<TableDetailsPageV1 />);

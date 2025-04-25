@@ -91,7 +91,7 @@ const Table = <T extends Record<string, unknown>>(
     [loading]
   );
 
-  const entityKey = useMemo(() => type ?? entityType, [type, entityType]);
+  const entityKey = useMemo(() => entityType ?? type, [type, entityType]);
 
   // Check if the table is in Full View mode, if so, the dropdown and Customize Column feature is not available
   const isFullViewTable = useMemo(
