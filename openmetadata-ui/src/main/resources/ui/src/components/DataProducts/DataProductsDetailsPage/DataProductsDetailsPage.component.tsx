@@ -46,7 +46,6 @@ import {
   ChangeDescription,
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
@@ -55,10 +54,7 @@ import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
-import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
-} from '../../../utils/PermissionsUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getDomainPath,
   getEntityDetailsPath,
@@ -102,7 +98,7 @@ const DataProductsDetailsPage = ({
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { getEntityPermission, permissions } = usePermissionProvider();
+  const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
   const { fqn: dataProductFqn } = useFqn();
@@ -168,44 +164,17 @@ const DataProductsDetailsPage = ({
       };
     }
 
-    const editDescription = checkPermission(
-      Operation.EditDescription,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const editOwner = checkPermission(
-      Operation.EditOwners,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const editAll = checkPermission(
-      Operation.EditAll,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const editDisplayName = checkPermission(
-      Operation.EditDisplayName,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
-    const deleteDataProduct = checkPermission(
-      Operation.Delete,
-      ResourceEntity.DATA_PRODUCT,
-      permissions
-    );
-
     return {
-      editDescriptionPermission: editDescription || editAll,
-      editOwnerPermission: editOwner || editAll,
-      editAllPermission: editAll,
-      editDisplayNamePermission: editDisplayName || editAll,
-      deleteDataProductPermision: deleteDataProduct,
+      editDescriptionPermission:
+        dataProductPermission.EditDescription || dataProductPermission.EditAll,
+      editOwnerPermission:
+        dataProductPermission.EditOwners || dataProductPermission.EditAll,
+      editAllPermission: dataProductPermission.EditAll,
+      editDisplayNamePermission:
+        dataProductPermission.EditDisplayName || dataProductPermission.EditAll,
+      deleteDataProductPermision: dataProductPermission.Delete,
     };
-  }, [permissions, isVersionsView]);
+  }, [dataProductPermission, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
     if (dataProduct) {

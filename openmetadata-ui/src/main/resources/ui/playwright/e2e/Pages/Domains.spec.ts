@@ -804,6 +804,10 @@ test.describe('Data Consumer Domain Ownership', () => {
         await expect(
           dataConsumerPage.getByTestId('domain-expert-name').getByTestId('Add')
         ).toBeVisible();
+
+        await expect(
+          dataConsumerPage.getByTestId('manage-button')
+        ).toBeVisible();
       }
     );
 
