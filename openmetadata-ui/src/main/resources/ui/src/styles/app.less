@@ -18,7 +18,7 @@
 body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: @body-bg-color;
+  background: @background-primary;
   font-feature-settings: normal !important;
 }
 
@@ -29,7 +29,9 @@ body {
 
 ol,
 ul {
-  padding-inline-start: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 p {
@@ -300,7 +302,7 @@ a[href].link-text-grey,
 }
 
 .bg-body-main {
-  background: @body-bg-color;
+  background: @background-primary;
 }
 
 .bg-primary-lite {
@@ -847,7 +849,7 @@ a[href].link-text-grey,
 
 .notification-dropdown-list-btn:hover,
 .notification-dropdown-list-btn:focus {
-  background-color: @body-bg-color;
+  background-color: @background-primary;
 }
 
 /* ToastUI Editor style */

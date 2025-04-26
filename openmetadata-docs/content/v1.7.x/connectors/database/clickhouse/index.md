@@ -26,7 +26,9 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 - [Troubleshooting](/connectors/database/clickhouse/troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
-{% partial file="/v1.7/connectors/reverse-metadata-link.md" collate: true /%}
+{% collateContent %}
+- [Reverse Metadata](#reverse-metadata)
+{% /collateContent %}
 
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
@@ -94,6 +96,8 @@ For the usage and lineage workflow, the user will need `SELECT` privilege. You c
 
 {% /stepsContainer %}
 
-{% partial file="/v1.7/connectors/database/clickhouse/reverse-metadata.md" collate: true /%}
+{% collateContent %}
+{% partial file="/v1.7/connectors/database/clickhouse/reverse-metadata.md" /%}
+{% /collateContent %}
 
 {% partial file="/v1.7/connectors/database/related.md" /%}

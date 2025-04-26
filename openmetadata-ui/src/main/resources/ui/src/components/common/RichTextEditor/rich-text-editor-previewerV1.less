@@ -13,17 +13,22 @@
 @import url('./../../../styles/variables.less');
 
 .rich-text-editor-container {
+  ol,
+  ul {
+    margin: unset;
+    padding-inline-start: 20px;
+  }
   .ant-btn {
     padding: 0px;
     margin: 0px;
     line-height: 0px;
     height: 16px;
-    color: @blue-9 !important;
+    color: @primary-heading-color !important;
   }
 
   .ant-btn:focus,
   .ant-btn:hover {
-    color: @blue-9 !important;
+    color: @primary-heading-color !important;
   }
 
   &.text-grey-muted {
