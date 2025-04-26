@@ -69,7 +69,6 @@ import {
   getTeamsWithFqnPath,
   getUserPath,
 } from './RouterUtils';
-import { getEncodedFqn } from './StringsUtils';
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
@@ -412,29 +411,19 @@ class EntityUtilClassBase {
       | APICollection
   ): ItemType[] {
     const isEntityDeleted = _entityDetails?.deleted ?? false;
-    // We are encoding here since we are getting the decoded fqn from the OSS code
-    const encodedFqn = getEncodedFqn(_fqn);
     switch (_entityType) {
       case EntityType.TABLE:
         return [
-          ...ExtraTableDropdownOptions(
-            encodedFqn,
-            _permission,
-            isEntityDeleted
-          ),
+          ...ExtraTableDropdownOptions(_fqn, _permission, isEntityDeleted),
         ];
       case EntityType.DATABASE:
         return [
-          ...ExtraDatabaseDropdownOptions(
-            encodedFqn,
-            _permission,
-            isEntityDeleted
-          ),
+          ...ExtraDatabaseDropdownOptions(_fqn, _permission, isEntityDeleted),
         ];
       case EntityType.DATABASE_SCHEMA:
         return [
           ...ExtraDatabaseSchemaDropdownOptions(
-            encodedFqn,
+            _fqn,
             _permission,
             isEntityDeleted
           ),
@@ -442,7 +431,7 @@ class EntityUtilClassBase {
       case EntityType.DATABASE_SERVICE:
         return [
           ...ExtraDatabaseServiceDropdownOptions(
-            encodedFqn,
+            _fqn,
             _permission,
             isEntityDeleted
           ),

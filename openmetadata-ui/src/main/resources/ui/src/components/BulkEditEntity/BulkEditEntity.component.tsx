@@ -23,7 +23,6 @@ import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEncodedFqn } from '../../utils/StringsUtils';
 import Banner from '../common/Banner/Banner';
 import { ImportStatus } from '../common/EntityImport/ImportStatus/ImportStatus.component';
 import Loader from '../common/Loader/Loader';
@@ -64,7 +63,7 @@ const BulkEditEntity = ({
 
   useEffect(() => {
     triggerExportForBulkEdit({
-      name: getEncodedFqn(fqn),
+      name: fqn,
       onExport: getBulkEditCSVExportEntityApi(entityType),
       exportTypes: [ExportTypes.CSV],
     });

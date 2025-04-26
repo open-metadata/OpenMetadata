@@ -18,7 +18,7 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import React, {
   MutableRefObject,
   useCallback,
@@ -355,7 +355,7 @@ const BulkEntityImportPage = () => {
         } else {
           showSuccessToast(
             t('message.entity-details-updated', {
-              entityType,
+              entityType: capitalize(entityType),
               fqn,
             })
           );
