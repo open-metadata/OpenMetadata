@@ -128,7 +128,7 @@ class RuleEvaluatorTest {
     schema.setDatabase(databaseRef);
     database.setOwners(List.of(dbOwnerRef));
     when(databaseSchemaRepository.getParentEntity(any(DatabaseSchema.class), anyString()))
-            .thenAnswer(i -> database);
+        .thenAnswer(i -> database);
     createResourceContextSchema =
         Mockito.spy(new CreateResourceContext<>(Entity.DATABASE_SCHEMA, schema));
 

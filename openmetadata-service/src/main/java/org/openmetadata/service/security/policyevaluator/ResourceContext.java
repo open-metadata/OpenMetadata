@@ -3,11 +3,9 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
