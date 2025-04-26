@@ -22,7 +22,6 @@ import {
   ApplicationStore,
   HelperFunctions,
 } from '../interface/store.interface';
-import { getOidcToken } from '../utils/LocalStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
 
 export const OM_SESSION_KEY = 'om-session';
@@ -35,7 +34,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   } as UIThemePreference,
   currentUser: undefined,
   newUser: undefined,
-  isAuthenticated: Boolean(getOidcToken()),
+  isAuthenticated: false,
   authConfig: undefined,
   authorizerConfig: undefined,
   isSigningUp: false,
