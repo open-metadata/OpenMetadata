@@ -1,14 +1,19 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+
 import com.google.common.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -74,20 +79,35 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       return null;
     } else if (Entity.USER.equals(entityRepository.getEntityType())) {
       return List.of(entity.getEntityReference()); // Owner for a user is same as the user
-    } else if (Entity.DATA_PRODUCT.equals(entityRepository.getEntityType())) {
-      // For data product, we need to combine the owners of the data product and the domain
-      List<EntityReference> combinedOwners = new ArrayList<>(entity.getOwners());
-      Optional.ofNullable(entity.getDomain())
-          .map(
-              domainRef ->
-                  (EntityInterface)
-                      Entity.getEntity(
-                          domainRef.getType(), domainRef.getId(), "owners", Include.ALL))
-          .map(EntityInterface::getOwners)
-          .ifPresent(combinedOwners::addAll);
-      return combinedOwners;
     }
-    return entity.getOwners();
+
+    // Check for parent owners
+    List<EntityReference> owners = entity.getOwners();
+    EntityInterface parentEntity = resolveParentEntity(entity);
+    if (parentEntity != null && parentEntity.getOwners() != null) {
+      owners.addAll(parentEntity.getOwners());
+    }
+
+    return owners;
+  }
+
+  private EntityInterface resolveParentEntity(T entity) {
+    Fields fields = new Fields(new HashSet<>(Collections.singleton(FIELD_OWNERS)));
+    try {
+      EntityReference parentReference =
+          switch (entityRepository.getEntityType()) {
+            case Entity.GLOSSARY_TERM -> ((GlossaryTerm) entity).getGlossary();
+            case Entity.TAG -> ((Tag) entity).getClassification();
+            case Entity.DATA_PRODUCT -> entity.getDomain();
+            default -> null;
+          };
+
+      if (parentReference == null || parentReference.getId() == null) return null;
+      EntityRepository<?> rootRepository = Entity.getEntityRepository(parentReference.getType());
+      return rootRepository.get(null, parentReference.getId(), fields);
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   @Override

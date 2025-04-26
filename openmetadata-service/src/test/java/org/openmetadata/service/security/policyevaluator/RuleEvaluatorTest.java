@@ -7,8 +7,11 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.service.resources.EntityResourceTest.DATA_CONSUMER_ROLE_NAME;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 import static org.openmetadata.service.security.policyevaluator.SubjectContext.TEAM_FIELDS;
 
@@ -16,12 +19,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -30,19 +39,31 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DatabaseRepository;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.EvaluationContext;
-import org.springframework.expression.spel.support.SimpleEvaluationContext;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 
+@Slf4j
 class RuleEvaluatorTest {
   private static final Table table = new Table().withName("table");
   private static User user;
   private static EvaluationContext evaluationContext;
   private static SubjectContext subjectContext;
   private static ResourceContext<?> resourceContext;
+  private static final String DATA_CONSUMER_POLICY_NAME = "DataConsumerPolicy";
+
+  private static CreateResourceContext<?> createResourceContextSchema;
+  private static CreateResourceContext<?> resourceContextSchema;
+
+  private static User dbOwnerUser;
+  private static User nonOwnerUser;
+  private static EntityReference dbOwnerRef;
+  private static EntityReference databaseRef;
 
   @BeforeAll
   public static void setup() {
@@ -88,11 +109,38 @@ class RuleEvaluatorTest {
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
 
     user = new User().withId(UUID.randomUUID()).withName("user");
+    dbOwnerUser = new User().withId(UUID.randomUUID()).withName("dbOwner");
+    nonOwnerUser = new User().withId(UUID.randomUUID()).withName("nonOwner");
+    dbOwnerRef = dbOwnerUser.getEntityReference().withType(Entity.USER);
+    DatabaseRepository databaseRepository = mock(DatabaseRepository.class);
+    when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
+    when(databaseRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    Entity.registerEntity(Database.class, Entity.DATABASE, databaseRepository);
+
+    DatabaseSchemaRepository databaseSchemaRepository = mock(DatabaseSchemaRepository.class);
+    when(databaseSchemaRepository.getEntityType()).thenReturn(Entity.DATABASE_SCHEMA);
+    when(databaseSchemaRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    Entity.registerEntity(DatabaseSchema.class, Entity.DATABASE_SCHEMA, databaseSchemaRepository);
+
+    Database database = new Database().withId(UUID.randomUUID()).withName("testDB");
+    databaseRef = database.getEntityReference();
+    DatabaseSchema schema = new DatabaseSchema().withId(UUID.randomUUID()).withName("testSchema");
+    schema.setDatabase(databaseRef);
+    database.setOwners(List.of(dbOwnerRef));
+    when(databaseSchemaRepository.getParentEntity(any(DatabaseSchema.class), anyString()))
+            .thenAnswer(i -> database);
+    createResourceContextSchema =
+        Mockito.spy(new CreateResourceContext<>(Entity.DATABASE_SCHEMA, schema));
+
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.DATABASE, database.getId()), database);
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.DATABASE_SCHEMA, schema.getId()), schema);
+
     resourceContext = new ResourceContext<>("table", table, mock(TableRepository.class));
     subjectContext = new SubjectContext(user);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
-    evaluationContext =
-        SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
   }
 
   @Test
@@ -144,6 +192,32 @@ class RuleEvaluatorTest {
                 .withName(user.getName())));
     assertTrue(evaluateExpression("noOwner() || isOwner()"));
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
+
+    // Setup for isOwner tests for parentOwner
+    Role dataConsumerRole = new Role().withId(UUID.randomUUID()).withName(DATA_CONSUMER_ROLE_NAME);
+    dbOwnerUser.setRoles(List.of(dataConsumerRole.getEntityReference()));
+    Rule rule =
+        new Rule()
+            .withResources(List.of("All"))
+            .withOperations(List.of(CREATE))
+            .withCondition("isOwner()")
+            .withEffect(Rule.Effect.ALLOW);
+    Policy policy = new Policy().withName(DATA_CONSUMER_POLICY_NAME).withRules(List.of(rule));
+    List<CompiledRule> compiledRules = List.of(new CompiledRule(rule));
+    PolicyContext policyContext =
+        new PolicyContext(
+            Entity.USER, "dbOwner", DATA_CONSUMER_ROLE_NAME, policy.getName(), compiledRules);
+
+    subjectContext = new SubjectContext(dbOwnerUser);
+    RuleEvaluator ruleEvaluator =
+        new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    assertTrue(evaluateExpression("isOwner()"));
+
+    subjectContext = new SubjectContext(nonOwnerUser);
+    ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, createResourceContextSchema);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    assertFalse(evaluateExpression("isOwner()"));
   }
 
   @Test
@@ -363,7 +437,14 @@ class RuleEvaluatorTest {
   private void updatePolicyContext(String team) {
     PolicyContext policyContext = new PolicyContext(Entity.TEAM, team, null, null, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
-    evaluationContext =
-        SimpleEvaluationContext.forReadOnlyDataBinding().withRootObject(ruleEvaluator).build();
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+  }
+
+  @AfterEach
+  void resetContext() {
+    subjectContext = new SubjectContext(user);
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
+    evaluationContext = new StandardEvaluationContext(ruleEvaluator);
+    LOG.info("Context reset to default state after test completion.");
   }
 }
