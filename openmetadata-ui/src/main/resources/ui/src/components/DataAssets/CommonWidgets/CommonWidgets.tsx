@@ -379,13 +379,7 @@ export const CommonWidgets = ({
 
   return (
     <>
-      <div
-        data-grid={widgetConfig}
-        data-testid={widgetConfig.i}
-        id={widgetConfig.i}
-        key={widgetConfig.i}>
-        {widget}
-      </div>
+      {widget}
       {tagsUpdating && (
         <GlossaryUpdateConfirmationModal
           glossaryTerm={updatedData as unknown as GlossaryTerm}

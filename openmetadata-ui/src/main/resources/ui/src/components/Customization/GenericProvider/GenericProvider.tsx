@@ -62,6 +62,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
   layout: WidgetConfig[];
   filterWidgets?: (widgets: string[]) => void;
+  updateWidgetHeight: (widgetId: string, height: number) => void;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -134,6 +135,27 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [setFilteredKeys]
   );
 
+  const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
+    setLayout((prev) => {
+      return prev.reduce((acc, widget) => {
+        if (widget.i === widgetId) {
+          acc.push({ ...widget, h: height });
+        } else if (widget.children) {
+          acc.push({
+            ...widget,
+            children: widget.children.map((child) =>
+              child.i === widgetId ? { ...child, h: height } : child
+            ) as WidgetConfig[],
+          });
+        } else {
+          acc.push(widget);
+        }
+
+        return acc;
+      }, [] as WidgetConfig[]);
+    });
+  }, []);
+
   // store the left side panel widget
   const leftPanelWidget = useMemo(() => {
     return layout?.find((widget) =>
@@ -191,6 +213,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       onThreadLinkSelect,
       layout: filteredLayout,
       filterWidgets,
+      updateWidgetHeight,
     }),
     [
       data,
@@ -202,6 +225,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       onThreadLinkSelect,
       filteredLayout,
       filterWidgets,
+      updateWidgetHeight,
     ]
   );
 
