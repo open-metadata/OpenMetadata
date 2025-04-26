@@ -45,6 +45,7 @@ import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from '../rest/databaseAPI';
+import { getGlossariesByName } from '../rest/glossaryAPI';
 import { getServiceByFQN } from '../rest/serviceAPI';
 import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
@@ -292,6 +293,9 @@ class EntityUtilClassBase {
         return getDatabaseDetailsByFQN(fqn, { fields });
       case EntityType.DATABASE_SCHEMA:
         return getDatabaseSchemaDetailsByFQN(fqn, { fields });
+
+      case EntityType.GLOSSARY_TERM:
+        return getGlossariesByName(fqn, { fields });
       default:
         return getTableDetailsByFQN(fqn, { fields });
     }
