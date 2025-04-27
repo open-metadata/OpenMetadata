@@ -98,6 +98,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
       EntityRepository<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
       return rootRepository.get(null, rootReference.getId(), fields);
     } catch (Exception e) {
+      LOG.error("Failed to resolve root parent entity: {}", e.getMessage(), e);
       return null;
     }
   }

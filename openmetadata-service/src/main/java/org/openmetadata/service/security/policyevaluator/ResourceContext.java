@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -28,6 +29,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  *
  * <p>As multiple threads don't access this, the class is not thread-safe by design.
  */
+@Slf4j
 public class ResourceContext<T extends EntityInterface> implements ResourceContextInterface {
   @NonNull @Getter private final String resource;
   private final EntityRepository<T> entityRepository;
@@ -106,6 +108,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
       EntityRepository<?> rootRepository = Entity.getEntityRepository(parentReference.getType());
       return rootRepository.get(null, parentReference.getId(), fields);
     } catch (Exception e) {
+      LOG.error("Failed to resolve parent entity: {}", e.getMessage(), e);
       return null;
     }
   }
