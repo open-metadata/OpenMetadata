@@ -498,7 +498,7 @@ const BulkEntityImportPage = () => {
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
             breadcrumbList={breadcrumbList}
-            columns={columns}
+            columns={filterColumns}
             dataSource={dataSource}
             handleBack={handleBack}
             handleValidate={handleValidate}
