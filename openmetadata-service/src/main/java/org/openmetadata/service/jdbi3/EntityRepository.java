@@ -2128,6 +2128,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
+  private void removeDomainDataProducts(EntityReference originalDomain, T entity) {
+    List<UUID> dataProductIds =
+        daoCollection
+            .relationshipDAO()
+            .findToIds(
+                originalDomain.getId(), DOMAIN, Relationship.HAS.ordinal(), Entity.DATA_PRODUCT);
+
+    List<EntityReference> updatedDataProducts = entity.getDataProducts();
+    if (updatedDataProducts != null) {
+      updatedDataProducts.removeIf(
+          dataProduct -> {
+            boolean isDomainDataProduct = dataProductIds.contains(dataProduct.getId());
+            if (isDomainDataProduct) {
+              LOG.info(
+                  "Removing data product {} from entity {}",
+                  dataProduct.getFullyQualifiedName(),
+                  entity.getEntityReference().getType());
+            }
+            return isDomainDataProduct;
+          });
+    }
+  }
+
   @Transaction
   public final PutResponse<T> restoreEntity(String updatedBy, String entityType, UUID id) {
     // If an entity being restored contains other **deleted** children entities, restore them
@@ -3451,6 +3474,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
           addDomainLineage(updated.getId(), entityType, updatedDomain);
         }
+        // Clean up data products associated with the old domain on domain update
+        removeDomainDataProducts(original.getDomain(), updated);
         updated.setDomain(updatedDomain);
       } else {
         updated.setDomain(original.getDomain());
