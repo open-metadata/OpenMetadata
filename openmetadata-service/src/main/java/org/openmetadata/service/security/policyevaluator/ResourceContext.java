@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.NonNull;
@@ -82,10 +81,10 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     }
 
     // Check for parent owners
-    List<EntityReference> owners =
-        Optional.ofNullable(entity.getOwners()).orElseGet(ArrayList::new);
+    List<EntityReference> owners = entity.getOwners();
     EntityInterface parentEntity = resolveParentEntity(entity);
     if (parentEntity != null && parentEntity.getOwners() != null) {
+      if (owners == null) owners = new ArrayList<>();
       owners.addAll(parentEntity.getOwners());
     }
 
