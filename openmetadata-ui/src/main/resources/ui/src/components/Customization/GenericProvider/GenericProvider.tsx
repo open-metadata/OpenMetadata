@@ -35,7 +35,10 @@ import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
-import { getLayoutFromCustomizedPage } from '../../../utils/CustomizePage/CustomizePageUtils';
+import {
+  getLayoutFromCustomizedPage,
+  updateWidgetHeightRecursively,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -136,24 +139,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   );
 
   const updateWidgetHeight = useCallback((widgetId: string, height: number) => {
-    setLayout((prev) => {
-      return prev.reduce((acc, widget) => {
-        if (widget.i === widgetId) {
-          acc.push({ ...widget, h: height });
-        } else if (widget.children) {
-          acc.push({
-            ...widget,
-            children: widget.children.map((child) =>
-              child.i === widgetId ? { ...child, h: height } : child
-            ) as WidgetConfig[],
-          });
-        } else {
-          acc.push(widget);
-        }
-
-        return acc;
-      }, [] as WidgetConfig[]);
-    });
+    setLayout((prev) => updateWidgetHeightRecursively(widgetId, height, prev));
   }, []);
 
   // store the left side panel widget
