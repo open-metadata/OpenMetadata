@@ -38,7 +38,7 @@ These updates are pushed directly to supported data source systems, including **
 1. Navigate to **Settings > Applications**.
 
 {% image
-src="/images/v1.7/applications/autopilot.png"
+src="/images/v1.8/applications/autopilot.png"
 alt="Install Reverse Metadata Application"
 caption="Install Reverse Metadata Application"
 /%}
@@ -47,7 +47,7 @@ caption="Install Reverse Metadata Application"
 3. After installation, configure the synchronization channels as described below.
 
 {% image
-src="/images/v1.7/applications/reverse/reverse-metadata-application.png"
+src="/images/v1.8/applications/reverse/reverse-metadata-application.png"
 alt="Configuration"
 caption="Configuration"
 /%}
@@ -77,7 +77,7 @@ Once the configuration is complete, the application can be executed in two ways:
   For recurring, automated sync based on a defined schedule.
 
 {% image
-src="/images/v1.7/applications/reverse/reverse-metadata-application1.png"
+src="/images/v1.8/applications/reverse/reverse-metadata-application1.png"
 alt="Scheduling"
 caption="Scheduling"
 /%}
