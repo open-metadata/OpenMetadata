@@ -72,7 +72,10 @@ entities.forEach((EntityClass) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
-        EntityDataClass.domain2.responseData
+        EntityDataClass.domain2.responseData,
+        EntityDataClass.dataProduct1.responseData,
+        EntityDataClass.dataProduct2.responseData,
+        EntityDataClass.dataProduct3.responseData
       );
     });
 

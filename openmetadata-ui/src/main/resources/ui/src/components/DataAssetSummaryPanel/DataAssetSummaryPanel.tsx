@@ -40,6 +40,7 @@ import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SummaryDataProducts from '../common/SummaryDataProducts/SummaryDataProducts';
 import SummaryTagsDescription from '../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import CommonEntitySummaryInfo from '../Explore/EntitySummaryPanel/CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import TableSummary from '../Explore/EntitySummaryPanel/TableSummary/TableSummary.component';
@@ -52,6 +53,7 @@ export const DataAssetSummaryPanel = ({
   tags,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   highlights,
+  isDomainVisible,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -102,7 +104,7 @@ export const DataAssetSummaryPanel = ({
         setAdditionalInfo({
           incidentCount: paging.total,
         });
-      } catch (error) {
+      } catch {
         setAdditionalInfo({
           incidentCount: 0,
         });
@@ -115,7 +117,7 @@ export const DataAssetSummaryPanel = ({
     try {
       const chartDetails = await fetchCharts((dataAsset as Dashboard).charts);
       setCharts(chartDetails);
-    } catch (err) {
+    } catch {
       // Error
     } finally {
       setChartsDetailsLoading(false);
@@ -192,6 +194,7 @@ export const DataAssetSummaryPanel = ({
                   <CommonEntitySummaryInfo
                     componentType={componentType}
                     entityInfo={entityInfo}
+                    isDomainVisible={isDomainVisible}
                   />
                 </Col>
               </Row>
@@ -235,6 +238,8 @@ export const DataAssetSummaryPanel = ({
                 )
               }
             />
+
+            <SummaryDataProducts dataAsset={dataAsset} />
           </>
         );
       case EntityType.GLOSSARY_TERM:

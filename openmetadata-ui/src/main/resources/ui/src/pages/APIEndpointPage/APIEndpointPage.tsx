@@ -105,7 +105,7 @@ const APIEndpointPage = () => {
         entityFqn
       );
       setApiEndpointPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -247,7 +247,7 @@ const APIEndpointPage = () => {
     const updatedData = data as APIEndpoint;
 
     setApiEndpointDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

@@ -111,6 +111,7 @@ const EntityInfoDrawer = ({
         </Row>
       }>
       <DataAssetSummaryPanel
+        isDomainVisible
         dataAsset={entityDetail}
         entityType={selectedNode.entityType as EntityType}
       />
