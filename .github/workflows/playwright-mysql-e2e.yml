@@ -107,9 +107,9 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
-            npx playwright test --grep-invert @nightlyOnlyTests --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
           else
-            npx playwright test --grep-invert @nightlyOnlyTests --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+            npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
           fi
         env:
           PLAYWRIGHT_IS_OSS: true

@@ -61,4 +61,6 @@ export const settingClick = async (
   for (const path of paths ?? []) {
     await page.click(`[data-testid="${path}"]`);
   }
+
+  await page.waitForLoadState('networkidle');
 };

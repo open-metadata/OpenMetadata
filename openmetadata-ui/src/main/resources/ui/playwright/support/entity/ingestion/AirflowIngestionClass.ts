@@ -16,13 +16,26 @@ import { uuid } from '../../../utils/common';
 import { Services } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
 
-class MetabaseIngestionClass extends ServiceBaseClass {
-  constructor() {
+class AirflowIngestionClass extends ServiceBaseClass {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Pipeline,
       `pw-airflow-with-%-${uuid()}`,
       'Airflow',
-      'sample_lineage'
+      'sample_lineage',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
   }
 
@@ -49,4 +62,4 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 }
 
-export default MetabaseIngestionClass;
+export default AirflowIngestionClass;

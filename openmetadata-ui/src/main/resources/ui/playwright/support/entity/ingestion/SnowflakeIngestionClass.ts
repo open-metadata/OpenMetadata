@@ -21,12 +21,25 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class SnowflakeIngestionClass extends ServiceBaseClass {
   schema: string;
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       `pw-snowflake-with-%-${uuid()}`,
       'Snowflake',
-      'CUSTOMER'
+      'CUSTOMER',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
     this.schema = 'TPCH_SF1000';
     const database = process.env.PLAYWRIGHT_SNOWFLAKE_DATABASE ?? '';
