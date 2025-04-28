@@ -1,5 +1,7 @@
 package org.openmetadata.service.formatter.field;
 
+import java.util.Optional;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.feed.FeedInfo;
 import org.openmetadata.schema.entity.feed.TestCaseResultFeedInfo;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -10,6 +12,7 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -90,17 +93,36 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
     TestCase testCaseEntity =
         Entity.getEntity(
             thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
-    String testCaseName = testCaseEntity.getName();
+    String testCaseName =
+        CommonUtil.nullOrEmpty(testCaseEntity.getDisplayName())
+            ? testCaseEntity.getName()
+            : testCaseEntity.getDisplayName();
+
+    String testCaseDescription = Optional.ofNullable(testCaseEntity.getDescription()).orElse("");
+    boolean hasDescription =
+        (messageFormatter instanceof EmailMessageDecorator)
+            && !CommonUtil.nullOrEmpty(testCaseDescription);
+
     TestCaseResult result = JsonUtils.convertValue(fieldChange.getNewValue(), TestCaseResult.class);
     if (result != null) {
       String format =
           String.format(
-              "Test Case %s is %s in %s",
+              "Test Case %s is %s in %s %s%s",
               messageFormatter.getBold(),
               messageFormatter.getBold(),
-              MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN());
-      return String.format(
-          format, testCaseName, getStatusMessage(messageFormatter, result.getTestCaseStatus()));
+              MessageParser.EntityLink.parse(testCaseEntity.getEntityLink()).getEntityFQN(),
+              hasDescription
+                  ? messageFormatter.getLineBreak() + messageFormatter.getLineBreak()
+                  : "",
+              hasDescription ? "Test Case Description: %s" : "");
+      return hasDescription
+          ? String.format(
+              format,
+              testCaseName,
+              getStatusMessage(messageFormatter, result.getTestCaseStatus()),
+              testCaseDescription)
+          : String.format(
+              format, testCaseName, getStatusMessage(messageFormatter, result.getTestCaseStatus()));
     }
     String format =
         String.format(
