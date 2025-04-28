@@ -77,6 +77,7 @@ export const getDashboardDataModelDetailPageTabs = ({
           entityType={EntityType.DASHBOARD_DATA_MODEL}
           feedCount={feedCount}
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
+          permissions={dataModelPermissions}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchDataModel}
           onUpdateFeedCount={handleFeedCount}

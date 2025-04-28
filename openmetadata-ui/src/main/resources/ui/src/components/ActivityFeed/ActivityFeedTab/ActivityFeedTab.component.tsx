@@ -893,6 +893,7 @@ export const ActivityFeedTab = ({
             isLoading={isFirstLoad && loading}
             selectedThread={selectedThread}
             showThread={false}
+            onAfterClose={handleAfterTaskClose}
             onFeedClick={handleFeedClick}
           />
         ) : (
