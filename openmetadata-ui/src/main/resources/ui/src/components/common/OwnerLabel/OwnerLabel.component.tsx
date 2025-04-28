@@ -15,6 +15,7 @@ import { Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OwnerType } from '../../../enums/user.enum';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
 import { OwnerReveal } from '../RemainingOwner/OwnerReveal';
@@ -132,7 +133,9 @@ export const OwnerLabel = ({
             )}>
             {visibleOwners.map((owner, index) => (
               <div
-                className="w-full"
+                className={classNames({
+                  'w-full': owner.type === OwnerType.TEAM,
+                })}
                 key={owner.id}
                 style={
                   !isCompactView
