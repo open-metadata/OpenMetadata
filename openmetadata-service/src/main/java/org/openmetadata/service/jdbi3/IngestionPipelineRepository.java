@@ -371,7 +371,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
 
     private void updateRaiseOnError(Boolean origRaiseOnError, Boolean updatedRaiseOnError) {
-      if (updatedRaiseOnError != null && !origRaiseOnError.equals(updatedRaiseOnError)) {
+      if (updatedRaiseOnError != null && !Objects.equals(origRaiseOnError, updatedRaiseOnError)) {
         recordChange("raiseOnError", origRaiseOnError, updatedRaiseOnError);
       }
     }
