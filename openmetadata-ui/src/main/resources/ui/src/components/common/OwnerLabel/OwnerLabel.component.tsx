@@ -132,6 +132,7 @@ export const OwnerLabel = ({
             )}>
             {visibleOwners.map((owner, index) => (
               <div
+                className="w-full"
                 key={owner.id}
                 style={
                   !isCompactView

@@ -721,6 +721,12 @@ site_menu:
 
   - category: Collate AI / How to Use Collate AI
     url: /collateai/how-to-use-collate-ai
+  - category: Collate AI / Collate AI Tier Agent
+    url: /collateai/tier-agent
+  - category: Collate AI / Collate AI Quality Agent
+    url: /collateai/quality-agent
+  - category: Collate AI / Collate AI Documentation Agent
+    url: /collateai/documentation-agent
 
   - category: How-to Guides
     url: /how-to-guides
