@@ -17,7 +17,6 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmationModalProps } from './ConfirmationModal.interface';
-import './ConfirmationModal.less';
 
 /**
  * Modal to show confirmation on varios page
