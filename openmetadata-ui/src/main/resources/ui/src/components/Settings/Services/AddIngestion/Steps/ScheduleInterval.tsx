@@ -394,7 +394,7 @@ const ScheduleInterval = <T,>({
           <Col span={24}>{generateFormFields(formFields)}</Col>
         )}
 
-        {children && children}
+        {children}
 
         {showActionButtons && (
           <Col className="d-flex justify-end" span={24}>
