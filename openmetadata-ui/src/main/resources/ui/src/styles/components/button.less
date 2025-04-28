@@ -25,10 +25,6 @@ button {
   }
 }
 
-.ant-btn.ant-btn-default:not(:hover) {
-  border-color: @blue-15;
-}
-
 .ant-btn-background-ghost.ant-btn-primary.hover-button:hover {
   background: @primary-color;
   color: @white;
@@ -120,11 +116,16 @@ button {
     width: 20px;
     height: 20px;
     border-radius: @border-radius-base;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 
     svg {
       width: 12px;
       height: 12px;
-      vertical-align: text-top;
+      vertical-align: middle;
     }
   }
 
@@ -212,28 +213,5 @@ button {
       border: 1px solid @red-19;
       box-shadow: @button-box-shadow-disabled;
     }
-  }
-}
-
-.ant-btn.ant-btn-default {
-  background-color: @white;
-  border-color: @grey-300;
-  box-shadow: @button-box-shadow-default;
-  &:hover {
-    background-color: @grey-17;
-    border-color: @grey-300;
-    box-shadow: @button-box-shadow-hover;
-  }
-
-  &:focus {
-    background-color: @white;
-    border-color: @grey-300;
-    box-shadow: @button-box-shadow-grey;
-  }
-
-  &:disabled {
-    background-color: @white;
-    border-color: @grey-200;
-    box-shadow: @button-box-shadow-disabled;
   }
 }
