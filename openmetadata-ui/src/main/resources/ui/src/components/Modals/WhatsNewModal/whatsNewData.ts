@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_6_8'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_6_11'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1721,6 +1721,36 @@ Since we are introducing the Auto Classification workflow, we are going to remov
       -  Fixed update query to fix domain asset update.
       -  Fixed DQ for local webserver.${CollateIconWithLinkMD}
       -  Fixed placeholder issue for empty metrics.${CollateIconWithLinkMD}
+      `,
+    },
+  },
+  {
+    id: 65,
+    version: 'v1.6.9',
+    description: 'Released on 17th April 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `-  Made Fields immutable for Applications.
+      `,
+    },
+  },
+  {
+    id: 66,
+    version: 'v1.6.10',
+    description: 'Released on 23rd April 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `-  Use Subset of Permissions for add delete Users in teams.
+      `,
+    },
+  },
+  {
+    id: 67,
+    version: 'v1.6.11',
+    description: 'Released on 28th April 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `-  Fixed isOwner permission issue for domains and dataProducts.
       `,
     },
   },
