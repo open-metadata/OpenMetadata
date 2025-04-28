@@ -27,7 +27,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, isEmpty, toString } from 'lodash';
+import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -73,6 +73,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { addDomains } from '../../../rest/domainAPI';
@@ -128,6 +129,8 @@ const DomainDetailsPage = ({
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
   const { fqn: domainFqn } = useFqn();
+  const { currentUser } = useApplicationStore();
+
   const assetTabRef = useRef<AssetsTabRef>(null);
   const dataProductsTabRef = useRef<DataProductsTabRef>(null);
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
@@ -152,6 +155,11 @@ const DomainDetailsPage = ({
   );
 
   const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
+
+  const isOwner = useMemo(
+    () => domain.owners?.some((owner) => isEqual(owner.id, currentUser?.id)),
+    [domain, currentUser]
+  );
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -217,7 +225,7 @@ const DomainDetailsPage = ({
           },
         ]
       : []),
-    ...(permissions.dataProduct.Create
+    ...(isOwner || permissions.dataProduct.Create
       ? [
           {
             label: t('label.data-product-plural'),
@@ -283,7 +291,7 @@ const DomainDetailsPage = ({
   );
 
   const addDataProduct = useCallback(
-    async (formData: CreateDataProduct) => {
+    async (formData: CreateDomain | CreateDataProduct) => {
       const data = {
         ...formData,
         domain: domain.fullyQualifiedName,
