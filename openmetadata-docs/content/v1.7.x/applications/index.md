@@ -1,6 +1,6 @@
 ---
 title: Collate Applications 
-slug: /applications/
+slug: /applications
 collate: true
 ---
 
