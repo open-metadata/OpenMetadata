@@ -100,6 +100,7 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import {
   getCurrentMillis,
   getDayAgoStartGMTinMillis,
@@ -498,7 +499,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
+        `${TabSpecificField.USAGE_SUMMARY},${commonTableFields}`,
         paging,
         include
       );
@@ -513,7 +514,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        commonTableFields,
         paging,
         include
       );
@@ -527,7 +528,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
+        `${commonTableFields},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -544,11 +545,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.FOLLOWERS,
-          ].join(','),
+          fields: `${commonTableFields}, ${TabSpecificField.FOLLOWERS}`,
           include,
           ...params,
         });
@@ -565,7 +562,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
+        `${commonTableFields},${TabSpecificField.STATE},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -579,7 +576,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
         decodedServiceFQN,
-        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        commonTableFields,
         paging,
         include
       );
@@ -593,7 +590,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: commonTableFields,
         paging,
         root: true,
         include,
@@ -609,7 +606,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
+        fields: commonTableFields,
         paging,
         root: true,
         include,
@@ -624,7 +621,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getApiCollections({
         service: decodedServiceFQN,
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        fields: commonTableFields,
         paging,
         include,
       });
@@ -1370,7 +1367,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         entity: getEntityName(serviceDetails),
       })}>
       {isEmpty(serviceDetails) ? (
-        <ErrorPlaceHolder className="m-0">
+        <ErrorPlaceHolder className="m-0 h-min-80">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
         </ErrorPlaceHolder>
       ) : (
