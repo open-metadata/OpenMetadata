@@ -367,7 +367,9 @@ const RolesDetailPage = () => {
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         {isEmpty(role) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <ErrorPlaceHolder
+            className="h-min-80 border-none"
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
             <div className="text-center">
               <p>
                 {t('message.no-entity-found-for-name', {

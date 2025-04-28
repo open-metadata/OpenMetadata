@@ -31,6 +31,11 @@ You can quickly set up a database service for metadata extraction in OpenMetadat
 - The side panel offers guidance with available documentation, and you can also refer to the specific `Snowflake` Connector [documentation](/connectors)for more information.
 
 {% image
+  src="/images/v1.8/getting-started/configure-connector0.png"
+  alt="Configure Service"
+  caption="Updating Connection Service" /%}
+
+{% image
   src="/images/v1.8/getting-started/configure-connector.png"
   alt="Updating Connection Details"
   caption="Updating Connection Details" /%}
@@ -42,3 +47,21 @@ Click Test Connection to verify the setup. This will check if OpenMetadata can r
   src="/images/v1.8/getting-started/test-connection.png"
   alt="Verifying the Test Connection"
   caption="Verifying the Test Connection" /%}
+
+5. ### Set Default Data Filters
+
+Configure default filters to control which databases, schemas, and tables are included or excluded during ingestion.
+
+#### Default Database Filter Pattern
+- **Includes / Excludes**:  
+  To add a filter pattern, simply type it in and press `Enter`.
+
+#### Default Schema Filter Pattern
+- **Includes / Excludes**:  
+  To add a filter pattern, simply type it in and press `Enter`.
+
+#### Default Table Filter Pattern
+- **Includes / Excludes**:  
+  To add a filter pattern, simply type it in and press `Enter`.
+
+These filters help streamline the ingestion process by targeting only the relevant data assets.

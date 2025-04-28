@@ -85,16 +85,21 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
   }
 
   private EntityInterface resolveRootParentEntity(T entity, Fields fields) {
-    EntityReference rootReference =
-        switch (entityRepository.getEntityType()) {
-          case Entity.GLOSSARY_TERM -> ((GlossaryTerm) entity).getGlossary();
-          case Entity.TAG -> ((Tag) entity).getClassification();
-          case Entity.DATA_PRODUCT -> entity.getDomain();
-          default -> null;
-        };
+    try {
+      EntityReference rootReference =
+          switch (entityRepository.getEntityType()) {
+            case Entity.GLOSSARY_TERM -> ((GlossaryTerm) entity).getGlossary();
+            case Entity.TAG -> ((Tag) entity).getClassification();
+            case Entity.DATA_PRODUCT -> entity.getDomain();
+            default -> null;
+          };
 
-    if (rootReference == null || rootReference.getId() == null) return null;
-    EntityRepository<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
-    return rootRepository.get(null, rootReference.getId(), fields);
+      if (rootReference == null || rootReference.getId() == null) return null;
+      EntityRepository<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
+      return rootRepository.get(null, rootReference.getId(), fields);
+    } catch (Exception e) {
+      LOG.error("Failed to resolve root parent entity: {}", e.getMessage(), e);
+      return null;
+    }
   }
 }
