@@ -42,7 +42,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
   const widgets = useMemo(() => {
     return layout?.map((widget: WidgetConfig) => {
       return (
-        <div data-grid={widget} key={widget.i}>
+        <div data-grid={widget} id={widget.i} key={widget.i}>
           <DynamicHeightWidget
             key={widget.i}
             widget={widget}
