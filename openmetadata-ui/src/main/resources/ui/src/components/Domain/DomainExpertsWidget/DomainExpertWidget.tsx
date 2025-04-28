@@ -109,7 +109,7 @@ export const DomainExpertWidget = ({ newLook }: { newLook?: boolean }) => {
             selectedUsers={domain.experts ?? []}
             onUpdate={handleExpertsUpdate}>
             <TagButton
-              className="tw-text-primary cursor-pointer"
+              className="text-primary cursor-pointer"
               icon={<PlusIcon height={16} name="plus" width={16} />}
               label={t('label.add')}
               tooltip=""
