@@ -98,7 +98,7 @@ const DataModelsPage = () => {
         dashboardDataModelFQN
       );
       setDataModelPermissions(entityPermission);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: t('label.asset-lowercase'),

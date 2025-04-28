@@ -105,7 +105,7 @@ const APIEndpointPage = () => {
         entityFqn
       );
       setApiEndpointPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,

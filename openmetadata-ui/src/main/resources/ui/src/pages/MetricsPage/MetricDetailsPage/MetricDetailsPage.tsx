@@ -100,7 +100,7 @@ const MetricDetailsPage = () => {
         entityFqn
       );
       setMetricPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,

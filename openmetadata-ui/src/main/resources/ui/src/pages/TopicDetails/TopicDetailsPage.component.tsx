@@ -102,7 +102,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         entityFqn
       );
       setTopicPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,

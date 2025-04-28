@@ -78,13 +78,15 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
       {beforeSlot}
       <Space className="w-full" direction="vertical" size="large">
         {showDataProductContainer && (
-          <DataProductsContainer
-            newLook
-            activeDomain={domain}
-            dataProducts={dataProducts}
-            hasPermission={editDataProductPermission ?? false}
-            onSave={onDataProductUpdate}
-          />
+          <div data-testid="KnowledgePanel.DataProducts">
+            <DataProductsContainer
+              newLook
+              activeDomain={domain}
+              dataProducts={dataProducts}
+              hasPermission={editDataProductPermission ?? false}
+              onSave={onDataProductUpdate}
+            />
+          </div>
         )}
 
         <div data-testid="KnowledgePanel.Tags">

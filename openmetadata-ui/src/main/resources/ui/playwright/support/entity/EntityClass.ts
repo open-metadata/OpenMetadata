@@ -137,7 +137,7 @@ export class EntityClass {
     await assignDataProduct(page, domain1, dataProduct2, 'Edit');
     await updateDomain(page, domain2);
     await assignDataProduct(page, domain2, dataProduct3);
-    await removeDataProduct(page, domain2, dataProduct3);
+    await removeDataProduct(page, dataProduct3);
     await removeDomain(page, domain2);
   }
 

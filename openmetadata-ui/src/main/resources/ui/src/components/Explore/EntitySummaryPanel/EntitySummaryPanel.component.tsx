@@ -61,7 +61,7 @@ export default function EntitySummaryPanel({
         get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
       const permissions = await getEntityPermission(type, entityFqn);
       setEntityPermissions(permissions);
-    } catch (error) {
+    } catch {
       // Error
     } finally {
       setIsPermissionLoading(false);

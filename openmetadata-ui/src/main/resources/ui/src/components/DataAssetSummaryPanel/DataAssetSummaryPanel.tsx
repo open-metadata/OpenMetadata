@@ -104,7 +104,7 @@ export const DataAssetSummaryPanel = ({
         setAdditionalInfo({
           incidentCount: paging.total,
         });
-      } catch (error) {
+      } catch {
         setAdditionalInfo({
           incidentCount: 0,
         });
@@ -117,7 +117,7 @@ export const DataAssetSummaryPanel = ({
     try {
       const chartDetails = await fetchCharts((dataAsset as Dashboard).charts);
       setCharts(chartDetails);
-    } catch (err) {
+    } catch {
       // Error
     } finally {
       setChartsDetailsLoading(false);

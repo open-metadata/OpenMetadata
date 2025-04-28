@@ -253,7 +253,6 @@ export const assignDataProduct = async (
 
 export const removeDataProduct = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string },
   dataProduct: {
     name: string;
     displayName: string;
@@ -272,14 +271,9 @@ export const removeDataProduct = async (
     .locator('svg')
     .click();
 
-  const searchDataProduct = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
-
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
-  await searchDataProduct;
 
   await expect(
     page
