@@ -24,6 +24,7 @@ import { CommonEntitySummaryInfoProps } from './CommonEntitySummaryInfo.interfac
 function CommonEntitySummaryInfo({
   entityInfo,
   componentType,
+  isDomainVisible,
 }: CommonEntitySummaryInfoProps) {
   const { t } = useTranslation();
 
@@ -31,8 +32,9 @@ function CommonEntitySummaryInfo({
     <Row className="text-sm" gutter={[0, 4]}>
       {entityInfo.map((info) => {
         const isOwner = info.name === t('label.owner-plural');
+        const isDomain = isDomainVisible && info.name === t('label.domain');
 
-        return info.visible?.includes(componentType) ? (
+        return info.visible?.includes(componentType) || isDomain ? (
           <Col key={info.name} span={24}>
             <Row
               className={classNames('', {
@@ -54,11 +56,7 @@ function CommonEntitySummaryInfo({
                         component={Typography.Link}
                         data-testid={`${info.name}-value`}
                         target={info.isExternal ? '_blank' : '_self'}
-                        to={
-                          info.linkProps
-                            ? info.linkProps
-                            : { pathname: info.url }
-                        }>
+                        to={info.linkProps ?? { pathname: info.url }}>
                         {info.value}
                         {info.isExternal ? (
                           <Icon
