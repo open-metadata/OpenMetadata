@@ -273,3 +273,11 @@ export const closeFirstPopupAlert = async (page: Page) => {
     await page.getByTestId('alert-icon-close').first().click();
   }
 };
+
+export const reloadAndWaitForNetworkIdle = async (page: Page) => {
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};

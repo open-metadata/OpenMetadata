@@ -24,12 +24,25 @@ class BigQueryIngestionClass extends ServiceBaseClass {
   name = '';
   filterPattern: string;
 
-  constructor() {
+  constructor(extraParams?: {
+    shouldTestConnection?: boolean;
+    shouldAddIngestion?: boolean;
+    shouldAddDefaultFilters?: boolean;
+  }) {
+    const {
+      shouldTestConnection = true,
+      shouldAddIngestion = true,
+      shouldAddDefaultFilters = false,
+    } = extraParams ?? {};
+
     super(
       Services.Database,
       `pw-bigquery-with-%-${uuid()}`,
       'BigQuery',
-      'testtable'
+      'testtable',
+      shouldTestConnection,
+      shouldAddIngestion,
+      shouldAddDefaultFilters
     );
 
     this.filterPattern = 'testschema';

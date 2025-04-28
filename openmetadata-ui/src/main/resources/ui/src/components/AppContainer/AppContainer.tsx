@@ -21,13 +21,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import TokenService from '../../utils/Auth/TokenService/TokenServiceUtil';
-import {
-  extractDetailsFromToken,
-  isProtectedRoute,
-  isTourRoute,
-} from '../../utils/AuthProvider.util';
-import { getOidcToken } from '../../utils/LocalStorageUtils';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import NavBar from '../NavBar/NavBar';
@@ -68,28 +62,6 @@ const AppContainer = () => {
       fetchAppConfigurations();
     }
   }, [currentUser?.id]);
-
-  useEffect(() => {
-    const handleDocumentVisibilityChange = () => {
-      if (
-        isProtectedRoute(location.pathname) &&
-        isTourRoute(location.pathname)
-      ) {
-        return;
-      }
-      const { isExpired } = extractDetailsFromToken(getOidcToken());
-      if (!document.hidden && isExpired) {
-        // force logout
-        TokenService.getInstance().refreshToken();
-      }
-    };
-
-    addEventListener('focus', handleDocumentVisibilityChange);
-
-    return () => {
-      removeEventListener('focus', handleDocumentVisibilityChange);
-    };
-  }, []);
 
   return (
     <Layout>
