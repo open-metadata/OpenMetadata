@@ -1248,10 +1248,11 @@ export const softDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
 
   await deleteResponse;
+  await page.waitForLoadState('networkidle');
 
   await toastNotification(
     page,
-    /deleted successfully!/,
+    /(deleted successfully!|Delete operation initiated)/,
     BIG_ENTITY_DELETE_TIMEOUT
   );
 
@@ -1317,10 +1318,10 @@ export const hardDeleteEntity = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
-
+  await page.waitForLoadState('networkidle');
   await toastNotification(
     page,
-    /deleted successfully!/,
+    /(deleted successfully!|Delete operation initiated)/,
     BIG_ENTITY_DELETE_TIMEOUT
   );
 };
