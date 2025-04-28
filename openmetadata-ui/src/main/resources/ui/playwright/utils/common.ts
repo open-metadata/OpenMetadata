@@ -234,7 +234,7 @@ export const assignDataProduct = async (
   );
 
   await page
-    .locator('input[id*="rc_select"]:not([readonly])')
+    .locator('[data-testid="data-product-selector"] input')
     .fill(dataProduct.displayName);
   await searchDataProduct;
   await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();

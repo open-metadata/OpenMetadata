@@ -59,7 +59,7 @@ const DataProductsContainer = ({
 
   const fetchAPI = useCallback(
     (searchValue: string, page = 1) => {
-      const searchText = !isEmpty(searchValue) ? searchValue : '';
+      const searchText = searchValue ?? '';
       const domainFQN = activeDomain?.fullyQualifiedName ?? '';
 
       return fetchDataProductsElasticSearch(searchText, domainFQN, page);
