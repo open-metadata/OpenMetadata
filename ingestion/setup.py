@@ -13,6 +13,7 @@
 Python Dependencies
 """
 
+import sys
 from typing import Dict, List, Set
 
 from setuptools import setup
@@ -27,7 +28,8 @@ VERSIONS = {
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
-    "great-expectations": "great-expectations>=0.18.0,<0.18.14",
+    "great-expectations": "great-expectations~=0.18.0",
+    "great-expectations-1xx": "great-expectations~=1.0",
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
@@ -188,7 +190,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "clickhouse": {
         "clickhouse-driver~=0.2",
-        "clickhouse-sqlalchemy~=0.2",
+        "clickhouse-sqlalchemy~=0.2.0",
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
@@ -196,7 +198,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
-        "dagster_graphql~=1.1",
+        "dagster_graphql>=1.8.0",
     },
     "dbt": {
         "google-cloud",
@@ -250,6 +252,7 @@ plugins: Dict[str, Set[str]] = {
     "exasol": {"sqlalchemy_exasol>=5,<6"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
+    "great-expectations-1xx": {VERSIONS["great-expectations-1xx"]},
     "greenplum": {*COMMONS["postgres"]},
     "cockroach": {
         VERSIONS["cockroach"],
@@ -435,6 +438,9 @@ test = {
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
 }
+
+if sys.version_info >= (3, 9):
+    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
