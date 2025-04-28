@@ -33,7 +33,7 @@ Autopilot is designed to help users get started quickly with metadata ingestion 
 2. Click **Add Apps** and select **Autopilot** from the marketplace.
 
 {% image
-src="/images/v1.8/applications/autopilot.png"
+src="/images/v1.7/applications/autopilot.png"
 alt="Select Autopilot Application"
 caption="Select Autopilot Application"
 /%}
@@ -41,7 +41,7 @@ caption="Select Autopilot Application"
 3. Click **Install**.
 
 {% image
-src="/images/v1.8/applications/autopilot1.png"
+src="/images/v1.7/applications/autopilot1.png"
 alt="Install Autopilot"
 caption="Install Autopilot"
 /%}
@@ -57,7 +57,7 @@ Once installed, configure the application by filling in the following fields:
 | **Service Entity Link** | Link the service for which the ingestion workflows should be triggered. |
 
 {% image
-src="/images/v1.8/applications/autopilot2.png"
+src="/images/v1.7/applications/autopilot2.png"
 alt="Configuration"
 caption="Configuration"
 /%}
