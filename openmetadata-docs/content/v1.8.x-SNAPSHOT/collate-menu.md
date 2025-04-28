@@ -728,14 +728,14 @@ site_menu:
   - category: Collate AI / Collate AI Documentation Agent
     url: /collateai/documentation-agent
 
- - category: Applications
+  - category: Applications
     url: /applications
 
- - category: Applications / Reverse Metadata Application
+  - category: Applications / Reverse Metadata Application
     url: /applications/reverse-metadata
- - category: Applications / Autopilot
+  - category: Applications / Autopilot
     url: /applications/autopilot
- - category: Applications / Collate AI
+  - category: Applications / Collate AI
     url: /collateai
 
   - category: How-to Guides
