@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
-import { debounce, isString } from 'lodash';
+import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
 import React, {
   useCallback,
@@ -61,7 +61,7 @@ export const GlobalSearchBar = () => {
   const [isSearchBoxOpen, setIsSearchBoxOpen] = useState<boolean>(false);
   const history = useHistory();
   const { isTourOpen, updateTourPage, updateTourSearch } = useTourProvider();
-
+  const { currentUser } = useApplicationStore();
   const parsedQueryString = Qs.parse(
     location.search.startsWith('?')
       ? location.search.substring(1)
@@ -166,14 +166,16 @@ export const GlobalSearchBar = () => {
   };
 
   const fetchNLPEnabledStatus = useCallback(() => {
-    getNLPEnabledStatus().then((enabled) => {
-      setNLPEnabled(enabled);
-    });
-  }, [setNLPEnabled]);
+    if (!isEmpty(currentUser)) {
+      getNLPEnabledStatus().then((enabled) => {
+        setNLPEnabled(enabled);
+      });
+    }
+  }, [setNLPEnabled, currentUser]);
 
   useEffect(() => {
     fetchNLPEnabledStatus();
-  }, []);
+  }, [fetchNLPEnabledStatus]);
 
   return (
     <div
