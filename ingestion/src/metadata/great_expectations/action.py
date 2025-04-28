@@ -96,6 +96,7 @@ class OpenMetadataValidationAction(ValidationAction):
     def __init__(
         self,
         data_context: DataContext,  # type: ignore
+        name: str = "OpenMetadataValidationAction",
         *,
         config_file_path: Optional[str] = None,
         database_service_name: Optional[str] = None,
@@ -103,7 +104,7 @@ class OpenMetadataValidationAction(ValidationAction):
         database_name: Optional[str] = None,
         table_name: Optional[str] = None,
     ):
-        super().__init__(data_context)
+        super().__init__(data_context, name=name)
         self.database_service_name = database_service_name
         self.database_name = database_name
         self.table_name = table_name
