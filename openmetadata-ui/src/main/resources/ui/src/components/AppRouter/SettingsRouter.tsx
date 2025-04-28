@@ -95,7 +95,16 @@ const SettingsRouter = () => {
         )}
         path={ROUTES.ADD_POLICY}
       />
-      <Route exact component={AddRulePage} path={ROUTES.ADD_POLICY_RULE} />
+      <AdminProtectedRoute
+        exact
+        component={AddRulePage}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
+        path={ROUTES.ADD_POLICY_RULE}
+      />
       <AdminProtectedRoute
         exact
         component={EditEmailConfigPage}
@@ -109,8 +118,16 @@ const SettingsRouter = () => {
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
       />
-      <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
-
+      <AdminProtectedRoute
+        exact
+        component={EditRulePage}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.POLICY,
+          permissions
+        )}
+        path={ROUTES.EDIT_POLICY_RULE}
+      />
       {/*  Setting routes without any category will be places here */}
       <AdminProtectedRoute
         exact
@@ -150,19 +167,28 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={BotsPageV1}
-        hasPermission={false}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.BOT,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingOptions.BOTS)}
       />
       <AdminProtectedRoute
         exact
         component={ApplicationPage}
-        hasPermission={false}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.APPLICATION,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingOptions.APPLICATIONS)}
       />
       <AdminProtectedRoute
         exact
         component={AppDetails}
-        hasPermission={false}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.APPLICATION,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingOptions.APPLICATIONS,
           undefined,
@@ -197,7 +223,8 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={ImportTeamsPage}
-        hasPermission={userPermissions.hasViewPermissions(
+        hasPermission={checkPermission(
+          Operation.EditAll,
           ResourceEntity.TEAM,
           permissions
         )}
@@ -238,6 +265,10 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={RolesListPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES
@@ -247,6 +278,10 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={RolesDetailPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.ROLE,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.ROLES,
@@ -278,6 +313,10 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={PoliciesListPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES
@@ -286,6 +325,10 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={PoliciesDetailPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.POLICY,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.ACCESS,
           GlobalSettingOptions.POLICIES,
@@ -340,6 +383,11 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={CustomPageSettings}
+        hasPermission={checkPermission(
+          Operation.EditAll,
+          ResourceEntity.PERSONA,
+          permissions
+        )}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
