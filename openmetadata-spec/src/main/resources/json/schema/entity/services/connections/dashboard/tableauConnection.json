@@ -23,7 +23,7 @@
     "hostPort": {
       "expose": true,
       "title": "Host and Port",
-      "description": "Tableau Server.",
+      "description": "Tableau Server url.",
       "type": "string",
       "format": "uri"
     },
@@ -40,26 +40,10 @@
         }
       ]
     },
-    "apiVersion": {
-      "title": "API Version",
-      "description": "Tableau API version.",
-      "type": "string"
-    },
     "siteName": {
       "title": "Site Name",
       "description": "Tableau Site Name.",
       "type": "string"
-    },
-    "siteUrl": {
-      "title": "Site Url",
-      "description": "Tableau Site Url.",
-      "type": "string"
-    },
-    "env": {
-      "title": "Tableau Environment",
-      "description": "Tableau Environment Name.",
-      "type": "string",
-      "default": "tableau_prod"
     },
     "paginationLimit": {
       "title": "Pagination Limit",
@@ -100,5 +84,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["apiVersion", "env", "hostPort"]
+  "required": ["hostPort"]
 }
