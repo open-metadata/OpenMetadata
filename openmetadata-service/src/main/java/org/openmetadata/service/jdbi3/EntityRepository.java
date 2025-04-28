@@ -3462,6 +3462,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
           removeDomainLineage(updated.getId(), entityType, origDomain);
           deleteRelationship(
               origDomain.getId(), DOMAIN, original.getId(), entityType, Relationship.HAS);
+          // Clean up data products associated with the old domain on domain update
+          removeDomainDataProducts(original.getDomain(), updated);
         }
         if (updatedDomain != null) {
           validateDomain(updatedDomain);
@@ -3474,8 +3476,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
               updatedDomain.getId(), original.getId(), DOMAIN, entityType, Relationship.HAS);
           addDomainLineage(updated.getId(), entityType, updatedDomain);
         }
-        // Clean up data products associated with the old domain on domain update
-        removeDomainDataProducts(original.getDomain(), updated);
         updated.setDomain(updatedDomain);
       } else {
         updated.setDomain(original.getDomain());
