@@ -310,17 +310,7 @@ export const formatDuration = (ms: number) => {
   }
 };
 export const formatDurationToHHMMSS = (ms: number) => {
-  // Convert milliseconds to total seconds and round to nearest second
-  const totalSeconds = Math.floor(ms / 1000);
-
-  // Calculate hours, minutes, seconds using integer division
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = Math.floor(totalSeconds % 60);
-
-  const pad = (num: number) => String(num).padStart(2, '0');
-
-  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  return Duration.fromMillis(ms).toFormat('hh:mm:ss');
 };
 
 export const getStartOfDayInMillis = (timestamp: number) =>
