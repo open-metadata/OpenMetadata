@@ -103,6 +103,7 @@ ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**
 .python-version
+ingestion/tests/load/summaries/*.csv
 
 # MLFlow
 mlruns/
@@ -122,9 +123,6 @@ scan-requirements.txt
 
 # CLI e2e tests
 ingestion/tests/cli_e2e/**/*test.yaml
-
-# GX artifacts
-/ingestion/tests/integration/great_expectations/gx/*
 
 # Tests
 **/metastore_db/
