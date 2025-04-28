@@ -248,7 +248,7 @@ class DatalakeSource(DatabaseServiceSource):
         if self.source_config.includeTables:
             for key_name in self.client.get_table_names(bucket_name, prefix):
                 table_name = self.standardize_table_name(bucket_name, key_name)
-
+                logger.info(f"Processing table: {table_name}")
                 if self.filter_dl_table(table_name):
                     continue
 
