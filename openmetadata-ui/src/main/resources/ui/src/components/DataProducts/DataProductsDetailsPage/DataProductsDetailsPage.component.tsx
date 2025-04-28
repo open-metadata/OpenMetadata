@@ -154,7 +154,7 @@ const DataProductsDetailsPage = ({
   const {
     editDisplayNamePermission,
     editAllPermission,
-    deleteDataProductPermision,
+    deleteDataProductPermission,
   } = useMemo(() => {
     if (isVersionsView) {
       return {
@@ -172,7 +172,7 @@ const DataProductsDetailsPage = ({
       editAllPermission: dataProductPermission.EditAll,
       editDisplayNamePermission:
         dataProductPermission.EditDisplayName || dataProductPermission.EditAll,
-      deleteDataProductPermision: dataProductPermission.Delete,
+      deleteDataProductPermission: dataProductPermission.Delete,
     };
   }, [dataProductPermission, isVersionsView]);
 
@@ -256,7 +256,7 @@ const DataProductsDetailsPage = ({
           },
         ] as ItemType[])
       : []),
-    ...(deleteDataProductPermision
+    ...(deleteDataProductPermission
       ? ([
           {
             label: (
