@@ -30,13 +30,13 @@ import {
   ValueSource,
 } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import {
+  getEmptyJsonTree,
   getTierOptions,
   getTreeConfig,
 } from '../../../utils/AdvancedSearchUtils';
@@ -114,7 +114,7 @@ export const AdvanceSearchProvider = ({
   const [initialised, setInitialised] = useState(false);
 
   const defaultTree = useMemo(
-    () => QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config),
+    () => QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config),
     []
   );
 
@@ -197,7 +197,9 @@ export const AdvanceSearchProvider = ({
   };
 
   const handleReset = useCallback(() => {
-    setTreeInternal(QbUtils.checkTree(QbUtils.loadTree(emptyJsonTree), config));
+    setTreeInternal(
+      QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
+    );
     setQueryFilter(undefined);
     setSQLQuery('');
   }, [config]);
