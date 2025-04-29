@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 import { Fields } from 'react-awesome-query-builder';
-import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import { EntityType } from '../enums/entity.enum';
 import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../pages/ExplorePage/ExplorePage.interface';
+import {
+  addEntityTypeFilter,
+  getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
   resolveFieldType,
 } from './QueryBuilderUtils';
@@ -150,5 +156,177 @@ describe('resolveFieldType', () => {
 
   it('should return an empty string if the field is undefined', () => {
     expect(resolveFieldType(undefined, 'name')).toBe('');
+  });
+});
+
+describe('addEntityTypeFilter', () => {
+  const baseQueryFilter: QueryFilterInterface = {
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                {
+                  term: {
+                    field1: 'value1',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  it('should return the original filter when entityType is ALL', () => {
+    const result = addEntityTypeFilter({ ...baseQueryFilter }, EntityType.ALL);
+
+    expect(result).toEqual(baseQueryFilter);
+  });
+
+  it('should add entity type filter for non-ALL entity types', () => {
+    const result = addEntityTypeFilter(
+      { ...baseQueryFilter },
+      EntityType.TABLE
+    );
+
+    // Assert the must array exists and has correct length
+    expect(result.query?.bool?.must).toBeDefined();
+
+    const mustArray = result.query?.bool?.must as QueryFieldInterface[];
+
+    expect(Array.isArray(mustArray)).toBe(true);
+    expect(mustArray).toHaveLength(2);
+
+    // Assert the entity type filter is added correctly
+    expect(mustArray[1]).toEqual({
+      bool: {
+        must: [
+          {
+            term: {
+              entityType: EntityType.TABLE,
+            },
+          },
+        ],
+      },
+    });
+  });
+
+  it('should handle undefined must array gracefully', () => {
+    const queryFilter: QueryFilterInterface = {
+      query: {
+        bool: {},
+      },
+    };
+    const result = addEntityTypeFilter(queryFilter, EntityType.TABLE);
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('should handle empty query gracefully', () => {
+    const queryFilter = {} as QueryFilterInterface;
+    const result = addEntityTypeFilter(queryFilter, EntityType.TABLE);
+
+    expect(result).toEqual(queryFilter);
+  });
+});
+
+describe('getEntityTypeAggregationFilter', () => {
+  const baseQueryFilter: QueryFilterInterface = {
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                {
+                  term: {
+                    field1: 'value1',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  it('should add entity type to the first must block', () => {
+    const result = getEntityTypeAggregationFilter(
+      { ...baseQueryFilter },
+      EntityType.TABLE
+    );
+
+    // Assert the must array exists
+    expect(result.query?.bool?.must).toBeDefined();
+
+    const mustArray = result.query?.bool?.must as QueryFieldInterface[];
+
+    expect(Array.isArray(mustArray)).toBe(true);
+    expect(mustArray.length).toBeGreaterThan(0);
+
+    // Get the first must block and assert its structure
+    const firstMustBlock = mustArray[0];
+    const mustBlockArray = firstMustBlock.bool?.must as QueryFieldInterface[];
+
+    expect(mustBlockArray).toBeDefined();
+    expect(Array.isArray(mustBlockArray)).toBe(true);
+    expect(mustBlockArray).toHaveLength(2);
+
+    // Assert the entity type filter is added correctly
+    expect(mustBlockArray[1]).toEqual({
+      term: {
+        entityType: EntityType.TABLE,
+      },
+    });
+  });
+
+  it('should handle undefined must array in first block gracefully', () => {
+    const queryFilter: QueryFilterInterface = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {},
+            },
+          ],
+        },
+      },
+    };
+    const result = getEntityTypeAggregationFilter(
+      queryFilter,
+      EntityType.TABLE
+    );
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('should handle empty must array gracefully', () => {
+    const queryFilter: QueryFilterInterface = {
+      query: {
+        bool: {
+          must: [],
+        },
+      },
+    };
+    const result = getEntityTypeAggregationFilter(
+      queryFilter,
+      EntityType.TABLE
+    );
+
+    expect(result).toEqual(queryFilter);
+  });
+
+  it('should handle empty query gracefully', () => {
+    const queryFilter = {} as QueryFilterInterface;
+    const result = getEntityTypeAggregationFilter(
+      queryFilter,
+      EntityType.TABLE
+    );
+
+    expect(result).toEqual(queryFilter);
   });
 });
