@@ -315,6 +315,39 @@ public class DatabaseSchemaResource
     return create(uriInfo, securityContext, schema);
   }
 
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(
+      operationId = "addFollowerToDatabaseSchema",
+      summary = "Add a follower",
+      description = "Add a user identified by `userId` as followed of this Database Schema",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Dashboard Service for instance {id} is not found")
+      })
+  public Response addFollower(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Database Schema", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the user to be added as follower",
+              schema = @Schema(type = "string"))
+          UUID userId) {
+    return repository
+        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
+        .toResponse();
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(
