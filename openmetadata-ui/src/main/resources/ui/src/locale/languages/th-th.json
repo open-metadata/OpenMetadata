@@ -1000,6 +1000,7 @@
     "pipeline-plural": "ท่อหลายรายการ",
     "pipeline-state": "สถานะท่อ",
     "platform": "แพลตฟอร์ม",
+    "platform-type-lineage": "{{platformType}} ลำดับชั้น",
     "play": "เล่น",
     "please-enter-value": "กรุณากรอกค่าของ {{name}}",
     "please-password-type-first": "กรุณาพิมพ์รหัสผ่านก่อน",

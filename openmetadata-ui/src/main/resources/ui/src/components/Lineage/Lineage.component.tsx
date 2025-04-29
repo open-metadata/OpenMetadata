@@ -164,7 +164,9 @@ const Lineage = ({
         ref={reactFlowWrapper}>
         {entityLineage && (
           <>
-            <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
+            {isPlatformLineage ? null : (
+              <CustomControlsComponent className="absolute top-1 right-1 p-xs" />
+            )}
             <LineageControlButtons
               deleted={deleted}
               entityType={entityType}

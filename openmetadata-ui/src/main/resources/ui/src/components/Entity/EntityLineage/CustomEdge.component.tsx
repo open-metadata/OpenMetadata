@@ -95,6 +95,7 @@ export const CustomEdge = ({
     onAddPipelineClick,
     onColumnEdgeRemove,
     dataQualityLineage,
+    dqHighlightedEdges,
   } = useLineageProvider();
 
   const { theme } = useApplicationStore();
@@ -124,14 +125,15 @@ export const CustomEdge = ({
 
   // Compute if should show DQ tracing
   const showDqTracing = useMemo(() => {
-    return (
-      (activeLayer.includes(LineageLayer.DataObservability) &&
-        dataQualityLineage?.edges?.some(
-          (dqEdge) => dqEdge?.docId === edge?.docId
-        )) ??
-      false
-    );
-  }, [activeLayer, dataQualityLineage?.edges, edge?.docId]);
+    if (
+      !activeLayer.includes(LineageLayer.DataObservability) ||
+      !dataQualityLineage?.nodes
+    ) {
+      return false;
+    }
+
+    return dqHighlightedEdges?.has(id);
+  }, [activeLayer, dataQualityLineage?.nodes, id, dqHighlightedEdges]);
 
   // Determine if column is highlighted based on traced columns
   const isColumnHighlighted = useMemo(() => {

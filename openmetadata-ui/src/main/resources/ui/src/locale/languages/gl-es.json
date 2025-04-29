@@ -1000,6 +1000,7 @@
     "pipeline-plural": "Pipelines",
     "pipeline-state": "Estado do pipeline",
     "platform": "Plataforma",
+    "platform-type-lineage": "{{platformType}} Liñaxe",
     "play": "Reproducir",
     "please-enter-value": "Por favor, introduce o valor de {{name}}",
     "please-password-type-first": "Por favor, introduce primeiro o contrasinal",
