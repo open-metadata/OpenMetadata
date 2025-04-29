@@ -193,8 +193,7 @@ export const exportDatabaseServiceDetailsInCSV = async (
   }
 ) => {
   const res = await APIClient.get(
-    // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-    `services/databaseServices/name/${fqn}/exportAsync`,
+    `services/databaseServices/name/${getEncodedFqn(fqn)}/exportAsync`,
     {
       params,
     }
