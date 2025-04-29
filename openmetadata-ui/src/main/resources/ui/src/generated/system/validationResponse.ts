@@ -19,6 +19,10 @@ export interface ValidationResponse {
      */
     database?: StepValidation;
     /**
+     * DataInsights validation check
+     */
+    dataInsights?: StepValidation;
+    /**
      * JWKs validation
      */
     jwks?: StepValidation;
@@ -38,6 +42,8 @@ export interface ValidationResponse {
 
 /**
  * Database connectivity check
+ *
+ * DataInsights validation check
  *
  * JWKs validation
  *

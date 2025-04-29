@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -460,6 +461,7 @@ public class SystemRepository {
 
     validation.setDatabase(getDatabaseValidation(applicationConfig));
     validation.setSearchInstance(getSearchValidation(applicationConfig));
+    validation.setDataInsights(getDataInsightsValidation(applicationConfig));
     validation.setPipelineServiceClient(
         getPipelineServiceClientValidation(applicationConfig, pipelineServiceClient));
     validation.setJwks(getJWKsValidation(applicationConfig, jwtFilter));
@@ -490,6 +492,29 @@ public class SystemRepository {
         && searchRepository
             .getSearchClient()
             .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.SEARCH.key)
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format(
+                  "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
+    } else {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.SEARCH.key)
+          .withPassed(Boolean.FALSE)
+          .withMessage("Search instance is not reachable or available");
+    }
+  }
+
+  private StepValidation getDataInsightsValidation(
+      OpenMetadataApplicationConfig applicationConfig) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+
+    String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), Entity.TABLE);
+
+    if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
+        && searchRepository.getSearchClient().indexExists(dataStreamName)) {
+      //      if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
           .withPassed(Boolean.TRUE)
