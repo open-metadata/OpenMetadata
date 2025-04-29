@@ -47,10 +47,6 @@
     "migrations": {
       "description": "List migration results",
       "$ref": "#/definitions/stepValidation"
-    },
-    "dataInsights": {
-      "description": "DataInsights validation check",
-      "$ref": "#/definitions/stepValidation"
     }
   },
   "additionalProperties": false

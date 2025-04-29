@@ -24,6 +24,7 @@ import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
@@ -38,6 +39,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
@@ -49,6 +51,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
@@ -461,7 +464,6 @@ public class SystemRepository {
 
     validation.setDatabase(getDatabaseValidation(applicationConfig));
     validation.setSearchInstance(getSearchValidation(applicationConfig));
-    validation.setDataInsights(getDataInsightsValidation(applicationConfig));
     validation.setPipelineServiceClient(
         getPipelineServiceClientValidation(applicationConfig, pipelineServiceClient));
     validation.setJwks(getJWKsValidation(applicationConfig, jwtFilter));
@@ -492,12 +494,21 @@ public class SystemRepository {
         && searchRepository
             .getSearchClient()
             .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.SEARCH.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage(
-              String.format(
-                  "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
+      if (validateDataInsights()) {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.SEARCH.key)
+            .withPassed(Boolean.TRUE)
+            .withMessage(
+                String.format(
+                    "Connected to %s",
+                    applicationConfig.getElasticSearchConfiguration().getHost()));
+      } else {
+        return new StepValidation()
+            .withDescription(ValidationStepDescription.SEARCH.key)
+            .withPassed(Boolean.FALSE)
+            .withMessage(
+                "Data Insights Application is Installed but it is not reachable or available");
+      }
     } else {
       return new StepValidation()
           .withDescription(ValidationStepDescription.SEARCH.key)
@@ -506,27 +517,26 @@ public class SystemRepository {
     }
   }
 
-  private StepValidation getDataInsightsValidation(
-      OpenMetadataApplicationConfig applicationConfig) {
-    SearchRepository searchRepository = Entity.getSearchRepository();
+  private boolean validateDataInsights() {
+    boolean isValid = false;
 
-    String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), Entity.TABLE);
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    try {
+      App dataInsightsApp =
+          appRepository.getByName(null, "DataInsightsApplication", EntityUtil.Fields.EMPTY_FIELDS);
 
-    if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
-        && searchRepository.getSearchClient().indexExists(dataStreamName)) {
-      //      if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.SEARCH.key)
-          .withPassed(Boolean.TRUE)
-          .withMessage(
-              String.format(
-                  "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
-    } else {
-      return new StepValidation()
-          .withDescription(ValidationStepDescription.SEARCH.key)
-          .withPassed(Boolean.FALSE)
-          .withMessage("Search instance is not reachable or available");
+      SearchRepository searchRepository = Entity.getSearchRepository();
+      String dataStreamName = getDataStreamName(searchRepository.getClusterAlias(), Entity.TABLE);
+
+      if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
+          && searchRepository.getSearchClient().indexExists(dataStreamName)) {
+        isValid = true;
+      }
+    } catch (EntityNotFoundException e) {
+      isValid = true;
+      LOG.info("Data Insights Application is not installed. Skip Validation.");
     }
+    return isValid;
   }
 
   private StepValidation getPipelineServiceClientValidation(
