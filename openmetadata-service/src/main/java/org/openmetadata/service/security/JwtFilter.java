@@ -91,7 +91,6 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/resendRegistrationToken",
           "v1/users/generatePasswordResetLink",
           "v1/users/password/reset",
-          "v1/users/checkEmailInUse",
           "v1/users/login",
           "v1/users/refresh");
 
