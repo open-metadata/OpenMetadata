@@ -1791,3 +1791,40 @@ export const getEntityTypeFromPlatformView = (
       return 'service';
   }
 };
+
+/**
+ * Recursively finds all downstream edges from a given node in a graph.
+ * This function traverses the graph depth-first, collecting all edges that flow downstream
+ * from the specified node while avoiding cycles by tracking visited nodes.
+ *
+ * @param {string} nodeId - The ID of the starting node
+ * @param {Edge[]} edges - Array of all edges in the graph
+ * @param {Set<string>} [visitedNodes=new Set()] - Set of already visited node IDs to prevent cycles
+ * @returns {Edge[]} Array of all downstream edges from the starting node
+ */
+export const getAllDownstreamEdges = (
+  nodeId: string,
+  edges: Edge[],
+  visitedNodes: Set<string> = new Set()
+): Edge[] => {
+  // If we've already visited this node, return empty array to avoid cycles
+  if (visitedNodes.has(nodeId)) {
+    return [];
+  }
+
+  visitedNodes.add(nodeId);
+
+  // Get direct downstream edges
+  const directDownstreamEdges = edges.filter((edge) => edge.source === nodeId);
+
+  // Get target nodes from direct downstream edges
+  const targetNodes = directDownstreamEdges.map((edge) => edge.target);
+
+  // Recursively get downstream edges for each target node
+  const nestedDownstreamEdges = targetNodes.flatMap((targetNodeId) =>
+    getAllDownstreamEdges(targetNodeId, edges, visitedNodes)
+  );
+
+  // Combine direct and nested downstream edges
+  return [...directDownstreamEdges, ...nestedDownstreamEdges];
+};
