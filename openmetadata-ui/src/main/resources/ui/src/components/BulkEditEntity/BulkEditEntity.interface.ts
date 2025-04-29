@@ -16,7 +16,7 @@ import {
 } from '@inovua/reactdatagrid-community/types';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { CSVImportResult } from '../../generated/type/csvImportResult';
-import { CSVImportJobType } from '../BulkImport/BulkEntityImport.interface';
+import { CSVImportJobType } from '../../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface BulkEditEntityProps {

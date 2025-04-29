@@ -3,13 +3,6 @@
 This schema defines configuration for the Data Insights Application.
 
 $$section
-### Application Type $(id="type")
-
-Application Type
-
-$$
-
-$$section
 ### batchSize $(id="batchSize")
 
 Maximum number of events processed at a time (Default 100).
