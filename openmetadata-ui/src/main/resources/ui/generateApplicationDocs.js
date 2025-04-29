@@ -17,6 +17,12 @@ const path = require('path');
 const SCHEMA_DIR = path.join(__dirname, './src/utils/ApplicationSchemas');
 const DOCS_DIR = path.join(__dirname, './public/locales/en-US/Applications');
 
+const IGNORE_FIELDS = [
+  'moduleConfiguration.dataAssets.serviceFilter',
+  'entityLink',
+  'type',
+];
+
 const resolveRef = (schema, ref) => {
   const path = ref.split('/').slice(1);
   let current = schema;
@@ -27,6 +33,12 @@ const resolveRef = (schema, ref) => {
 };
 
 const processProperty = (key, prop, schema) => {
+  // Skip if the key is in IGNORE_FIELDS
+  const currentKey = key.split('.').pop();
+  if (IGNORE_FIELDS.includes(currentKey)) {
+    return '';
+  }
+
   let markdown = `$$section\n`;
   markdown += `### ${prop.title || key} $(id="${key}")\n\n`;
 

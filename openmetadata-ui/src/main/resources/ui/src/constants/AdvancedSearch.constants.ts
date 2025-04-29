@@ -12,7 +12,6 @@
  */
 
 import { t } from 'i18next';
-import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 
@@ -303,39 +302,6 @@ export const TEXT_FIELD_OPERATORS = [
 export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];
 
 export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
-
-/**
- * Generates a query builder tree with a group containing an empty rule
- */
-export const emptyJsonTree: JsonTree = {
-  id: QbUtils.uuid(),
-  type: 'group',
-  properties: {
-    conjunction: 'AND',
-    not: false,
-  },
-  children1: {
-    [QbUtils.uuid()]: {
-      type: 'group',
-      properties: {
-        conjunction: 'AND',
-        not: false,
-      },
-      children1: {
-        [QbUtils.uuid()]: {
-          type: 'rule',
-          properties: {
-            // owner is common field , so setting owner as default field here
-            field: EntityFields.OWNERS,
-            operator: null,
-            value: [],
-            valueSrc: ['value'],
-          },
-        },
-      },
-    },
-  },
-};
 
 export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
 
