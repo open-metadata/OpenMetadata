@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.THREAD;
@@ -164,40 +165,49 @@ public class SubscriptionUtil {
     Set<String> receiversList = new HashSet<>();
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
+    addMentionedUsersToNotifyIfRequired(users, teams, category, thread);
+    addAssigneesUsersToNotifyIfRequired(users, teams, category, thread);
+    addThreadOwnerIfRequired(users, category, thread);
+    // Users
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+    // Teams
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
+    return receiversList;
+  }
 
+  private static void addTargetFromEntityLink(
+      Map<UUID, User> users, Map<UUID, Team> teams, List<MessageParser.EntityLink> mentions) {
     Team tempTeamVar;
     User tempUserVar;
-
-    if (category.equals(SubscriptionDestination.SubscriptionCategory.ASSIGNEES)) {
-      List<EntityReference> assignees = thread.getTask().getAssignees();
-      if (!nullOrEmpty(assignees)) {
-        for (EntityReference reference : assignees) {
-          if (Entity.USER.equals(reference.getType())) {
-            tempUserVar = Entity.getEntity(USER, reference.getId(), "profile", Include.NON_DELETED);
-            users.put(tempUserVar.getId(), tempUserVar);
-          } else if (TEAM.equals(reference.getType())) {
-            tempTeamVar = Entity.getEntity(TEAM, reference.getId(), "profile", Include.NON_DELETED);
-            teams.put(tempTeamVar.getId(), tempTeamVar);
-          }
-        }
-      }
-
-      for (Post post : thread.getPosts()) {
-        tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+    for (MessageParser.EntityLink link : mentions) {
+      if (USER.equals(link.getEntityType())) {
+        tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
         users.put(tempUserVar.getId(), tempUserVar);
-        List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(post.getMessage());
-        for (MessageParser.EntityLink link : mentions) {
-          if (USER.equals(link.getEntityType())) {
-            tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            users.put(tempUserVar.getId(), tempUserVar);
-          } else if (TEAM.equals(link.getEntityType())) {
-            tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            teams.put(tempTeamVar.getId(), tempTeamVar);
-          }
-        }
+      } else if (TEAM.equals(link.getEntityType())) {
+        tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+        teams.put(tempTeamVar.getId(), tempTeamVar);
       }
     }
+  }
 
+  private static void addTargetFromEntityReference(
+      Map<UUID, User> users, Map<UUID, Team> teams, List<EntityReference> references) {
+    Team tempTeamVar;
+    User tempUserVar;
+    for (EntityReference reference : references) {
+      if (Entity.USER.equals(reference.getType())) {
+        tempUserVar = Entity.getEntity(USER, reference.getId(), "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
+      } else if (TEAM.equals(reference.getType())) {
+        tempTeamVar = Entity.getEntity(TEAM, reference.getId(), "profile", Include.NON_DELETED);
+        teams.put(tempTeamVar.getId(), tempTeamVar);
+      }
+    }
+  }
+
+  private static void addThreadOwnerIfRequired(
+      Map<UUID, User> users, SubscriptionDestination.SubscriptionCategory category, Thread thread) {
+    User tempUserVar;
     if (category.equals(SubscriptionDestination.SubscriptionCategory.OWNERS)) {
       try {
         tempUserVar =
@@ -207,14 +217,42 @@ public class SubscriptionUtil {
         LOG.warn("Thread created by unknown user: {}", thread.getCreatedBy());
       }
     }
+  }
 
-    // Users
-    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+  private static void addAssigneesUsersToNotifyIfRequired(
+      Map<UUID, User> users,
+      Map<UUID, Team> teams,
+      SubscriptionDestination.SubscriptionCategory category,
+      Thread thread) {
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.ASSIGNEES)) {
+      addTargetFromEntityReference(users, teams, listOrEmpty(thread.getTask().getAssignees()));
+      addTargetFromEntityLink(
+          users, teams, listOrEmpty(MessageParser.getEntityLinks(thread.getMessage())));
+      addUsersMentionedOnPosts(users, teams, thread.getPosts());
+    }
+  }
 
-    // Teams
-    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
+  private static void addUsersMentionedOnPosts(
+      Map<UUID, User> users, Map<UUID, Team> teams, List<Post> posts) {
+    User tempUserVar;
+    for (Post post : listOrEmpty(posts)) {
+      tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+      users.put(tempUserVar.getId(), tempUserVar);
+      addTargetFromEntityLink(
+          users, teams, listOrEmpty(MessageParser.getEntityLinks(post.getMessage())));
+    }
+  }
 
-    return receiversList;
+  private static void addMentionedUsersToNotifyIfRequired(
+      Map<UUID, User> users,
+      Map<UUID, Team> teams,
+      SubscriptionDestination.SubscriptionCategory category,
+      Thread thread) {
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.MENTIONS)) {
+      addTargetFromEntityLink(
+          users, teams, listOrEmpty(MessageParser.getEntityLinks(thread.getMessage())));
+      addUsersMentionedOnPosts(users, teams, thread.getPosts());
+    }
   }
 
   public static Set<String> handleConversationNotification(
@@ -226,46 +264,8 @@ public class SubscriptionUtil {
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
-    Team tempTeamVar;
-    User tempUserVar;
-
-    if (category.equals(SubscriptionDestination.SubscriptionCategory.MENTIONS)) {
-      List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());
-      for (MessageParser.EntityLink link : mentions) {
-        if (USER.equals(link.getEntityType())) {
-          tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-          users.put(tempUserVar.getId(), tempUserVar);
-        } else if (TEAM.equals(link.getEntityType())) {
-          tempTeamVar = Entity.getEntity(link, "", Include.NON_DELETED);
-          teams.put(tempTeamVar.getId(), tempTeamVar);
-        }
-      }
-
-      for (Post post : thread.getPosts()) {
-        tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
-        users.put(tempUserVar.getId(), tempUserVar);
-        mentions = MessageParser.getEntityLinks(post.getMessage());
-        for (MessageParser.EntityLink link : mentions) {
-          if (USER.equals(link.getEntityType())) {
-            tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            users.put(tempUserVar.getId(), tempUserVar);
-          } else if (TEAM.equals(link.getEntityType())) {
-            tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
-            teams.put(tempTeamVar.getId(), tempTeamVar);
-          }
-        }
-      }
-    }
-
-    if (category.equals(SubscriptionDestination.SubscriptionCategory.OWNERS)) {
-      try {
-        tempUserVar =
-            Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
-        users.put(tempUserVar.getId(), tempUserVar);
-      } catch (Exception ex) {
-        LOG.warn("Thread created by unknown user: {}", thread.getCreatedBy());
-      }
-    }
+    addMentionedUsersToNotifyIfRequired(users, teams, category, thread);
+    addThreadOwnerIfRequired(users, category, thread);
 
     // Users
     receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
