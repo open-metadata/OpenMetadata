@@ -96,6 +96,7 @@ import {
   createNewEdge,
   createNodes,
   decodeLineageHandles,
+  getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
   getConnectedNodesEdges,
@@ -197,6 +198,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const backspacePressed = useKeyPress('Backspace');
   const { showModal } = useEntityExportModalProvider();
   const [isPlatformLineage, setIsPlatformLineage] = useState(false);
+  const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
 
   const lineageLayer = useMemo(() => {
     const param = location.search;
@@ -1527,6 +1529,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       dataQualityLineage,
       redraw,
       onPlatformViewChange,
+      dqHighlightedEdges,
     };
   }, [
     dataQualityLineage,
@@ -1575,6 +1578,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onExportClick,
     redraw,
     onPlatformViewChange,
+    dqHighlightedEdges,
   ]);
 
   useEffect(() => {
@@ -1598,6 +1602,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       fetchDataQualityLineage(decodedFqn, lineageConfig);
     }
   }, [activeLayer, decodedFqn, lineageConfig]);
+
+  useEffect(() => {
+    if (
+      dataQualityLineage?.nodes &&
+      !isUndefined(edges) &&
+      isUndefined(dqHighlightedEdges)
+    ) {
+      const edgesToHighlight = dataQualityLineage.nodes
+        .flatMap((dqNode) => getAllDownstreamEdges(dqNode.id, edges ?? []))
+        .map((edge) => edge.id);
+      const edgesToHighlightSet = new Set(edgesToHighlight);
+      setDqHighlightedEdges(edgesToHighlightSet);
+    }
+  }, [dataQualityLineage, edges, dqHighlightedEdges]);
 
   return (
     <LineageContext.Provider value={activityFeedContextValues}>
