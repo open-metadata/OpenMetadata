@@ -100,6 +100,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
             .withStats(new Stats());
+    JsonUtils.validateJsonSchema(request, EventPublisherJob.class);
 
     if (request.getEntities().size() == 1 && request.getEntities().contains(ALL)) {
       SearchRepository searchRepo = Entity.getSearchRepo();
