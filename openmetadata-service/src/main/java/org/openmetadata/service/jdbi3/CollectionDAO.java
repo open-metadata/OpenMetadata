@@ -434,6 +434,21 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "select JSON_EXTRACT(json, '$.fullyQualifiedName') from database_entity where id not in (select toId from entity_relationship where fromEntity = 'databaseService' and toEntity = 'database')",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select json ->> 'fullyQualifiedName' from database_entity where id not in (select toId from entity_relationship where fromEntity = 'databaseService' and toEntity = 'database')",
+        connectionType = POSTGRES)
+    List<String> getBrokenDatabase();
+
+    @SqlUpdate(
+        value =
+            "delete from database_entity where id not in (select toId from entity_relationship where fromEntity = 'databaseService' and toEntity = 'database')")
+    int removeDatabase();
   }
 
   interface DatabaseSchemaDAO extends EntityDAO<DatabaseSchema> {
@@ -451,6 +466,21 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "select JSON_EXTRACT(json, '$.fullyQualifiedName') from database_schema_entity where id not in (select toId from entity_relationship where fromEntity = 'database' and toEntity = 'databaseSchema')",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select json ->> 'fullyQualifiedName' from database_schema_entity where id not in (select toId from entity_relationship where fromEntity = 'database' and toEntity = 'databaseSchema')",
+        connectionType = POSTGRES)
+    List<String> getBrokenDatabaseSchemas();
+
+    @SqlUpdate(
+        value =
+            "delete from database_schema_entity where id not in (select toId from entity_relationship where fromEntity = 'database' and toEntity = 'databaseSchema')")
+    int removeBrokenDatabaseSchemas();
   }
 
   interface DatabaseServiceDAO extends EntityDAO<DatabaseService> {
@@ -2989,6 +3019,21 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "select JSON_EXTRACT(json, '$.fullyQualifiedName') from table_entity where id not in (select toId from entity_relationship where fromEntity = 'databaseSchema' and toEntity = 'table')",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "select json ->> 'fullyQualifiedName' from table_entity where id not in (select toId from entity_relationship where fromEntity = 'databaseSchema' and toEntity = 'table')",
+        connectionType = POSTGRES)
+    List<String> getBrokenTables();
+
+    @SqlUpdate(
+        value =
+            "delete from table_entity where id not in (select toId from entity_relationship where fromEntity = 'databaseSchema' and toEntity = 'table')")
+    int removeBrokenTables();
 
     @Override
     default int listCount(ListFilter filter) {
