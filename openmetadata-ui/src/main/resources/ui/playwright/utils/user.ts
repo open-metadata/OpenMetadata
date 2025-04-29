@@ -676,6 +676,36 @@ export const addUser = async (
   expect((await saveResponse).status()).toBe(201);
 };
 
+export const checkForUserExistError = async (
+  page: Page,
+  {
+    name,
+    email,
+  }: {
+    name: string;
+    email: string;
+  }
+) => {
+  await page.click('[data-testid="add-user"]');
+
+  await page.fill('[data-testid="email"]', email);
+
+  await page.fill('[data-testid="displayName"]', name);
+
+  await page.locator(descriptionBox).fill('Adding new user');
+
+  const saveResponse = page.waitForResponse('/api/v1/users');
+  await page.click('[data-testid="save-user"]');
+  await saveResponse;
+
+  expect((await saveResponse).status()).toBe(409);
+
+  await toastNotification(
+    page,
+    `A user with the name "${name}" already exists. Please choose another email.`
+  );
+};
+
 const resetPasswordModal = async (
   page: Page,
   oldPassword: string,

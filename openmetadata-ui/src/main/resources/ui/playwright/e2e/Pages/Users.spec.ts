@@ -31,6 +31,7 @@ import {
   addUser,
   checkDataConsumerPermissions,
   checkEditOwnerButtonPermission,
+  checkForUserExistError,
   checkStewardPermissions,
   checkStewardServicesPermissions,
   generateToken,
@@ -153,6 +154,16 @@ test.describe('User with Admin Roles', () => {
     await visitUserProfilePage(adminPage, updatedUserDetails.name);
 
     await visitUserListPage(adminPage);
+
+    await test.step(
+      "User shouldn't be allowed to create User with same Email",
+      async () => {
+        await checkForUserExistError(adminPage, {
+          name: updatedUserDetails.name,
+          email: updatedUserDetails.email,
+        });
+      }
+    );
 
     await permanentDeleteUser(
       adminPage,
