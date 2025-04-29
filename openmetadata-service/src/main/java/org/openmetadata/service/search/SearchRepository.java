@@ -587,7 +587,7 @@ public class SearchRepository {
           Map<String, Object> params = new HashMap<>();
           params.put("field", parentFieldPath);
           searchClient.updateEntity(
-              indexName, entityId, params, "ctx._source.remove(params.field)");
+              indexName, entity.getId().toString(), params, "ctx._source.remove(params.field)");
 
           // Propagate FQN updates to all subchildren
           String originalFqn =
