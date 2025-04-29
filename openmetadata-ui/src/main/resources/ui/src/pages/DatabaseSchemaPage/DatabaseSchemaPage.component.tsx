@@ -206,7 +206,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        history.push({
+        history.replace({
           pathname: getEntityDetailsPath(
             EntityType.DATABASE_SCHEMA,
             decodedDatabaseSchemaFQN,

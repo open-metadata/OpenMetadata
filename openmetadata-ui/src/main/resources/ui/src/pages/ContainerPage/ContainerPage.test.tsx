@@ -232,10 +232,12 @@ const mockUseParams = jest.fn().mockReturnValue({
 });
 
 const mockPush = jest.fn();
+const mockReplace = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
+    replace: mockReplace,
   })),
   useParams: jest.fn().mockImplementation(() => mockUseParams()),
 }));
@@ -387,7 +389,7 @@ describe('Container Page Component', () => {
 
     userEvent.click(childrenTab);
 
-    expect(mockPush).toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalled();
   });
 
   it('children should render on children tab', async () => {
