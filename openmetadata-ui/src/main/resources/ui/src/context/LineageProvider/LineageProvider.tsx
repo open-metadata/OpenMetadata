@@ -26,6 +26,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
 import {
   Connection,
   Edge,
@@ -136,6 +137,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
   const location = useCustomLocation();
+  const history = useHistory();
   const { isTourOpen, isTourPage } = useTourProvider();
   const { appPreferences } = useApplicationStore();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
@@ -428,12 +430,22 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [queryFilter, decodedFqn]
   );
 
-  const onPlatformViewChange = useCallback((view: LineagePlatformView) => {
-    setPlatformView(view);
-    if (view !== LineagePlatformView.None) {
-      setActiveLayer([]);
-    }
-  }, []);
+  const onPlatformViewChange = useCallback(
+    (view: LineagePlatformView) => {
+      setPlatformView(view);
+      if (view !== LineagePlatformView.None) {
+        setActiveLayer([]);
+      }
+
+      history.push({
+        search: QueryString.stringify({
+          layers: lineageLayer,
+          platformView: view !== LineagePlatformView.None ? view : undefined,
+        }),
+      });
+    },
+    [lineageLayer]
+  );
 
   const exportLineageData = useCallback(
     async (_: string) => {
@@ -584,7 +596,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       layers.includes(LineageLayer.ColumnLevelLineage) ||
       layers.includes(LineageLayer.DataObservability)
     ) {
-      setPlatformView(LineagePlatformView.None);
+      onPlatformViewChange(LineagePlatformView.None);
     }
   }, []);
 
@@ -598,7 +610,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       setEntityType(entityType);
       setIsPlatformLineage(isPlatformLineage ?? false);
       if (isPlatformLineage && !entity) {
-        setPlatformView(LineagePlatformView.Service);
+        onPlatformViewChange(LineagePlatformView.Service);
       }
     },
     []
