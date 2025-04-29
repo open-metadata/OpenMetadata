@@ -1054,6 +1054,7 @@
     "query-plural": "Queries",
     "query-used-in": "Query Used In",
     "queued": "Queued",
+    "raise-on-error": "Raise on Error",
     "range": "Range",
     "range-condition": "Range Condition",
     "re-assign": "Reassign",
