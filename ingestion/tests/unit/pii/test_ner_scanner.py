@@ -167,7 +167,7 @@ def test_scan_entities(scanner):
 
 def test_scan_indian_aadhaar(scanner):
     """
-    We can properly validate certain Aadhaar indian IDs.
+    We can properly validate certain Aadhaar Indian IDs.
     Note: These lists are randomly generated and not valid IDs for any actual use,
     but they are valid Aadhaar numbers including the checksum.
     """
