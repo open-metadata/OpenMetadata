@@ -18,6 +18,7 @@ from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import (
     build_dag,
     build_workflow_config_property,
+    execute_workflow,
 )
 
 from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
@@ -36,7 +37,9 @@ from metadata.generated.schema.metadataIngestion.applicationPipeline import (
 from metadata.workflow.application import ApplicationWorkflow
 
 
-def application_workflow(workflow_config: OpenMetadataApplicationConfig):
+def application_workflow(
+    workflow_config: OpenMetadataApplicationConfig,
+):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -52,11 +55,7 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig):
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = ApplicationWorkflow.create(config)
-
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    execute_workflow(workflow, workflow_config)
 
 
 def build_application_workflow_config(

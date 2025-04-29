@@ -49,7 +49,9 @@ export class DataProduct extends EntityClass {
   constructor(domain: Domain, name?: string, subDomain?: SubDomain) {
     super(EntityTypeEndpoint.DATA_PRODUCT);
     this.data.domain =
-      domain.data.name + (subDomain ? `.${subDomain?.data.name}` : ''); // fqn
+      subDomain?.data.fullyQualifiedName ||
+      domain.data.fullyQualifiedName ||
+      ''; // fqn
     this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.name}\"`;

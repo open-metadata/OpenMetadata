@@ -212,7 +212,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
-      history.push({
+      history.replace({
         pathname: getEntityDetailsPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
@@ -255,7 +255,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   useEffect(() => {
     if (withinPageSearch && serviceType) {
-      history.push(
+      history.replace(
         getExplorePath({
           search: withinPageSearch,
           isPersistFilters: false,
@@ -376,7 +376,7 @@ const DatabaseDetails: FunctionComponent = () => {
     const updatedData = data as Database;
 
     setDatabase((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);

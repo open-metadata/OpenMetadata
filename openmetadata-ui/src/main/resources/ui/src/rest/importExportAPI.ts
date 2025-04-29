@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { AxiosResponse } from 'axios';
-import { CSVImportAsyncResponse } from '../components/BulkImport/BulkEntityImport.interface';
 import { EntityType } from '../enums/entity.enum';
+import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
@@ -70,4 +70,24 @@ export const importServiceInCSVFormat = async ({
   );
 
   return res.data;
+};
+
+export const importGlossaryInCSVFormat = async ({
+  name,
+  data,
+  dryRun = true,
+}: importEntityInCSVFormatRequestParams) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<CSVImportAsyncResponse>
+  >(
+    `/glossaries/name/${getEncodedFqn(name)}/importAsync?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
 };
