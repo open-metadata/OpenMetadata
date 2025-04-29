@@ -45,14 +45,6 @@ export const basicAuthSignIn = async (payload: LoginRequest) => {
   return response.data;
 };
 
-export const checkEmailInUse = async (email: string) => {
-  const response = await axiosClient.post(`${apiPath}/checkEmailInUse`, {
-    email,
-  });
-
-  return response.data;
-};
-
 export const generatePasswordResetLink = async (email: string) => {
   const response = await axiosClient.post(
     `${apiPath}/generatePasswordResetLink`,
