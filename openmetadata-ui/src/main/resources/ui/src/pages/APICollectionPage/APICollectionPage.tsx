@@ -206,7 +206,7 @@ const APICollectionPage: FunctionComponent = () => {
   const activeTabHandler = useCallback(
     (activeKey: string) => {
       if (activeKey !== activeTab) {
-        history.push({
+        history.replace({
           pathname: getEntityDetailsPath(
             EntityType.API_COLLECTION,
             decodedAPICollectionFQN,

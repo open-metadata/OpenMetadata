@@ -337,7 +337,7 @@ const DataProductsDetailsPage = ({
             activeKey
           );
 
-      history.push(path);
+      history.replace(path);
     }
   };
 

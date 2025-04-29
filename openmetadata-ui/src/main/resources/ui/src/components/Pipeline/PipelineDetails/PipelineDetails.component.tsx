@@ -233,7 +233,7 @@ const PipelineDetails = ({
 
   const handleTabChange = (tabValue: string) => {
     if (tabValue !== tab) {
-      history.push({
+      history.replace({
         pathname: getEntityDetailsPath(
           EntityType.PIPELINE,
           pipelineFQN,

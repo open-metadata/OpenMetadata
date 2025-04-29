@@ -170,7 +170,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      history.replace(
         getEntityDetailsPath(EntityType.TOPIC, decodedTopicFQN, activeKey)
       );
     }

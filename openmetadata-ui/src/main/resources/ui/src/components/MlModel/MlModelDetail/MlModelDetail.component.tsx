@@ -139,7 +139,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      history.replace(
         getEntityDetailsPath(EntityType.MLMODEL, decodedMlModelFqn, activeKey)
       );
     }
