@@ -6,7 +6,6 @@ import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELAS
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
 import static org.openmetadata.schema.type.Function.ParameterType.SPECIFIC_INDEX_ELASTIC_SEARCH;
-import static org.openmetadata.schema.type.ThreadType.Conversation;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
@@ -492,6 +491,16 @@ public class AlertsRuleEvaluator {
             JsonUtils.pojoToJson(event.getEntity())));
   }
 
+  public static Thread getThreadEntity(ChangeEvent event) {
+    Thread entity;
+    if (event.getEntity() instanceof String str) {
+      entity = JsonUtils.readValue(str, Thread.class);
+    } else {
+      entity = JsonUtils.convertValue(event.getEntity(), Thread.class);
+    }
+    return entity;
+  }
+
   @Function(
       name = "matchConversationUser",
       input = "List of comma separated user names to matchConversationUser",
@@ -513,11 +522,6 @@ public class AlertsRuleEvaluator {
     }
 
     Thread thread = getThread(changeEvent);
-
-    if (!thread.getType().equals(Conversation)) {
-      // Only applies to Conversation
-      return false;
-    }
 
     List<MessageParser.EntityLink> mentions;
     if (thread.getPostsCount() == 0) {
