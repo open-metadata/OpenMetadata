@@ -98,4 +98,5 @@ export interface LineageContextType {
   ) => void;
   onUpdateLayerView: (layers: LineageLayer[]) => void;
   redraw: () => Promise<void>;
+  dqHighlightedEdges?: Set<string>;
 }

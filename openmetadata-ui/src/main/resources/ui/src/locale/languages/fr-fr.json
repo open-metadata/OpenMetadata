@@ -1000,6 +1000,7 @@
     "pipeline-plural": "Pipelines",
     "pipeline-state": "État de la Pipeline",
     "platform": "Plateforme",
+    "platform-type-lineage": "{{platformType}} Lignage",
     "play": "Play",
     "please-enter-value": "Merci d'entrer une valeur pour {{name}} ",
     "please-password-type-first": "Merci d'entrer le mot de passe d'abord",
