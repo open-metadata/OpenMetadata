@@ -711,6 +711,8 @@ export const checkForUserExistError = async (
   await expect(page.getByTestId('inline-alert-description')).toContainText(
     `A user with the name "${name}" already exists. Please choose another email.`
   );
+
+  await page.click('[data-testid="cancel-user"]');
 };
 
 const resetPasswordModal = async (
