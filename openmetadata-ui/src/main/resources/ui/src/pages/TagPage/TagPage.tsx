@@ -231,7 +231,7 @@ const TagPage = () => {
 
   const activeTabHandler = (tab: string) => {
     if (tagItem) {
-      history.push({
+      history.replace({
         pathname: getClassificationTagPath(
           tagItem.fullyQualifiedName ?? '',
           tab

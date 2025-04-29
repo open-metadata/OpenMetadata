@@ -208,7 +208,7 @@ function SearchIndexDetailsPage() {
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(
+      history.replace(
         getEntityDetailsPath(
           EntityType.SEARCH_INDEX,
           decodedSearchIndexFQN,
@@ -490,7 +490,7 @@ function SearchIndexDetailsPage() {
     const updatedData = data as SearchIndex;
 
     setSearchIndexDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
