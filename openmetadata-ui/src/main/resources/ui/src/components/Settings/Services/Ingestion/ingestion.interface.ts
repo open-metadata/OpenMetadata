@@ -50,6 +50,7 @@ export interface IngestionProps {
   onCollateAgentPageChange?: (pagingHandlerParams: PagingHandlerParams) => void;
   agentCounts?: Record<ServiceAgentSubTabs, number>;
   refreshAgentsList: (agentListType: ServiceAgentSubTabs) => Promise<void>;
+  workflowStartAt?: number;
 }
 
 export interface SelectedRowDetails {

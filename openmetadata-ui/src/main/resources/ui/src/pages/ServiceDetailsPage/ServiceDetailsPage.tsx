@@ -1161,6 +1161,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         serviceDetails={serviceDetails}
         statusFilter={statusFilter}
         typeFilter={typeFilter}
+        workflowStartAt={workflowStatesData?.mainInstanceState.startedAt}
         onCollateAgentPageChange={onCollateAgentPageChange}
         onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
         onPageChange={onPageChange}
@@ -1188,6 +1189,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       handleTypeFilterChange,
       statusFilter,
       typeFilter,
+      workflowStatesData?.mainInstanceState.startedAt,
     ]
   );
 
