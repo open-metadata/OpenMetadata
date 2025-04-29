@@ -152,7 +152,46 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
         onChange={handleFormChange}
         onFocus={onFocus}
         onSubmit={onSubmit}
-        {...props}>
+        {...props}
+        validator={{
+          ...props?.validator,
+          validateFormData: (formData: ConfigData) => {
+            const validationErrors: Record<string, { __errors: string[] }> = {};
+
+            // Check for negative values in number fields
+            Object.keys(schema.properties || {}).forEach((key) => {
+              const property = schema?.properties?.[key];
+              if (
+                typeof property === 'object' &&
+                property !== null &&
+                (property.type === 'number' || property.type === 'integer')
+              ) {
+                const value = formData[key as keyof ConfigData];
+                if (typeof value === 'number' && value < 0) {
+                  validationErrors[key] = {
+                    __errors: ['Value cannot be negative'],
+                  };
+                }
+              }
+            });
+
+            return {
+              errors: Object.keys(validationErrors).map((key) => ({
+                name: key,
+                property: key,
+                message: validationErrors[key].__errors[0],
+                stack: `${key} Value cannot be negative`,
+              })),
+              errorSchema: Object.keys(validationErrors).reduce(
+                (acc, key) => ({
+                  ...acc,
+                  [key]: { __errors: validationErrors[key].__errors },
+                }),
+                {}
+              ),
+            };
+          },
+        }}>
         {children}
         <div
           className="m-t-lg d-flex justify-end text-right"
