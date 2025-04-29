@@ -1000,6 +1000,7 @@
     "pipeline-plural": "파이프라인들",
     "pipeline-state": "파이프라인 상태",
     "platform": "플랫폼",
+    "platform-type-lineage": "{{platformType}} 계보",
     "play": "재생",
     "please-enter-value": "{{name}} 값을 입력해주세요",
     "please-password-type-first": "먼저 비밀번호를 입력해주세요",
