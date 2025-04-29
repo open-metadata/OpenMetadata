@@ -1147,27 +1147,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   @POST
-  @Path("/checkEmailInUse")
-  @Operation(
-      operationId = "checkEmailInUse",
-      summary = "Check if a email is already in use",
-      description = "Check if a email is already in use",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Return true or false",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Boolean.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response checkEmailInUse(@Valid EmailRequest request) {
-    boolean emailExists = repository.checkEmailAlreadyExists(request.getEmail());
-    return Response.status(Response.Status.OK).entity(emailExists).build();
-  }
-
-  @POST
   @Path("/checkEmailVerified")
   @Operation(
       operationId = "checkEmailIsVerified",

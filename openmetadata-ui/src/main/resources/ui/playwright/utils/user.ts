@@ -729,6 +729,45 @@ export const addUser = async (
   expect((await saveResponse).status()).toBe(201);
 };
 
+export const checkForUserExistError = async (
+  page: Page,
+  {
+    name,
+    email,
+    password,
+  }: {
+    name: string;
+    email: string;
+    password: string;
+  }
+) => {
+  await page.click('[data-testid="add-user"]');
+
+  await page.fill('[data-testid="email"]', email);
+
+  await page.fill('[data-testid="displayName"]', name);
+
+  await page.locator(descriptionBox).fill('Adding new user');
+
+  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
+  await page.fill('#password', password);
+  await page.fill('#confirmPassword', password);
+
+  const saveResponse = page.waitForResponse('/api/v1/users');
+  await page.click('[data-testid="save-user"]');
+  await saveResponse;
+
+  expect((await saveResponse).status()).toBe(409);
+
+  await expect(page.getByRole('alert')).toBeVisible();
+
+  await expect(page.getByTestId('inline-alert-description')).toContainText(
+    `A user with the name "${name}" already exists. Please choose another email.`
+  );
+
+  await page.click('[data-testid="cancel-user"]');
+};
+
 const resetPasswordModal = async (
   page: Page,
   oldPassword: string,
