@@ -98,6 +98,10 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
   };
 });
 
+jest.mock('../../../utils/TableColumn.util', () => ({
+  ownerTableObject: jest.fn().mockReturnValue({}),
+}));
+
 describe('Test Glossary-term component', () => {
   it('Should render GenericTab component', async () => {
     render(<GlossaryTerms {...mockProps} />);
