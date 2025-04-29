@@ -163,3 +163,23 @@ def test_scan_entities(scanner):
 
     nif_numbers = ["12345678A", "87654321B", "23456789C", "98765432D", "34567890E"]
     assert scanner.scan(nif_numbers).tag_fqn == "PII.Sensitive"
+
+
+def test_scan_indian_aadhaar(scanner):
+    """
+    We can properly validate certain Aadhaar indian IDs.
+    Note: These lists are randomly generated and not valid IDs for any actual use,
+    but they are valid Aadhaar numbers including the checksum.
+    """
+    aadhaar_numbers = [
+        "466299546357",
+        "967638147560",
+        "988307845186",
+    ]
+    assert scanner.scan(aadhaar_numbers).tag_fqn == "PII.Sensitive"
+
+
+def test_scan_indian_pan(scanner):
+    pan_numbers = ["BAJPC4350M", "DAJPC4150P", "XGZFE7225A", "CTUGE1616I"]
+
+    assert scanner.scan(pan_numbers).tag_fqn == "PII.Sensitive"
