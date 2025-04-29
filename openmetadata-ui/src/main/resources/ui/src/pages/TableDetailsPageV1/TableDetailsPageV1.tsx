@@ -359,7 +359,7 @@ const TableDetailsPageV1: React.FC = () => {
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(
+        history.replace(
           getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
         );
       }

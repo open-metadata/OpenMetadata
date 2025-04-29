@@ -74,7 +74,7 @@ const TableProfiler = (props: TableProfilerProps) => {
   }, [activeTab]);
 
   const handleTabChange: MenuProps['onClick'] = (value) => {
-    history.push({ search: Qs.stringify({ activeTab: value.key }) });
+    history.replace({ search: Qs.stringify({ activeTab: value.key }) });
   };
 
   return (
