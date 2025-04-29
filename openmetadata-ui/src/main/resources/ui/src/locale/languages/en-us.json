@@ -2148,6 +2148,7 @@
     "user-verified-successfully": "User Verified Successfully",
     "valid-url-endpoint": "Endpoints should be valid URL",
     "validation-error-assets": "Please examine all your assets that are being added",
+    "value-cannot-be-negative": "{{field}} Value cannot be negative",
     "value-should-equal-to-value": "The value should be equal to {{value}}.",
     "value-should-not-equal-to-value": "The value should not be equal to {{value}}.",
     "version-released-try-now": "{{version}} Released <0>See What's New!</0>",

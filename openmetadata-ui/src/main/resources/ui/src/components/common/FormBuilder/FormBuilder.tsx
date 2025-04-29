@@ -17,6 +17,7 @@ import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
 import React, { forwardRef, FunctionComponent, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ConfigData } from '../../../interface/service.interface';
 import { transformErrors } from '../../../utils/formUtils';
@@ -65,6 +66,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
     },
     ref
   ) => {
+    const { t } = useTranslation();
     const isReadOnlyForm = useMemo(() => {
       return !!props.readonly;
     }, [props.readonly]);
@@ -169,7 +171,9 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
                 const value = formData[key as keyof ConfigData];
                 if (typeof value === 'number' && value < 0) {
                   validationErrors[key] = {
-                    __errors: ['Value cannot be negative'],
+                    __errors: [
+                      t('message.value-cannot-be-negative', { field: key }),
+                    ],
                   };
                 }
               }
@@ -180,7 +184,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
                 name: key,
                 property: key,
                 message: validationErrors[key].__errors[0],
-                stack: `${key} Value cannot be negative`,
+                stack: t('message.value-cannot-be-negative', { field: key }),
               })),
               errorSchema: Object.keys(validationErrors).reduce(
                 (acc, key) => ({
