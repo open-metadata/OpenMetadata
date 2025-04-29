@@ -14,7 +14,7 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
@@ -49,7 +49,6 @@ import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
-import ImportGlossary from './ImportGlossary/ImportGlossary';
 import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
 
 const GlossaryV1 = ({
@@ -100,11 +99,6 @@ const GlossaryV1 = ({
   } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
-
-  const isImportAction = useMemo(
-    () => action === EntityAction.IMPORT,
-    [action]
-  );
 
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
@@ -336,9 +330,7 @@ const GlossaryV1 = ({
     setIsTabExpanded(!isTabExpanded);
   };
 
-  return isImportAction ? (
-    <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
-  ) : (
+  return (
     <>
       {(isLoading || isPermissionLoading) && <Loader />}
 

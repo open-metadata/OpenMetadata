@@ -16,10 +16,12 @@ import { DataAssetsHeaderProps } from '../../components/DataAssets/DataAssetsHea
 import { EntityType } from '../../enums/entity.enum';
 import {
   importEntityInCSVFormat,
+  importGlossaryInCSVFormat,
   importServiceInCSVFormat,
 } from '../../rest/importExportAPI';
-import { getEntityBreadcrumbs } from '../EntityUtils';
+import { getEntityBreadcrumbs, getEntityName } from '../EntityUtils';
 import i18n from '../i18next/LocalUtil';
+import { getGlossaryPath } from '../RouterUtils';
 
 type ParsedDataType<T> = Array<T>;
 
@@ -67,7 +69,19 @@ export const getBulkEntityBreadcrumbList = (
   isBulkEdit: boolean
 ): TitleBreadcrumbProps['titleLinks'] => {
   return [
-    ...getEntityBreadcrumbs(entity, entityType, true),
+    ...(entityType === EntityType.GLOSSARY_TERM
+      ? [
+          {
+            name: i18n.t('label.glossary-plural'),
+            url: getGlossaryPath(),
+            activeTitle: false,
+          },
+          {
+            name: getEntityName(entity),
+            url: getGlossaryPath(entity.fullyQualifiedName),
+          },
+        ]
+      : getEntityBreadcrumbs(entity, entityType, true)),
     {
       name: i18n.t(`label.${isBulkEdit ? 'bulk-edit' : 'import'}`),
       url: '',
@@ -76,16 +90,26 @@ export const getBulkEntityBreadcrumbList = (
   ];
 };
 
+export const getImportValidateAPIEntityType = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.DATABASE_SERVICE:
+      return importServiceInCSVFormat;
+
+    case EntityType.GLOSSARY_TERM:
+      return importGlossaryInCSVFormat;
+
+    default:
+      return importEntityInCSVFormat;
+  }
+};
+
 export const validateCsvString = async (
   csvData: string,
   entityType: EntityType,
   fqn: string,
   isBulkEdit: boolean
 ) => {
-  const api =
-    entityType === EntityType.DATABASE_SERVICE
-      ? importServiceInCSVFormat
-      : importEntityInCSVFormat;
+  const api = getImportValidateAPIEntityType(entityType);
 
   const response = await api({
     entityType,

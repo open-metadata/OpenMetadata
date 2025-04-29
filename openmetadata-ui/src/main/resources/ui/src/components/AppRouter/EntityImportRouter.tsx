@@ -35,8 +35,6 @@ const EntityImportRouter = () => {
       setIsLoading(true);
       const entityPermission = await getEntityPermissionByFqn(entityType, fqn);
       setEntityPermission(entityPermission);
-    } catch (error) {
-      // will not show logs
     } finally {
       setIsLoading(false);
     }

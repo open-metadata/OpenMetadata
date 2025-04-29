@@ -41,7 +41,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction, EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -58,12 +58,14 @@ import {
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import { getEntityVoteStatus } from '../../../utils/EntityUtils';
+import {
+  getEntityImportPath,
+  getEntityVoteStatus,
+} from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
-  getGlossaryPathWithAction,
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
@@ -211,12 +213,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    history.push(
-      getGlossaryPathWithAction(
-        selectedData.fullyQualifiedName ?? '',
-        EntityAction.IMPORT
-      )
-    );
+    history.push(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
 
   const handleVersionClick = async () => {
     let path: string;

@@ -256,10 +256,12 @@ export const exportDatabaseDetailsInCSV = async (
     recursive?: boolean;
   }
 ) => {
-  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-  const res = await APIClient.get(`databases/name/${fqn}/exportAsync`, {
-    params,
-  });
+  const res = await APIClient.get(
+    `databases/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
 
   return res.data;
 };
@@ -287,10 +289,12 @@ export const exportDatabaseSchemaDetailsInCSV = async (
     recursive?: boolean;
   }
 ) => {
-  // FQN should be encoded already and we should not encode the fqn here to avoid double encoding
-  const res = await APIClient.get(`databaseSchemas/name/${fqn}/exportAsync`, {
-    params,
-  });
+  const res = await APIClient.get(
+    `databaseSchemas/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
 
   return res.data;
 };
