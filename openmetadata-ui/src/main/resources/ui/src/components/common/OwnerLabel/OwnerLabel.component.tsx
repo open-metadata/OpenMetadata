@@ -140,7 +140,6 @@ export const OwnerLabel = ({
                 <OwnerItem
                   avatarSize={avatarSize}
                   className={className}
-                  index={index}
                   isCompactView={isCompactView}
                   owner={owner}
                   ownerDisplayName={ownerDisplayName?.[index]}

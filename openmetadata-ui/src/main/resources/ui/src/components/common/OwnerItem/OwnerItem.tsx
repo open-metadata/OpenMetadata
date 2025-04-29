@@ -22,7 +22,6 @@ import { OwnerAvatar } from '../OwnerAvtar/OwnerAvatar';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 interface OwnerItemProps {
   owner: EntityReference;
-  index: number;
   isCompactView: boolean;
   className?: string;
   ownerDisplayName?: ReactNode;
@@ -31,7 +30,6 @@ interface OwnerItemProps {
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
   owner,
-  index,
   isCompactView,
   className,
   ownerDisplayName,
