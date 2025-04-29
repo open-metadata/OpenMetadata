@@ -721,6 +721,20 @@ site_menu:
 
   - category: Collate AI / How to Use Collate AI
     url: /collateai/how-to-use-collate-ai
+  - category: Collate AI / Collate AI Tier Agent
+    url: /collateai/tier-agent
+  - category: Collate AI / Collate AI Quality Agent
+    url: /collateai/quality-agent
+  - category: Collate AI / Collate AI Documentation Agent
+    url: /collateai/documentation-agent
+
+  - category: Applications
+    url: /applications
+
+  - category: Applications / Reverse Metadata Application
+    url: /applications/reverse-metadata
+  - category: Applications / Autopilot
+    url: /applications/autopilot
 
   - category: How-to Guides
     url: /how-to-guides

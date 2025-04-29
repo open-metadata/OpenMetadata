@@ -2504,7 +2504,7 @@ export const getEntityImportPath = (entityType: EntityType, fqn: string) => {
   return ROUTES.ENTITY_IMPORT.replace(
     PLACEHOLDER_ROUTE_ENTITY_TYPE,
     entityType
-  ).replace(PLACEHOLDER_ROUTE_FQN, fqn);
+  ).replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 };
 
 export const getEntityBulkEditPath = (entityType: EntityType, fqn: string) => {

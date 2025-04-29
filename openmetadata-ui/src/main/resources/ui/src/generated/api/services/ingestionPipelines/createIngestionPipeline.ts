@@ -41,6 +41,10 @@ export interface CreateIngestionPipeline {
     owners?:      EntityReference[];
     pipelineType: PipelineType;
     /**
+     * Control if we want to flag the workflow as failed if we encounter any processing errors.
+     */
+    raiseOnError?: boolean;
+    /**
      * Link to the service for which ingestion pipeline is ingesting the metadata.
      */
     service:      EntityReference;
@@ -687,6 +691,10 @@ export interface Pipeline {
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
+    /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
     /**
      * List of operations to be performed on the service
      */
