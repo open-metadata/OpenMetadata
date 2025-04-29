@@ -89,6 +89,10 @@ export interface IngestionPipeline {
     pipelineType:      PipelineType;
     provider?:         ProviderType;
     /**
+     * Control if we want to flag the workflow as failed if we encounter any processing errors.
+     */
+    raiseOnError?: boolean;
+    /**
      * Link to the service (such as database, messaging, storage services, etc. for which this
      * ingestion pipeline ingests the metadata from.
      */
@@ -1247,6 +1251,10 @@ export interface Pipeline {
      * like endpoints, etc., with that collection will be deleted
      */
     markDeletedApiCollections?: boolean;
+    /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
     /**
      * List of operations to be performed on the service
      */

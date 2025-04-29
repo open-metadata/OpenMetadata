@@ -1054,6 +1054,7 @@
     "query-plural": "Запросы",
     "query-used-in": "Запрос, используемый в",
     "queued": "Queued",
+    "raise-on-error": "Показывать ошибку при выполнении",
     "range": "Диапазон",
     "range-condition": "Условие Диапазона",
     "re-assign": "Reassign",
