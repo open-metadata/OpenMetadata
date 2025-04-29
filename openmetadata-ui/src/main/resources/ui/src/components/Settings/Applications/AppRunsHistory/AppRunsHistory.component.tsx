@@ -45,7 +45,7 @@ import { getApplicationRuns } from '../../../../rest/applicationAPI';
 import { getStatusTypeForApplication } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
-  formatDuration,
+  formatDurationToHHMMSS,
   getEpochMillisForPastDays,
   getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
@@ -220,14 +220,14 @@ const AppRunsHistory = forwardRef(
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
             if (isExternalApp && record.executionTime) {
-              return formatDuration(record.executionTime);
+              return formatDurationToHHMMSS(record.executionTime);
             }
 
             if (record.startTime) {
               const endTime = record.endTime || Date.now(); // Use current time in epoch milliseconds if endTime is not present
               const ms = getIntervalInMilliseconds(record.startTime, endTime);
 
-              return formatDuration(ms);
+              return formatDurationToHHMMSS(ms);
             } else {
               return NO_DATA_PLACEHOLDER;
             }

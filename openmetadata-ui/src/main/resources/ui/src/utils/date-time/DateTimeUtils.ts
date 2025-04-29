@@ -309,6 +309,9 @@ export const formatDuration = (ms: number) => {
     return pluralize(hours, 'hour');
   }
 };
+export const formatDurationToHHMMSS = (ms: number) => {
+  return Duration.fromMillis(ms).toFormat('hh:mm:ss');
+};
 
 export const getStartOfDayInMillis = (timestamp: number) =>
   DateTime.fromMillis(timestamp).toUTC().startOf('day').toMillis();

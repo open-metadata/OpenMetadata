@@ -107,6 +107,10 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest.fn().mockReturnValue('startDay'),
   getIntervalInMilliseconds: jest.fn().mockReturnValue('interval'),
   formatDuration: jest.fn().mockReturnValue('formatDuration'),
+  formatDurationToHHMMSS: jest.fn().mockImplementation((_ms) => {
+    // Return a consistent formatted duration for all cases
+    return '02:30:15';
+  }),
 }));
 
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
