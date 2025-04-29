@@ -214,7 +214,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     super.init(app);
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
-
+    JsonUtils.validateJsonSchema(config, DataInsightsAppConfig.class);
     // Get the configuration for the different modules
     costAnalysisConfig = config.getModuleConfiguration().getCostAnalysis();
     dataAssetsConfig = parseDataAssetsConfig(config.getModuleConfiguration().getDataAssets());
