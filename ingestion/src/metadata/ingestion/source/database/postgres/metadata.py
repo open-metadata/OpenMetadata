@@ -71,6 +71,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_columns,
     get_etable_owner,
     get_foreign_keys,
+    get_schema_names,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -115,6 +116,7 @@ Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
 
 PGDialect.get_foreign_keys = get_foreign_keys
+PGDialect.get_schema_names = get_schema_names
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
@@ -281,7 +283,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         for row in results:
             try:
                 stored_procedure = PostgresStoredProcedure.model_validate(
-                    dict(row._mapping)
+                    dict(row._mapping)  # pylint: disable=protected-access
                 )
                 yield stored_procedure
             except Exception as exc:
