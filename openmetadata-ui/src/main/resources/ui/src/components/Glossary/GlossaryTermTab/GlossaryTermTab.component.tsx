@@ -39,7 +39,7 @@ import React, {
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
@@ -88,7 +88,11 @@ import {
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import {
+  getEntityBulkEditPath,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
@@ -116,6 +120,7 @@ import {
 } from './GlossaryTermTab.interface';
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
+  const history = useHistory();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -638,6 +643,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     ]
   );
 
+  const handleEditGlossary = () => {
+    history.push({
+      pathname: getEntityBulkEditPath(
+        EntityType.GLOSSARY_TERM,
+        activeGlossary?.fullyQualifiedName ?? ''
+      ),
+    });
+  };
+
   const extraTableFilters = useMemo(() => {
     return (
       <>
@@ -658,6 +672,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             </Space>
           </Button>
         </Dropdown>
+
+        {getBulkEditButton(permissions.EditAll, handleEditGlossary)}
+
         <Button
           className="text-primary remove-button-background-hover"
           data-testid="expand-collapse-all-button"
