@@ -685,7 +685,7 @@ export const checkForUserExistError = async (
   }: {
     name: string;
     email: string;
-    password?: string;
+    password: string;
   }
 ) => {
   await page.click('[data-testid="add-user"]');
@@ -706,8 +706,9 @@ export const checkForUserExistError = async (
 
   expect((await saveResponse).status()).toBe(409);
 
-  await toastNotification(
-    page,
+  await expect(page.getByRole('alert')).toBeVisible();
+
+  await expect(page.getByTestId('inline-alert-description')).toContainText(
     `A user with the name "${name}" already exists. Please choose another email.`
   );
 };
