@@ -77,11 +77,37 @@
 .ant-card.new-header-border-card {
   .ant-card-head {
     background: @grey-50;
-    border-bottom: none;
     border-radius: @border-radius-sm;
 
     .text-sm();
     font-weight: 500;
+  }
+
+  .expand-collapse-icon {
+    transition: transform 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+  }
+
+  &:not(.expanded) {
+    .ant-card-head {
+      border-bottom: none;
+      margin-bottom: 0;
+
+      .expand-collapse-icon {
+        transform: rotate(180deg);
+      }
+    }
+
+    .ant-card-body {
+      height: 0 !important;
+      overflow: hidden;
+      padding: 0;
+    }
+  }
+
+  .expand-collapse-icon {
+    & svg {
+      fill: @white;
+    }
   }
 
   border: 1px solid @grey-15;

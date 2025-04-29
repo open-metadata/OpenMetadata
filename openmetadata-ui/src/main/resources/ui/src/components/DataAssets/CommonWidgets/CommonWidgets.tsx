@@ -328,7 +328,6 @@ export const CommonWidgets = ({
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DATA_PRODUCTS)) {
       return (
         <DataProductsContainer
-          newLook
           activeDomain={domain}
           dataProducts={dataProducts ?? []}
           hasPermission={false}
