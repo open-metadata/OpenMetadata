@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 
@@ -117,6 +118,25 @@ export const AlignRightIconButton = ({
       <Button
         className={classNames('border-none tab-expand-icon', className)}
         icon={<ExpandIcon />}
+        size={size}
+        type="text"
+        {...props}
+      />
+    </Tooltip>
+  );
+};
+
+export const CardExpandCollapseIconButton = ({
+  title,
+  className,
+  size,
+  ...props
+}: IconButtonPropsInternal) => {
+  return (
+    <Tooltip title={title}>
+      <Button
+        className={classNames('border-none tab-expand-icon', className)}
+        icon={<CardExpandCollapseIcon />}
         size={size}
         type="text"
         {...props}

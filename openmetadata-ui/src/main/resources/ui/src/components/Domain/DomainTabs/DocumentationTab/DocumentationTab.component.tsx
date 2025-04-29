@@ -134,7 +134,6 @@ const DocumentationTab = ({
         className: 'domain-resizable-panel-container',
         children: (
           <DescriptionV1
-            newLook
             removeBlur
             wrapInCard
             description={description}
@@ -154,7 +153,6 @@ const DocumentationTab = ({
             <OwnerLabelV2 dataTestId="domain-owner-name" />
 
             <TagsContainerV2
-              newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
               entityType={EntityType.DOMAIN}
@@ -168,7 +166,6 @@ const DocumentationTab = ({
             />
 
             <TagsContainerV2
-              newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
               entityType={EntityType.DOMAIN}

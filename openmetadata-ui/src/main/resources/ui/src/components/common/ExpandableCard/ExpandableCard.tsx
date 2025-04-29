@@ -10,24 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Card, CardProps, Tooltip } from 'antd';
+import { Card, CardProps } from 'antd';
 import classNames from 'classnames';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
+import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
 
 interface ExpandableCardProps {
   children: React.ReactNode;
+  onExpandStateChange?: (isExpanded: boolean) => void;
+  isExpandDisabled?: boolean;
   cardProps: CardProps;
 }
 
 const ExpandableCard = ({
   children,
   cardProps: { className, ...restCardProps },
+  onExpandStateChange,
+  isExpandDisabled,
 }: ExpandableCardProps) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(true);
+
+  const handleExpandClick = useCallback(() => {
+    setIsExpanded((prev) => {
+      onExpandStateChange?.(prev);
+
+      return !prev;
+    });
+  }, [onExpandStateChange]);
 
   return (
     <Card
@@ -39,14 +50,11 @@ const ExpandableCard = ({
         className
       )}
       extra={
-        <Tooltip title={isExpanded ? t('label.collapse') : t('label.expand')}>
-          <Icon
-            className="expand-collapse-icon"
-            component={CardExpandCollapseIcon}
-            style={{ fontSize: '32px', fill: 'white' }}
-            onClick={() => setIsExpanded((prev) => !prev)}
-          />
-        </Tooltip>
+        <CardExpandCollapseIconButton
+          disabled={isExpandDisabled}
+          title={isExpanded ? t('label.collapse') : t('label.expand')}
+          onClick={handleExpandClick}
+        />
       }
       {...restCardProps}>
       {children}

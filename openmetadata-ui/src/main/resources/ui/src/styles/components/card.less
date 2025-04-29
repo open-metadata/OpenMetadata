@@ -75,6 +75,8 @@
 }
 
 .ant-card.new-header-border-card {
+  height: auto !important;
+
   .ant-card-head {
     background: @grey-50;
     border-radius: @border-radius-sm;
@@ -83,20 +85,28 @@
     font-weight: 500;
   }
 
+  .ant-card-body {
+    height: auto !important;
+    max-height: none !important;
+  }
+
   .expand-collapse-icon {
+    transform: rotate(180deg);
     transition: transform 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
   }
 
-  &:not(.expanded) {
+  &.expanded {
     .ant-card-head {
       border-bottom: none;
       margin-bottom: 0;
 
       .expand-collapse-icon {
-        transform: rotate(180deg);
+        transform: rotate(0deg);
       }
     }
+  }
 
+  &:not(.expanded) {
     .ant-card-body {
       height: 0 !important;
       overflow: hidden;

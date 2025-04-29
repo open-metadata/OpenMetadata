@@ -199,7 +199,10 @@ const DataProductsContainer = ({
   }, [header]);
 
   return (
-    <ExpandableCard cardProps={cardProps} data-testid="data-products-container">
+    <ExpandableCard
+      cardProps={cardProps}
+      data-testid="data-products-container"
+      isExpandDisabled={isEmpty(dataProducts)}>
       {!isEditMode && (
         <Row data-testid="data-products-list">
           <Col className="flex flex-wrap gap-2">

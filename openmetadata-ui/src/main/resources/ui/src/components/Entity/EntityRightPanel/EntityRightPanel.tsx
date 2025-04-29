@@ -80,7 +80,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         {showDataProductContainer && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
-              newLook
               activeDomain={domain}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
@@ -91,7 +90,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
 
         <div data-testid="KnowledgePanel.Tags">
           <TagsContainerV2
-            newLook
             displayType={DisplayType.READ_MORE}
             entityFqn={entityFQN}
             entityType={entityType}
@@ -105,7 +103,6 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
 
         <div data-testid="KnowledgePanel.GlossaryTerms">
           <TagsContainerV2
-            newLook
             displayType={DisplayType.READ_MORE}
             entityFqn={entityFQN}
             entityType={entityType}
@@ -129,7 +126,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
             maxDataCap={5}
           />
         )}
-        <PartitionedKeys newLook />
+        <PartitionedKeys />
       </Space>
       {afterSlot}
     </>
