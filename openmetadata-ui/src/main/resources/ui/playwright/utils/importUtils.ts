@@ -301,7 +301,7 @@ export const fillGlossaryRowDetails = async (
     owners: string[];
   },
   page: Page,
-  propertyListName: Record<string, string>
+  propertyListName?: Record<string, string>
 ) => {
   await page
     .locator('.InovuaReactDataGrid__cell--cell-active')
@@ -362,7 +362,9 @@ export const fillGlossaryRowDetails = async (
     .locator('.InovuaReactDataGrid__cell--cell-active')
     .press('ArrowRight', { delay: 100 });
 
-  await fillCustomPropertyDetails(page, propertyListName);
+  if (propertyListName) {
+    await fillCustomPropertyDetails(page, propertyListName);
+  }
 };
 
 export const validateImportStatus = async (
