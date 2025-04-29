@@ -681,9 +681,11 @@ export const checkForUserExistError = async (
   {
     name,
     email,
+    password,
   }: {
     name: string;
     email: string;
+    password?: string;
   }
 ) => {
   await page.click('[data-testid="add-user"]');
@@ -693,6 +695,10 @@ export const checkForUserExistError = async (
   await page.fill('[data-testid="displayName"]', name);
 
   await page.locator(descriptionBox).fill('Adding new user');
+
+  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
+  await page.fill('#password', password);
+  await page.fill('#confirmPassword', password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');

@@ -161,6 +161,7 @@ test.describe('User with Admin Roles', () => {
         await checkForUserExistError(adminPage, {
           name: updatedUserDetails.name,
           email: updatedUserDetails.email,
+          password: updatedUserDetails.password,
         });
       }
     );
