@@ -438,14 +438,20 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
 
       if (isPlatformLineage) {
+        const searchData = QueryString.parse(
+          location.search.startsWith('?')
+            ? location.search.substring(1)
+            : location.search
+        );
         history.push({
           search: QueryString.stringify({
+            ...searchData,
             platformView: view !== LineagePlatformView.None ? view : undefined,
           }),
         });
       }
     },
-    [isPlatformLineage]
+    [isPlatformLineage, location.search]
   );
 
   const exportLineageData = useCallback(
