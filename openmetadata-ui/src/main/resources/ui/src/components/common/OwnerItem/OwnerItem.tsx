@@ -71,11 +71,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   }
 
   return (
-    <div
-      className={classNames('owner-avatar-container stacked-view')}
-      style={{
-        zIndex: index + 1,
-      }}>
+    <div className={classNames('owner-avatar-container stacked-view')}>
       {isTeam ? (
         <Link
           className="d-flex no-underline"
