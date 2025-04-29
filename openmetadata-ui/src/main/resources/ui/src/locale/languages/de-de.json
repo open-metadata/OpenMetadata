@@ -1054,6 +1054,7 @@
     "query-plural": "Abfragen",
     "query-used-in": "Verwendete Abfragen in",
     "queued": "Eingereiht",
+    "raise-on-error": "Fehler beim Ausführen anzeigen",
     "range": "Bereich",
     "range-condition": "Bereichsbedingung",
     "re-assign": "Reassign",
