@@ -72,6 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardServiceResource
     extends ServiceEntityResource<
         DashboardService, DashboardServiceRepository, DashboardConnection> {
+  private final DashboardServiceMapper mapper = new DashboardServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
   static final String FIELDS = "owners,domain";
 
@@ -333,7 +334,8 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboardService create) {
-    DashboardService service = getService(create, securityContext.getUserPrincipal().getName());
+    DashboardService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
@@ -358,7 +360,8 @@ public class DashboardServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboardService update) {
-    DashboardService service = getService(update, securityContext.getUserPrincipal().getName());
+    DashboardService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DashboardService) response.getEntity());
     return response;
@@ -454,6 +457,37 @@ public class DashboardServiceResource
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDashboardServiceAsync",
+      summary = "Asynchronously delete a dashboard service by Id",
+      description =
+          "Asynchronously delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DashboardService service for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{name}")
   @Operation(
       operationId = "deleteDashboardServiceByName",
@@ -505,13 +539,6 @@ public class DashboardServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private DashboardService getService(CreateDashboardService create, String user) {
-    return repository
-        .copy(new DashboardService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

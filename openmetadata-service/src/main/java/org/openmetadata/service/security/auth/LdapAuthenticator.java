@@ -84,7 +84,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private RoleRepository roleRepository;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
-  private LoginAttemptCache loginAttemptCache;
   private LdapConfiguration ldapConfiguration;
   private LDAPConnectionPool ldapLookupConnectionPool;
   private boolean isSelfSignUpEnabled;
@@ -102,7 +101,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
     this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
-    this.loginAttemptCache = new LoginAttemptCache();
     this.isSelfSignUpEnabled = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
@@ -145,6 +143,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     String email = loginRequest.getEmail();
     checkIfLoginBlocked(email);
     User omUser = lookUserInProvider(email, loginRequest.getPassword());
+    Entity.getUserRepository().updateUserLastLoginTime(omUser, System.currentTimeMillis());
     return getJwtResponse(omUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
@@ -176,7 +175,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void checkIfLoginBlocked(String email) {
-    if (loginAttemptCache.isLoginBlocked(email)) {
+    if (LoginAttemptCache.getInstance().isLoginBlocked(email)) {
       throw new AuthenticationException(MAX_FAILED_LOGIN_ATTEMPT);
     }
   }
@@ -184,8 +183,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   @Override
   public void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(email);
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(email);
+    LoginAttemptCache.getInstance().recordFailedLogin(email);
+    int failedLoginAttempt = LoginAttemptCache.getInstance().getUserFailedLoginCount(email);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
           userName,

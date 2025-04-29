@@ -401,16 +401,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -449,16 +449,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -497,10 +497,10 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -659,7 +659,24 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "entityFQN": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -674,7 +691,8 @@
             "type": "nested",
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"

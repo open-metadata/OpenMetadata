@@ -17,17 +17,22 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -218,7 +223,7 @@ public final class EntityUtil {
               .withDailyStats(stats)
               .withWeeklyStats(stats)
               .withMonthlyStats(stats)
-              .withDate(RestUtil.DATE_FORMAT.format(new Date()));
+              .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
   }
@@ -282,7 +287,7 @@ public final class EntityUtil {
     }
   }
 
-  public static class Fields {
+  public static class Fields implements Iterable<String> {
     public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
     @Getter private final Set<String> fieldList;
 
@@ -304,7 +309,7 @@ public final class EntityUtil {
     }
 
     public Fields(Set<String> allowedFields, Set<String> fieldsParam) {
-      if (CommonUtil.nullOrEmpty(fieldsParam)) {
+      if (nullOrEmpty(fieldsParam)) {
         fieldList = new HashSet<>();
         return;
       }
@@ -330,6 +335,11 @@ public final class EntityUtil {
 
     public boolean contains(String field) {
       return fieldList.contains(field);
+    }
+
+    @Override
+    public @org.jetbrains.annotations.NotNull Iterator<String> iterator() {
+      return fieldList.iterator();
     }
   }
 
@@ -646,6 +656,23 @@ public final class EntityUtil {
                     CatalogExceptionMessage.invalidFieldName("column", columnName)));
   }
 
+  public static Column findColumnWithChildren(List<Column> columns, String columnName) {
+    for (Column column : columns) {
+      if (column.getFullyQualifiedName().equals(columnName)) {
+        return column;
+      }
+      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+        try {
+          return findColumnWithChildren(column.getChildren(), columnName);
+        } catch (IllegalArgumentException ignored) {
+          // Continue searching in other columns
+        }
+      }
+    }
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.invalidFieldName("column", columnName));
+  }
+
   public static <T extends FieldInterface> List<T> getFlattenedEntityField(List<T> fields) {
     List<T> flattenedFields = new ArrayList<>();
     fields.forEach(column -> flattenEntityField(column, flattenedFields));
@@ -682,18 +709,72 @@ public final class EntityUtil {
     return result.stream().toList();
   }
 
-  public static void addDomainQueryParam(SecurityContext securityContext, ListFilter filter) {
+  public static void addDomainQueryParam(
+      SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     // If the User is admin then no need to add domainId in the query param
     // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
       } else {
-        // TODO: Hack :(
-        filter.addQueryParam("domainId", "null");
+        filter.addQueryParam("domainId", NULL_PARAM);
+        filter.addQueryParam("entityType", entityType);
       }
     }
+  }
+
+  public static String encodeEntityFqn(String fqn) {
+    return URLEncoder.encode(fqn.trim(), StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
+  /**
+   * Gets the value of a field from an entity using reflection.
+   * This method checks if the entity supports the given field and returns its value.
+   * If the field is not supported, returns null.
+   *
+   * @param entity The entity to get the field value from
+   * @param fieldName The name of the field to get (corresponds to getter method name without 'get' prefix)
+   * @return The value of the field, or null if field is not supported by the entity
+   */
+  public static Object getEntityField(EntityInterface entity, String fieldName) {
+    if (entity == null || fieldName == null || fieldName.isEmpty()) {
+      return null;
+    }
+
+    // Convert field name to getter method name (e.g., "retentionPeriod" -> "getRetentionPeriod")
+    String methodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
+
+    try {
+      Method method = entity.getClass().getMethod(methodName);
+      return method.invoke(entity);
+    } catch (NoSuchMethodException e) {
+      // Field not supported by this entity type
+      LOG.debug(
+          "Field '{}' not supported by entity type {}",
+          fieldName,
+          entity.getClass().getSimpleName());
+      return null;
+    } catch (Exception e) {
+      // Other reflection errors
+      LOG.debug(
+          "Failed to get field '{}' from entity {}: {}",
+          fieldName,
+          entity.getClass().getSimpleName(),
+          e.getMessage());
+      return null;
+    }
+  }
+
+  public static boolean isNullOrEmptyChangeDescription(ChangeDescription changeDescription) {
+    if (changeDescription == null) {
+      return true;
+    }
+    return changeDescription.getFieldsAdded().isEmpty()
+        && changeDescription.getFieldsUpdated().isEmpty()
+        && changeDescription.getFieldsDeleted().isEmpty();
   }
 }

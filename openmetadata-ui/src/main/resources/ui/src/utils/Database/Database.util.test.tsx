@@ -10,13 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import {
   DatabaseFields,
+  ExtraDatabaseDropdownOptions,
   getQueryFilterForDatabase,
   schemaTableColumns,
 } from './Database.util';
+
+jest.mock(
+  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => ({
+    useEntityExportModalProvider: jest.fn().mockReturnValue({
+      showModal: jest.fn(),
+    }),
+  })
+);
+jest.mock(
+  '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component',
+  () => ({
+    ManageButtonItemLabel: jest
+      .fn()
+      .mockImplementation(() => <div>ManageButtonItemLabel</div>),
+  })
+);
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useHistory: jest.fn(),
+}));
 
 describe('Database Util', () => {
   describe('getQueryFilterForDatabase', () => {
@@ -95,8 +119,9 @@ describe('Database Util', () => {
           title: 'label.owner-plural',
           dataIndex: 'owners',
           key: 'owners',
-          width: 120,
+          width: 180,
           render: expect.any(Function),
+          filterIcon: expect.any(Function),
         },
         {
           title: 'label.usage',
@@ -143,6 +168,87 @@ describe('Database Util', () => {
         usageRender && usageRender(record.usageSummary, record, 0);
 
       expect(usageRenderResult).toMatchSnapshot();
+    });
+  });
+
+  describe('Database Util - ExtraDatabaseDropdownOptions', () => {
+    it('should render import button when user has editAll permission', () => {
+      const permission = {
+        ViewAll: false,
+        EditAll: true,
+      } as OperationPermission;
+
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].key).toBe('import-button');
+    });
+
+    it('should render export button when user has viewAll permission', () => {
+      const permission = {
+        ViewAll: true,
+        EditAll: false,
+      } as OperationPermission;
+
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0].key).toBe('export-button');
+    });
+
+    it('should render both button when user has viewAll & editAll permission', () => {
+      const permission = {
+        ViewAll: true,
+        EditAll: true,
+      } as OperationPermission;
+
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0].key).toBe('import-button');
+      expect(result[1].key).toBe('export-button');
+    });
+
+    it('should not render any buttons when user has neither viewAll nor editAll permission', () => {
+      const permission = {
+        ViewAll: false,
+        EditAll: false,
+      } as OperationPermission;
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        false
+      );
+
+      expect(result).toHaveLength(0);
+      expect(result).toStrictEqual([]);
+    });
+
+    it('should not render any buttons when the entity is deleted', () => {
+      const permission = {
+        ViewAll: true,
+        EditAll: true,
+      } as OperationPermission;
+      const result = ExtraDatabaseDropdownOptions(
+        'databaseFqn',
+        permission,
+        true
+      );
+
+      expect(result).toHaveLength(0);
+      expect(result).toStrictEqual([]);
     });
   });
 });

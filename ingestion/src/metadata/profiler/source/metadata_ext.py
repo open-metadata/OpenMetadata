@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -42,10 +42,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.source.metadata import (
-    OpenMetadataSource,
-    ProfilerSourceAndEntity,
-)
+from metadata.profiler.source.metadata import OpenMetadataSource
+from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils import fqn
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -68,17 +66,12 @@ class OpenMetadataSourceExt(OpenMetadataSource):
     We do this here as well.
     """
 
-    # pylint: disable=super-init-not-called
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-        self.init_steps()
-
-        self.config = config
-        self.metadata = metadata
-        self.test_connection()
+        super().__init__(config, metadata)
 
         # Init and type the source config
         self.service_connection = self.config.source.serviceConnection.root.config

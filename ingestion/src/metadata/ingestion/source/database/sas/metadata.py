@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,7 +19,7 @@ import json
 import re
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 from requests.exceptions import HTTPError
 
@@ -28,7 +28,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -881,9 +880,6 @@ class SasSource(
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
-
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, list]]]:
         """Not implemented"""
 
@@ -899,11 +895,6 @@ class SasSource(
         self, stored_procedure: Any
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        yield from []
 
     def close(self) -> None:
         pass

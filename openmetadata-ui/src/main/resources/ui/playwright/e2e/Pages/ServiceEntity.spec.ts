@@ -72,7 +72,10 @@ entities.forEach((EntityClass) => {
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
-        EntityDataClass.domain2.responseData
+        EntityDataClass.domain2.responseData,
+        EntityDataClass.dataProduct1.responseData,
+        EntityDataClass.dataProduct2.responseData,
+        EntityDataClass.dataProduct3.responseData
       );
     });
 
@@ -112,10 +115,7 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Announcement create & delete`, async ({ page }) => {
-      await entity.announcement(
-        page,
-        entity.entityResponseData?.['fullyQualifiedName']
-      );
+      await entity.announcement(page);
     });
 
     test(`Inactive Announcement create & delete`, async ({ page }) => {

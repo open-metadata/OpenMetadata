@@ -90,7 +90,7 @@ const mockEdgeInfoDrawer = {
         sqlQuery: null,
         description: null,
         source: 'DbtLineage',
-        doc_id:
+        docId:
           '5c97531f-d164-4707-842e-af52e0c43e26-5d816d56-40a2-493f-ae9d-012f1cd337dd',
       },
       isColumnLineage: false,

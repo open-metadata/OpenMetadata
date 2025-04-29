@@ -82,7 +82,6 @@ describe('Test DomainLeftPanel component', () => {
     ).toBeInTheDocument();
     expect(await screen.findByTestId('add-domain')).toBeInTheDocument();
     expect(await screen.findByTestId('domain-left-panel')).toBeInTheDocument();
-    expect(await screen.findByText('label.domain-plural')).toBeInTheDocument();
     expect(
       await screen.findByText(DOMAINS_LIST[0].displayName ?? '')
     ).toBeInTheDocument();

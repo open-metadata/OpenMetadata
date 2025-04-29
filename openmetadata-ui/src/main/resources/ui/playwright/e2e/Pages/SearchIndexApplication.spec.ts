@@ -38,12 +38,13 @@ const verifyLastExecutionStatus = async (page: Page) => {
       },
       {
         // Custom expect message for reporting, optional.
-        message: 'To get the last run execution status as success',
+        message:
+          'To get the last run execution status as success or active with error',
         intervals: [30_000],
         timeout: 300_000,
       }
     )
-    .toBe('success');
+    .toEqual(expect.stringMatching(/success|activeError/g));
 
   await page.reload();
 
@@ -67,7 +68,9 @@ const verifyLastExecutionRun = async (page: Page) => {
       // wait for success status
       await verifyLastExecutionStatus(page);
     } else {
-      expect(responseData.data[0].status).toBe('success');
+      expect(responseData.data[0].status).toEqual(
+        expect.stringMatching(/success|activeError/g)
+      );
     }
   }
 };
@@ -85,6 +88,22 @@ test('Search Index Application', async ({ page }) => {
       )
       .click();
     await verifyLastExecutionRun(page);
+  });
+
+  await test.step('View App Run Config', async () => {
+    await page.getByTestId('app-historical-config').click();
+    await page.waitForSelector('[role="dialog"].ant-modal');
+
+    await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+    await expect(page.locator('.ant-modal-title')).toContainText(
+      'Search Indexing Configuration'
+    );
+
+    await page.click('[data-testid="app-run-config-close"]');
+    await page.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'detached',
+    });
   });
 
   await test.step('Edit application', async () => {
@@ -106,12 +125,24 @@ test('Search Index Application', async ({ page }) => {
     );
 
     await page.click('[data-testid="configuration"]');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('#search-indexing-application')).toContainText(
+      'Search Indexing Application'
+    );
+
     await page.fill('#root\\/batchSize', '0');
 
     await page.getByTestId('tree-select-widget').click();
 
+    // Bring table option to view in dropdown via searching for it
+    await page
+      .getByTestId('tree-select-widget')
+      .getByRole('combobox')
+      .fill('Table');
+
     // uncheck the entity
-    await page.getByRole('tree').getByTitle('Topic').click();
+    await page.getByRole('tree').getByTitle('Table').click();
 
     await page.click(
       '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
@@ -169,16 +200,21 @@ test('Search Index Application', async ({ page }) => {
     await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const installApplicationResponse = page.waitForResponse('api/v1/apps');
+    const getApplications = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/apps?limit') &&
+        request.method() === 'GET'
+    );
     await page.click('[data-testid="deploy-button"]');
     await installApplicationResponse;
 
     await toastNotification(page, 'Application installed successfully');
 
-    const card = page.locator(
-      '[data-testid="search-indexing-application-card"]'
-    );
+    await getApplications;
 
-    expect(await card.isVisible()).toBe(true);
+    await expect(
+      page.getByTestId('search-indexing-application-card')
+    ).toBeVisible();
   });
 
   if (process.env.PLAYWRIGHT_IS_OSS) {

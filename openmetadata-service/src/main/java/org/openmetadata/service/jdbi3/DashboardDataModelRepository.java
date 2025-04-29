@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -190,8 +191,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public EntityUpdater getUpdater(
-      DashboardDataModel original, DashboardDataModel updated, Operation operation) {
+  public EntityRepository<DashboardDataModel>.EntityUpdater getUpdater(
+      DashboardDataModel original,
+      DashboardDataModel updated,
+      Operation operation,
+      ChangeSource changeSource) {
     return new DataModelUpdater(original, updated, operation);
   }
 
@@ -210,10 +214,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange("sql", original.getSql(), updated.getSql());
     }
   }
 }

@@ -1,13 +1,14 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+# pylint: disable=too-many-lines
 """
 Bigquery source module
 """
@@ -34,9 +35,11 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
 from metadata.generated.schema.entity.data.table import (
+    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     Table,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -48,6 +51,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
+)
+from metadata.generated.schema.security.credentials.gcpExternalAccount import (
+    GcpExternalAccount,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -77,7 +83,6 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
@@ -95,14 +100,11 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -152,6 +154,18 @@ def _array_sys_data_type_repr(col_type):
     )
 
 
+def get_system_data_type(col_type):
+    """
+    Get the system data type for the column type
+    """
+    if isinstance(col_type, String):
+        return "string"
+    if str(col_type) == "ARRAY":
+        return _array_sys_data_type_repr(col_type)
+
+    return str(col_type)
+
+
 def get_columns(bq_schema):
     """
     get_columns method overwritten to include tag details
@@ -168,12 +182,13 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": _array_sys_data_type_repr(col_type)
-            if str(col_type) == "ARRAY"
-            else str(col_type),
+            "system_data_type": get_system_data_type(col_type),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
+        if getattr(field, "fields", None):
+            # Nested Columns available
+            col_obj["children"] = get_columns(field.fields)
         try:
             if field.policy_tags:
                 policy_tag_name = field.policy_tags.names[0]
@@ -223,14 +238,13 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class BigquerySource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
-):
+class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
         # Check if the engine is established before setting project IDs
         # This ensures that we don't try to set project IDs when there is no engine
@@ -243,7 +257,7 @@ class BigquerySource(
         # Upon invoking the set_project_id method, we retrieve a comprehensive
         # list of all project IDs. Subsequently, after the invokation,
         # we proceed to test the connections for each of these project IDs
-        self.project_ids = self.set_project_id()
+        self.project_ids = self.set_project_id(self.service_connection)
         self.life_cycle_query = BIGQUERY_LIFE_CYCLE_QUERY
         self.test_connection = self._test_connection
         self.test_connection()
@@ -276,9 +290,62 @@ class BigquerySource(
         return cls(config, metadata, incremental_config)
 
     @staticmethod
-    def set_project_id() -> List[str]:
-        _, project_ids = auth.default()
-        return project_ids if isinstance(project_ids, list) else [project_ids]
+    def set_project_id(
+        service_connection: Optional[BigQueryConnection] = None,
+    ) -> List[str]:
+        """
+        Get the project ID from the service connection or ADC.
+
+        Args:
+            service_connection: Optional BigQuery connection config
+
+        Returns:
+            List of project IDs to scan
+
+        Raises:
+            InvalidSourceException: If unable to get project IDs from either config or ADC
+        """
+        try:
+
+            # TODO: Add support for fetching project ids from resource manager
+            # Bigquery resource manager for fetching project ids
+            # "google-cloud-resource-manager~=1.14.1",
+            # "grpc-google-iam-v1~=0.14.0",
+
+            # First check if project ID is configured in service connection
+            if (
+                service_connection
+                and hasattr(service_connection, "credentials")
+                and hasattr(service_connection.credentials, "gcpConfig")
+            ):
+                gcp_config = service_connection.credentials.gcpConfig
+                try:
+                    # Allow for multiple project IDs in the service connection
+                    if not isinstance(gcp_config, GcpExternalAccount) and getattr(
+                        gcp_config, "projectId", None
+                    ):
+                        if isinstance(gcp_config.projectId.root, list):
+                            return gcp_config.projectId.root
+                        return [gcp_config.projectId.root]
+                except Exception as exc:
+                    logger.warning(f"Error getting project ID, falling back: {exc}")
+
+            # Fallback to ADC default project
+            try:
+                _, project_id = auth.default()
+                if project_id:
+                    return [project_id] if isinstance(project_id, str) else project_id
+            except Exception as exc:
+                logger.warning(f"Error getting default project from ADC: {exc}")
+
+            raise InvalidSourceException(
+                "Unable to get project IDs. Either configure project IDs in the connection or "
+                "ensure Application Default Credentials are set up correctly."
+            )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            raise InvalidSourceException(f"Error setting BigQuery project IDs: {exc}")
 
     def _test_connection(self) -> None:
         for project_id in self.project_ids:
@@ -372,6 +439,8 @@ class BigquerySource(
                         tag_description="Bigquery Dataset Label",
                         classification_description="BigQuery Dataset Classification",
                         include_tags=self.source_config.includeTags,
+                        metadata=self.metadata,
+                        system_tags=True,
                     )
             # Fetching policy tags on the column level
             list_project_ids = [self.context.get().database]
@@ -392,6 +461,8 @@ class BigquerySource(
                         tag_description="Bigquery Policy Tag",
                         classification_description="BigQuery Policy Classification",
                         include_tags=self.source_config.includeTags,
+                        metadata=self.metadata,
+                        system_tags=True,
                     )
         except Exception as exc:
             yield Either(
@@ -534,6 +605,8 @@ class BigquerySource(
                     tag_description="Bigquery Table Label",
                     classification_description="BigQuery Table Classification",
                     include_tags=self.source_config.includeTags,
+                    metadata=self.metadata,
+                    system_tags=True,
                 )
 
     def get_tag_labels(self, table_name: str) -> Optional[List[TagLabel]]:
@@ -632,15 +705,16 @@ class BigquerySource(
                 )
                 return view_definition
 
-            schema_definition = inspector.get_table_ddl(
-                self.connection, table_name, schema_name
-            )
-            schema_definition = (
-                str(schema_definition).strip()
-                if schema_definition is not None
-                else None
-            )
-            return schema_definition
+            if self.source_config.includeDDL:
+                schema_definition = inspector.get_table_ddl(
+                    self.connection, table_name, schema_name
+                )
+                schema_definition = (
+                    str(schema_definition).strip()
+                    if schema_definition is not None
+                    else None
+                )
+                return schema_definition
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
         return None
@@ -665,6 +739,42 @@ class BigquerySource(
             )
         return None
 
+    @calculate_execution_time()
+    def update_table_constraints(
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints,
+        foreign_columns,
+        columns,
+    ) -> List[TableConstraint]:
+        """
+        From topology.
+        process the table constraints of all tables
+        """
+        table_constraints = super().update_table_constraints(
+            table_name,
+            schema_name,
+            db_name,
+            table_constraints,
+            foreign_columns,
+            columns,
+        )
+        try:
+            table = self.client.get_table(fqn._build(db_name, schema_name, table_name))
+            if hasattr(table, "clustering_fields") and table.clustering_fields:
+                table_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.CLUSTER_KEY,
+                        columns=table.clustering_fields,
+                    )
+                )
+        except Exception as exc:
+            logger.warning(f"Error getting clustering fields for {table_name}: {exc}")
+            logger.debug(traceback.format_exc())
+        return table_constraints
+
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
@@ -675,6 +785,33 @@ class BigquerySource(
             database = self.context.get().database
             table = self.client.get_table(fqn._build(database, schema_name, table_name))
             columns = inspector.get_columns(table_name, schema_name, db_name=database)
+            if (
+                hasattr(table, "external_data_configuration")
+                and hasattr(table.external_data_configuration, "hive_partitioning")
+                and table.external_data_configuration.hive_partitioning
+            ):
+                # Ingesting External Hive Partitioned Tables
+                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel
+                    HivePartitioningOptions,
+                )
+
+                partition_details: HivePartitioningOptions = (
+                    table.external_data_configuration.hive_partitioning
+                )
+                return True, TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=self._get_partition_column_name(
+                                columns=columns,
+                                partition_field_name=field,
+                            ),
+                            interval=str(partition_details._properties.get("mode")),
+                            intervalType=PartitionIntervalTypes.OTHER,
+                        )
+                        for field in partition_details._properties.get("fields")
+                    ]
+                )
+
             if table.time_partitioning is not None:
                 if table.time_partitioning.field:
                     table_partition = TablePartition(
@@ -693,9 +830,11 @@ class BigquerySource(
                 return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
-                            columnName="_PARTITIONTIME"
-                            if table.time_partitioning.type_ == "HOUR"
-                            else "_PARTITIONDATE",
+                            columnName=(
+                                "_PARTITIONTIME"
+                                if table.time_partitioning.type_ == "HOUR"
+                                else "_PARTITIONDATE"
+                            ),
                             interval=str(table.time_partitioning.type_),
                             intervalType=PartitionIntervalTypes.INGESTION_TIME,
                         )
@@ -716,6 +855,30 @@ class BigquerySource(
                     table_partition.interval = table.range_partitioning.range_.interval
                 table_partition.columnName = table.range_partitioning.field
                 return True, TablePartition(columns=[table_partition])
+            if (
+                hasattr(table, "_properties")
+                and table._properties.get("partitionDefinition")
+                and table._properties.get("partitionDefinition").get(
+                    "partitionedColumn"
+                )
+            ):
+
+                return True, TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=self._get_partition_column_name(
+                                columns=columns,
+                                partition_field_name=field.get("field"),
+                            ),
+                            intervalType=PartitionIntervalTypes.OTHER,
+                        )
+                        for field in table._properties.get("partitionDefinition").get(
+                            "partitionedColumn"
+                        )
+                        if field and field.get("field")
+                    ]
+                )
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -849,22 +1012,6 @@ class BigquerySource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-            region=self.service_connection.usageLocation,
-        )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

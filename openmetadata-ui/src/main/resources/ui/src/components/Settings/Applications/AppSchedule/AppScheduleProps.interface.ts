@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
 
 export interface AppScheduleProps {
@@ -18,6 +19,7 @@ export interface AppScheduleProps {
     isRunLoading: boolean;
     isDeployLoading: boolean;
   };
+  jsonSchema: RJSFSchema;
   onSave: (cron: string) => Promise<void>;
   onDemandTrigger: () => Promise<void>;
   onDeployTrigger: () => Promise<void>;

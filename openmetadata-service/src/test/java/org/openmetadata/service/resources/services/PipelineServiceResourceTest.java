@@ -123,7 +123,8 @@ public class PipelineServiceResourceTest
         createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update pipeline description and ingestion service that are null
-    CreatePipelineService update = createRequest(test).withDescription("description1");
+    CreatePipelineService update =
+        createRequest(test).withDescription("description1").withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -156,15 +157,12 @@ public class PipelineServiceResourceTest
   void post_put_invalidConnection_as_admin_4xx(TestInfo test) {
     RedshiftConnection redshiftConnection = new RedshiftConnection();
     PipelineConnection pipelineConnection = new PipelineConnection().withConfig(redshiftConnection);
+    CreatePipelineService create = createRequest(test).withConnection(pipelineConnection);
     assertResponseContains(
-        () ->
-            createEntity(
-                createRequest(test).withDescription(null).withConnection(pipelineConnection),
-                ADMIN_AUTH_HEADERS),
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
-            "Failed to convert [%s] to type [Airflow]. Review the connection.",
-            getEntityName(test)));
+            "Failed to convert [%s] to type [Airflow]. Review the connection.", create.getName()));
   }
 
   @Test

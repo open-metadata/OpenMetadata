@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.SecurityUtil.validateDomainEnfor
 import static org.openmetadata.service.security.SecurityUtil.validatePrincipalClaimsMapping;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getAlgorithm;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -68,9 +69,11 @@ public class JwtFilter implements ContainerRequestFilter {
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   private JwkProvider jwkProvider;
   private String principalDomain;
+  private Set<String> allowedDomains;
   private boolean enforcePrincipalDomain;
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
+  private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
   private static final List<String> DEFAULT_PUBLIC_KEY_URLS =
       Arrays.asList(
@@ -121,8 +124,10 @@ public class JwtFilter implements ContainerRequestFilter {
 
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
+    this.allowedDomains = authorizerConfiguration.getAllowedDomains();
     this.enforcePrincipalDomain = authorizerConfiguration.getEnforcePrincipalDomain();
     this.useRolesFromProvider = authorizerConfiguration.getUseRolesFromProvider();
+    this.tokenValidationAlgorithm = authenticationConfiguration.getTokenValidationAlgorithm();
   }
 
   @VisibleForTesting
@@ -182,6 +187,7 @@ public class JwtFilter implements ContainerRequestFilter {
         jwtPrincipalClaims,
         claims,
         principalDomain,
+        allowedDomains,
         enforcePrincipalDomain);
 
     // Validate Bot token matches what was created in OM
@@ -224,7 +230,8 @@ public class JwtFilter implements ContainerRequestFilter {
 
     // Validate JWT with public key
     Jwk jwk = jwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
+    Algorithm algorithm =
+        getAlgorithm(tokenValidationAlgorithm, (RSAPublicKey) jwk.getPublicKey(), null);
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
@@ -294,7 +301,7 @@ public class JwtFilter implements ContainerRequestFilter {
       LogoutRequest previouslyLoggedOutEvent =
           JwtTokenCacheManager.getInstance().getLogoutEventForToken(authToken);
       if (previouslyLoggedOutEvent != null) {
-        throw AuthenticationException.getExpiredTokenException();
+        throw AuthenticationException.invalidTokenMessage();
       }
     }
   }

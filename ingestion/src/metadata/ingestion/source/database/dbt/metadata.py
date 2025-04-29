@@ -1,9 +1,9 @@
 #  pylint: disable=too-many-lines
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,8 +13,9 @@
 DBT source methods.
 """
 import traceback
+from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -60,7 +61,9 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -96,7 +99,7 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -324,6 +327,87 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
+    def add_dbt_sources(
+        self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
+    ) -> None:
+        """
+        Method to append dbt test cases based on sources file for later processing
+        In dbt manifest sources node name is table/view name (not test name like with test nodes)
+        So in order for the test creation to be named precisely I am amending manifest node name within it's deepcopy
+        """
+        manifest_node_new = deepcopy(manifest_node)
+        manifest_node_new.name = manifest_node_new.name + "_freshness"
+
+        freshness_test_result = next(
+            (item for item in dbt_objects.dbt_sources.results if item.unique_id == key),
+            None,
+        )
+
+        if freshness_test_result:
+            self.context.get().dbt_tests[key + "_freshness"] = {
+                DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new
+            }
+            self.context.get().dbt_tests[key + "_freshness"][
+                DbtCommonEnum.UPSTREAM.value
+            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+            self.context.get().dbt_tests[key + "_freshness"][
+                DbtCommonEnum.RESULTS.value
+            ] = freshness_test_result
+
+    def _get_table_entity(self, table_fqn) -> Optional[Table]:
+        def search_table(fqn_search_string: str) -> Optional[Table]:
+            table_entities = get_entity_from_es_result(
+                entity_list=self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=fqn_search_string,
+                    fields="sourceHash",
+                ),
+                fetch_multiple_entities=True,
+            )
+            logger.debug(
+                f"Found table entities from {fqn_search_string}: {table_entities}"
+            )
+            return (
+                next(iter(filter(None, table_entities)), None)
+                if table_entities
+                else None
+            )
+
+        try:
+            table_entity = search_table(table_fqn)
+            if table_entity:
+                return table_entity
+
+            if self.source_config.searchAcrossDatabases:
+                logger.warning(
+                    f"Table {table_fqn} not found under service: {self.config.serviceName}."
+                    "Trying to find table across services"
+                )
+                _, database_name, schema_name, table_name = fqn.split(table_fqn)
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name="*",
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                table_entity = search_table(table_fqn)
+                if table_entity:
+                    return table_entity
+
+            logger.warning(
+                f"Unable to find the table '{table_fqn}' in OpenMetadata. "
+                "Please check if the table exists and is ingested in OpenMetadata. "
+                "Also, ensure the name, database, and schema of the manifest node"
+                "match the table present in OpenMetadata."
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to get table entity from OpenMetadata: {exc}")
+
+        return None
+
     # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(
         self, dbt_objects: DbtObjects
@@ -376,6 +460,17 @@ class DbtSource(DbtServiceSource):
                         )
                         continue
 
+                    if (
+                        dbt_objects.dbt_sources
+                        and resource_type == SkipResourceTypeEnum.SOURCE.value
+                    ):
+                        self.add_dbt_sources(
+                            key,
+                            manifest_node=manifest_node,
+                            manifest_entities=manifest_entities,
+                            dbt_objects=dbt_objects,
+                        )
+
                     # Skip the ephemeral nodes since it is not materialized
                     if check_ephemeral_node(manifest_node):
                         logger.debug(f"Skipping ephemeral DBT node: {key}.")
@@ -424,28 +519,19 @@ class DbtSource(DbtServiceSource):
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    # Get the table entity from ES
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name="*",
+                        service_name=self.config.serviceName,
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
                     )
 
-                    table_entity: Optional[
-                        Union[Table, List[Table]]
-                    ] = get_entity_from_es_result(
-                        entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table,
-                            fqn_search_string=table_fqn,
-                            fields="sourceHash",
-                        ),
-                        fetch_multiple_entities=False,
-                    )
-
-                    if table_entity:
+                    if table_entity := self._get_table_entity(table_fqn=table_fqn):
+                        logger.debug(
+                            f"Using Table Entity for datamodel: {table_entity}"
+                        )
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             datamodel=DataModel(
@@ -471,18 +557,12 @@ class DbtSource(DbtServiceSource):
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
                                 ),
-                                tags=dbt_table_tags_list or None,
+                                tags=dbt_table_tags_list or [],
                             ),
                         )
                         yield Either(right=data_model_link)
                         self.context.get().data_model_links.append(data_model_link)
-                    else:
-                        logger.warning(
-                            f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                            "Please check if the table exists and is ingested in OpenMetadata"
-                            "Also name, database, schema of the manifest node matches with the table present "
-                            "in OpenMetadata"
-                        )
+
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
@@ -526,22 +606,14 @@ class DbtSource(DbtServiceSource):
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name="*",
+                            service_name=self.config.serviceName,
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        parent_table_entity: Optional[
-                            Union[Table, List[Table]]
-                        ] = get_entity_from_es_result(
-                            entity_list=self.metadata.es_search_from_fqn(
-                                entity_type=Table, fqn_search_string=parent_fqn
-                            ),
-                            fetch_multiple_entities=False,
-                        )
-                        if parent_table_entity:
+                        if self._get_table_entity(table_fqn=parent_fqn):
                             upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
@@ -549,6 +621,21 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
+
+        if dbt_node.resource_type == SkipResourceTypeEnum.SOURCE.value:
+            parent_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.config.serviceName,
+                database_name=get_corrected_name(dbt_node.database),
+                schema_name=get_corrected_name(dbt_node.schema_),
+                table_name=dbt_node.name,
+            )
+
+            # check if the parent table exists in OM before adding it to the upstream list
+            if self._get_table_entity(table_fqn=parent_fqn):
+                upstream_nodes.append(parent_fqn)
+
         return upstream_nodes
 
     def parse_data_model_columns(
@@ -617,7 +704,7 @@ class DbtSource(DbtServiceSource):
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=dbt_column_tag_list or None,
+                        tags=dbt_column_tag_list or [],
                     )
                 )
                 logger.debug(f"Successfully processed DBT column: {key}")
@@ -638,14 +725,8 @@ class DbtSource(DbtServiceSource):
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
-                from_es_result = self.metadata.es_search_from_fqn(
-                    entity_type=Table,
-                    fqn_search_string=upstream_node,
-                )
-                from_entity: Optional[
-                    Union[Table, List[Table]]
-                ] = get_entity_from_es_result(
-                    entity_list=from_es_result, fetch_multiple_entities=False
+                from_entity: Optional[Table] = self._get_table_entity(
+                    table_fqn=upstream_node
                 )
                 if from_entity and to_entity:
                     yield Either(
@@ -817,6 +898,47 @@ class DbtSource(DbtServiceSource):
                     f"to update dbt description: {exc}"
                 )
 
+    def process_dbt_owners(
+        self, data_model_link: DataModelLink
+    ) -> Iterable[Either[PatchedEntity]]:
+        """
+        Method to process DBT owners
+        """
+        table_entity: Table = data_model_link.table_entity
+        if table_entity:
+            logger.debug(
+                f"Processing DBT owners for: {table_entity.fullyQualifiedName.root}"
+            )
+            try:
+                data_model = data_model_link.datamodel
+                if (
+                    data_model.resourceType != DbtCommonEnum.SOURCE.value
+                    and self.source_config.dbtUpdateOwners
+                ):
+                    logger.debug(
+                        f"Overwriting owners with DBT owners: {table_entity.fullyQualifiedName.root}"
+                    )
+                    if data_model.owners:
+                        new_entity = deepcopy(table_entity)
+                        new_entity.owners = data_model.owners
+                        yield Either(
+                            right=PatchRequest(
+                                original_entity=table_entity,
+                                new_entity=new_entity,
+                                override_metadata=True,
+                            )
+                        )
+
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name=str(table_entity.fullyQualifiedName.root),
+                        error=f"Failed to parse the node"
+                        f"{table_entity.fullyQualifiedName.root} to update dbt owner: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+
     def create_dbt_tests_definition(
         self, dbt_test: dict
     ) -> Iterable[Either[CreateTestDefinitionRequest]]:
@@ -878,6 +1000,7 @@ class DbtSource(DbtServiceSource):
                         self.metadata, entity_link_str
                     )
                     table_fqn = get_table_fqn(entity_link_str)
+                    logger.debug(f"Table fqn found: {table_fqn}")
                     source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -913,6 +1036,7 @@ class DbtSource(DbtServiceSource):
                                 owners=None,
                             )
                         )
+                    logger.debug(f"Test case Already Exists: {test_case_fqn}")
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -974,7 +1098,7 @@ class DbtSource(DbtServiceSource):
                 # Create the test case result object
                 test_case_result = TestCaseResult(
                     timestamp=Timestamp(
-                        convert_timestamp_to_milliseconds(dbt_timestamp.timestamp())
+                        datetime_to_timestamp(dbt_timestamp, milliseconds=True)
                     ),
                     testCaseStatus=test_case_status,
                     testResultValue=[
@@ -1002,13 +1126,20 @@ class DbtSource(DbtServiceSource):
                         else None,
                         test_case_name=manifest_node.name,
                     )
-                    self.metadata.add_test_case_results(
-                        test_results=test_case_result,
-                        test_case_fqn=test_case_fqn,
-                    )
+
+                    logger.debug(f"Adding test case results to {test_case_fqn} ")
+                    try:
+                        self.metadata.add_test_case_results(
+                            test_results=test_case_result,
+                            test_case_fqn=test_case_fqn,
+                        )
+                    except APIError as err:
+                        if err.code != 409:
+                            raise APIError(err) from err
+
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            logger.error(
+            logger.debug(
                 f"Failed to capture tests results for node: {manifest_node.name} {err}"
             )
 

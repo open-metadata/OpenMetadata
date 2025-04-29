@@ -1,8 +1,8 @@
 #  Copyright 2024 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -43,6 +43,7 @@ from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.test_utils import accumulate_errors
 from metadata.utils.time_utils import get_end_of_day_timestamp_mill
+from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
@@ -178,6 +179,13 @@ class NoSQLProfiler(TestCase):
         profiler_workflow.stop()
         assert status == WorkflowResultStatus.SUCCESS
 
+    def run_auto_classification_workflow(self, config):
+        auto_classification_workflow = AutoClassificationWorkflow.create(config)
+        auto_classification_workflow.execute()
+        status = auto_classification_workflow.result_status()
+        auto_classification_workflow.stop()
+        assert status == WorkflowResultStatus.SUCCESS
+
     def test_simple(self):
         workflow_config = deepcopy(self.ingestion_config)
         workflow_config["source"]["sourceConfig"]["config"].update(
@@ -239,6 +247,20 @@ class NoSQLProfiler(TestCase):
                     assert c1.name == c2.name
                     assert c1.max == c2.max
                     assert c1.min == c2.min
+
+        auto_workflow_config = deepcopy(self.ingestion_config)
+        auto_workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
+            }
+        )
+        auto_workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {},
+        }
+        self.run_auto_classification_workflow(auto_workflow_config)
 
         table = self.metadata.get_by_name(
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
@@ -320,6 +342,28 @@ class NoSQLProfiler(TestCase):
             assert (len(column_profile.entities) > 0) == (
                 len(tc["expected"]["columns"]) > 0
             )
+
+        auto_workflow_config = deepcopy(self.ingestion_config)
+        auto_workflow_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
+            }
+        )
+        auto_workflow_config["processor"] = {
+            "type": "orm-profiler",
+            "config": {
+                "tableConfig": [
+                    {
+                        "fullyQualifiedName": f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}",
+                        "profileQuery": '{"age": %s}' % query_age,
+                    }
+                ],
+            },
+        }
+        self.run_auto_classification_workflow(auto_workflow_config)
+
         table = self.metadata.get_by_name(
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
         )

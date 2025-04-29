@@ -164,6 +164,11 @@ class SearchClassBase {
   public getGlobalSearchOptions() {
     return [
       { value: '', label: i18n.t('label.all') },
+      { value: SearchIndex.DATABASE, label: i18n.t('label.database') },
+      {
+        value: SearchIndex.DATABASE_SCHEMA,
+        label: i18n.t('label.database-schema'),
+      },
       { value: SearchIndex.TABLE, label: i18n.t('label.table') },
       { value: SearchIndex.TOPIC, label: i18n.t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: i18n.t('label.dashboard') },
@@ -257,7 +262,7 @@ class SearchClassBase {
       },
       {
         title: i18n.t('label.api-uppercase-plural'),
-        key: SearchIndex.API_ENDPOINT_INDEX,
+        key: SearchIndex.API_COLLECTION_INDEX,
         data: {
           isRoot: true,
           childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
@@ -269,7 +274,11 @@ class SearchClassBase {
         key: 'Governance',
         data: {
           isRoot: true,
-          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
+          childEntities: [
+            EntityType.TAG,
+            EntityType.GLOSSARY_TERM,
+            EntityType.METRIC,
+          ],
         },
         icon: GovernIcon,
         children: [
@@ -295,18 +304,20 @@ class SearchClassBase {
               dataId: 'Tags',
             },
           },
+          {
+            title: i18n.t('label.metric-plural'),
+            key: EntityType.METRIC,
+            isLeaf: true,
+            icon: MetricIcon,
+            data: {
+              entityType: EntityType.METRIC,
+              isStatic: true,
+              dataId: 'Metrics',
+            },
+          },
         ],
       },
-      {
-        title: i18n.t('label.metric-plural'),
-        key: EntityType.METRIC,
-        icon: MetricIcon,
-        data: {
-          entityType: EntityType.METRIC,
-          isRoot: true,
-          childEntities: [EntityType.METRIC],
-        },
-      },
+
       {
         title: i18n.t('label.domain-plural'),
         key: 'Domain',
@@ -346,20 +357,6 @@ class SearchClassBase {
 
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {
-      [SearchIndex.TABLE]: {
-        label: i18n.t('label.table-plural'),
-        sortingFields: tableSortingFields,
-        sortField: INITIAL_SORT_FIELD,
-        path: ExplorePageTabs.TABLES,
-        icon: TableIcon,
-      },
-      [SearchIndex.STORED_PROCEDURE]: {
-        label: i18n.t('label.stored-procedure-plural'),
-        sortingFields: entitySortingFields,
-        sortField: INITIAL_SORT_FIELD,
-        path: ExplorePageTabs.STORED_PROCEDURE,
-        icon: IconStoredProcedure,
-      },
       [SearchIndex.DATABASE]: {
         label: i18n.t('label.database-plural'),
         sortingFields: entitySortingFields,
@@ -373,6 +370,20 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE_SCHEMA,
         icon: SchemaIcon,
+      },
+      [SearchIndex.TABLE]: {
+        label: i18n.t('label.table-plural'),
+        sortingFields: tableSortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.TABLES,
+        icon: TableIcon,
+      },
+      [SearchIndex.STORED_PROCEDURE]: {
+        label: i18n.t('label.stored-procedure-plural'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.STORED_PROCEDURE,
+        icon: IconStoredProcedure,
       },
       [SearchIndex.DASHBOARD]: {
         label: i18n.t('label.dashboard-plural'),
@@ -536,7 +547,7 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE];
+    return [EntityType.TEST_CASE, EntityType.DOMAIN];
   }
 
   public getEntityBreadcrumbs(
@@ -552,7 +563,7 @@ class SearchClassBase {
   ): string | { pathname: string } {
     if (entity.entityType === EntityType.TEST_SUITE) {
       return getTestSuiteDetailsPath({
-        isExecutableTestSuite: (entity as TestSuite).executable,
+        isExecutableTestSuite: (entity as TestSuite).basic,
         fullyQualifiedName: entity.fullyQualifiedName ?? '',
       });
     }

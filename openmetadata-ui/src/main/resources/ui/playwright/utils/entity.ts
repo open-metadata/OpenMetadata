@@ -13,18 +13,24 @@
 import { expect, Page } from '@playwright/test';
 import { isEmpty, lowerCase } from 'lodash';
 import {
-  customFormatDateTime,
-  getCurrentMillis,
-  getEpochMillisForFutureDays,
-} from '../../src/utils/date-time/DateTimeUtils';
-import {
+  BIG_ENTITY_DELETE_TIMEOUT,
   ENTITIES_WITHOUT_FOLLOWING_BUTTON,
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { clickOutside, redirectToHomePage } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+} from './common';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from './dateTime';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -59,7 +65,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/users?limit=*&isBot=false*'
+      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -94,9 +100,9 @@ export const addOwner = async ({
     await patchRequest;
   }
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    owner
-  );
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
+  ).toBeVisible();
 };
 
 export const updateOwner = async ({
@@ -136,9 +142,9 @@ export const updateOwner = async ({
     await patchRequest;
   }
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    owner
-  );
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
+  ).toBeVisible();
 };
 
 export const removeOwnersFromList = async ({
@@ -169,8 +175,8 @@ export const removeOwnersFromList = async ({
 
   for (const ownerName of ownerNames) {
     await expect(
-      page.getByTestId(dataTestId ?? 'owner-link')
-    ).not.toContainText(ownerName);
+      page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
+    ).not.toBeVisible();
   }
 };
 
@@ -203,9 +209,9 @@ export const removeOwner = async ({
 
   await patchRequest;
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
-    ownerName
-  );
+  await expect(
+    page.getByTestId(dataTestId ?? 'owner-link').getByTestId(ownerName)
+  ).not.toBeVisible();
 };
 
 export const addMultiOwner = async (data: {
@@ -235,14 +241,20 @@ export const addMultiOwner = async (data: {
 
   await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   await page
     .locator("[data-testid='select-owner-tabs']")
     .getByRole('tab', { name: 'Users' })
     .click();
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 
   if (clearAll && isMultipleOwners) {
     await page.click('[data-testid="clear-all-button"]');
@@ -255,7 +267,10 @@ export const addMultiOwner = async (data: {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
 
     const ownerItem = page.getByRole('listitem', {
       name: ownerName,
@@ -288,9 +303,9 @@ export const addMultiOwner = async (data: {
   }
 
   for (const name of owners) {
-    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
-      name
-    );
+    await expect(
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+    ).toBeVisible();
   }
 };
 
@@ -309,21 +324,37 @@ export const assignTier = async (
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
 
-export const removeTier = async (page: Page) => {
+export const removeTier = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
   await page.getByTestId('clear-tier').click();
+  await patchRequest;
   await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
 
-export const updateDescription = async (page: Page, description: string) => {
+export const updateDescription = async (
+  page: Page,
+  description: string,
+  isModal = false
+) => {
   await page.getByTestId('edit-description').click();
-  await page.locator('.ProseMirror').first().click();
-  await page.locator('.ProseMirror').first().clear();
-  await page.locator('.ProseMirror').first().fill(description);
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
   await page.getByTestId('save').click();
+
+  if (isModal) {
+    await page.waitForSelector('[role="dialog"].description-markdown-editor', {
+      state: 'hidden',
+    });
+  }
 
   isEmpty(description)
     ? await expect(
@@ -337,10 +368,11 @@ export const updateDescription = async (page: Page, description: string) => {
 export const assignTag = async (
   page: Page,
   tag: string,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'KnowledgePanel.Tags'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -363,7 +395,7 @@ export const assignTag = async (
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId(parentId)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
@@ -424,7 +456,7 @@ export const assignTagToChildren = async ({
 export const removeTag = async (page: Page, tags: string[]) => {
   for (const tag of tags) {
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.Tags')
       .getByTestId('tags-container')
       .getByTestId('edit-button')
       .click();
@@ -451,7 +483,7 @@ export const removeTag = async (page: Page, tags: string[]) => {
 
     expect(
       page
-        .getByTestId('entity-right-panel')
+        .getByTestId('KnowledgePanel.Tags')
         .getByTestId('tags-container')
         .getByTestId(`tag-${tag}`)
     ).not.toBeVisible();
@@ -518,7 +550,7 @@ export const assignGlossaryTerm = async (
   action: 'Add' | 'Edit' = 'Add'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId('KnowledgePanel.GlossaryTerms')
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -542,7 +574,7 @@ export const assignGlossaryTerm = async (
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -603,7 +635,7 @@ export const removeGlossaryTerm = async (
 ) => {
   for (const tag of glossaryTerms) {
     await page
-      .getByTestId('entity-right-panel')
+      .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
@@ -631,7 +663,7 @@ export const removeGlossaryTerm = async (
 
     expect(
       page
-        .getByTestId('entity-right-panel')
+        .getByTestId('KnowledgePanel.GlossaryTerms')
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();
@@ -714,7 +746,9 @@ export const followEntity = async (
   await page.getByTestId('entity-follow-button').click();
   await followResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText('1');
+  await expect(page.getByTestId('entity-follow-button')).toContainText(
+    'Unfollow'
+  );
 };
 
 export const unFollowEntity = async (
@@ -727,7 +761,9 @@ export const unFollowEntity = async (
   await page.getByTestId('entity-follow-button').click();
   await unFollowResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText('0');
+  await expect(page.getByTestId('entity-follow-button')).toContainText(
+    'Follow'
+  );
 };
 
 export const validateFollowedEntityToWidget = async (
@@ -767,10 +803,7 @@ const announcementForm = async (
   await page.fill('#endTime', `${data.endDate}`);
   await page.press('#startTime', 'Enter');
 
-  await page.fill(
-    '.toastui-editor-md-container > .toastui-editor > .ProseMirror',
-    data.description
-  );
+  await page.locator(descriptionBox).fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
@@ -778,12 +811,12 @@ const announcementForm = async (
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
-  await page.click('.Toastify__close-button');
+  await page.click('[data-testid="announcement-close"]');
+  await page.click('[data-testid="alert-icon-close"]');
 };
 
 export const createAnnouncement = async (
   page: Page,
-  entityFqn: string,
   data: { title: string; description: string }
 ) => {
   await page.getByTestId('manage-button').click();
@@ -978,6 +1011,18 @@ export const checkForEditActions = async ({
     }
 
     if (entityType.startsWith('services/')) {
+      await page.getByRole('tab').nth(1).click();
+
+      await page.waitForLoadState('networkidle');
+
+      continue;
+    }
+
+    if (elementSelector === '[data-testid="entity-follow-button"]') {
+      deleted
+        ? await expect(page.locator(elementSelector)).not.toBeVisible()
+        : await expect(page.locator(elementSelector)).toBeVisible();
+
       continue;
     }
 
@@ -1080,9 +1125,6 @@ export const deletedEntityCommonChecks = async ({
 }) => {
   const isTableEntity = endPoint === EntityTypeEndpoint.Table;
 
-  // Go to first tab before starts validating
-  await page.click('.ant-tabs-tab:nth-child(1)');
-
   // Check if all the edit actions are available for the entity
   await checkForEditActions({
     page,
@@ -1158,7 +1200,7 @@ export const deletedEntityCommonChecks = async ({
     ).toBeVisible();
   }
 
-  await page.click('body');
+  await clickOutside(page);
 };
 
 export const restoreEntity = async (page: Page) => {
@@ -1168,11 +1210,7 @@ export const restoreEntity = async (page: Page) => {
   await page.click('[data-testid="restore-button"]');
   await page.click('button:has-text("Restore")');
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /restored successfully/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /restored successfully/);
 
   const exists = await page
     .locator('[data-testid="deleted-badge"]')
@@ -1193,7 +1231,7 @@ export const softDeleteEntity = async (
     deleted: false,
   });
 
-  await page.click('body'); // Equivalent to clicking outside
+  await clickOutside(page);
 
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
@@ -1205,21 +1243,21 @@ export const softDeleteEntity = async (
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
-    `/api/v1/${endPoint}/*?hardDelete=false&recursive=true`
+    `/api/v1/${endPoint}/async/*?hardDelete=false&recursive=true`
   );
   await page.click('[data-testid="confirm-button"]');
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
+  await toastNotification(
+    page,
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
   );
-
-  await page.click('.Toastify__close-button');
 
   await page.reload();
 
-  const deletedBadge = await page.locator('[data-testid="deleted-badge"]');
+  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
   await expect(deletedBadge).toHaveText('Deleted');
 
@@ -1229,16 +1267,16 @@ export const softDeleteEntity = async (
     deleted: true,
   });
 
-  await page.click('body'); // Equivalent to clicking outside
+  await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
     await page.click('[data-testid="breadcrumb-link"]:last-child');
     const deletedTableResponse = page.waitForResponse(
-      '/api/v1/tables?databaseSchema=*'
+      '/api/v1/tables?*databaseSchema=*'
     );
     await page.click('[data-testid="show-deleted"]');
     await deletedTableResponse;
-    const tableCount = await page.locator(
+    const tableCount = page.locator(
       '[data-testid="table"] [data-testid="count"]'
     );
 
@@ -1263,7 +1301,9 @@ export const hardDeleteEntity = async (
   endPoint: EntityTypeEndpoint
 ) => {
   await page.click('[data-testid="manage-button"]');
-  await page.click('[data-testid="delete-button"]');
+  await page.getByTestId('delete-button').click();
+
+  await page.waitForSelector('[role="dialog"].ant-modal');
 
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
@@ -1275,24 +1315,20 @@ export const hardDeleteEntity = async (
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
-    `/api/v1/${endPoint}/*?hardDelete=true&recursive=true`
+    `/api/v1/${endPoint}/async/*?hardDelete=true&recursive=true`
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
+  await toastNotification(
+    page,
+    /deleted successfully!/,
+    BIG_ENTITY_DELETE_TIMEOUT
   );
-
-  await page.click('.Toastify__close-button');
 };
 
-export const checkDataAssetWidget = async (
-  page: Page,
-  type: string,
-  index: string,
-  serviceType: string
-) => {
+export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
+  await clickOutside(page);
   const quickFilterResponse = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
@@ -1344,4 +1380,24 @@ export const getEntityDisplayName = (entity?: {
   displayName?: string;
 }) => {
   return entity?.displayName || entity?.name || '';
+};
+
+/**
+ *
+ * @param description HTML string
+ * @returns Text from HTML string
+ */
+export const getTextFromHtmlString = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return description.replace(/<[^>]*>/g, '').trim();
+};
+
+export const getFirstRowColumnLink = (page: Page) => {
+  return page
+    .getByTestId('databaseSchema-tables')
+    .locator('[data-testid="column-name"] a')
+    .first();
 };

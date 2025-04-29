@@ -36,10 +36,11 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,10 +86,12 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -131,6 +134,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String COLUMN_FIELD = "columns";
   public static final String CUSTOM_METRICS = "customMetrics";
+  private static final Set<String> CHANGE_SUMMARY_FIELDS =
+      Set.of("description", "owners", "columns.description");
 
   public TableRepository() {
     super(
@@ -139,7 +144,8 @@ public class TableRepository extends EntityRepository<Table> {
         Table.class,
         Entity.getCollectionDAO().tableDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
   }
 
@@ -622,7 +628,8 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = get(null, tableId, getFields(FIELD_OWNERS), NON_DELETED, false);
+    Table table =
+        get(null, tableId, getFields(Set.of(FIELD_OWNERS, FIELD_TAGS)), NON_DELETED, false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -676,6 +683,7 @@ public class TableRepository extends EntityRepository<Table> {
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+    validateTableConstraints(table);
   }
 
   @Override
@@ -693,6 +701,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Restore the relationships
     table.withColumns(columnWithTags).withService(service);
+    // Store ER relationships based on table constraints
+    addConstraintRelationship(table, table.getTableConstraints());
   }
 
   @Override
@@ -707,8 +717,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public EntityUpdater getUpdater(Table original, Table updated, Operation operation) {
-    return new TableUpdater(original, updated, operation);
+  public EntityUpdater getUpdater(
+      Table original, Table updated, Operation operation, ChangeSource changeSource) {
+    return new TableUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -771,30 +782,121 @@ public class TableRepository extends EntityRepository<Table> {
     Table table = (Table) entity;
     for (Column col : table.getColumns()) {
       if (col.getFullyQualifiedName().equals(columnFQN)) {
-        if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
-          List<TagLabel> tags = new ArrayList<>(col.getTags());
-          tags.addAll(suggestion.getTagLabels());
-          col.setTags(tags);
-        } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
-          col.setDescription(suggestion.getDescription());
-        } else {
-          throw new SuggestionException("Invalid suggestion Type");
+        applySuggestionToColumn(col, suggestion);
+      }
+      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
+        for (Column child : col.getChildren()) {
+          if (child.getFullyQualifiedName().equals(columnFQN)) {
+            applySuggestionToColumn(child, suggestion);
+          }
         }
       }
     }
     return table;
   }
 
+  public void applySuggestionToColumn(Column column, Suggestion suggestion) {
+    if (suggestion.getType().equals(SuggestionType.SuggestTagLabel)) {
+      List<TagLabel> tags = new ArrayList<>(column.getTags());
+      tags.addAll(suggestion.getTagLabels());
+      column.setTags(tags);
+    } else if (suggestion.getType().equals(SuggestionType.SuggestDescription)) {
+      column.setDescription(suggestion.getDescription());
+    } else {
+      throw new SuggestionException("Invalid suggestion Type");
+    }
+  }
+
   @Override
-  public String exportToCsv(String name, String user) throws IOException {
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     // Validate table
     Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
+  /**
+   * Export columns for a table, handling nested column structure
+   *
+   * @param table The table whose columns are being exported
+   * @param csvFile The CSV file to add column records to
+   */
+  public void exportColumnsRecursively(Table table, CsvFile csvFile) {
+    if (table.getColumns() != null && !table.getColumns().isEmpty()) {
+      for (Column column : table.getColumns()) {
+        addColumnRecord(csvFile, column, table.getFullyQualifiedName());
+      }
+    }
+  }
+
+  private void addColumnRecord(CsvFile csvFile, Column column, String tableFqn) {
+    // Create a record with fields in the exact order matching headers in tableCsvDocumentation.json
+    List<String> recordList = new ArrayList<>();
+
+    // Basic entity fields
+    addField(recordList, getLocalColumnName(tableFqn, column.getFullyQualifiedName())); // name
+    addField(recordList, column.getDisplayName()); // displayName
+    addField(recordList, column.getDescription()); // description
+
+    // Fields that should be empty for columns
+    addField(recordList, ""); // owner (empty for columns)
+
+    // Column-specific fields that may have values
+    addTagLabels(recordList, column.getTags()); // tags
+    addGlossaryTerms(recordList, column.getTags()); // glossaryTerms
+
+    // More fields that should be empty for columns
+    addField(recordList, ""); // tiers (empty for columns)
+    addField(recordList, ""); // retentionPeriod (empty for columns)
+    addField(recordList, ""); // sourceUrl (empty for columns)
+    addField(recordList, ""); // domain (empty for columns)
+    addField(recordList, ""); // extension (empty for columns)
+
+    // Metadata fields - IMPORTANT: These need to be in the same position for all entity types
+    addField(recordList, "column"); // entityType
+    addField(recordList, column.getFullyQualifiedName()); // fullyQualifiedName
+
+    // Column data type fields - these should be added at the end
+    addField(recordList, column.getDataTypeDisplay()); // column.dataTypeDisplay
+
+    String dataTypeValue = column.getDataType() == null ? null : column.getDataType().value();
+    String arrayDataTypeValue =
+        column.getArrayDataType() == null ? null : column.getArrayDataType().value();
+
+    if (ColumnDataType.ARRAY.value().equals(dataTypeValue) && arrayDataTypeValue == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Column %s has dataType=ARRAY but missing arrayDataType",
+              column.getFullyQualifiedName()));
+    }
+
+    addField(recordList, dataTypeValue); // column.dataType
+    addField(recordList, arrayDataTypeValue);
+    addField(
+        recordList,
+        column.getDataLength() == null
+            ? null
+            : String.valueOf(column.getDataLength())); // column.dataLength
+
+    // Add directly to the CSV file without using HierarchyCSVImporter
+    // Since we've manually built the record in the correct order
+    List<List<String>> records = csvFile.getRecords();
+    if (records == null) {
+      records = new ArrayList<>();
+      csvFile.withRecords(records);
+    }
+    records.add(recordList);
+
+    // Process child columns recursively
+    if (column.getChildren() != null && !column.getChildren().isEmpty()) {
+      for (Column childColumn : column.getChildren()) {
+        addColumnRecord(csvFile, childColumn, tableFqn);
+      }
+    }
+  }
+
   @Override
-  public CsvImportResult importFromCsv(String name, String csv, boolean dryRun, String user)
-      throws IOException {
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
     // Validate table
     Table table =
         getByName(
@@ -1004,7 +1106,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private TableJoins getJoins(Table table) {
-    String today = RestUtil.DATE_FORMAT.format(new Date());
+    String today = RestUtil.DATE_FORMAT.format(LocalDate.now());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     return new TableJoins()
         .withStartDate(todayMinus30Days)
@@ -1117,31 +1219,87 @@ public class TableRepository extends EntityRepository<Table> {
     return customMetrics;
   }
 
+  private void validateTableConstraints(Table table) {
+    if (!nullOrEmpty(table.getTableConstraints())) {
+      Set<TableConstraint> constraintSet = new HashSet<>();
+      for (TableConstraint constraint : table.getTableConstraints()) {
+        if (!constraintSet.add(constraint)) {
+          throw new EntitySpecViolationException(
+              "Duplicate constraint found in request: " + constraint);
+        }
+        for (String column : constraint.getColumns()) {
+          validateColumn(table, column);
+        }
+        if (!nullOrEmpty(constraint.getReferredColumns())) {
+          for (String column : constraint.getReferredColumns()) {
+            String toParent = FullyQualifiedName.getParentFQN(column);
+            String columnName = FullyQualifiedName.getColumnName(column);
+            try {
+              Table toTable = findByName(toParent, ALL);
+              validateColumn(toTable, columnName);
+            } catch (EntityNotFoundException e) {
+              throw new EntitySpecViolationException("Table not found: " + toParent);
+            }
+          }
+        }
+      }
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends ColumnEntityUpdater {
-    public TableUpdater(Table original, Table updated, Operation operation) {
-      super(original, updated, operation);
+    public TableUpdater(
+        Table original, Table updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       Table origTable = original;
       Table updatedTable = updated;
       DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
-      updateConstraints(origTable, updatedTable);
+      updateTableConstraints(origTable, updatedTable, operation);
+      updateProcessedLineage(origTable, updatedTable);
       updateColumns(
           COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
+      recordChange(
+          "processedLineage", original.getProcessedLineage(), updated.getProcessedLineage());
     }
 
-    private void updateConstraints(Table origTable, Table updatedTable) {
+    private void updateProcessedLineage(Table origTable, Table updatedTable) {
+      // if schema definition changes make processed lineage false
+      if (origTable.getProcessedLineage().booleanValue()
+          && origTable.getSchemaDefinition() != null
+          && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
+        updatedTable.setProcessedLineage(false);
+      }
+    }
+
+    private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
+      validateTableConstraints(updatedTable);
+      if (operation.isPatch()
+          && !nullOrEmpty(updatedTable.getTableConstraints())
+          && !nullOrEmpty(origTable.getTableConstraints())) {
+        List<TableConstraint> newConstraints = new ArrayList<>();
+        for (TableConstraint constraint : updatedTable.getTableConstraints()) {
+          TableConstraint existing =
+              origTable.getTableConstraints().stream()
+                  .filter(c -> EntityUtil.tableConstraintMatch.test(c, constraint))
+                  .findAny()
+                  .orElse(null);
+          if (existing == null) {
+            newConstraints.add(constraint);
+          }
+        }
+        checkDuplicateTableConstraints(origTable, newConstraints);
+      }
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
-
       origConstraints.sort(EntityUtil.compareTableConstraint);
       origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
 
@@ -1157,11 +1315,71 @@ public class TableRepository extends EntityRepository<Table> {
           added,
           deleted,
           EntityUtil.tableConstraintMatch);
+
+      // manage table ER relationship based on table constraints
+      addConstraintRelationship(origTable, added);
+      deleteConstraintRelationship(origTable, deleted);
+    }
+  }
+
+  private void checkDuplicateTableConstraints(
+      Table origTable, List<TableConstraint> newConstraints) {
+    if (!nullOrEmpty(origTable.getTableConstraints()) && !nullOrEmpty(newConstraints)) {
+      Set<TableConstraint> origConstraints =
+          new HashSet<>(listOrEmpty(origTable.getTableConstraints()));
+      for (TableConstraint constraint : newConstraints) {
+        if (!origConstraints.add(constraint)) {
+          throw new EntitySpecViolationException("Table Constraint is Duplicate: " + constraint);
+        }
+      }
+    }
+  }
+
+  private void addConstraintRelationship(Table table, List<TableConstraint> constraints) {
+    if (!nullOrEmpty(constraints)) {
+      for (TableConstraint constraint : constraints) {
+        if (!nullOrEmpty(constraint.getReferredColumns())) {
+          for (String column : constraint.getReferredColumns()) {
+            String toParent = FullyQualifiedName.getParentFQN(column);
+            try {
+              EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
+              addRelationship(
+                  table.getId(), toTable.getId(), TABLE, TABLE, Relationship.RELATED_TO);
+            } catch (EntityNotFoundException e) {
+              throw EntityNotFoundException.byName(
+                  String.format(
+                      "Failed to add table constraint due to missing table %s", toParent));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private void deleteConstraintRelationship(Table table, List<TableConstraint> constraints) {
+    if (!nullOrEmpty(constraints)) {
+      for (TableConstraint constraint : constraints) {
+        if (!nullOrEmpty(constraint.getReferredColumns())) {
+          for (String column : constraint.getReferredColumns()) {
+            String toParent = FullyQualifiedName.getParentFQN(column);
+            try {
+              EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
+              deleteRelationship(
+                  table.getId(), TABLE, toTable.getId(), TABLE, Relationship.RELATED_TO);
+              searchRepository.deleteRelationshipFromSearch(table.getId(), toTable.getId());
+            } catch (EntityNotFoundException e) {
+              throw EntityNotFoundException.byName(
+                  String.format(
+                      "Failed to add table constraint due to missing table %s", toParent));
+            }
+          }
+        }
+      }
     }
   }
 
   public static class TableCsv extends EntityCsv<Table> {
-    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TABLE);
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TABLE, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
 
     private final Table table;
@@ -1177,34 +1395,38 @@ public class TableRepository extends EntityRepository<Table> {
       // column.dataTypeDisplay,column.dataType, column.arrayDataType, column.dataLength,
       // column.tags, column.glossaryTerms
       Table originalEntity = JsonUtils.deepCopy(table, Table.class);
-      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      if (csvRecord != null) {
-        updateColumnsFromCsv(printer, csvRecord);
+      while (recordIndex < csvRecords.size()) {
+        CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+        if (csvRecord != null) {
+          updateColumnsFromCsv(printer, csvRecord);
+          String violations = ValidatorUtil.validate(table);
+          if (violations != null) {
+            // JSON schema based validation failed for the entity
+            importFailure(printer, violations, csvRecord);
+            return;
+          }
+        }
       }
+
       if (processRecord) {
-        patchColumns(originalEntity, printer, csvRecord, table);
+        patchColumns(originalEntity, printer, csvRecords, table);
       }
     }
 
     private void patchColumns(
-        Table originalTable, CSVPrinter resultsPrinter, CSVRecord csvRecord, Table entity)
+        Table originalTable, CSVPrinter resultsPrinter, List<CSVRecord> records, Table entity)
         throws IOException {
       EntityRepository<Table> repository =
           (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
-      // Validate
-      String violations = ValidatorUtil.validate(entity);
-      if (violations != null) {
-        // JSON schema based validation failed for the entity
-        importFailure(resultsPrinter, violations, csvRecord);
-        return;
-      }
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
           repository.patch(null, table.getId(), importedBy, jsonPatch);
         } catch (Exception ex) {
-          importFailure(resultsPrinter, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
+          for (int i = 1; i < records.size(); i++) {
+            importFailure(resultsPrinter, ex.getMessage(), records.get(i));
+            importResult.setStatus(ApiStatus.FAILURE);
+          }
           return;
         }
       } else { // Dry run don't create the entity
@@ -1216,7 +1438,9 @@ public class TableRepository extends EntityRepository<Table> {
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
       }
 
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+      for (int i = 1; i < records.size(); i++) {
+        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
+      }
     }
 
     public void updateColumnsFromCsv(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
@@ -1331,6 +1555,22 @@ public class TableRepository extends EntityRepository<Table> {
         }
       }
       return null;
+    }
+  }
+
+  private static void validateTableColumns(List<Column> columns) {
+    if (columns == null) return;
+
+    for (Column column : columns) {
+      if (column.getDataType() == ColumnDataType.VARCHAR) {
+        if (column.getDataLength() == null || column.getDataLength() <= 0) {
+          throw new IllegalArgumentException(
+              "Data length is mandatory for VARCHAR columns: " + column.getName());
+        }
+      }
+      if (column.getChildren() != null) {
+        validateTableColumns(column.getChildren());
+      }
     }
   }
 }

@@ -155,32 +155,6 @@ public class TestCaseResolutionStatusRepository
     return JsonUtils.readValue(jsonThread, Thread.class);
   }
 
-  /**
-   * Ensure we are following the correct status flow
-   */
-  private void validateStatus(
-      TestCaseResolutionStatusTypes lastStatus, TestCaseResolutionStatusTypes newStatus) {
-    switch (lastStatus) {
-      case New -> {
-        /* New can go to any status */
-      }
-      case Ack -> {
-        if (newStatus.equals(TestCaseResolutionStatusTypes.New)) {
-          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
-        }
-      }
-      case Assigned -> {
-        if (List.of(TestCaseResolutionStatusTypes.New, TestCaseResolutionStatusTypes.Ack)
-            .contains(newStatus)) {
-          throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
-        }
-      }
-        // We only validate status if the last one is unresolved, so we should
-        // never land here
-      default -> throw IncidentManagerException.invalidStatus(lastStatus, newStatus);
-    }
-  }
-
   @Override
   @Transaction
   public void storeInternal(
@@ -195,9 +169,6 @@ public class TestCaseResolutionStatusRepository
     // if we have an ongoing incident, set the stateId if the new record to be created
     // and validate the flow
     if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
-      validateStatus(
-          lastIncident.getTestCaseResolutionStatusType(),
-          recordEntity.getTestCaseResolutionStatusType());
       // If there is an unresolved incident update the state ID
       recordEntity.setStateId(lastIncident.getStateId());
       // If the last incident had a severity assigned and the incoming incident does not, inherit
@@ -399,12 +370,6 @@ public class TestCaseResolutionStatusRepository
             Include.ALL);
     Severity severity = incidentSeverityClassifier.classifyIncidentSeverity(entity);
     incident.setSeverity(severity);
-  }
-
-  public void deleteTestCaseFailedSamples(TestCaseResolutionStatus entity) {
-    TestCaseRepository testCaseRepository =
-        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    testCaseRepository.deleteTestCaseFailedRowsSample(entity.getTestCaseReference().getId());
   }
 
   public static String addOriginEntityFQNJoin(ListFilter filter, String condition) {

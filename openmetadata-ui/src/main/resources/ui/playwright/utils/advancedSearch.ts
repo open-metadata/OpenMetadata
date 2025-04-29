@@ -44,12 +44,12 @@ export const FIELDS: EntityFields[] = [
   },
   {
     id: 'Database',
-    name: 'database.displayName',
+    name: 'database.displayName.keyword',
     localSearch: false,
   },
   {
     id: 'Database Schema',
-    name: 'databaseSchema.displayName',
+    name: 'databaseSchema.displayName.keyword',
     localSearch: false,
   },
   {
@@ -62,6 +62,77 @@ export const FIELDS: EntityFields[] = [
     name: 'displayName.keyword',
     localSearch: false,
     skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for display name
+  },
+  {
+    id: 'Service Type',
+    name: 'serviceType',
+    localSearch: false,
+  },
+  {
+    id: 'Schema Field',
+    name: 'messageSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Container Column',
+    name: 'dataModel.columns.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Data Model Type',
+    name: 'dataModelType',
+    localSearch: false,
+  },
+  {
+    id: 'Field',
+    name: 'fields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Task',
+    name: 'tasks.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Domain',
+    name: 'domain.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Name',
+    name: 'name.keyword',
+    localSearch: false,
+    skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for name
+  },
+  {
+    id: 'Project',
+    name: 'project.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Status',
+    name: 'status',
+    localSearch: false,
+  },
+  {
+    id: 'Table Type',
+    name: 'tableType',
+    localSearch: false,
+  },
+  {
+    id: 'Chart',
+    name: 'charts.displayName.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Response Schema Field',
+    name: 'responseSchema.schemaFields.name.keyword',
+    localSearch: false,
+  },
+  {
+    id: 'Request Schema Field',
+    name: 'requestSchema.schemaFields.name.keyword',
+    localSearch: false,
   },
 ];
 
@@ -123,7 +194,7 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };
 
-const selectOption = async (
+export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
   optionTitle: string

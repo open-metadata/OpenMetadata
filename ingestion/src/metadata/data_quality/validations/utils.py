@@ -2,7 +2,7 @@
 Data quality validation utility functions.
 """
 
-from typing import Callable, List, Optional, TypeVar, Union
+from typing import Any, Callable, List, Optional, TypeVar, Union
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 
@@ -54,3 +54,14 @@ def get_bool_test_case_param(
     if str_val is None:
         return False
     return str_val.lower() == "true"
+
+
+def casefold_if_string(value: Any) -> Any:
+    """Case fold the value if it is a string.
+
+    Args:
+        value (Any): value to case fold
+    Returns:
+        Any: case folded value
+    """
+    return value.casefold() if isinstance(value, str) else value

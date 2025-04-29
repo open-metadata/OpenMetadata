@@ -20,7 +20,7 @@ import {
 } from './AdvanceSearchProvider.component';
 
 jest.mock('../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: jest.fn().mockResolvedValue({}),
+  getAllCustomProperties: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../rest/tagAPI', () => ({
@@ -63,6 +63,19 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
+}));
+
+jest.mock('../../../utils/AdvancedSearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getURLSearchParams: jest.fn().mockReturnValue({}),
+    getQueryFilters: jest.fn().mockReturnValue({}),
+    buildQueryFilter: jest.fn().mockReturnValue({}),
+    createQueryFilter: jest.fn().mockReturnValue({}),
+    handleAdvanceSearchClick: jest.fn(),
+    autocomplete: jest.fn(),
+    getQbConfigs: jest.fn().mockReturnValue({}),
+  },
 }));
 
 const Children = () => {

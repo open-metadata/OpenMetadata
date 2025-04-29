@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SetGlossaryTermStatusTaskDefinition",
+  "description": "Sets the GlossaryTerm Status to the configured value.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "setGlossaryTermStatusTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "glossaryTermStatus": {
+          "title": "Glossary Term Status",
+          "description": "Choose which Status to apply to the Glossary Term",
+          "$ref": "../../../../../entity/data/glossaryTerm.json#/definitions/status"
+        }
+      },
+      "required": ["glossaryTermStatus"],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity", "updatedBy"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        },
+        "updatedBy": {
+          "type": "string",
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    }
+  }
+}

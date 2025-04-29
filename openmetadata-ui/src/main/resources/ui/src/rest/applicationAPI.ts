@@ -14,7 +14,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { DataInsightLatestRun } from '../components/Settings/Applications/AppDetails/AppDetails.interface';
-import { App } from '../generated/entity/applications/app';
+import { AgentType, App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
 import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -25,12 +25,13 @@ import APIClient from './index';
 const BASE_URL = '/apps';
 
 type AppListParams = ListParams & {
+  agentType?: AgentType;
   offset?: number;
   startTs?: number;
   endTs?: number;
 };
 
-export const getApplicationList = async (params?: ListParams) => {
+export const getApplicationList = async (params?: AppListParams) => {
   const response = await APIClient.get<PagingResponse<App[]>>(BASE_URL, {
     params,
   });
@@ -109,8 +110,11 @@ export const patchApplication = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const triggerOnDemandApp = (appName: string): Promise<AxiosResponse> => {
-  return APIClient.post(`${BASE_URL}/trigger/${getEncodedFqn(appName)}`, {});
+export const triggerOnDemandApp = (
+  appName: string,
+  data?: Record<string, unknown>
+): Promise<AxiosResponse> => {
+  return APIClient.post(`${BASE_URL}/trigger/${getEncodedFqn(appName)}`, data);
 };
 
 export const deployApp = (appName: string): Promise<AxiosResponse> => {
@@ -134,4 +138,16 @@ export const restoreApp = async (id: string) => {
   );
 
   return response.data;
+};
+
+export const stopApp = async (name: string) => {
+  return await APIClient.post(`${BASE_URL}/stop/${getEncodedFqn(name)}`);
+};
+
+export const getApplicationLogs = (appName: string, after?: string) => {
+  return APIClient.get(`${BASE_URL}/name/${appName}/logs`, {
+    params: {
+      after,
+    },
+  });
 };

@@ -10,86 +10,129 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Tooltip, Typography } from 'antd';
+import { Card, Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import React, { FC, Fragment, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { EditIconButton } from '../../../components/common/IconButtons/EditIconButton';
+import TagButton from '../../../components/common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { SUPPORTED_TABLE_CONSTRAINTS } from '../../../constants/Table.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
-
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { tableConstraintRendererBasedOnType } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
-import PrimaryKeyConstraint from './PrimaryKeyConstraint';
 import './table-constraints.less';
+import TableConstraintsModal from './TableConstraintsModal/TableConstraintsModal.component';
 
-interface TableConstraintsProps {
-  constraints: Table['tableConstraints'];
-}
-
-const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
+const TableConstraints = ({ newLook = false }: { newLook?: boolean }) => {
   const { t } = useTranslation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data, permissions, onUpdate } = useGenericContext<Table>();
 
-  const supportedConstraints = useMemo(
-    () =>
-      constraints?.filter((constraint) =>
-        SUPPORTED_TABLE_CONSTRAINTS.includes(
-          constraint.constraintType as ConstraintType
-        )
-      ) ?? [],
-    [constraints]
+  const { deleted } = data ?? {};
+
+  const hasPermission = useMemo(
+    () => permissions.EditAll && !deleted,
+    [permissions, deleted]
   );
 
-  if (isEmpty(supportedConstraints)) {
-    return null;
-  }
+  const handleOpenEditConstraintModal = useCallback(
+    () => setIsModalOpen(true),
+    []
+  );
+  const handleCloseEditConstraintModal = useCallback(
+    () => setIsModalOpen(false),
+    []
+  );
 
-  return (
-    <Space className="p-b-sm" direction="vertical">
-      <Typography.Text className="right-panel-label">
+  const handleSubmit = async (values: Table['tableConstraints']) => {
+    await onUpdate({ ...data, tableConstraints: values });
+    setIsModalOpen(false);
+  };
+
+  const header = (
+    <Space size="middle">
+      <Typography.Text
+        className={classNames({
+          'text-sm font-medium': newLook,
+          'right-panel-label': !newLook,
+        })}>
         {t('label.table-constraints')}
       </Typography.Text>
-      {supportedConstraints.map(
-        ({ constraintType, columns, referredColumns }, index) => {
-          if (constraintType === ConstraintType.PrimaryKey) {
-            return (
-              <div className="d-flex constraint-columns" key={index}>
-                <Space
-                  className="constraint-icon-container"
-                  direction="vertical"
-                  size={0}>
-                  {columns?.map((column, index) => (
-                    <Fragment key={column}>
-                      {(columns?.length ?? 0) - 1 !== index ? (
-                        <PrimaryKeyConstraint />
-                      ) : null}
-                    </Fragment>
-                  ))}
-                </Space>
 
-                <Space direction="vertical" size={16}>
-                  {columns?.map((column) => (
-                    <Typography.Text
-                      className="w-60"
-                      ellipsis={{ tooltip: true }}
-                      key={column}>
-                      {column}
-                    </Typography.Text>
-                  ))}
-                </Space>
-              </div>
+      {hasPermission && !isEmpty(data?.tableConstraints) && (
+        <EditIconButton
+          data-testid="edit-table-constraint-button"
+          newLook={newLook}
+          size="small"
+          onClick={handleOpenEditConstraintModal}
+        />
+      )}
+    </Space>
+  );
+
+  const content = (
+    <Space className="w-full new-header-border-card" direction="vertical">
+      {newLook ? null : header}
+
+      {hasPermission && isEmpty(data?.tableConstraints) && (
+        <TagButton
+          className="text-primary cursor-pointer"
+          dataTestId="table-constraints-add-button"
+          icon={<PlusIcon height={16} name="plus" width={16} />}
+          label={t('label.add')}
+          tooltip=""
+          onClick={handleOpenEditConstraintModal}
+        />
+      )}
+
+      {data?.tableConstraints?.map(
+        ({ constraintType, columns, referredColumns }) => {
+          if (constraintType === ConstraintType.PrimaryKey) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.PrimaryKey,
+              columns
+            );
+          }
+
+          if (constraintType === ConstraintType.SortKey) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.SortKey,
+              columns
+            );
+          }
+
+          if (constraintType === ConstraintType.DistKey) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.DistKey,
+              columns
+            );
+          }
+
+          if (constraintType === ConstraintType.Unique) {
+            return tableConstraintRendererBasedOnType(
+              ConstraintType.Unique,
+              columns
             );
           }
           if (constraintType === ConstraintType.ForeignKey) {
             return (
-              <Space className="constraint-columns" key={index}>
+              <div
+                className="d-flex gap-2 constraint-columns"
+                data-testid={`${ConstraintType.ForeignKey}-container`}
+                key={ConstraintType.ForeignKey}>
                 <ForeignKeyConstraint />
-                <Space direction="vertical" size={16}>
-                  <Typography.Text>{columns?.join(', ')}</Typography.Text>
-                  <div data-testid="referred-column-name">
+                <div className="d-flex flex-column gap-2">
+                  <Typography.Text data-testid="constraint-column-name">
+                    {columns?.join(', ')}
+                  </Typography.Text>
+                  <div data-testid="referred-column-name-fqn">
                     {map(referredColumns, (referredColumn) => (
                       <Tooltip
                         placement="top"
@@ -117,16 +160,34 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
                       </Tooltip>
                     ))}
                   </div>
-                </Space>
-              </Space>
+                </div>
+              </div>
             );
           }
 
           return null;
         }
       )}
+      {isModalOpen && (
+        <TableConstraintsModal
+          constraint={data?.tableConstraints}
+          tableDetails={data}
+          onClose={handleCloseEditConstraintModal}
+          onSave={handleSubmit}
+        />
+      )}
     </Space>
   );
+
+  if (newLook) {
+    return (
+      <Card className="w-full new-header-border-card" title={header}>
+        {content}
+      </Card>
+    );
+  }
+
+  return content;
 };
 
 export default TableConstraints;

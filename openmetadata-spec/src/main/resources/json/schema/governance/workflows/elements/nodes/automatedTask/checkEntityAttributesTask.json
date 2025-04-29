@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/checkEntityAttributesTask.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CheckEntityAttributesTaskDefinition",
+  "description": "Checks if an Entity attributes fit given rules.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "checkEntityAttributesTask"
+    },
+    "name": {
+      "title": "Name",
+      "description": "Name that identifies this Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "title": "Display Name",
+      "description": "Display Name that identifies this Node.",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "description": "Description of the Node.",
+      "$ref": "../../../../../type/basic.json#/definitions/markdown"
+    },
+    "config": {
+      "title": "Node Configuration",
+      "type": "object",
+      "properties": {
+        "rules": {
+          "title": "Rules to Check",
+          "description": "Define certain set of rules that you would like to check. If all the rules apply, this will be set as 'True' and will continue through the positive flow. Otherwise it will be set to 'False' and continue through the negative flow.",
+          "type": "string",
+          "outputType": "jsonlogic",
+          "format": "queryBuilder"
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["relatedEntity"],
+      "additionalItems": false,
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["relatedEntity"]
+    },
+    "branches": {
+      "type": "array",
+      "items": { "type":  "string" },
+      "default": ["true", "false"],
+      "additionalItems": false,
+      "minItems": 2,
+      "maxItems": 2
+    }
+  }
+}

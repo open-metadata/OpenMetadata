@@ -127,7 +127,10 @@ public class DashboardServiceResourceTest
                     .withPassword(password));
 
     CreateDashboardService update =
-        createRequest(test).withDescription("description1").withConnection(dashboardConnection1);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(dashboardConnection1)
+            .withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -160,7 +163,10 @@ public class DashboardServiceResourceTest
     DashboardConnection dashboardConnection2 =
         new DashboardConnection().withConfig(metabaseConnection);
     update =
-        createRequest(test).withDescription("description1").withConnection(dashboardConnection2);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(dashboardConnection2)
+            .withName(service.getName());
 
     fieldUpdated(change, "connection", dashboardConnection1, dashboardConnection2);
     updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);

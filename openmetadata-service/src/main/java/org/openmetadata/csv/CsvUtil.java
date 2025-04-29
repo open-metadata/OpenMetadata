@@ -135,12 +135,14 @@ public final class CsvUtil {
 
     CSVFormat format =
         CSVFormat.DEFAULT
-            .withDelimiter(';')
-            .withQuote('"')
-            .withRecordSeparator(null)
-            .withIgnoreSurroundingSpaces(true)
-            .withIgnoreEmptyLines(true)
-            .withEscape('\\'); // Use backslash for escaping special characters
+            .builder()
+            .setDelimiter(';')
+            .setQuote('"')
+            .setRecordSeparator(null)
+            .setIgnoreSurroundingSpaces(true)
+            .setIgnoreEmptyLines(true)
+            .setEscape('\\')
+            .build(); // Use backslash for escaping special characters
 
     try (CSVParser parser = CSVParser.parse(new StringReader(preprocessedField), format)) {
       return parser.getRecords().stream()
@@ -179,7 +181,8 @@ public final class CsvUtil {
 
     preprocessedField = preprocessedField.replace("\n", "\\n").replace("\"", "\\\"");
 
-    CSVFormat format = CSVFormat.DEFAULT.withDelimiter(',').withQuote('"').withEscape('\\');
+    CSVFormat format =
+        CSVFormat.DEFAULT.builder().setDelimiter(',').setQuote('"').setEscape('\\').build();
 
     List<String> columns;
     try (CSVParser parser = CSVParser.parse(new StringReader(preprocessedField), format)) {

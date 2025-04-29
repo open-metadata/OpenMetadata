@@ -1,0 +1,76 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import url('../../../styles/variables.less');
+
+.term-boost {
+  background-color: @white;
+  border: 1px solid @grey-100;
+  border-radius: 12px;
+}
+
+.delete-term-boost {
+  color: @red-12;
+  background-color: @red-9;
+  border: 1px solid @red-13;
+  border-radius: 8px;
+  &:hover {
+    color: @red-12;
+    background-color: @red-9;
+    border: 1px solid @red-13;
+  }
+}
+
+.boost-value {
+  color: @blue-3;
+}
+
+.config-section-content {
+  border: 1px solid @border-color-4;
+}
+
+.custom-select {
+  .ant-select-selector {
+    padding-left: 0;
+    padding-right: 0;
+    border: none !important;
+  }
+
+  .ant-select-focused .ant-select-selector,
+  .ant-select-selector:focus,
+  .ant-select-selector:active,
+  .ant-select-open .ant-select-selector {
+    border: none;
+    box-shadow: none;
+  }
+
+  &.ant-select-focused:not(.ant-select-disabled):not(.ant-select-customize-input):not(.ant-select-borderless)
+    .ant-select-selector {
+    border: none;
+    box-shadow: none;
+  }
+
+  &.ant-select-disabled {
+    .ant-select-selector {
+      background-color: transparent;
+      color: @black;
+    }
+  }
+}
+
+.config-section-content
+  .ant-select-disabled.ant-select:not(.ant-select-customize-input)
+  .ant-select-selector {
+  background-color: transparent;
+  color: @black;
+  cursor: default;
+}

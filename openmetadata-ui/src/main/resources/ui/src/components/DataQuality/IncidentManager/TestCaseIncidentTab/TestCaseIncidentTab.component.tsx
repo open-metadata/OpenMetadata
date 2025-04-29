@@ -22,7 +22,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check.svg';
-import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task.svg';
+import { ReactComponent as TaskIcon } from '../../../../assets/svg/ic-task-new.svg';
 import { observerOptions } from '../../../../constants/Mydata.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ThreadType } from '../../../../generated/api/feed/createThread';
@@ -133,7 +133,9 @@ const TestCaseIncidentTab = () => {
   };
 
   return (
-    <div className="incident-page-issue-tab" data-testid="issue-tab-container">
+    <div
+      className="h-full incident-page-issue-tab"
+      data-testid="issue-tab-container">
       <div
         className="left-container"
         data-testid="left-container"

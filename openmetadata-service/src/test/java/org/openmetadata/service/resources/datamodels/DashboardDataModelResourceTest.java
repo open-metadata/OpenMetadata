@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
@@ -196,10 +197,8 @@ public class DashboardDataModelResourceTest
                 dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
-    assertListNull(
-        dashboardDataModel.getOwners(),
-        dashboardDataModel.getFollowers(),
-        dashboardDataModel.getTags());
+    assertListNull(dashboardDataModel.getOwners(), dashboardDataModel.getFollowers());
+    assertTrue(dashboardDataModel.getTags().isEmpty());
 
     // .../datamodels?fields=owner
     fields = "owners,followers,tags";

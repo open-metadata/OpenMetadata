@@ -23,7 +23,6 @@ import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersi
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getVersionPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
@@ -34,9 +33,11 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
+import { getVersionPath } from '../../utils/RouterUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
 import Loader from '../common/Loader/Loader';
 import TabsLabel from '../common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import VersionTable from '../Entity/VersionTable/VersionTable.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
@@ -129,7 +130,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
           <TabsLabel id={EntityTabs.FIELDS} name={t('label.field-plural')} />
         ),
         children: (
-          <Row gutter={[0, 16]} wrap={false}>
+          <Row className="h-full" gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
               <Row gutter={[0, 16]}>
                 <Col span={24}>
@@ -187,7 +188,6 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         children: (
           <CustomPropertyTable
             isVersionView
-            entityDetails={currentVersionData}
             entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={false}
             hasPermission={entityPermissions.ViewAll}
@@ -221,13 +221,22 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 onVersionClick={backHandler}
               />
             </Col>
-            <Col span={24}>
-              <Tabs
-                defaultActiveKey={tab ?? EntityTabs.FIELDS}
-                items={tabItems}
-                onChange={handleTabChange}
-              />
-            </Col>
+            <GenericProvider
+              isVersionView
+              currentVersionData={currentVersionData}
+              data={currentVersionData}
+              permissions={entityPermissions}
+              type={EntityType.SEARCH_INDEX}
+              onUpdate={() => Promise.resolve()}>
+              <Col className="entity-version-page-tabs" span={24}>
+                <Tabs
+                  className="tabs-new"
+                  defaultActiveKey={tab}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
+              </Col>
+            </GenericProvider>
           </Row>
         </div>
       )}

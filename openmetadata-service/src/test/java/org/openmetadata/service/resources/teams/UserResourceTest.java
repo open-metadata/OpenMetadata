@@ -57,9 +57,7 @@ import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_PERMISSION_NAME;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertDeleted;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -139,6 +137,8 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
@@ -752,17 +752,20 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withIsBot(true)
         .withIsAdmin(false);
 
-    change = getChangeDescription(user, CHANGE_CONSOLIDATED);
+    change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "roles", listOf(role2));
-    fieldDeleted(change, "teams", listOf(ORG_TEAM.getEntityReference()));
-    fieldAdded(change, "teams", teams1);
-    fieldAdded(change, "timezone", timezone1);
-    fieldAdded(change, "displayName", "displayName1");
-    fieldAdded(change, "profile", profile1);
+    fieldAdded(change, "teams", listOf(team3));
+
+    fieldDeleted(change, "roles", listOf(role1));
+    fieldDeleted(change, "teams", listOf(team2));
+    fieldDeleted(change, "personas", List.of(DATA_SCIENTIST.getEntityReference()));
+
+    fieldUpdated(change, "displayName", "displayName", "displayName1");
+    fieldUpdated(change, "profile", profile, profile1);
+    fieldUpdated(change, "timezone", timezone, timezone1);
     fieldUpdated(change, "isBot", false, true);
-    fieldAdded(change, "defaultPersona", DATA_SCIENTIST.getEntityReference());
-    fieldAdded(change, "personas", List.of(DATA_ENGINEER.getEntityReference()));
-    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    user = patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     //
     // Remove the attributes - Consolidating changes from this patch with previous results in no
@@ -778,11 +781,6 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         .withPersonas(null)
         .withIsBot(null)
         .withIsAdmin(false);
-
-    // Note non-empty display field is not deleted. When teams are deleted, Organization is added
-    // back as default team.
-    change = getChangeDescription(user, REVERT);
-    patchEntityAndCheck(user, origJson, ADMIN_AUTH_HEADERS, REVERT, change);
   }
 
   @Test
@@ -1317,9 +1315,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // removed
     json = JsonUtils.pojoToJson(user);
     user.withProfile(null);
-    change = getChangeDescription(user, CHANGE_CONSOLIDATED);
-    fieldDeleted(change, "profile", PROFILE);
-    patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(user, MINOR_UPDATE);
+    fieldDeleted(change, "profile", profile1);
+    patchEntityAndCheck(user, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -1564,5 +1562,25 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     WebTarget target = getCollection().path("/export");
     target = target.queryParam("team", teamName);
     return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Override
+  protected String initiateExport(String teamName) throws HttpResponseException {
+    WebTarget target = getCollection().path("/exportAsync");
+    target = target.queryParam("team", teamName);
+    CSVExportResponse response =
+        TestUtils.getWithResponse(
+            target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
+    return response.getJobId();
+  }
+
+  @Override
+  protected String initiateImport(String teamName, String csv, boolean dryRun) throws IOException {
+    WebTarget target = getCollection().path("/importAsync");
+    target = target.queryParam("team", teamName);
+    target = !dryRun ? target.queryParam("dryRun", false) : target;
+    CSVImportResponse response =
+        TestUtils.putCsv(target, csv, CSVImportResponse.class, Status.OK, ADMIN_AUTH_HEADERS);
+    return response.getJobId();
   }
 }

@@ -131,7 +131,7 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => {
     return jest.fn().mockImplementation(({ markdown }) => <p>{markdown}</p>);
   }

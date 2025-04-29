@@ -19,6 +19,7 @@ import React, {
   HTMLAttributes,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +28,7 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -40,17 +41,20 @@ import './node-suggestion.less';
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
   entityType: string;
+  queryFilter?: Record<string, unknown>;
 }
 
 const NodeSuggestions: FC<EntitySuggestionProps> = ({
   entityType,
+  queryFilter,
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
+  const selectRef = useRef<any>(null);
 
   const [data, setData] = useState<Array<SourceType>>([]);
-
   const [searchValue, setSearchValue] = useState<string>('');
+  const [isOpen, setIsOpen] = useState(true);
 
   const getSuggestionLabelHeading = (fqn: string, type: string) => {
     if (type === EntityType.TABLE) {
@@ -67,17 +71,17 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
 
   const getSearchResults = async (value: string) => {
     try {
-      const data = await searchData<ExploreSearchIndex>(
-        value,
-        1,
-        PAGE_SIZE,
-        '',
-        '',
-        '',
-        (entityType as ExploreSearchIndex) ?? SearchIndex.TABLE
-      );
-      const sources = data.data.hits.hits.map((hit) => hit._source);
+      const data = await searchQuery({
+        query: value,
+        searchIndex: (entityType as ExploreSearchIndex) ?? SearchIndex.TABLE,
+        queryFilter: queryFilter,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE,
+        includeDeleted: false,
+      });
+      const sources = data.hits.hits.map((hit) => hit._source);
       setData(sources);
+      selectRef.current?.focus();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -102,14 +106,14 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   const Icon = getEntityNodeIcon(entityType);
 
   return (
-    <div className="p-x-xs items-center d-flex" data-testid="suggestion-node">
+    <div className="p-md items-center d-flex " data-testid="suggestion-node">
       <Icon className="m-r-xs" height={16} name="entity-icon" width={16} />
       <Select
         autoFocus
-        open
         showSearch
         className="w-76 lineage-node-searchbox"
         data-testid="node-search-box"
+        open={isOpen}
         options={(data || []).map((entity) => ({
           value: entity.fullyQualifiedName,
           label: (
@@ -155,8 +159,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
           type: capitalize(entityType),
         })}s...`}
         popupClassName="lineage-suggestion-select-menu"
+        ref={selectRef}
+        onBlur={() => setIsOpen(false)}
         onChange={handleChange}
         onClick={(e) => e.stopPropagation()}
+        onFocus={() => setIsOpen(true)}
         onSearch={handleChange}
       />
     </div>

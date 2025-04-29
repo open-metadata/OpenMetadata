@@ -21,9 +21,8 @@ import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -134,7 +133,7 @@ const RolesListPage = () => {
           isEmpty(record?.description) ? (
             NO_DATA_PLACEHOLDER
           ) : (
-            <RichTextEditorPreviewer markdown={record?.description || ''} />
+            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
           ),
       },
       {
@@ -274,7 +273,7 @@ const RolesListPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural')}>
       <Row
-        className="roles-list-container page-container"
+        className="roles-list-container"
         data-testid="roles-list-container"
         gutter={[0, 16]}>
         <Col span={24}>
@@ -296,15 +295,24 @@ const RolesListPage = () => {
         </Col>
         <Col span={24}>
           <Table
-            bordered
-            className="roles-list-table"
             columns={columns}
+            containerClassName="roles-list-table"
+            customPaginationProps={{
+              currentPage,
+              isLoading,
+              showPagination,
+              pageSize,
+              paging,
+              pagingHandler: handlePaging,
+              onShowSizeChange: handlePageSizeChange,
+            }}
             data-testid="roles-list-table"
             dataSource={roles}
             loading={isLoading}
             locale={{
               emptyText: (
                 <ErrorPlaceHolder
+                  className="border-none"
                   heading={t('label.role')}
                   permission={addRolePermission}
                   type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -328,17 +336,6 @@ const RolesListPage = () => {
               entityType={EntityType.ROLE}
               visible={!isUndefined(selectedRole)}
               onCancel={() => setSelectedRole(undefined)}
-            />
-          )}
-        </Col>
-        <Col span={24}>
-          {showPagination && (
-            <NextPrevious
-              currentPage={currentPage}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handlePaging}
-              onShowSizeChange={handlePageSizeChange}
             />
           )}
         </Col>

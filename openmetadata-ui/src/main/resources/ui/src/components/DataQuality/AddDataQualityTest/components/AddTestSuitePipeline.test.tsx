@@ -18,6 +18,11 @@ import AddTestSuitePipeline from './AddTestSuitePipeline';
 const mockUseHistory = {
   goBack: jest.fn(),
 };
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: `?testSuiteId=test-suite-id`,
+  }));
+});
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test-suite-fqn' }),
 }));
@@ -43,6 +48,10 @@ jest.mock(
 );
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => mockUseHistory),
+}));
+
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getRaiseOnErrorFormField: jest.fn().mockReturnValue({}),
 }));
 
 const mockProps: AddTestSuitePipelineProps = {

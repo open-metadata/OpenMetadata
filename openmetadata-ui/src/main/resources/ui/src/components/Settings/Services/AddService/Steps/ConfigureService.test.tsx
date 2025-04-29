@@ -67,7 +67,7 @@ describe('Test ConfigureService component', () => {
     expect(mockConfigureServiceProps.onNext).toHaveBeenCalled();
     expect(mockConfigureServiceProps.onNext).toHaveBeenCalledWith({
       description: '',
-      serviceName: 'newName',
+      name: 'newName',
     });
   });
 });

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,6 +12,7 @@
 import json
 import secrets
 import traceback
+from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -293,15 +294,25 @@ class S3Source(StorageServiceSource):
         )
         # if we have a sample file to fetch a schema from
         if sample_key:
-            columns = self._get_columns(
-                container_name=bucket_name,
-                sample_key=sample_key,
-                metadata_entry=metadata_entry,
-                config_source=S3Config(
-                    securityConfig=self.service_connection.awsConfig
-                ),
-                client=self.s3_client,
-            )
+            try:
+                columns = self._get_columns(
+                    container_name=bucket_name,
+                    sample_key=sample_key,
+                    metadata_entry=metadata_entry,
+                    config_source=S3Config(
+                        securityConfig=self.service_connection.awsConfig
+                    ),
+                    client=self.s3_client,
+                )
+            except Exception as err:
+                self.status.failed(
+                    error=StackTraceError(
+                        name=f"{bucket_name}/{sample_key}",
+                        error=f"Error extracting columns from [{bucket_name}/{sample_key}] due to: [{err}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                return None
             if columns:
                 prefix = (
                     f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
@@ -325,6 +336,45 @@ class S3Source(StorageServiceSource):
                 )
         return None
 
+    def _generate_structured_containers_by_depth(
+        self,
+        bucket_response: S3BucketResponse,
+        metadata_entry: MetadataEntry,
+        parent: Optional[EntityReference] = None,
+    ) -> Iterable[S3ContainerDetails]:
+        try:
+            prefix = self._get_sample_file_prefix(metadata_entry=metadata_entry)
+            if prefix:
+                response = self.s3_client.list_objects_v2(
+                    Bucket=bucket_response.name, Prefix=prefix
+                )
+                # total depth is depth of prefix + depth of the metadata entry
+                total_depth = metadata_entry.depth + len(prefix[:-1].split("/"))
+                candidate_keys = {
+                    "/".join(entry.get("Key").split("/")[:total_depth]) + "/"
+                    for entry in response[S3_CLIENT_ROOT_RESPONSE]
+                    if entry
+                    and entry.get("Key")
+                    and len(entry.get("Key").split("/")) > total_depth
+                }
+                for key in candidate_keys:
+                    metadata_entry_copy = deepcopy(metadata_entry)
+                    metadata_entry_copy.dataPath = key.strip(KEY_SEPARATOR)
+                    structured_container: Optional[
+                        S3ContainerDetails
+                    ] = self._generate_container_details(
+                        bucket_response=bucket_response,
+                        metadata_entry=metadata_entry_copy,
+                        parent=parent,
+                    )
+                    if structured_container:
+                        yield structured_container
+        except Exception as err:
+            logger.warning(
+                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"
+            )
+            logger.debug(traceback.format_exc())
+
     def _generate_structured_containers(
         self,
         bucket_response: S3BucketResponse,
@@ -336,15 +386,22 @@ class S3Source(StorageServiceSource):
                 f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
                 f"and generating structured container"
             )
-            structured_container: Optional[
-                S3ContainerDetails
-            ] = self._generate_container_details(
-                bucket_response=bucket_response,
-                metadata_entry=metadata_entry,
-                parent=parent,
-            )
-            if structured_container:
-                yield structured_container
+            if metadata_entry.depth == 0:
+                structured_container: Optional[
+                    S3ContainerDetails
+                ] = self._generate_container_details(
+                    bucket_response=bucket_response,
+                    metadata_entry=metadata_entry,
+                    parent=parent,
+                )
+                if structured_container:
+                    yield structured_container
+            else:
+                yield from self._generate_structured_containers_by_depth(
+                    bucket_response=bucket_response,
+                    metadata_entry=metadata_entry,
+                    parent=parent,
+                )
 
     def is_valid_unstructured_file(self, accepted_extensions: List, key: str) -> bool:
         # Split the string into a list of values
@@ -413,7 +470,7 @@ class S3Source(StorageServiceSource):
         candidate_keys = [
             entry["Key"]
             for entry in response[S3_CLIENT_ROOT_RESPONSE]
-            if entry and entry.get("Key")
+            if entry and entry.get("Key") and not entry.get("Key").endswith("/")
         ]
         for key in candidate_keys:
             if self.is_valid_unstructured_file(metadata_entry.unstructuredFormats, key):
@@ -622,7 +679,7 @@ class S3Source(StorageServiceSource):
                 candidate_keys = [
                     entry["Key"]
                     for entry in response[S3_CLIENT_ROOT_RESPONSE]
-                    if entry and entry.get("Key")
+                    if entry and entry.get("Key") and not entry.get("Key").endswith("/")
                 ]
                 # pick a random key out of the candidates if any were returned
                 if candidate_keys:

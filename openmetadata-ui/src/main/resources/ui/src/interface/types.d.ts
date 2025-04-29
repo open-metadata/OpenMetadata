@@ -130,14 +130,6 @@ declare module 'Models' {
     signingIn?: boolean;
   };
 
-  export type ServiceData = {
-    collection: {
-      documentation: string;
-      href: string;
-      name: string;
-    };
-  };
-
   export type ServiceTypes =
     | 'databaseServices'
     | 'messagingServices'

@@ -21,13 +21,14 @@
         "Redash",
         "Metabase",
         "PowerBI",
+        "PowerBIReportServer",
         "Mode",
         "CustomDashboard",
         "DomoDashboard",
         "QuickSight",
         "QlikSense",
         "Lightdash",
-        "Mstr",
+        "MicroStrategy",
         "QlikCloud",
         "Sigma"
       ],
@@ -51,6 +52,9 @@
           "name": "PowerBI"
         },
         {
+          "name": "PowerBIReportServer"
+        },
+        {
           "name": "Mode"
         },
         {
@@ -69,7 +73,7 @@
           "name": "Lightdash"
         },
         {
-          "name": "Mstr"
+          "name": "MicroStrategy"
         },
         {
           "name": "QlikCloud"
@@ -100,6 +104,9 @@
               "$ref": "./connections/dashboard/powerBIConnection.json"
             },
             {
+              "$ref": "./connections/dashboard/powerBIReportServerConnection.json"
+            },
+            {
               "$ref": "./connections/dashboard/redashConnection.json"
             },
             {
@@ -127,7 +134,7 @@
               "$ref": "./connections/dashboard/lightdashConnection.json"
             },
             {
-              "$ref": "./connections/dashboard/mstrConnection.json"
+              "$ref": "./connections/dashboard/microStrategyConnection.json"
             },
             {
               "$ref": "./connections/dashboard/qlikCloudConnection.json"
@@ -183,7 +190,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "owners": {
       "description": "Owners of this dashboard service.",
@@ -209,6 +216,10 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
+    "incrementalChangeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
@@ -220,6 +231,10 @@
     },
     "domain" : {
       "description": "Domain the Dashboard service belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "ingestionRunner" : {
+      "description": "The ingestion agent responsible for executing the ingestion pipeline.",
       "$ref": "../../type/entityReference.json"
     }
   },

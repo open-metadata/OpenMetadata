@@ -73,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "metrics")
 public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "v1/metrics/";
+  private final MetricMapper mapper = new MetricMapper();
   static final String FIELDS = "owners,relatedMetrics,followers,tags,extension,domain,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
@@ -279,7 +280,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, metric);
   }
 
@@ -302,7 +303,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMetric create) {
-    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    Metric metric = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, metric);
   }
 
@@ -474,6 +475,28 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   }
 
   @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteMetricAsync",
+      summary = "Asynchronously delete a Metric by id",
+      description = "Asynchronously delete a Metric by `id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(responseCode = "404", description = "Metric for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
+  }
+
+  @DELETE
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteAPIEndpointByFQN",
@@ -518,15 +541,5 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Metric getMetric(CreateMetric create, String user) {
-    return repository
-        .copy(new Metric(), create, user)
-        .withMetricExpression(create.getMetricExpression())
-        .withGranularity(create.getGranularity())
-        .withRelatedMetrics(getEntityReferences(Entity.METRIC, create.getRelatedMetrics()))
-        .withMetricType(create.getMetricType())
-        .withUnitOfMeasurement(create.getUnitOfMeasurement());
   }
 }

@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,11 +12,13 @@
 """
 Source connection handler
 """
+from copy import deepcopy
 from typing import Optional
 from urllib.parse import quote_plus
 
 from requests import Session
 from sqlalchemy.engine import Engine
+from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
 from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
@@ -25,6 +27,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.common import (
     basicAuth,
     jwtAuth,
+    noConfigAuthenticationTypes,
 )
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoConnection,
@@ -52,26 +55,17 @@ def get_connection_url(connection: TrinoConnection) -> str:
     Prepare the connection url for trino
     """
     url = f"{connection.scheme.value}://"
+
+    # leaving username here as, even though with basic auth is used directly
+    # in BasicAuthentication class, it's often also required as a part of url.
+    # For example - it will be used by OAuth2Authentication to persist token in
+    # cache more efficiently (per user instead of per host)
     if connection.username:
-        # we need to encode twice because trino dialect internally
-        # url decodes the username and if there is an special char in username
-        # it will fail to authenticate
-        url += f"{quote_plus(quote_plus(connection.username))}"
-        if (
-            isinstance(connection.authType, basicAuth.BasicAuth)
-            and connection.authType.password
-        ):
-            url += f":{quote_plus(connection.authType.password.get_secret_value())}"
-        url += "@"
+        url += f"{quote_plus(connection.username)}@"
+
     url += f"{connection.hostPort}"
     if connection.catalog:
         url += f"/{connection.catalog}"
-    if isinstance(connection.authType, jwtAuth.JwtAuth):
-        if not connection.connectionOptions:
-            connection.connectionOptions = init_empty_connection_options()
-        connection.connectionOptions.root[
-            "access_token"
-        ] = connection.authType.jwt.get_secret_value()
     if connection.connectionOptions is not None:
         params = "&".join(
             f"{key}={quote_plus(value)}"
@@ -84,13 +78,53 @@ def get_connection_url(connection: TrinoConnection) -> str:
 
 @connection_with_options_secrets
 def get_connection_args(connection: TrinoConnection):
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     if connection.proxies:
         session = Session()
         session.proxies = connection.proxies
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
 
         connection.connectionArguments.root["http_session"] = session
+
+    if isinstance(connection.authType, basicAuth.BasicAuth):
+        connection.connectionArguments.root["auth"] = BasicAuthentication(
+            connection.username,
+            connection.authType.password.get_secret_value()
+            if connection.authType.password
+            else None,
+        )
+        connection.connectionArguments.root["http_scheme"] = "https"
+
+    elif isinstance(connection.authType, jwtAuth.JwtAuth):
+        connection.connectionArguments.root["auth"] = JWTAuthentication(
+            connection.authType.jwt.get_secret_value()
+        )
+        connection.connectionArguments.root["http_scheme"] = "https"
+
+    elif hasattr(connection.authType, "azureConfig"):
+        if not connection.authType.azureConfig.scopes:
+            raise ValueError(
+                "Azure Scopes are missing, please refer https://learn.microsoft.com/en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-microsoft-entra-access-token and fetch the resource associated with it, for e.g. https://ossrdbms-aad.database.windows.net/.default"
+            )
+
+        azure_client = AzureClient(connection.authType.azureConfig).create_client()
+
+        access_token_obj = azure_client.get_token(
+            *connection.authType.azureConfig.scopes.split(",")
+        )
+
+        connection.connectionArguments.root["auth"] = JWTAuthentication(
+            access_token_obj.token
+        )
+        connection.connectionArguments.root["http_scheme"] = "https"
+
+    elif (
+        connection.authType
+        == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
+    ):
+        connection.connectionArguments.root["auth"] = OAuth2Authentication()
+        connection.connectionArguments.root["http_scheme"] = "https"
 
     return get_connection_args_common(connection)
 
@@ -99,9 +133,17 @@ def get_connection(connection: TrinoConnection) -> Engine:
     """
     Create connection
     """
-    if connection.verify:
-        connection.connectionArguments = (
-            connection.connectionArguments or init_empty_connection_arguments()
+    # here we are creating a copy of connection, because we need to dynamically
+    # add auth params to connectionArguments, which we do no intend to store
+    # in original connection object and in OpenMetadata database
+    from trino.sqlalchemy.dialect import TrinoDialect
+
+    TrinoDialect.is_disconnect = _is_disconnect
+
+    connection_copy = deepcopy(connection)
+    if connection_copy.verify:
+        connection_copy.connectionArguments = (
+            connection_copy.connectionArguments or init_empty_connection_arguments()
         )
         connection.connectionArguments.root["verify"] = {"verify": connection.verify}
     if hasattr(connection.authType, "azureConfig"):
@@ -117,7 +159,7 @@ def get_connection(connection: TrinoConnection) -> Engine:
             connection.connectionOptions = init_empty_connection_options()
         connection.connectionOptions.root["access_token"] = access_token_obj.token
     return create_generic_db_connection(
-        connection=connection,
+        connection=connection_copy,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args,
     )
@@ -146,3 +188,11 @@ def test_connection(
         queries=queries,
         timeout_seconds=timeout_seconds,
     )
+
+
+# pylint: disable=unused-argument
+def _is_disconnect(self, e, connection, cursor):
+    """is_disconnect method for the Databricks dialect"""
+    if "JWT expired" in str(e):
+        return True
+    return False

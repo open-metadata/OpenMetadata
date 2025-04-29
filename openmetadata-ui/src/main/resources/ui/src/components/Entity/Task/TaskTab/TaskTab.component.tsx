@@ -51,11 +51,15 @@ import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
-import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../../enums/entity.enum';
 import { TaskType } from '../../../../generated/api/feed/createThread';
 import { ResolveTask } from '../../../../generated/api/feed/resolveTask';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -64,6 +68,7 @@ import {
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import { Operation } from '../../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../../generated/tests/testCase';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
@@ -71,6 +76,10 @@ import {
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import {
+  FieldProp,
+  FieldTypes,
+} from '../../../../interface/FormUtils.interface';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
@@ -81,9 +90,12 @@ import {
 } from '../../../../pages/TasksPage/TasksPage.interface';
 import { updateTask, updateThread } from '../../../../rest/feedsAPI';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import { getUsers } from '../../../../rest/userAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
 import {
@@ -106,8 +118,6 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef as MarkdownEditorContentRef } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -123,7 +133,6 @@ export const TaskTab = ({
   const history = useHistory();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
-  const markdownRef = useRef<MarkdownEditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();
   const { task: taskDetails } = taskThread;
@@ -147,7 +156,6 @@ export const TaskTab = ({
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
-    initialAssignees: usersList,
   } = useActivityFeedProvider();
 
   const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
@@ -225,6 +233,7 @@ export const TaskTab = ({
     noSuggestionTaskMenuOptions,
   ]);
 
+  const [usersList, setUsersList] = useState<EntityReference[]>([]);
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const isTaskClosed = isEqual(taskDetails?.status, ThreadTaskStatus.Closed);
@@ -337,6 +346,12 @@ export const TaskTab = ({
       );
   };
 
+  const onGlossaryTaskResolve = (status = 'approved') => {
+    const newValue = isTaskGlossaryApproval ? status : taskDetails?.suggestion;
+    const data = { newValue: newValue };
+    updateTaskData(data as TaskDetails);
+  };
+
   const onTaskResolve = () => {
     if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
@@ -425,8 +440,11 @@ export const TaskTab = ({
       onTaskResolve();
     }
     setTaskAction(
-      TASK_ACTION_LIST.find((action) => action.key === info.key) ??
-        TASK_ACTION_LIST[0]
+      [
+        ...TASK_ACTION_LIST,
+        ...GLOSSARY_TASK_ACTION_LIST,
+        ...INCIDENT_TASK_ACTION_LIST,
+      ].find((action) => action.key === info.key) ?? TASK_ACTION_LIST[0]
     );
   };
 
@@ -548,7 +566,7 @@ export const TaskTab = ({
         break;
 
       case TaskActionMode.CLOSE:
-        onTaskReject();
+        onGlossaryTaskResolve('rejected');
 
         break;
     }
@@ -726,9 +744,7 @@ export const TaskTab = ({
                 }}
                 overlayClassName="task-action-dropdown"
                 onClick={() =>
-                  taskAction.key === TaskActionMode.EDIT
-                    ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
-                    : onTaskResolve()
+                  handleMenuItemClick({ key: taskAction.key } as MenuInfo)
                 }>
                 {taskAction.label}
               </Dropdown.Button>
@@ -794,6 +810,30 @@ export const TaskTab = ({
       setIsAssigneeLoading(false);
     }
   };
+
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setUsersList(filterData);
+    } catch (error) {
+      setUsersList([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users only when the task is a test case result and the assignees are getting edited
+    if (isTaskTestCaseResult && isEmpty(usersList) && isEditAssignee) {
+      fetchInitialAssign();
+    }
+  }, [isTaskTestCaseResult, usersList, isEditAssignee]);
 
   useEffect(() => {
     assigneesForm.setFieldValue('assignees', initialAssignees);
@@ -888,6 +928,32 @@ export const TaskTab = ({
         />
       </div>
     </div>
+  );
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'testCaseFailureComment',
+      required: true,
+      label: t('label.comment'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      rules: [
+        {
+          required: true,
+          message: t('label.field-required', {
+            field: t('label.comment'),
+          }),
+        },
+      ],
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        placeHolder: t('message.write-your-text', {
+          text: t('label.comment'),
+        }),
+      },
+    }),
+    []
   );
 
   return (
@@ -993,27 +1059,7 @@ export const TaskTab = ({
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item
-              label={t('label.comment')}
-              name="testCaseFailureComment"
-              rules={[
-                {
-                  required: true,
-                  message: t('label.field-required', {
-                    field: t('label.comment'),
-                  }),
-                },
-              ]}
-              trigger="onTextChange">
-              <RichTextEditor
-                height="200px"
-                initialValue=""
-                placeHolder={t('message.write-your-text', {
-                  text: t('label.comment'),
-                })}
-                ref={markdownRef}
-              />
-            </Form.Item>
+            {getField(descriptionField)}
           </Form>
         </Modal>
       ) : (

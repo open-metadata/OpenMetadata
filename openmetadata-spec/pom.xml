@@ -5,7 +5,7 @@
     <parent>
         <artifactId>platform</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.6.0-SNAPSHOT</version>
+        <version>1.8.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -15,6 +15,8 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+        <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
+        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     </properties>
 
     <dependencies>

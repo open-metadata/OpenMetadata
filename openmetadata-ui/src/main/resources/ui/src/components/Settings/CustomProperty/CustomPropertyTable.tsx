@@ -25,7 +25,7 @@ import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import './custom-property-table.less';
@@ -75,6 +75,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         return {
           ...property,
           description: data.description,
+          displayName: data.displayName,
           ...(config
             ? {
                 customPropertyConfig: {
@@ -199,7 +200,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         width: 300,
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewer markdown={text || ''} />
+            <RichTextEditorPreviewerNew markdown={text ?? ''} />
           ) : (
             <Typography.Text
               className="text-grey-muted "
@@ -268,16 +269,15 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
   return (
     <Fragment>
       <Table
-        bordered
-        className="entity-custom-properties-table"
         columns={tableColumn}
+        containerClassName="entity-custom-properties-table"
         data-testid="entity-custom-properties-table"
         dataSource={customProperties}
         loading={isLoading}
         locale={{
           emptyText: (
             <ErrorPlaceHolder
-              className="mt-xs"
+              className="mt-xs border-none"
               doc={ADD_CUSTOM_PROPERTIES_DOCS}
               heading={t('label.property')}
               permission={hasAccess}

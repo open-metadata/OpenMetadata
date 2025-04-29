@@ -253,7 +253,7 @@ public class FormatterUtil {
     return null;
   }
 
-  private static ChangeEvent createChangeEventForEntity(
+  public static ChangeEvent createChangeEventForEntity(
       String updateBy, EventType eventType, EntityInterface entityInterface) {
     return getChangeEvent(
             updateBy, eventType, entityInterface.getEntityReference().getType(), entityInterface)

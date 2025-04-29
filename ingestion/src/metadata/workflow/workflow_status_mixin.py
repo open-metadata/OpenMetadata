@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,7 +17,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Tuple
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineState,
@@ -111,6 +110,12 @@ class WorkflowStatusMixin:
                 pipeline_status.status = (
                     ingestion_status if ingestion_status else pipeline_status.status
                 )
+                # committing configurations can be a burden on resources,
+                # we dump a subset to be mindful of the payload size
+                pipeline_status.config = self.config.model_dump(
+                    include={"appConfig"},
+                    mask_secrets=True,
+                )
                 self.metadata.create_or_update_pipeline_status(
                     self.ingestion_pipeline.fullyQualifiedName.root, pipeline_status
                 )
@@ -123,13 +128,8 @@ class WorkflowStatusMixin:
     def raise_from_status(self, raise_warnings=False):
         """
         Method to raise error if failed execution
-        and updating Ingestion Pipeline Status
         """
-        try:
-            self.raise_from_status_internal(raise_warnings)
-        except WorkflowExecutionError as err:
-            self.set_ingestion_pipeline_status(PipelineState.failed)
-            raise err
+        self.raise_from_status_internal(raise_warnings)
 
     def result_status(self) -> WorkflowResultStatus:
         """

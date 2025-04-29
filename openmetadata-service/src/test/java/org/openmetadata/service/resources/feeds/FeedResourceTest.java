@@ -219,7 +219,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
-    String failureReason = "[about must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
+    String failureReason =
+        "[about must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
     assertResponseContains(
         () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
 
@@ -531,6 +532,17 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     announcements = listAnnouncements(about, null, false, ADMIN_AUTH_HEADERS);
     assertEquals(totalAnnouncementCount + 3, announcements.getPaging().getTotal());
     assertEquals(totalAnnouncementCount + 3, announcements.getData().size());
+
+    // verify the announcement counts in the feed count API
+    FeedResource.ThreadCountList threadCounts = listThreadsCount(about, ADMIN_AUTH_HEADERS);
+    for (ThreadCount threadCount : threadCounts.getData()) {
+      if (threadCount.getEntityLink().equals(about)
+          && threadCount.getTotalAnnouncementCount() != null) {
+        assertEquals(totalAnnouncementCount + 4, threadCount.getTotalAnnouncementCount());
+        assertEquals(1, threadCount.getActiveAnnouncementCount());
+        assertEquals(totalAnnouncementCount + 3, threadCount.getInactiveAnnouncementCount());
+      }
+    }
   }
 
   @Test

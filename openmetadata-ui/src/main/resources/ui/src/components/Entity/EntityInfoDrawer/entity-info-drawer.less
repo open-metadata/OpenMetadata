@@ -16,6 +16,7 @@
 .edge-drawer-sql-editor {
   border: 1px solid @border-color;
   border-radius: 2px;
+
   .CodeMirror {
     height: 200px;
   }
@@ -30,12 +31,13 @@
 
 .entity-panel-container {
   margin-top: 54px;
+
   .ant-drawer-header {
     border-bottom: none;
-    padding-bottom: 0 !important;
   }
+
   .ant-drawer-body {
-    padding: unset;
+    padding-top: 0 !important;
   }
 
   .entity-header-display-name {
@@ -68,9 +70,11 @@
   .success {
     color: @success-color;
   }
+
   .failed {
     color: @failed-color;
   }
+
   .aborted {
     color: @aborted-color;
   }

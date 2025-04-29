@@ -13,8 +13,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
+import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
+import { LineageLayer } from '../../../../generated/settings/settings';
 import LineageSearchSelect from './LineageSearchSelect';
 
 const mockedNodes = [
@@ -39,10 +40,11 @@ const mockColumnClick = jest.fn();
 
 jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
-    activeLayer: [LineageLayerView.COLUMN],
+    activeLayer: [LineageLayer.ColumnLevelLineage],
     nodes: mockedNodes,
     onNodeClick: mockNodeClick,
     onColumnClick: mockColumnClick,
+    platformView: LineagePlatformView.None,
   })),
 }));
 

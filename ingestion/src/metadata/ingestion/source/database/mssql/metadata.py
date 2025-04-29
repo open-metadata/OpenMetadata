@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -10,7 +10,7 @@
 #  limitations under the License.
 """MSSQL source module"""
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
@@ -30,29 +30,26 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName
+from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-from metadata.ingestion.source.database.mssql.constants import (
-    DEFAULT_DATETIME_FORMAT,
-    MSSQL_DATEFORMAT_DATETIME_MAP,
-)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
-    MSSQL_GET_STORED_PROCEDURE_QUERIES,
+    MSSQL_GET_DATABASE_COMMENTS,
+    MSSQL_GET_SCHEMA_COMMENTS,
+    MSSQL_GET_STORED_PROCEDURE_COMMENTS,
     MSSQL_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
-    get_sqlalchemy_engine_dateformat,
     get_table_comment,
     get_table_names,
     get_unique_constraints,
@@ -60,13 +57,8 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_view_names,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 from metadata.utils.sqlalchemy_utils import (
@@ -99,11 +91,21 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class MssqlSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from MSSQL Source
     """
+
+    def __init__(
+        self,
+        config,
+        metadata,
+    ):
+        super().__init__(config, metadata)
+        self.schema_desc_map = {}
+        self.database_desc_map = {}
+        self.stored_procedure_desc_map = {}
 
     @classmethod
     def create(
@@ -123,12 +125,60 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
             return self.service_connection.database
         return None
 
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_SCHEMA_COMMENTS).all()
+        self.schema_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results
+        }
+
+    def set_database_description_map(self) -> None:
+        self.database_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_DATABASE_COMMENTS).all()
+        self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
+
+    def set_stored_procedure_description_map(self) -> None:
+        self.stored_procedure_desc_map.clear()
+        results = self.engine.execute(MSSQL_GET_STORED_PROCEDURE_COMMENTS).all()
+        self.stored_procedure_desc_map = {
+            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
+            for row in results
+        }
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get((self.context.get().database, schema_name))
+
+    def get_database_description(self, database_name: str) -> Optional[str]:
+        """
+        Method to fetch the database description
+        """
+        return self.database_desc_map.get(database_name)
+
+    def get_stored_procedure_description(self, stored_procedure: str) -> Optional[str]:
+        """
+        Method to fetch the stored procedure description
+        """
+        description = self.stored_procedure_desc_map.get(
+            (
+                self.context.get().database,
+                self.context.get().database_schema,
+                stored_procedure,
+            )
+        )
+        return Markdown(description) if description else None
+
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
+            self.set_schema_description_map()
+            self.set_database_description_map()
+            self.set_stored_procedure_description_map()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -150,6 +200,9 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
+                    self.set_schema_description_map()
+                    self.set_database_description_map()
+                    self.set_stored_procedure_description_map()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
@@ -189,7 +242,9 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=None,
+                description=self.get_stored_procedure_description(
+                    stored_procedure.name
+                ),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
                     code=stored_procedure.definition,
@@ -213,34 +268,3 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
-        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
-            server_date_format, DEFAULT_DATETIME_FORMAT
-        )
-        start = start.strftime(current_datetime_format)
-        query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-        )
-        try:
-            queries_dict = self.procedure_queries_dict(
-                query=query,
-            )
-        except Exception as ex:  # pylint: disable=broad-except
-            logger.debug(f"Error runnning query:\n{query}")
-            self.status.failed(
-                StackTraceError(
-                    name="Stored Procedure",
-                    error=f"Error trying to get stored procedure queries: {ex}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-            return {}
-
-        return queries_dict

@@ -22,7 +22,7 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import Loader from '../../../components/common/Loader/Loader';
 import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
-import { getVersionPath, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -31,11 +31,9 @@ import {
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Metric } from '../../../generated/entity/data/metric';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import { postThread } from '../../../rest/feedsAPI';
 import {
   addMetricFollower,
   getMetricByFqn,
@@ -46,10 +44,10 @@ import {
 import {
   addToRecentViewed,
   getEntityMissingError,
-  sortTagsCaseInsensitive,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const MetricDetailsPage = () => {
@@ -75,23 +73,18 @@ const MetricDetailsPage = () => {
     return patchMetric(metricId, jsonPatch);
   };
 
-  const handleMetricUpdate = async (updatedData: Metric, key: keyof Metric) => {
+  const handleMetricUpdate = async (
+    updatedData: Metric,
+    key?: keyof Metric
+  ) => {
     try {
       const res = await saveUpdatedMetricData(updatedData);
 
       setMetricDetails((previous) => {
-        if (key === 'tags') {
-          return {
-            ...previous,
-            version: res.version,
-            [key]: sortTagsCaseInsensitive(res.tags ?? []),
-          };
-        }
-
         return {
           ...previous,
           version: res.version,
-          [key]: res[key],
+          ...(key ? { [key]: res[key] } : res),
         };
       });
     } catch (error) {
@@ -107,7 +100,7 @@ const MetricDetailsPage = () => {
         entityFqn
       );
       setMetricPermissions(permissions);
-    } catch (error) {
+    } catch {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
           entity: entityFqn,
@@ -210,19 +203,6 @@ const MetricDetailsPage = () => {
       );
   };
 
-  const handleCreateThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
-
   const handleToggleDelete = (version?: number) => {
     setMetricDetails((prev) => {
       if (!prev) {
@@ -258,7 +238,7 @@ const MetricDetailsPage = () => {
     const updatedData = data as Metric;
 
     setMetricDetails((data) => ({
-      ...(data ?? updatedData),
+      ...(updatedData ?? data),
       version: updatedData.version,
     }));
   }, []);
@@ -292,7 +272,6 @@ const MetricDetailsPage = () => {
       fetchMetricDetails={() => fetchMetricDetail(metricFqn)}
       metricDetails={metricDetails}
       metricPermissions={metricPermissions}
-      onCreateThread={handleCreateThread}
       onFollowMetric={followMetric}
       onMetricUpdate={handleMetricUpdate}
       onToggleDelete={handleToggleDelete}

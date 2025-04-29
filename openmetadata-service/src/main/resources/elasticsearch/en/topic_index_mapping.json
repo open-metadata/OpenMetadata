@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "max_ngram_diff": 17
+    },
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
@@ -78,6 +81,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -89,7 +93,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "similarity": "boolean"
       },
       "version": {
         "type": "float"
@@ -191,7 +195,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -230,8 +234,8 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
-                "analyzer": "om_analyzer"
+                "analyzer": "om_analyzer",
+                "similarity": "boolean"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -239,7 +243,8 @@
               "tags": {
                 "properties": {
                   "tagFQN": {
-                    "type": "keyword"
+                    "type": "keyword",
+                    "normalizer": "lowercase_normalizer"
                   },
                   "labelType": {
                     "type": "keyword"
@@ -287,7 +292,8 @@
                   "tags": {
                     "properties": {
                       "tagFQN": {
-                        "type": "keyword"
+                        "type": "keyword",
+                        "normalizer": "lowercase_normalizer"
                       },
                       "labelType": {
                         "type": "keyword"
@@ -343,6 +349,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -427,7 +434,13 @@
       "tier": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -447,7 +460,13 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -491,6 +510,46 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
       }
     }
   }

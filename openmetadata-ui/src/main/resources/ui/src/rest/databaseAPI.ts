@@ -48,10 +48,6 @@ export const getDatabases = async (
   return response.data;
 };
 
-export const getTables = (id: number): Promise<AxiosResponse> => {
-  return APIClient.get('/databases/' + id + '/tables');
-};
-
 export const getDatabaseDetailsByFQN = async (
   fqn: string,
   params?: ListParams
@@ -252,4 +248,70 @@ export const putDatabaseSchemaProfileConfig = async (
   >(`/databaseSchemas/${databaseSchemaId}/databaseSchemaProfilerConfig`, data);
 
   return response.data['databaseSchemaProfilerConfig'];
+};
+
+export const exportDatabaseDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `databases/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
+
+  return res.data;
+};
+
+export const importDatabaseInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/databases/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
+};
+
+export const exportDatabaseSchemaDetailsInCSV = async (
+  fqn: string,
+  params?: {
+    recursive?: boolean;
+  }
+) => {
+  const res = await APIClient.get(
+    `databaseSchemas/name/${getEncodedFqn(fqn)}/exportAsync`,
+    {
+      params,
+    }
+  );
+
+  return res.data;
+};
+
+export const importDatabaseSchemaInCSVFormat = async (
+  name: string,
+  data: string,
+  dryRun = true
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const res = await APIClient.put(
+    `/databaseSchemas/name/${getEncodedFqn(name)}/import?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return res.data;
 };

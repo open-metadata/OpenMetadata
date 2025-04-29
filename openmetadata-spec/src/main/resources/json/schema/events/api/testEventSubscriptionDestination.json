@@ -6,10 +6,6 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest",
   "properties": {
-    "alertName": {
-      "description": "Name of the event subscription",
-      "type": "string"
-    },
     "destinations": {
       "description": "List of external destinations.",
       "type": "array",

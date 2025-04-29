@@ -59,12 +59,15 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             .withDeleted(testCase.getDeleted())
             .withDomain(testCase.getDomain())
             .withTags(testCase.getTags())
+            .withEntityFQN(testCase.getEntityFQN())
             .withOwners(testCase.getOwners());
     doc.put("testCase", testCase);
     TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());
-    TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getExecutableEntityReference(), doc);
+    if (testSuite.getBasicEntityReference() != null) {
+      TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getBasicEntityReference(), doc);
+    }
   }
 
   public static Map<String, Float> getFields() {

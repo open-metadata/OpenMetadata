@@ -27,19 +27,19 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
 import {
   DEPLOYED_PROGRESS_VAL,
-  getServiceDetailsPath,
   INGESTION_PROGRESS_END_VAL,
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import {
   IngestionPipeline,
   PipelineType,
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { withPageLayout } from '../../hoc/withPageLayout';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useFqn } from '../../hooks/useFqn';
 import { DataObj } from '../../interface/service.interface';
@@ -50,17 +50,19 @@ import {
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
+import i18n from '../../utils/i18next/LocalUtil';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
 } from '../../utils/IngestionUtils';
+import { getServiceDetailsPath } from '../../utils/RouterUtils';
 import { getServiceType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const EditIngestionPage = () => {
-  const { t } = useTranslation();
   const { fetchAirflowStatus } = useAirflowStatus();
+  const { t } = useTranslation();
   const { ingestionType, serviceCategory } = useParams<{
     ingestionType: string;
     serviceCategory: string;
@@ -218,7 +220,12 @@ const EditIngestionPage = () => {
 
   const goToService = () => {
     history.push(
-      getServiceDetailsPath(serviceFQN, serviceCategory, 'ingestions')
+      getServiceDetailsPath(
+        serviceFQN,
+        serviceCategory,
+        EntityTabs.AGENTS,
+        ServiceAgentSubTabs.METADATA
+      )
     );
   };
 
@@ -246,7 +253,7 @@ const EditIngestionPage = () => {
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <AddIngestion
@@ -274,7 +281,7 @@ const EditIngestionPage = () => {
           onUpdateIngestion={onEditIngestionSave}
         />
       </div>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -308,6 +315,8 @@ const EditIngestionPage = () => {
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
+        cardClassName: 'steps-form-container',
+        allowScroll: true,
       }}
       pageTitle={t('label.edit-entity', {
         entity: t('label.ingestion'),
@@ -322,4 +331,8 @@ const EditIngestionPage = () => {
   );
 };
 
-export default EditIngestionPage;
+export default withPageLayout(
+  i18n.t('label.edit-entity', {
+    entity: i18n.t('label.ingestion'),
+  })
+)(EditIngestionPage);

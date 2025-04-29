@@ -30,7 +30,7 @@ interface TagsTaskProps {
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
   value?: TagLabel[];
-  onChange: (newTags: TagLabel[]) => void;
+  onChange?: (newTags: TagLabel[]) => void;
 }
 
 const TagsTask: FC<TagsTaskProps> = ({

@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { MemoryRouter } from 'react-router-dom';
+import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
@@ -25,93 +25,80 @@ const mockUseHistory = {
 };
 
 // mock components
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+jest.mock('./DataQualityProvider', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock(
-  '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component',
-  () => {
-    return {
-      TestSuites: jest
-        .fn()
-        .mockImplementation(() => <div>TestSuites.component</div>),
-    };
-  }
-);
-jest.mock('../../components/DataQuality/TestCases/TestCases.component', () => {
+jest.mock('../../components/common/LeftPanelCard/LeftPanelCard', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+const mockComponent = () => <div>TestSuites.component</div>;
+jest.mock('./DataQualityClassBase', () => {
   return {
-    TestCases: jest
-      .fn()
-      .mockImplementation(() => <div>TestCases.component</div>),
+    getLeftSideBar: jest.fn().mockReturnValue([
+      {
+        key: 'tables',
+        label: 'Tables',
+        icon: TableIcon,
+        iconProps: {
+          className: 'side-panel-icons',
+        },
+      },
+    ]),
+    getDataQualityTab: jest.fn().mockReturnValue([
+      {
+        component: mockComponent,
+        key: 'tables',
+        path: '/data-quality/tables',
+      },
+    ]),
+    getDefaultActiveTab: jest.fn().mockReturnValue('tables'),
+    getManageExtraOptions: jest.fn().mockReturnValue([]),
   };
 });
+jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
+});
+
+jest.mock('../../hoc/withPageLayout', () => ({
+  withPageLayout: jest.fn().mockImplementation(
+    () =>
+      (Component: React.FC) =>
+      (
+        props: JSX.IntrinsicAttributes & {
+          children?: React.ReactNode | undefined;
+        }
+      ) =>
+        <Component {...props} />
+  ),
+}));
+
 jest.mock('react-router-dom', () => {
   return {
+    ...jest.requireActual('react-router-dom'),
+    Switch: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Route: jest
+      .fn()
+      .mockImplementation(({ component }) => (
+        <div data-testid="route">{component}</div>
+      )),
     useParams: jest.fn().mockImplementation(() => mockUseParam),
     useHistory: jest.fn().mockImplementation(() => mockUseHistory),
   };
 });
 
-jest.mock(
-  '../../components/DataQuality/SummaryPannel/SummaryPanel.component',
-  () => ({ SummaryPanel: jest.fn() })
-);
-
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest
-    .fn()
-    .mockImplementation(() => ({ permissions: DEFAULT_ENTITY_PERMISSION })),
-}));
-
-jest.mock('../../rest/testAPI', () => ({
-  getTestCaseExecutionSummary: jest.fn(),
-}));
-
 describe('DataQualityPage', () => {
   it('component should render', async () => {
-    render(<DataQualityPage />);
+    render(<DataQualityPage />, { wrapper: MemoryRouter });
 
     expect(await screen.findByTestId('page-title')).toBeInTheDocument();
     expect(await screen.findByTestId('page-sub-title')).toBeInTheDocument();
     expect(await screen.findByTestId('tabs')).toBeInTheDocument();
-    expect(await screen.findByText('TestSuites.component')).toBeInTheDocument();
-  });
-
-  it('should render 3 tabs', async () => {
-    render(<DataQualityPage />);
-
-    const tabs = await screen.findAllByRole('tab');
-
-    expect(tabs).toHaveLength(3);
-  });
-
-  it('should change the tab, onClick of tab', async () => {
-    render(<DataQualityPage />);
-
-    const tabs = await screen.findAllByRole('tab');
-
-    expect(await screen.findByText('TestSuites.component')).toBeInTheDocument();
-
-    await act(async () => {
-      fireEvent.click(tabs[1]);
-    });
-
-    expect(mockUseHistory.push).toHaveBeenCalledWith(
-      getDataQualityPagePath(DataQualityPageTabs.TEST_CASES)
-    );
-  });
-
-  it('should render tables tab by default', async () => {
-    mockUseParam.tab = undefined;
-    render(<DataQualityPage />);
-
-    expect(await screen.findByText('TestSuites.component')).toBeInTheDocument();
-  });
-
-  it('should render testCase tab, if active tab is testCase', async () => {
-    mockUseParam.tab = DataQualityPageTabs.TEST_CASES;
-    render(<DataQualityPage />);
-
-    expect(await screen.findByText('TestCases.component')).toBeInTheDocument();
   });
 });

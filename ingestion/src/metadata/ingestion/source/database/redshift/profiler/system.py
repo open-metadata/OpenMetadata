@@ -1,6 +1,10 @@
+"""
+Imeplemetation for the redshift system metrics source
+"""
+
 from typing import List
 
-from sqlalchemy.orm import DeclarativeMeta
+from pydantic import TypeAdapter
 
 from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.ingestion.source.database.redshift.queries import (
@@ -14,6 +18,7 @@ from metadata.profiler.metrics.system.system import (
     SQASessionProvider,
     SystemMetricsComputer,
 )
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import QueryResult
 from metadata.utils.time_utils import datetime_to_timestamp
@@ -24,13 +29,14 @@ logger = profiler_logger()
 class RedshiftSystemMetricsSource(
     SQASessionProvider, EmptySystemMetricsSource, CacheProvider
 ):
-    def __init__(self, *args, **kwargs):
-        # collaborative constructor that initalizes the SQASessionProvider and CacheProvider
-        super().__init__(*args, **kwargs)
+    """Redshift system metrics source class"""
 
-    def get_inserts(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
+    def get_inserts(self, **kwargs) -> List[SystemProfile]:
+        database, schema, table = (
+            kwargs.get("database"),
+            kwargs.get("schema"),
+            kwargs.get("table"),
+        )
         queries = self.get_or_update_cache(
             f"{database}.{schema}",
             self._get_insert_queries,
@@ -39,16 +45,20 @@ class RedshiftSystemMetricsSource(
         )
         return get_metric_result(queries, table)
 
-    def get_kwargs(self, table: DeclarativeMeta, *args, **kwargs):
+    def get_kwargs(self, **kwargs):
+        runner: QueryRunner = kwargs.get("runner")
         return {
-            "table": table.__table__.name,
-            "database": self.get_session().get_bind().url.database,
-            "schema": table.__table__.schema,
+            "table": runner.table_name,
+            "database": runner.session.get_bind().url.database,
+            "schema": runner.schema_name,
         }
 
-    def get_deletes(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
+    def get_deletes(self, **kwargs) -> List[SystemProfile]:
+        database, schema, table = (
+            kwargs.get("database"),
+            kwargs.get("schema"),
+            kwargs.get("table"),
+        )
         queries = self.get_or_update_cache(
             f"{database}.{schema}",
             self._get_delete_queries,
@@ -57,9 +67,10 @@ class RedshiftSystemMetricsSource(
         )
         return get_metric_result(queries, table)
 
-    def get_updates(
-        self, database: str, schema: str, table: str
-    ) -> List[SystemProfile]:
+    def get_updates(self, **kwargs) -> List[SystemProfile]:
+        database = kwargs.get("database")
+        schema = kwargs.get("schema")
+        table = kwargs.get("table")
         queries = self.get_or_update_cache(
             f"{database}.{schema}",
             self._get_update_queries,
@@ -111,7 +122,7 @@ class RedshiftSystemMetricsSource(
         )
 
 
-def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
+def get_metric_result(ddls: List[QueryResult], table_name: str) -> List[SystemProfile]:
     """Given query results, retur the metric result
 
     Args:
@@ -121,15 +132,17 @@ def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
     Returns:
         List:
     """
-    return [
-        {
-            "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
-            "operation": ddl.query_type,
-            "rowsAffected": ddl.rows,
-        }
-        for ddl in ddls
-        if ddl.table_name == table_name
-    ]
+    return TypeAdapter(List[SystemProfile]).validate_python(
+        [
+            {
+                "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
+                "operation": ddl.query_type,
+                "rowsAffected": ddl.rows,
+            }
+            for ddl in ddls
+            if ddl.table_name == table_name
+        ]
+    )
 
 
 class RedshiftSystemMetricsComputer(SystemMetricsComputer, RedshiftSystemMetricsSource):

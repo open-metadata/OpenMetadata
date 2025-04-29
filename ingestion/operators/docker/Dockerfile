@@ -1,4 +1,4 @@
-FROM python:3.10-bullseye
+FROM python:3.10-bookworm
 
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -28,11 +28,13 @@ RUN dpkg --configure -a \
     libkrb5-dev \
     default-jdk \
     openssl \
+    # To ensure compatibility with unixodbc package
+    odbcinst=2.3.11-2+deb12u1 \
     postgresql \
     postgresql-contrib \
     tdsodbc \
-    unixodbc \
-    unixodbc-dev \
+    unixodbc=2.3.11-2+deb12u1 \
+    unixodbc-dev=2.3.11-2+deb12u1 \
     unzip \
     git \
     wget --no-install-recommends \
@@ -41,8 +43,9 @@ RUN dpkg --configure -a \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
+ENV DEBIAN_FRONTEND=noninteractive
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
+RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
     apt-get -qq update; \
     apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
     apt-get -qq autoremove -yqq --purge; \
@@ -81,7 +84,7 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.6.0.0.dev0"
+ARG RI_VERSION="1.8.0.0.dev0"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"

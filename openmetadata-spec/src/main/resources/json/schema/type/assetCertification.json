@@ -1,0 +1,22 @@
+{  "$id": "https://open-metadata.org/schema/type/assetCertification.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AssetCertification",
+  "description": "Defines the Asset Certification schema.",
+  "javaType": "org.openmetadata.schema.type.AssetCertification",
+  "type": "object",
+  "properties": {
+    "tagLabel": {
+      "$ref": "./tagLabel.json"
+    },
+    "appliedDate": {
+      "description": "The date when the certification was applied.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "expiryDate": {
+      "description": "The date when the certification expires.",
+      "$ref": "basic.json#/definitions/timestamp"
+    }
+  },
+  "required": ["tagLabel", "appliedDate", "expiryDate"],
+  "additionalProperties": false
+}

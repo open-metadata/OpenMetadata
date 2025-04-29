@@ -31,7 +31,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
 });
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => {
     return jest
       .fn()
@@ -44,11 +44,18 @@ jest.mock('../../components/common/Loader/Loader', () => {
 });
 
 // mock library imports
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(({ children }) => <a href="#">{children}</a>),
   useParams: jest.fn().mockImplementation(() => ({ fqn: 'something' })),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: jest.fn(),
+  })),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
+  })),
 }));
 
 jest.mock('../../utils/EntityUtils', () => ({
@@ -61,6 +68,10 @@ jest.mock('../../utils/StringsUtils', () => ({
 
 jest.mock('../../utils/TableUtils', () => ({
   getTableExpandableConfig: jest.fn(),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue(['name', 'description']),
+  handleUpdateTableColumnSelections: jest.fn(),
 }));
 
 jest.mock('../../rest/storedProceduresAPI', () => {

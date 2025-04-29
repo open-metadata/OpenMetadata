@@ -13,6 +13,7 @@
 
 import { LoadingState } from 'Models';
 import { ReactNode } from 'react';
+import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 
 export type ScheduleIntervalProps<T> = {
   status: LoadingState;
@@ -22,8 +23,8 @@ export type ScheduleIntervalProps<T> = {
   children?: ReactNode;
   disabled?: boolean;
   isEditMode?: boolean;
-  onBack: () => void;
-  onDeploy: (values: WorkflowExtraConfig & T) => void;
+  onBack?: () => void;
+  onDeploy?: (values: WorkflowExtraConfig & T) => void;
   buttonProps?: {
     okText?: string;
     cancelText?: string;
@@ -33,6 +34,12 @@ export type ScheduleIntervalProps<T> = {
     initialValue?: boolean;
   };
   topChildren?: ReactNode;
+  showActionButtons?: boolean;
+  schedularOptions?: {
+    title: string;
+    description: string;
+    value: SchedularOptions;
+  }[];
 };
 
 export interface WorkflowExtraConfig {
@@ -42,6 +49,7 @@ export interface WorkflowExtraConfig {
 
 export interface IngestionExtraConfig {
   retries?: number;
+  raiseOnError?: boolean;
 }
 
 export interface Combination {

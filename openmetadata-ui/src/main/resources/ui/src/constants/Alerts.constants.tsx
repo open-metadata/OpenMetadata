@@ -41,7 +41,10 @@ export const INTERNAL_CATEGORY_OPTIONS = filter(
 
 export const EXTERNAL_CATEGORY_OPTIONS = filter(
   SubscriptionType,
-  (value) => value !== SubscriptionType.ActivityFeed
+  (value) =>
+    // Exclude the following categories from the external dropdown
+    value !== SubscriptionType.ActivityFeed &&
+    value !== SubscriptionType.GovernanceWorkflowChangeEvent
 ).map((value) => ({
   label: (
     <div
@@ -69,3 +72,5 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
   [SubscriptionType.Webhook]: 'https://example.com',
   [SubscriptionType.Email]: 'Add ↵ separated Email addresses',
 };
+
+export const DEFAULT_READ_TIMEOUT = 12;

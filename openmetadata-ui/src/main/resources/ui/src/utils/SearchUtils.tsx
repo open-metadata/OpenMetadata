@@ -23,6 +23,8 @@ import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.sv
 import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
+import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
+import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
@@ -103,6 +105,16 @@ export const getGroupLabel = (index: string) => {
     case SearchIndex.TOPIC:
       label = i18next.t('label.topic-plural');
       GroupIcon = IconTopic;
+
+      break;
+    case SearchIndex.DATABASE:
+      label = i18next.t('label.database-plural');
+      GroupIcon = IconDatabase;
+
+      break;
+    case SearchIndex.DATABASE_SCHEMA:
+      label = i18next.t('label.database-schema-plural');
+      GroupIcon = IconDatabaseSchema;
 
       break;
     case SearchIndex.DASHBOARD:
@@ -290,4 +302,32 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found
+};
+
+/**
+ * Parse bucket data from aggregation responses into a format suitable for select fields
+ * @param buckets - The bucket data from aggregation response
+ * @param sourceFields - Optional string representing dot-notation path to extract values
+ * @returns An array of objects with value and title properties
+ */
+export const parseBucketsData = (
+  buckets: Array<any>,
+  sourceFields?: string
+) => {
+  return buckets.map((bucket) => {
+    const actualValue = sourceFields
+      ? sourceFields
+          .split('.')
+          .reduce(
+            (obj, key) =>
+              obj && obj[key] !== undefined ? obj[key] : undefined,
+            bucket['top_hits#top']?.hits?.hits?.[0]?._source
+          ) ?? bucket.key
+      : bucket.key;
+
+    return {
+      value: actualValue,
+      title: bucket.label ?? actualValue,
+    };
+  });
 };

@@ -7,38 +7,12 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.EntityHierarchy",
   "definitions": {
-    "EntityHierarchy": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "description": "Unique identifier of an entity hierarchy instance.",
-          "$ref": "../type/basic.json#/definitions/uuid"
-        },
-        "name": {
-          "description": "Preferred name for the entity hierarchy.",
-          "$ref": "../type/basic.json#/definitions/entityName"
-        },
-        "displayName": {
-          "description": "Display name that identifies this hierarchy.",
-          "type": "string"
-        },
-        "description": {
-          "description": "Description of the entity hierarchy.",
-          "$ref": "../type/basic.json#/definitions/markdown"
-        },
-        "fullyQualifiedName": {
-          "description": "A unique name that identifies an entity within the hierarchy. It captures name hierarchy in the form of `rootEntity.childEntity`.",
-          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
-        },
-        "children": {
-          "description": "Other entities that are children of this entity.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/EntityHierarchy"
-          }
-        }
+    "entityHierarchyList": {
+      "type": "array",
+      "items": {
+        "$ref": "entityHierarchy.json"
       },
-      "required": ["id", "name", "description"]
+      "default": []
     }
   },
   "properties": {
@@ -64,12 +38,8 @@
     },
     "children": {
       "description": "Other entities that are children of this entity.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/EntityHierarchy"
-      }
+      "$ref" : "#/definitions/entityHierarchyList"
     }
   },
-  "required": ["id", "name", "description"],
-  "additionalProperties": false
+  "required": ["id", "name", "description"]
 }

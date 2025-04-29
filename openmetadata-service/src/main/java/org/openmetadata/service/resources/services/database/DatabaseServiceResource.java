@@ -64,6 +64,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -79,6 +80,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databaseServices")
 public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
+  private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
   static final String FIELDS = "pipelines,owners,tags,domain";
 
@@ -351,7 +353,8 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseService create) {
-    DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
+    DatabaseService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
@@ -376,7 +379,8 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseService update) {
-    DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
+    DatabaseService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
@@ -442,7 +446,7 @@ public class DatabaseServiceResource
 
   @GET
   @Path("/name/{name}/export")
-  @Produces(MediaType.TEXT_PLAIN)
+  @Produces({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "exportDatabaseServices",
@@ -460,14 +464,52 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
           @PathParam("name")
-          String name)
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive)
       throws IOException {
-    return exportCsvInternal(securityContext, name);
+    return exportCsvInternal(securityContext, name, recursive);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportDatabaseService",
+      summary = "Export database service in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with database schemas",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "If true, export will include child entities (schemas, tables, columns)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive) {
+    return exportCsvInternalAsync(securityContext, name, recursive);
   }
 
   @PUT
   @Path("/name/{name}/import")
-  @Consumes(MediaType.TEXT_PLAIN)
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
   @Valid
   @Operation(
       operationId = "importDatabaseService",
@@ -493,9 +535,51 @@ public class DatabaseServiceResource
           @DefaultValue("true")
           @QueryParam("dryRun")
           boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false") // Default: Export only database
+          @QueryParam("recursive")
+          boolean recursive,
       String csv)
       throws IOException {
-    return importCsvInternal(securityContext, name, csv, dryRun);
+    return importCsvInternal(securityContext, name, csv, dryRun, recursive);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes({MediaType.TEXT_PLAIN + "; charset=UTF-8"})
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importDatabaseServiceAsync",
+      summary =
+          "Import service from CSV to update database service asynchronously (no creation allowed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database Service", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      @Parameter(description = "If true, recursive import", schema = @Schema(type = "boolean"))
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun, recursive);
   }
 
   @DELETE
@@ -527,6 +611,37 @@ public class DatabaseServiceResource
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/async/{id}")
+  @Operation(
+      operationId = "deleteDatabaseServiceAsync",
+      summary = "Asynchronously delete a database service by Id",
+      description =
+          "Asynchronously delete a database services. If databases (and tables) belong the service, it can't be deleted.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DatabaseService service for instance {id} is not found")
+      })
+  public Response deleteByIdAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the database service", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return deleteByIdAsync(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
   @DELETE
@@ -581,13 +696,6 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private DatabaseService getService(CreateDatabaseService create, String user) {
-    return repository
-        .copy(new DatabaseService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

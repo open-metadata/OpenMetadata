@@ -16,6 +16,7 @@ import { AppRunRecord } from '../../../../generated/entity/applications/appRunRe
 
 export interface AppLogsViewerProps {
   data: AppRunRecord;
+  scrollHeight?: number;
 }
 
 export interface TotalRecords {

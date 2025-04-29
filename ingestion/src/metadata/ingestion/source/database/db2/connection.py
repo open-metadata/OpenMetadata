@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -32,13 +33,25 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+from metadata.utils.constants import THREE_MIN, UTF_8
 
 
 def get_connection(connection: Db2Connection) -> Engine:
     """
     Create connection
     """
+    # prepare license
+    # pylint: disable=import-outside-toplevel
+    if connection.license and connection.licenseFileName:
+        import clidriver
+
+        with open(
+            Path(clidriver.__path__[0], "license", connection.licenseFileName),
+            "w",
+            encoding=UTF_8,
+        ) as file:
+            file.write(connection.license.encode(UTF_8).decode("unicode-escape"))
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,

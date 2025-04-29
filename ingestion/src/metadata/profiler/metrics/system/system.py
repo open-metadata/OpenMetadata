@@ -1,8 +1,8 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
 #  Unless required by applicable law or agreed to in writing, software
 #  distributed under the License is distributed on an "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -42,6 +42,8 @@ T = TypeVar("T")
 
 
 class CacheProvider(ABC, Generic[T]):
+    """Cache provider class to provide cache for system metrics"""
+
     def __init__(self):
         self.cache = LRUCache[T](LRU_CACHE_SIZE)
 
@@ -63,19 +65,20 @@ class EmptySystemMetricsSource:
     """Empty system metrics source that can be used as a default. Just returns an empty list of system metrics
     for any resource."""
 
-    def get_inserts(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_inserts(self, **kwargs) -> List[SystemProfile]:
         """Get insert queries"""
         return []
 
-    def get_deletes(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_deletes(self, **kwargs) -> List[SystemProfile]:
         """Get delete queries"""
         return []
 
-    def get_updates(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_updates(self, **kwargs) -> List[SystemProfile]:
         """Get update queries"""
         return []
 
-    def get_kwargs(self, *args, **kwargs):
+    def get_kwargs(self, **kwargs):
+        """Get kwargs to be used in get_inserts, get_deletes, get_updates"""
         return {}
 
 
@@ -84,11 +87,11 @@ class SystemMetricsComputer(EmptySystemMetricsSource):
         # collaborative constructor that initalizes upstream classes
         super().__init__(*args, **kwargs)
 
-    def get_system_metrics(self, *args, **kwargs) -> List[SystemProfile]:
+    def get_system_metrics(self, **kwargs) -> List[SystemProfile]:
         """Return system metrics for a given table. Actual passed object can be a variety of types based
         on the underlying infrastructure. For example, in the case of SQLalchemy, it can be a Table object
         and in the case of Mongo, it can be a collection object."""
-        kwargs = super().get_kwargs(*args, **kwargs)
+        kwargs = super().get_kwargs(**kwargs)
         return (
             super().get_inserts(**kwargs)
             + super().get_deletes(**kwargs)
@@ -97,6 +100,8 @@ class SystemMetricsComputer(EmptySystemMetricsSource):
 
 
 class SQASessionProvider:
+    """SQASessionProvider class to provide session to the system metrics"""
+
     def __init__(self, *args, **kwargs):
         self.session = kwargs.pop("session")
         super().__init__(*args, **kwargs)

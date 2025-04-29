@@ -78,6 +78,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -88,8 +89,8 @@
       },
       "description": {
         "type": "text",
-        "index_options": "docs",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "similarity": "boolean"
       },
       "version": {
         "type": "float"
@@ -141,7 +142,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -177,8 +180,8 @@
               },
               "description": {
                 "type": "text",
-                "index_options": "docs",
-                "analyzer": "om_analyzer"
+                "analyzer": "om_analyzer",
+                "similarity": "boolean"
               },
               "fullyQualifiedName": {
                 "type": "text"
@@ -187,7 +190,13 @@
                 "properties": {
                   "tagFQN": {
                     "type": "keyword",
-                    "normalizer": "lowercase_normalizer"
+                    "normalizer": "lowercase_normalizer",
+                    "fields": {
+                      "text": {
+                        "type": "text",
+                        "analyzer": "om_analyzer"
+                      }
+                    }
                   },
                   "labelType": {
                     "type": "keyword"
@@ -244,10 +253,12 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -294,7 +305,9 @@
             "type": "keyword"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -335,8 +348,8 @@
           },
           "description": {
             "type": "text",
-            "index_options": "docs",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -377,6 +390,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -395,7 +409,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -443,7 +459,9 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "similarity": "boolean"
           },
           "deleted": {
             "type": "boolean"
@@ -499,7 +517,13 @@
       "tier": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -560,6 +584,46 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
       }
     }
   }

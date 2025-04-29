@@ -110,7 +110,10 @@ public class SearchServiceResourceTest
     // Update SearchService description and connection
 
     CreateSearchService update =
-        createRequest(test).withDescription("description1").withConnection(connection2);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(connection2)
+            .withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");

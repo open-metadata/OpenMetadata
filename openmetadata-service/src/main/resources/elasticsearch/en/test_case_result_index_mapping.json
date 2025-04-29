@@ -255,7 +255,8 @@
             "type": "nested",
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"
@@ -413,6 +414,16 @@
           "id": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "displayName" : {
+            "type" : "text",
+            "fields" : {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           }
         }
       },

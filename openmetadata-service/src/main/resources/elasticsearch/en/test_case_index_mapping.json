@@ -414,7 +414,14 @@
         "type": "nested",
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "text": {
+                "type": "text",
+                "analyzer": "om_analyzer"
+              }
+            }
           },
           "labelType": {
             "type": "keyword"
@@ -439,6 +446,9 @@
         "format": "epoch_second"
       },
       "updatedBy": {
+        "type": "text"
+      },
+      "createdBy": {
         "type": "text"
       },
       "href": {
@@ -515,16 +525,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -563,16 +573,16 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
           },
           "displayName": {
-            "type": "text",
+            "type": "keyword",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -611,10 +621,10 @@
           },
           "name": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

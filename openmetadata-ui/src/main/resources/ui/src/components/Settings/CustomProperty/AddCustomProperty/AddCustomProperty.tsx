@@ -283,6 +283,17 @@ const AddCustomProperty = () => {
       ],
     },
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'propertyType',
       required: true,
       label: t('label.type'),
@@ -326,6 +337,8 @@ const AddCustomProperty = () => {
       'data-testid': 'enumConfig',
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -440,7 +453,7 @@ const AddCustomProperty = () => {
   ];
 
   const firstPanelChildren = (
-    <div className="max-width-md w-9/10 service-form-container">
+    <>
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <Form
         className="m-t-md"
@@ -489,7 +502,7 @@ const AddCustomProperty = () => {
           </Col>
         </Row>
       </Form>
-    </div>
+    </>
   );
 
   const secondPanelChildren = (
@@ -505,6 +518,8 @@ const AddCustomProperty = () => {
       className="content-height-with-resizable-panel"
       firstPanel={{
         className: 'content-resizable-panel-container',
+        cardClassName: 'max-width-md m-x-auto',
+        allowScroll: true,
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
