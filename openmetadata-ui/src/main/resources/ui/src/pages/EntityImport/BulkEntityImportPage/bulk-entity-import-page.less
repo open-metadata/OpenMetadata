@@ -16,3 +16,15 @@
     padding-right: 84px;
   }
 }
+
+.react-grid-select-dropdown {
+  width: 100%;
+  min-width: 12rem;
+}
+
+// Custom styles for ReactDataGrid to avoid the issue of the row height
+.InovuaReactDataGrid__row,
+.InovuaReactDataGrid__cell {
+  min-height: 40px !important;
+  height: auto !important;
+}

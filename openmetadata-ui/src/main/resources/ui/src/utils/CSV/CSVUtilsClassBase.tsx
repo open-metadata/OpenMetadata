@@ -148,7 +148,10 @@ class CSVUtilsClassBase {
           return (
             <InlineEdit onCancel={props.onCancel} onSave={props.onComplete}>
               <TagSuggestion
-                selectProps={{ className: 'w-48', size: 'small', style: {} }}
+                selectProps={{
+                  className: 'react-grid-select-dropdown',
+                  size: 'small',
+                }}
                 value={tags}
                 onChange={handleChange}
               />
