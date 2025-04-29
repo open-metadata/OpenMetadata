@@ -64,7 +64,7 @@ function OwnersFeed({
     (ownerList: EntityReference[]) => {
       return ownerList.length <= maxVisibleOwners ? (
         <Row wrap align="middle">
-          {ownerList.map((owner: EntityReference, index: number) =>
+          {ownerList.map((owner: EntityReference) =>
             owner.type === EntityType.USER ? (
               <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
                 <div
@@ -92,7 +92,6 @@ function OwnersFeed({
                   isCompactView
                   avatarSize={24}
                   className="owner-chip-text"
-                  index={index}
                   owner={owner}
                 />
               </div>
