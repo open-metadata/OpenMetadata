@@ -1054,6 +1054,7 @@
     "query-plural": "Consultas",
     "query-used-in": "Consulta usada en",
     "queued": "Queued",
+    "raise-on-error": "Mostrar error al ejecutar",
     "range": "Rango",
     "range-condition": "Condición de Rango",
     "re-assign": "Reasignar",

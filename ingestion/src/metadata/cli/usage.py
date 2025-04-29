@@ -16,6 +16,7 @@ import sys
 import traceback
 from pathlib import Path
 
+from metadata.cli.common import execute_workflow
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     PipelineType,
@@ -44,7 +45,4 @@ def run_usage(config_path: Path) -> None:
         WorkflowInitErrorHandler.print_init_error(exc, config_dict, PipelineType.usage)
         sys.exit(1)
 
-    workflow.execute()
-    workflow.stop()
-    workflow.print_status()
-    workflow.raise_from_status()
+    execute_workflow(workflow=workflow, config_dict=config_dict)

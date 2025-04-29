@@ -17,7 +17,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Tuple
 
-from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
     PipelineState,
@@ -129,13 +128,8 @@ class WorkflowStatusMixin:
     def raise_from_status(self, raise_warnings=False):
         """
         Method to raise error if failed execution
-        and updating Ingestion Pipeline Status
         """
-        try:
-            self.raise_from_status_internal(raise_warnings)
-        except WorkflowExecutionError as err:
-            self.set_ingestion_pipeline_status(PipelineState.failed)
-            raise err
+        self.raise_from_status_internal(raise_warnings)
 
     def result_status(self) -> WorkflowResultStatus:
         """

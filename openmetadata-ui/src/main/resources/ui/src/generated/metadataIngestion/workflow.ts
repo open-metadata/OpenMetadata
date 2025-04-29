@@ -4333,6 +4333,10 @@ export interface Pipeline {
      */
     markDeletedApiCollections?: boolean;
     /**
+     * Optional value of the ingestion runner name responsible for running the workflow
+     */
+    ingestionRunner?: string;
+    /**
      * List of operations to be performed on the service
      */
     operations?: Operation[];
@@ -5412,6 +5416,10 @@ export interface WorkflowConfig {
     config?:                  { [key: string]: any };
     loggerLevel?:             LogLevels;
     openMetadataServerConfig: OpenMetadataConnection;
+    /**
+     * Control if we want to flag the workflow as failed if we encounter any processing errors.
+     */
+    raiseOnError?: boolean;
     /**
      * The percentage of successfully processed records that must be achieved for the pipeline
      * to be considered successful. Otherwise, the pipeline will be marked as failed.

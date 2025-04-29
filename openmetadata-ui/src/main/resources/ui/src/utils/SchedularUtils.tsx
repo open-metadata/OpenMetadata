@@ -31,6 +31,7 @@ import {
   DEFAULT_SCHEDULE_CRON_WEEKLY,
 } from '../constants/Schedular.constants';
 import { CronTypes } from '../enums/Schedular.enum';
+import { FieldTypes, FormItemLayout } from '../interface/FormUtils.interface';
 
 export const getScheduleOptionsFromSchedules = (
   scheduleOptions: string[]
@@ -329,4 +330,23 @@ export const cronValidator = async (_: RuleObject, value: string) => {
   await checkDOWValidity(dow);
 
   return Promise.resolve();
+};
+
+export const getRaiseOnErrorFormField = (
+  onFocus?: (fieldName: string) => void
+) => {
+  return {
+    name: 'raiseOnError',
+    label: t('label.raise-on-error'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    formItemProps: {
+      valuePropName: 'checked',
+    },
+    props: {
+      onFocus: () => onFocus?.('raiseOnError'),
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    id: 'root/raiseOnError',
+  };
 };

@@ -20,6 +20,7 @@ from openmetadata_managed_apis.workflows.ingestion.common import (
     build_dag,
     build_source,
     build_workflow_config_property,
+    execute_workflow,
 )
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
@@ -34,7 +35,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.workflow.usage import UsageWorkflow
 
 
-def usage_workflow(workflow_config: OpenMetadataWorkflowConfig):
+def usage_workflow(
+    workflow_config: OpenMetadataWorkflowConfig,
+):
     """
     Task that creates and runs the ingestion workflow.
 
@@ -50,11 +53,7 @@ def usage_workflow(workflow_config: OpenMetadataWorkflowConfig):
         workflow_config.model_dump_json(exclude_defaults=False, mask_secrets=False)
     )
     workflow = UsageWorkflow.create(config)
-
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+    execute_workflow(workflow, workflow_config)
 
 
 def build_usage_config_from_file(

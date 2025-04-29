@@ -1054,6 +1054,7 @@
     "query-plural": "쿼리들",
     "query-used-in": "사용된 쿼리",
     "queued": "Queued",
+    "raise-on-error": "오류 발생 시 표시",
     "range": "범위",
     "range-condition": "Range Condition",
     "re-assign": "재할당",

@@ -1054,6 +1054,7 @@
     "query-plural": "Requêtes",
     "query-used-in": "Requêtes Utilisées dans",
     "queued": "Queued",
+    "raise-on-error": "Afficher l'erreur lors de l'exécution",
     "range": "Amplitude",
     "range-condition": "Condition de Plage",
     "re-assign": "Réaffecter",

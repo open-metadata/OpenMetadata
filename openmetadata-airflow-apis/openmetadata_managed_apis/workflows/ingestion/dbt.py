@@ -42,7 +42,7 @@ def build_dbt_workflow_config(
     """
 
     source = build_source(ingestion_pipeline)
-    source.type = f"dbt"  # Mark the source as dbt
+    source.type = "dbt"  # Mark the source as dbt
 
     workflow_config = OpenMetadataWorkflowConfig(
         source=source,

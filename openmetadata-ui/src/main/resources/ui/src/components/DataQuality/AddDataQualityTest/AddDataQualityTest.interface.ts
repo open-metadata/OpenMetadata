@@ -44,6 +44,7 @@ export type TestSuiteIngestionDataType = {
   testCases?: string[];
   name?: string;
   selectAllTestCases?: boolean;
+  raiseOnError?: boolean;
 };
 
 export interface AddTestSuitePipelineProps {
