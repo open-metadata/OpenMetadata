@@ -139,18 +139,22 @@ public class AppResource extends EntityResource<App, AppRepository> {
         App app = getAppForInit(createApp.getName());
         if (app == null) {
           app = mapper.createToEntity(createApp, ADMIN_USER_NAME);
+          scheduleAppIfNeeded(app);
           repository.initializeEntity(app);
-        }
-
-        // Schedule
-        if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
-          ApplicationHandler.getInstance()
-              .installApplication(
-                  app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
+        } else {
+          scheduleAppIfNeeded(app);
         }
       } catch (Exception ex) {
         LOG.error("Failed in Creation/Initialization of Application : {}", createApp.getName(), ex);
       }
+    }
+  }
+
+  private void scheduleAppIfNeeded(App app) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+      ApplicationHandler.getInstance()
+          .installApplication(
+              app, Entity.getCollectionDAO(), searchRepository, ADMIN_USER_NAME);
     }
   }
 
