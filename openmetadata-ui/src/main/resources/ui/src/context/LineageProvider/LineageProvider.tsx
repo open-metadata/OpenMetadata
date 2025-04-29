@@ -437,14 +437,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         setActiveLayer([]);
       }
 
-      history.push({
-        search: QueryString.stringify({
-          layers: lineageLayer,
-          platformView: view !== LineagePlatformView.None ? view : undefined,
-        }),
-      });
+      if (isPlatformLineage) {
+        history.push({
+          search: QueryString.stringify({
+            platformView: view !== LineagePlatformView.None ? view : undefined,
+          }),
+        });
+      }
     },
-    [lineageLayer]
+    [isPlatformLineage]
   );
 
   const exportLineageData = useCallback(
@@ -596,7 +597,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       layers.includes(LineageLayer.ColumnLevelLineage) ||
       layers.includes(LineageLayer.DataObservability)
     ) {
-      onPlatformViewChange(LineagePlatformView.None);
+      setPlatformView(LineagePlatformView.None);
     }
   }, []);
 

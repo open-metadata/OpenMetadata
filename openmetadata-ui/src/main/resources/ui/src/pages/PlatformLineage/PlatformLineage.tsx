@@ -27,6 +27,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../context/LineageProvider/LineageProvider.interface';
 import {
   OperationPermission,
   ResourceEntity,
@@ -49,7 +50,8 @@ const PlatformLineage = () => {
   const location = useCustomLocation();
   const history = useHistory();
   const queryParams = new URLSearchParams(location.search);
-  const platformView = queryParams.get('platformView') ?? '';
+  const platformView =
+    queryParams.get('platformView') ?? LineagePlatformView.Service;
   const { entityType } = useParams<{ entityType: EntityType }>();
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
