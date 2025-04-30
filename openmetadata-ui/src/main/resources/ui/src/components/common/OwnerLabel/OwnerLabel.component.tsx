@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { NoOwnerFound } from '../NoOwner/NoOwnerFound';
 import { OwnerItem } from '../OwnerItem/OwnerItem';
@@ -39,11 +40,18 @@ export const OwnerLabel = ({
   tooltipText,
   isCompactView = true, // renders owner profile followed by its name
   avatarSize = 32,
-  showMultipleType = false,
+  showMultipleType,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const {
+    isCreator,
+    hasEditAccess,
+    isTaskClosed,
+    ownersLength,
+    setIsEditAssignee,
+  } = showMultipleType || {};
 
   const ownerElementsNonCompactView = useMemo(() => {
     if (!isCompactView) {
@@ -149,6 +157,17 @@ export const OwnerLabel = ({
                 showAllOwners={showAllOwners}
               />
             )}
+            {(isCreator || hasEditAccess) &&
+              !isTaskClosed &&
+              ownersLength === 0 && (
+                <Button
+                  className="p-0 flex-center h-auto"
+                  data-testid="edit-assignees"
+                  icon={<EditIcon width="14px" />}
+                  type="text"
+                  onClick={() => setIsEditAssignee?.(true)}
+                />
+              )}
           </div>
         </div>
       </div>

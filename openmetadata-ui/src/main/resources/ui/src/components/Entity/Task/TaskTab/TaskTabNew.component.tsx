@@ -48,7 +48,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as AssigneesIcon } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
@@ -965,25 +964,19 @@ export const TaskTabNew = ({
                   </div>
                 ) : (
                   <OwnerLabel
-                    showMultipleType
                     avatarSize={24}
                     isCompactView={false}
                     owners={taskThread?.task?.assignees}
                     showLabel={false}
+                    showMultipleType={{
+                      isCreator,
+                      hasEditAccess,
+                      isTaskClosed,
+                      ownersLength: owners.length,
+                      setIsEditAssignee,
+                    }}
                   />
                 )}
-                {(isCreator || hasEditAccess) &&
-                !isTaskClosed &&
-                owners.length === 0 ? (
-                  <Button
-                    className="flex-center p-0 h-auto"
-                    data-testid="edit-assignees"
-                    icon={<EditIcon width="14px" />}
-                    size="small"
-                    type="text"
-                    onClick={() => setIsEditAssignee(true)}
-                  />
-                ) : null}
               </Col>
             </>
           )}

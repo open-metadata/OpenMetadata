@@ -359,11 +359,11 @@ const TaskFeedCard = ({
                       : ''
                   }`}>
                   <OwnerLabel
-                    showMultipleType
                     avatarSize={24}
                     isCompactView={false}
                     owners={feed?.task?.assignees}
                     showLabel={false}
+                    showMultipleType={{}}
                   />
                 </Col>
               </Col>

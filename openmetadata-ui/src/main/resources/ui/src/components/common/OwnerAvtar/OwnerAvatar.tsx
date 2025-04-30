@@ -20,12 +20,19 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './owner-avtar.less';
+
 interface OwnerAvatarProps {
   owner: EntityReference;
-  isCompactView: boolean;
-  inheritedIcon?: React.ReactNode;
   avatarSize?: number;
-  showMultipleType?: boolean;
+  isCompactView?: boolean;
+  inheritedIcon?: React.ReactNode;
+  showMultipleType?: {
+    isCreator?: boolean;
+    hasEditAccess?: boolean;
+    isTaskClosed?: boolean;
+    ownersLength?: number;
+    setIsEditAssignee?: (value: boolean) => void;
+  };
 }
 
 export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
@@ -33,7 +40,7 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   isCompactView,
   inheritedIcon,
   avatarSize = 32,
-  showMultipleType = false,
+  showMultipleType,
 }) => {
   const displayName = getEntityName(owner);
 

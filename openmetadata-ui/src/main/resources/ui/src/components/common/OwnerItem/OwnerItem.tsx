@@ -26,7 +26,13 @@ interface OwnerItemProps {
   className?: string;
   ownerDisplayName?: ReactNode;
   avatarSize?: number;
-  showMultipleType?: boolean;
+  showMultipleType?: {
+    isCreator?: boolean;
+    hasEditAccess?: boolean;
+    isTaskClosed?: boolean;
+    ownersLength?: number;
+    setIsEditAssignee?: (value: boolean) => void;
+  };
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
@@ -35,7 +41,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   className,
   ownerDisplayName,
   avatarSize = 32,
-  showMultipleType = false,
+  showMultipleType,
 }) => {
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);

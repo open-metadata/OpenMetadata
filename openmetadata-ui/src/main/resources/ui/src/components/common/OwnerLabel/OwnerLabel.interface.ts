@@ -29,5 +29,11 @@ export interface OwnerLabelProps {
   tooltipText?: string;
   isCompactView?: boolean;
   avatarSize?: number;
-  showMultipleType?: boolean;
+  showMultipleType?: {
+    isCreator?: boolean;
+    hasEditAccess?: boolean;
+    isTaskClosed?: boolean;
+    ownersLength?: number;
+    setIsEditAssignee?: React.Dispatch<React.SetStateAction<boolean>>;
+  };
 }
