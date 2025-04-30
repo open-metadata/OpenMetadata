@@ -160,7 +160,7 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
           validateFormData: (formData: ConfigData) => {
             const validationErrors: Record<string, { __errors: string[] }> = {};
 
-            // Check for negative values in number fields
+            // Check for minimum values in number fields
             Object.keys(schema.properties || {}).forEach((key) => {
               const property = schema?.properties?.[key];
               if (
@@ -169,10 +169,17 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
                 (property.type === 'number' || property.type === 'integer')
               ) {
                 const value = formData[key as keyof ConfigData];
-                if (typeof value === 'number' && value < 0) {
+                if (
+                  typeof value === 'number' &&
+                  property.minimum !== undefined &&
+                  value < property.minimum
+                ) {
                   validationErrors[key] = {
                     __errors: [
-                      t('message.value-cannot-be-negative', { field: key }),
+                      t('message.value-must-be-greater-than', {
+                        field: property.title ?? key,
+                        minimum: property.minimum,
+                      }),
                     ],
                   };
                 }
@@ -184,7 +191,10 @@ const FormBuilder: FunctionComponent<Props> = forwardRef(
                 name: key,
                 property: key,
                 message: validationErrors[key].__errors[0],
-                stack: t('message.value-cannot-be-negative', { field: key }),
+                stack: t('message.value-must-be-greater-than', {
+                  field: key,
+                  minimum: validationErrors[key].__errors[0].split(' ').pop(),
+                }),
               })),
               errorSchema: Object.keys(validationErrors).reduce(
                 (acc, key) => ({
