@@ -27,6 +27,7 @@ interface OwnerItemProps {
   className?: string;
   ownerDisplayName?: ReactNode;
   avatarSize?: number;
+  showMultipleType?: boolean;
 }
 
 export const OwnerItem: React.FC<OwnerItemProps> = ({
@@ -36,6 +37,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
   className,
   ownerDisplayName,
   avatarSize = 32,
+  showMultipleType = false,
 }) => {
   const displayName = getEntityName(owner);
   const ownerPath = getOwnerPath(owner);
@@ -86,6 +88,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
             inheritedIcon={inheritedIcon}
             isCompactView={isCompactView}
             owner={owner}
+            showMultipleType={showMultipleType}
           />
         </Link>
       ) : (
@@ -99,6 +102,7 @@ export const OwnerItem: React.FC<OwnerItemProps> = ({
               inheritedIcon={inheritedIcon}
               isCompactView={isCompactView}
               owner={owner}
+              showMultipleType={showMultipleType}
             />
           </Link>
         </UserPopOverCard>

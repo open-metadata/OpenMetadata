@@ -965,6 +965,7 @@ export const TaskTabNew = ({
                   </div>
                 ) : (
                   <OwnerLabel
+                    showMultipleType
                     avatarSize={24}
                     isCompactView={false}
                     owners={taskThread?.task?.assignees}

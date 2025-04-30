@@ -13,6 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Typography } from 'antd';
 import React from 'react';
+import { ReactComponent as AssigneesIcon } from '../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
@@ -24,6 +25,7 @@ interface OwnerAvatarProps {
   isCompactView: boolean;
   inheritedIcon?: React.ReactNode;
   avatarSize?: number;
+  showMultipleType?: boolean;
 }
 
 export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
@@ -31,8 +33,49 @@ export const OwnerAvatar: React.FC<OwnerAvatarProps> = ({
   isCompactView,
   inheritedIcon,
   avatarSize = 32,
+  showMultipleType = false,
 }) => {
   const displayName = getEntityName(owner);
+
+  if (showMultipleType) {
+    return (
+      <div className="flex w-max-full items-center gap-2">
+        {owner.type === OwnerType.TEAM ? (
+          <div className="d-flex gap-2 multi-team-container w-max-full items-center">
+            <Icon
+              className="owner-team-icon"
+              component={AssigneesIcon}
+              data-testid={!isCompactView && getEntityName(owner)}
+              style={{ fontSize: '16px', color: 'white' }}
+            />
+            <Typography.Text className="text-sm" ellipsis={{ tooltip: true }}>
+              {displayName}
+            </Typography.Text>
+          </div>
+        ) : (
+          <div
+            className="owner-avatar-icon"
+            data-testid={!isCompactView && getEntityName(owner)}
+            key={owner.id}
+            style={{ flexBasis: `${avatarSize}px` }}>
+            <ProfilePicture
+              displayName={displayName}
+              key="profile-picture"
+              name={owner.name ?? ''}
+              type="circle"
+              width={isCompactView ? '24' : `${avatarSize}`}
+            />
+
+            {inheritedIcon && (
+              <div className="inherited-icon-styling flex-center">
+                {inheritedIcon}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return owner.type === OwnerType.TEAM ? (
     <div className="d-flex gap-2 w-max-full items-center">
