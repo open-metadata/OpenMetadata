@@ -1000,6 +1000,7 @@
     "pipeline-plural": "תהליכי טעינה/עיבוד",
     "pipeline-state": "מצב תהליך הטעינה/עיבוד",
     "platform": "Platform",
+    "platform-type-lineage": "{{platformType}} שורשים",
     "play": "Play",
     "please-enter-value": "נא להזין את ערך {{name}}",
     "please-password-type-first": "נא להקליד סיסמה תחילה",
