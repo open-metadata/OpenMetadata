@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from 'react';
 import { PipelineServiceClientResponse } from '../../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
@@ -59,14 +60,17 @@ const AirflowStatusProvider = ({ children }: Props) => {
     fetchAirflowStatus();
   }, []);
 
-  const value: AirflowStatusContextType = {
-    isFetchingStatus: isLoading,
-    isAirflowAvailable,
-    error,
-    reason,
-    platform,
-    fetchAirflowStatus,
-  };
+  const value: AirflowStatusContextType = useMemo(
+    () => ({
+      isFetchingStatus: isLoading,
+      isAirflowAvailable,
+      error,
+      reason,
+      platform,
+      fetchAirflowStatus,
+    }),
+    [isLoading, isAirflowAvailable, error, reason, platform, fetchAirflowStatus]
+  );
 
   return (
     <AirflowStatusContext.Provider value={value}>

@@ -168,7 +168,7 @@ const TestSuitePipelineTab = ({
         showSuccessToast('Pipeline triggered successfully');
 
         setPipelineIdToFetchStatus(id);
-      } catch (error) {
+      } catch {
         showErrorToast(
           t('server.ingestion-workflow-operation-error', {
             operation: 'triggering',
