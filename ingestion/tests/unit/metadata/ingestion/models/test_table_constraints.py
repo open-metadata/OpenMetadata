@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from metadata.generated.schema.entity.data.table import ConstraintType, TableConstraint
 from metadata.ingestion.models.patch_request import _table_constraints_handler
 
+
 # pylint: disable=unsubscriptable-object
 class MockEntity(BaseModel):
     """Mock entity class for testing the table constraints handler"""
