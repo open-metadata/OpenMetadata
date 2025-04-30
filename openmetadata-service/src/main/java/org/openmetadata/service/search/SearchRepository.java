@@ -582,11 +582,19 @@ public class SearchRepository {
         if (field.getName().contains(PARENT)) {
           EntityReference entityReferenceBeforeUpdate =
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Remove the parent field from the entity in search
+          String parentFieldPath = "parent";
+          Map<String, Object> params = new HashMap<>();
+          params.put("field", parentFieldPath);
+          searchClient.updateEntity(
+              indexName, entity.getId().toString(), params, "ctx._source.remove(params.field)");
+
           // Propagate FQN updates to all subchildren
           String originalFqn =
               FullyQualifiedName.add(
                   entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
-          searchClient.updateByFqnPrefix(indexName, originalFqn, "", FIELD_FULLY_QUALIFIED_NAME);
+          searchClient.updateByFqnPrefix(
+              indexName, originalFqn, entity.getName(), FIELD_FULLY_QUALIFIED_NAME);
         }
       }
     } else if (changeDescription != null
