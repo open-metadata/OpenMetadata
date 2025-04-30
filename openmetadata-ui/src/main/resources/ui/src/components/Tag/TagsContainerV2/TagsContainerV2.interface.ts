@@ -36,4 +36,5 @@ export type TagsContainerV2Props = {
   defaultState?: State;
   defaultLabelType?: LabelType;
   sizeCap?: number;
+  newLook?: boolean;
 };

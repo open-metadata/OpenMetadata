@@ -277,6 +277,7 @@ export const CommonWidgets = ({
   const tagsWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
@@ -299,6 +300,7 @@ export const CommonWidgets = ({
   const glossaryWidget = useMemo(() => {
     return (
       <TagsContainerV2
+        newLook
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}

@@ -90,6 +90,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
 
         <div data-testid="KnowledgePanel.Tags">
           <TagsContainerV2
+            newLook
             displayType={DisplayType.READ_MORE}
             entityFqn={entityFQN}
             entityType={entityType}
@@ -103,6 +104,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
 
         <div data-testid="KnowledgePanel.GlossaryTerms">
           <TagsContainerV2
+            newLook
             displayType={DisplayType.READ_MORE}
             entityFqn={entityFQN}
             entityType={entityType}

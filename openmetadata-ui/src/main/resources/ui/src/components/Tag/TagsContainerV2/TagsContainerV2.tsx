@@ -73,6 +73,7 @@ const TagsContainerV2 = ({
   children,
   defaultLabelType,
   defaultState,
+  newLook = false,
   sizeCap = LIST_SIZE,
 }: TagsContainerV2Props) => {
   const history = useHistory();
@@ -234,8 +235,8 @@ const TagsContainerV2 = ({
 
     return (
       <RequestIconButton
-        newLook
         data-testid="request-entity-tags"
+        newLook={newLook}
         size="small"
         title={
           hasTags
@@ -250,8 +251,8 @@ const TagsContainerV2 = ({
   const conversationThreadElement = useMemo(
     () => (
       <CommentIconButton
-        newLook
         data-testid="tag-thread"
+        newLook={newLook}
         size="small"
         title={t('label.list-entity', {
           entity: t('label.conversation'),
@@ -268,15 +269,19 @@ const TagsContainerV2 = ({
     return (
       showHeader && (
         <Space>
-          <Typography.Text className={classNames('text-sm font-medium')}>
+          <Typography.Text
+            className={classNames({
+              'text-sm font-medium': newLook,
+              'right-panel-label': !newLook,
+            })}>
             {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
           </Typography.Text>
           {permission && (
             <>
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
                 <EditIconButton
-                  newLook
                   data-testid="edit-button"
+                  newLook={newLook}
                   size="small"
                   title={t('label.edit-entity', {
                     entity:
@@ -314,9 +319,9 @@ const TagsContainerV2 = ({
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
         <EditIconButton
-          newLook
           className="hover-cell-icon"
           data-testid="edit-button"
+          newLook={newLook}
           size="small"
           title={t('label.edit-entity', {
             entity:
@@ -327,7 +332,7 @@ const TagsContainerV2 = ({
           onClick={handleAddClick}
         />
       ) : null,
-    [permission, tags, tagType, handleAddClick]
+    [permission, tags, tagType, handleAddClick, newLook]
   );
 
   const horizontalLayout = useMemo(() => {
@@ -416,24 +421,48 @@ const TagsContainerV2 = ({
     setTags(getFilterTags(selectedTags));
   }, [selectedTags]);
 
+  if (newLook) {
+    return (
+      <ExpandableCard
+        cardProps={{
+          title: header,
+        }}
+        dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}>
+        {suggestionDataRender ?? (
+          <>
+            {tagBody}
+            {(children || showBottomEditButton) && (
+              <Space align="baseline" className="m-t-xs w-full" size="middle">
+                {showBottomEditButton && !showInlineEditButton && editTagButton}
+                {children}
+              </Space>
+            )}
+          </>
+        )}
+      </ExpandableCard>
+    );
+  }
+
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
-      dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}>
+    <div
+      className="w-full tags-container"
+      data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
+      {header}
+
       {suggestionDataRender ?? (
         <>
           {tagBody}
           {(children || showBottomEditButton) && (
-            <Space align="baseline" className="m-t-xs w-full" size="middle">
-              {showBottomEditButton && !showInlineEditButton && editTagButton}
+            <div className="m-t-xs w-full d-flex items-baseline">
+              {showBottomEditButton && !showInlineEditButton && (
+                <p className="d-flex m-r-md">{editTagButton}</p>
+              )}
               {children}
-            </Space>
+            </div>
           )}
         </>
       )}
-    </ExpandableCard>
+    </div>
   );
 };
 

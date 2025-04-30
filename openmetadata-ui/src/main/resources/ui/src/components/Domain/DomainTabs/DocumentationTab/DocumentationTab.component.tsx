@@ -153,6 +153,7 @@ const DocumentationTab = ({
             <OwnerLabelV2 dataTestId="domain-owner-name" />
 
             <TagsContainerV2
+              newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
               entityType={EntityType.DOMAIN}
@@ -166,6 +167,7 @@ const DocumentationTab = ({
             />
 
             <TagsContainerV2
+              newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
               entityType={EntityType.DOMAIN}
