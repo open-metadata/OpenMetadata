@@ -42,11 +42,11 @@ RUN dpkg --configure -a \
 
 # Add updated postgres/redshift dependencies based on libq
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
-    apt-get -qq update; \
-    apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
-    apt-get -qq autoremove -yqq --purge; \
-    apt-get -qq clean && rm -rf /var/lib/apt/lists/*
+RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+RUN apt-get -qq update
+RUN apt-get -qq install --no-install-recommends -y libpq-dev postgresql-15 postgresql-client-15 postgresql-common postgresql-contrib-15
+RUN apt-get -qq autoremove -yqq --purge
+RUN apt-get -qq clean && rm -rf /var/lib/apt/lists/*
 
 RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
  then \
