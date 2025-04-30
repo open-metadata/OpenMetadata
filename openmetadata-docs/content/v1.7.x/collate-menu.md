@@ -983,6 +983,8 @@ site_menu:
     url: /how-to-guides/data-governance/classification/assets
   - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
     url: /how-to-guides/data-governance/classification/request-tags
+  - category: How-to Guides / Data Governance / Classification / Sample Data Handling Using PII Tags
+    url: /how-to-guides/data-governance/classification/sample-data-using-pii-tag
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow
     url: /how-to-guides/data-governance/classification/auto-classification
   - category: How-to Guides / Data Governance / Classification / Auto-Classification Workflow / Workflow
