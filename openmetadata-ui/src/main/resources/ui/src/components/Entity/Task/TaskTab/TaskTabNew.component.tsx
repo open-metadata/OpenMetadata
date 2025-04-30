@@ -937,13 +937,13 @@ export const TaskTabNew = ({
             </Form>
           ) : (
             <>
-              <Col className="flex items-center gap-2 text-grey-muted" span={8}>
+              <Col className="flex gap-2 text-grey-muted" span={8}>
                 <AssigneesIcon height={16} />
                 <Typography.Text className="incident-manager-details-label @grey-8">
                   {t('label.assignee-plural')}
                 </Typography.Text>
               </Col>
-              <Col className="flex items-center gap-2" span={16}>
+              <Col className="flex gap-2" span={16}>
                 {taskThread?.task?.assignees?.length === 1 ? (
                   <div className="d-flex items-center gap-2">
                     <UserPopOverCard
